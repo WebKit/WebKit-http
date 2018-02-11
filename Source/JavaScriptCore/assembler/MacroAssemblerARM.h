@@ -394,6 +394,11 @@ public:
         m_assembler.dataTransfer32(ARMAssembler::LoadUint8, dest, ARMRegisters::S0, 0);
     }
 
+    void load8SignedExtendTo32(Address address, RegisterID dest)
+    {
+        m_assembler.dataTransfer16(ARMAssembler::LoadInt8, dest, address.base, address.offset);
+    }
+
     void load8SignedExtendTo32(BaseIndex address, RegisterID dest)
     {
         m_assembler.baseIndexTransfer16(ARMAssembler::LoadInt8, dest, address.base, address.index, static_cast<int>(address.scale), address.offset);
@@ -632,23 +637,23 @@ public:
 
     Jump branch8(RelationalCondition cond, Address left, TrustedImm32 right)
     {
-        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
-        load8(left, ARMRegisters::S1);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, ARMRegisters::S1);
         return branch32(cond, ARMRegisters::S1, right8);
     }
 
     Jump branch8(RelationalCondition cond, BaseIndex left, TrustedImm32 right)
     {
-        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
-        load8(left, ARMRegisters::S1);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, ARMRegisters::S1);
         return branch32(cond, ARMRegisters::S1, right8);
     }
 
     Jump branch8(RelationalCondition cond, AbsoluteAddress left, TrustedImm32 right)
     {
-        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
         move(TrustedImmPtr(left.m_ptr), ARMRegisters::S1);
-        load8(Address(ARMRegisters::S1), ARMRegisters::S1);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, Address(ARMRegisters::S1), ARMRegisters::S1);
         return branch32(cond, ARMRegisters::S1, right8);
     }
 
@@ -702,23 +707,23 @@ public:
 
     Jump branchTest8(ResultCondition cond, Address address, TrustedImm32 mask = TrustedImm32(-1))
     {
-        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
-        load8(address, ARMRegisters::S1);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, ARMRegisters::S1);
         return branchTest32(cond, ARMRegisters::S1, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, BaseIndex address, TrustedImm32 mask = TrustedImm32(-1))
     {
-        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
-        load8(address, ARMRegisters::S1);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, ARMRegisters::S1);
         return branchTest32(cond, ARMRegisters::S1, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, AbsoluteAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
-        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
         move(TrustedImmPtr(address.m_ptr), ARMRegisters::S1);
-        load8(Address(ARMRegisters::S1), ARMRegisters::S1);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, Address(ARMRegisters::S1), ARMRegisters::S1);
         return branchTest32(cond, ARMRegisters::S1, mask8);
     }
 
@@ -985,8 +990,8 @@ public:
 
     void compare8(RelationalCondition cond, Address left, TrustedImm32 right, RegisterID dest)
     {
-        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
-        load8(left, ARMRegisters::S1);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, ARMRegisters::S1);
         compare32(cond, ARMRegisters::S1, right8, dest);
     }
 
@@ -1008,8 +1013,8 @@ public:
 
     void test8(ResultCondition cond, Address address, TrustedImm32 mask, RegisterID dest)
     {
-        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
-        load8(address, ARMRegisters::S1);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, ARMRegisters::S1);
         test32(cond, ARMRegisters::S1, mask8, dest);
     }
 
@@ -1456,6 +1461,13 @@ public:
     void memoryFence()
     {
         m_assembler.dmbSY();
+    }
+
+    void storeFence()
+    {
+        // FIXME: We should actually implement this. The only current caller is related to
+        // concurrent GC, which is disabled on 32-bit systems.
+        // https://bugs.webkit.org/show_bug.cgi?id=164733
     }
 
     static FunctionPtr readCallTarget(CodeLocationCall call)

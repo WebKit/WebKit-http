@@ -23,10 +23,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebStorageNamespaceProvider_h
-#define WebStorageNamespaceProvider_h
+#pragma once
 
 #include <WebCore/storage/StorageNamespaceProvider.h>
+
+namespace WebCore {
+struct SecurityOriginData;
+}
+
+namespace WebKit {
 
 class WebStorageNamespaceProvider final : public WebCore::StorageNamespaceProvider {
 public:
@@ -36,7 +41,7 @@ public:
     static void closeLocalStorage();
 
     static void clearLocalStorageForAllOrigins();
-    static void clearLocalStorageForOrigin(WebCore::SecurityOrigin*);
+    static void clearLocalStorageForOrigin(const WebCore::SecurityOriginData&);
     static void closeIdleLocalStorageDatabases();
     // DumpRenderTree helper that triggers a StorageArea sync.
     static void syncLocalStorage();
@@ -51,4 +56,4 @@ private:
     const String m_localStorageDatabasePath;
 };
 
-#endif // WebStorageNamespaceProvider_h
+} // namespace WebKit

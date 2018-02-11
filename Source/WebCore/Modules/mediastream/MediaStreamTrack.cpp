@@ -33,8 +33,6 @@
 #include "Dictionary.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
 #include "JSOverconstrainedError.h"
 #include "MediaConstraintsImpl.h"
 #include "MediaSourceSettings.h"
@@ -48,14 +46,14 @@
 
 namespace WebCore {
 
-Ref<MediaStreamTrack> MediaStreamTrack::create(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack)
+Ref<MediaStreamTrack> MediaStreamTrack::create(ScriptExecutionContext& context, Ref<MediaStreamTrackPrivate>&& privateTrack)
 {
-    return adoptRef(*new MediaStreamTrack(context, privateTrack));
+    return adoptRef(*new MediaStreamTrack(context, WTFMove(privateTrack)));
 }
 
-MediaStreamTrack::MediaStreamTrack(ScriptExecutionContext& context, MediaStreamTrackPrivate& privateTrack)
+MediaStreamTrack::MediaStreamTrack(ScriptExecutionContext& context, Ref<MediaStreamTrackPrivate>&& privateTrack)
     : ActiveDOMObject(&context)
-    , m_private(privateTrack)
+    , m_private(WTFMove(privateTrack))
     , m_weakPtrFactory(this)
 {
     suspendIfNeeded();
@@ -123,9 +121,9 @@ bool MediaStreamTrack::ended() const
     return m_ended || m_private->ended();
 }
 
-RefPtr<MediaStreamTrack> MediaStreamTrack::clone()
+Ref<MediaStreamTrack> MediaStreamTrack::clone()
 {
-    return MediaStreamTrack::create(*scriptExecutionContext(), *m_private->clone());
+    return MediaStreamTrack::create(*scriptExecutionContext(), m_private->clone());
 }
 
 void MediaStreamTrack::stopProducingData()
@@ -169,7 +167,7 @@ RefPtr<RealtimeMediaSourceCapabilities> MediaStreamTrack::getCapabilities() cons
     return m_private->capabilities();
 }
 
-void MediaStreamTrack::applyConstraints(Ref<MediaConstraints>&& constraints, ApplyConstraintsPromise&& promise)
+void MediaStreamTrack::applyConstraints(Ref<MediaConstraints>&& constraints, DOMPromise<void>&& promise)
 {
     if (!constraints->isValid()) {
         promise.reject(TypeError);
@@ -196,7 +194,7 @@ void MediaStreamTrack::applyConstraints(const MediaConstraints& constraints)
         if (!weakThis || !weakThis->m_promise)
             return;
 
-        weakThis->m_promise->resolve(nullptr);
+        weakThis->m_promise->resolve();
     };
 
     m_private->applyConstraints(constraints, successHandler, failureHandler);

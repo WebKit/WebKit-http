@@ -17,8 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef XMLSerializer_h
-#define XMLSerializer_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/Ref.h>
@@ -26,20 +25,17 @@
 
 namespace WebCore {
 
-    typedef int ExceptionCode;
+class Node;
 
-    class Node;
+// FIXME: This object has no state, so it seems a waste to allocate and reference count it.
+class XMLSerializer : public RefCounted<XMLSerializer> {
+public:
+    static Ref<XMLSerializer> create() { return adoptRef(*new XMLSerializer); }
 
-    class XMLSerializer : public RefCounted<XMLSerializer> {
-    public:
-        static Ref<XMLSerializer> create() { return adoptRef(*new XMLSerializer); }
-        
-        String serializeToString(Node&);
-        
-    private:
-        XMLSerializer()  { }        
-    };
+    static String serializeToString(Node&);
+
+private:
+    XMLSerializer() = default;
+};
 
 } // namespace WebCore
-
-#endif // XMLSerializer_h

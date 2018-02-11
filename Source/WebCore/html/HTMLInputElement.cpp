@@ -358,6 +358,18 @@ bool HTMLInputElement::stepMismatch() const
     return willValidate() && m_inputType->stepMismatch(value());
 }
 
+bool HTMLInputElement::isValid() const
+{
+    if (!willValidate())
+        return true;
+
+    String value = this->value();
+    bool someError = m_inputType->typeMismatch() || m_inputType->stepMismatch(value) || m_inputType->rangeUnderflow(value) || m_inputType->rangeOverflow(value)
+        || tooShort(value, CheckDirtyFlag) || tooLong(value, CheckDirtyFlag) || m_inputType->patternMismatch(value) || m_inputType->valueMissing(value)
+        || m_inputType->hasBadInput() || customError();
+    return !someError;
+}
+
 bool HTMLInputElement::getAllowedValueStep(Decimal* step) const
 {
     return m_inputType->getAllowedValueStep(step);
@@ -768,7 +780,8 @@ void HTMLInputElement::parseAttribute(const QualifiedName& name, const AtomicStr
 #endif
     else
         HTMLTextFormControlElement::parseAttribute(name, value);
-    m_inputType->attributeChanged();
+
+    m_inputType->attributeChanged(name);
 }
 
 void HTMLInputElement::parserDidSetAttributes()
@@ -979,7 +992,7 @@ String HTMLInputElement::value() const
     if (!value.isNull())
         return value;
 
-    AtomicString valueString = attributeWithoutSynchronization(valueAttr);
+    auto& valueString = attributeWithoutSynchronization(valueAttr);
     value = sanitizeValue(valueString);
     if (!value.isNull())
         return value;
@@ -1446,9 +1459,13 @@ void HTMLInputElement::addSearchResult()
 
 void HTMLInputElement::onSearch()
 {
-    ASSERT(isSearchField());
+    // The type of the input element could have changed during event handling. If we are no longer
+    // a search field, don't try to do search things.
+    if (!isSearchField())
+        return;
+
     if (m_inputType)
-        static_cast<SearchInputType*>(m_inputType.get())->stopSearchEventTimer();
+        downcast<SearchInputType>(*m_inputType.get()).stopSearchEventTimer();
     dispatchEvent(Event::create(eventNames().searchEvent, true, false));
 }
 

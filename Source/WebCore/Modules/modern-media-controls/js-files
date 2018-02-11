@@ -20,10 +20,13 @@ controls/fullscreen-button.js
 controls/aspect-ratio-button.js
 controls/rewind-button.js
 controls/forward-button.js
+controls/buttons-container.js
+controls/status-label.js
 controls/media-controls.js
+controls/ios-inline-media-controls.js
 controls/macos-media-controls.js
 controls/macos-inline-media-controls.js
-controls/buttons-container.js
+controls/macos-fullscreen-media-controls.js
 controls/placard.js
 controls/airplay-placard.js
 controls/pip-placard.js
@@ -39,6 +42,8 @@ media/remaining-time-support.js
 media/scrubbing-support.js
 media/skip-back-support.js
 media/start-support.js
+media/status-support.js
+media/tracks-support.js
 media/volume-support.js
 media/media-controller.js
 main.js

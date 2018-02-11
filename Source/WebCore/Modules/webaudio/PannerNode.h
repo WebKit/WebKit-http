@@ -22,8 +22,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PannerNode_h
-#define PannerNode_h
+#pragma once
+
+#if ENABLE(WEB_AUDIO)
 
 #include "AudioBus.h"
 #include "AudioListener.h"
@@ -150,4 +151,4 @@ private:
 
 } // namespace WebCore
 
-#endif // PannerNode_h
+#endif

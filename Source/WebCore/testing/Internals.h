@@ -103,6 +103,7 @@ public:
     unsigned memoryCacheSize() const;
 
     unsigned imageFrameIndex(HTMLImageElement&);
+    void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
 
     void clearPageCache();
     unsigned pageCacheSize() const;
@@ -313,6 +314,8 @@ public:
 
     void registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme);
     void removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const String& scheme);
+
+    void registerDefaultPortForProtocol(unsigned short port, const String& protocol);
 
     Ref<MallocStatistics> mallocStatistics() const;
     Ref<TypeConversions> typeConversions() const;

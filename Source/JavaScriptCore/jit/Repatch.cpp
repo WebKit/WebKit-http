@@ -136,34 +136,16 @@ static bool forceICFailure(ExecState*)
 
 inline J_JITOperation_ESsiJI appropriateOptimizingGetByIdFunction(GetByIDKind kind)
 {
-    switch (kind) {
-    case GetByIDKind::Normal:
+    if (kind == GetByIDKind::Normal)
         return operationGetByIdOptimize;
-    case GetByIDKind::Try:
-        return operationTryGetByIdOptimize;
-    case GetByIDKind::Pure:
-        return operationPureGetByIdOptimize;
-    default:
-        break;
-    }
-    ASSERT_NOT_REACHED();
-    return operationGetByIdOptimize;
+    return operationTryGetByIdOptimize;
 }
 
 inline J_JITOperation_ESsiJI appropriateGenericGetByIdFunction(GetByIDKind kind)
 {
-    switch (kind) {
-    case GetByIDKind::Normal:
+    if (kind == GetByIDKind::Normal)
         return operationGetById;
-    case GetByIDKind::Try:
-        return operationTryGetById;
-    case GetByIDKind::Pure:
-        return operationPureGetById;
-    default:
-        break;
-    }
-    ASSERT_NOT_REACHED();
-    return operationGetById;
+    return operationTryGetById;
 }
 
 static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
@@ -291,16 +273,6 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
                 type = AccessCase::Load;
             else if (slot.isUnset())
                 type = AccessCase::Miss;
-            else
-                RELEASE_ASSERT_NOT_REACHED();
-
-            newCase = AccessCase::tryGet(vm, codeBlock, type, offset, structure, conditionSet, loadTargetFromProxy, slot.watchpointSet());
-        } else if (kind == GetByIDKind::Try) {
-            AccessCase::AccessType type;
-            if (slot.isCacheableValue())
-                type = AccessCase::Load;
-            else if (slot.isUnset())
-                type = AccessCase::Miss;
             else if (slot.isCacheableGetter())
                 type = AccessCase::GetGetter;
             else
@@ -347,7 +319,7 @@ static InlineCacheAction tryCacheGetByID(ExecState* exec, JSValue baseValue, con
 void repatchGetByID(ExecState* exec, JSValue baseValue, const Identifier& propertyName, const PropertySlot& slot, StructureStubInfo& stubInfo, GetByIDKind kind)
 {
     SuperSamplerScope superSamplerScope(false);
-    GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
+    GCSafeConcurrentJSLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
     if (tryCacheGetByID(exec, baseValue, propertyName, slot, stubInfo, kind) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), appropriateGenericGetByIdFunction(kind));
@@ -501,7 +473,7 @@ static InlineCacheAction tryCachePutByID(ExecState* exec, JSValue baseValue, Str
 void repatchPutByID(ExecState* exec, JSValue baseValue, Structure* structure, const Identifier& propertyName, const PutPropertySlot& slot, StructureStubInfo& stubInfo, PutKind putKind)
 {
     SuperSamplerScope superSamplerScope(false);
-    GCSafeConcurrentJITLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
+    GCSafeConcurrentJSLocker locker(exec->codeBlock()->m_lock, exec->vm().heap);
     
     if (tryCachePutByID(exec, baseValue, structure, propertyName, slot, stubInfo, putKind) == GiveUpOnCache)
         ftlThunkAwareRepatchCall(exec->codeBlock(), stubInfo.slowPathCallLocation(), appropriateGenericPutByIdFunction(slot, putKind));

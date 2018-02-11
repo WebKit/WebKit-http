@@ -40,7 +40,6 @@
 #include "EditorInsertAction.h"
 #include "ElementTraversal.h"
 #include "Event.h"
-#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "HTMLBRElement.h"
 #include "HTMLDivElement.h"
@@ -1161,7 +1160,7 @@ void CompositeEditCommand::removePlaceholderAt(const Position& p)
 Ref<HTMLElement> CompositeEditCommand::insertNewDefaultParagraphElementAt(const Position& position)
 {
     auto paragraphElement = createDefaultParagraphElement(document());
-    paragraphElement->appendChild(HTMLBRElement::create(document()), IGNORE_EXCEPTION);
+    paragraphElement->appendChild(HTMLBRElement::create(document()));
     insertNodeAt(paragraphElement.ptr(), position);
     return paragraphElement;
 }
@@ -1755,7 +1754,7 @@ RefPtr<Node> CompositeEditCommand::splitTreeToNode(Node* start, Node* end, bool 
 
 Ref<Element> createBlockPlaceholderElement(Document& document)
 {
-    return document.createElement(brTag, false);
+    return HTMLBRElement::create(document);
 }
 
 } // namespace WebCore

@@ -269,16 +269,16 @@ WebGLFramebuffer::WebGLAttachment::~WebGLAttachment()
 {
 }
 
-Ref<WebGLFramebuffer> WebGLFramebuffer::create(WebGLRenderingContextBase* ctx)
+Ref<WebGLFramebuffer> WebGLFramebuffer::create(WebGLRenderingContextBase& ctx)
 {
     return adoptRef(*new WebGLFramebuffer(ctx));
 }
 
-WebGLFramebuffer::WebGLFramebuffer(WebGLRenderingContextBase* ctx)
+WebGLFramebuffer::WebGLFramebuffer(WebGLRenderingContextBase& ctx)
     : WebGLContextObject(ctx)
     , m_hasEverBeenBound(false)
 {
-    setObject(ctx->graphicsContext3D()->createFramebuffer());
+    setObject(ctx.graphicsContext3D()->createFramebuffer());
 }
 
 WebGLFramebuffer::~WebGLFramebuffer()
@@ -479,13 +479,11 @@ GC3Denum WebGLFramebuffer::checkStatus(const char** reason) const
     return GraphicsContext3D::FRAMEBUFFER_COMPLETE;
 }
 
-bool WebGLFramebuffer::onAccess(GraphicsContext3D* context3d, bool needToInitializeAttachments, const char** reason)
+bool WebGLFramebuffer::onAccess(GraphicsContext3D* context3d, const char** reason)
 {
     if (checkStatus(reason) != GraphicsContext3D::FRAMEBUFFER_COMPLETE)
         return false;
-    if (needToInitializeAttachments)
-        return initializeAttachments(context3d, reason);
-    return true;
+    return initializeAttachments(context3d, reason);
 }
 
 bool WebGLFramebuffer::hasStencilBuffer() const
@@ -627,7 +625,7 @@ void WebGLFramebuffer::drawBuffersIfNecessary(bool force)
         }
     }
     if (reset) {
-        context()->graphicsContext3D()->getExtensions()->drawBuffersEXT(
+        context()->graphicsContext3D()->getExtensions().drawBuffersEXT(
             m_filteredDrawBuffers.size(), m_filteredDrawBuffers.data());
     }
 }

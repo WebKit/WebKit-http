@@ -30,6 +30,7 @@
 #include <WebCore/SQLiteFileSystem.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/TextEncoding.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
@@ -38,13 +39,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
+Ref<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
 {
-    return adoptRef(new LocalStorageDatabaseTracker(queue, localStorageDirectory));
+    return adoptRef(*new LocalStorageDatabaseTracker(WTFMove(queue), localStorageDirectory));
 }
 
-LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
-    : m_queue(queue)
+LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
+    : m_queue(WTFMove(queue))
     , m_localStorageDirectory(localStorageDirectory.isolatedCopy())
 {
     ASSERT(!m_localStorageDirectory.isEmpty());
@@ -61,19 +62,19 @@ LocalStorageDatabaseTracker::~LocalStorageDatabaseTracker()
 {
 }
 
-String LocalStorageDatabaseTracker::databasePath(SecurityOrigin* securityOrigin) const
+String LocalStorageDatabaseTracker::databasePath(const SecurityOriginData& securityOrigin) const
 {
-    return databasePath(securityOrigin->databaseIdentifier() + ".localstorage");
+    return databasePath(securityOrigin.databaseIdentifier() + ".localstorage");
 }
 
-void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(SecurityOrigin* securityOrigin)
+void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(const SecurityOriginData& securityOrigin)
 {
-    addDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier(), databasePath(securityOrigin));
+    addDatabaseWithOriginIdentifier(securityOrigin.databaseIdentifier(), databasePath(securityOrigin));
 }
 
-void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(SecurityOrigin* securityOrigin)
+void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(const SecurityOriginData& securityOrigin)
 {
-    removeDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier());
+    removeDatabaseWithOriginIdentifier(securityOrigin.databaseIdentifier());
 }
 
 void LocalStorageDatabaseTracker::deleteAllDatabases()
@@ -139,7 +140,7 @@ static Optional<time_t> fileModificationTime(const String& filePath)
     return time;
 }
 
-Vector<Ref<SecurityOrigin>> LocalStorageDatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::time_point time)
+Vector<SecurityOriginData> LocalStorageDatabaseTracker::deleteDatabasesModifiedSince(std::chrono::system_clock::time_point time)
 {
     Vector<String> originIdentifiersToDelete;
 
@@ -154,25 +155,32 @@ Vector<Ref<SecurityOrigin>> LocalStorageDatabaseTracker::deleteDatabasesModified
             originIdentifiersToDelete.append(origin);
     }
 
-    Vector<Ref<SecurityOrigin>> deletedDatabaseOrigins;
+    Vector<SecurityOriginData> deletedDatabaseOrigins;
     deletedDatabaseOrigins.reserveInitialCapacity(originIdentifiersToDelete.size());
 
     for (const auto& originIdentifier : originIdentifiersToDelete) {
         removeDatabaseWithOriginIdentifier(originIdentifier);
 
-        deletedDatabaseOrigins.uncheckedAppend(SecurityOrigin::createFromDatabaseIdentifier(originIdentifier));
+        if (auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier))
+            deletedDatabaseOrigins.uncheckedAppend(*origin);
+        else
+            ASSERT_NOT_REACHED();
     }
 
     return deletedDatabaseOrigins;
 }
 
-Vector<Ref<WebCore::SecurityOrigin>> LocalStorageDatabaseTracker::origins() const
+Vector<SecurityOriginData> LocalStorageDatabaseTracker::origins() const
 {
-    Vector<Ref<SecurityOrigin>> origins;
+    Vector<SecurityOriginData> origins;
     origins.reserveInitialCapacity(m_origins.size());
 
-    for (const String& origin : m_origins)
-        origins.uncheckedAppend(SecurityOrigin::createFromDatabaseIdentifier(origin));
+    for (const String& originIdentifier : m_origins) {
+        if (auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier))
+            origins.uncheckedAppend(*origin);
+        else
+            ASSERT_NOT_REACHED();
+    }
 
     return origins;
 }

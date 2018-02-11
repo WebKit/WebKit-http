@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Blob_h
-#define Blob_h
+#pragma once
 
 #include "BlobPart.h"
 #include "ScriptWrappable.h"
@@ -48,12 +47,12 @@ public:
         return adoptRef(*new Blob);
     }
 
-    static Ref<Blob> create(Vector<uint8_t> data, const String& contentType)
+    static Ref<Blob> create(Vector<uint8_t>&& data, const String& contentType)
     {
         return adoptRef(*new Blob(WTFMove(data), contentType));
     }
 
-    static Ref<Blob> create(Vector<BlobPart> blobParts, const String& contentType)
+    static Ref<Blob> create(Vector<BlobPart>&& blobParts, const String& contentType)
     {
         return adoptRef(*new Blob(WTFMove(blobParts), contentType));
     }
@@ -91,8 +90,8 @@ public:
 
 protected:
     Blob();
-    Blob(Vector<uint8_t>, const String& contentType);
-    Blob(Vector<BlobPart>, const String& contentType);
+    Blob(Vector<uint8_t>&&, const String& contentType);
+    Blob(Vector<BlobPart>&&, const String& contentType);
 
     enum UninitializedContructor { uninitializedContructor };
     Blob(UninitializedContructor);
@@ -113,6 +112,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // Blob_h
-

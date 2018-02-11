@@ -48,6 +48,7 @@ class SharedBuffer;
 namespace WebKit {
 
 class Download;
+class NetworkLoadParameters;
 class NetworkSession;
 class PendingDownload;
 enum class AuthenticationChallengeDisposition;
@@ -63,7 +64,6 @@ public:
     virtual void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&&) = 0;
     virtual void didReceiveData(Ref<WebCore::SharedBuffer>&&) = 0;
     virtual void didCompleteWithError(const WebCore::ResourceError&) = 0;
-    virtual void didBecomeDownload() = 0;
     virtual void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) = 0;
     virtual void wasBlocked() = 0;
     virtual void cannotShowURL() = 0;
@@ -73,7 +73,7 @@ public:
 
 class NetworkDataTask : public RefCounted<NetworkDataTask> {
 public:
-    static Ref<NetworkDataTask> create(NetworkSession&, NetworkDataTaskClient&, const WebCore::ResourceRequest&, WebCore::StoredCredentials, WebCore::ContentSniffingPolicy, bool shouldClearReferrerOnHTTPSToHTTPRedirect);
+    static Ref<NetworkDataTask> create(NetworkSession&, NetworkDataTaskClient&, const NetworkLoadParameters&);
 
     virtual ~NetworkDataTask();
 
@@ -81,6 +81,8 @@ public:
     virtual void cancel() = 0;
     virtual void resume() = 0;
     virtual void invalidateAndCancel() = 0;
+
+    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&);
 
     enum class State {
         Running,

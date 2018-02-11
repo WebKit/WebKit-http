@@ -151,6 +151,7 @@ void RenderMultiColumnFlowThread::populate()
     // now. At this point there's obviously nothing after the flow thread, but renderers (column
     // sets and spanners) will be inserted there as we insert elements into the flow thread.
     LayoutStateDisabler layoutStateDisabler(view());
+    RenderTreeInternalMutationScope reparentingIsOn(view());
     multicolContainer->moveChildrenTo(this, multicolContainer->firstChild(), this, true);
 }
 
@@ -168,6 +169,7 @@ void RenderMultiColumnFlowThread::evacuateAndDestroy()
     // container, we need to unregister the flow thread, so that they aren't just re-added again to
     // the flow thread that we're trying to empty.
     multicolContainer->setMultiColumnFlowThread(nullptr);
+    RenderTreeInternalMutationScope reparentingIsOn(view());
     moveAllChildrenTo(multicolContainer, true);
 
     // Move spanners back to their original DOM position in the tree, and destroy the placeholders.
@@ -421,16 +423,16 @@ void RenderMultiColumnFlowThread::flowThreadDescendantInserted(RenderObject& new
     }
 }
 
-void RenderMultiColumnFlowThread::handleSpannerRemoval(RenderObject* spanner)
+void RenderMultiColumnFlowThread::handleSpannerRemoval(RenderObject& spanner)
 {
      // The placeholder may already have been removed, but if it hasn't, do so now.
-    if (RenderMultiColumnSpannerPlaceholder* placeholder = m_spannerMap.get(downcast<RenderBox>(spanner))) {
+    if (RenderMultiColumnSpannerPlaceholder* placeholder = m_spannerMap.get(&downcast<RenderBox>(spanner))) {
         placeholder->parent()->removeChild(*placeholder);
-        m_spannerMap.remove(downcast<RenderBox>(spanner));
+        m_spannerMap.remove(&downcast<RenderBox>(spanner));
     }
 
-    if (RenderObject* next = spanner->nextSibling()) {
-        if (RenderObject* previous = spanner->previousSibling()) {
+    if (RenderObject* next = spanner.nextSibling()) {
+        if (RenderObject* previous = spanner.previousSibling()) {
             if (previous->isRenderMultiColumnSet() && next->isRenderMultiColumnSet()) {
                 // Merge two sets that no longer will be separated by a spanner.
                 next->destroy();
@@ -440,21 +442,21 @@ void RenderMultiColumnFlowThread::handleSpannerRemoval(RenderObject* spanner)
     }
 }
 
-void RenderMultiColumnFlowThread::flowThreadRelativeWillBeRemoved(RenderObject* relative)
+void RenderMultiColumnFlowThread::flowThreadRelativeWillBeRemoved(RenderObject& relative)
 {
     if (m_beingEvacuated)
         return;
     invalidateRegions();
-    if (is<RenderMultiColumnSpannerPlaceholder>(*relative)) {
+    if (is<RenderMultiColumnSpannerPlaceholder>(relative)) {
         // Remove the map entry for this spanner, but leave the actual spanner renderer alone. Also
         // keep the reference to the spanner, since the placeholder may be about to be re-inserted
         // in the tree.
-        ASSERT(relative->isDescendantOf(this));
-        m_spannerMap.remove(downcast<RenderMultiColumnSpannerPlaceholder>(*relative).spanner());
+        ASSERT(relative.isDescendantOf(this));
+        m_spannerMap.remove(downcast<RenderMultiColumnSpannerPlaceholder>(relative).spanner());
         return;
     }
-    if (relative->style().columnSpan() == ColumnSpanAll) {
-        if (relative->parent() != parent())
+    if (relative.style().columnSpan() == ColumnSpanAll) {
+        if (relative.parent() != parent())
             return; // not a valid spanner.
         
         handleSpannerRemoval(relative);
@@ -545,7 +547,7 @@ RenderRegion* RenderMultiColumnFlowThread::regionAtBlockOffset(const RenderBox* 
     return columnSet;
 }
 
-void RenderMultiColumnFlowThread::setRegionRangeForBox(const RenderBox* box, RenderRegion* startRegion, RenderRegion* endRegion)
+void RenderMultiColumnFlowThread::setRegionRangeForBox(const RenderBox& box, RenderRegion* startRegion, RenderRegion* endRegion)
 {
     // Some column sets may have zero height, which means that two or more sets may start at the
     // exact same flow thread position, which means that some parts of the code may believe that a

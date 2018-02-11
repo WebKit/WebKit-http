@@ -26,7 +26,6 @@
 #include "DOMJITIDLConvert.h"
 #include "DOMJITIDLType.h"
 #include "DOMJITIDLTypeFilter.h"
-#include "ExceptionCode.h"
 #include "JSByteString.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
@@ -45,15 +44,15 @@ namespace WebCore {
 // Functions
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionItem(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionItem(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLUnsignedShort>, DOMJIT::IDLJSArgumentType<IDLUnsignedShort>);
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionItem(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLUnsignedShort>, DOMJIT::IDLJSArgumentType<IDLUnsignedShort>);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState*, JSTestDOMJIT*);
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState*, JSTestDOMJIT*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState*);
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState*, JSTestDOMJIT*, DOMJIT::IDLJSArgumentType<IDLDOMString>);
 
 // Attributes
 
@@ -226,6 +225,13 @@ const ClassInfo JSTestDOMJIT::s_info = { "TestDOMJIT", &Base::s_info, 0, CREATE_
 JSTestDOMJIT::JSTestDOMJIT(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestDOMJIT>&& impl)
     : JSNode(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestDOMJIT::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestDOMJIT::createPrototype(VM& vm, JSGlobalObject* globalObject)
@@ -1238,11 +1244,10 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetAttributeCalle
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto name = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name))));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedName)
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedName)
 {
     UNUSED_PARAM(state);
     VM& vm = state->vm();
@@ -1252,8 +1257,7 @@ JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetAttribut
     auto& impl = castedThis->wrapped();
     auto name = DOMJIT::DirectConverter<IDLDOMString>::directConvert<StringConversionConfiguration::Normal>(*state, encodedName);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name))));
 }
 
 static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
@@ -1274,11 +1278,10 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::E
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto y = convert<IDLUnsignedShort>(*state, state->uncheckedArgument(1), IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y))));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionItem(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedX, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedY)
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionItem(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedX, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedY)
 {
     UNUSED_PARAM(state);
     VM& vm = state->vm();
@@ -1290,8 +1293,7 @@ JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionItem(JSC::E
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto y = DOMJIT::DirectConverter<IDLUnsignedShort>::directConvert<IntegerConversionConfiguration::Normal>(*state, encodedY);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y))));
 }
 
 static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionHasAttributeCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
@@ -1306,11 +1308,10 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionHasAttributeCalle
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = toJS<IDLBoolean>(impl.hasAttribute());
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLBoolean>(impl.hasAttribute()));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis)
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis)
 {
     UNUSED_PARAM(state);
     VM& vm = state->vm();
@@ -1318,8 +1319,7 @@ JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionHasAttribut
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = toJS<IDLBoolean>(impl.hasAttribute());
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLBoolean>(impl.hasAttribute()));
 }
 
 static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
@@ -1338,11 +1338,10 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCal
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto elementId = AtomicString(state->uncheckedArgument(0).toString(state)->toExistingAtomicString(state));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId))));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedElementId)
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedElementId)
 {
     UNUSED_PARAM(state);
     VM& vm = state->vm();
@@ -1352,8 +1351,7 @@ JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElementB
     auto& impl = castedThis->wrapped();
     auto elementId = AtomicString(encodedElementId->toExistingAtomicString(state));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId))));
 }
 
 static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByNameCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
@@ -1372,11 +1370,10 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByName
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto elementName = state->uncheckedArgument(0).toString(state)->toAtomicString(state);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<NodeList>>(*state, *castedThis->globalObject(), impl.getElementsByName(WTFMove(elementName)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<NodeList>>(*state, *castedThis->globalObject(), impl.getElementsByName(WTFMove(elementName))));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedElementName)
+JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedElementName)
 {
     UNUSED_PARAM(state);
     VM& vm = state->vm();
@@ -1386,8 +1383,7 @@ JSC::EncodedJSValue JSC_HOST_CALL unsafeJsTestDOMJITPrototypeFunctionGetElements
     auto& impl = castedThis->wrapped();
     auto elementName = encodedElementName->toAtomicString(state);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<NodeList>>(*state, *castedThis->globalObject(), impl.getElementsByName(WTFMove(elementName)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<NodeList>>(*state, *castedThis->globalObject(), impl.getElementsByName(WTFMove(elementName))));
 }
 
 void JSTestDOMJIT::visitChildren(JSCell* cell, SlotVisitor& visitor)

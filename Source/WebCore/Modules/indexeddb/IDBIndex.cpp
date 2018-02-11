@@ -28,6 +28,7 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "ExceptionCode.h"
 #include "IDBBindingUtilities.h"
 #include "IDBCursor.h"
 #include "IDBDatabase.h"
@@ -146,6 +147,7 @@ void IDBIndex::rollbackInfoForVersionChangeAbort()
     }
 
     m_info = m_originalInfo;
+    m_deleted = false;
 }
 
 ExceptionOr<Ref<IDBRequest>> IDBIndex::openCursor(ExecState& execState, IDBKeyRange* range, const String& directionString)

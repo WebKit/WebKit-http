@@ -352,7 +352,7 @@ std::unique_ptr<RenderStyle> RenderNamedFlowFragment::computeStyleInRegion(Rende
     ASSERT(!renderer.isAnonymous());
 
     // FIXME: Region styling fails for pseudo-elements because the renderers don't have a node.
-    auto renderObjectRegionStyle = renderer.element()->styleResolver().styleForElement(*renderer.element(), &parentStyle, MatchAllRules, this).renderStyle;
+    auto renderObjectRegionStyle = renderer.element()->styleResolver().styleForElement(*renderer.element(), &parentStyle, nullptr, MatchAllRules, this).renderStyle;
 
     return renderObjectRegionStyle;
 }
@@ -401,14 +401,13 @@ void RenderNamedFlowFragment::setRendererStyleInRegion(RenderElement& renderer, 
     m_rendererRegionStyle.set(&renderer, WTFMove(styleInfo));
 }
 
-void RenderNamedFlowFragment::clearObjectStyleInRegion(const RenderElement* object)
+void RenderNamedFlowFragment::clearObjectStyleInRegion(const RenderElement& object)
 {
-    ASSERT(object);
-    m_rendererRegionStyle.remove(object);
+    m_rendererRegionStyle.remove(&object);
 
     // Clear the style for the children of this object.
-    for (auto& child : childrenOfType<RenderElement>(*object))
-        clearObjectStyleInRegion(&child);
+    for (auto& child : childrenOfType<RenderElement>(object))
+        clearObjectStyleInRegion(child);
 }
 
 void RenderNamedFlowFragment::setRegionObjectsRegionStyle()

@@ -23,11 +23,16 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+enum KeyFormat { "raw", "spki", "pkcs8", "jwk" };
+
 [
     Conditional=SUBTLE_CRYPTO,
     Exposed=(Window,Worker),
     GenerateIsReachable=ImplScriptExecutionContext,
     NoInterfaceObject,
 ] interface SubtleCrypto {
-    [Custom] Promise generateKey(AlgorithmIdentifier algorithm, boolean extractable, sequence<KeyUsage> keyUsages);
+    // FIXME: Should this return a Promise<(CryptoKey or CryptoKeyPair)>?
+    [Custom] Promise<any> generateKey(AlgorithmIdentifier algorithm, boolean extractable, sequence<CryptoKeyUsage> keyUsages);
+    [Custom] Promise<CryptoKey> importKey(KeyFormat format, (BufferSource or JsonWebKey) keyData, AlgorithmIdentifier algorithm, boolen extractable, sequence<CryptoKeyUsage> keyUsages);
+    [Custom] Promise<any> exportKey(KeyFormat format, CryptoKey key);
 };

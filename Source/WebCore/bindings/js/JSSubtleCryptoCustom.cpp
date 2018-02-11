@@ -35,20 +35,24 @@
 #include "JSCryptoKey.h"
 #include "JSCryptoKeyPair.h"
 #include "JSDOMPromise.h"
-#include "JSHmacKeyGenParams.h"
+#include "JSHmacKeyParams.h"
+#include "JSJsonWebKey.h"
+#include "JSRsaHashedImportParams.h"
 #include "JSRsaHashedKeyGenParams.h"
 #include "JSRsaKeyGenParams.h"
 #include "ScriptState.h"
 #include <runtime/Error.h>
 #include <runtime/IteratorOperations.h>
+#include <runtime/JSArray.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
 enum class Operations {
-    GenerateKey,
     Digest,
+    GenerateKey,
+    ImportKey,
 };
 
 static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParameters(ExecState&, JSValue, Operations);
@@ -78,16 +82,30 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
         auto params = convertDictionary<CryptoAlgorithmParameters>(state, value);
         RETURN_IF_EXCEPTION(scope, nullptr);
 
-        CryptoAlgorithmIdentifier identifier;
-        if (!CryptoAlgorithmRegistry::singleton().getIdentifierForName(params.name, identifier)) {
+        auto identifier = CryptoAlgorithmRegistry::singleton().identifier(params.name);
+        if (!identifier) {
             setDOMException(&state, NOT_SUPPORTED_ERR);
             return nullptr;
         }
 
         std::unique_ptr<CryptoAlgorithmParameters> result;
         switch (operation) {
+        case Operations::Digest:
+            switch (*identifier) {
+            case CryptoAlgorithmIdentifier::SHA_1:
+            case CryptoAlgorithmIdentifier::SHA_224:
+            case CryptoAlgorithmIdentifier::SHA_256:
+            case CryptoAlgorithmIdentifier::SHA_384:
+            case CryptoAlgorithmIdentifier::SHA_512:
+                result = std::make_unique<CryptoAlgorithmParameters>(params);
+                break;
+            default:
+                setDOMException(&state, NOT_SUPPORTED_ERR);
+                return nullptr;
+            }
+            break;
         case Operations::GenerateKey:
-            switch (identifier) {
+            switch (*identifier) {
             case CryptoAlgorithmIdentifier::RSAES_PKCS1_v1_5: {
                 auto params = convertDictionary<CryptoAlgorithmRsaKeyGenParams>(state, value);
                 RETURN_IF_EXCEPTION(scope, nullptr);
@@ -116,11 +134,11 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 break;
             }
             case CryptoAlgorithmIdentifier::HMAC: {
-                auto params = convertDictionary<CryptoAlgorithmHmacKeyGenParams>(state, value);
+                auto params = convertDictionary<CryptoAlgorithmHmacKeyParams>(state, value);
                 RETURN_IF_EXCEPTION(scope, nullptr);
                 params.hashIdentifier = toHashIdentifier(state, params.hash);
                 RETURN_IF_EXCEPTION(scope, nullptr);
-                result = std::make_unique<CryptoAlgorithmHmacKeyGenParams>(params);
+                result = std::make_unique<CryptoAlgorithmHmacKeyParams>(params);
                 break;
             }
             default:
@@ -128,15 +146,37 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
                 return nullptr;
             }
             break;
-        case Operations::Digest:
-            switch (identifier) {
-            case CryptoAlgorithmIdentifier::SHA_1:
-            case CryptoAlgorithmIdentifier::SHA_224:
-            case CryptoAlgorithmIdentifier::SHA_256:
-            case CryptoAlgorithmIdentifier::SHA_384:
-            case CryptoAlgorithmIdentifier::SHA_512:
+        case Operations::ImportKey:
+            switch (*identifier) {
+            case CryptoAlgorithmIdentifier::RSAES_PKCS1_v1_5:
                 result = std::make_unique<CryptoAlgorithmParameters>(params);
                 break;
+            case CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5:
+            case CryptoAlgorithmIdentifier::RSA_PSS:
+            case CryptoAlgorithmIdentifier::RSA_OAEP: {
+                auto params = convertDictionary<CryptoAlgorithmRsaHashedImportParams>(state, value);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                params.hashIdentifier = toHashIdentifier(state, params.hash);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                result = std::make_unique<CryptoAlgorithmRsaHashedImportParams>(params);
+                break;
+            }
+            case CryptoAlgorithmIdentifier::AES_CTR:
+            case CryptoAlgorithmIdentifier::AES_CBC:
+            case CryptoAlgorithmIdentifier::AES_CMAC:
+            case CryptoAlgorithmIdentifier::AES_GCM:
+            case CryptoAlgorithmIdentifier::AES_CFB:
+            case CryptoAlgorithmIdentifier::AES_KW:
+                result = std::make_unique<CryptoAlgorithmParameters>(params);
+                break;
+            case CryptoAlgorithmIdentifier::HMAC: {
+                auto params = convertDictionary<CryptoAlgorithmHmacKeyParams>(state, value);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                params.hashIdentifier = toHashIdentifier(state, params.hash);
+                RETURN_IF_EXCEPTION(scope, nullptr);
+                result = std::make_unique<CryptoAlgorithmHmacKeyParams>(params);
+                break;
+            }
             default:
                 setDOMException(&state, NOT_SUPPORTED_ERR);
                 return nullptr;
@@ -147,7 +187,7 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
             return nullptr;
         }
 
-        result->identifier = identifier;
+        result->identifier = *identifier;
         return result;
     }
 
@@ -155,37 +195,43 @@ static std::unique_ptr<CryptoAlgorithmParameters> normalizeCryptoAlgorithmParame
     return nullptr;
 }
 
-static CryptoKeyUsage cryptoKeyUsagesFromJSValue(ExecState& state, JSValue iterable)
+static CryptoKeyUsageBitmap toCryptoKeyUsageBitmap(CryptoKeyUsage usage)
+{
+    switch (usage) {
+    case CryptoKeyUsage::Encrypt:
+        return CryptoKeyUsageEncrypt;
+    case CryptoKeyUsage::Decrypt:
+        return CryptoKeyUsageDecrypt;
+    case CryptoKeyUsage::Sign:
+        return CryptoKeyUsageSign;
+    case CryptoKeyUsage::Verify:
+        return CryptoKeyUsageVerify;
+    case CryptoKeyUsage::DeriveKey:
+        return CryptoKeyUsageDeriveKey;
+    case CryptoKeyUsage::DeriveBits:
+        return CryptoKeyUsageDeriveBits;
+    case CryptoKeyUsage::WrapKey:
+        return CryptoKeyUsageWrapKey;
+    case CryptoKeyUsage::UnwrapKey:
+        return CryptoKeyUsageUnwrapKey;
+    }
+
+    ASSERT_NOT_REACHED();
+    return 0;
+}
+
+static CryptoKeyUsageBitmap cryptoKeyUsageBitmapFromJSValue(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    CryptoKeyUsage result = 0;
-    forEachInIterable(&state, iterable, [&result](VM& vm, ExecState* state, JSValue nextItem) {
-        auto scope = DECLARE_THROW_SCOPE(vm);
-
-        String usageString = nextItem.toWTFString(state);
-        RETURN_IF_EXCEPTION(scope, void());
-        if (usageString == "encrypt")
-            result |= CryptoKeyUsageEncrypt;
-        else if (usageString == "decrypt")
-            result |= CryptoKeyUsageDecrypt;
-        else if (usageString == "sign")
-            result |= CryptoKeyUsageSign;
-        else if (usageString == "verify")
-            result |= CryptoKeyUsageVerify;
-        else if (usageString == "deriveKey")
-            result |= CryptoKeyUsageDeriveKey;
-        else if (usageString == "deriveBits")
-            result |= CryptoKeyUsageDeriveBits;
-        else if (usageString == "wrapKey")
-            result |= CryptoKeyUsageWrapKey;
-        else if (usageString == "unwrapKey")
-            result |= CryptoKeyUsageUnwrapKey;
-        else
-            throwTypeError(state, scope, ASCIILiteral("Invalid KeyUsages"));
-    });
+    CryptoKeyUsageBitmap result = 0;
+    auto usages = convert<IDLSequence<IDLEnumeration<CryptoKeyUsage>>>(state, value);
     RETURN_IF_EXCEPTION(scope, 0);
+    // Maybe we shouldn't silently bypass duplicated usages?
+    for (auto usage : usages)
+        result |= toCryptoKeyUsageBitmap(usage);
+
     return result;
 }
 
@@ -226,6 +272,97 @@ static void rejectWithException(Ref<DeferredPromise>&& passedPromise, ExceptionC
     ASSERT_NOT_REACHED();
 }
 
+static KeyData toKeyData(ExecState& state, SubtleCrypto::KeyFormat format, JSValue value)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    KeyData result;
+    switch (format) {
+    case SubtleCrypto::KeyFormat::Spki:
+    case SubtleCrypto::KeyFormat::Pkcs8:
+        setDOMException(&state, NOT_SUPPORTED_ERR);
+        return result;
+    case SubtleCrypto::KeyFormat::Raw: {
+        BufferSource bufferSource = convert<IDLBufferSource>(state, value);
+        RETURN_IF_EXCEPTION(scope, result);
+        Vector<uint8_t> vector;
+        vector.append(bufferSource.data(), bufferSource.length());
+        result = WTFMove(vector);
+        return result;
+    }
+    case SubtleCrypto::KeyFormat::Jwk: {
+        result = convertDictionary<JsonWebKey>(state, value);
+        RETURN_IF_EXCEPTION(scope, result);
+        CryptoKeyUsageBitmap usages = 0;
+        if (WTF::get<JsonWebKey>(result).key_ops) {
+            // Maybe we shouldn't silently bypass duplicated usages?
+            for (auto usage : WTF::get<JsonWebKey>(result).key_ops.value())
+                usages |= toCryptoKeyUsageBitmap(usage);
+        }
+        WTF::get<JsonWebKey>(result).usages = usages;
+        return result;
+    }
+    }
+    ASSERT_NOT_REACHED();
+    return result;
+}
+
+// FIXME: We should get rid of this once https://bugs.webkit.org/show_bug.cgi?id=163711 is fixed.
+static JSValue toJSValueFromJsonWebKey(JSDOMGlobalObject& globalObject, JsonWebKey&& key)
+{
+    ExecState& state = *globalObject.globalExec();
+    VM& vm = state.vm();
+
+    auto* result = constructEmptyObject(&state);
+    result->putDirect(vm, Identifier::fromString(&vm, "kty"), toJS<IDLDOMString>(state, key.kty));
+    if (key.use)
+        result->putDirect(vm, Identifier::fromString(&vm, "use"), toJS<IDLDOMString>(state, key.use.value()));
+    if (key.key_ops)
+        result->putDirect(vm, Identifier::fromString(&vm, "key_ops"), toJS<IDLSequence<IDLEnumeration<CryptoKeyUsage>>>(state, globalObject, key.key_ops.value()));
+    if (key.alg)
+        result->putDirect(vm, Identifier::fromString(&vm, "alg"), toJS<IDLDOMString>(state, key.alg.value()));
+    if (key.ext)
+        result->putDirect(vm, Identifier::fromString(&vm, "ext"), toJS<IDLBoolean>(state, key.ext.value()));
+    if (key.crv)
+        result->putDirect(vm, Identifier::fromString(&vm, "crv"), toJS<IDLDOMString>(state, key.crv.value()));
+    if (key.x)
+        result->putDirect(vm, Identifier::fromString(&vm, "x"), toJS<IDLDOMString>(state, key.x.value()));
+    if (key.y)
+        result->putDirect(vm, Identifier::fromString(&vm, "y"), toJS<IDLDOMString>(state, key.y.value()));
+    if (key.d)
+        result->putDirect(vm, Identifier::fromString(&vm, "d"), toJS<IDLDOMString>(state, key.d.value()));
+    if (key.n)
+        result->putDirect(vm, Identifier::fromString(&vm, "n"), toJS<IDLDOMString>(state, key.n.value()));
+    if (key.e)
+        result->putDirect(vm, Identifier::fromString(&vm, "e"), toJS<IDLDOMString>(state, key.e.value()));
+    if (key.p)
+        result->putDirect(vm, Identifier::fromString(&vm, "p"), toJS<IDLDOMString>(state, key.p.value()));
+    if (key.q)
+        result->putDirect(vm, Identifier::fromString(&vm, "q"), toJS<IDLDOMString>(state, key.q.value()));
+    if (key.dp)
+        result->putDirect(vm, Identifier::fromString(&vm, "dp"), toJS<IDLDOMString>(state, key.dp.value()));
+    if (key.dq)
+        result->putDirect(vm, Identifier::fromString(&vm, "dq"), toJS<IDLDOMString>(state, key.dq.value()));
+    if (key.qi)
+        result->putDirect(vm, Identifier::fromString(&vm, "qi"), toJS<IDLDOMString>(state, key.qi.value()));
+    if (key.oth) {
+        MarkedArgumentBuffer list;
+        for (auto& value : key.oth.value()) {
+            auto* info = constructEmptyObject(&state);
+            info->putDirect(vm, Identifier::fromString(&vm, "r"), toJS<IDLDOMString>(state, value.r));
+            info->putDirect(vm, Identifier::fromString(&vm, "d"), toJS<IDLDOMString>(state, value.d));
+            info->putDirect(vm, Identifier::fromString(&vm, "t"), toJS<IDLDOMString>(state, value.t));
+            list.append(info);
+        }
+        result->putDirect(vm, Identifier::fromString(&vm, "oth"), constructArray(&state, static_cast<Structure*>(nullptr), list));
+    }
+    if (key.k)
+        result->putDirect(vm, Identifier::fromString(&vm, "k"), toJS<IDLDOMString>(state, key.k.value()));
+
+    return result;
+}
+
 static void jsSubtleCryptoFunctionGenerateKeyPromise(ExecState& state, Ref<DeferredPromise>&& promise)
 {
     VM& vm = state.vm();
@@ -242,7 +379,7 @@ static void jsSubtleCryptoFunctionGenerateKeyPromise(ExecState& state, Ref<Defer
     auto extractable = state.uncheckedArgument(1).toBoolean(&state);
     RETURN_IF_EXCEPTION(scope, void());
 
-    auto keyUsages = cryptoKeyUsagesFromJSValue(state, state.argument(2));
+    auto keyUsages = cryptoKeyUsageBitmapFromJSValue(state, state.uncheckedArgument(2));
     RETURN_IF_EXCEPTION(scope, void());
 
     auto algorithm = createAlgorithm(state, params->identifier);
@@ -269,15 +406,140 @@ static void jsSubtleCryptoFunctionGenerateKeyPromise(ExecState& state, Ref<Defer
         rejectWithException(WTFMove(capturedPromise), ec);
     };
 
-    // The spec suggests we should perform the following task asynchronously regardless what kind of keys it produces
-    // as of 11 December 2014: https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-generateKey
+    // The 11 December 2014 version of the specification suggests we should perform the following task asynchronously
+    // regardless what kind of keys it produces: https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-generateKey
     // That's simply not efficient for AES and HMAC keys. Therefore, we perform it as an async task conditionally.
-    algorithm->generateKey(WTFMove(params), extractable, keyUsages, WTFMove(callback), WTFMove(exceptionCallback), scriptExecutionContextFromExecState(&state));
+    algorithm->generateKey(WTFMove(params), extractable, keyUsages, WTFMove(callback), WTFMove(exceptionCallback), *scriptExecutionContextFromExecState(&state));
+}
+
+static void jsSubtleCryptoFunctionImportKeyPromise(ExecState& state, Ref<DeferredPromise>&& promise)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (UNLIKELY(state.argumentCount() < 5)) {
+        promise->reject<JSValue>(createNotEnoughArgumentsError(&state));
+        return;
+    }
+
+    auto format = convertEnumeration<SubtleCrypto::KeyFormat>(state, state.uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto keyData = toKeyData(state, format, state.uncheckedArgument(1));
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto params = normalizeCryptoAlgorithmParameters(state, state.uncheckedArgument(2), Operations::ImportKey);
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto extractable = state.uncheckedArgument(3).toBoolean(&state);
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto keyUsages = cryptoKeyUsageBitmapFromJSValue(state, state.uncheckedArgument(4));
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto algorithm = createAlgorithm(state, params->identifier);
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto callback = [capturedPromise = promise.copyRef()](CryptoKey& key) mutable {
+        if ((key.type() == CryptoKeyType::Private || key.type() == CryptoKeyType::Secret) && !key.usagesBitmap()) {
+            rejectWithException(WTFMove(capturedPromise), SYNTAX_ERR);
+            return;
+        }
+        capturedPromise->resolve(key);
+    };
+    auto exceptionCallback = [capturedPromise =  promise.copyRef()](ExceptionCode ec) mutable {
+        rejectWithException(WTFMove(capturedPromise), ec);
+    };
+
+    // The 11 December 2014 version of the specification suggests we should perform the following task asynchronously:
+    // https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-importKey
+    // It is not beneficial for less time consuming operations. Therefore, we perform it synchronously.
+    algorithm->importKey(format, WTFMove(keyData), WTFMove(params), extractable, keyUsages, WTFMove(callback), WTFMove(exceptionCallback));
+}
+
+static void jsSubtleCryptoFunctionExportKeyPromise(ExecState& state, Ref<DeferredPromise>&& promise)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (UNLIKELY(state.argumentCount() < 2)) {
+        promise->reject<JSValue>(createNotEnoughArgumentsError(&state));
+        return;
+    }
+
+    auto format = convertEnumeration<SubtleCrypto::KeyFormat>(state, state.uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(scope, void());
+
+    RefPtr<CryptoKey> key = JSCryptoKey::toWrapped(state.uncheckedArgument(1));
+    if (!key) {
+        promise->reject(TypeError, ASCIILiteral("Invalid CryptoKey"));
+        return;
+    }
+
+    switch (key->algorithmIdentifier()) {
+    case CryptoAlgorithmIdentifier::RSAES_PKCS1_v1_5:
+    case CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5:
+    case CryptoAlgorithmIdentifier::RSA_PSS:
+    case CryptoAlgorithmIdentifier::RSA_OAEP:
+    case CryptoAlgorithmIdentifier::AES_CTR:
+    case CryptoAlgorithmIdentifier::AES_CBC:
+    case CryptoAlgorithmIdentifier::AES_CMAC:
+    case CryptoAlgorithmIdentifier::AES_GCM:
+    case CryptoAlgorithmIdentifier::AES_CFB:
+    case CryptoAlgorithmIdentifier::AES_KW:
+    case CryptoAlgorithmIdentifier::HMAC:
+        break;
+    default:
+        promise->reject(NOT_SUPPORTED_ERR, ASCIILiteral("The operation is not supported"));
+        return;
+    }
+
+    if (!key->extractable()) {
+        promise->reject(INVALID_ACCESS_ERR, ASCIILiteral("The CryptoKey is nonextractable"));
+        return;
+    }
+
+    auto algorithm = createAlgorithm(state, key->algorithmIdentifier());
+    RETURN_IF_EXCEPTION(scope, void());
+
+    auto callback = [capturedPromise = promise.copyRef()](SubtleCrypto::KeyFormat format, KeyData&& key) mutable {
+        switch (format) {
+        case SubtleCrypto::KeyFormat::Spki:
+        case SubtleCrypto::KeyFormat::Pkcs8:
+        case SubtleCrypto::KeyFormat::Raw: {
+            Vector<uint8_t>& rawKey = WTF::get<Vector<uint8_t>>(key);
+            fulfillPromiseWithArrayBuffer(WTFMove(capturedPromise), rawKey.data(), rawKey.size());
+            return;
+        }
+        case SubtleCrypto::KeyFormat::Jwk:
+            capturedPromise->resolve(toJSValueFromJsonWebKey(*(capturedPromise->globalObject()), WTFMove(WTF::get<JsonWebKey>(key))));
+            return;
+        }
+        ASSERT_NOT_REACHED();
+    };
+    auto exceptionCallback = [capturedPromise =  promise.copyRef()](ExceptionCode ec) mutable {
+        rejectWithException(WTFMove(capturedPromise), ec);
+    };
+
+    // The 11 December 2014 version of the specification suggests we should perform the following task asynchronously:
+    // https://www.w3.org/TR/WebCryptoAPI/#SubtleCrypto-method-exportKey
+    // It is not beneficial for less time consuming operations. Therefore, we perform it synchronously.
+    algorithm->exportKey(format, WTFMove(key), WTFMove(callback), WTFMove(exceptionCallback));
 }
 
 JSValue JSSubtleCrypto::generateKey(ExecState& state)
 {
     return callPromiseFunction<jsSubtleCryptoFunctionGenerateKeyPromise, PromiseExecutionScope::WindowOrWorker>(state);
+}
+
+JSValue JSSubtleCrypto::importKey(ExecState& state)
+{
+    return callPromiseFunction<jsSubtleCryptoFunctionImportKeyPromise, PromiseExecutionScope::WindowOrWorker>(state);
+}
+
+JSValue JSSubtleCrypto::exportKey(ExecState& state)
+{
+    return callPromiseFunction<jsSubtleCryptoFunctionExportKeyPromise, PromiseExecutionScope::WindowOrWorker>(state);
 }
 
 } // namespace WebCore

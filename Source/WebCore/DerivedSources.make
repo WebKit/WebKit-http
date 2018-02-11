@@ -30,6 +30,7 @@ VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/applepay \
+    $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/encryptedmedia/legacy \
     $(WebCore)/Modules/fetch \
     $(WebCore)/Modules/gamepad \
@@ -83,6 +84,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyStatusMap.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemAccess.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemConfiguration.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemMediaCapability.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeys.idl \
+    $(WebCore)/Modules/encryptedmedia/NavigatorEME.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl \
@@ -243,10 +252,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/CryptoAlgorithmParameters.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
+    $(WebCore)/crypto/CryptoKeyUsage.idl \
+    $(WebCore)/crypto/JsonWebKey.idl \
     $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
-    $(WebCore)/crypto/parameters/HmacKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/HmacKeyParams.idl \
+    $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
+    $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
     $(WebCore)/css/CSSFontFaceLoadEvent.idl \
@@ -462,6 +475,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/HTMLVideoElement.idl \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
+    $(WebCore)/html/MediaEncryptedEvent.idl \
     $(WebCore)/html/MediaError.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \

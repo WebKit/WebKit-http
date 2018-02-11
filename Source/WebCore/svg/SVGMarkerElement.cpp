@@ -132,7 +132,7 @@ void SVGMarkerElement::parseAttribute(const QualifiedName& name, const AtomicStr
     }
 
     if (name == SVGNames::orientAttr) {
-        SVGAngle angle;
+        SVGAngleValue angle;
         auto orientType = SVGPropertyTraits<SVGMarkerOrientType>::fromString(value, angle);
         if (orientType > 0)
             setOrientTypeBaseValue(orientType);
@@ -144,13 +144,13 @@ void SVGMarkerElement::parseAttribute(const QualifiedName& name, const AtomicStr
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::refXAttr)
-        setRefXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setRefXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::refYAttr)
-        setRefYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setRefYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::markerWidthAttr)
-        setMarkerWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setMarkerWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::markerHeightAttr)
-        setMarkerHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setMarkerHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -189,7 +189,7 @@ void SVGMarkerElement::childrenChanged(const ChildChange& change)
         object->setNeedsLayout();
 }
 
-void SVGMarkerElement::setOrient(SVGMarkerOrientType orientType, const SVGAngle& angle)
+void SVGMarkerElement::setOrient(SVGMarkerOrientType orientType, const SVGAngleValue& angle)
 {
     setOrientTypeBaseValue(orientType);
     setOrientAngleBaseValue(angle);
@@ -206,9 +206,9 @@ void SVGMarkerElement::setOrientToAuto()
     setOrient(SVGMarkerOrientAuto, { });
 }
 
-void SVGMarkerElement::setOrientToAngle(const SVGAngle& angle)
+void SVGMarkerElement::setOrientToAngle(SVGAngle& angle)
 {
-    setOrient(SVGMarkerOrientAngle, angle);
+    setOrient(SVGMarkerOrientAngle, angle.propertyReference());
 }
 
 RenderPtr<RenderElement> SVGMarkerElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

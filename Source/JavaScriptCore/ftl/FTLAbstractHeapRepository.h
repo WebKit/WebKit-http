@@ -32,6 +32,7 @@
 #include "FTLAbstractHeap.h"
 #include "HasOwnPropertyCache.h"
 #include "IndexingType.h"
+#include "JSFixedArray.h"
 #include "JSMap.h"
 #include "JSSet.h"
 #include "Symbol.h"
@@ -58,11 +59,11 @@ namespace JSC { namespace FTL {
     macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
     macro(JSCell_cellState, JSCell::cellStateOffset()) \
     macro(JSCell_header, 0) \
-    macro(JSCell_indexingType, JSCell::indexingTypeOffset()) \
+    macro(JSCell_indexingTypeAndMisc, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSCell_structureID, JSCell::structureIDOffset()) \
     macro(JSCell_typeInfoFlags, JSCell::typeInfoFlagsOffset()) \
     macro(JSCell_typeInfoType, JSCell::typeInfoTypeOffset()) \
-    macro(JSCell_usefulBytes, JSCell::indexingTypeOffset()) \
+    macro(JSCell_usefulBytes, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSFunction_executable, JSFunction::offsetOfExecutable()) \
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \
@@ -113,6 +114,7 @@ namespace JSC { namespace FTL {
     macro(HashMapBucket_value, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()) \
     macro(HashMapBucket_key, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfKey()) \
     macro(Symbol_symbolImpl, Symbol::offsetOfSymbolImpl()) \
+    macro(JSFixedArray_size, JSFixedArray::offsetOfSize()) \
 
 #define FOR_EACH_INDEXED_ABSTRACT_HEAP(macro) \
     macro(DirectArguments_storage, DirectArguments::storageOffset(), sizeof(EncodedJSValue)) \
@@ -133,6 +135,7 @@ namespace JSC { namespace FTL {
     macro(structureTable, 0, sizeof(Structure*)) \
     macro(variables, 0, sizeof(Register)) \
     macro(HasOwnPropertyCache, 0, sizeof(HasOwnPropertyCache::Entry)) \
+    macro(JSFixedArray_buffer, JSFixedArray::offsetOfData(), sizeof(EncodedJSValue)) \
     
 #define FOR_EACH_NUMBERED_ABSTRACT_HEAP(macro) \
     macro(properties)

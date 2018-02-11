@@ -423,20 +423,13 @@ static bool borderOrPaddingLogicalWidthChanged(const RenderStyle* oldStyle, cons
 
 void RenderBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    auto& newStyle = style();
-
     bool hadTransform = hasTransform();
-    bool flowThreadContainingBlockInvalidated = false;
-    if (oldStyle && oldStyle->position() != newStyle.position()) {
-        invalidateFlowThreadContainingBlockIncludingDescendants();
-        flowThreadContainingBlockInvalidated = true;
-    }
-
     RenderBox::styleDidChange(diff, oldStyle);
 
-    if (hadTransform != hasTransform() && !flowThreadContainingBlockInvalidated)
-        invalidateFlowThreadContainingBlockIncludingDescendants();
+    if (hadTransform != hasTransform())
+        adjustFlowThreadStateOnContainingBlockChangeIfNeeded();
 
+    auto& newStyle = style();
     if (!isAnonymousBlock()) {
         // Ensure that all of our continuation blocks pick up the new style.
         for (RenderBlock* currCont = blockElementContinuation(); currCont; currCont = currCont->blockElementContinuation()) {
@@ -1336,9 +1329,14 @@ void RenderBlock::simplifiedNormalFlowLayout()
     }
 }
 
+bool RenderBlock::canPerformSimplifiedLayout() const
+{
+    return (posChildNeedsLayout() || needsSimplifiedNormalFlowLayout()) && !normalChildNeedsLayout() && !selfNeedsLayout();
+}
+
 bool RenderBlock::simplifiedLayout()
 {
-    if ((!posChildNeedsLayout() && !needsSimplifiedNormalFlowLayout()) || normalChildNeedsLayout() || selfNeedsLayout())
+    if (!canPerformSimplifiedLayout())
         return false;
 
     LayoutStateMaintainer statePusher(view(), *this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
@@ -3377,6 +3375,28 @@ RenderFlowThread* RenderBlock::locateFlowThreadContainingBlock() const
     return rareData->m_flowThreadContainingBlock.value();
 }
 
+void RenderBlock::resetFlowThreadContainingBlockAndChildInfoIncludingDescendants()
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    if (cachedFlowThreadContainingBlockNeedsUpdate())
+        return;
+
+    auto* flowThread = cachedFlowThreadContainingBlock();
+    setCachedFlowThreadContainingBlockNeedsUpdate();
+
+    if (flowThread)
+        flowThread->removeFlowChildInfo(*this);
+
+    for (auto& child : childrenOfType<RenderElement>(*this)) {
+        if (flowThread)
+            flowThread->removeFlowChildInfo(child);
+        if (is<RenderBlock>(child))
+            downcast<RenderBlock>(child).resetFlowThreadContainingBlockAndChildInfoIncludingDescendants();
+    }
+}
+
 LayoutUnit RenderBlock::paginationStrut() const
 {
     RenderBlockRareData* rareData = getBlockRareData(this);
@@ -3594,9 +3614,8 @@ RenderRegion* RenderBlock::regionAtBlockOffset(LayoutUnit blockOffset) const
     return flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstPage() + blockOffset, true);
 }
 
-static bool canComputeRegionRangeForBox(const RenderBlock* parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
+static bool canComputeRegionRangeForBox(const RenderBlock& parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
 {
-    ASSERT(parentBlock);
     ASSERT(!childBox.isRenderNamedFlowThread());
 
     if (!flowThreadContainingBlock)
@@ -3626,7 +3645,7 @@ bool RenderBlock::childBoxIsUnsplittableForFragmentation(const RenderBox& child)
 void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    ASSERT(canComputeRegionRangeForBox(this, box, flowThread));
+    ASSERT(canComputeRegionRangeForBox(*this, box, flowThread));
 
     RenderRegion* startRegion;
     RenderRegion* endRegion;
@@ -3638,13 +3657,13 @@ void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
         endRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion + logicalHeightForChild(box), true);
     }
 
-    flowThread->setRegionRangeForBox(&box, startRegion, endRegion);
+    flowThread->setRegionRangeForBox(box, startRegion, endRegion);
 }
 
 void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!canComputeRegionRangeForBox(this, box, flowThread))
+    if (!canComputeRegionRangeForBox(*this, box, flowThread))
         return;
 
     if (childBoxIsUnsplittableForFragmentation(box)) {
@@ -3659,13 +3678,13 @@ void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
     RenderRegion* startRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion, true);
     RenderRegion* endRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion + estimatedValues.m_extent, true);
 
-    flowThread->setRegionRangeForBox(&box, startRegion, endRegion);
+    flowThread->setRegionRangeForBox(box, startRegion, endRegion);
 }
 
 bool RenderBlock::updateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!canComputeRegionRangeForBox(this, box, flowThread))
+    if (!canComputeRegionRangeForBox(*this, box, flowThread))
         return false;
 
     RenderRegion* startRegion = nullptr;

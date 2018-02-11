@@ -71,6 +71,8 @@ inline CapabilityLevel canCompile(Node* node)
     case GetButterfly:
     case NewObject:
     case NewArray:
+    case NewArrayWithSpread:
+    case Spread:
     case NewArrayBuffer:
     case NewTypedArray:
     case GetByOffset:
@@ -117,6 +119,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateActivation:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case GetClosureVar:
     case PutClosureVar:
     case CreateDirectArguments:
@@ -124,6 +127,7 @@ inline CapabilityLevel canCompile(Node* node)
     case CreateClonedArguments:
     case GetFromArguments:
     case PutToArguments:
+    case GetArgument:
     case InvalidationPoint:
     case StringCharAt:
     case CheckCell:
@@ -176,7 +180,6 @@ inline CapabilityLevel canCompile(Node* node)
     case NewArrayWithSize:
     case TryGetById:
     case GetById:
-    case PureGetById:
     case GetByIdFlush:
     case GetByIdWithThis:
     case ToThis:
@@ -224,6 +227,7 @@ inline CapabilityLevel canCompile(Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:

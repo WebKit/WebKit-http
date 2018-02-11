@@ -69,6 +69,9 @@ class MediaControls;
 class MediaControlsHost;
 class MediaElementAudioSourceNode;
 class MediaError;
+#if ENABLE(ENCRYPTED_MEDIA)
+class MediaKeys;
+#endif
 class MediaPlayer;
 class MediaSession;
 class MediaSource;
@@ -216,8 +219,7 @@ public:
     bool loop() const;
     void setLoop(bool b);
 
-    typedef DOMPromise<std::nullptr_t> PlayPromise;
-    void play(PlayPromise&&);
+    void play(DOMPromise<void>&&);
 
     WEBCORE_EXPORT void play() override;
     WEBCORE_EXPORT void pause() override;
@@ -253,6 +255,12 @@ public:
     void webkitSetMediaKeys(WebKitMediaKeys*);
 
     void keyAdded();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaKeys* mediaKeys() const;
+
+    void setMediaKeys(MediaKeys*, Ref<DeferredPromise>&&);
 #endif
 
 // controls
@@ -719,7 +727,7 @@ private:
 
     void setPlaybackRateInternal(double);
 
-    void mediaCanStart() override;
+    void mediaCanStart(Document&) final;
 
     void invalidateCachedTime() const;
     void refreshCachedTime() const;
@@ -820,7 +828,7 @@ private:
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
-    Vector<PlayPromise> m_pendingPlayPromises;
+    Vector<DOMPromise<void>> m_pendingPlayPromises;
 
     double m_requestedPlaybackRate { 1 };
     double m_reportedPlaybackRate { 1 };

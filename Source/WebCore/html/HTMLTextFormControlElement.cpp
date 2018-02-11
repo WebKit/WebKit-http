@@ -58,11 +58,11 @@ static Position positionForIndex(TextControlInnerTextElement*, unsigned);
 
 HTMLTextFormControlElement::HTMLTextFormControlElement(const QualifiedName& tagName, Document& document, HTMLFormElement* form)
     : HTMLFormControlElementWithState(tagName, document, form)
-    , m_cachedSelectionStart(-1)
-    , m_cachedSelectionEnd(-1)
     , m_cachedSelectionDirection(SelectionHasNoDirection)
     , m_lastChangeWasUserEdit(false)
     , m_isPlaceholderVisible(false)
+    , m_cachedSelectionStart(-1)
+    , m_cachedSelectionEnd(-1)
 {
 }
 
@@ -560,7 +560,7 @@ void HTMLTextFormControlElement::setInnerTextValue(const String& value)
         innerText->setInnerText(value);
 
         if (value.endsWith('\n') || value.endsWith('\r'))
-            innerText->appendChild(HTMLBRElement::create(document()), ASSERT_NO_EXCEPTION);
+            innerText->appendChild(HTMLBRElement::create(document()));
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(COCOA)
         if (textIsChanged && renderer()) {

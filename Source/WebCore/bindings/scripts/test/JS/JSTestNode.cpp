@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestNode.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -154,6 +153,13 @@ const ClassInfo JSTestNode::s_info = { "TestNode", &Base::s_info, 0, CREATE_METH
 JSTestNode::JSTestNode(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestNode>&& impl)
     : JSNode(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestNode::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestNode::createPrototype(VM& vm, JSGlobalObject* globalObject)

@@ -37,7 +37,6 @@
 #include "DocumentFragment.h"
 #include "ElementIterator.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "HTMLBRElement.h"
@@ -168,10 +167,9 @@ ReplacementFragment::ReplacementFragment(Document& document, DocumentFragment* f
     
     Node* shadowAncestorNode = editableRoot->deprecatedShadowAncestorNode();
     
-    if (!editableRoot->getAttributeEventListener(eventNames().webkitBeforeTextInsertedEvent) &&
-        // FIXME: Remove these checks once textareas and textfields actually register an event handler.
-        !(shadowAncestorNode && shadowAncestorNode->renderer() && shadowAncestorNode->renderer()->isTextControl()) &&
-        editableRoot->hasRichlyEditableStyle()) {
+    if (!editableRoot->attributeEventListener(eventNames().webkitBeforeTextInsertedEvent)
+        && !(shadowAncestorNode && shadowAncestorNode->renderer() && shadowAncestorNode->renderer()->isTextControl())
+        && editableRoot->hasRichlyEditableStyle()) {
         removeInterchangeNodes(m_fragment.get());
         return;
     }
@@ -190,7 +188,7 @@ ReplacementFragment::ReplacementFragment(Document& document, DocumentFragment* f
     restoreAndRemoveTestRenderingNodesToFragment(holder.get());
 
     // Give the root a chance to change the text.
-    Ref<BeforeTextInsertedEvent> event = BeforeTextInsertedEvent::create(text);
+    auto event = BeforeTextInsertedEvent::create(text);
     editableRoot->dispatchEvent(event);
     if (text != event->text() || !editableRoot->hasRichlyEditableStyle()) {
         restoreAndRemoveTestRenderingNodesToFragment(holder.get());
@@ -246,7 +244,7 @@ void ReplacementFragment::removeNode(PassRefPtr<Node> node)
     if (!parent)
         return;
     
-    parent->removeChild(*node, ASSERT_NO_EXCEPTION);
+    parent->removeChild(*node);
 }
 
 void ReplacementFragment::insertNodeBefore(PassRefPtr<Node> node, Node* refNode)
@@ -258,15 +256,15 @@ void ReplacementFragment::insertNodeBefore(PassRefPtr<Node> node, Node* refNode)
     if (!parent)
         return;
         
-    parent->insertBefore(*node, refNode, ASSERT_NO_EXCEPTION);
+    parent->insertBefore(*node, refNode);
 }
 
 Ref<HTMLElement> ReplacementFragment::insertFragmentForTestRendering(Node* rootEditableElement)
 {
     auto holder = createDefaultParagraphElement(document());
 
-    holder->appendChild(*m_fragment, ASSERT_NO_EXCEPTION);
-    rootEditableElement->appendChild(holder, ASSERT_NO_EXCEPTION);
+    holder->appendChild(*m_fragment);
+    rootEditableElement->appendChild(holder);
     document().updateLayoutIgnorePendingStylesheets();
 
     return holder;
@@ -278,8 +276,8 @@ void ReplacementFragment::restoreAndRemoveTestRenderingNodesToFragment(StyledEle
         return;
     
     while (RefPtr<Node> node = holder->firstChild()) {
-        holder->removeChild(*node, ASSERT_NO_EXCEPTION);
-        m_fragment->appendChild(*node, ASSERT_NO_EXCEPTION);
+        holder->removeChild(*node);
+        m_fragment->appendChild(*node);
     }
 
     removeNode(holder);
@@ -1485,7 +1483,7 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<HTMLElement> prpList
     }
 
     while (RefPtr<Node> listItem = listElement->firstChild()) {
-        listElement->removeChild(*listItem, ASSERT_NO_EXCEPTION);
+        listElement->removeChild(*listItem);
         if (isStart || isMiddle) {
             insertNodeBefore(listItem, lastNode);
             insertedNodes.respondToNodeInsertion(listItem.get());

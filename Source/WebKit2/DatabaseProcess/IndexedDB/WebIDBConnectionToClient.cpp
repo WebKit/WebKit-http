@@ -321,14 +321,19 @@ void WebIDBConnectionToClient::openCursor(const IDBRequestData& request, const I
     DatabaseProcess::singleton().idbServer().openCursor(request, info);
 }
 
-void WebIDBConnectionToClient::iterateCursor(const IDBRequestData& request, const IDBKeyData& key, unsigned long count)
+void WebIDBConnectionToClient::iterateCursor(const IDBRequestData& request, const IDBIterateCursorData& data)
 {
-    DatabaseProcess::singleton().idbServer().iterateCursor(request, key, count);
+    DatabaseProcess::singleton().idbServer().iterateCursor(request, data);
 }
 
 void WebIDBConnectionToClient::establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo& info)
 {
     DatabaseProcess::singleton().idbServer().establishTransaction(databaseConnectionIdentifier, info);
+}
+
+void WebIDBConnectionToClient::databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier)
+{
+    DatabaseProcess::singleton().idbServer().databaseConnectionPendingClose(databaseConnectionIdentifier);
 }
 
 void WebIDBConnectionToClient::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)

@@ -34,6 +34,7 @@
 
 #include "JSDOMPromise.h"
 #include "PeerConnectionStates.h"
+#include "RTCDataChannel.h"
 
 namespace WebCore {
 
@@ -43,6 +44,7 @@ class MediaStream;
 class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCConfiguration;
+class RTCDataChannelHandler;
 class RTCIceCandidate;
 class RTCPeerConnection;
 class RTCRtpReceiver;
@@ -56,11 +58,9 @@ class ScriptExecutionContext;
 struct RTCAnswerOptions;
 struct RTCOfferOptions;
 
-using ExceptionCode = int;
-
 namespace PeerConnection {
 typedef DOMPromise<RTCSessionDescription> SessionDescriptionPromise;
-typedef DOMPromise<std::nullptr_t> VoidPromise;
+typedef DOMPromise<void> VoidPromise;
 typedef DOMPromise<RTCStatsResponse> StatsPromise;
 }
 
@@ -74,33 +74,31 @@ public:
     virtual ~PeerConnectionBackend() { }
 
     void createOffer(RTCOfferOptions&&, PeerConnection::SessionDescriptionPromise&&);
-    virtual void doCreateOffer(RTCOfferOptions&&) = 0;
-    void createOfferSucceeded(String&&);
-    void createOfferFailed(ExceptionCode, String&&);
+    void createAnswer(RTCAnswerOptions&&, PeerConnection::SessionDescriptionPromise&&);
+    void setLocalDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&);
+    void setRemoteDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&);
+    void addIceCandidate(RTCIceCandidate&, PeerConnection::VoidPromise&&);
 
-    virtual void createAnswer(RTCAnswerOptions&&, PeerConnection::SessionDescriptionPromise&&) = 0;
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) = 0;
 
-    virtual void setLocalDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&) = 0;
+    void stop();
+
     virtual RefPtr<RTCSessionDescription> localDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> currentLocalDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> pendingLocalDescription() const = 0;
 
-    virtual void setRemoteDescription(RTCSessionDescription&, PeerConnection::VoidPromise&&) = 0;
     virtual RefPtr<RTCSessionDescription> remoteDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> currentRemoteDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> pendingRemoteDescription() const = 0;
 
     virtual void setConfiguration(RTCConfiguration&) = 0;
-    virtual void addIceCandidate(RTCIceCandidate&, PeerConnection::VoidPromise&&) = 0;
 
     virtual void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) = 0;
 
     virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
 
-    virtual RefPtr<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
+    virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
     virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, PeerConnection::VoidPromise&&) = 0;
-
-    virtual void stop() = 0;
 
     virtual bool isNegotiationNeeded() const = 0;
     virtual void markAsNeedingNegotiation() = 0;
@@ -109,8 +107,41 @@ public:
     virtual void emulatePlatformEvent(const String& action) = 0;
 
 protected:
+    void fireICECandidateEvent(RefPtr<RTCIceCandidate>&&);
+    void doneGatheringCandidates();
+
+    void updateSignalingState(PeerConnectionStates::SignalingState);
+
+    void createOfferSucceeded(String&&);
+    void createOfferFailed(Exception&&);
+
+    void createAnswerSucceeded(String&&);
+    void createAnswerFailed(Exception&&);
+
+    void setLocalDescriptionSucceeded();
+    void setLocalDescriptionFailed(Exception&&);
+
+    void setRemoteDescriptionSucceeded();
+    void setRemoteDescriptionFailed(Exception&&);
+
+    void addIceCandidateSucceeded();
+    void addIceCandidateFailed(Exception&&);
+
+private:
+    virtual void doCreateOffer(RTCOfferOptions&&) = 0;
+    virtual void doCreateAnswer(RTCAnswerOptions&&) = 0;
+    virtual void doSetLocalDescription(RTCSessionDescription&) = 0;
+    virtual void doSetRemoteDescription(RTCSessionDescription&) = 0;
+    virtual void doAddIceCandidate(RTCIceCandidate&) = 0;
+    virtual void doStop() = 0;
+
+protected:
     RTCPeerConnection& m_peerConnection;
+
+private:
     Optional<PeerConnection::SessionDescriptionPromise> m_offerAnswerPromise;
+    Optional<PeerConnection::VoidPromise> m_setDescriptionPromise;
+    Optional<PeerConnection::VoidPromise> m_addIceCandidatePromise;
 };
 
 } // namespace WebCore

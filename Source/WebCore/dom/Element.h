@@ -202,9 +202,9 @@ public:
     virtual CSSStyleDeclaration* cssomStyle();
 
     const QualifiedName& tagQName() const { return m_tagName; }
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
     static ptrdiff_t tagQNameMemoryOffset() { return OBJECT_OFFSETOF(Element, m_tagName); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
     String tagName() const { return nodeName(); }
     bool hasTagName(const QualifiedName& tagName) const { return m_tagName.matches(tagName); }
     bool hasTagName(const HTMLQualifiedName& tagName) const { return ContainerNode::hasTagName(tagName); }
@@ -218,7 +218,7 @@ public:
     const AtomicString& prefix() const final { return m_tagName.prefix(); }
     const AtomicString& namespaceURI() const final { return m_tagName.namespaceURI(); }
 
-    void setPrefix(const AtomicString&, ExceptionCode&) final;
+    ExceptionOr<void> setPrefix(const AtomicString&) final;
 
     String nodeName() const override;
 

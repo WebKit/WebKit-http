@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestEventConstructor.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include <runtime/Error.h>
@@ -174,6 +173,13 @@ const ClassInfo JSTestEventConstructor::s_info = { "TestEventConstructor", &Base
 JSTestEventConstructor::JSTestEventConstructor(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestEventConstructor>&& impl)
     : JSEvent(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestEventConstructor::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestEventConstructor::createPrototype(VM& vm, JSGlobalObject* globalObject)

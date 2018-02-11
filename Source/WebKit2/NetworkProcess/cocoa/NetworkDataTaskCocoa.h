@@ -51,9 +51,7 @@ public:
     void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend);
     void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
     void didCompleteWithError(const WebCore::ResourceError&);
-    void didReceiveResponse(WebCore::ResourceResponse&&, ResponseCompletionHandler&&);
     void didReceiveData(Ref<WebCore::SharedBuffer>&&);
-    void didBecomeDownload();
 
     void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&&);
     void transferSandboxExtensionToDownload(Download&);

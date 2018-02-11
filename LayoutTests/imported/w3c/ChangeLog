@@ -1,3 +1,171 @@
+2016-11-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::exportKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164722
+        <rdar://problem/29251740>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Support WPT templated tests
+        https://bugs.webkit.org/show_bug.cgi?id=164707
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/IndexedDB/interfaces.worker-expected.txt: Added.
+        * web-platform-tests/IndexedDB/interfaces.worker.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html: Added.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.any-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.any.html: Added.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.worker-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/XMLHttpRequest-withCredentials.worker.html: Added.
+        * web-platform-tests/XMLHttpRequest/abort-during-open.worker-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/abort-during-open.worker.html: Added.
+        * web-platform-tests/XMLHttpRequest/send-send.worker-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-send.worker.html: Added.
+        * web-platform-tests/XMLHttpRequest/send-usp.worker-expected.txt: Added.
+        * web-platform-tests/XMLHttpRequest/send-usp.worker.html: Added.
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker-expected.txt: Added.
+        * web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker.html: Added.
+        * web-platform-tests/url/historical.worker-expected.txt: Added.
+        * web-platform-tests/url/historical.worker.html: Added.
+
+2016-11-12  Ryosuke Niwa  <rniwa@webkit.org>
+
+        document.currentScript should be null when running a script inside a shadow tree
+        https://bugs.webkit.org/show_bug.cgi?id=164693
+
+        Reviewed by Yusuke Suzuki.
+
+        Rebaselined the imported test now that there are no errors.
+
+        * web-platform-tests/shadow-dom/Document-prototype-currentScript-expected.txt:
+
+2016-11-11  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: "close pending flag" and firing blocked events all need fixing.
+        https://bugs.webkit.org/show_bug.cgi?id=164641
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbobjectstore-rename-store-expected.txt:
+
+2016-11-10  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0 Support the IDBDatabase.onclose event.
+        https://bugs.webkit.org/show_bug.cgi?id=164602
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/interfaces-expected.txt:
+
+2016-11-05  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::importKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164446
+        <rdar://problem/29123621>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] Add no-op Web-facing APIs
+        https://bugs.webkit.org/show_bug.cgi?id=164028
+
+        Reviewed by Jer Noble.
+
+        Add the text baseline for the web-platform-tests/encrypted-media/idlharness.html
+        test. It's the only meaningful test we can run at the moment, and all but one of
+        the subtests pass.
+
+        * web-platform-tests/encrypted-media/idlharness-expected.txt: Added.
+
+2016-11-08  Philippe Normand  <pnormand@igalia.com>
+
+        [WebRTC] white-list turns urls from the RTCConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=164506
+
+        Reviewed by Alejandro G. Castro.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt: Rebaseline test, since turns servers are now parsed.
+
+2016-11-09  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Clean up some exception ordering.
+        https://bugs.webkit.org/show_bug.cgi?id=164566
+
+        Reviewed by Alex Christensen.
+
+        * IndexedDB-private-browsing/idbcursor_advance_index7-expected.txt:
+        * IndexedDB-private-browsing/idbcursor_continue_index7-expected.txt:
+        * web-platform-tests/IndexedDB/idbcursor_advance_index7-expected.txt:
+        * web-platform-tests/IndexedDB/idbcursor_continue_index7-expected.txt:
+        * web-platform-tests/IndexedDB/idbobjectstore_createIndex14-exception_order-expected.txt:
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should not consider path of URLs with no host to start at the first slash after the colon
+        https://bugs.webkit.org/show_bug.cgi?id=164555
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2016-11-09  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: W3C test IndexedDB/idbtransaction_objectStoreNames.html fails.
+        https://bugs.webkit.org/show_bug.cgi?id=164528
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbtransaction_objectStoreNames-expected.txt:
+
+2016-11-09  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Implement new IDBCursor.continuePrimaryKey function.
+        https://bugs.webkit.org/show_bug.cgi?id=164404
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/idbcursor-continuePrimaryKey-exception-order-expected.txt:
+
+2016-11-09  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Clean up more transaction abort behavior, including tweaks to Index/ObjectStore lifetime.
+        https://bugs.webkit.org/show_bug.cgi?id=164466
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/IndexedDB/transaction-abort-index-metadata-revert-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-multiple-metadata-revert-expected.txt:
+        * web-platform-tests/IndexedDB/transaction-abort-object-store-metadata-revert-expected.txt:
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Ignore URL.origin in URL web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=164553
+
+        Reviewed by Tim Horton.
+
+        Spec-noncompliance in our SecurityOrigin class is covering up URLParser bugs.
+        Let's ignore those bugs for now in our copy of the web-platform-tests so we can see URLParser conformance improvement in our results.
+        I've proposed moving these URL.origin checks to different tests in https://github.com/w3c/web-platform-tests/pull/4182
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/a-element.js:
+        (runURLTests):
+        * web-platform-tests/url/url-constructor-expected.txt:
+        * web-platform-tests/url/url-constructor.html:
+
 2016-11-04  Brady Eidson  <beidson@apple.com>
 
         IndexedDB 2.0: Clean up more transaction abort and exception throwing behavior from IDBObjectStore.

@@ -92,12 +92,8 @@ public:
     virtual void setActivatedSubmit(bool) { }
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
-    WEBCORE_EXPORT bool autocorrect() const;
-    WEBCORE_EXPORT void setAutocorrect(bool);
-
-    WEBCORE_EXPORT WebAutocapitalizeType autocapitalizeType() const;
-    WEBCORE_EXPORT const AtomicString& autocapitalize() const;
-    WEBCORE_EXPORT void setAutocapitalize(const AtomicString&);
+    WEBCORE_EXPORT bool shouldAutocorrect() const final;
+    WEBCORE_EXPORT AutocapitalizeType autocapitalizeType() const final;
 #endif
 
     WEBCORE_EXPORT bool willValidate() const final;
@@ -183,14 +179,14 @@ private:
     HTMLFormControlElement* asFormNamedItem() final { return this; }
 
     std::unique_ptr<ValidationMessage> m_validationMessage;
-    bool m_disabled : 1;
-    bool m_isReadOnly : 1;
-    bool m_isRequired : 1;
-    bool m_valueMatchesRenderer : 1;
-    bool m_disabledByAncestorFieldset : 1;
+    unsigned m_disabled : 1;
+    unsigned m_isReadOnly : 1;
+    unsigned m_isRequired : 1;
+    unsigned m_valueMatchesRenderer : 1;
+    unsigned m_disabledByAncestorFieldset : 1;
 
     enum DataListAncestorState { Unknown, InsideDataList, NotInsideDataList };
-    mutable enum DataListAncestorState m_dataListAncestorState;
+    mutable unsigned m_dataListAncestorState : 2;
 
     // The initial value of m_willValidate depends on the derived class. We can't
     // initialize it with a virtual function in the constructor. m_willValidate
@@ -200,11 +196,11 @@ private:
 
     // Cache of validity()->valid().
     // But "candidate for constraint validation" doesn't affect m_isValid.
-    bool m_isValid : 1;
+    unsigned m_isValid : 1;
 
-    bool m_wasChangedSinceLastFormControlChangeEvent : 1;
+    unsigned m_wasChangedSinceLastFormControlChangeEvent : 1;
 
-    bool m_hasAutofocused : 1;
+    unsigned m_hasAutofocused : 1;
 };
 
 } // namespace WebCore

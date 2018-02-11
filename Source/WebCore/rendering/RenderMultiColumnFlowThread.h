@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderMultiColumnFlowThread_h
-#define RenderMultiColumnFlowThread_h
+#pragma once
 
 #include "RenderFlowThread.h"
-
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -114,18 +111,18 @@ private:
     void willBeRemovedFromTree() override;
     RenderObject* resolveMovedChild(RenderObject* child) const override;
     void flowThreadDescendantInserted(RenderObject&) override;
-    void flowThreadRelativeWillBeRemoved(RenderObject*) override;
+    void flowThreadRelativeWillBeRemoved(RenderObject&) override;
     void flowThreadDescendantBoxLaidOut(RenderBox*) override;
     void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
     LayoutUnit initialLogicalWidth() const override;
     void setPageBreak(const RenderBlock*, LayoutUnit offset, LayoutUnit spaceShortage) override;
     void updateMinimumPageHeight(const RenderBlock*, LayoutUnit offset, LayoutUnit minHeight) override;
     RenderRegion* regionAtBlockOffset(const RenderBox*, LayoutUnit, bool extendLastRegion = false) const override;
-    void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*) override;
+    void setRegionRangeForBox(const RenderBox&, RenderRegion*, RenderRegion*) override;
     bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0) override;
     bool isPageLogicalHeightKnown() const override;
 
-    void handleSpannerRemoval(RenderObject* spanner);
+    void handleSpannerRemoval(RenderObject& spanner);
     RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject& descendant);
     
 private:
@@ -155,6 +152,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMultiColumnFlowThread, isRenderMultiColumnFlowThread())
-
-#endif // RenderMultiColumnFlowThread_h
-

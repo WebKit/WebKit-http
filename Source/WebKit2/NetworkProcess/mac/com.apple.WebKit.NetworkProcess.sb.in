@@ -108,10 +108,17 @@
        (global-name "com.apple.securityd.xpc") 
        (global-name "com.apple.CoreAuthentication.agent.libxpc")
        (global-name "com.apple.SecurityServer"))
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101240
 (allow file-read* file-write* (home-subpath "/Library/Keychains")) ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
+#endif
+
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
+
 (allow file-read*
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101240
        (subpath "/Library/Keychains")
+#endif
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures")
        (literal "/Library/Preferences/com.apple.crypto.plist")
@@ -121,6 +128,7 @@
        (home-literal "/Library/Application Support/SyncServices/Local/ClientsWithChanges/com.apple.Keychain")
        (home-literal "/Library/Preferences/com.apple.security.plist")
        (home-literal "/Library/Preferences/com.apple.security.revocation.plist"))
+
 (allow ipc-posix-shm-read* ipc-posix-shm-write-data
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
 
@@ -153,9 +161,6 @@
 
 (if (defined? 'vnode-type)
     (deny file-write-create (vnode-type SYMLINK)))
-
-;; FIXME: Should be removed once <rdar://problem/16329087> is fixed.
-(deny file-write-xattr (xattr "com.apple.quarantine") (with no-log))
 
 ;; Reserve a namespace for additional protected extended attributes.
 (deny file-read-xattr file-write-xattr (xattr-regex #"^com\.apple\.security\.private\."))

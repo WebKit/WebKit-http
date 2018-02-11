@@ -526,7 +526,7 @@ inline bool HTMLFormControlElement::isValidFormControlElement() const
 {
     // If the following assertion fails, updateValidity() is not called
     // correctly when something which changes validity is updated.
-    ASSERT(m_isValid == valid());
+    ASSERT(m_isValid == isValid());
     return m_isValid;
 }
 
@@ -551,7 +551,7 @@ void HTMLFormControlElement::updateValidity()
     bool willValidate = this->willValidate();
     bool wasValid = m_isValid;
 
-    m_isValid = valid();
+    m_isValid = isValid();
 
     if (willValidate && m_isValid != wasValid) {
         // Update style for pseudo classes such as :valid :invalid.
@@ -602,39 +602,24 @@ HTMLFormElement* HTMLFormControlElement::virtualForm() const
 
 // FIXME: We should look to share this code with class HTMLFormElement instead of duplicating the logic.
 
-bool HTMLFormControlElement::autocorrect() const
+bool HTMLFormControlElement::shouldAutocorrect() const
 {
     const AtomicString& autocorrectValue = attributeWithoutSynchronization(autocorrectAttr);
     if (!autocorrectValue.isEmpty())
         return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
     if (HTMLFormElement* form = this->form())
-        return form->autocorrect();
+        return form->shouldAutocorrect();
     return true;
 }
 
-void HTMLFormControlElement::setAutocorrect(bool autocorrect)
+AutocapitalizeType HTMLFormControlElement::autocapitalizeType() const
 {
-    setAttributeWithoutSynchronization(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
-}
-
-WebAutocapitalizeType HTMLFormControlElement::autocapitalizeType() const
-{
-    WebAutocapitalizeType type = autocapitalizeTypeForAttributeValue(attributeWithoutSynchronization(autocapitalizeAttr));
-    if (type == WebAutocapitalizeTypeDefault) {
+    AutocapitalizeType type = HTMLElement::autocapitalizeType();
+    if (type == AutocapitalizeTypeDefault) {
         if (HTMLFormElement* form = this->form())
             return form->autocapitalizeType();
     }
     return type;
-}
-
-const AtomicString& HTMLFormControlElement::autocapitalize() const
-{
-    return stringForAutocapitalizeType(autocapitalizeType());
-}
-
-void HTMLFormControlElement::setAutocapitalize(const AtomicString& value)
-{
-    setAttributeWithoutSynchronization(autocapitalizeAttr, value);
 }
 
 #endif

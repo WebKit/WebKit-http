@@ -1004,7 +1004,7 @@ void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
     
     bool contentsLayerChanged = false;
 
-    if (m_contentsSolidColor.isValid() && m_contentsSolidColor.alpha()) {
+    if (m_contentsSolidColor.isVisible()) {
         if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor) {
             m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
             m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
@@ -3411,7 +3411,7 @@ String GraphicsLayerCA::replayDisplayListAsText(DisplayList::AsTextFlags flags) 
 {
     auto it = layerDisplayListMap().find(this);
     if (it != layerDisplayListMap().end()) {
-        TextStream stream;
+        TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
         
         TextStream::GroupScope scope(stream);
         stream.dumpProperty("clip", it->value.first);

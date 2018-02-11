@@ -43,6 +43,28 @@
   cmd: runDefault
 - path: stress/async-await-reserved-word.js
   cmd: runDefault
+- path: stress/async-await-long-loop.js
+  cmd: runNoCJIT "--gcMaxHeapSize=2000000"
+- path: stress/async-await-throw-loop.js
+  cmd: runNoCJIT "--gcMaxHeapSize=2000000"
+
+# FTLJIT
+- path: stress/async-function-create-optimized.js
+  cmd: runDefault
+- path: stress/async-function-create-nobaseline.js
+  cmd: runDefault
+- path: stress/async-function-declaration-sinking-no-double-allocate.js
+  cmd: runDefault
+- path: stress/async-function-declaration-sinking-osrexit.js
+  cmd: runDefault
+- path: stress/async-function-declaration-sinking-put.js
+  cmd: runDefault
+- path: stress/async-function-expression-sinking-no-double-allocate.js
+  cmd: runDefault
+- path: stress/async-function-expression-sinking-osrexit.js
+  cmd: runDefault
+- path: stress/async-function-expression-sinking-put.js
+  cmd: runDefault
 
 # Test262
 - path: test262/test/built-ins/AsyncFunction/AsyncFunction-construct.js

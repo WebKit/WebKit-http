@@ -1,3 +1,739 @@
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: SourceCodeTextEditor should display execution lines for background threads
+        https://bugs.webkit.org/show_bug.cgi?id=164679
+        <rdar://problem/29233026>
+
+        Reviewed by Timothy Hatcher.
+
+        There may be multiple threads paused in the same content view. With
+        this change we should a thread indicator for each primary line a
+        thread is paused on. It uses the same inline line indicator that
+        inline errors/warnings (issues) use.
+
+        When there is a single thread (just the Page) we don't show thread
+        indicators. But as soon as there are multiple threads we start
+        managing and showing them. The line indicator contains the name of
+        the thread on the side.
+
+        Note that SourceCodeTextEditor maintains the thread indicators, but
+        it still always handles the ActiveCallFrame as it used to, pushing
+        values down into TextEditor. The ActiveCallFrame styles override
+        the thread line indicators (albeit with the same styles). The reason
+        these are still separate is that TextEditor has some special styles
+        regarding its gutter for the active execution line. Eventually we
+        may want to find a way to push this up into SourceCodeTextEditor.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string "%d Threads" when multiple threads are on the same line.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        (WebInspector.ScopeChainDetailsSidebarPanel):
+        (WebInspector.ScopeChainDetailsSidebarPanel.prototype._activeCallFrameDidChange):
+        Update Watch Expressions when the active call frame changes.
+
+        * UserInterface/Views/SourceCodeTextEditor.css:
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget.inline):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget > .arrow):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget.inline > .arrow):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget > .icon):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget > .text):
+        (.source-code.text-editor > .CodeMirror .line-indicator-widget.inline > .text):
+        Share line indicator widget styles between issue widgets and thread widgets.
+
+        (.source-code.text-editor > .CodeMirror .thread-indicator):
+        (.source-code.text-editor > .CodeMirror .thread-widget):
+        (.source-code.text-editor > .CodeMirror .thread-widget.inline):
+        (.source-code.text-editor > .CodeMirror .thread-widget.inline > .arrow):
+        Colors for the thread-widget line-indicators.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor):
+        (WebInspector.SourceCodeTextEditor.prototype.close):
+        New event listeners handling for Target added / removed events.
+
+        (WebInspector.SourceCodeTextEditor.prototype._targetAdded):
+        (WebInspector.SourceCodeTextEditor.prototype._targetRemoved):
+        Update thread indicators as needed.
+
+        (WebInspector.SourceCodeTextEditor.prototype._looselyMatchesSourceCodeLocation):
+        More generic match based just on the URLs. Even if the exact script comes
+        from a different target, if they share the same URL that is fine.
+
+        (WebInspector.SourceCodeTextEditor.prototype._callFramesDidChange):
+        (WebInspector.SourceCodeTextEditor.prototype._addThreadIndicatorForTarget):
+        (WebInspector.SourceCodeTextEditor.prototype._removeThreadIndicatorForTarget):
+        (WebInspector.SourceCodeTextEditor.prototype._threadIndicatorWidgetForLine):
+        (WebInspector.SourceCodeTextEditor.prototype._updateThreadIndicatorWidget):
+        (WebInspector.SourceCodeTextEditor.prototype._handleThreadIndicatorWidgetClick):
+        Manage thread line indicator widgets. There are 3 maps we maintain.
+
+          1. line -> [threads]
+              List of threads paused on a line, needed for the UI text.
+          2. line -> widget
+              Gets the widget on a line so we can modify and eventually remove it.
+          3. target -> line
+              If a target is removed, we need to know what line it had an indicator on.
+
+        (WebInspector.SourceCodeTextEditor.prototype._isWidgetToggleable):
+        Generalize for all of our different line indicator widgets.
+
+        (WebInspector.SourceCodeTextEditor.prototype._contentDidPopulate):
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorUpdatedFormatting):        
+        (WebInspector.SourceCodeTextEditor.prototype._reinsertAllThreadIndicators):
+        When first populated, or reformatted, clear and reinsert all widgets.
+
+        (WebInspector.SourceCodeTextEditor.prototype._reinsertAllIssues):
+        (WebInspector.SourceCodeTextEditor.prototype._logCleared):
+        (WebInspector.SourceCodeTextEditor.prototype._clearIssueWidgets): Renamed.
+        Rename _clearWidgets to _clearIssueWidgets.
+
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and untested Page.setTouchEmulationEnabled command
+        https://bugs.webkit.org/show_bug.cgi?id=164793
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Tooltips for new button.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        New global setting.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        (WebInspector.DOMTreeContentView.prototype.get navigationItems):
+        (WebInspector.DOMTreeContentView.prototype._showPrintStylesSettingChanged):
+        (WebInspector.DOMTreeContentView.prototype._togglePrintStylesSetting):
+        New navigation bar button to toggle print styles.
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager.prototype.mediaTypeChanged):
+        After toggling styles we will need to refresh styles, so provide
+        a meaningful way to trigger refreshing styles from the frontend.
+
+        * UserInterface/Images/Printer.svg: Added.
+        * UserInterface/Images/gtk/Printer.svg: Added.
+        New Printer icon for enabling / disabling print styles.
+
+        * UserInterface/Images/gtk/Crosshair.svg:
+        * UserInterface/Images/gtk/LayerBorders.svg:
+        * UserInterface/Images/gtk/NavigationItemCurleyBraces.svg:
+        * UserInterface/Images/gtk/NavigationItemTypes.svg:
+        * UserInterface/Images/gtk/PaintFlashing.svg:
+        * UserInterface/Images/gtk/ShadowDOM.svg:
+        * UserInterface/Images/gtk/ToggleLeftSidebar.svg:
+        * UserInterface/Images/gtk/ToggleRightSidebar.svg:
+        * UserInterface/Images/gtk/UpDownArrows.svg:
+        Fix a number of existing GTK images to have activated styles.
+
+2016-11-15  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r208248): Web Inspector: Pressing Left Arrow breaks autocomplete
+        https://bugs.webkit.org/show_bug.cgi?id=164391
+        <rdar://problem/29102408>
+
+        Reviewed by Matt Baker.
+
+        Unroll r208248.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WebInspector.CodeMirrorCompletionController):
+        (WebInspector.CodeMirrorCompletionController.prototype.updateCompletions):
+        (WebInspector.CodeMirrorCompletionController.prototype.isCompletionChange):
+        (WebInspector.CodeMirrorCompletionController.prototype.hideCompletions):
+        (WebInspector.CodeMirrorCompletionController.prototype.close):
+        (WebInspector.CodeMirrorCompletionController.prototype.completionSuggestionsSelectedCompletion):
+        (WebInspector.CodeMirrorCompletionController.prototype._createCompletionHintMarker):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._applyCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._commitCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeLastChangeFromHistory):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.clearMarker):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint.update):
+        (WebInspector.CodeMirrorCompletionController.prototype._removeCompletionHint):
+        (WebInspector.CodeMirrorCompletionController.prototype._completeAtCurrentPosition):
+        (WebInspector.CodeMirrorCompletionController.prototype._generateJavaScriptCompletions):
+
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and untested Page.setTouchEmulationEnabled command
+        https://bugs.webkit.org/show_bug.cgi?id=164793
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-10.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+        * Versions/Inspector-iOS-9.3.json:
+
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: URL Breakpoints that resolve in multiple workers should only appear in the UI once
+        https://bugs.webkit.org/show_bug.cgi?id=164334
+        <rdar://problem/29073523>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addBreakpoint):
+        Don't add a duplicate BreakpointTreeElements for the same Breakpoint.
+
+2016-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Worker debugging should pause all targets and view call frames in all targets
+        https://bugs.webkit.org/show_bug.cgi?id=164305
+        <rdar://problem/29056192>
+
+        Reviewed by Timothy Hatcher.
+
+        This implements a policy where, when one Target ("Thread") pauses
+        the frontend triggers a pause in all other Targets. The intended
+        user experience is "all threads pause" whenever the frontend shows
+        the debugger paused UI.
+
+        DebuggerManager has a few straight forward changes:
+
+            - The paused state reflects if any target is paused.
+            - The Paused Event is fired when going from !paused -> paused.
+              This means when the first target pauses.
+            - The Resumed Event is fired when going from paused -> !paused.
+              This means only after all targets have resumed.
+            - The CallFrameDidChange Event now includes the Target that updated.
+
+        When a Target first pauses the frontend then immediately pauses all
+        other Targets. This puts them into a "pausing" state (we display as
+        Idle) and they will pause as soon as they start executing JavaScript.
+
+        When a Target steps the "paused" state isn't changing. So this is
+        just a CallFramesDidChange update.
+
+        When clicking Resume we resume all targets. This is will be the normal,
+        expected way users resume execution. Note that one of the threads may
+        then hit a breakpoint and re-pause all threads.
+
+        Sometimes when multiple threads are paused you may want to run an
+        individual thread to completion but keep other threads paused. There
+        is a context menu on the ThreadTreeElement to resume just that
+        single thread. It will continue and pause for its next run loop.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/Thread.svg: Added.
+        * UserInterface/Images/gtk/Thread.svg: Added.
+        * UserInterface/Main.html:
+        New strings and files.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+        Place the TargetManager first since other managers may want to listen
+        for TargetAdded / TargetRemoved events.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.get paused):
+        This is now a computed state.
+
+        (WebInspector.DebuggerManager.prototype.pause):
+        (WebInspector.DebuggerManager.prototype.resume):
+        Affect all targets.
+
+        (WebInspector.DebuggerManager.prototype.stepOver):
+        (WebInspector.DebuggerManager.prototype.stepInto):
+        (WebInspector.DebuggerManager.prototype.stepOut):
+        (WebInspector.DebuggerManager.prototype.reset):
+        Update to use the paused computed property.
+
+        (WebInspector.DebuggerManager.prototype.continueUntilNextRunLoop):
+        Issue the new Debugger.continueUntilNextRunLoop command
+        on a given target.
+
+        (WebInspector.DebuggerManager.prototype.initializeTarget):
+        When a new Target is created and we were already paused,
+        then start that Worker in a paused state.
+
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        Recover from bad cases where the backend informs the frontend about
+        internal JavaScript that it shouldn't know about. Legacy backend do
+        this but also there are corner cases we need to handle.
+        Dispatch events appropriately now that multiple targets may be paused.
+
+        (WebInspector.DebuggerManager.prototype._didResumeInternal):
+        Dispatch events appropriately now that multiple targets may be paused.
+
+        (WebInspector.DebuggerManager.prototype._targetRemoved):
+        Remove debugger data for targets that go away to avoid leaks.
+
+        * UserInterface/Models/DebuggerData.js:
+        (WebInspector.DebuggerData):
+        (WebInspector.DebuggerData.prototype.get paused):
+        (WebInspector.DebuggerData.prototype.get pausing):
+        Move some more per-Target state into DebuggerData.
+
+        (WebInspector.DebuggerData.prototype.pauseIfNeeded):
+        (WebInspector.DebuggerData.prototype.resumeIfNeeded):
+        (WebInspector.DebuggerData.prototype.continueUntilNextRunLoop):
+        These should only be called by DebuggerManager. They correctly
+        update the state of the DebuggerData for this Target, and also
+        issue the underlying command to the target.
+
+        (WebInspector.DebuggerData.prototype.updateForPause):
+        (WebInspector.DebuggerData.prototype.updateForResume):
+        Handle a special case where continueUntilNextRunLoop triggers
+        an invisible "pause" on the backend that we should mirror.
+
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.MainTarget):
+        (WebInspector.MainTarget.prototype.get displayName):
+        (WebInspector.MainTarget.prototype.initialize):
+        Better display names.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidPause):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidResume):
+        (WebInspector.DebuggerSidebarPanel.prototype._updateSingleThreadCallStacks):
+        (WebInspector.DebuggerSidebarPanel.prototype._selectActiveCallFrameTreeElement):
+        (WebInspector.DebuggerSidebarPanel.prototype._showSingleThreadCallStacks):
+        (WebInspector.DebuggerSidebarPanel.prototype._showMultipleThreadCallStacks):
+        (WebInspector.DebuggerSidebarPanel.prototype._findThreadTreeElementForTarget):
+        (WebInspector.DebuggerSidebarPanel.prototype._targetAdded):
+        (WebInspector.DebuggerSidebarPanel.prototype._targetRemoved):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerCallFramesDidChange):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerActiveCallFrameDidChange):
+        The DebuggerSidebar still has a single "Call Stacks" section, but maintains
+        two TreeOutlines and only shows one at a time. The Single Thread view shows
+        a flat list of the call frames for the Main Target when it is the only target.
+        The Multiple Threads view shows a list of Threads and their call frames.
+        We always keep both up to date, because we may need to swap between them
+        purely as Targets are added / removed. There is a bit of extra logic to
+        ensure we select elements properly based only on the visible tree outline.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.didAppendConsoleMessageView):
+        When evaluating in a particular target, "runAfterPendingDispatches"
+        must wait for all other commands in that particular target to have
+        completed. So use the target specific version.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+        Gracefully handle a few more TreeElements without a represented object.
+
+        * UserInterface/Views/IdleTreeElement.css: Added.
+        (.details-section.call-stack .idle .icon):
+        * UserInterface/Views/IdleTreeElement.js: Added.
+        (WebInspector.IdleTreeElement):
+        Very basic tree element to encapsulate an Idle call frame with an
+        empty represented object.
+
+        * UserInterface/Views/ThreadTreeElement.css: Added.
+        (.details-section.call-stack .thread .icon):
+        * UserInterface/Views/ThreadTreeElement.js: Added.
+        (WebInspector.ThreadTreeElement):
+        (WebInspector.ThreadTreeElement.prototype.get target):
+        (WebInspector.ThreadTreeElement.prototype.refresh):
+        (WebInspector.ThreadTreeElement.prototype.onattach):
+        (WebInspector.ThreadTreeElement.prototype.oncontextmenu):
+        ThreadTreeElement has no represented object, but makes it easy
+        to refresh a list of CallFrameTreeElements for a given target.
+
+2016-11-14  Timothy Hatcher  <timothy@apple.com>
+
+        Web Inspector: Disable Warning Filter in Debugger Tab By Default
+        https://bugs.webkit.org/show_bug.cgi?id=164723
+        rdar://problem/29251780
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel): Made "debugger-show-resources-with-issues-only" false by default.
+
+2016-11-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Settings tab should look more like a native macOS view
+        https://bugs.webkit.org/show_bug.cgi?id=164708
+        <rdar://problem/29241296>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings):
+        (.content-view.settings > .header):
+        (.content-view.settings > .setting-container):
+        Match macOS Sierra default font size for settings view.
+
+        (.content-view.settings > .setting-container > .setting-name):
+        (.content-view.settings > .setting-container > .setting-value-controller):
+        (.content-view.settings > .setting-container > .setting-value-controller input):
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="checkbox"]):
+        Make checkbox larger.
+
+        (.content-view.settings > .setting-container > .setting-value-controller select):
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+        Decrease the width of the number fields to make them just wide enough to fit 2 digit numbers.
+
+2016-11-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Type Profiler and Code Coverage Profiler should work in Workers
+        https://bugs.webkit.org/show_bug.cgi?id=164682
+
+        Reviewed by Darin Adler.
+
+        * UserInterface/Controllers/BasicBlockAnnotator.js:
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype.updateTypes):
+        Use the target associated with the Script.
+
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.WorkerTarget.prototype.initialize):
+        When initializing a Worker Target, match the existing state
+        of the Page for these profilers.
+
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._tokenTrackingControllerHighlightedJavaScriptTypeInformation):
+        (WebInspector.SourceCodeTextEditor.prototype.willDismissPopover):
+        Use the correct target for this Script / Resource.
+
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+        (WebInspector.SourceCodeTextEditor.prototype.set _basicBlockAnnotatorEnabled):
+        Enable / disable for all targets when toggling profilers.
+
+2016-11-11  Anthony Ricaud  <rik@webkit.org>
+
+        Web Inspector: Whitespace in Editor should be less visible than regular content
+        https://bugs.webkit.org/show_bug.cgi?id=164660
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.show-whitespace-characters .CodeMirror .cm-whitespace::before):
+
+2016-11-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Call RuntimeAgent.disableControlFlowProfiler when Code Coverage Profiler is turned off
+        https://bugs.webkit.org/show_bug.cgi?id=163407
+        <rdar://problem/28764230>
+
+        Reviewed by Timothy Hatcher.
+
+        Turning Type Profiler off by clicking [T] icon now disables its backend by calling RuntimeAgent.disableTypeProfiler().
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+
+2016-11-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Settings tab: make the header smaller to fit more content
+        https://bugs.webkit.org/show_bug.cgi?id=164613
+        <rdar://problem/29206007>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .header):
+        Use hv units for margin. 1vh = 1% of viewport height. When Web Inspector window is taller, the margin is larger.
+
+        (.content-view.settings > .setting-container):
+        Convert padding to margin to make spacing between the header and the first section better.
+
+2016-11-10  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Call RuntimeAgent.disableControlFlowProfiler when Code Coverage Profiler is turned off
+        https://bugs.webkit.org/show_bug.cgi?id=163407
+        <rdar://problem/28764230>
+
+        Reviewed by Joseph Pecoraro.
+
+        Turning Code Coverage off by clicking [C] icon now disables its backend by calling RuntimeAgent.disableControlFlowProfiler().
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.set _basicBlockAnnotatorEnabled):
+
+2016-11-10  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: clarify button roles (e.g. toggle or popup button)
+        https://bugs.webkit.org/show_bug.cgi?id=130726
+        <rdar://problem/16420420>
+
+        Reviewed by Brian Burg.
+
+        Updated Inspector to show the button type using the new mapping information.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.accessibilityProperties.accessibilityPropertiesCallback):
+        (WebInspector.DOMNode.prototype.accessibilityProperties):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility.accessibilityPropertiesCallback):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAccessibility):
+
+2016-11-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DebuggerManager.Event.Resumed introduces test flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=161951
+        <rdar://problem/28295767>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.debuggerDidResume):
+        Now, Debugger.resumed events really mean the debugger resumed,
+        so act immediately instead of guessing. We must still guess
+        in legacy backends.
+
+        * UserInterface/Test/Test.js:
+        When the inspector frontend encounters an issue, log it.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerDidPause):
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerActiveCallFrameDidChange):
+        Always enable the step out button. I don't think it makes sense to disable
+        it sometimes, and if there are issues with this we should solve the issues
+        instead of hiding them.
+
+2016-11-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Associate Worker Resources with the Worker and not the Page
+        https://bugs.webkit.org/show_bug.cgi?id=164342
+        <rdar://problem/29075775>
+
+        Reviewed by Timothy Hatcher.
+
+        A Target may have its own list of Resource. For example, Workers may
+        request any resources via XHR/Fetch. So we associate a ResourceCollection
+        with a Target, and ensure we show them in Web Inspector as you would expect.
+        At this point, Target starts acting like Frame. Target has a resourceCollection
+        and extraScriptsCollection just like Frame. Target has events for ResourceAdded
+        just like Frame.
+
+        Even though Resource loads are happening in Workers, the Network data
+        still comes from the Page's Network agent. The added "targetId" data
+        with the Resource will let us associate a Resoure with a Target.
+
+        When opening inspector after a page has loaded, the frontend loads Resources
+        via the Page.getResourceTree path. In this case, the frontend may be
+        informed of Resources for a Target that it does not know about yet. In
+        these cases, it sets them aside as Orphaned resources for a target. Later,
+        when that Target is created, it will adopt its Orphaned resources.
+
+        Places that used to listen to just Frame.Event.ResourceWasAdded should now
+        also listen for Target.Event.ResourceAdded to ensure it sees the resources
+        associated with non-page targets.
+
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.Target):
+        (WebInspector.Target.prototype.get identifier):
+        (WebInspector.Target.prototype.get resourceCollection):
+        (WebInspector.Target.prototype.get extraScriptCollection):
+        (WebInspector.Target.prototype.addResource):
+        (WebInspector.Target.prototype.adoptResource):
+        (WebInspector.Target.prototype.addScript):
+        Give Target resource collections.
+
+        (WebInspector.MainTarget):
+        (WebInspector.MainTarget.prototype.get mainResource):
+        Pass through to the FrameResourceManager for the MainTarget.
+
+        (WebInspector.WorkerTarget):
+        (WebInspector.WorkerTarget.prototype.initialize):
+        Adopt orphaned resources on creation.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.get target):
+        (WebInspector.Resource.prototype.get type):
+        Resource now has a Target. During creation, if there is a targetId
+        then we must produce a Target or null (orphaned).
+
+        (WebInspector.Resource.prototype.associateWithScript):
+        When associating a Resource with a Script, we can use this opportunity
+        to convert from an XML / Other type to Script.
+
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype._resolveResource):
+        When associating Scripts with a resource we must associate resources
+        from within the proper Target. If it is the Main target we still use
+        the FrameResourceManager which keep searches across all Frames.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.requestWillBeSent):
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.initialize):
+        (WebInspector.FrameResourceManager.prototype.frameDidNavigate):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWillBeSent):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestWasServedFromMemoryCache):
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidReceiveResponse):
+        (WebInspector.FrameResourceManager.prototype.adoptOrphanedResourcesForTarget):
+        (WebInspector.FrameResourceManager.prototype._addNewResourceToFrameOrTarget):
+        (WebInspector.FrameResourceManager.prototype._addResourceToTarget):
+        (WebInspector.FrameResourceManager.prototype._createResource):
+        (WebInspector.FrameResourceManager.prototype._addFrameTreeFromFrameResourceTreePayload):
+        (WebInspector.FrameResourceManager.prototype._addOrphanedResource):
+        (WebInspector.FrameResourceManager.prototype._mainFrameDidChange):
+        (WebInspector.FrameResourceManager.prototype._addNewResourceToFrame): Deleted.
+        When creating Resources from Network events we may now have a targetId.
+        Once created a Resource must be associated with a Frame, Target, or orphaned.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/TargetTreeElement.js: Removed.
+        * UserInterface/Views/WorkerTreeElement.js: Added.
+        (WebInspector.WorkerTreeElement):
+        (WebInspector.WorkerTreeElement.prototype.get target):
+        (WebInspector.WorkerTreeElement.prototype.onexpand):
+        (WebInspector.WorkerTreeElement.prototype.oncollapse):
+        (WebInspector.WorkerTreeElement.prototype.onpopulate):
+        (WebInspector.WorkerTreeElement.prototype.updateSourceMapResources):
+        (WebInspector.WorkerTreeElement.prototype.onattach):
+        (WebInspector.WorkerTreeElement.prototype.compareChildTreeElements):
+        (WebInspector.WorkerTreeElement.prototype._handleContextMenuEvent):
+        (WebInspector.WorkerTreeElement.prototype._scriptAdded):
+        (WebInspector.WorkerTreeElement.prototype._resourceAdded):
+        Convert TargetTreeElement to WorkerTreeElement as that is clearer.
+        Behave like FrameTreeElement and populate resources on creation,
+        handle SourceMapResource, etc.
+
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WebInspector.FolderizedTreeElement.prototype.registerFolderizeSettings):
+        (WebInspector.FolderizedTreeElement.prototype._compareTreeElementsByMainTitle):
+        (WebInspector.FolderizedTreeElement.prototype._parentTreeElementForRepresentedObject):
+        If the display name for a folder is `null` then there is no folder,
+        and place such child tree elements at the top level. This will be
+        the case for a Worker's Script's, which we choose not to folderize.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        * UserInterface/Controllers/TargetManager.js:
+        (WebInspector.TargetManager.prototype.targetForIdentifier):
+
+        * UserInterface/Models/DefaultDashboard.js:
+        (WebInspector.DefaultDashboard):
+        * UserInterface/Controllers/TimelineManager.js:
+        (WebInspector.TimelineManager):
+        * UserInterface/Controllers/WorkerManager.js:
+        (WebInspector.WorkerManager.prototype.workerCreated):
+        * UserInterface/Views/OpenResourceDialog.js:
+        (WebInspector.OpenResourceDialog.prototype.didDismissDialog):
+        (WebInspector.OpenResourceDialog.prototype.didPresentDialog):
+        (WebInspector.OpenResourceDialog.prototype._addScriptsForTarget): Deleted.
+        (WebInspector.OpenResourceDialog.prototype._addResourcesForTarget): Added.
+        Ensure those that listen for Frame.Event.ResourceWasAdded now also
+        listen for Target.Event.ResourceAdded.
+
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForSourceCode):
+        (WebInspector.appendContextMenuItemsForResource): Deleted.
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype.appendContextMenuItems):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype._updateTitles):
+        (WebInspector.ResourceTreeElement.prototype._handleContextMenuEvent):
+        Generalize ContextMenu helper to SourceCode so it can be used on a Script or Resource.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.inspect):
+        When looking at a WorkerTarget's mainResource (Script) show the
+        Resource Details sidebar for its Resource.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        (WebInspector.ResourceSidebarPanel.prototype._scriptsCleared):
+        (WebInspector.ResourceSidebarPanel.prototype._addTargetWithMainResource):
+        (WebInspector.ResourceSidebarPanel.prototype._targetRemoved):
+        (WebInspector.ResourceSidebarPanel.prototype._addScriptForNonMainTarget): Deleted.
+        Simplify ResourceSidebarPanel to only handle adding WorkerTreeElements,
+        which will do the rest of the work for their Resources/Scripts.
+
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        (WebInspector.SourceCodeTreeElement.prototype.descendantResourceTreeElementTypeDidChange):
+        When we were changing the type of a resource, it would remove and re-insert.
+        This would collapse the parent if it was the only child in removal, and not
+        expand the parent when re-inserting. This ensures we re-expand.
+
+2016-11-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Settings tab sections overlap each other in docked Inspector window
+        https://bugs.webkit.org/show_bug.cgi?id=164564
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings):
+        Make settings sections non-shrinkable and make the content view vertically scrollable.
+
+        (.content-view.settings > .setting-container):
+        Set vertical padding that looks good for non-shrinkable sections.
+
+2016-11-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Settings tab: Checkbox labels should be clickable
+        https://bugs.webkit.org/show_bug.cgi?id=164470
+        <rdar://problem/29133787>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.initialLayout):
+        Add a label element to make checkboxes clickable.
+
+2016-11-09  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Allow FolderTreeElement to display content when selected
+        https://bugs.webkit.org/show_bug.cgi?id=164407
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Main.html:
+        Add CollectionContentView and TitleView.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        (WebInspector.ContentView.isViewable):
+        Add support for Collection as the representedObject of a content view.
+
+        * UserInterface/Views/CollectionContentView.css: Added.
+        (.content-view.collection):
+        (.content-view.collection > .content-view):
+        * UserInterface/Views/CollectionContentView.js: Added.
+        (WebInspector.CollectionContentView):
+        (WebInspector.CollectionContentView.prototype.initialLayout):
+        (WebInspector.CollectionContentView.prototype._addContentViewForItem):
+        (WebInspector.CollectionContentView.prototype._removeContentViewForItem):
+        (WebInspector.CollectionContentView.prototype._handleItemAdded):
+        (WebInspector.CollectionContentView.prototype._handleItemRemoved):
+        (WebInspector.CollectionContentView.prototype._handleContentError):
+        Takes in a Collection when constructed, and attempts to display a sub-ContentView for each
+        item in the collection if the type of the collection is viewable en masse.  Currently, this
+        is only supported for WebInspector.Resource.Type.Image collections.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView.prototype._contentError):
+        Dispatch an event whenever the content fails to load.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        Allow FolderTreeElements to be selected.
+
+        * UserInterface/Views/TitleView.css: Added.
+        (.title-view):
+        * UserInterface/Views/TitleView.js: Added.
+        (WebInspector.TitleView):
+        Basic view that displays the given text in the center of the viewable area.
+
 2016-11-03  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Stack overflow when searching a timeline recording for JS function names

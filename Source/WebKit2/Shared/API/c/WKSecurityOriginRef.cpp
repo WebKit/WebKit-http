@@ -28,6 +28,7 @@
 
 #include "APISecurityOrigin.h"
 #include "WKAPICast.h"
+#include <WebCore/SecurityOriginData.h>
 
 using namespace WebKit;
 
@@ -43,7 +44,10 @@ WKSecurityOriginRef WKSecurityOriginCreateFromString(WKStringRef string)
 
 WKSecurityOriginRef WKSecurityOriginCreateFromDatabaseIdentifier(WKStringRef identifier)
 {
-    return toAPI(API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier((toImpl(identifier)->string()))).leakRef());
+    auto origin = WebCore::SecurityOriginData::fromDatabaseIdentifier(toImpl(identifier)->string());
+    if (!origin)
+        return nullptr;
+    return toAPI(API::SecurityOrigin::create(origin.value().securityOrigin()).leakRef());
 }
 
 WKSecurityOriginRef WKSecurityOriginCreate(WKStringRef protocol, WKStringRef host, int port)
@@ -54,7 +58,7 @@ WKSecurityOriginRef WKSecurityOriginCreate(WKStringRef protocol, WKStringRef hos
 
 WKStringRef WKSecurityOriginCopyDatabaseIdentifier(WKSecurityOriginRef securityOrigin)
 {
-    return toCopiedAPI(toImpl(securityOrigin)->securityOrigin().databaseIdentifier());
+    return toCopiedAPI(WebCore::SecurityOriginData::fromSecurityOrigin(toImpl(securityOrigin)->securityOrigin()).databaseIdentifier());
 }
 
 WKStringRef WKSecurityOriginCopyToString(WKSecurityOriginRef securityOrigin)

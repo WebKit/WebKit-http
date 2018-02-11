@@ -10,7 +10,7 @@ Alignment 4
     HeadIndent: 0
     TailIndent: 0
     FirstLineHeadIndent: 0
-    LineHeight: 18/0
+    LineHeight: 0/0
     LineHeightMultiple: 0
     LineBreakMode: 0
     Tabs: ()
@@ -22,15 +22,14 @@ Alignment 4
     TighteningFactor: 0.05
     HeaderLevel: 0
 [webkit.org]
-    NSColor: #0000ee (NSDeviceRGBColorSpace)
+    NSColor: rgba(255, 2295, 1530, 6) (IEC6)
     NSFont: Times-Roman 16.00 pt.
     NSKern: 0pt
     NSLink: https://webkit.org/
-    NSStrokeColor: NSDeviceRGBColorSpace 0 0 0.933333 1
+    NSStrokeColor: NSCustomColorSpace sRGB IEC61966-2.1 colorspace 0 0 0.933333 1
     NSStrokeWidth: 0
     NSUnderline: true
 [ ]
-    NSColor: #000000 (NSDeviceRGBColorSpace)
     NSFont: Times-Roman 16.00 pt.
     NSKern: 0pt
     NSStrokeColor: NSDeviceRGBColorSpace 0 0 0 1

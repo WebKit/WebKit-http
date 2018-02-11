@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,8 +41,6 @@
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
-
-const int MaxAllowedPort = std::numeric_limits<uint16_t>::max();
 
 static bool schemeRequiresHost(const URL& url)
 {
@@ -105,12 +103,6 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     : m_protocol(url.protocol().isNull() ? emptyString() : url.protocol().toString().convertToASCIILowercase())
     , m_host(url.host().isNull() ? emptyString() : url.host().convertToASCIILowercase())
     , m_port(url.port())
-    , m_isUnique(false)
-    , m_universalAccess(false)
-    , m_domainWasSetInDOM(false)
-    , m_storageBlockingPolicy(AllowAllStorage)
-    , m_enforceFilePathSeparation(false)
-    , m_needsDatabaseIdentifierQuirkForFiles(false)
 {
     // document.domain starts as m_host, but can be set by the DOM.
     m_domain = m_host;
@@ -130,12 +122,6 @@ SecurityOrigin::SecurityOrigin()
     , m_host(emptyString())
     , m_domain(emptyString())
     , m_isUnique(true)
-    , m_universalAccess(false)
-    , m_domainWasSetInDOM(false)
-    , m_canLoadLocalResources(false)
-    , m_storageBlockingPolicy(AllowAllStorage)
-    , m_enforceFilePathSeparation(false)
-    , m_needsDatabaseIdentifierQuirkForFiles(false)
 {
 }
 
@@ -151,7 +137,7 @@ SecurityOrigin::SecurityOrigin(const SecurityOrigin* other)
     , m_canLoadLocalResources(other->m_canLoadLocalResources)
     , m_storageBlockingPolicy(other->m_storageBlockingPolicy)
     , m_enforceFilePathSeparation(other->m_enforceFilePathSeparation)
-    , m_needsDatabaseIdentifierQuirkForFiles(other->m_needsDatabaseIdentifierQuirkForFiles)
+    , m_needsStorageAccessFromFileURLsQuirk(other->m_needsStorageAccessFromFileURLsQuirk)
 {
 }
 
@@ -160,19 +146,8 @@ Ref<SecurityOrigin> SecurityOrigin::create(const URL& url)
     if (RefPtr<SecurityOrigin> cachedOrigin = getCachedOrigin(url))
         return cachedOrigin.releaseNonNull();
 
-    if (shouldTreatAsUniqueOrigin(url)) {
-        Ref<SecurityOrigin> origin(adoptRef(*new SecurityOrigin));
-
-        if (url.protocolIs("file")) {
-            // Unfortunately, we can't represent all unique origins exactly
-            // the same way because we need to produce a quirky database
-            // identifier for file URLs due to persistent storage in some
-            // embedders of WebKit.
-            origin->m_needsDatabaseIdentifierQuirkForFiles = true;
-        }
-
-        return origin;
-    }
+    if (shouldTreatAsUniqueOrigin(url))
+        return adoptRef(*new SecurityOrigin);
 
     if (shouldUseInnerURL(url))
         return adoptRef(*new SecurityOrigin(extractInnerURL(url)));
@@ -351,6 +326,9 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
     if (isUnique())
         return false;
 
+    if (isLocal() && !needsStorageAccessFromFileURLsQuirk() && !m_universalAccess && shouldAllowFromThirdParty != AlwaysAllowFromThirdParty)
+        return false;
+    
     if (m_storageBlockingPolicy == BlockAllStorage)
         return false;
 
@@ -405,6 +383,11 @@ void SecurityOrigin::grantLoadLocalResources()
 void SecurityOrigin::grantUniversalAccess()
 {
     m_universalAccess = true;
+}
+
+void SecurityOrigin::grantStorageAccessFromFileURLsQuirk()
+{
+    m_needsStorageAccessFromFileURLsQuirk = true;
 }
 
 #if ENABLE(CACHE_PARTITIONING)
@@ -503,78 +486,12 @@ Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
     return SecurityOrigin::create(URL(URL(), originString));
 }
 
-static const char separatorCharacter = '_';
-
-RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const String& databaseIdentifier)
-{
-    // Make sure there's a first separator
-    size_t separator1 = databaseIdentifier.find(separatorCharacter);
-    if (separator1 == notFound)
-        return nullptr;
-
-    // Make sure there's a second separator
-    size_t separator2 = databaseIdentifier.reverseFind(separatorCharacter);
-    if (separator2 == notFound)
-        return nullptr;
-
-    // Ensure there were at least 2 separator characters. Some hostnames on intranets have
-    // underscores in them, so we'll assume that any additional underscores are part of the host.
-    if (separator1 == separator2)
-        return nullptr;
-
-    // Make sure the port section is a valid port number or doesn't exist
-    bool portOkay;
-    int port = databaseIdentifier.right(databaseIdentifier.length() - separator2 - 1).toInt(&portOkay);
-    bool portAbsent = (separator2 == databaseIdentifier.length() - 1);
-    if (!(portOkay || portAbsent))
-        return nullptr;
-
-    if (port < 0 || port > MaxAllowedPort)
-        return nullptr;
-
-    // Split out the 3 sections of data
-    String protocol = databaseIdentifier.substring(0, separator1);
-    String host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
-    
-    host = decodeURLEscapeSequences(host);
-    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
-    origin->m_port = port;
-    return WTFMove(origin);
-}
-
-Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& databaseIdentifier)
-{
-    if (RefPtr<SecurityOrigin> origin = maybeCreateFromDatabaseIdentifier(databaseIdentifier))
-        return origin.releaseNonNull();
-    return create(URL());
-}
-
 Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, Optional<uint16_t> port)
 {
     String decodedHost = decodeURLEscapeSequences(host);
     auto origin = create(URL(URL(), protocol + "://" + host + "/"));
     origin->m_port = port;
     return origin;
-}
-
-String SecurityOrigin::databaseIdentifier() const 
-{
-    // Historically, we've used the following (somewhat non-sensical) string
-    // for the databaseIdentifier of local files. We used to compute this
-    // string because of a bug in how we handled the scheme for file URLs.
-    // Now that we've fixed that bug, we still need to produce this string
-    // to avoid breaking existing persistent state.
-    if (m_needsDatabaseIdentifierQuirkForFiles)
-        return ASCIILiteral("file__0");
-
-    StringBuilder stringBuilder;
-    stringBuilder.append(m_protocol);
-    stringBuilder.append(separatorCharacter);
-    stringBuilder.append(encodeForFileName(m_host));
-    stringBuilder.append(separatorCharacter);
-    stringBuilder.appendNumber(m_port.valueOr(0));
-
-    return stringBuilder.toString();
 }
 
 bool SecurityOrigin::equal(const SecurityOrigin* other) const 

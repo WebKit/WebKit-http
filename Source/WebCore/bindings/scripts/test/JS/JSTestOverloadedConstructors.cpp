@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestOverloadedConstructors.h"
 
-#include "ExceptionCode.h"
 #include "JSBlob.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
@@ -198,6 +197,13 @@ const ClassInfo JSTestOverloadedConstructors::s_info = { "TestOverloadedConstruc
 JSTestOverloadedConstructors::JSTestOverloadedConstructors(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestOverloadedConstructors>&& impl)
     : JSDOMWrapper<TestOverloadedConstructors>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestOverloadedConstructors::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestOverloadedConstructors::createPrototype(VM& vm, JSGlobalObject* globalObject)

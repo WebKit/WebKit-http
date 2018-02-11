@@ -197,11 +197,15 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Fail
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+
+# testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
+fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 
 webkit.org/b/156629 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass Failure ]
 
@@ -268,8 +272,6 @@ webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-refle
 
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
-webkit.org/b/162986 inspector/formatting/formatting-javascript.html [ Pass Crash ]
-
 webkit.org/b/161360 [ Release ] imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin.html [ Pass Failure ]
 
 webkit.org/b/163598 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Failure ]
@@ -279,3 +281,7 @@ webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/
 webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
 
 webkit.org/b/163750 compositing/iframes/page-cache-layer-tree.html [ Pass Failure ]
+
+webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
+
+webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Pass Crash ]

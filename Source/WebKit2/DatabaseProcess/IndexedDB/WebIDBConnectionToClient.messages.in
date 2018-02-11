@@ -41,9 +41,10 @@ messages -> WebIDBConnectionToClient {
     GetCount(WebCore::IDBRequestData requestData, struct WebCore::IDBKeyRangeData range);
     DeleteRecord(WebCore::IDBRequestData requestData, struct WebCore::IDBKeyRangeData range);
     OpenCursor(WebCore::IDBRequestData requestData, WebCore::IDBCursorInfo info);
-    IterateCursor(WebCore::IDBRequestData requestData, WebCore::IDBKeyData key, uint32_t count);
+    IterateCursor(WebCore::IDBRequestData requestData, struct WebCore::IDBIterateCursorData data);
 
     EstablishTransaction(uint64_t databaseConnectionIdentifier, WebCore::IDBTransactionInfo info);
+    DatabaseConnectionPendingClose(uint64_t databaseConnectionIdentifier);
     DatabaseConnectionClosed(uint64_t databaseConnectionIdentifier);
     AbortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, WebCore::IDBResourceIdentifier transactionIdentifier);
     DidFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, WebCore::IDBResourceIdentifier requestIdentifier);

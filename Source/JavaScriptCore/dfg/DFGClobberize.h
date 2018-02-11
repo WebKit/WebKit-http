@@ -502,35 +502,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(IsFunctionLoc, MiscFields, node->child1()), LazyNode(node));
         return;
         
-    case PureGetById: {
-        // We model what is allowed inside a getOwnPropertySlot(VMInquiry) here.
-        // Some getOwnPropertySlot implementations will lazily inject properties, which
-        // may change the object's structure.
-
-        read(JSCell_structureID);
-        read(JSCell_typeInfoFlags);
-        read(JSCell_typeInfoType);
-        read(JSCell_indexingType);
-        read(JSObject_butterfly);
-        read(MiscFields);
-
-        AbstractHeap propertyNameHeap(NamedProperties, node->identifierNumber());
-        read(propertyNameHeap);
-
-        write(JSCell_structureID);
-        write(JSCell_typeInfoFlags);
-
-        write(Watchpoint_fire);
-        write(MiscFields);
-
-        // This can happen if lazily adding fields to an object happens in getOwnPropertySlot
-        // and we need to allocate out of line storage.
-        write(JSObject_butterfly);
-
-        def(HeapLocation(NamedPropertyLoc, propertyNameHeap, node->child1()), LazyNode(node));
-        return;
-    }
-
     case GetById:
     case GetByIdFlush:
     case GetByIdWithThis:
@@ -918,6 +889,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case PutStructure:
+        read(JSObject_butterfly); // This is a store-store fence.
         write(JSCell_structureID);
         write(JSCell_typeInfoType);
         write(JSCell_typeInfoFlags);
@@ -1130,6 +1102,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(DirectArgumentsLoc, heap, node->child1()), LazyNode(node->child2().node()));
         return;
     }
+
+    case GetArgument: {
+        read(Stack);
+        // FIXME: It would be trivial to have a def here.
+        // https://bugs.webkit.org/show_bug.cgi?id=143077
+        return;
+    }
         
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
@@ -1147,6 +1126,35 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
+
+    case NewArrayWithSpread: {
+        // This also reads from JSFixedArray's data store, but we don't have any way of describing that yet.
+        read(HeapObjectCount);
+        write(HeapObjectCount);
+        return;
+    }
+
+    case Spread: {
+        if (node->child1().useKind() == ArrayUse) {
+            // FIXME: We can probably CSE these together, but we need to construct the right rules
+            // to prove that nobody writes to child1() in between two Spreads: https://bugs.webkit.org/show_bug.cgi?id=164531
+            read(HeapObjectCount); 
+            read(JSCell_indexingType);
+            read(JSObject_butterfly);
+            read(Butterfly_publicLength);
+            read(IndexedDoubleProperties);
+            read(IndexedInt32Properties);
+            read(IndexedContiguousProperties);
+            read(IndexedArrayStorageProperties);
+
+            write(HeapObjectCount);
+            return;
+        }
+
+        read(World);
+        write(Heap);
+        return;
+    }
 
     case NewArray: {
         read(HeapObjectCount);
@@ -1266,6 +1274,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case MaterializeNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
         read(HeapObjectCount);
@@ -1274,6 +1283,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
         if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);

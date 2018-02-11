@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestEventTarget.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -106,6 +105,13 @@ const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, 
 JSTestEventTarget::JSTestEventTarget(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestEventTarget>&& impl)
     : JSEventTarget(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestEventTarget::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestEventTarget::createPrototype(VM& vm, JSGlobalObject* globalObject)
@@ -220,8 +226,7 @@ static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(J
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto index = convert<IDLUnsignedLong>(*state, state->uncheckedArgument(0), IntegerConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.item(WTFMove(index)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.item(WTFMove(index))));
 }
 
 void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)

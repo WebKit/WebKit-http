@@ -861,42 +861,51 @@ void Document::childrenChanged(const ChildChange& change)
     styleScope().clearResolver();
 }
 
-static ALWAYS_INLINE RefPtr<HTMLElement> createUpgradeCandidateElement(Document& document, const QualifiedName& name)
+static ALWAYS_INLINE Ref<HTMLElement> createUpgradeCandidateElement(Document& document, const QualifiedName& name)
 {
-    if (!RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled())
-        return nullptr;
-
-    if (Document::validateCustomElementName(name.localName()) != CustomElementNameValidationStatus::Valid)
-        return nullptr;
+    if (!RuntimeEnabledFeatures::sharedFeatures().customElementsEnabled()
+        || Document::validateCustomElementName(name.localName()) != CustomElementNameValidationStatus::Valid)
+        return HTMLUnknownElement::create(name, document);
 
     auto element = HTMLElement::create(name, document);
     element->setIsCustomElementUpgradeCandidate();
-    return WTFMove(element);
+    return element;
 }
 
-static ExceptionOr<Ref<Element>> createHTMLElementWithNameValidation(Document& document, const AtomicString& localName)
+static ALWAYS_INLINE Ref<HTMLElement> createUpgradeCandidateElement(Document& document, const AtomicString& localName)
 {
-    auto element = HTMLElementFactory::createKnownElement(localName, document);
+    return createUpgradeCandidateElement(document, QualifiedName { nullAtom, localName, xhtmlNamespaceURI });
+}
+
+static inline bool isValidHTMLElementName(const AtomicString& localName)
+{
+    return Document::isValidName(localName);
+}
+
+static inline bool isValidHTMLElementName(const QualifiedName& name)
+{
+    return Document::isValidName(name.localName());
+}
+
+template<typename NameType>
+static ExceptionOr<Ref<Element>> createHTMLElementWithNameValidation(Document& document, const NameType& name)
+{
+    auto element = HTMLElementFactory::createKnownElement(name, document);
     if (LIKELY(element))
         return Ref<Element> { element.releaseNonNull() };
 
     if (auto* window = document.domWindow()) {
         auto* registry = window->customElementRegistry();
         if (UNLIKELY(registry)) {
-            if (auto* elementInterface = registry->findInterface(localName))
-                return elementInterface->constructElementWithFallback(document, localName);
+            if (auto* elementInterface = registry->findInterface(name))
+                return elementInterface->constructElementWithFallback(document, name);
         }
     }
 
-    if (UNLIKELY(!Document::isValidName(localName)))
+    if (UNLIKELY(!isValidHTMLElementName(name)))
         return Exception { INVALID_CHARACTER_ERR };
 
-    QualifiedName qualifiedName { nullAtom, localName, xhtmlNamespaceURI };
-
-    if (auto element = createUpgradeCandidateElement(document, qualifiedName))
-        return Ref<Element> { element.releaseNonNull() };
-
-    return Ref<Element> { HTMLUnknownElement::create(qualifiedName, document) };
+    return Ref<Element> { createUpgradeCandidateElement(document, name) };
 }
 
 ExceptionOr<Ref<Element>> Document::createElementForBindings(const AtomicString& name)
@@ -1055,9 +1064,7 @@ static Ref<HTMLElement> createFallbackHTMLElement(Document& document, const Qual
         }
     }
     // FIXME: Should we also check the equality of prefix between the custom element and name?
-    if (auto element = createUpgradeCandidateElement(document, name))
-        return element.releaseNonNull();
-    return HTMLUnknownElement::create(name, document);
+    return createUpgradeCandidateElement(document, name);
 }
 
 // FIXME: This should really be in a possible ElementFactory class.
@@ -1159,6 +1166,10 @@ ExceptionOr<Ref<Element>> Document::createElementNS(const AtomicString& namespac
     QualifiedName parsedName { parseResult.releaseReturnValue() };
     if (!hasValidNamespaceForElements(parsedName))
         return Exception { NAMESPACE_ERR };
+
+    if (parsedName.namespaceURI() == xhtmlNamespaceURI)
+        return createHTMLElementWithNameValidation(*this, parsedName);
+
     return createElement(parsedName, false);
 }
 
@@ -1552,9 +1563,9 @@ void Document::setTitle(const String& title)
     updateTitle(StringWithDirection(title, LTR));
 
     if (is<HTMLTitleElement>(m_titleElement.get()))
-        downcast<HTMLTitleElement>(*m_titleElement).setTextContent(title, ASSERT_NO_EXCEPTION);
+        downcast<HTMLTitleElement>(*m_titleElement).setTextContent(title);
     else if (is<SVGTitleElement>(m_titleElement.get()))
-        downcast<SVGTitleElement>(*m_titleElement).setTextContent(title, ASSERT_NO_EXCEPTION);
+        downcast<SVGTitleElement>(*m_titleElement).setTextContent(title);
 }
 
 void Document::updateTitleElement(Element* newTitleElement)
@@ -2561,14 +2572,9 @@ ExceptionOr<void> Document::setBodyOrFrameset(RefPtr<HTMLElement>&& newBody)
     if (!m_documentElement)
         return Exception { HIERARCHY_REQUEST_ERR };
 
-    ExceptionCode ec = 0;
     if (currentBody)
-        m_documentElement->replaceChild(*newBody, *currentBody, ec);
-    else
-        m_documentElement->appendChild(*newBody, ec);
-    if (ec)
-        return Exception { ec };
-    return { };
+        return m_documentElement->replaceChild(*newBody, *currentBody);
+    return m_documentElement->appendChild(*newBody);
 }
 
 Location* Document::location() const
@@ -3282,7 +3288,7 @@ MouseEventWithHitTestResults Document::prepareMouseEvent(const HitTestRequest& r
     renderView()->hitTest(request, result);
 
     if (!request.readOnly())
-        updateHoverActiveState(request, result.innerElement());
+        updateHoverActiveState(request, result.targetElement());
 
     return MouseEventWithHitTestResults(event, result);
 }
@@ -4054,7 +4060,7 @@ EventListener* Document::getWindowAttributeEventListener(const AtomicString& eve
 {
     if (!m_domWindow)
         return nullptr;
-    return m_domWindow->getAttributeEventListener(eventType);
+    return m_domWindow->attributeEventListener(eventType);
 }
 
 void Document::dispatchWindowEvent(Event& event, EventTarget* target)
@@ -4282,7 +4288,7 @@ String Document::referrer() const
 
 String Document::origin() const
 {
-    return securityOrigin()->databaseIdentifier();
+    return SecurityOriginData::fromSecurityOrigin(*securityOrigin()).databaseIdentifier();
 }
 
 String Document::domain() const
@@ -4789,7 +4795,6 @@ String Document::queryCommandValue(const String& commandName)
 
 void Document::pushCurrentScript(HTMLScriptElement* newCurrentScript)
 {
-    ASSERT(newCurrentScript);
     m_currentScriptStack.append(newCurrentScript);
 }
 
@@ -5122,7 +5127,15 @@ void Document::initSecurityContext()
         applyQuickLookSandbox();
 #endif
 
+    if (shouldEnforceHTTP0_9Sandbox()) {
+        String message = makeString("Sandboxing '", m_url.stringCenterEllipsizedToLength(), "' because it is using HTTP/0.9.");
+        addConsoleMessage(MessageSource::Security, MessageLevel::Error, message);
+        enforceSandboxFlags(SandboxScripts | SandboxPlugins);
+    }
+
     if (Settings* settings = this->settings()) {
+        if (settings->needsStorageAccessFromFileURLsQuirk())
+            securityOrigin()->grantStorageAccessFromFileURLsQuirk();
         if (!settings->webSecurityEnabled()) {
             // Web security is turned off. We should let this document access every other document. This is used primary by testing
             // harnesses for web sites.
@@ -6902,6 +6915,14 @@ ShouldOpenExternalURLsPolicy Document::shouldOpenExternalURLsPolicyToPropagate()
         return documentLoader->shouldOpenExternalURLsPolicyToPropagate();
 
     return ShouldOpenExternalURLsPolicy::ShouldNotAllow;
+}
+
+bool Document::shouldEnforceHTTP0_9Sandbox() const
+{
+    if (m_isSynthesized || !m_frame)
+        return false;
+    DocumentLoader* documentLoader = m_frame->loader().activeDocumentLoader();
+    return documentLoader && documentLoader->response().isHttpVersion0_9();
 }
 
 #if USE(QUICK_LOOK)

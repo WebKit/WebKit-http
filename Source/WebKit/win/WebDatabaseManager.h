@@ -26,11 +26,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebDatabaseManager_h
-#define WebDatabaseManager_h
+#pragma once
 
 #include "WebKit.h"
 #include <WebCore/DatabaseManagerClient.h>
+
+namespace WebCore {
+struct SecurityOriginData;
+}
 
 class WebDatabaseManager : public IWebDatabaseManager2, private WebCore::DatabaseManagerClient {
 public:
@@ -55,8 +58,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE deleteAllIndexedDatabases();
 
     // DatabaseManagerClient
-    virtual void dispatchDidModifyOrigin(WebCore::SecurityOrigin*);
-    virtual void dispatchDidModifyDatabase(WebCore::SecurityOrigin*, const WTF::String& databaseName);
+    virtual void dispatchDidModifyOrigin(const WebCore::SecurityOriginData&);
+    virtual void dispatchDidModifyDatabase(const WebCore::SecurityOriginData&, const WTF::String& databaseName);
 
 private:
     WebDatabaseManager();
@@ -66,5 +69,3 @@ private:
 };
 
 void WebKitInitializeWebDatabasesIfNecessary();
-
-#endif

@@ -33,6 +33,7 @@
 #include "FTLJITCode.h"
 #include "FTLLazySlowPath.h"
 #include "InlineCallFrame.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -81,6 +82,7 @@ extern "C" void JIT_OPERATION operationPopulateObjectInOSR(
 
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case PhantomCreateRest:
@@ -151,7 +153,8 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
     }
 
     case PhantomNewFunction:
-    case PhantomNewGeneratorFunction: {
+    case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction: {
         // Figure out what the executable and activation are
         FunctionExecutable* executable = nullptr;
         JSScope* activation = nullptr;
@@ -166,8 +169,10 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         if (materialization->type() == PhantomNewFunction)
             return JSFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
-        ASSERT(materialization->type() == PhantomNewGeneratorFunction);
-        return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
+        else if (materialization->type() == PhantomNewGeneratorFunction)
+            return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);    
+        ASSERT(materialization->type() == PhantomNewAsyncFunction);
+        return JSAsyncFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
     }
 
     case PhantomCreateActivation: {
@@ -209,7 +214,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         if (validationEnabled()) {
             // Validate to make sure every slot in the scope has one value.
-            ConcurrentJITLocker locker(table->m_lock);
+            ConcurrentJSLocker locker(table->m_lock);
             for (auto iter = table->begin(locker), end = table->end(locker); iter != end; ++iter) {
                 bool found = false;
                 for (unsigned i = materialization->properties().size(); i--;) {

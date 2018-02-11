@@ -487,6 +487,18 @@ public:
         x86Div64(denominator);
     }
 
+    void x86UDiv64(RegisterID denominator)
+    {
+        m_assembler.divq_r(denominator);
+    }
+
+    void x86UDiv64(RegisterID rax, RegisterID rdx, RegisterID denominator)
+    {
+        ASSERT_UNUSED(rax, rax == X86Registers::eax);
+        ASSERT_UNUSED(rdx, rdx == X86Registers::edx);
+        x86UDiv64(denominator);
+    }
+
     void neg64(RegisterID dest)
     {
         m_assembler.negq_r(dest);
@@ -1220,9 +1232,8 @@ public:
     using MacroAssemblerX86Common::branch8;
     Jump branch8(RelationalCondition cond, AbsoluteAddress left, TrustedImm32 right)
     {
-        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
         MacroAssemblerX86Common::move(TrustedImmPtr(left.m_ptr), scratchRegister());
-        return MacroAssemblerX86Common::branch8(cond, Address(scratchRegister()), right8);
+        return MacroAssemblerX86Common::branch8(cond, Address(scratchRegister()), right);
     }
     
     using MacroAssemblerX86Common::branchTest8;

@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathElement_h
-#define SVGPathElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedNumber.h"
@@ -51,6 +50,7 @@ class SVGPathSegCurvetoCubicSmoothRel;
 class SVGPathSegCurvetoQuadraticSmoothAbs;
 class SVGPathSegCurvetoQuadraticSmoothRel;
 class SVGPathSegListPropertyTearOff;
+class SVGPoint;
 
 class SVGPathElement final : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
@@ -58,7 +58,7 @@ public:
     static Ref<SVGPathElement> create(const QualifiedName&, Document&);
     
     float getTotalLength() const;
-    SVGPoint getPointAtLength(float distance) const;
+    Ref<SVGPoint> getPointAtLength(float distance) const;
     unsigned getPathSegAtLength(float distance) const;
 
     Ref<SVGPathSegClosePath> createSVGPathSegClosePath(SVGPathSegRole = PathSegUndefinedRole);
@@ -137,5 +137,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

@@ -19,31 +19,32 @@
  * Boston, MA 02110-1301, USA.
  */
  
-#ifndef SVGZoomEvent_h
-#define SVGZoomEvent_h
+#pragma once
 
 #include "FloatRect.h"
-#include "SVGPoint.h"
 #include "UIEvent.h"
 
 namespace WebCore {
+
+class SVGPoint;
+class SVGRect;
 
 class SVGZoomEvent final : public UIEvent {
 public:
     static Ref<SVGZoomEvent> createForBindings() { return adoptRef(*new SVGZoomEvent); }
 
     // 'SVGZoomEvent' functions
-    FloatRect zoomRectScreen() const;
+    Ref<SVGRect> zoomRectScreen() const;
 
     float previousScale() const;
     void setPreviousScale(float);
 
-    SVGPoint previousTranslate() const;
+    Ref<SVGPoint> previousTranslate() const;
 
     float newScale() const;
     void setNewScale(float);
 
-    SVGPoint newTranslate() const;
+    Ref<SVGPoint> newTranslate() const;
 
     EventInterface eventInterface() const final;
 
@@ -55,10 +56,8 @@ private:
 
     FloatRect m_zoomRectScreen;
 
-    SVGPoint m_newTranslate;
-    SVGPoint m_previousTranslate;
+    FloatPoint m_newTranslate;
+    FloatPoint m_previousTranslate;
 };
 
 } // namespace WebCore
-
-#endif // SVGZoomEvent_h

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmSHA256_h
-#define CryptoAlgorithmSHA256_h
+#pragma once
 
 #include "CryptoAlgorithm.h"
 
@@ -34,21 +33,16 @@ namespace WebCore {
 
 class CryptoAlgorithmSHA256 final : public CryptoAlgorithm {
 public:
-    static const char* const s_name;
+    static constexpr const char* s_name = "SHA-256";
     static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::SHA_256;
-
     static Ref<CryptoAlgorithm> create();
 
-    CryptoAlgorithmIdentifier identifier() const override;
-
-    void digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
-
 private:
-    CryptoAlgorithmSHA256();
-    virtual ~CryptoAlgorithmSHA256();
+    CryptoAlgorithmSHA256() = default;
+    CryptoAlgorithmIdentifier identifier() const final;
+    ExceptionOr<void> digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmSHA256_h

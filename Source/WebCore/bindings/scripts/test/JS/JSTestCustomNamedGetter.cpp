@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestCustomNamedGetter.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -106,6 +105,13 @@ const ClassInfo JSTestCustomNamedGetter::s_info = { "TestCustomNamedGetter", &Ba
 JSTestCustomNamedGetter::JSTestCustomNamedGetter(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestCustomNamedGetter>&& impl)
     : JSDOMWrapper<TestCustomNamedGetter>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestCustomNamedGetter::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestCustomNamedGetter::createPrototype(VM& vm, JSGlobalObject* globalObject)

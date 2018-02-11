@@ -695,7 +695,7 @@ RefPtr<Range> AccessibilityObject::rangeOfStringClosestToRangeInDirection(Range*
                 Node* closestContainerNode = closestStringPosition.containerNode();
                 Node* searchContainerNode = searchStringPosition.containerNode();
                 
-                short result = Range::compareBoundaryPoints(closestContainerNode, closestPositionOffset, searchContainerNode, searchPositionOffset, ASSERT_NO_EXCEPTION);
+                short result = Range::compareBoundaryPoints(closestContainerNode, closestPositionOffset, searchContainerNode, searchPositionOffset).releaseReturnValue();
                 if ((!isBackwardSearch && result > 0) || (isBackwardSearch && result < 0))
                     closestStringRange = searchStringRange;
             }
@@ -2197,7 +2197,9 @@ String AccessibilityObject::computedRoleString() const
     AccessibilityRole role = roleValue();
     if (role == HorizontalRuleRole)
         role = SplitterRole;
-    
+    if (role == PopUpButtonRole || role == ToggleButtonRole)
+        role = ButtonRole;
+
     return reverseAriaRoleMap().get(role);
 }
 

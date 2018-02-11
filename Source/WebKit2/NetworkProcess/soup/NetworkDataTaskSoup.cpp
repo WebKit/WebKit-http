@@ -345,15 +345,14 @@ void NetworkDataTaskSoup::didSendRequest(GRefPtr<GInputStream>&& inputStream)
         m_inputStream = WTFMove(inputStream);
     }
 
-    didReceiveResponse();
+    dispatchDidReceiveResponse();
 }
 
-void NetworkDataTaskSoup::didReceiveResponse()
+void NetworkDataTaskSoup::dispatchDidReceiveResponse()
 {
     ASSERT(!m_response.isNull());
 
-    auto response = ResourceResponse(m_response);
-    m_client->didReceiveResponseNetworkSession(WTFMove(response), [this, protectedThis = makeRef(*this)](PolicyAction policyAction) {
+    didReceiveResponse(ResourceResponse(m_response), [this, protectedThis = makeRef(*this)](PolicyAction policyAction) {
         if (m_state == State::Canceling || m_state == State::Completed) {
             clearRequest();
             return;
@@ -772,7 +771,7 @@ void NetworkDataTaskSoup::didRequestNextPart(GRefPtr<GInputStream>&& inputStream
     m_response = ResourceResponse();
     m_response.setURL(m_firstRequest.url());
     m_response.updateFromSoupMessageHeaders(soup_multipart_input_stream_get_headers(m_multipartInputStream.get()));
-    didReceiveResponse();
+    dispatchDidReceiveResponse();
 }
 
 void NetworkDataTaskSoup::didFinishRequestNextPart()
@@ -862,9 +861,7 @@ void NetworkDataTaskSoup::download()
     downloadManager.dataTaskBecameDownloadTask(m_pendingDownloadID, WTFMove(download));
     downloadPtr->didCreateDestination(m_pendingDownloadLocation);
 
-    ASSERT(m_client);
-    m_client->didBecomeDownload();
-
+    ASSERT(!m_client);
     read();
 }
 

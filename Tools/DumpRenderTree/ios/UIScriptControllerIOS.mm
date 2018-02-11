@@ -215,6 +215,15 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
     return nullptr;
 }
 
+void UIScriptController::removeAllDynamicDictionaries()
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
+{
+    return nullptr;
+}
+
 }
 
 #endif // PLATFORM(IOS)

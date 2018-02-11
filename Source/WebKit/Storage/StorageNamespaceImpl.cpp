@@ -33,7 +33,9 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>
 
-namespace WebCore {
+using namespace WebCore;
+
+namespace WebKit {
 
 static HashMap<String, StorageNamespaceImpl*>& localStorageNamespaceMap()
 {
@@ -42,21 +44,21 @@ static HashMap<String, StorageNamespaceImpl*>& localStorageNamespaceMap()
     return localStorageNamespaceMap;
 }
 
-RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(unsigned quota)
+Ref<StorageNamespaceImpl> StorageNamespaceImpl::createSessionStorageNamespace(unsigned quota)
 {
-    return adoptRef(new StorageNamespaceImpl(SessionStorage, String(), quota));
+    return adoptRef(*new StorageNamespaceImpl(SessionStorage, String(), quota));
 }
 
-RefPtr<StorageNamespaceImpl> StorageNamespaceImpl::getOrCreateLocalStorageNamespace(const String& databasePath, unsigned quota)
+Ref<StorageNamespaceImpl> StorageNamespaceImpl::getOrCreateLocalStorageNamespace(const String& databasePath, unsigned quota)
 {
     ASSERT(!databasePath.isNull());
 
     auto& slot = localStorageNamespaceMap().add(databasePath, nullptr).iterator->value;
     if (slot)
-        return slot;
+        return *slot;
 
-    RefPtr<StorageNamespaceImpl> storageNamespace = adoptRef(new StorageNamespaceImpl(LocalStorage, databasePath, quota));
-    slot = storageNamespace.get();
+    Ref<StorageNamespaceImpl> storageNamespace = adoptRef(*new StorageNamespaceImpl(LocalStorage, databasePath, quota));
+    slot = storageNamespace.ptr();
 
     return storageNamespace;
 }
@@ -99,7 +101,7 @@ RefPtr<StorageNamespace> StorageNamespaceImpl::copy(Page*)
     return newNamespace;
 }
 
-RefPtr<StorageArea> StorageNamespaceImpl::storageArea(RefPtr<SecurityOrigin>&& origin)
+RefPtr<StorageArea> StorageNamespaceImpl::storageArea(const SecurityOriginData& origin)
 {
     ASSERT(isMainThread());
     ASSERT(!m_isShutdown);
@@ -108,8 +110,8 @@ RefPtr<StorageArea> StorageNamespaceImpl::storageArea(RefPtr<SecurityOrigin>&& o
     if ((storageArea = m_storageAreaMap.get(origin)))
         return storageArea;
 
-    storageArea = StorageAreaImpl::create(m_storageType, origin.copyRef(), m_syncManager, m_quota);
-    m_storageAreaMap.set(WTFMove(origin), storageArea);
+    storageArea = StorageAreaImpl::create(m_storageType, origin, m_syncManager.get(), m_quota);
+    m_storageAreaMap.set(origin, storageArea.get());
     return storageArea;
 }
 
@@ -136,7 +138,7 @@ void StorageNamespaceImpl::close()
     m_isShutdown = true;
 }
 
-void StorageNamespaceImpl::clearOriginForDeletion(SecurityOrigin* origin)
+void StorageNamespaceImpl::clearOriginForDeletion(const SecurityOriginData& origin)
 {
     ASSERT(isMainThread());
 

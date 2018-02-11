@@ -1165,6 +1165,8 @@ repeating-radial-gradient
 -webkit-repeating-radial-gradient
 -webkit-image-set
 -webkit-named-image
+filter
+-webkit-filter
 
 // deprecated gradients
 from
@@ -1199,6 +1201,7 @@ blur
 drop-shadow
 url
 cubic-bezier
+spring
 steps
 
 // colors
@@ -1257,6 +1260,7 @@ span
 
 // grid-template-{columns|rows}
 minmax
+fit-content
 
 // grid-auto-flow
 auto-flow

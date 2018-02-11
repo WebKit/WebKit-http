@@ -166,6 +166,7 @@ public:
     // Basic operators
     bool WARN_UNUSED_RETURN binaryOp(BinaryOpType, ExpressionType left, ExpressionType right, ExpressionType& result);
     bool WARN_UNUSED_RETURN unaryOp(UnaryOpType, ExpressionType arg, ExpressionType& result);
+    bool WARN_UNUSED_RETURN addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result);
 
     // Control flow
     ControlData WARN_UNUSED_RETURN addBlock(Type signature);
@@ -465,6 +466,12 @@ bool B3IRGenerator::binaryOp(BinaryOpType op, ExpressionType left, ExpressionTyp
     return true;
 }
 
+bool B3IRGenerator::addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result)
+{
+    result = m_currentBlock->appendNew<Value>(m_proc, B3::Select, Origin(), condition, nonZero, zero);
+    return true;
+}
+
 B3IRGenerator::ExpressionType B3IRGenerator::addConstant(Type type, uint64_t value)
 {
     switch (type) {
@@ -760,6 +767,8 @@ std::unique_ptr<FunctionCompilation> parseAndCompile(VM& vm, const uint8_t* func
     procedure.resetReachability();
     validate(procedure, "After parsing:\n");
 
+    if (verbose)
+        dataLog("Pre SSA: ", procedure);
     fixSSA(procedure);
     if (verbose)
         dataLog("Post SSA: ", procedure);

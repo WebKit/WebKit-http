@@ -22,7 +22,6 @@
 #include "JSTestCEReactionsStringifier.h"
 
 #include "CustomElementReactionQueue.h"
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -109,6 +108,13 @@ const ClassInfo JSTestCEReactionsStringifier::s_info = { "TestCEReactionsStringi
 JSTestCEReactionsStringifier::JSTestCEReactionsStringifier(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestCEReactionsStringifier>&& impl)
     : JSDOMWrapper<TestCEReactionsStringifier>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestCEReactionsStringifier::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestCEReactionsStringifier::createPrototype(VM& vm, JSGlobalObject* globalObject)
@@ -214,8 +220,7 @@ static inline JSC::EncodedJSValue jsTestCEReactionsStringifierPrototypeFunctionT
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    JSValue result = toJS<IDLDOMString>(*state, impl.value());
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLDOMString>(*state, impl.value()));
 }
 
 bool JSTestCEReactionsStringifierOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

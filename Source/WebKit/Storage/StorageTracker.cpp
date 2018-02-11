@@ -32,6 +32,7 @@
 #include <WebCore/page/PageGroup.h>
 #include <WebCore/platform/sql/SQLiteDatabaseTracker.h>
 #include <WebCore/platform/sql/SQLiteStatement.h>
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/page/SecurityOrigin.h>
 #include <WebCore/platform/text/TextEncoding.h>
 #include <wtf/MainThread.h>
@@ -43,9 +44,11 @@
 #include <sqlite3_private.h>
 #endif
 
-namespace WebCore {
+using namespace WebCore;
 
-static StorageTracker* storageTracker = 0;
+namespace WebKit {
+
+static StorageTracker* storageTracker = nullptr;
 
 // If there is no document referencing a storage database, close the underlying database
 // after it has been idle for m_StorageDatabaseIdleInterval seconds.
@@ -96,31 +99,6 @@ StorageTracker::StorageTracker(const String& storagePath)
     , m_needsInitialization(false)
     , m_StorageDatabaseIdleInterval(DefaultStorageDatabaseIdleInterval)
 {
-}
-
-void StorageTracker::setDatabaseDirectoryPath(const String& path)
-{
-    LockHolder locker(m_databaseMutex);
-
-    if (m_database.isOpen())
-        m_database.close();
-
-    m_storageDirectoryPath = path.isolatedCopy();
-
-    {
-        LockHolder locker(m_originSetMutex);
-        m_originSet.clear();
-    }
-
-    if (!m_isActive)
-        return;
-
-    importOriginIdentifiers();
-}
-
-String StorageTracker::databaseDirectoryPath() const
-{
-    return m_storageDirectoryPath.isolatedCopy();
 }
 
 String StorageTracker::trackerDatabasePath()
@@ -366,17 +344,26 @@ void StorageTracker::syncSetOriginDetails(const String& originIdentifier, const 
     }
 }
 
-void StorageTracker::origins(Vector<RefPtr<SecurityOrigin>>& result)
+Vector<SecurityOriginData> StorageTracker::origins()
 {
     ASSERT(m_isActive);
     
     if (!m_isActive)
-        return;
+        return { };
 
     LockHolder locker(m_originSetMutex);
 
-    for (OriginSet::const_iterator it = m_originSet.begin(), end = m_originSet.end(); it != end; ++it)
-        result.append(SecurityOrigin::createFromDatabaseIdentifier(*it));
+    Vector<SecurityOriginData> result;
+    result.reserveInitialCapacity(m_originSet.size());
+    for (auto& identifier : m_originSet) {
+        auto origin = SecurityOriginData::fromDatabaseIdentifier(identifier);
+        if (!origin) {
+            ASSERT_NOT_REACHED();
+            continue;
+        }
+        result.uncheckedAppend(origin.value());
+    }
+    return result;
 }
 
 void StorageTracker::deleteAllOrigins()
@@ -473,10 +460,15 @@ void StorageTracker::syncDeleteAllOrigins()
 
 void StorageTracker::deleteOriginWithIdentifier(const String& originIdentifier)
 {
-    deleteOrigin(&SecurityOrigin::createFromDatabaseIdentifier(originIdentifier).get());
+    auto origin = SecurityOriginData::fromDatabaseIdentifier(originIdentifier);
+    if (!origin) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+    deleteOrigin(origin.value());
 }
 
-void StorageTracker::deleteOrigin(SecurityOrigin* origin)
+void StorageTracker::deleteOrigin(const SecurityOriginData& origin)
 {    
     ASSERT(m_isActive);
     ASSERT(isMainThread());
@@ -493,7 +485,7 @@ void StorageTracker::deleteOrigin(SecurityOrigin* origin)
     // StorageTracker db deletion.
     WebStorageNamespaceProvider::clearLocalStorageForOrigin(origin);
 
-    String originId = origin->databaseIdentifier();
+    String originId = origin.databaseIdentifier();
     
     {
         LockHolder locker(m_originSetMutex);
@@ -645,7 +637,7 @@ long long StorageTracker::diskUsageForOrigin(SecurityOrigin* origin)
 
     LockHolder locker(m_databaseMutex);
 
-    String path = databasePathForOrigin(origin->databaseIdentifier());
+    String path = databasePathForOrigin(SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
     if (path.isEmpty())
         return 0;
 

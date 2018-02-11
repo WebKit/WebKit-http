@@ -30,6 +30,8 @@
 
 using namespace WebCore;
 
+namespace WebKit {
+
 static HashSet<WebStorageNamespaceProvider*>& storageNamespaceProviders()
 {
     static NeverDestroyed<HashSet<WebStorageNamespaceProvider*>> storageNamespaceProviders;
@@ -70,7 +72,7 @@ void WebStorageNamespaceProvider::clearLocalStorageForAllOrigins()
     }
 }
 
-void WebStorageNamespaceProvider::clearLocalStorageForOrigin(SecurityOrigin* origin)
+void WebStorageNamespaceProvider::clearLocalStorageForOrigin(const SecurityOriginData& origin)
 {
     for (const auto& storageNamespaceProvider : storageNamespaceProviders()) {
         if (auto* localStorageNamespace = storageNamespaceProvider->optionalLocalStorageNamespace())
@@ -109,4 +111,6 @@ RefPtr<StorageNamespace> WebStorageNamespaceProvider::createTransientLocalStorag
     // FIXME: A smarter implementation would create a special namespace type instead of just piggy-backing off
     // SessionStorageNamespace here.
     return StorageNamespaceImpl::createSessionStorageNamespace(quota);
+}
+
 }

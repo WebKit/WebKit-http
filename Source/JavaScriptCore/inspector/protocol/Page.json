@@ -38,7 +38,8 @@
                 { "name": "mimeType", "type": "string", "description": "Resource mimeType as determined by the browser." },
                 { "name": "failed", "type": "boolean", "optional": true, "description": "True if the resource failed to load." },
                 { "name": "canceled", "type": "boolean", "optional": true, "description": "True if the resource was canceled during loading." },
-                { "name": "sourceMapURL", "type": "string", "optional": true, "description": "URL of source map associated with this resource (if any)." }
+                { "name": "sourceMapURL", "type": "string", "optional": true, "description": "URL of source map associated with this resource (if any)." },
+                { "name": "targetId", "type": "string", "optional": true, "description": "Identifier for the context of where the load originated. In general this is the target identifier. For Workers this will be the workerId." }
             ]
         },
         {
@@ -214,18 +215,11 @@
             ]
         },
         {
-            "name": "setTouchEmulationEnabled",
-            "parameters": [
-                { "name": "enabled", "type": "boolean", "description": "Whether the touch event emulation should be enabled." }
-            ],
-            "description": "Toggles mouse event-based touch event emulation."
-        },
-        {
             "name": "setEmulatedMedia",
+            "description": "Emulates the given media for CSS media queries.",
             "parameters": [
                 { "name": "media", "type": "string", "description": "Media type to emulate. Empty string disables the override." }
-            ],
-            "description": "Emulates the given media for CSS media queries."
+            ]
         },
         {
             "name": "getCompositingBordersVisible",

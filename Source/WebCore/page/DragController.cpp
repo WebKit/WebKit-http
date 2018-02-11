@@ -43,7 +43,6 @@
 #include "Editor.h"
 #include "EditorClient.h"
 #include "EventHandler.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FloatRect.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -148,9 +147,9 @@ static RefPtr<DocumentFragment> documentFragmentFromDragData(DragData& dragData,
                     if (title.isEmpty())
                         title = url;
                 }
-                anchor->appendChild(document.createTextNode(title), IGNORE_EXCEPTION);
+                anchor->appendChild(document.createTextNode(title));
                 auto fragment = document.createDocumentFragment();
-                fragment->appendChild(anchor, IGNORE_EXCEPTION);
+                fragment->appendChild(anchor);
                 return WTFMove(fragment);
             }
         }
@@ -875,6 +874,13 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             // Simplify whitespace so the title put on the dataTransfer resembles what the user sees
             // on the web page. This includes replacing newlines with spaces.
             src.editor().copyURL(linkURL, hitTestResult.textContent().simplifyWhiteSpace(), dataTransfer.pasteboard());
+        } else {
+            // Make sure the pasteboard also contains trustworthy link data
+            // but don't overwrite more general pasteboard types.
+            PasteboardURL pasteboardURL;
+            pasteboardURL.url = linkURL;
+            pasteboardURL.title = hitTestResult.textContent();
+            dataTransfer.pasteboard().writeTrustworthyWebURLsPboardType(pasteboardURL);
         }
 
         const VisibleSelection& sourceSelection = src.selection().selection();

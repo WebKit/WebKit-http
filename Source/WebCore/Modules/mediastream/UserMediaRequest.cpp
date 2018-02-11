@@ -32,12 +32,10 @@
  */
 
 #include "config.h"
+#include "UserMediaRequest.h"
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "UserMediaRequest.h"
-
-#include "Document.h"
 #include "DocumentLoader.h"
 #include "ExceptionCode.h"
 #include "Frame.h"
@@ -55,28 +53,26 @@
 
 namespace WebCore {
 
-void UserMediaRequest::start(Document* document, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise, ExceptionCode& ec)
+ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise)
 {
-    UserMediaController* userMedia = UserMediaController::from(document ? document->page() : nullptr);
-    if (!userMedia) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
+    auto* userMedia = UserMediaController::from(document.page());
+    if (!userMedia)
+        return Exception { NOT_SUPPORTED_ERR }; // FIXME: Why is it better to return an exception here instead of rejecting the promise as we do just below?
 
     if (!audioConstraints->isValid() && !videoConstraints->isValid()) {
         promise.reject(TypeError);
-        return;
+        return { };
     }
 
-    auto request = adoptRef(*new UserMediaRequest(document, userMedia, WTFMove(audioConstraints), WTFMove(videoConstraints), WTFMove(promise)));
-    request->start();
+    adoptRef(*new UserMediaRequest(document, *userMedia, WTFMove(audioConstraints), WTFMove(videoConstraints), WTFMove(promise)))->start();
+    return { };
 }
 
-UserMediaRequest::UserMediaRequest(ScriptExecutionContext* context, UserMediaController* controller, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise)
-    : ContextDestructionObserver(context)
+UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&& promise)
+    : ContextDestructionObserver(&document)
     , m_audioConstraints(WTFMove(audioConstraints))
     , m_videoConstraints(WTFMove(videoConstraints))
-    , m_controller(controller)
+    , m_controller(&controller)
     , m_promise(WTFMove(promise))
 {
 }
@@ -188,20 +184,16 @@ void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDe
             return;
         }
 
-        for (auto& track : stream->getAudioTracks()) {
-            track->applyConstraints(m_audioConstraints);
+        for (auto& track : stream->getAudioTracks())
             track->source().startProducingData();
-        }
 
-        for (auto& track : stream->getVideoTracks()) {
-            track->applyConstraints(m_videoConstraints);
+        for (auto& track : stream->getVideoTracks())
             track->source().startProducingData();
-        }
         
         m_promise.resolve(stream);
     };
 
-    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID);
+    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints.get(), &m_videoConstraints.get());
 }
 
 void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invalidConstraint)
@@ -244,6 +236,14 @@ void UserMediaRequest::contextDestroyed()
     }
 
     ContextDestructionObserver::contextDestroyed();
+}
+
+Document* UserMediaRequest::document() const
+{
+    if (!m_scriptExecutionContext)
+        return nullptr;
+
+    return downcast<Document>(m_scriptExecutionContext);
 }
 
 } // namespace WebCore

@@ -41,6 +41,7 @@
 #include "ElementTraversal.h"
 #include "EventDispatcher.h"
 #include "EventHandler.h"
+#include "ExceptionCode.h"
 #include "FrameView.h"
 #include "HTMLBodyElement.h"
 #include "HTMLCollection.h"
@@ -361,9 +362,10 @@ String Node::nodeValue() const
     return String();
 }
 
-void Node::setNodeValue(const String& /*nodeValue*/, ExceptionCode&)
+ExceptionOr<void> Node::setNodeValue(const String&)
 {
     // By default, setting nodeValue has no effect.
+    return { };
 }
 
 RefPtr<NodeList> Node::childNodes()
@@ -399,40 +401,32 @@ Element* Node::nextElementSibling() const
     return ElementTraversal::nextSibling(*this);
 }
 
-bool Node::insertBefore(Node& newChild, Node* refChild, ExceptionCode& ec)
+ExceptionOr<void> Node::insertBefore(Node& newChild, Node* refChild)
 {
-    if (!is<ContainerNode>(*this)) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return false;
-    }
-    return downcast<ContainerNode>(*this).insertBefore(newChild, refChild, ec);
+    if (!is<ContainerNode>(*this))
+        return Exception { HIERARCHY_REQUEST_ERR };
+    return downcast<ContainerNode>(*this).insertBefore(newChild, refChild);
 }
 
-bool Node::replaceChild(Node& newChild, Node& oldChild, ExceptionCode& ec)
+ExceptionOr<void> Node::replaceChild(Node& newChild, Node& oldChild)
 {
-    if (!is<ContainerNode>(*this)) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return false;
-    }
-    return downcast<ContainerNode>(*this).replaceChild(newChild, oldChild, ec);
+    if (!is<ContainerNode>(*this))
+        return Exception { HIERARCHY_REQUEST_ERR };
+    return downcast<ContainerNode>(*this).replaceChild(newChild, oldChild);
 }
 
-bool Node::removeChild(Node& oldChild, ExceptionCode& ec)
+ExceptionOr<void> Node::removeChild(Node& oldChild)
 {
-    if (!is<ContainerNode>(*this)) {
-        ec = NOT_FOUND_ERR;
-        return false;
-    }
-    return downcast<ContainerNode>(*this).removeChild(oldChild, ec);
+    if (!is<ContainerNode>(*this))
+        return Exception { NOT_FOUND_ERR };
+    return downcast<ContainerNode>(*this).removeChild(oldChild);
 }
 
-bool Node::appendChild(Node& newChild, ExceptionCode& ec)
+ExceptionOr<void> Node::appendChild(Node& newChild)
 {
-    if (!is<ContainerNode>(*this)) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return false;
-    }
-    return downcast<ContainerNode>(*this).appendChild(newChild, ec);
+    if (!is<ContainerNode>(*this))
+        return Exception { HIERARCHY_REQUEST_ERR };
+    return downcast<ContainerNode>(*this).appendChild(newChild);
 }
 
 static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<NodeOrString>& vector)
@@ -485,10 +479,9 @@ ExceptionOr<RefPtr<Node>> Node::convertNodesOrStringsIntoNode(Vector<NodeOrStrin
 
     auto nodeToReturn = DocumentFragment::create(document());
     for (auto& node : nodes) {
-        ExceptionCode ec = 0;
-        nodeToReturn->appendChild(node, ec);
-        if (ec)
-            return Exception { ec };
+        auto appendResult = nodeToReturn->appendChild(node);
+        if (appendResult.hasException())
+            return appendResult.releaseException();
     }
     return RefPtr<Node> { WTFMove(nodeToReturn) };
 }
@@ -514,11 +507,7 @@ ExceptionOr<void> Node::before(Vector<NodeOrString>&& nodeOrStringVector)
     else
         viablePreviousSibling = parent->firstChild();
 
-    ExceptionCode ec = 0;
-    parent->insertBefore(*node, viablePreviousSibling.get(), ec);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return parent->insertBefore(*node, viablePreviousSibling.get());
 }
 
 ExceptionOr<void> Node::after(Vector<NodeOrString>&& nodeOrStringVector)
@@ -537,11 +526,7 @@ ExceptionOr<void> Node::after(Vector<NodeOrString>&& nodeOrStringVector)
     if (!node)
         return { };
 
-    ExceptionCode ec = 0;
-    parent->insertBefore(*node, viableNextSibling.get(), ec);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return parent->insertBefore(*node, viableNextSibling.get());
 }
 
 ExceptionOr<void> Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector)
@@ -556,22 +541,15 @@ ExceptionOr<void> Node::replaceWith(Vector<NodeOrString>&& nodeOrStringVector)
     auto result = convertNodesOrStringsIntoNode(WTFMove(nodeOrStringVector));
     if (result.hasException())
         return result.releaseException();
-    auto node = result.releaseReturnValue();
 
     if (parentNode() == parent) {
-        if (node) {
-            ExceptionCode ec = 0;
-            parent->replaceChild(*node, *this, ec);
-            if (ec)
-                return Exception { ec };
-        } else
-            parent->removeChild(*this);
-    } else if (node) {
-        ExceptionCode ec = 0;
-        parent->insertBefore(*node, viableNextSibling.get(), ec);
-        if (ec)
-            return Exception { ec };
+        if (auto node = result.releaseReturnValue())
+            return parent->replaceChild(*node, *this);
+        return parent->removeChild(*this);
     }
+
+    if (auto node = result.releaseReturnValue())
+        return parent->insertBefore(*node, viableNextSibling.get());
     return { };
 }
 
@@ -580,11 +558,7 @@ ExceptionOr<void> Node::remove()
     auto* parent = parentNode();
     if (!parent)
         return { };
-    ExceptionCode ec = 0;
-    parent->removeChild(*this, ec);
-    if (ec)
-        return Exception { ec };
-    return { };
+    return parent->removeChild(*this);
 }
 
 void Node::normalize()
@@ -641,12 +615,10 @@ void Node::normalize()
     }
 }
 
-RefPtr<Node> Node::cloneNodeForBindings(bool deep, ExceptionCode& ec)
+ExceptionOr<Ref<Node>> Node::cloneNodeForBindings(bool deep)
 {
-    if (UNLIKELY(isShadowRoot())) {
-        ec = NOT_SUPPORTED_ERR;
-        return nullptr;
-    }
+    if (UNLIKELY(isShadowRoot()))
+        return Exception { NOT_SUPPORTED_ERR };
     return cloneNode(deep);
 }
 
@@ -656,12 +628,12 @@ const AtomicString& Node::prefix() const
     return nullAtom;
 }
 
-void Node::setPrefix(const AtomicString& /*prefix*/, ExceptionCode& ec)
+ExceptionOr<void> Node::setPrefix(const AtomicString&)
 {
     // The spec says that for nodes other than elements and attributes, prefix is always null.
     // It does not say what to do when the user tries to set the prefix on another type of
     // node, however Mozilla throws a NAMESPACE_ERR exception.
-    ec = NAMESPACE_ERR;
+    return Exception { NAMESPACE_ERR };
 }
 
 const AtomicString& Node::localName() const
@@ -919,25 +891,25 @@ void Node::clearNodeLists()
     rareData()->clearNodeLists();
 }
 
-void Node::checkSetPrefix(const AtomicString& prefix, ExceptionCode& ec)
+ExceptionOr<void> Node::checkSetPrefix(const AtomicString& prefix)
 {
     // Perform error checking as required by spec for setting Node.prefix. Used by
     // Element::setPrefix() and Attr::setPrefix()
 
-    if (!prefix.isEmpty() && !Document::isValidName(prefix)) {
-        ec = INVALID_CHARACTER_ERR;
-        return;
-    }
+    if (!prefix.isEmpty() && !Document::isValidName(prefix))
+        return Exception { INVALID_CHARACTER_ERR };
 
     // FIXME: Raise NAMESPACE_ERR if prefix is malformed per the Namespaces in XML specification.
 
-    const AtomicString& nodeNamespaceURI = namespaceURI();
-    if ((nodeNamespaceURI.isEmpty() && !prefix.isEmpty())
-        || (prefix == xmlAtom && nodeNamespaceURI != XMLNames::xmlNamespaceURI)) {
-        ec = NAMESPACE_ERR;
-        return;
-    }
+    auto& namespaceURI = this->namespaceURI();
+    if (namespaceURI.isEmpty() && !prefix.isEmpty())
+        return Exception { NAMESPACE_ERR };
+    if (prefix == xmlAtom && namespaceURI != XMLNames::xmlNamespaceURI)
+        return Exception { NAMESPACE_ERR };
+
     // Attribute-specific checks are in Attr::setPrefix().
+
+    return { };
 }
 
 bool Node::isDescendantOf(const Node* other) const
@@ -1502,7 +1474,7 @@ String Node::textContent(bool convertBRsToNewlines) const
     return isNullString ? String() : content.toString();
 }
 
-void Node::setTextContent(const String& text, ExceptionCode& ec)
+ExceptionOr<void> Node::setTextContent(const String& text)
 {           
     switch (nodeType()) {
     case ATTRIBUTE_NODE:
@@ -1510,23 +1482,23 @@ void Node::setTextContent(const String& text, ExceptionCode& ec)
     case CDATA_SECTION_NODE:
     case COMMENT_NODE:
     case PROCESSING_INSTRUCTION_NODE:
-        setNodeValue(text, ec);
-        return;
+        return setNodeValue(text);
     case ELEMENT_NODE:
     case DOCUMENT_FRAGMENT_NODE: {
         auto container = makeRef(downcast<ContainerNode>(*this));
         ChildListMutationScope mutation(container);
         container->removeChildren();
-        if (!text.isEmpty())
-            container->appendChild(document().createTextNode(text), ec);
-        return;
+        if (text.isEmpty())
+            return { };
+        return container->appendChild(document().createTextNode(text));
     }
     case DOCUMENT_NODE:
     case DOCUMENT_TYPE_NODE:
         // Do nothing.
-        return;
+        return { };
     }
     ASSERT_NOT_REACHED();
+    return { };
 }
 
 bool Node::offsetInCharacters() const
@@ -1908,7 +1880,7 @@ void Node::didMoveToNewDocument(Document* oldDocument)
             cache->remove(this);
     }
 
-    unsigned numWheelEventHandlers = getEventListeners(eventNames().mousewheelEvent).size() + getEventListeners(eventNames().wheelEvent).size();
+    unsigned numWheelEventHandlers = eventListeners(eventNames().mousewheelEvent).size() + eventListeners(eventNames().wheelEvent).size();
     for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
         oldDocument->didRemoveWheelEventHandler(*this);
         document().didAddWheelEventHandler(*this);
@@ -1916,7 +1888,7 @@ void Node::didMoveToNewDocument(Document* oldDocument)
 
     unsigned numTouchEventHandlers = 0;
     for (auto& name : eventNames().touchEventNames())
-        numTouchEventHandlers += getEventListeners(name).size();
+        numTouchEventHandlers += eventListeners(name).size();
 
     for (unsigned i = 0; i < numTouchEventHandlers; ++i) {
         oldDocument->didRemoveTouchEventHandler(*this);
@@ -2356,8 +2328,8 @@ void Node::removedLastRef()
 
 void Node::textRects(Vector<IntRect>& rects) const
 {
-    RefPtr<Range> range = Range::create(document());
-    range->selectNodeContents(const_cast<Node&>(*this), IGNORE_EXCEPTION);
+    auto range = Range::create(document());
+    range->selectNodeContents(const_cast<Node&>(*this));
     range->absoluteTextRects(rects);
 }
 

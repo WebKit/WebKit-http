@@ -37,30 +37,19 @@
 
 namespace WebCore {
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(RefPtr<RealtimeMediaSource>&& source)
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSource>&& source)
 {
-    return adoptRef(new MediaStreamTrackPrivate(WTFMove(source), createCanonicalUUIDString()));
+    return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), createCanonicalUUIDString()));
 }
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(RefPtr<RealtimeMediaSource>&& source, const String& id)
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSource>&& source, String&& id)
 {
-    return adoptRef(new MediaStreamTrackPrivate(WTFMove(source), id));
+    return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), WTFMove(id)));
 }
 
-MediaStreamTrackPrivate::MediaStreamTrackPrivate(const MediaStreamTrackPrivate& other)
-    : RefCounted()
-    , m_source(&other.source())
-    , m_id(createCanonicalUUIDString())
-    , m_isEnabled(other.enabled())
-    , m_isEnded(other.ended())
-{
-    m_source->addObserver(this);
-}
-
-MediaStreamTrackPrivate::MediaStreamTrackPrivate(RefPtr<RealtimeMediaSource>&& source, const String& id)
-    : RefCounted()
-    , m_source(source)
-    , m_id(id)
+MediaStreamTrackPrivate::MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&& source, String&& id)
+    : m_source(WTFMove(source))
+    , m_id(WTFMove(id))
     , m_isEnabled(true)
     , m_isEnded(false)
 {
@@ -132,9 +121,14 @@ void MediaStreamTrackPrivate::endTrack()
         observer->trackEnded(*this);
 }
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
 {
-    return adoptRef(new MediaStreamTrackPrivate(*this));
+    auto clonedMediaStreamTrackPrivate = create(m_source.copyRef());
+    clonedMediaStreamTrackPrivate->m_isEnabled = this->m_isEnabled;
+    clonedMediaStreamTrackPrivate->m_isEnded = this->m_isEnded;
+    clonedMediaStreamTrackPrivate->m_constraints = this->m_constraints;
+
+    return clonedMediaStreamTrackPrivate;
 }
 
 RealtimeMediaSource::Type MediaStreamTrackPrivate::type() const

@@ -53,11 +53,11 @@ public:
 
     using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
     using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
-    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, Optional<HTMLElementOrInt> before);
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, const Optional<HTMLElementOrInt>& before);
 
     using Node::remove;
     ExceptionOr<void> remove(HTMLOptionElement&);
-    WEBCORE_EXPORT void removeByIndex(int); // Should be remove(int) but that conflicts with Node::remove(ExceptionCode&).
+    WEBCORE_EXPORT void remove(int);
 
     WEBCORE_EXPORT String value() const;
     WEBCORE_EXPORT void setValue(const String&);

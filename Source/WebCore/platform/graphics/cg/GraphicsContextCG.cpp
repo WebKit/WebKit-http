@@ -97,7 +97,7 @@ CGColorSpaceRef sRGBColorSpaceRef()
 CGColorSpaceRef extendedSRGBColorSpaceRef()
 {
     static CGColorSpaceRef extendedSRGBSpace;
-#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101200)
+#if (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
     extendedSRGBSpace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 #endif
     // If there is no support for exteneded sRGB, fall back to sRGB.
@@ -597,8 +597,8 @@ void GraphicsContext::applyFillPattern()
 
 static inline bool calculateDrawingMode(const GraphicsContextState& state, CGPathDrawingMode& mode)
 {
-    bool shouldFill = state.fillPattern || state.fillColor.alpha();
-    bool shouldStroke = state.strokePattern || (state.strokeStyle != NoStroke && state.strokeColor.alpha());
+    bool shouldFill = state.fillPattern || state.fillColor.isVisible();
+    bool shouldStroke = state.strokePattern || (state.strokeStyle != NoStroke && state.strokeColor.isVisible());
     bool useEOFill = state.fillRule == RULE_EVENODD;
 
     if (shouldFill) {

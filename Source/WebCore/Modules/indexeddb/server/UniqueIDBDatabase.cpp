@@ -32,6 +32,7 @@
 #include "IDBGetAllRecordsData.h"
 #include "IDBGetAllResult.h"
 #include "IDBGetRecordData.h"
+#include "IDBIterateCursorData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBResultData.h"
 #include "IDBServer.h"
@@ -46,7 +47,6 @@
 #include <runtime/StructureInlines.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
-#include <wtf/ThreadSafeRefCounted.h>
 
 using namespace JSC;
 
@@ -365,6 +365,16 @@ bool UniqueIDBDatabase::hasAnyOpenConnections() const
     return !m_openDatabaseConnections.isEmpty();
 }
 
+bool UniqueIDBDatabase::allConnectionsAreClosedOrClosing() const
+{
+    for (auto& connection : m_openDatabaseConnections) {
+        if (!connection->connectionIsClosing())
+            return false;
+    }
+
+    return true;
+}
+
 static uint64_t generateUniqueCallbackIdentifier()
 {
     ASSERT(isMainThread());
@@ -503,7 +513,10 @@ void UniqueIDBDatabase::maybeNotifyConnectionsOfVersionChange()
         connectionIdentifiers.add(connection->identifier());
     }
 
-    m_currentOpenDBRequest->notifiedConnectionsOfVersionChange(WTFMove(connectionIdentifiers));
+    if (!connectionIdentifiers.isEmpty())
+        m_currentOpenDBRequest->notifiedConnectionsOfVersionChange(WTFMove(connectionIdentifiers));
+    else
+        m_currentOpenDBRequest->maybeNotifyRequestBlocked(m_databaseInfo->version());
 }
 
 void UniqueIDBDatabase::notifyCurrentRequestConnectionClosedOrFiredVersionChangeEvent(uint64_t connectionIdentifier)
@@ -517,17 +530,14 @@ void UniqueIDBDatabase::notifyCurrentRequestConnectionClosedOrFiredVersionChange
     if (m_currentOpenDBRequest->hasConnectionsPendingVersionChangeEvent())
         return;
 
-    if (!hasAnyOpenConnections()) {
+    if (!hasAnyOpenConnections() || allConnectionsAreClosedOrClosing()) {
         invokeOperationAndTransactionTimer();
         return;
     }
 
-    if (m_currentOpenDBRequest->hasNotifiedBlocked())
-        return;
-
     // Since all open connections have fired their version change events but not all of them have closed,
     // this request is officially blocked.
-    m_currentOpenDBRequest->notifyRequestBlocked(m_databaseInfo->version());
+    m_currentOpenDBRequest->maybeNotifyRequestBlocked(m_databaseInfo->version());
 }
 
 void UniqueIDBDatabase::didFireVersionChangeEvent(UniqueIDBDatabaseConnection& connection, const IDBResourceIdentifier& requestIdentifier)
@@ -1203,7 +1213,7 @@ void UniqueIDBDatabase::didPerformOpenCursor(uint64_t callbackIdentifier, const 
     performGetResultCallback(callbackIdentifier, error, result);
 }
 
-void UniqueIDBDatabase::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count, GetResultCallback callback)
+void UniqueIDBDatabase::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data, GetResultCallback callback)
 {
     ASSERT(isMainThread());
     LOG(IndexedDB, "(main) UniqueIDBDatabase::iterateCursor");
@@ -1211,16 +1221,16 @@ void UniqueIDBDatabase::iterateCursor(const IDBRequestData& requestData, const I
     uint64_t callbackID = storeCallbackOrFireError(callback);
     if (!callbackID)
         return;
-    postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performIterateCursor, callbackID, requestData.transactionIdentifier(), requestData.cursorIdentifier(), key, count));
+    postDatabaseTask(createCrossThreadTask(*this, &UniqueIDBDatabase::performIterateCursor, callbackID, requestData.transactionIdentifier(), requestData.cursorIdentifier(), data));
 }
 
-void UniqueIDBDatabase::performIterateCursor(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBKeyData& key, unsigned long count)
+void UniqueIDBDatabase::performIterateCursor(uint64_t callbackIdentifier, const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData& data)
 {
     ASSERT(!isMainThread());
     LOG(IndexedDB, "(db) UniqueIDBDatabase::performIterateCursor");
 
     IDBGetResult result;
-    IDBError error = m_backingStore->iterateCursor(transactionIdentifier, cursorIdentifier, key, count, result);
+    IDBError error = m_backingStore->iterateCursor(transactionIdentifier, cursorIdentifier, data, result);
 
     postDatabaseTaskReply(createCrossThreadTask(*this, &UniqueIDBDatabase::didPerformIterateCursor, callbackIdentifier, error, result));
 }

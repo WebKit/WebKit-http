@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestOverrideBuiltins.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -107,6 +106,13 @@ const ClassInfo JSTestOverrideBuiltins::s_info = { "TestOverrideBuiltins", &Base
 JSTestOverrideBuiltins::JSTestOverrideBuiltins(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestOverrideBuiltins>&& impl)
     : JSDOMWrapper<TestOverrideBuiltins>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestOverrideBuiltins::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestOverrideBuiltins::createPrototype(VM& vm, JSGlobalObject* globalObject)
@@ -217,8 +223,7 @@ static inline JSC::EncodedJSValue jsTestOverrideBuiltinsPrototypeFunctionNamedIt
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto name = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    JSValue result = toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.namedItem(WTFMove(name)));
-    return JSValue::encode(result);
+    return JSValue::encode(toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.namedItem(WTFMove(name))));
 }
 
 bool JSTestOverrideBuiltinsOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

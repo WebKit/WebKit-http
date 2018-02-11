@@ -200,6 +200,7 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyDataOctetSequence.cpp
     crypto/keys/CryptoKeyDataRSAComponents.cpp
     crypto/keys/CryptoKeyHMAC.cpp
+    crypto/keys/CryptoKeyRSA.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
 
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
@@ -260,6 +261,7 @@ list(APPEND WebCore_SOURCES
     page/CaptionUserPreferencesMediaAF.cpp
     page/PageDebuggable.cpp
 
+    page/cocoa/MemoryReleaseCocoa.mm
     page/cocoa/UserAgent.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
     page/cocoa/ResourceUsageThreadCocoa.mm

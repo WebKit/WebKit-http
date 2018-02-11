@@ -107,6 +107,8 @@ public:
     ResourceRequest willSendRequest(ResourceRequest&&, ResourceResponse&&);
 #endif
 
+    void didReceiveResponse(ResourceResponse&&);
+
     bool shouldUseCredentialStorage();
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
     void receivedCredential(const AuthenticationChallenge&, const Credential&) override;
@@ -256,6 +258,8 @@ private:
     };
 
     void platformSetDefersLoading(bool);
+
+    void platformContinueSynchronousDidReceiveResponse();
 
     void scheduleFailure(FailureType);
 

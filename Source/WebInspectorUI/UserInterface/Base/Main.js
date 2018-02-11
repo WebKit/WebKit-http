@@ -108,6 +108,7 @@ WebInspector.loaded = function()
 
     // Create the singleton managers next, before the user interface elements, so the user interface can register
     // as event listeners on these managers.
+    this.targetManager = new WebInspector.TargetManager;
     this.branchManager = new WebInspector.BranchManager;
     this.frameResourceManager = new WebInspector.FrameResourceManager;
     this.storageManager = new WebInspector.StorageManager;
@@ -126,7 +127,6 @@ WebInspector.loaded = function()
     this.layerTreeManager = new WebInspector.LayerTreeManager;
     this.dashboardManager = new WebInspector.DashboardManager;
     this.probeManager = new WebInspector.ProbeManager;
-    this.targetManager = new WebInspector.TargetManager;
     this.workerManager = new WebInspector.WorkerManager;
     this.replayManager = new WebInspector.ReplayManager;
 
@@ -178,6 +178,10 @@ WebInspector.loaded = function()
     this.showPaintRectsSetting = new WebInspector.Setting("show-paint-rects", false);
     if (this.showPaintRectsSetting.value && window.PageAgent && PageAgent.setShowPaintRects)
         PageAgent.setShowPaintRects(true);
+
+    this.showPrintStylesSetting = new WebInspector.Setting("show-print-styles", false);
+    if (this.showPrintStylesSetting.value && window.PageAgent)
+        PageAgent.setEmulatedMedia("print");
 
     this._zoomFactorSetting = new WebInspector.Setting("zoom-factor", 1);
     this._setZoomFactor(this._zoomFactorSetting.value);
@@ -1109,6 +1113,9 @@ WebInspector.tabContentViewClassForRepresentedObject = function(representedObjec
         representedObject instanceof WebInspector.ApplicationCacheFrame || representedObject instanceof WebInspector.IndexedDatabaseObjectStore ||
         representedObject instanceof WebInspector.IndexedDatabaseObjectStoreIndex)
         return WebInspector.ResourcesTabContentView;
+
+    if (representedObject instanceof WebInspector.Collection)
+        return WebInspector.CollectionContentView;
 
     return null;
 };

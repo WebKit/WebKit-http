@@ -22,7 +22,6 @@
 #include "JSTestCEReactions.h"
 
 #include "CustomElementReactionQueue.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
@@ -117,6 +116,13 @@ const ClassInfo JSTestCEReactions::s_info = { "TestCEReactions", &Base::s_info, 
 JSTestCEReactions::JSTestCEReactions(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestCEReactions>&& impl)
     : JSDOMWrapper<TestCEReactions>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestCEReactions::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestCEReactions::createPrototype(VM& vm, JSGlobalObject* globalObject)

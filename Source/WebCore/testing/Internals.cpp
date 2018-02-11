@@ -375,6 +375,7 @@ void Internals::resetToConsistentState(Page& page)
 #endif
     }
 
+    WebCore::clearDefaultPortForProtocolMapForTesting();
     WebCore::overrideUserPreferredLanguages(Vector<String>());
     WebCore::Settings::setUsesOverlayScrollbars(false);
     WebCore::Settings::setUsesMockScrollAnimator(false);
@@ -646,6 +647,19 @@ unsigned Internals::imageFrameIndex(HTMLImageElement& element)
 
     auto* image = cachedImage->image();
     return is<BitmapImage>(image) ? downcast<BitmapImage>(*image).currentFrame() : 0;
+}
+
+void Internals::setImageFrameDecodingDuration(HTMLImageElement& element, float duration)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return;
+    
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return;
+    
+    downcast<BitmapImage>(*image).setFrameDecodingDurationForTesting(duration);
 }
 
 void Internals::clearPageCache()
@@ -2170,6 +2184,11 @@ void Internals::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(const 
     SchemeRegistry::removeURLSchemeRegisteredAsBypassingContentSecurityPolicy(scheme);
 }
 
+void Internals::registerDefaultPortForProtocol(unsigned short port, const String& protocol)
+{
+    registerDefaultPortForProtocolForTesting(port, protocol);
+}
+
 Ref<MallocStatistics> Internals::mallocStatistics() const
 {
     return MallocStatistics::create();
@@ -2508,7 +2527,7 @@ ExceptionOr<String> Internals::captionsStyleSheetOverride()
 #if ENABLE(VIDEO_TRACK)
     return document->page()->group().captionPreferences().captionsStyleSheetOverride();
 #else
-    return emptyString();
+    return String { emptyString() };
 #endif
 }
 
@@ -2991,10 +3010,10 @@ String Internals::pageMediaState()
         string.append("HasPlaybackTargetAvailabilityListener,");
     if (state & MediaProducer::HasAudioOrVideo)
         string.append("HasAudioOrVideo,");
-    if (state & MediaProducer::HasActiveMediaCaptureDevice)
-        string.append("HasActiveMediaCaptureDevice,");
-    if (state & MediaProducer::HasMediaCaptureDevice)
-        string.append("HasMediaCaptureDevice,");
+    if (state & MediaProducer::HasActiveAudioCaptureDevice)
+        string.append("HasActiveAudioCaptureDevice,");
+    if (state & MediaProducer::HasActiveVideoCaptureDevice)
+        string.append("HasActiveVideoCaptureDevice,");
 
     if (string.isEmpty())
         string.append("IsNotPlaying");

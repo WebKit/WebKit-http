@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGGraphicsElement_h
-#define SVGGraphicsElement_h
+#pragma once
 
 #include "SVGAnimatedTransformList.h"
 #include "SVGElement.h"
@@ -30,13 +29,19 @@ namespace WebCore {
 
 class AffineTransform;
 class Path;
+class SVGRect;
+class SVGMatrix;
 
 class SVGGraphicsElement : public SVGElement, public SVGTransformable, public SVGTests {
 public:
     virtual ~SVGGraphicsElement();
 
+    Ref<SVGMatrix> getCTMForBindings();
     AffineTransform getCTM(StyleUpdateStrategy = AllowStyleUpdate) override;
+
+    Ref<SVGMatrix> getScreenCTMForBindings();
     AffineTransform getScreenCTM(StyleUpdateStrategy = AllowStyleUpdate) override;
+
     SVGElement* nearestViewportElement() const override;
     SVGElement* farthestViewportElement() const override;
 
@@ -44,6 +49,7 @@ public:
     AffineTransform animatedLocalTransform() const override;
     AffineTransform* supplementalTransform() override;
 
+    Ref<SVGRect> getBBoxForBindings();
     FloatRect getBBox(StyleUpdateStrategy = AllowStyleUpdate) override;
 
     bool shouldIsolateBlending() const { return m_shouldIsolateBlending; }
@@ -90,5 +96,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SVGGraphicsElement)
     static bool isType(const WebCore::SVGElement& element) { return element.isSVGGraphicsElement(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::SVGElement>(node) && isType(downcast<WebCore::SVGElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // SVGGraphicsElement_h

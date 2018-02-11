@@ -26,6 +26,7 @@
 #pragma once
 
 #include "ArgumentCoders.h"
+#include <WebCore/ColorSpace.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IndexedDB.h>
 #include <WebCore/PaymentHeaders.h>
@@ -53,6 +54,8 @@ class IntPoint;
 class IntRect;
 class IntSize;
 class KeyframeValueList;
+class LayoutSize;
+class LayoutPoint;
 class LinearTimingFunction;
 class Notification;
 class Path;
@@ -233,6 +236,16 @@ template<> struct ArgumentCoder<WebCore::IntRect> {
 template<> struct ArgumentCoder<WebCore::IntSize> {
     static void encode(Encoder&, const WebCore::IntSize&);
     static bool decode(Decoder&, WebCore::IntSize&);
+};
+
+template<> struct ArgumentCoder<WebCore::LayoutSize> {
+    static void encode(Encoder&, const WebCore::LayoutSize&);
+    static bool decode(Decoder&, WebCore::LayoutSize&);
+};
+
+template<> struct ArgumentCoder<WebCore::LayoutPoint> {
+    static void encode(Encoder&, const WebCore::LayoutPoint&);
+    static bool decode(Decoder&, WebCore::LayoutPoint&);
 };
 
 template<> struct ArgumentCoder<WebCore::Path> {
@@ -566,6 +579,16 @@ template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
 } // namespace IPC
 
 namespace WTF {
+
+template<> struct EnumTraits<WebCore::ColorSpace> {
+    using values = EnumValues<
+    WebCore::ColorSpace,
+    WebCore::ColorSpace::ColorSpaceDeviceRGB,
+    WebCore::ColorSpace::ColorSpaceSRGB,
+    WebCore::ColorSpace::ColorSpaceLinearRGB,
+    WebCore::ColorSpace::ColorSpaceDisplayP3
+    >;
+};
 
 template<> struct EnumTraits<WebCore::HasInsecureContent> {
     using values = EnumValues<

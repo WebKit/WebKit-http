@@ -250,8 +250,7 @@ HRESULT DOMNode::insertBefore(_In_opt_ IDOMNode* newChild, _In_opt_ IDOMNode* re
 
     COMPtr<DOMNode> refChildNode(Query, refChild);
 
-    ExceptionCode ec;
-    if (!m_node->insertBefore(*newChildNode->node(), refChildNode ? refChildNode->node() : nullptr, ec))
+    if (m_node->insertBefore(*newChildNode->node(), refChildNode ? refChildNode->node() : nullptr).hasException())
         return E_FAIL;
 
     *result = newChild;
@@ -282,8 +281,7 @@ HRESULT DOMNode::removeChild(_In_opt_ IDOMNode* oldChild, _COM_Outptr_opt_ IDOMN
     if (!oldChildNode)
         return E_FAIL;
 
-    ExceptionCode ec;
-    if (!m_node->removeChild(*oldChildNode->node(), ec))
+    if (m_node->removeChild(*oldChildNode->node()).hasException())
         return E_FAIL;
 
     *result = oldChild;
@@ -445,9 +443,12 @@ HRESULT DOMNode::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (!domEvent->coreEvent())
         return E_FAIL;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_node->dispatchEventForBindings(*domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    auto dispatchResult = m_node->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 // DOMNode - DOMNode ----------------------------------------------------------
@@ -952,9 +953,12 @@ HRESULT DOMWindow::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (!domEvent->coreEvent())
         return E_FAIL;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_window->dispatchEventForBindings(*domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    auto dispatchResult = m_window->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 

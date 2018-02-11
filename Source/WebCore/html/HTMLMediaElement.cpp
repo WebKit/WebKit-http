@@ -47,7 +47,6 @@
 #include "DocumentLoader.h"
 #include "ElementIterator.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
@@ -82,6 +81,7 @@
 #include "ResourceLoadInfo.h"
 #include "ScriptController.h"
 #include "ScriptSourceCode.h"
+#include "SecurityOriginData.h"
 #include "SecurityPolicy.h"
 #include "SessionID.h"
 #include "Settings.h"
@@ -959,7 +959,7 @@ void HTMLMediaElement::scheduleResolvePendingPlayPromises()
 
 void HTMLMediaElement::rejectPendingPlayPromises(DOMError& error)
 {
-    Vector<PlayPromise> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
+    Vector<DOMPromise<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
 
     for (auto& promise : pendingPlayPromises)
         promise.reject(error);
@@ -967,10 +967,10 @@ void HTMLMediaElement::rejectPendingPlayPromises(DOMError& error)
 
 void HTMLMediaElement::resolvePendingPlayPromises()
 {
-    Vector<PlayPromise> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
+    Vector<DOMPromise<void>> pendingPlayPromises = WTFMove(m_pendingPlayPromises);
 
     for (auto& promise : pendingPlayPromises)
-        promise.resolve(nullptr);
+        promise.resolve();
 }
 
 void HTMLMediaElement::scheduleNotifyAboutPlaying()
@@ -2414,7 +2414,7 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
     if (!origin)
         return emptyString();
 
-    return pathByAppendingComponent(storageDirectory, origin->databaseIdentifier());
+    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
 }
 
 void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
@@ -2436,6 +2436,20 @@ void HTMLMediaElement::keyAdded()
 }
 
 #endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+
+MediaKeys* HTMLMediaElement::mediaKeys() const
+{
+    return nullptr;
+}
+
+void HTMLMediaElement::setMediaKeys(MediaKeys*, Ref<DeferredPromise>&&)
+{
+    notImplemented();
+}
+
+#endif // ENABLE(ENCRYPTED_MEDIA)
 
 void HTMLMediaElement::progressEventTimerFired()
 {
@@ -3025,7 +3039,7 @@ void HTMLMediaElement::setPreload(const String& preload)
     setAttributeWithoutSynchronization(preloadAttr, preload);
 }
 
-void HTMLMediaElement::play(PlayPromise&& promise)
+void HTMLMediaElement::play(DOMPromise<void>&& promise)
 {
     LOG(Media, "HTMLMediaElement::play(%p)", this);
 
@@ -5649,8 +5663,9 @@ unsigned HTMLMediaElement::webkitVideoDecodedByteCount() const
 }
 #endif
 
-void HTMLMediaElement::mediaCanStart()
+void HTMLMediaElement::mediaCanStart(Document& document)
 {
+    ASSERT_UNUSED(document, &document == &this->document());
     LOG(Media, "HTMLMediaElement::mediaCanStart(%p) - m_isWaitingUntilMediaCanStart = %s, m_pausedInternal = %s",
         this, boolString(m_isWaitingUntilMediaCanStart), boolString(m_pausedInternal) );
 
@@ -5771,7 +5786,7 @@ bool HTMLMediaElement::createMediaControls()
     if (isFullscreen())
         mediaControls->enteredFullscreen();
 
-    ensureUserAgentShadowRoot().appendChild(mediaControls, ASSERT_NO_EXCEPTION);
+    ensureUserAgentShadowRoot().appendChild(mediaControls);
 
     if (!controls() || !inDocument())
         mediaControls->hide();
@@ -5929,10 +5944,6 @@ void HTMLMediaElement::createMediaPlayer()
 #if ENABLE(MEDIA_SOURCE)
     if (m_mediaSource)
         m_mediaSource->detachFromElement(*this);
-#endif
-
-#if ENABLE(MEDIA_STREAM)
-    m_mediaStreamSrcObject = nullptr;
 #endif
 
 #if ENABLE(VIDEO_TRACK)

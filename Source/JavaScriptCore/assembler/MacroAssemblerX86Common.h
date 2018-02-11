@@ -414,6 +414,18 @@ public:
         x86Div32(denominator);
     }
 
+    void x86UDiv32(RegisterID denominator)
+    {
+        m_assembler.divl_r(denominator);
+    }
+
+    void x86UDiv32(RegisterID eax, RegisterID edx, RegisterID denominator)
+    {
+        ASSERT_UNUSED(eax, eax == X86Registers::eax);
+        ASSERT_UNUSED(edx, edx == X86Registers::edx);
+        x86UDiv32(denominator);
+    }
+
     void neg32(RegisterID srcDest)
     {
         m_assembler.negl_r(srcDest);
@@ -2934,7 +2946,7 @@ private:
         return s_sse2CheckState == HasSSE2;
     }
     
-    static SSE2CheckState s_sse2CheckState;
+    JS_EXPORTDATA static SSE2CheckState s_sse2CheckState;
 
 #endif // OS(MAC_OS_X)
 #elif !defined(NDEBUG) // CPU(X86)

@@ -156,21 +156,21 @@ void Data::performAssertions(VM& vm)
     
     STATIC_ASSERT(StringType == 6);
     STATIC_ASSERT(SymbolType == 7);
-    STATIC_ASSERT(ObjectType == 20);
-    STATIC_ASSERT(FinalObjectType == 21);
-    STATIC_ASSERT(JSFunctionType == 23);
-    STATIC_ASSERT(ArrayType == 31);
-    STATIC_ASSERT(DerivedArrayType == 32);
-    STATIC_ASSERT(ProxyObjectType == 50);
-    STATIC_ASSERT(Int8ArrayType == 33);
-    STATIC_ASSERT(Int16ArrayType == 34);
-    STATIC_ASSERT(Int32ArrayType == 35);
-    STATIC_ASSERT(Uint8ArrayType == 36);
-    STATIC_ASSERT(Uint8ClampedArrayType == 37);
-    STATIC_ASSERT(Uint16ArrayType == 38);
-    STATIC_ASSERT(Uint32ArrayType == 39);
-    STATIC_ASSERT(Float32ArrayType == 40);
-    STATIC_ASSERT(Float64ArrayType == 41);
+    STATIC_ASSERT(ObjectType == 21);
+    STATIC_ASSERT(FinalObjectType == 22);
+    STATIC_ASSERT(JSFunctionType == 24);
+    STATIC_ASSERT(ArrayType == 32);
+    STATIC_ASSERT(DerivedArrayType == 33);
+    STATIC_ASSERT(ProxyObjectType == 51);
+    STATIC_ASSERT(Int8ArrayType == 34);
+    STATIC_ASSERT(Int16ArrayType == 35);
+    STATIC_ASSERT(Int32ArrayType == 36);
+    STATIC_ASSERT(Uint8ArrayType == 37);
+    STATIC_ASSERT(Uint8ClampedArrayType == 38);
+    STATIC_ASSERT(Uint16ArrayType == 39);
+    STATIC_ASSERT(Uint32ArrayType == 40);
+    STATIC_ASSERT(Float32ArrayType == 41);
+    STATIC_ASSERT(Float64ArrayType == 42);
     STATIC_ASSERT(MasqueradesAsUndefined == 1);
     STATIC_ASSERT(ImplementsDefaultHasInstance == 2);
     STATIC_ASSERT(FirstConstantRegisterIndex == 0x40000000);
@@ -178,6 +178,15 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(EvalCode == 1);
     STATIC_ASSERT(FunctionCode == 2);
     STATIC_ASSERT(ModuleCode == 3);
+    
+    STATIC_ASSERT(IsArray == 0x01);
+    STATIC_ASSERT(IndexingShapeMask == 0x0E);
+    STATIC_ASSERT(NoIndexingShape == 0x00);
+    STATIC_ASSERT(Int32Shape == 0x04);
+    STATIC_ASSERT(DoubleShape == 0x06);
+    STATIC_ASSERT(ContiguousShape == 0x08);
+    STATIC_ASSERT(ArrayStorageShape == 0x0A);
+    STATIC_ASSERT(SlowPutArrayStorageShape == 0x0C);
 
     ASSERT(!(reinterpret_cast<ptrdiff_t>((reinterpret_cast<WriteBarrier<JSCell>*>(0x4000)->slot())) - 0x4000));
     static_assert(PutByIdPrimaryTypeMask == 0x6, "LLInt assumes PutByIdPrimaryTypeMask is == 0x6");

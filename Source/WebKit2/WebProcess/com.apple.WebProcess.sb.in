@@ -1,4 +1,4 @@
-; Copyright (C) 2010, 2011, 2012, 2013, 2014 Apple Inc. All rights reserved.
+; Copyright (C) 2010-2016 Apple Inc. All rights reserved.
 ;
 ; Redistribution and use in source and binary forms, with or without
 ; modification, are permitted provided that the following conditions
@@ -146,14 +146,7 @@
     (ipc-posix-name-regex #"^WebKit Test-"))
 
 ;; ColorSync
-;; FIXME: Remove names with underscores when possible (see <rdar://problem/13072721>).
 (allow ipc-posix-shm*
-    (ipc-posix-name "_CS_GSHMEMLOCK")
-    (ipc-posix-name "_CS_DSHMEMLOCK")
-    (ipc-posix-name "_CSGRAYPROFILE")
-    (ipc-posix-name "_CSRGBPROFILE")
-    (ipc-posix-name "_CSGENGPROFILE")
-    (ipc-posix-name "_CSGENRPROFILE")
     (ipc-posix-name "com.apple.ColorSync.Gen.lock")
     (ipc-posix-name "com.apple.ColorSync.Disp.lock")
     (ipc-posix-name "com.apple.ColorSync.Gray2.2")
@@ -174,7 +167,9 @@
        (global-name "com.apple.DiskArbitration.diskarbitrationd")
        (global-name "com.apple.FileCoordination")
        (global-name "com.apple.FontObjectsServer")
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
        (global-name "com.apple.FontServer")
+#endif
        (global-name "com.apple.SystemConfiguration.configd")
        (global-name "com.apple.SystemConfiguration.PPPController")
        (global-name "com.apple.audio.SystemSoundServer-OSX")
@@ -212,10 +207,17 @@
        (global-name "com.apple.securityd.xpc") 
        (global-name "com.apple.CoreAuthentication.agent.libxpc")
        (global-name "com.apple.SecurityServer"))
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101240
 (allow file-read* file-write* (home-subpath "/Library/Keychains")) ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
+#endif
+
 (allow file-read* file-write* (subpath "/private/var/db/mds/system")) ;; FIXME: This should be removed when <rdar://problem/9538414> is fixed.
+
 (allow file-read*
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101240
        (subpath "/Library/Keychains")
+#endif
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures")
        (literal "/Library/Preferences/com.apple.crypto.plist")
@@ -225,6 +227,7 @@
        (home-literal "/Library/Application Support/SyncServices/Local/ClientsWithChanges/com.apple.Keychain")
        (home-literal "/Library/Preferences/com.apple.security.plist")
        (home-literal "/Library/Preferences/com.apple.security.revocation.plist"))
+
 (allow ipc-posix-shm-read* ipc-posix-shm-write-data
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
 
@@ -278,9 +281,6 @@
 
 (if (defined? 'vnode-type)
         (deny file-write-create (vnode-type SYMLINK)))
-
-;; FIXME: Should be removed once <rdar://problem/16329087> is fixed.
-(deny file-write-xattr (xattr "com.apple.quarantine") (with no-log))
 
 ;; Reserve a namespace for additional protected extended attributes.
 (deny file-read-xattr file-write-xattr (xattr-regex #"^com\.apple\.security\.private\."))

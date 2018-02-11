@@ -163,7 +163,7 @@ void RemoteScrollingCoordinatorProxy::currentSnapPointIndicesDidChange(WebCore::
 }
 
 // This comes from the scrolling tree.
-void RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidScroll(ScrollingNodeID scrolledNodeID, const FloatPoint& newScrollPosition, SetOrSyncScrollingLayerPosition scrollingLayerPositionAction)
+void RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidScroll(ScrollingNodeID scrolledNodeID, const FloatPoint& newScrollPosition, const Optional<FloatPoint>& layoutViewportOrigin, SetOrSyncScrollingLayerPosition scrollingLayerPositionAction)
 {
     // Scroll updates for the main frame are sent via WebPageProxy::updateVisibleContentRects()
     // so don't send them here.
@@ -183,6 +183,14 @@ void RemoteScrollingCoordinatorProxy::scrollingTreeNodeRequestsScroll(ScrollingN
         m_requestedScrollInfo->requestIsProgrammaticScroll = representsProgrammaticScroll;
         m_requestedScrollInfo->requestedScrollPosition = scrollPosition;
     }
+}
+
+String RemoteScrollingCoordinatorProxy::scrollingTreeAsText() const
+{
+    if (m_scrollingTree)
+        return m_scrollingTree->scrollingTreeAsText();
+    
+    return emptyString();
 }
 
 } // namespace WebKit

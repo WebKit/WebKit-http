@@ -153,8 +153,8 @@ typedef const char* optionString;
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
     v(bool, dumpGraphAfterParsing, false, Normal, nullptr) \
     v(bool, dumpGraphAtEachPhase, false, Normal, nullptr) \
-    v(bool, dumpDFGGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase DFG of complitaion (note this excludes DFG graphs during FTL compilation)") \
-    v(bool, dumpDFGFTLGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase DFG of complitaion when compiling FTL code") \
+    v(bool, dumpDFGGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase of DFG compilation (note this excludes DFG graphs during FTL compilation)") \
+    v(bool, dumpDFGFTLGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase of DFG compilation when compiling FTL code") \
     v(bool, dumpB3GraphAtEachPhase, false, Normal, "dumps the B3 graph at each phase of compilation") \
     v(bool, dumpAirGraphAtEachPhase, false, Normal, "dumps the Air graph at each phase of compilation") \
     v(bool, verboseDFGByteCodeParsing, false, Normal, nullptr) \
@@ -184,7 +184,19 @@ typedef const char* optionString;
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
     v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, useConcurrentGC, false, Normal, nullptr) \
+    v(bool, collectContinuously, false, Normal, nullptr) \
     v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(unsigned, largeHeapSize, 32 * 1024 * 1024, Normal, nullptr) \
+    v(unsigned, smallHeapSize, 1 * 1024 * 1024, Normal, nullptr) \
+    v(double, smallHeapRAMFraction, 0.25, Normal, nullptr) \
+    v(double, smallHeapGrowthFactor, 2, Normal, nullptr) \
+    v(double, mediumHeapRAMFraction, 0.5, Normal, nullptr) \
+    v(double, mediumHeapGrowthFactor, 1.5, Normal, nullptr) \
+    v(double, largeHeapGrowthFactor, 1.24, Normal, nullptr) \
+    v(bool, useCollectorTimeslicing, true, Normal, nullptr) \
+    v(double, concurrentGCHeadroomRatio, 1.5, Normal, nullptr) \
+    v(double, concurrentGCPeriodMS, 2, Normal, nullptr) \
     v(bool, scribbleFreeCells, false, Normal, nullptr) \
     v(double, sizeClassProgression, 1.4, Normal, nullptr) \
     v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
@@ -323,6 +335,7 @@ typedef const char* optionString;
     v(bool, useZombieMode, false, Normal, "debugging option to scribble over dead objects with 0xdeadbeef") \
     v(bool, useImmortalObjects, false, Normal, "debugging option to keep all objects alive forever") \
     v(bool, dumpObjectStatistics, false, Normal, nullptr) \
+    v(unsigned, maxSingleAllocationSize, 0, Configurable, "debugging option to limit individual allocations to a max size (0 = limit not set, N = limit size in bytes)") \
     \
     v(gcLogLevel, logGC, GCLogging::None, Normal, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, Normal, nullptr) \

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ClassChangeInvalidation_h
-#define ClassChangeInvalidation_h
+#pragma once
 
 #include "Element.h"
 #include <wtf/Vector.h>
@@ -69,9 +68,6 @@ inline ClassChangeInvalidation::~ClassChangeInvalidation()
         return;
     invalidateDescendantStyle();
 }
-    
+
 }
 }
-
-#endif
-

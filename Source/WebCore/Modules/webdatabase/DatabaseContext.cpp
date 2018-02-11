@@ -39,6 +39,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptExecutionContext.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include "Settings.h"
 
 namespace WebCore {
@@ -94,33 +95,21 @@ namespace WebCore {
 // DatabaseContext will outlive both regardless of which of the 2 destructs first.
 
 
-DatabaseContext::DatabaseContext(ScriptExecutionContext* context)
-    : ActiveDOMObject(context)
-    , m_hasOpenDatabases(false)
-    , m_isRegistered(true) // will register on construction below.
-    , m_hasRequestedTermination(false)
+DatabaseContext::DatabaseContext(ScriptExecutionContext& context)
+    : ActiveDOMObject(&context)
 {
     // ActiveDOMObject expects this to be called to set internal flags.
     suspendIfNeeded();
 
-    context->setDatabaseContext(this);
-
-    // For debug accounting only. We must do this before we register the
-    // instance. The assertions assume this.
-    auto& databaseManager = DatabaseManager::singleton();
-    databaseManager.didConstructDatabaseContext();
-
-    databaseManager.registerDatabaseContext(this);
+    ASSERT(!context.databaseContext());
+    context.setDatabaseContext(this);
 }
 
 DatabaseContext::~DatabaseContext()
 {
     stopDatabases();
     ASSERT(!m_databaseThread || m_databaseThread->terminationRequested());
-
-    // For debug accounting only. We must call this last. The assertions assume
-    // this.
-    DatabaseManager::singleton().didDestructDatabaseContext();
+    ASSERT(!scriptExecutionContext() || !scriptExecutionContext()->databaseContext());
 }
 
 // This is called if the associated ScriptExecutionContext is destroyed while
@@ -171,9 +160,12 @@ DatabaseThread* DatabaseContext::databaseThread()
 
 bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
 {
-    if (m_isRegistered) {
-        DatabaseManager::singleton().unregisterDatabaseContext(this);
-        m_isRegistered = false;
+    // FIXME: What guarantees this is never called after the script execution context is null?
+    ASSERT(scriptExecutionContext());
+
+    if (scriptExecutionContext()->databaseContext()) {
+        ASSERT(scriptExecutionContext()->databaseContext() == this);
+        scriptExecutionContext()->setDatabaseContext(nullptr);
     }
 
     // Though we initiate termination of the DatabaseThread here in
@@ -191,6 +183,7 @@ bool DatabaseContext::stopDatabases(DatabaseTaskSynchronizer* synchronizer)
         m_hasRequestedTermination = true;
         return true;
     }
+
     return false;
 }
 
@@ -218,9 +211,9 @@ void DatabaseContext::databaseExceededQuota(const String& name, DatabaseDetails 
     ASSERT(m_scriptExecutionContext->isWorkerGlobalScope());
 }
 
-SecurityOrigin* DatabaseContext::securityOrigin() const
+SecurityOriginData DatabaseContext::securityOrigin() const
 {
-    return m_scriptExecutionContext->securityOrigin();
+    return SecurityOriginData::fromSecurityOrigin(*m_scriptExecutionContext->securityOrigin());
 }
 
 bool DatabaseContext::isContextThread() const

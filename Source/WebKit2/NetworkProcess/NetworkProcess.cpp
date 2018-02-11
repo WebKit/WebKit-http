@@ -311,7 +311,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
-        HashMap<RefPtr<SecurityOrigin>, uint64_t> originsAndSizes;
+        HashMap<SecurityOriginData, uint64_t> originsAndSizes;
         NetworkCache::singleton().traverse([fetchOptions, completionHandler = WTFMove(completionHandler), originsAndSizes = WTFMove(originsAndSizes)](auto* traversalEntry) mutable {
             if (!traversalEntry) {
                 Vector<WebsiteData::Entry> entries;
@@ -326,7 +326,8 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
                 return;
             }
 
-            auto result = originsAndSizes.add(SecurityOrigin::create(traversalEntry->entry.response().url()), 0);
+            auto url = traversalEntry->entry.response().url();
+            auto result = originsAndSizes.add({url.protocol().toString(), url.host(), url.port()}, 0);
 
             if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
                 result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
@@ -336,15 +337,8 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
     }
 #endif
 
-    Vector<WebsiteData::Entry> entries;
-
-#if USE(CFURLCACHE)
-    for (auto& origin : NetworkProcess::cfURLCacheOrigins())
-        entries.append(WebsiteData::Entry { WTFMove(origin), WebsiteDataType::DiskCache, 0 });
-#endif
-
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), entries = WTFMove(entries)] {
-        completionHandler(entries);
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+        completionHandler({ });
     });
 }
 
@@ -438,10 +432,6 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Fun
     }
 #endif
 
-#if USE(CFURLCACHE)
-    NetworkProcess::clearCFURLCacheForOrigins(origins);
-#endif
-
     RunLoop::main().dispatch(WTFMove(completionHandler));
 }
 
@@ -466,7 +456,7 @@ void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<
 
 void NetworkProcess::downloadRequest(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedFilename)
 {
-    downloadManager().startDownload(sessionID, downloadID, request, suggestedFilename);
+    downloadManager().startDownload(nullptr, sessionID, downloadID, request, suggestedFilename);
 }
 
 void NetworkProcess::resumeDownload(SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const WebKit::SandboxExtension::Handle& sandboxExtensionHandle)

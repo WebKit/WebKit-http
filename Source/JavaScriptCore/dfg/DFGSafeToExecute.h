@@ -199,7 +199,6 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case TryGetById:
     case DeleteById:
     case DeleteByVal:
-    case PureGetById:
     case GetById:
     case GetByIdWithThis:
     case GetByValWithThis:
@@ -264,6 +263,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case NewArray:
     case NewArrayWithSize:
     case NewArrayBuffer:
+    case NewArrayWithSpread:
+    case Spread:
     case NewRegexp:
     case ProfileType:
     case ProfileControlFlow:
@@ -298,9 +299,11 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CreateScopedArguments:
     case CreateClonedArguments:
     case GetFromArguments:
+    case GetArgument:
     case PutToArguments:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case Jump:
     case Branch:
     case Switch:
@@ -349,6 +352,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
     case CheckStructureImmediate:

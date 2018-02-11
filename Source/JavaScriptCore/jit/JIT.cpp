@@ -238,6 +238,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_create_direct_arguments)
         DEFINE_OP(op_create_scoped_arguments)
         DEFINE_OP(op_create_cloned_arguments)
+        DEFINE_OP(op_get_argument)
         DEFINE_OP(op_argument_count)
         DEFINE_OP(op_create_rest)
         DEFINE_OP(op_get_rest_length)
@@ -295,6 +296,8 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_new_array)
         DEFINE_OP(op_new_array_with_size)
         DEFINE_OP(op_new_array_buffer)
+        DEFINE_OP(op_new_array_with_spread)
+        DEFINE_OP(op_spread)
         DEFINE_OP(op_new_func)
         DEFINE_OP(op_new_func_exp)
         DEFINE_OP(op_new_generator_func)
@@ -522,7 +525,7 @@ void JIT::compileWithoutLinking(JITCompilationEffort effort)
         before = monotonicallyIncreasingTimeMS();
     
     {
-        ConcurrentJITLocker locker(m_codeBlock->m_lock);
+        ConcurrentJSLocker locker(m_codeBlock->m_lock);
         m_instructions = m_codeBlock->instructions().clone();
     }
 

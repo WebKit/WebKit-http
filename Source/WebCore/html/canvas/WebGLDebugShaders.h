@@ -31,11 +31,9 @@ namespace WebCore {
 
 class WebGLShader;
 
-typedef int ExceptionCode;
-
 class WebGLDebugShaders final : public WebGLExtension {
 public:
-    explicit WebGLDebugShaders(WebGLRenderingContextBase*);
+    explicit WebGLDebugShaders(WebGLRenderingContextBase&);
     virtual ~WebGLDebugShaders();
 
     ExtensionName getName() const override;

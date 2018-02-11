@@ -23,7 +23,6 @@
 
 #include "ElementIterator.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "ProgressShadowElement.h"
@@ -148,9 +147,9 @@ void HTMLProgressElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     auto value = ProgressValueElement::create(document());
     m_value = value.ptr();
     m_value->setWidthPercentage(HTMLProgressElement::IndeterminatePosition * 100);
-    bar->appendChild(value, ASSERT_NO_EXCEPTION);
+    bar->appendChild(value);
 
-    inner->appendChild(bar, ASSERT_NO_EXCEPTION);
+    inner->appendChild(bar);
 }
 
 bool HTMLProgressElement::shouldAppearIndeterminate() const

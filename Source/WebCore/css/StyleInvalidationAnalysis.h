@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleInvalidationAnalysis_h
-#define StyleInvalidationAnalysis_h
+#pragma once
 
 #include <wtf/text/AtomicStringImpl.h>
 
@@ -58,8 +57,7 @@ private:
     const RuleSet& m_ruleSet;
     bool m_dirtiesAllStyle { false };
     bool m_hasShadowPseudoElementRulesInAuthorSheet { false };
+    bool m_didInvalidateHostChildren { false };
 };
 
-}
-
-#endif
+} // namespace WebCore

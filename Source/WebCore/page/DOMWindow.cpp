@@ -57,7 +57,6 @@
 #include "EventListener.h"
 #include "EventNames.h"
 #include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FloatRect.h"
 #include "FocusController.h"
 #include "FrameLoadRequest.h"
@@ -88,6 +87,7 @@
 #include "Screen.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include "SecurityPolicy.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
@@ -840,7 +840,7 @@ ExceptionOr<Storage*> DOMWindow::sessionStorage() const
     if (!page)
         return nullptr;
 
-    auto storageArea = page->sessionStorage()->storageArea(document->securityOrigin());
+    auto storageArea = page->sessionStorage()->storageArea(SecurityOriginData::fromSecurityOrigin(*document->securityOrigin()));
     if (!storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
@@ -1617,7 +1617,7 @@ ExceptionOr<int> DOMWindow::setTimeout(std::unique_ptr<ScheduledAction> action, 
 {
     auto* context = scriptExecutionContext();
     if (!context)
-        return ExceptionCode { INVALID_ACCESS_ERR };
+        return Exception { INVALID_ACCESS_ERR };
     return DOMTimer::install(*context, WTFMove(action), std::chrono::milliseconds(timeout), true);
 }
 
@@ -1649,7 +1649,7 @@ ExceptionOr<int> DOMWindow::setInterval(std::unique_ptr<ScheduledAction> action,
 {
     auto* context = scriptExecutionContext();
     if (!context)
-        return ExceptionCode { INVALID_ACCESS_ERR };
+        return Exception { INVALID_ACCESS_ERR };
     return DOMTimer::install(*context, WTFMove(action), std::chrono::milliseconds(timeout), false);
 }
 

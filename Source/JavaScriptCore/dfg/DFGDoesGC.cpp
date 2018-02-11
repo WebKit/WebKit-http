@@ -244,6 +244,7 @@ bool doesGC(Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomCreateRest:
@@ -258,6 +259,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetStack:
     case GetFromArguments:
     case PutToArguments:
+    case GetArgument:
     case LogShadowChickenPrologue:
     case LogShadowChickenTail:
     case GetDynamicVar:
@@ -265,7 +267,6 @@ bool doesGC(Graph& graph, Node* node)
     case ResolveScope:
         return false;
 
-    case PureGetById: // We are modeling getOwnPropertySlot here, which may GC because it is allowed to allocate things.
     case CreateActivation:
     case CreateDirectArguments:
     case CreateScopedArguments:
@@ -279,6 +280,8 @@ bool doesGC(Graph& graph, Node* node)
     case ArrayifyToStructure:
     case NewObject:
     case NewArray:
+    case NewArrayWithSpread:
+    case Spread:
     case NewArrayWithSize:
     case NewArrayBuffer:
     case NewRegexp:
@@ -286,6 +289,7 @@ bool doesGC(Graph& graph, Node* node)
     case MakeRope:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
     case NewTypedArray:
     case ThrowStaticError:
     case GetPropertyEnumerator:

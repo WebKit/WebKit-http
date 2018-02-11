@@ -29,7 +29,10 @@
 #if USE(NETWORK_SESSION)
 
 #include "NetworkDataTaskBlob.h"
+#include "NetworkLoadParameters.h"
 #include "NetworkSession.h"
+#include <WebCore/ResourceError.h>
+#include <WebCore/ResourceResponse.h>
 #include <wtf/MainThread.h>
 
 #if PLATFORM(COCOA)
@@ -43,16 +46,16 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<NetworkDataTask> NetworkDataTask::create(NetworkSession& session, NetworkDataTaskClient& client, const ResourceRequest& request, StoredCredentials storedCredentials, ContentSniffingPolicy shouldContentSniff, bool shouldClearReferrerOnHTTPSToHTTPRedirect)
+Ref<NetworkDataTask> NetworkDataTask::create(NetworkSession& session, NetworkDataTaskClient& client, const NetworkLoadParameters& parameters)
 {
-    if (request.url().protocolIsBlob())
-        return NetworkDataTaskBlob::create(session, client, request, shouldContentSniff);
+    if (parameters.request.url().protocolIsBlob())
+        return NetworkDataTaskBlob::create(session, client, parameters.request, parameters.contentSniffingPolicy, parameters.blobFileReferences);
 
 #if PLATFORM(COCOA)
-    return NetworkDataTaskCocoa::create(session, client, request, storedCredentials, shouldContentSniff, shouldClearReferrerOnHTTPSToHTTPRedirect);
+    return NetworkDataTaskCocoa::create(session, client, parameters.request, parameters.allowStoredCredentials, parameters.contentSniffingPolicy, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
 #endif
 #if USE(SOUP)
-    return NetworkDataTaskSoup::create(session, client, request, storedCredentials, shouldContentSniff, shouldClearReferrerOnHTTPSToHTTPRedirect);
+    return NetworkDataTaskSoup::create(session, client, parameters.request, parameters.allowStoredCredentials, parameters.contentSniffingPolicy, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
 #endif
 }
 
@@ -89,6 +92,21 @@ void NetworkDataTask::scheduleFailure(FailureType type)
     ASSERT(type != NoFailure);
     m_scheduledFailureType = type;
     m_failureTimer.startOneShot(0);
+}
+
+void NetworkDataTask::didReceiveResponse(ResourceResponse&& response, ResponseCompletionHandler&& completionHandler)
+{
+    ASSERT(m_client);
+    if (response.isHttpVersion0_9()) {
+        auto url = response.url();
+        Optional<uint16_t> port = url.port();
+        if (port && !isDefaultPortForProtocol(port.value(), url.protocol())) {
+            cancel();
+            m_client->didCompleteWithError({ String(), 0, url, "Cancelled load from '" + url.stringCenterEllipsizedToLength() + "' because it is using HTTP/0.9." });
+            return;
+        }
+    }
+    m_client->didReceiveResponseNetworkSession(WTFMove(response), WTFMove(completionHandler));
 }
 
 void NetworkDataTask::failureTimerFired()

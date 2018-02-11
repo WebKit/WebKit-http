@@ -52,12 +52,6 @@ public:
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const URL&);
     static Ref<SecurityOrigin> createUnique();
 
-    WEBCORE_EXPORT static Ref<SecurityOrigin> createFromDatabaseIdentifier(const String&);
-    // Alternate form of createFromDatabaseIdentifier that returns a nullptr on failure, instead of an empty origin.
-    // FIXME: Many users of createFromDatabaseIdentifier seem to expect maybeCreateFromDatabaseIdentifier behavior,
-    // but they aren't getting it so they might be buggy.
-    WEBCORE_EXPORT static RefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
-
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
     WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, Optional<uint16_t> port);
 
@@ -141,6 +135,9 @@ public:
 
     void setStorageBlockingPolicy(StorageBlockingPolicy policy) { m_storageBlockingPolicy = policy; }
 
+    void grantStorageAccessFromFileURLsQuirk();
+    bool needsStorageAccessFromFileURLsQuirk() const { return m_needsStorageAccessFromFileURLsQuirk; }
+
 #if ENABLE(CACHE_PARTITIONING)
     WEBCORE_EXPORT String domainForCachePartition() const;
 #endif
@@ -188,10 +185,6 @@ public:
     // could make the string return "null".
     WEBCORE_EXPORT String toRawString() const;
 
-    // Serialize the security origin to a string that could be used as part of
-    // file names. This format should be used in storage APIs only.
-    WEBCORE_EXPORT String databaseIdentifier() const;
-
     // This method checks for equality between SecurityOrigins, not whether
     // one origin can access another. It is used for hash table keys.
     // For access checks, use canAccess().
@@ -226,13 +219,13 @@ private:
     String m_domain;
     String m_filePath;
     Optional<uint16_t> m_port;
-    bool m_isUnique;
-    bool m_universalAccess;
-    bool m_domainWasSetInDOM;
-    bool m_canLoadLocalResources;
-    StorageBlockingPolicy m_storageBlockingPolicy;
-    bool m_enforceFilePathSeparation;
-    bool m_needsDatabaseIdentifierQuirkForFiles;
+    bool m_isUnique { false };
+    bool m_universalAccess { false };
+    bool m_domainWasSetInDOM { false };
+    bool m_canLoadLocalResources { false };
+    StorageBlockingPolicy m_storageBlockingPolicy { AllowAllStorage };
+    bool m_enforceFilePathSeparation { false };
+    bool m_needsStorageAccessFromFileURLsQuirk { false };
 };
 
 // Returns true if the Origin header values serialized from these two origins would be the same.

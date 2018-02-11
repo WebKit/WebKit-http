@@ -57,6 +57,7 @@ class IDBObjectStoreInfo;
 class IDBResultData;
 class SerializedScriptValue;
 
+struct IDBIterateCursorData;
 struct IDBKeyRangeData;
 
 namespace IDBClient {
@@ -124,7 +125,7 @@ public:
     Ref<IDBRequest> requestGetKey(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&);
     Ref<IDBRequest> requestOpenCursor(JSC::ExecState&, IDBObjectStore&, const IDBCursorInfo&);
     Ref<IDBRequest> requestOpenCursor(JSC::ExecState&, IDBIndex&, const IDBCursorInfo&);
-    void iterateCursor(IDBCursor&, const IDBKeyData&, unsigned long count);
+    void iterateCursor(IDBCursor&, const IDBIterateCursorData&);
 
     void deleteObjectStore(const String& objectStoreName);
     void deleteIndex(uint64_t objectStoreIdentifier, const String& indexName);
@@ -145,6 +146,8 @@ public:
     IDBClient::IDBConnectionProxy& connectionProxy();
 
     void connectionClosedFromServer(const IDBError&);
+
+    void visitReferencedObjectStores(JSC::SlotVisitor&) const;
 
 private:
     IDBTransaction(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest*);
@@ -207,7 +210,7 @@ private:
     void openCursorOnServer(IDBClient::TransactionOperation&, const IDBCursorInfo&);
     void didOpenCursorOnServer(IDBRequest&, const IDBResultData&);
 
-    void iterateCursorOnServer(IDBClient::TransactionOperation&, const IDBKeyData&, const unsigned long& count);
+    void iterateCursorOnServer(IDBClient::TransactionOperation&, const IDBIterateCursorData&);
     void didIterateCursorOnServer(IDBRequest&, const IDBResultData&);
 
     void transitionedToFinishing(IndexedDB::TransactionState);
@@ -234,7 +237,9 @@ private:
     Deque<RefPtr<IDBClient::TransactionOperation>> m_abortQueue;
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::TransactionOperation>> m_transactionOperationMap;
 
-    HashMap<String, RefPtr<IDBObjectStore>> m_referencedObjectStores;
+    mutable Lock m_referencedObjectStoreLock;
+    HashMap<String, std::unique_ptr<IDBObjectStore>> m_referencedObjectStores;
+    HashMap<uint64_t, std::unique_ptr<IDBObjectStore>> m_deletedObjectStores;
 
     HashSet<RefPtr<IDBRequest>> m_openRequests;
 

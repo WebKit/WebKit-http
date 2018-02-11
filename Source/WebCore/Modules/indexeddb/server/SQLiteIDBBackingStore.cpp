@@ -34,6 +34,7 @@
 #include "IDBGetAllRecordsData.h"
 #include "IDBGetAllResult.h"
 #include "IDBGetResult.h"
+#include "IDBIterateCursorData.h"
 #include "IDBKeyData.h"
 #include "IDBObjectStoreInfo.h"
 #include "IDBSerialization.h"
@@ -1182,6 +1183,8 @@ IDBError SQLiteIDBBackingStore::uncheckedPutIndexKey(const IDBIndexInfo& info, c
         bool hasRecord;
         IDBError error;
         for (auto& indexKey : indexKeys) {
+            if (!indexKey.isValid())
+                continue;
             error = uncheckedHasIndexRecord(info, indexKey, hasRecord);
             if (!error.isNull())
                 return error;
@@ -1191,6 +1194,8 @@ IDBError SQLiteIDBBackingStore::uncheckedPutIndexKey(const IDBIndexInfo& info, c
     }
 
     for (auto& indexKey : indexKeys) {
+        if (!indexKey.isValid())
+            continue;
         auto error = uncheckedPutIndexRecord(info.objectStoreIdentifier(), info.identifier(), key, indexKey);
         if (!error.isNull()) {
             LOG_ERROR("Unable to put index record for newly created index");
@@ -2268,7 +2273,7 @@ IDBError SQLiteIDBBackingStore::openCursor(const IDBResourceIdentifier& transact
     return { };
 }
 
-IDBError SQLiteIDBBackingStore::iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBKeyData& key, uint32_t count, IDBGetResult& result)
+IDBError SQLiteIDBBackingStore::iterateCursor(const IDBResourceIdentifier& transactionIdentifier, const IDBResourceIdentifier& cursorIdentifier, const IDBIterateCursorData& data, IDBGetResult& result)
 {
     LOG(IndexedDB, "SQLiteIDBBackingStore::iterateCursor");
 
@@ -2288,12 +2293,17 @@ IDBError SQLiteIDBBackingStore::iterateCursor(const IDBResourceIdentifier& trans
         return { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to iterate a cursor without an in-progress transaction") };
     }
 
+    auto key = data.keyData;
+    auto primaryKey = data.primaryKeyData;
+    auto count = data.count;
+
     if (key.isValid()) {
-        if (!cursor->iterate(key)) {
+        if (!cursor->iterate(key, primaryKey)) {
             LOG_ERROR("Attempt to iterate cursor failed");
             return { IDBDatabaseException::UnknownError, ASCIILiteral("Attempt to iterate cursor failed") };
         }
     } else {
+        ASSERT(!primaryKey.isValid());
         if (!count)
             count = 1;
         if (!cursor->advance(count)) {

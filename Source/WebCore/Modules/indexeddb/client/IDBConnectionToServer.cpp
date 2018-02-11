@@ -273,12 +273,12 @@ void IDBConnectionToServer::didOpenCursor(const IDBResultData& resultData)
     m_proxy->completeOperation(resultData);
 }
 
-void IDBConnectionToServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count)
+void IDBConnectionToServer::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBConnectionToServer::iterateCursor");
     ASSERT(isMainThread());
 
-    m_delegate->iterateCursor(requestData, key, count);
+    m_delegate->iterateCursor(requestData, data);
 }
 
 void IDBConnectionToServer::didIterateCursor(const IDBResultData& resultData)
@@ -397,6 +397,14 @@ void IDBConnectionToServer::openDBRequestCancelled(const IDBRequestData& request
     ASSERT(isMainThread());
 
     m_delegate->openDBRequestCancelled(requestData);
+}
+
+void IDBConnectionToServer::databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::databaseConnectionPendingClose");
+    ASSERT(isMainThread());
+
+    m_delegate->databaseConnectionPendingClose(databaseConnectionIdentifier);
 }
 
 void IDBConnectionToServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)

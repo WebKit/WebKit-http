@@ -174,7 +174,12 @@ static const uint32_t firstSDKVersionWithLinkPreviewEnabledByDefault = 0xA0000;
 
 @interface WKWebView () <WebViewImplDelegate, NSTextInputClient>
 @end
-#endif
+
+#if HAVE(TOUCH_BAR)
+@interface WKWebView () <NSTouchBarProvider>
+@end
+#endif // HAVE(TOUCH_BAR)
+#endif // PLATFORM(MAC)
 
 static HashMap<WebKit::WebPageProxy*, WKWebView *>& pageToViewMap()
 {
@@ -492,6 +497,8 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 #if ENABLE(APPLE_PAY)
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::applePayEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _applePayEnabled]));
 #endif
+
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::needsStorageAccessFromFileURLsQuirkKey(), WebKit::WebPreferencesStore::Value(!![_configuration _needsStorageAccessFromFileURLsQuirk]));
 
 #if PLATFORM(IOS)
     CGRect bounds = self.bounds;
@@ -1137,7 +1144,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     // Update the indicator style based on the lightness/darkness of the background color.
     double hue, saturation, lightness;
     color.getHSL(hue, saturation, lightness);
-    if (lightness <= .5 && color.alpha() > 0)
+    if (lightness <= .5 && color.isVisible())
         [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleWhite];
     else
         [_scrollView setIndicatorStyle:UIScrollViewIndicatorStyleDefault];
@@ -1197,6 +1204,8 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
     _hasCommittedLoadForMainFrame = YES;
     _needsResetViewStateAfterCommitLoadForMainFrame = YES;
+
+    [_scrollView _stopScrollingAndZoomingAnimations];
 }
 
 static CGPoint contentOffsetBoundedInValidRange(UIScrollView *scrollView, CGPoint contentOffset)
@@ -1266,6 +1275,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     _viewportMetaTagWidthWasExplicit = layerTreeTransaction.viewportMetaTagWidthWasExplicit();
     _viewportMetaTagCameFromImageDocument = layerTreeTransaction.viewportMetaTagCameFromImageDocument();
     _initialScaleFactor = layerTreeTransaction.initialScaleFactor();
+
+    BOOL needUpdateVisbleContentRects = _page->updateLayoutViewportParameters(layerTreeTransaction);
+
     if (![_contentView _mayDisableDoubleTapGesturesDuringSingleTap])
         [_contentView _setDoubleTapGesturesEnabled:self._allowsDoubleTapGestures];
 
@@ -1277,9 +1289,10 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     if (_needsResetViewStateAfterCommitLoadForMainFrame && layerTreeTransaction.transactionID() >= _firstPaintAfterCommitLoadTransactionID) {
         _needsResetViewStateAfterCommitLoadForMainFrame = NO;
         [_scrollView setContentOffset:[self _adjustedContentOffset:CGPointZero]];
-        [self _updateVisibleContentRects];
         if (_observedRenderingProgressEvents & _WKRenderingProgressEventFirstPaint)
             _navigationState->didFirstPaint();
+
+        needUpdateVisbleContentRects = YES;
     }
 
     bool isTransactionAfterPageRestore = layerTreeTransaction.transactionID() >= _firstTransactionIDAfterPageRestore;
@@ -1298,7 +1311,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             if (_gestureController)
                 _gestureController->didRestoreScrollPosition();
         }
-        [self _updateVisibleContentRects];
+        
+        needUpdateVisbleContentRects = YES;
     }
 
     if (_needsToRestoreUnobscuredCenter && isTransactionAfterPageRestore) {
@@ -1316,9 +1330,13 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
             if (_gestureController)
                 _gestureController->didRestoreScrollPosition();
         }
-        [self _updateVisibleContentRects];
+
+        needUpdateVisbleContentRects = YES;
     }
-    
+
+    if (needUpdateVisbleContentRects)
+        [self _updateVisibleContentRects];
+
     if (WebKit::RemoteLayerTreeScrollingPerformanceData* scrollPerfData = _page->scrollingPerformanceData())
         scrollPerfData->didCommitLayerTree([self visibleRectInViewCoordinates]);
 }
@@ -3155,6 +3173,38 @@ WEBCORE_COMMAND(yankAndSelect)
 
 #endif // PLATFORM(MAC)
 
+#if HAVE(TOUCH_BAR)
+
+@dynamic touchBar;
+
+- (NSTouchBar *)makeTouchBar
+{
+    return _impl->makeTouchBar();
+}
+
+- (NSCandidateListTouchBarItem *)candidateListTouchBarItem
+{
+    return _impl->candidateListTouchBarItem();
+}
+
+- (void)_web_didAddMediaControlsManager:(id)controlsManager
+{
+    [self _addMediaPlaybackControlsView:controlsManager];
+}
+
+- (void)_web_didRemoveMediaControlsManager
+{
+    [self _removeMediaPlaybackControlsView];
+}
+
+- (void)_interactWithMediaControlsForTesting
+{
+    [self _setWantsMediaPlaybackControlsView:YES];
+    [self makeTouchBar];
+}
+
+#endif // HAVE(TOUCH_BAR)
+
 @end
 
 @implementation WKWebView (WKPrivate)
@@ -4529,6 +4579,41 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     _impl->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection);
 }
 
+- (BOOL)_wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    return _impl->clientWantsMediaPlaybackControlsView();
+#else
+    return NO;
+#endif
+}
+
+- (void)_setWantsMediaPlaybackControlsView:(BOOL)wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    _impl->setClientWantsMediaPlaybackControlsView(wantsMediaPlaybackControlsView);
+#endif
+}
+
+- (AVFunctionBarScrubber *)_mediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    return _impl->clientWantsMediaPlaybackControlsView() ? _impl->mediaPlaybackControlsView() : nil;
+#else
+    return nil;
+#endif
+}
+
+// This method is for subclasses to override.
+- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView
+{
+}
+
+// This method is for subclasses to override.
+- (void)_removeMediaPlaybackControlsView
+{
+}
+
 #endif
 
 @end
@@ -4611,6 +4696,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (NSArray<UIView *> *)_uiTextSelectionRectViews
 {
     return [_contentView valueForKeyPath:@"interactionAssistant.selectionView.rangeView.m_rectViews"];
+}
+
+- (NSString *)_scrollingTreeAsText
+{
+    WebKit::RemoteScrollingCoordinatorProxy* coordinator = _page->scrollingCoordinatorProxy();
+    if (!coordinator)
+        return @"";
+
+    return coordinator->scrollingTreeAsText();
 }
 
 #endif // PLATFORM(IOS)

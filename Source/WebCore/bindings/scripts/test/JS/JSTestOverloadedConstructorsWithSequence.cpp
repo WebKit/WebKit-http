@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestOverloadedConstructorsWithSequence.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -149,6 +148,13 @@ const ClassInfo JSTestOverloadedConstructorsWithSequence::s_info = { "TestOverlo
 JSTestOverloadedConstructorsWithSequence::JSTestOverloadedConstructorsWithSequence(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestOverloadedConstructorsWithSequence>&& impl)
     : JSDOMWrapper<TestOverloadedConstructorsWithSequence>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestOverloadedConstructorsWithSequence::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestOverloadedConstructorsWithSequence::createPrototype(VM& vm, JSGlobalObject* globalObject)

@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestMediaQueryListListener.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSMediaQueryListListener.h"
@@ -105,6 +104,13 @@ const ClassInfo JSTestMediaQueryListListener::s_info = { "TestMediaQueryListList
 JSTestMediaQueryListListener::JSTestMediaQueryListListener(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestMediaQueryListListener>&& impl)
     : JSDOMWrapper<TestMediaQueryListListener>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestMediaQueryListListener::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestMediaQueryListListener::createPrototype(VM& vm, JSGlobalObject* globalObject)

@@ -119,25 +119,12 @@ my %svgAttributesInHTMLHash = (
 );
 
 my %svgTypeNeedingTearOff = (
-    "SVGAngle" => "SVGPropertyTearOff<SVGAngle>",
-    "SVGLength" => "SVGPropertyTearOff<SVGLength>",
     "SVGLengthList" => "SVGListPropertyTearOff<SVGLengthList>",
-    "SVGMatrix" => "SVGPropertyTearOff<SVGMatrix>",
-    "SVGNumber" => "SVGPropertyTearOff<float>",
     "SVGNumberList" => "SVGListPropertyTearOff<SVGNumberList>",
-    "SVGPathSegList" => "SVGPathSegListPropertyTearOff",
-    "SVGPoint" => "SVGPropertyTearOff<SVGPoint>",
     "SVGPointList" => "SVGListPropertyTearOff<SVGPointList>",
-    "SVGPreserveAspectRatio" => "SVGPropertyTearOff<SVGPreserveAspectRatio>",
-    "SVGRect" => "SVGPropertyTearOff<FloatRect>",
     "SVGStringList" => "SVGStaticListPropertyTearOff<SVGStringList>",
-    "SVGTransform" => "SVGPropertyTearOff<SVGTransform>",
+    "SVGPathSegList" => "SVGPathSegListPropertyTearOff",
     "SVGTransformList" => "SVGTransformListPropertyTearOff"
-);
-
-my %svgTypeWithWritablePropertiesNeedingTearOff = (
-    "SVGPoint" => 1,
-    "SVGMatrix" => 1
 );
 
 # Cache of IDL file pathnames.
@@ -385,7 +372,6 @@ sub SkipIncludeHeader
     return 1 if $typedArrayTypes{$typeName};
     return 1 if $stringTypeHash{$typeName};
     return 1 if $typeName eq "BufferSource";
-    return 1 if $typeName eq "SVGNumber";
     return 1 if $typeName eq "any";
 
     return 0;
@@ -628,16 +614,6 @@ sub IsSVGTypeNeedingTearOff
     return 0;
 }
 
-sub IsSVGTypeWithWritablePropertiesNeedingTearOff
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    return 1 if $svgTypeWithWritablePropertiesNeedingTearOff{$type->name};
-    return 0;
-}
-
 sub IsTypedArrayType
 {
     my ($object, $type) = @_;
@@ -683,9 +659,7 @@ sub GetSVGWrappedTypeNeedingTearOff
     my $svgTypeNeedingTearOff = $object->GetSVGTypeNeedingTearOff($type);
     return $svgTypeNeedingTearOff if not $svgTypeNeedingTearOff;
 
-    if ($svgTypeNeedingTearOff =~ /SVGPropertyTearOff/) {
-        $svgTypeNeedingTearOff =~ s/SVGPropertyTearOff<//;
-    } elsif ($svgTypeNeedingTearOff =~ /SVGListPropertyTearOff/) {
+    if ($svgTypeNeedingTearOff =~ /SVGListPropertyTearOff/) {
         $svgTypeNeedingTearOff =~ s/SVGListPropertyTearOff<//;
     } elsif ($svgTypeNeedingTearOff =~ /SVGStaticListPropertyTearOff/) {
         $svgTypeNeedingTearOff =~ s/SVGStaticListPropertyTearOff<//;
@@ -1128,14 +1102,16 @@ sub GenerateCompileTimeCheckForEnumsIfNeeded
 
     return () if $interface->extendedAttributes->{"DoNotCheckConstants"} || !@{$interface->constants};
 
+    my $baseScope = $interface->extendedAttributes->{"ConstantsScope"} || $interface->type->name;
+
     my @checks = ();
     foreach my $constant (@{$interface->constants}) {
-        my $className = $constant->extendedAttributes->{"ImplementedBy"} || $interface->type->name;
+        my $scope = $constant->extendedAttributes->{"ImplementedBy"} || $baseScope;
         my $name = $constant->extendedAttributes->{"Reflect"} || $constant->name;
         my $value = $constant->value;
         my $conditional = $constant->extendedAttributes->{"Conditional"};
         push(@checks, "#if " . $generator->GenerateConditionalStringFromAttributeValue($conditional) . "\n") if $conditional;
-        push(@checks, "static_assert(${className}::$name == $value, \"$name in $className does not match value from IDL\");\n");
+        push(@checks, "static_assert(${scope}::${name} == ${value}, \"${name} in ${scope} does not match value from IDL\");\n");
         push(@checks, "#endif\n") if $conditional;
     }
     push(@checks, "\n");
@@ -1205,7 +1181,6 @@ sub ShouldPassWrapperByReference
 
     return 0 if $argument->type->isNullable;
     return 0 if !$object->IsWrapperType($argument->type) && !$object->IsTypedArrayType($argument->type);
-    return 0 if $object->IsSVGTypeNeedingTearOff($argument->type);
 
     return 1;
 }

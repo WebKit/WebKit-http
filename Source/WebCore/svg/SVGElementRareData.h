@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGElementRareData_h
-#define SVGElementRareData_h
+#pragma once
 
 #include "StyleProperties.h"
 #include "StyleResolver.h"
@@ -65,7 +64,7 @@ public:
             return nullptr;
         if (!m_overrideComputedStyle || m_needsOverrideComputedStyleUpdate) {
             // The style computed here contains no CSS Animations/Transitions or SMIL induced rules - this is needed to compute the "base value" for the SMIL animation sandwhich model.
-            m_overrideComputedStyle = element.styleResolver().styleForElement(element, parentStyle, MatchAllRulesExcludingSMIL).renderStyle;
+            m_overrideComputedStyle = element.styleResolver().styleForElement(element, parentStyle, nullptr, MatchAllRulesExcludingSMIL).renderStyle;
             m_needsOverrideComputedStyleUpdate = false;
         }
         ASSERT(m_overrideComputedStyle);
@@ -86,6 +85,4 @@ private:
     std::unique_ptr<RenderStyle> m_overrideComputedStyle;
 };
 
-}
-
-#endif
+} // namespace WebCore

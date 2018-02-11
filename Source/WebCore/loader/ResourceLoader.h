@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ResourceLoader_h
-#define ResourceLoader_h
+#pragma once
 
 #include "LoadTiming.h"
 #include "ResourceHandleClient.h"
@@ -244,6 +243,4 @@ protected:
 #endif
 };
 
-}
-
-#endif
+} // namespace WebCore

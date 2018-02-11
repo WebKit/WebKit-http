@@ -159,13 +159,11 @@ webkit.org/b/136452 http/tests/security/contentTypeOptions
 # Media Stream API is not fully supported.
 fast/mediastream/MediaStream-add-remove-tracks.html
 fast/mediastream/MediaStream-add-ended-tracks.html
-fast/mediastream/MediaStream-MediaElement-srcObject.html
 fast/mediastream/MediaStreamTrack-onended.html
 fast/mediastream/MediaStreamTrack.html
 
 # WebRTC is not supported yet.
 fast/events/constructors/media-stream-event-constructor.html
-fast/mediastream/RTCPeerConnection-datachannel.html [ Skip ]
 fast/mediastream/RTCPeerConnection-dtmf.html [ Skip ]
 fast/mediastream/RTCPeerConnection-events.html [ Skip ]
 fast/mediastream/RTCPeerConnection-ice.html [ Skip ]
@@ -1462,9 +1460,11 @@ webkit.org/b/164325 [ ElCapitan ] media/modern-media-controls/pip-support/pip-su
 webkit.org/b/164326 [ ElCapitan ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Failure ]
 webkit.org/b/164298 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
 webkit.org/b/164322 [ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Timeout ]
-webkit.org/b/164328 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
+webkit.org/b/164328 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure Timeout ]
+webkit.org/b/164598 media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html [ Pass Failure ]
 
 webkit.org/b/164277 fast/preloader/image-srcset.html [ Pass Failure ]
 
-webkit.org/b/164388 inspector/sampling-profiler/call-frame-with-dom-functions.htm [ Pass Timeout ]
-webkit.org/b/164388 inspector/sampling-profiler/expression-location-info.html [ Pass Timeout ]
+webkit.org/b/164388 inspector/sampling-profiler [ Pass Timeout ]
+
+webkit.org/b/161650 http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html [ Pass Failure ]

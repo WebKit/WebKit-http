@@ -56,7 +56,6 @@
 #include "InspectorDOMAgent.h"
 #include "InspectorNetworkAgent.h"
 #include "InspectorOverlay.h"
-#include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
 #include "MIMETypeRegistry.h"
 #include "MainFrame.h"
@@ -272,7 +271,7 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     if (url.isNull())
         return nullptr;
 
-    CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(url);
+    CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(MemoryCache::removeFragmentIdentifierIfNeeded(url));
     if (!cachedResource) {
         ResourceRequest request(url);
 #if ENABLE(CACHE_PARTITIONING)
@@ -359,9 +358,6 @@ void InspectorPageAgent::willDestroyFrontendAndBackend(Inspector::DisconnectReas
 {
     ErrorString unused;
     disable(unused);
-#if ENABLE(TOUCH_EVENTS)
-    updateTouchEventEmulationInPage(false);
-#endif
 }
 
 double InspectorPageAgent::timestamp()
@@ -671,7 +667,7 @@ void InspectorPageAgent::setDocumentContent(ErrorString& errorString, const Stri
         errorString = ASCIILiteral("No Document instance to set HTML for");
         return;
     }
-    DOMPatchSupport::patchDocument(document, html);
+    DOMPatchSupport::patchDocument(*document, html);
 }
 
 void InspectorPageAgent::setShowPaintRects(ErrorString&, bool show)
@@ -961,6 +957,9 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
         String sourceMappingURL = InspectorPageAgent::sourceMapURLForResource(cachedResource);
         if (!sourceMappingURL.isEmpty())
             resourceObject->setSourceMapURL(sourceMappingURL);
+        String targetId = cachedResource->resourceRequest().initiatorIdentifier();
+        if (!targetId.isEmpty())
+            resourceObject->setTargetId(targetId);
         subresources->addItem(WTFMove(resourceObject));
     }
 
@@ -973,24 +972,6 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
         childrenArray->addItem(buildObjectForFrameTree(child));
     }
     return result;
-}
-
-#if ENABLE(TOUCH_EVENTS)
-void InspectorPageAgent::updateTouchEventEmulationInPage(bool enabled)
-{
-    mainFrame().settings().setTouchEventEmulationEnabled(enabled);
-}
-#endif
-
-void InspectorPageAgent::setTouchEmulationEnabled(ErrorString& error, bool enabled)
-{
-#if ENABLE(TOUCH_EVENTS)
-    UNUSED_PARAM(error);
-    updateTouchEventEmulationInPage(enabled);
-#else
-    error = ASCIILiteral("Touch events emulation not supported");
-    UNUSED_PARAM(enabled);
-#endif
 }
 
 void InspectorPageAgent::setEmulatedMedia(ErrorString&, const String& media)

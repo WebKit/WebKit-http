@@ -24,8 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleBuilderConverter_h
-#define StyleBuilderConverter_h
+#pragma once
 
 #include "BasicShapeFunctions.h"
 #include "CSSCalculationValue.h"
@@ -122,9 +121,9 @@ public:
 #if ENABLE(VARIATION_FONTS)
     static FontVariationSettings convertFontVariationSettings(StyleResolver&, const CSSValue&);
 #endif
-    static SVGLength convertSVGLength(StyleResolver&, const CSSValue&);
-    static Vector<SVGLength> convertSVGLengthVector(StyleResolver&, const CSSValue&);
-    static Vector<SVGLength> convertStrokeDashArray(StyleResolver&, const CSSValue&);
+    static SVGLengthValue convertSVGLengthValue(StyleResolver&, const CSSValue&);
+    static Vector<SVGLengthValue> convertSVGLengthVector(StyleResolver&, const CSSValue&);
+    static Vector<SVGLengthValue> convertStrokeDashArray(StyleResolver&, const CSSValue&);
     static PaintOrder convertPaintOrder(StyleResolver&, const CSSValue&);
     static float convertOpacity(StyleResolver&, const CSSValue&);
     static String convertSVGURIReference(StyleResolver&, const CSSValue&);
@@ -751,7 +750,7 @@ inline TextDecorationSkip StyleBuilderConverter::convertTextDecorationSkip(Style
     if (is<CSSPrimitiveValue>(value))
         return valueToDecorationSkip(downcast<CSSPrimitiveValue>(value));
 
-    TextDecorationSkip skip = RenderStyle::initialTextDecorationSkip();
+    TextDecorationSkip skip = TextDecorationSkipNone;
     for (auto& currentValue : downcast<CSSValueList>(value))
         skip |= valueToDecorationSkip(downcast<CSSPrimitiveValue>(currentValue.get()));
     return skip;
@@ -1258,24 +1257,24 @@ inline bool StyleBuilderConverter::convertOverflowScrolling(StyleResolver&, cons
 }
 #endif
 
-inline SVGLength StyleBuilderConverter::convertSVGLength(StyleResolver&, const CSSValue& value)
+inline SVGLengthValue StyleBuilderConverter::convertSVGLengthValue(StyleResolver&, const CSSValue& value)
 {
-    return SVGLength::fromCSSPrimitiveValue(downcast<CSSPrimitiveValue>(value));
+    return SVGLengthValue::fromCSSPrimitiveValue(downcast<CSSPrimitiveValue>(value));
 }
 
-inline Vector<SVGLength> StyleBuilderConverter::convertSVGLengthVector(StyleResolver& styleResolver, const CSSValue& value)
+inline Vector<SVGLengthValue> StyleBuilderConverter::convertSVGLengthVector(StyleResolver& styleResolver, const CSSValue& value)
 {
     auto& valueList = downcast<CSSValueList>(value);
 
-    Vector<SVGLength> svgLengths;
+    Vector<SVGLengthValue> svgLengths;
     svgLengths.reserveInitialCapacity(valueList.length());
     for (auto& item : valueList)
-        svgLengths.uncheckedAppend(convertSVGLength(styleResolver, item));
+        svgLengths.uncheckedAppend(convertSVGLengthValue(styleResolver, item));
 
     return svgLengths;
 }
 
-inline Vector<SVGLength> StyleBuilderConverter::convertStrokeDashArray(StyleResolver& styleResolver, const CSSValue& value)
+inline Vector<SVGLengthValue> StyleBuilderConverter::convertStrokeDashArray(StyleResolver& styleResolver, const CSSValue& value)
 {
     if (is<CSSPrimitiveValue>(value)) {
         ASSERT(downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNone);
@@ -1327,6 +1326,11 @@ inline String StyleBuilderConverter::convertSVGURIReference(StyleResolver& style
 
 inline Color StyleBuilderConverter::convertSVGColor(StyleResolver& styleResolver, const CSSValue& value)
 {
+    // FIXME-NEWPARSER: Remove the code that assumes SVGColors.
+    // FIXME: What about visited link support?
+    if (is<CSSPrimitiveValue>(value))
+        return styleResolver.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value));
+
     auto& svgColor = downcast<SVGColor>(value);
     return svgColor.colorType() == SVGColor::SVG_COLORTYPE_CURRENTCOLOR ? styleResolver.style()->color() : svgColor.color();
 }
@@ -1516,5 +1520,3 @@ inline HangingPunctuation StyleBuilderConverter::convertHangingPunctuation(Style
 }
 
 } // namespace WebCore
-
-#endif // StyleBuilderConverter_h

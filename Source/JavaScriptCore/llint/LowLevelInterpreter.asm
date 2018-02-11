@@ -333,36 +333,36 @@ else
 end
 
 # Constant for reasoning about butterflies.
-const IsArray                  = 1
-const IndexingShapeMask        = 30
-const NoIndexingShape          = 0
-const Int32Shape               = 20
-const DoubleShape              = 22
-const ContiguousShape          = 26
-const ArrayStorageShape        = 28
-const SlowPutArrayStorageShape = 30
+const IsArray                  = 0x01
+const IndexingShapeMask        = 0x0E
+const NoIndexingShape          = 0x00
+const Int32Shape               = 0x04
+const DoubleShape              = 0x06
+const ContiguousShape          = 0x08
+const ArrayStorageShape        = 0x0A
+const SlowPutArrayStorageShape = 0x0C
 
 # Type constants.
 const StringType = 6
 const SymbolType = 7
-const ObjectType = 20
-const FinalObjectType = 21
-const JSFunctionType = 23
-const ArrayType = 31
-const DerivedArrayType = 32
-const ProxyObjectType = 50
+const ObjectType = 21
+const FinalObjectType = 22
+const JSFunctionType = 24
+const ArrayType = 32
+const DerivedArrayType = 33
+const ProxyObjectType = 51
 
 # The typed array types need to be numbered in a particular order because of the manually written
 # switch statement in get_by_val and put_by_val.
-const Int8ArrayType = 33
-const Int16ArrayType = 34
-const Int32ArrayType = 35
-const Uint8ArrayType = 36
-const Uint8ClampedArrayType = 37
-const Uint16ArrayType = 38
-const Uint32ArrayType = 39
-const Float32ArrayType = 40
-const Float64ArrayType = 41
+const Int8ArrayType = 34
+const Int16ArrayType = 35
+const Int32ArrayType = 36
+const Uint8ArrayType = 37
+const Uint8ClampedArrayType = 38
+const Uint16ArrayType = 39
+const Uint32ArrayType = 40
+const Float32ArrayType = 41
+const Float64ArrayType = 42
 
 const FirstArrayType = Int8ArrayType
 const LastArrayType = Float64ArrayType
@@ -887,7 +887,7 @@ macro arrayProfile(cellAndIndexingType, profile, scratch)
     const indexingType = cellAndIndexingType 
     loadi JSCell::m_structureID[cell], scratch
     storei scratch, ArrayProfile::m_lastSeenStructureID[profile]
-    loadb JSCell::m_indexingType[cell], indexingType
+    loadb JSCell::m_indexingTypeAndMisc[cell], indexingType
 end
 
 macro skipIfIsRememberedOrInEden(cell, slowPath)
@@ -1331,6 +1331,18 @@ _llint_op_new_array:
     traceExecution()
     callOpcodeSlowPath(_llint_slow_path_new_array)
     dispatch(5)
+
+
+_llint_op_new_array_with_spread:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_new_array_with_spread)
+    dispatch(5)
+
+
+_llint_op_spread:
+    traceExecution()
+    callOpcodeSlowPath(_slow_path_spread)
+    dispatch(3)
 
 
 _llint_op_new_array_with_size:

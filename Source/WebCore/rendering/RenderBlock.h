@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderBlock_h
-#define RenderBlock_h
+#pragma once
 
 #include "GapRects.h"
 #include "LineWidth.h"
@@ -307,6 +306,7 @@ public:
     RenderFlowThread* cachedFlowThreadContainingBlock() const;
     void setCachedFlowThreadContainingBlockNeedsUpdate();
     virtual bool cachedFlowThreadContainingBlockNeedsUpdate() const;
+    void resetFlowThreadContainingBlockAndChildInfoIncludingDescendants();
 
 protected:
     RenderFlowThread* locateFlowThreadContainingBlock() const override;
@@ -359,6 +359,7 @@ protected:
 
     virtual bool hasLineIfEmpty() const;
     
+    virtual bool canPerformSimplifiedLayout() const;
     bool simplifiedLayout();
     virtual void simplifiedNormalFlowLayout();
 
@@ -538,5 +539,3 @@ inline RenderBlock* RenderBlock::createAnonymousBlock(EDisplay display) const
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderBlock, isRenderBlock())
-
-#endif // RenderBlock_h

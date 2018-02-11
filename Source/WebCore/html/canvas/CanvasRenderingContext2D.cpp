@@ -43,7 +43,6 @@
 #include "DOMPath.h"
 #include "DisplayListRecorder.h"
 #include "DisplayListReplayer.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FloatQuad.h"
 #include "HTMLImageElement.h"
 #include "HTMLVideoElement.h"
@@ -1311,7 +1310,7 @@ void CanvasRenderingContext2D::applyShadow()
 
 bool CanvasRenderingContext2D::shouldDrawShadows() const
 {
-    return state().shadowColor.alpha() && (state().shadowBlur || !state().shadowOffset.isZero());
+    return state().shadowColor.isVisible() && (state().shadowBlur || !state().shadowOffset.isZero());
 }
 
 enum ImageSizeType {
@@ -1849,7 +1848,7 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
         dirtyRect = ctm.mapRect(r);
     }
 
-    if (options & CanvasDidDrawApplyShadow && state().shadowColor.alpha()) {
+    if (options & CanvasDidDrawApplyShadow && state().shadowColor.isVisible()) {
         // The shadow gets applied after transformation
         FloatRect shadowRect(dirtyRect);
         shadowRect.move(state().shadowOffset);
@@ -1887,11 +1886,8 @@ String CanvasRenderingContext2D::displayListAsText(DisplayList::AsTextFlags flag
 String CanvasRenderingContext2D::replayDisplayListAsText(DisplayList::AsTextFlags flags) const
 {
     auto it = contextDisplayListMap().find(this);
-    if (it != contextDisplayListMap().end()) {
-        TextStream stream;
-        stream << it->value->asText(flags);
-        return stream.release();
-    }
+    if (it != contextDisplayListMap().end())
+        return it->value->asText(flags);
 
     return String();
 }

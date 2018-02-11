@@ -38,6 +38,7 @@
 #include "Dictionary.h"
 #include "EventTarget.h"
 #include "MediaStream.h"
+#include "RTCDataChannel.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
 #include "ScriptWrappable.h"
@@ -49,7 +50,6 @@ namespace WebCore {
 class MediaStreamTrack;
 class PeerConnectionBackend;
 class RTCConfiguration;
-class RTCDataChannel;
 class RTCIceCandidate;
 class RTCPeerConnectionErrorCallback;
 class RTCSessionDescription;
@@ -60,14 +60,15 @@ public:
     static Ref<RTCPeerConnection> create(ScriptExecutionContext&);
     ~RTCPeerConnection();
 
+    using AnswerOptions = RTCAnswerOptions;
+    using DataChannelInit = RTCDataChannelInit;
     using OfferAnswerOptions = RTCOfferAnswerOptions;
     using OfferOptions = RTCOfferOptions;
-    using AnswerOptions = RTCAnswerOptions;
 
     ExceptionOr<void> initializeWith(Document&, const Dictionary&);
 
-    const Vector<RefPtr<RTCRtpSender>>& getSenders() const { return m_transceiverSet->getSenders(); }
-    const Vector<RefPtr<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->getReceivers(); }
+    const Vector<std::reference_wrapper<RTCRtpSender>>& getSenders() const { return m_transceiverSet->senders(); }
+    const Vector<std::reference_wrapper<RTCRtpReceiver>>& getReceivers() const { return m_transceiverSet->receivers(); }
     const Vector<RefPtr<RTCRtpTransceiver>>& getTransceivers() const { return m_transceiverSet->list(); }
 
     // Part of legacy MediaStream-based API (mostly implemented as JS built-ins)
@@ -111,7 +112,7 @@ public:
 
     void privateGetStats(MediaStreamTrack*, PeerConnection::StatsPromise&&);
 
-    ExceptionOr<RefPtr<RTCDataChannel>> createDataChannel(const String& label, const Dictionary& dataChannelDict);
+    ExceptionOr<Ref<RTCDataChannel>> createDataChannel(ScriptExecutionContext&, String&&, RTCDataChannelInit&&);
 
     void close();
 
@@ -126,7 +127,7 @@ public:
     WEBCORE_EXPORT void emulatePlatformEvent(const String& action);
 
     // API used by PeerConnectionBackend and relatives
-    void addTransceiver(RefPtr<RTCRtpTransceiver>&&);
+    void addTransceiver(Ref<RTCRtpTransceiver>&&);
     void setSignalingState(PeerConnectionStates::SignalingState);
     void updateIceGatheringState(PeerConnectionStates::IceGatheringState);
     void updateIceConnectionState(PeerConnectionStates::IceConnectionState);

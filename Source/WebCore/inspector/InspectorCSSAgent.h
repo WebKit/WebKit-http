@@ -54,6 +54,7 @@ class Node;
 class NodeList;
 class StyleResolver;
 class StyleRule;
+class WebKitNamedFlow;
 
 class InspectorCSSAgent final
     : public InspectorAgentBase
@@ -93,7 +94,7 @@ public:
     void regionOversetChanged(WebKitNamedFlow*, int documentNodeId);
     void reset();
 
-    // InspectorInstrumentation callbacks.
+    // InspectorInstrumentation
     void documentDetached(Document&);
     void mediaQueryResultChanged();
     void activeStyleSheetsUpdated(Document&);

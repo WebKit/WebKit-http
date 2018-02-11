@@ -52,7 +52,7 @@ String WebMediaKeyStorageManager::mediaKeyStorageDirectoryForOrigin(const Securi
     if (!m_mediaKeyStorageDirectory)
         return emptyString();
 
-    return pathByAppendingComponent(m_mediaKeyStorageDirectory, originData.securityOrigin()->databaseIdentifier());
+    return pathByAppendingComponent(m_mediaKeyStorageDirectory, originData.databaseIdentifier());
 }
 
 Vector<SecurityOriginData> WebMediaKeyStorageManager::getMediaKeyOrigins()
@@ -70,11 +70,11 @@ Vector<SecurityOriginData> WebMediaKeyStorageManager::getMediaKeyOrigins()
 
         String mediaKeyIdentifier = url.lastPathComponent();
 
-        RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::maybeCreateFromDatabaseIdentifier(mediaKeyIdentifier);
+        auto securityOrigin = SecurityOriginData::fromDatabaseIdentifier(mediaKeyIdentifier);
         if (!securityOrigin)
             continue;
 
-        results.append(SecurityOriginData::fromSecurityOrigin(*securityOrigin));
+        results.append(*securityOrigin);
     }
 
     return results;

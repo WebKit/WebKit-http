@@ -1,3 +1,1912 @@
+2016-11-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix typo in bug url.
+
+        * platform/mac/TestExpectations:
+
+2016-11-16  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableByteStreamController close()
+        https://bugs.webkit.org/show_bug.cgi?id=164413
+
+        Reviewed by Darin Adler.
+
+        Updated test expectations for close() tests and added tests
+        to ensure errors are thrown in various cases defined by spec.
+
+        * streams/readable-byte-stream-controller.js: Updated.
+
+2016-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Integrate ES6 Modules into WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=148897
+
+        Reviewed by Ryosuke Niwa.
+
+        * TestExpectations:
+        * http/tests/misc/module-absolute-url-expected.txt: Added.
+        * http/tests/misc/module-absolute-url.html: Added.
+        * http/tests/misc/module-script-async-expected.txt: Added.
+        * http/tests/misc/module-script-async.html: Added.
+        * http/tests/misc/resources/module-absolute-url.js: Added.
+        * http/tests/misc/resources/module-absolute-url2.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-and-scripthash-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-and-scripthash.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-basic-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-basic-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-ignore-unsafeinline-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-ignore-unsafeinline.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-enforced-policy-and-not-in-report-only-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-enforced-policy-and-not-in-report-only.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-multiple-policies-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-multiple-policies.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-same-origin-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-same-origin.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/module-scriptnonce-in-enforced-policy-and-not-in-report-only.php: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy.php: Added.
+        * http/tests/security/contentSecurityPolicy/module-eval-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/module-eval-blocked-in-external-script-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/module-eval-blocked-in-external-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/module-eval-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/echo-module-script-src.pl: Added.
+        * http/tests/security/contentSecurityPolicy/resources/multiple-iframe-module-test.js: Added.
+        (testPreescapedPolicy):
+        (testExperimentalPolicy):
+        (test):
+        (iframe.onload):
+        (testImpl):
+        (finishTesting):
+        * http/tests/security/module-correct-mime-types-expected.txt: Added.
+        * http/tests/security/module-correct-mime-types.html: Added.
+        * http/tests/security/module-crossorigin-error-event-information-expected.txt: Added.
+        * http/tests/security/module-crossorigin-error-event-information.html: Added.
+        * http/tests/security/module-crossorigin-loads-correctly-credentials-expected.txt: Added.
+        * http/tests/security/module-crossorigin-loads-correctly-credentials.html: Added.
+        * http/tests/security/module-crossorigin-loads-omit-expected.txt: Added.
+        * http/tests/security/module-crossorigin-loads-omit.html: Added.
+        * http/tests/security/module-crossorigin-loads-same-origin-expected.txt: Added.
+        * http/tests/security/module-crossorigin-loads-same-origin.html: Added.
+        * http/tests/security/module-crossorigin-onerror-information-expected.txt: Added.
+        * http/tests/security/module-crossorigin-onerror-information.html: Added.
+        * http/tests/security/module-incorrect-mime-types-expected.txt: Added.
+        * http/tests/security/module-incorrect-mime-types.html: Added.
+        * http/tests/security/module-no-mime-type-expected.txt: Added.
+        * http/tests/security/module-no-mime-type.html: Added.
+        * http/tests/security/resources/cors-script.php:
+        * http/tests/security/resources/module-local-script.js: Added.
+        * js/dom/modules/module-and-dom-content-loaded-expected.txt: Added.
+        * js/dom/modules/module-and-dom-content-loaded.html: Added.
+        * js/dom/modules/module-and-window-load-expected.txt: Added.
+        * js/dom/modules/module-and-window-load.html: Added.
+        * js/dom/modules/module-async-and-window-load-expected.txt: Added.
+        * js/dom/modules/module-async-and-window-load.html: Added.
+        * js/dom/modules/module-document-write-expected.txt: Added.
+        * js/dom/modules/module-document-write-src-expected.txt: Added.
+        * js/dom/modules/module-document-write-src.html: Added.
+        * js/dom/modules/module-document-write.html: Added.
+        * js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror-expected.txt: Added.
+        * js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html: Added.
+        * js/dom/modules/module-execution-error-should-be-propagated-to-onerror-expected.txt: Added.
+        * js/dom/modules/module-execution-error-should-be-propagated-to-onerror.html: Added.
+        * js/dom/modules/module-execution-order-inline-expected.txt: Added.
+        * js/dom/modules/module-execution-order-inline.html: Added.
+        * js/dom/modules/module-execution-order-mixed-expected.txt: Added.
+        * js/dom/modules/module-execution-order-mixed-with-classic-scripts-expected.txt: Added.
+        * js/dom/modules/module-execution-order-mixed-with-classic-scripts.html: Added.
+        * js/dom/modules/module-execution-order-mixed.html: Added.
+        * js/dom/modules/module-incorrect-relative-specifier-expected.txt: Added.
+        * js/dom/modules/module-incorrect-relative-specifier.html: Added.
+        * js/dom/modules/module-incorrect-tag-expected.txt: Added.
+        * js/dom/modules/module-incorrect-tag.html: Added.
+        * js/dom/modules/module-inline-current-script-expected.txt: Added.
+        * js/dom/modules/module-inline-current-script.html: Added.
+        * js/dom/modules/module-inline-dynamic-expected.txt: Added.
+        * js/dom/modules/module-inline-dynamic.html: Added.
+        * js/dom/modules/module-inline-simple-expected.txt: Added.
+        * js/dom/modules/module-inline-simple.html: Added.
+        * js/dom/modules/module-load-event-expected.txt: Added.
+        * js/dom/modules/module-load-event-with-src-expected.txt: Added.
+        * js/dom/modules/module-load-event-with-src.html: Added.
+        * js/dom/modules/module-load-event.html: Added.
+        * js/dom/modules/module-load-same-module-from-different-entry-point-dynamic-expected.txt: Added.
+        * js/dom/modules/module-load-same-module-from-different-entry-point-dynamic.html: Added.
+        * js/dom/modules/module-load-same-module-from-different-entry-point-expected.txt: Added.
+        * js/dom/modules/module-load-same-module-from-different-entry-point.html: Added.
+        * js/dom/modules/module-not-found-error-event-expected.txt: Added.
+        * js/dom/modules/module-not-found-error-event-with-src-and-import-expected.txt: Added.
+        * js/dom/modules/module-not-found-error-event-with-src-and-import.html: Added.
+        * js/dom/modules/module-not-found-error-event-with-src-expected.txt: Added.
+        * js/dom/modules/module-not-found-error-event-with-src.html: Added.
+        * js/dom/modules/module-not-found-error-event.html: Added.
+        * js/dom/modules/module-src-current-script-expected.txt: Added.
+        * js/dom/modules/module-src-current-script.html: Added.
+        * js/dom/modules/module-src-dynamic-expected.txt: Added.
+        * js/dom/modules/module-src-dynamic.html: Added.
+        * js/dom/modules/module-src-simple-expected.txt: Added.
+        * js/dom/modules/module-src-simple.html: Added.
+        * js/dom/modules/module-type-case-insensitive-expected.txt: Added.
+        * js/dom/modules/module-type-case-insensitive.html: Added.
+        * js/dom/modules/module-will-fire-beforeload-expected.txt: Added.
+        * js/dom/modules/module-will-fire-beforeload.html: Added.
+        * js/dom/modules/script-tests/module-document-write-src.js: Added.
+        * js/dom/modules/script-tests/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror-throw.js: Added.
+        * js/dom/modules/script-tests/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-2.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-cappuccino.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-cocoa.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-matcha.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-2.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-cappuccino.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-cocoa.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-matcha.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts.js: Added.
+        * js/dom/modules/script-tests/module-execution-order-mixed.js: Added.
+        * js/dom/modules/script-tests/module-inline-dynamic.js: Added.
+        (export.default.Cocoa.prototype.taste):
+        (export.default.Cocoa):
+        * js/dom/modules/script-tests/module-inline-simple.js: Added.
+        (export.default.Cocoa.prototype.taste):
+        (export.default.Cocoa):
+        * js/dom/modules/script-tests/module-load-event-with-src.js: Added.
+        * js/dom/modules/script-tests/module-load-same-module-from-different-entry-point.js: Added.
+        * js/dom/modules/script-tests/module-not-found-error-event-with-src-and-import.js: Added.
+        * js/dom/modules/script-tests/module-src-current-script.js: Added.
+        * js/dom/modules/script-tests/module-src-dynamic-cocoa.js: Added.
+        (Cocoa.prototype.taste):
+        (Cocoa):
+        * js/dom/modules/script-tests/module-src-dynamic.js: Added.
+        * js/dom/modules/script-tests/module-src-simple-cocoa.js: Added.
+        (Cocoa.prototype.taste):
+        (Cocoa):
+        * js/dom/modules/script-tests/module-src-simple.js: Added.
+        * js/dom/modules/script-tests/module-will-fire-beforeload.js: Added.
+
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Preview other CSS @media in browser window (print)
+        https://bugs.webkit.org/show_bug.cgi?id=13530
+        <rdar://problem/5712928>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/page/media-query-list-listener-exception-expected.txt: Copied from LayoutTests/inspector/page/setEmulatedMedia-expected.txt.
+        * inspector/page/media-query-list-listener-exception.html: Copied from LayoutTests/inspector/page/setEmulatedMedia.html.
+        Rename this test which is about swallowing exceptions and happened to use inspector code.
+
+        * inspector/page/setEmulatedMedia-expected.txt:
+        * inspector/page/setEmulatedMedia.html:
+        Test for Page.setEmulatedMedia command.
+
+2016-11-15  Jon Lee  <jonlee@apple.com>
+
+        Report active video and audio capture devices separately
+        https://bugs.webkit.org/show_bug.cgi?id=164769
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStream-page-muted-expected.txt: Update test.
+        * fast/mediastream/MediaStream-page-muted.html:
+
+2016-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/regress-141098.html as flaky on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=163046
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-15  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Key collation during SQLite lookups is insanely slow.
+        https://bugs.webkit.org/show_bug.cgi?id=164754
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Unskip a test that passes even in debug builds, and re-classify
+          a test that used to be too-slow everywhere to be too-slow only in debug builds.
+
+2016-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        UIScriptController: script with no async tasks fails if an earlier script registered a callback
+        https://bugs.webkit.org/show_bug.cgi?id=164762
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/harness/ui-side-script-with-callback-expected.txt: Added.
+        * fast/harness/ui-side-script-with-callback.html: Added.
+
+2016-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        UIScriptController: setting a callback to undefined should unregister it
+        https://bugs.webkit.org/show_bug.cgi?id=164796
+
+        Reviewed by Dean Jackson.
+
+        * fast/harness/ui-side-script-unregister-callback-expected.txt: Added.
+        * fast/harness/ui-side-script-unregister-callback.html: Added.
+
+2016-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=161650
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-11-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip fast/forms/search-cancel-button-change-input.html on ios-simulator since the test relies upon mouse events.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-15  Filip Pizlo  <fpizlo@apple.com>
+
+        [mac-wk1 debug] ASSERTION FAILED: thisObject->m_propertyTableUnsafe
+        https://bugs.webkit.org/show_bug.cgi?id=162986
+
+        Reviewed by Saam Barati.
+        
+        This test should not crash anymore.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-11-15  Jiewen Tan  <jiewen_tan@apple.com>
+
+        js-test-pre.js::shouldReject doesn't need _rejectCallback and _resolveCallback
+        https://bugs.webkit.org/show_bug.cgi?id=164758
+
+        Reviewed by Youenn Fablet.
+
+        Since the function returns a promise, it doesn't need _rejectCallback and _resolveCallback.
+
+        * crypto/subtle/generate-key-malformed-parameters.html:
+        * crypto/subtle/rsa-generate-key-malformed-parameters.html:
+        * crypto/workers/subtle/resources/rsa-generate-key.js:
+        * crypto/workers/subtle/rsa-generate-key-expected.txt:
+        * resources/js-test-pre.js:
+
+2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: inspector/worker/debugger-pause.html fails on WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=164787
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/worker/debugger-pause.html:
+        Make this test work for WebKit1 where the VM is shared between the
+        page and inspector page. We need to be able to stop the Inspector's
+        evaluation, so that we can evaluate and pause on the page, and then
+        come back to the inspector afterwards.
+
+2016-11-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Implement support for visual viewports
+        https://bugs.webkit.org/show_bug.cgi?id=164765
+
+        Reviewed by Tim Horton.
+
+        Adopt the visual viewport scrolling model in iOS WK2.
+        
+        These tests don't correctly test iOS WK2's async scrolling behavior (webkit.org/b/164779)
+        so rebaseline.
+
+        * platform/ios-simulator-wk2/fast/visual-viewport/nonzoomed-rects-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/visual-viewport/rtl-nonzoomed-rects-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/visual-viewport/rtl-zoomed-rects-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/visual-viewport/zoomed-fixed-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/visual-viewport/zoomed-fixed-scroll-down-then-up-expected.txt: Added.
+        * platform/ios-simulator-wk2/fast/visual-viewport/zoomed-rects-expected.txt: Added.
+
+2016-11-14  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct handling of changing input type
+        https://bugs.webkit.org/show_bug.cgi?id=164759
+        <rdar://problem/29211174>
+
+        Reviewed by Darin Adler.
+
+        * fast/forms/search-cancel-button-change-input-expected.txt: Added.
+        * fast/forms/search-cancel-button-change-input.html: Added.
+
+2016-11-15  Antti Koivisto  <antti@apple.com>
+
+        slot doesn't work as a flex container
+        https://bugs.webkit.org/show_bug.cgi?id=160740
+        <rdar://problem/28605080>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-slot-flex-expected.html: Added.
+        * fast/shadow-dom/css-scoping-slot-flex.html: Added.
+        * fast/shadow-dom/slot-crash-expected.txt:
+
+2016-11-15  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Need to update implicit/default values for aria-valuemin, aria-valuenow, and aria-valuemax
+        https://bugs.webkit.org/show_bug.cgi?id=164773
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/progressbar-expected.txt: Updated to reflect new behavior.
+        * accessibility/progressbar.html: Updated to reflect new behavior.
+        * accessibility/spinbutton-implicit-values-expected.txt: Added.
+        * accessibility/spinbutton-implicit-values.html: Added.
+
+2016-11-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::exportKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164722
+        <rdar://problem/29251740>
+
+        Reviewed by Brent Fulgham.
+
+        Besides adding test cases for SubtleCrypto::exportKey, this patch also corrects a typo:
+        hmac-import-malformed-parameters* => hmac-import-key-malformed-parameters*.
+
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-128-expected.txt: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-128.html: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-192-expected.txt: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-192.html: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-256-expected.txt: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-jwk-length-256.html: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-raw-expected.txt: Added.
+        * crypto/subtle/aes-cbc-generate-export-key-raw.html: Added.
+        * crypto/subtle/aes-export-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/aes-export-key-malformed-parameters.html: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-128-expected.txt: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-128.html: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-192-expected.txt: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-192.html: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-256-expected.txt: Added.
+        * crypto/subtle/aes-kw-generate-export-key-jwk-length-256.html: Added.
+        * crypto/subtle/aes-kw-generate-export-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-kw-generate-export-raw-key.html: Added.
+        * crypto/subtle/export-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/export-key-malformed-parameters.html: Added.
+        * crypto/subtle/hmac-export-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/hmac-export-key-malformed-parameters.html: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha1-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha1.html: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha224-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha224.html: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha256-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha256.html: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha384-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha384.html: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha512-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-key-jwk-sha512.html: Added.
+        * crypto/subtle/hmac-generate-export-raw-key-expected.txt: Added.
+        * crypto/subtle/hmac-generate-export-raw-key.html: Added.
+        * crypto/subtle/hmac-import-key-malformed-parameters-expected.txt: Renamed from LayoutTests/crypto/subtle/hmac-import-malformed-parameters-expected.txt.
+        * crypto/subtle/hmac-import-key-malformed-parameters.html: Renamed from LayoutTests/crypto/subtle/hmac-import-malformed-parameters.html.
+        * crypto/subtle/rsa-export-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/rsa-export-key-malformed-parameters.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha1-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha1.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha224-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha224.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha256-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha256.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha384-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha384.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha512-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-jwk-sha512.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-jwk-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-jwk.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha1-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha1.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha224-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha224.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha256-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha256.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha384-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha384.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha512-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha512.html: Added.
+        * crypto/workers/subtle/aes-generate-export-key-jwk-expected.txt: Added.
+        * crypto/workers/subtle/aes-generate-export-key-jwk.html: Added.
+        * crypto/workers/subtle/aes-generate-export-key-raw-expected.txt: Added.
+        * crypto/workers/subtle/aes-generate-export-key-raw.html: Added.
+        * crypto/workers/subtle/hmac-generate-export-key-jwk-expected.txt: Added.
+        * crypto/workers/subtle/hmac-generate-export-key-jwk.html: Added.
+        * crypto/workers/subtle/hmac-generate-export-key-raw-expected.txt: Added.
+        * crypto/workers/subtle/hmac-generate-export-key-raw.html: Added.
+        * crypto/workers/subtle/resources/aes-generate-export-key-jwk.js: Added.
+        * crypto/workers/subtle/resources/aes-generate-export-key-raw.js: Added.
+        * crypto/workers/subtle/resources/hmac-generate-export-key-jwk.js: Added.
+        * crypto/workers/subtle/resources/hmac-generate-export-key-raw.js: Added.
+        * crypto/workers/subtle/resources/rsa-generate-export-key-jwk.js: Added.
+        * crypto/workers/subtle/rsa-generate-export-key-jwk-expected.txt: Added.
+        * crypto/workers/subtle/rsa-generate-export-key-jwk.html: Added.
+
+2016-11-15  Jon Lee  <jonlee@apple.com>
+
+        Remove HasMediaCaptureDevice
+        https://bugs.webkit.org/show_bug.cgi?id=164767
+        <rdar://problem/29263696>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStream-page-muted-expected.txt: Remove check for HasMediaCaptureDevice.
+        * fast/mediastream/MediaStream-page-muted.html:
+
+2016-11-14  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix font-synthesis and text-decoration-skip parsing
+        https://bugs.webkit.org/show_bug.cgi?id=164736
+
+        Reviewed by Dean Jackson.
+
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip-expected.txt:
+        * fast/css3-text/css3-text-decoration/text-decoration-skip/text-decoration-skip-roundtrip.html:
+        * fast/css3-text/font-synthesis-parse-expected.txt:
+        * fast/css3-text/font-synthesis-parse.html:
+
+2016-11-15  Daniel Bates  <dabates@apple.com>
+
+        Disallow loads using HTTP 0.9 at the ResourceHandle/NetworkDataTask level
+        https://bugs.webkit.org/show_bug.cgi?id=164662
+        <rdar://problem/29268514>
+
+        Reviewed by Reviewed by Alex Christensen and Brady Eidson.
+
+        Add a test to ensure that we block a synchronous XHR load using HTTP 0.9.
+        Renamed test image-default-port-blocked.html to image-default-port-allowed.html
+        as we now allow a subresource load using HTTP 0.9 on a default port regardless
+        of the HTTP version the embedding page used.
+
+        Update test expectations as DRT/WTR do not emit a localized description for the
+        error associated with a load failure. Note that a message is emitted to
+        Web Inspector console.
+
+        * http/tests/security/http-0.9/iframe-blocked-expected.txt:
+        * http/tests/security/http-0.9/iframe-blocked.html: Dump frame load callbacks
+        to see that load was cancelled as there is no other unique visible indication
+        of success.
+        * http/tests/security/http-0.9/image-blocked-expected.txt: Update expected result.
+        * http/tests/security/http-0.9/image-default-port-allowed-expected.txt: Renamed from LayoutTests/http/tests/security/http-0.9/image-default-port-blocked-expected.txt.
+        * http/tests/security/http-0.9/image-default-port-allowed.html: Renamed from LayoutTests/http/tests/security/http-0.9/image-default-port-blocked.html.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked-expected.txt: Update expected result.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked.html: Ditto.
+        * http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation-expected.txt: Ditto.
+        * http/tests/security/http-0.9/worker-connect-src-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/worker-importScripts-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/xhr-asynchronous-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/xhr-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/xhr-blocked.html: Added.
+        * platform/wk2/TestExpectations: Skip the HTTP-0.9 tests in WebKit2 that use internals.registerDefaultPortForProtocol().
+        The function internals.registerDefaultPortForProtocol only updates the default-port-to-protocol map in the WebContent
+        process. However network loads in WebKit2 occur in the NetworkProcess. Further investigation is needed to determine
+        the best way to support testing with default ports. Ideally, we would run an HTTP server on port 80 for testing and
+        remove the need for internals.registerDefaultPortForProtocol().
+
+2016-11-15  Zalan Bujtas  <zalan@apple.com>
+
+        [MultiCol] Render tree should be all clean by the end of FrameView::layout().
+        https://bugs.webkit.org/show_bug.cgi?id=162833
+
+        Reviewed by Simon Fraser.
+
+        This patch actually fixes the renderering of the closing quotation mark. Currently, it is
+        not rendered at all.
+
+        * fast/inline/out-of-flow-quotation-text-with-multicolumn-expected.html: Added.
+        * fast/inline/out-of-flow-quotation-text-with-multicolumn.html: Added.
+
+2016-11-15  Alejandro G. Castro  <alex@igalia.com>
+
+        WebRTC: update MediaStream-MediaElement-srcObject.html test and unskip it
+        https://bugs.webkit.org/show_bug.cgi?id=159343
+
+        Reviewed by Philippe Normand.
+
+        Update the test to use the getUserMedia API and unskip it.
+
+        * fast/mediastream/MediaStream-MediaElement-srcObject-expected.txt:
+        Update the result of using the getUserMedia API.
+        * fast/mediastream/MediaStream-MediaElement-srcObject.html: Use
+        the getUserMedia API from the helper.
+        * platform/gtk/TestExpectations: Unskip the test.
+        * platform/mac/TestExpectations: Unskip the test.
+
+2016-11-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Worker debugging should pause all targets and view call frames in all targets
+        https://bugs.webkit.org/show_bug.cgi?id=164305
+        <rdar://problem/29056192>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/debugger/continueUntilNextRunLoop-expected.txt: Added.
+        * inspector/debugger/continueUntilNextRunLoop.html: Added.
+        New test for new Debugger.continueUntilNextRunLoop protocol method.
+
+        * inspector/worker/debugger-multiple-targets-pause-expected.txt: Added.
+        * inspector/worker/debugger-multiple-targets-pause.html: Added.
+        * inspector/worker/resources/worker-debugger-thread-1.js: Added.
+        * inspector/worker/resources/worker-debugger-thread-2.js: Added.
+        This tests uses a 250ms timeout because we have to have the worker thread
+        evaluate some work and trigger a pause on other threads before their work
+        starts. On debug builds, shorter times, like 100ms, would not be enough.
+
+        * inspector/worker/debugger-pause-expected.txt:
+        * inspector/worker/debugger-pause.html:
+        Now that all threads pause, the first InspectorTest.log evaluates JavaScript on
+        the page and causes a pause. So make the first log empty to keep the test unchanged.
+
+        * inspector/worker/runtime-basic-expected.txt:
+        * inspector/unit-tests/target-manager-expected.txt:
+        Updated display name of the mainTarget.
+
+2016-11-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WebGL2] Teach WebGLRenderingContextBase about new texture internal formats
+        https://bugs.webkit.org/show_bug.cgi?id=164525
+
+        Reviewed by Dean Jackson.
+
+        Test texture types without drawing. Instead, attach a texture to a framebuffer and
+        use readPixels() to make sure the texture retains its data.
+
+        * fast/canvas/webgl/webgl2-texture-upload-enums-expected.txt: Added.
+        * fast/canvas/webgl/webgl2-texture-upload-enums.html: Added.
+
+2016-11-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        document.createElementNS doesn't construct a custom element
+        https://bugs.webkit.org/show_bug.cgi?id=164700
+
+        Reviewed by Darin Adler.
+
+        Added W3C style testharness.js tests for createElementNS and DOMImplementation's createDocument.
+
+        * fast/custom-elements/DOMImplementation-createDocument-expected.txt: Added.
+        * fast/custom-elements/DOMImplementation-createDocument.html: Added.
+        * fast/custom-elements/document-createElementNS-expected.txt: Added.
+        * fast/custom-elements/document-createElementNS.html: Added.
+
+2016-11-14  Dean Jackson  <dino@apple.com>
+
+        Handle filter() image type in new CSS Parser
+        https://bugs.webkit.org/show_bug.cgi?id=164673
+        <rdar://problems/29231376>
+
+        Reviewed by Darin Adler.
+
+        Remove the test that allows a string value for the
+        image source rather than a url().
+
+        * fast/filter-image/filter-image-animation-expected.txt:
+        * fast/filter-image/filter-image-animation.html:
+
+2016-11-14  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: In ARIA 1.1, the implicit value for aria-level on headings is 2
+        https://bugs.webkit.org/show_bug.cgi?id=164714
+
+        Reviewed by Chris Fleizach.
+
+        Added new test case to existing test and updated expectations.
+
+        * accessibility/gtk/xml-roles-exposed-expected.txt: Updated.
+        * accessibility/heading-level-expected.txt: Updated.
+        * accessibility/heading-level.html: New test case added.
+
+2016-11-14  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Remove incorrect cursor result
+        https://bugs.webkit.org/show_bug.cgi?id=164717
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/cursor-parsing-expected.txt:
+        * fast/css/cursor-parsing.html:
+
+2016-11-14  Youenn Fablet  <youenn@apple.com>
+
+        Refresh RTCDataChannel abstract infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=164680
+
+        Reviewed by Darin Adler.
+
+        * fast/mediastream/RTCPeerConnection-datachannel-expected.txt:
+        * fast/mediastream/RTCPeerConnection-datachannel.html:
+        * platform/mac/TestExpectations:
+
+2016-11-14  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r83521): Fix malformed <canvas> tag in fast/canvas/DrawImageSinglePixelStretch.html
+
+        Unreviewed.
+
+        Before: <canvas id="c"</canvas>
+        Parsed: <canvas id="c" <="" canvas="" width="200" height="50"></canvas>
+
+        After:  <canvas id="c"></canvas>
+        Parsed: <canvas id="c" width="200" height="50"></canvas>
+
+        * fast/canvas/DrawImageSinglePixelStretch.html: Close <canvas>
+        tag.  This does not affect test results, but the HTML5 parser
+        was covering for this mistake.
+
+2016-11-14  David Kilzer  <ddkilzer@apple.com>
+
+        Bug 164702: WebContent crash due to checked unsigned overflow in WebCore: WebCore::RenderLayerCompositor::requiresCompositingLayer const + 1104
+        <https://webkit.org/b/164702>
+        <rdar://problem/29236368>
+
+        Reviewed by Darin Adler.
+
+        * inspector/layers/layers-compositing-reasons-expected.txt:
+        Update results.
+        * inspector/layers/layers-compositing-reasons.html: Update to
+        reproduce the crash.  This does not reproduce the original crash
+        stack, but does exercise the same crashing code.
+
+2016-11-14  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Expose STATE_SINGLE_LINE and STATE_MULTI_LINE for ARIA searchbox role
+        https://bugs.webkit.org/show_bug.cgi?id=164712
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/gtk/singleline-and-multiline-expected.txt: Added.
+        * accessibility/gtk/singleline-and-multiline.html: Added.
+
+2016-11-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [HarfBuzz] HarfBuzzShaper should not assume numGlyphs is greater than 0
+        https://bugs.webkit.org/show_bug.cgi?id=164500
+
+        Reviewed by Myles C. Maxfield.
+
+        * fast/text/international/harfbuzz-runs-with-no-glyph-expected.txt: Added.
+        * fast/text/international/harfbuzz-runs-with-no-glyph.html: Added.
+        * fast/text/international/resources/ignorables.woff: Added.
+
+2016-11-13  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (204441): newsplex.com map does not load
+        https://bugs.webkit.org/show_bug.cgi?id=164705
+        <rdar://problem/28753438>
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/getElementsByTagName-HTMLElement-prefix-expected.txt: Added.
+        * fast/dom/getElementsByTagName-HTMLElement-prefix.html: Added.
+
+2016-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a way to get the UI-side scrolling tree as text via UIScriptController
+        https://bugs.webkit.org/show_bug.cgi?id=164697
+
+        Reviewed by Zalan Bujtas.
+
+        Add a test that dumps the scrolling state tree with a fixed element.
+
+        * scrollingcoordinator/ios/ui-scrolling-tree-expected.txt: Added.
+        * scrollingcoordinator/ios/ui-scrolling-tree.html: Added.
+
+2016-11-12  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Share some code with Mac for post-async-scroll state reconciliation
+        https://bugs.webkit.org/show_bug.cgi?id=164694
+
+        Reviewed by Zalan Bujtas.
+
+        Test that pans the page, and dumps GraphicsLayers before letting go.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * scrollingcoordinator/ios/sync-layer-positions-after-scroll-expected.txt: Added.
+        * scrollingcoordinator/ios/sync-layer-positions-after-scroll.html: Added.
+
+2016-11-12  Frederic Wang  <fwang@igalia.com>
+
+        Ensure MathML render tree are clean by the end of FrameView::layout().
+        https://bugs.webkit.org/show_bug.cgi?id=162824
+
+        Reviewed by Darin Adler.
+
+        * mathml/invalid-markup-expected.txt: Added.
+        * mathml/invalid-markup.html: Added.
+        * mathml/mn-as-list-item-assert-expected.txt: Update text expectation now that invalid
+        subtree appears in the output.
+        * mathml/msubsup-fuzz-expected.txt: Ditto.
+        * accessibility/mac/mathml-multiscript.txt: Ditto.
+
+2016-11-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        event.composedPath() does not include window
+        https://bugs.webkit.org/show_bug.cgi?id=164609
+        <rdar://problem/29210383>
+
+        Reviewed by Antti Koivisto.
+
+        Added a W3C style testharness.js test for dispatching an inside a shadow tree connected to a document.
+
+        * fast/shadow-dom/event-path-with-window-expected.txt: Added.
+        * fast/shadow-dom/event-path-with-window.html: Added.
+        * fast/shadow-dom/resources/event-path-test-helpers.js:
+        (dispatchEventWithLog): Traverse from document to window. Also include the event object in the log.
+
+2016-11-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: DataView get methods should allow for missing offset, set methods should allow for missing value
+        https://bugs.webkit.org/show_bug.cgi?id=164451
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/webgl/data-view-test-expected.txt:
+        * fast/canvas/webgl/data-view-test.html:
+        Create a DataView large enough so that the get/set operations don't fail
+        due to out of bounds access, and assert that they do not throw, because
+        the undefined offset and value parameters get converted to 0.
+
+        * webgl/1.0.2/conformance/typedarrays/data-view-test-expected.txt:
+        This test is wrong. Leave the test alone but update our copy.
+
+2016-11-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip editing/input/focus-change-with-marked-text.html everywhere except ios-simulator-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=164666
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-11-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Hovering over a slotted Text node clears hover state
+        https://bugs.webkit.org/show_bug.cgi?id=164002
+        <rdar://problem/29040471>
+
+        Reviewed by Simon Fraser.
+
+        Added two reference tests for activating and hovering over a Text node.
+        The text node should activate :hover and :activate rules in the shadow tree respectively.
+
+        * fast/shadow-dom/activate-over-slotted-content-expected.html: Added.
+        * fast/shadow-dom/activate-over-slotted-content.html: Added.
+        * fast/shadow-dom/hover-over-slotted-content-expected.html: Added.
+        * fast/shadow-dom/hover-over-slotted-content.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip the newly added tests since iOS doesn't
+        support :hover or :activate via mouse down.
+
+2016-11-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Neutered ArrayBuffers are not properly serialized
+        https://bugs.webkit.org/show_bug.cgi?id=164647
+        <rdar://problem/29213490>
+
+        Reviewed by David Kilzer.
+
+        * fast/canvas/neutered-imagedata-expected.txt: Added.
+        * fast/canvas/neutered-imagedata.html: Added.
+
+2016-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] autocorrect and autocapitalize attributes do not work in contenteditable elements
+        https://bugs.webkit.org/show_bug.cgi?id=164538
+        <rdar://problem/8418711>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds new layout tests verifying that `autocorrect` and `autocapitalize` attributes can be used to opt out of
+        autocapitalization and autocorrection in a contenteditable area in WK2. Additionally, tests that autocorrection
+        and autocapitalization attributes may be changed by setting `element.autocorrect` and `element.autocapitalize`,
+        respectively.
+
+        * fast/events/ios/contenteditable-autocapitalize-none-expected.txt: Added.
+        * fast/events/ios/contenteditable-autocapitalize-none.html: Added.
+        * fast/events/ios/contenteditable-autocorrect-off-expected.txt: Added.
+        * fast/events/ios/contenteditable-autocorrect-off.html: Added.
+
+2016-11-11  Antti Koivisto  <antti@apple.com>
+
+        Updating class name doesn't update the slotted content's style
+        https://bugs.webkit.org/show_bug.cgi?id=164577
+        <rdar://problem/29205873>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-slotted-invalidation-expected.html: Added.
+        * fast/shadow-dom/css-scoping-slotted-invalidation.html: Added.
+
+2016-11-11  Chris Dumez  <cdumez@apple.com>
+
+        WorkerGlobalScope's indexedDB property should be on the prototype, not the instance
+        https://bugs.webkit.org/show_bug.cgi?id=164644
+
+        Reviewed by Brady Eidson.
+
+        Extend layout test coverage to check that:
+        - WorkerGlobalScope.indexedDB is on the prototype.
+        - WorkerGlobalScope.IDBDatabase constructor is on the instance
+
+        Both are enabled at runtime properties.
+
+        * fast/workers/WorkerGlobalScope-properties-prototype-expected.txt:
+        * fast/workers/WorkerGlobalScope-properties-prototype.html:
+        * fast/workers/self-hasOwnProperty-expected.txt:
+        * fast/workers/self-hasOwnProperty.html:
+
+2016-11-11  Antti Koivisto  <antti@apple.com>
+
+        Shadow DOM: Toggling class in `.class ::slotted(*)` does not trigger style recalc
+        https://bugs.webkit.org/show_bug.cgi?id=160864
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/shadow-dom/css-scoping-host-and-slotted-context-invalidation-expected.html: Added.
+        * fast/shadow-dom/css-scoping-host-and-slotted-context-invalidation.html: Added.
+
+2016-11-11  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] defer resolution of getUserMedia promise made in a background tab
+        https://bugs.webkit.org/show_bug.cgi?id=164643
+        <rdar://problem/29048317>
+
+        Reviewed by Brady Eidson.
+
+        * fast/mediastream/get-user-media-background-tab-expected.txt: Added.
+        * fast/mediastream/get-user-media-background-tab.html: Added.
+
+2016-11-10  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Rename CryptoKeyUsage to CryptoKeyUsageBitmap and CryptoKey::Usage to CryptoKeyUsage
+        https://bugs.webkit.org/show_bug.cgi?id=164624
+        <rdar://problem/29210140>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/generate-key-malformed-parameters-expected.txt:
+        * crypto/subtle/import-key-malformed-parameters-expected.txt:
+
+2016-11-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add ios-simulator baseline for compositing/tiling/visiblerect-accumulated-offset.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/compositing/tiling/visiblerect-accumulated-offset-expected.txt: Added.
+
+2016-11-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Composition state should be cleared when changing focus to a non-editable element
+        https://bugs.webkit.org/show_bug.cgi?id=164595
+        <rdar://problem/26412551>
+
+        Reviewed by Enrica Casucci.
+
+        Adds a new layout test to ensure that when changing focus from an element with pending composition text to
+        another element, the composition is committed and there should not still be a pending composition.
+
+        * editing/input/focus-change-with-marked-text-expected.txt: Added.
+        * editing/input/focus-change-with-marked-text.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-11-11  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] ASSERTION FAILED: !m_gridIsDirty in WebCore::RenderGrid::gridRowCount
+        https://bugs.webkit.org/show_bug.cgi?id=163450
+
+        Reviewed by Darin Adler.
+
+        The tests shouldn't crash in debug to verify that the bug is fixed.
+        On top of that the positioned grid items should appear in the right position too.
+
+        * fast/css-grid-layout/grid-positioned-item-dynamic-change-expected.html: Added.
+        * fast/css-grid-layout/grid-positioned-item-dynamic-change.html: Added.
+        * fast/css-grid-layout/grid-simplified-layout-positioned-expected.html: Added.
+        * fast/css-grid-layout/grid-simplified-layout-positioned.html: Added.
+
+2016-11-11  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Media Controller: media tracks control support
+        https://bugs.webkit.org/show_bug.cgi?id=164618
+        <rdar://problem/27989483>
+
+        Reviewed by Dean Jackson.
+
+        Adding new tests to check that we enable the media tracks button when we have text tracks
+        or multiple audio tracks, and that it's disabled otherwise.
+
+        * media/modern-media-controls/tracks-support/tracks-support-audio-tracks-expected.txt: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-audio-tracks.html: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-no-tracks-expected.txt: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-no-tracks.html: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-text-tracks-expected.txt: Added.
+        * media/modern-media-controls/tracks-support/tracks-support-text-tracks.html: Added.
+
+2016-11-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Document#body should have DOMJIT patchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=164627
+
+        Reviewed by Darin Adler.
+
+        * js/dom/domjit-accessor-document-body-expected.txt: Added.
+        * js/dom/domjit-accessor-document-body.html: Added.
+
+2016-11-10  John Wilander  <wilander@apple.com>
+
+        Add link information to data transfer pasteboard for drag and drop links
+        https://bugs.webkit.org/show_bug.cgi?id=163468
+        <rdar://problem/20634630>
+
+        Reviewed by Brent Fulgham.
+
+        * editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard-expected.txt: Added.
+        * editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html: Added.
+            This test ensures data transfer is not deleted or overwritten for the types 'text' and 'url'.
+        * platform/ios-simulator/TestExpectations:
+            Drag & drop is not supported on iOS.
+
+2016-11-10  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r208522): LayoutTest fast/loader/reload-zero-byte-plugin.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=164570
+
+        Reviewed by Simon Fraser.
+
+        Unskip test which should no longer be flaky.
+
+        * platform/mac/TestExpectations:
+
+2016-11-10  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0 Support the IDBDatabase.onclose event.
+        https://bugs.webkit.org/show_bug.cgi?id=164602
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+        * storage/indexeddb/modern/handle-user-delete-expected.txt:
+        * storage/indexeddb/modern/resources/handle-user-delete.js:
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking swipe/pushState-cached-back-swipe.html and swipe/main-frame-pinning-requirement.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=164572
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-11-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Copied text would contain text inside CDATA sections and comments
+        https://bugs.webkit.org/show_bug.cgi?id=164578
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for creating an attributed string from different kinds of Text nodes.
+        Comment and CDataSection should not be included in the attributed string.
+
+        * editing/mac/attributed-string/comment-cdata-section-expected.txt: Added.
+        * editing/mac/attributed-string/comment-cdata-section.html: Added.
+        * platform/mac-yosemite/editing/mac/attributed-string/comment-cdata-section-expected.txt: Added.
+
+2016-11-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: DataView / TypedArray methods should throw RangeErrors for negative numbers (ToIndex)
+        https://bugs.webkit.org/show_bug.cgi?id=164450
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/webgl/data-view-crash-expected.txt:
+        * fast/canvas/webgl/data-view-test-expected.txt:
+        Better error message.
+
+2016-11-10  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] apply constraints passed to getUserMedia()
+        https://bugs.webkit.org/show_bug.cgi?id=164561
+
+        Reviewed by Youenn Fablet.
+        <rdar://problem/29191384>
+
+        * fast/mediastream/MediaDevices-getUserMedia.html:
+        * fast/mediastream/MediaStream-video-element-expected.txt:
+        * fast/mediastream/MediaStream-video-element-track-stop-expected.txt:
+        * fast/mediastream/MediaStreamTrack-getCapabilities-expected.txt:
+        * fast/mediastream/MediaStreamTrack-getSettings-expected.txt:
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/sampling-profiler tests as flaky timeouts.
+        https://bugs.webkit.org/show_bug.cgi?id=164388
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/cache/disk-cache/disk-cache-request-headers.html as flaky on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=164594
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/loader/reload-zero-byte-plugin.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=164570
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-11-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Unmarking storage/domstorage/sessionstorage/blocked-file-access.html.
+        https://bugs.webkit.org/show_bug.cgi?id=164592
+
+        Unreviewed test gardening after r208550.
+
+        * TestExpectations:
+
+2016-11-10  Daniel Bates  <dabates@apple.com>
+
+        Add test that image load over default port using HTTP 0.9 protocol is blocked when page is
+        served with a different HTTP version
+        https://bugs.webkit.org/show_bug.cgi?id=164552
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/http-0.9/image-default-port-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/image-default-port-blocked.html: Added.
+
+2016-11-10  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r195004): Scripts and plugins blocked for subsequent loads in same WebContent
+        process after receiving HTTP 0.9 response
+        https://bugs.webkit.org/show_bug.cgi?id=164387
+        <rdar://problem/28987537>
+
+        Reviewed by Brent Fulgham.
+
+        Add a new test to ensure that the HTTP 0.9 sandbox policy does not persist across navigations.
+
+        Unskip HTTP 0.9 tests and update expected results for existing tests as needed.
+
+        * TestExpectations: Unskip the HTTP 0.9 tests.
+        * http/tests/security/http-0.9/default-port-plugin-blocked-expected.txt: Remove duplicate console
+        messages now that we emit the console message exactly once per document.
+        * http/tests/security/http-0.9/default-port-script-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/iframe-blocked-expected.txt: Update expected result now that we
+        no longer emit a console message for a blocked load.
+        * http/tests/security/http-0.9/image-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-expected.txt: Remove
+        duplicate console messages now that we emit the console message exactly once per document.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/resources/sandbox-should-not-persist-on-navigation.html: Added.
+        * http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation-expected.txt: Added.
+        * http/tests/security/http-0.9/sandbox-should-not-persist-on-navigation.html: Added.
+        * http/tests/security/http-0.9/worker-connect-src-blocked-expected.txt: Update expected result
+        now that we no longer apply a sandbox policy to the main resource if a subresource had an HTTP 0.9
+        response.
+        * http/tests/security/http-0.9/worker-importScripts-blocked-expected.txt: Ditto.
+        * http/tests/security/http-0.9/xhr-asynchronous-blocked-expected.txt: Ditto.
+
+2016-11-04  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::importKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164446
+        <rdar://problem/29123621>
+
+        Reviewed by Brent Fulgham.
+
+        Besides adding test cases for SubtleCrypto::importKey. This patch also corrects a typo:
+        generate-key-malformed-paramters*.
+
+        * crypto/subtle/aes-cbc-import-jwk-key-length-128-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-length-128.html: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-length-192-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-length-192.html: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-length-256-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-length-256.html: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-minimum-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-minimum.html: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-non-extractable-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-jwk-key-non-extractable.html: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-128-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-128.html: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-192-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-192.html: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-256-expected.txt: Added.
+        * crypto/subtle/aes-cbc-import-raw-key-length-256.html: Added.
+        * crypto/subtle/aes-import-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/aes-import-key-malformed-parameters.html: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-128-expected.txt: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-128.html: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-192-expected.txt: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-192.html: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-256-expected.txt: Added.
+        * crypto/subtle/aes-kw-import-jwk-key-length-256.html: Added.
+        * crypto/subtle/aes-kw-import-raw-key-expected.txt: Added.
+        * crypto/subtle/aes-kw-import-raw-key.html: Added.
+        * crypto/subtle/generate-key-malformed-parameters-expected.txt: Renamed from LayoutTests/crypto/subtle/generate-key-malformed-paramters-expected.txt.
+        * crypto/subtle/generate-key-malformed-parameters.html: Renamed from LayoutTests/crypto/subtle/generate-key-malformed-paramters.html.
+        * crypto/subtle/hmac-generate-key-customized-length-expected.txt:
+        * crypto/subtle/hmac-generate-key-customized-length.html:
+        * crypto/subtle/hmac-generate-key-malformed-parameters-expected.txt:
+        * crypto/subtle/hmac-generate-key-malformed-parameters.html:
+        * crypto/subtle/hmac-import-raw-key-customized-length-expected.txt:
+        * crypto/subtle/hmac-import-raw-key-customized-length.html:
+        * crypto/subtle/hmac-import-jwk-key-minimum-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-minimum.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-non-extractable-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-non-extractable.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha1-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha1.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha224-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha224.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha256-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha256.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha384-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha384.html: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha512-expected.txt: Added.
+        * crypto/subtle/hmac-import-jwk-key-sha512.html: Added.
+        * crypto/subtle/hmac-import-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/hmac-import-malformed-parameters.html: Added.
+        * crypto/subtle/hmac-import-raw-key-customized-length-expected.txt: Added.
+        * crypto/subtle/hmac-import-raw-key-customized-length.html: Added.
+        * crypto/subtle/hmac-import-raw-key-expected.txt: Added.
+        * crypto/subtle/hmac-import-raw-key.html: Added.
+        * crypto/subtle/import-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/import-key-malformed-parameters.html: Added.
+        * crypto/subtle/rsa-import-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/rsa-import-key-malformed-parameters.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-private-key-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-private-key.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha1-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha1.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha224-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha224.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha256-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha256.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha384-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha384.html: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha512-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-jwk-public-key-sha512.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-private-key-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-private-key.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-leading-zero-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-leading-zero.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-minimum-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-minimum.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-non-extractable-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-non-extractable.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-private-key-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-private-key.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha1-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha1.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha224-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha224.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha256-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha256.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha384-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha384.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha512-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha512.html: Added.
+        * crypto/webkitSubtle/hmac-generate-key-expected.txt:
+        * crypto/webkitSubtle/hmac-generate-key.html:
+        * crypto/webkitSubtle/hmac-import-jwk-expected.txt:
+        * crypto/webkitSubtle/hmac-import-jwk.html:
+        * crypto/webkitSubtle/hmac-postMessage-expected.txt:
+        * crypto/webkitSubtle/hmac-postMessage.html:
+        * crypto/webkitSubtle/hmac-sign-verify-expected.txt:
+        * crypto/webkitSubtle/hmac-sign-verify.html:
+        * crypto/workers/subtle/aes-import-jwk-key-expected.txt: Added.
+        * crypto/workers/subtle/aes-import-jwk-key.html: Added.
+        * crypto/workers/subtle/aes-import-raw-key-expected.txt: Added.
+        * crypto/workers/subtle/aes-import-raw-key.html: Added.
+        * crypto/workers/subtle/hmac-import-jwk-key-expected.txt: Added.
+        * crypto/workers/subtle/hmac-import-jwk-key.html: Added.
+        * crypto/workers/subtle/hmac-import-raw-key-expected.txt: Added.
+        * crypto/workers/subtle/hmac-import-raw-key.html: Added.
+        * crypto/workers/subtle/hmac-postMessage-worker-expected.txt:
+        * crypto/workers/subtle/hmac-postMessage-worker.html:
+        * crypto/workers/subtle/resources/aes-import-jwk-key.js: Added.
+        * crypto/workers/subtle/resources/aes-import-raw-key.js: Added.
+        * crypto/workers/subtle/resources/hmac-import-jwk-key.js: Added.
+        * crypto/workers/subtle/resources/hmac-import-raw-key.js: Added.
+        * crypto/workers/subtle/resources/hmac-postMessage-worker.js:
+        * crypto/workers/subtle/resources/rsa-import-jwk-private-key.js: Added.
+        * crypto/workers/subtle/resources/rsa-import-jwk-public-key.js: Added.
+        * crypto/workers/subtle/rsa-import-jwk-private-key-expected.txt: Added.
+        * crypto/workers/subtle/rsa-import-jwk-private-key.html: Added.
+        * crypto/workers/subtle/rsa-import-jwk-public-key-expected.txt: Added.
+        * crypto/workers/subtle/rsa-import-jwk-public-key.html: Added.
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=164598
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-11-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Temporarily marking storage/domstorage/sessionstorage/blocked-file-access.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=164592
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2016-11-10  Aaron Chu  <aaron_chu@apple.com>
+
+        Web Inspector: AXI: clarify button roles (e.g. toggle or popup button)
+        https://bugs.webkit.org/show_bug.cgi?id=130726
+        <rdar://problem/16420420>
+
+        Reviewed by Brian Burg.
+
+        Updated related test cases.
+
+        * accessibility/roles-computedRoleString-expected.txt:
+        * accessibility/roles-computedRoleString.html:
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt:
+        * inspector/dom/getAccessibilityPropertiesForNode.html:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+
+2016-11-10  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Media Controller: update controls based on fullscreen playback on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=164554
+        <rdar://problem/29183439>
+
+        Reviewed by Dean Jackson.
+
+        Adding a new test to check that we use fullscreen controls on macOS once we've entered fullscreen.
+
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-change.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-08  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Fix fr tracks sizing under min|max-size constraints
+        https://bugs.webkit.org/show_bug.cgi?id=150674
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/flex-sizing-columns-min-max-width-expected.txt: Added.
+        * fast/css-grid-layout/flex-sizing-columns-min-max-width.html: Added.
+        * fast/css-grid-layout/flex-sizing-rows-min-max-height-expected.txt: Added.
+        * fast/css-grid-layout/flex-sizing-rows-min-max-height.html: Added.
+
+2016-11-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebHTMLView's _attributeStringFromDOMRange should use HTMLConverter instead of NSAttributedString's _initWithDOMRange
+        https://bugs.webkit.org/show_bug.cgi?id=164501
+        <rdar://problem/29152282>
+
+        Reviewed by Sam Weinig.
+
+        Prior to this patch, attributed-string tests were inadvertently testing NSAttributedString's _initWithDOMRange
+        instead of HTMLConverter as intended because _attributeStringFromDOMRange was using _initWithDOMRange.
+
+        This patch aliens [WebHTMLView attributedString] to what we use on copy & paste by using HTMLConverter instead.
+        The rebaselined done below highlights the existing behavior difference between AppKit's converter and HTMLConverter.
+
+        I've manually confirmed that these test results didn't change across the large refactoring as seen in:
+        https://trac.webkit.org/log/trunk/Source/WebCore/platform/mac/HTMLConverter.mm?rev=166145
+
+        * editing/mac/attributed-string/anchor-element-expected.txt:
+        * editing/mac/attributed-string/basic-expected.txt:
+        * editing/mac/attributed-string/font-size-expected.txt:
+        * editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * editing/mac/attributed-string/font-weight-expected.txt:
+        * editing/mac/attributed-string/letter-spacing-expected.txt:
+        * editing/mac/attributed-string/text-decorations-expected.txt:
+        * editing/mac/attributed-string/vertical-align-expected.txt:
+        * platform/mac-elcapitan/editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/anchor-element-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/basic-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/font-size-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/font-style-variant-effect-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/font-weight-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/letter-spacing-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/text-decorations-expected.txt:
+        * platform/mac-yosemite/editing/mac/attributed-string/vertical-align-expected.txt:
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][!NETWORK_SESSION] Add support for downloading file backed blobs
+        https://bugs.webkit.org/show_bug.cgi?id=164522
+
+        Reviewed by Alex Christensen.
+
+        Unskip corresponding tests now that they pass on Yosemite and El Capitan.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-11-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DebuggerManager.Event.Resumed introduces test flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=161951
+        <rdar://problem/28295767>
+
+        Reviewed by Brian Burg.
+
+        Rewrite tests to be more deterministic. For tests that
+        relied on a Resumed event to happen after a short amount
+        of time, instead have the test dispatch an event when it is
+        appropriate to continue. Take this opportunity to rewrite
+        some tests using new style and best practices.
+
+        * inspector/debugger/break-in-constructor-before-super.html:
+        * inspector/debugger/break-on-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-exception.html:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise.html:
+        * inspector/debugger/break-on-uncaught-exception.html:
+        * inspector/debugger/breakpoint-syntax-error-top-level.html:
+        * inspector/debugger/command-line-api-exception-expected.txt:
+        * inspector/debugger/command-line-api-exception-nested-catch.html:
+        * inspector/debugger/command-line-api-exception.html:
+        * inspector/debugger/csp-exceptions.html:
+        * inspector/debugger/didSampleProbe-multiple-probes.html:
+        * inspector/debugger/evaluateOnCallFrame-CommandLineAPI.html:
+        * inspector/debugger/evaluateOnCallFrame-errors.html:
+        * inspector/debugger/pause-reason-expected.txt:
+        * inspector/debugger/pause-reason.html:
+        * inspector/debugger/paused-scopes-expected.txt:
+        * inspector/debugger/paused-scopes.html:
+        * inspector/debugger/resources/exceptions.js:
+        * inspector/debugger/scriptParsed.html:
+        * inspector/debugger/sourceURL-repeated-identical-executions.html:
+        * inspector/debugger/sourceURLs.html:
+        * inspector/debugger/stepping/stepping-pause-in-inner-step-to-parent.html:
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][NETWORK_SESSION] Add support for downloading file backed blobs
+        https://bugs.webkit.org/show_bug.cgi?id=164458
+        <rdar://problem/28905514>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage for downloading blobs, both via <a download> or
+        because a load is later converted into a download.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download.html: Added.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-11-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Associate Worker Resources with the Worker and not the Page
+        https://bugs.webkit.org/show_bug.cgi?id=164342
+        <rdar://problem/29075775>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/worker/resources-in-worker-expected.txt: Added.
+        * inspector/worker/resources-in-worker.html: Added.
+        * inspector/worker/resources/dataFetch.json: Added.
+        * inspector/worker/resources/dataXHR.json: Added.
+        * inspector/worker/resources/resource-utilities.js: Added.
+        (loadResourceXHR):
+        (loadResourceFetch):
+        * inspector/worker/resources/worker-resources.js: Added.
+        (importScript):
+        (onmessage):
+
+2016-11-09  Brent Fulgham  <bfulgham@apple.com>
+
+        Windows localStorage tests will fail until Bug 155185 is fixed.
+        https://bugs.webkit.org/show_bug.cgi?id=155185
+
+        * platform/win/TestExpectations: Mark localStorage tests as expected
+        to fail for now.
+
+2016-11-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/pip-support/pip-support-enabled.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=164336
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r208438.
+
+        crashes
+
+        Reverted changeset:
+
+        "[WK2][NETWORK_SESSION] Add support for downloading file
+        backed blobs"
+        https://bugs.webkit.org/show_bug.cgi?id=164458
+        http://trac.webkit.org/changeset/208438
+
+2016-11-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two media/modern-media-controls tests as flaky.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-11-09  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Change the decoding for some animated images to be asynchronous
+        https://bugs.webkit.org/show_bug.cgi?id=161566
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/slower-animation-than-decoding-image-expected.txt: Added.
+        * fast/images/slower-animation-than-decoding-image.html: Added.
+        * fast/images/slower-decoding-than-animation-image-expected.txt: Added.
+        * fast/images/slower-decoding-than-animation-image.html: Added.
+        In these tests, CanvasRenderingContext2D.drawImage() is used to better
+        control advancing the animation of an animated image. A setTimeout() is
+        used instead of the frame duration to schedule when the drawing happens.
+        The first test ensures that faster decoding does not overrule the frame
+        duration; the setTimeout interval in this case. The second test ensures
+        the animation is not advanced unless decoding the next frame has finished.
+
+        * fast/images/stopped-animation-deleted-image-expected.txt: Added.
+        * fast/images/stopped-animation-deleted-image.html: Added.
+        This test ensures that if an animated image is removed from the document,
+        its draw() method won't be called even if the animation timer fires or the
+        decoding new frame availability notification is received.
+
+2016-11-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Local HTML should be blocked from localStorage access unless "Disable Local File Restrictions" is checked
+        https://bugs.webkit.org/show_bug.cgi?id=155185
+        <rdar://problem/11101440>
+
+        Reviewed by Brady Eidson.
+
+        * storage/domstorage/localstorage/blocked-file-access-expected.txt: Added.
+        * storage/domstorage/localstorage/blocked-file-access-permitted-by-quirk-expected.txt: Added.
+        * storage/domstorage/localstorage/blocked-file-access-permitted-by-quirk.html: Added.
+        * storage/domstorage/localstorage/blocked-file-access.html: Added.
+        * storage/domstorage/localstorage/resources/allowed-example.html: Added.
+        * storage/domstorage/localstorage/resources/blocked-example.html: Added.
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        URLParser should not consider path of URLs with no host to start at the first slash after the colon
+        https://bugs.webkit.org/show_bug.cgi?id=164555
+
+        Reviewed by Tim Horton.
+
+        * fast/url/segments-expected.txt:
+        * fast/url/segments-from-data-url-expected.txt:
+        * fast/loader/url-parse-1-expected.txt:
+        * fetch/fetch-url-serialization-expected.txt:
+
+2016-11-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement visual-viewport based position:fixed handling for Mac async scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=164495
+
+        Reviewed by Tim Horton.
+
+        Tests that dump the scrolling state tree, and the layer tree.
+
+        * TestExpectations:
+        * compositing/tiling/visiblerect-accumulated-offset.html: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-expected.txt: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-then-up-expected.txt: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down-then-up.html: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolled-down.html: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state-expected.txt: Added.
+        * fast/visual-viewport/tiled-drawing/zoomed-fixed-scrolling-layers-state.html: Added.
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/compositing/tiling/visiblerect-accumulated-offset-expected.txt: Added.
+
+2016-11-09  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Implement new IDBCursor.continuePrimaryKey function.
+        https://bugs.webkit.org/show_bug.cgi?id=164404
+
+        Reviewed by Alex Christensen.
+
+        * storage/indexeddb/cursor-basics-expected.txt:
+        * storage/indexeddb/cursor-basics-private-expected.txt:
+        * storage/indexeddb/modern/idbcursor-continue-primary-key-1-expected.txt: Added.
+        * storage/indexeddb/modern/idbcursor-continue-primary-key-1-private-expected.txt: Added.
+        * storage/indexeddb/modern/idbcursor-continue-primary-key-1-private.html: Added.
+        * storage/indexeddb/modern/idbcursor-continue-primary-key-1.html: Added.
+        * storage/indexeddb/modern/resources/idbcursor-continue-primary-key-1.js: Added.
+
+2016-11-09  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Media Controller: set status label according to media state
+        https://bugs.webkit.org/show_bug.cgi?id=164557
+        <rdar://problem/29184097>
+
+        Reviewed by Dean Jackson.
+
+        Add new tests to check that we display the expected StatusLabel text when the media is in the
+        "Loading", "Error" and "Live Broadcast" states.
+
+        * http/tests/media/modern-media-controls/status-support/status-support-live-broadcast-expected.txt: Added.
+        * http/tests/media/modern-media-controls/status-support/status-support-live-broadcast.html: Added.
+        * http/tests/media/modern-media-controls/status-support/status-support-loading-expected.txt: Added.
+        * http/tests/media/modern-media-controls/status-support/status-support-loading.html: Added.
+        * media/modern-media-controls/status-support/status-support-error-expected.txt: Added.
+        * media/modern-media-controls/status-support/status-support-error.html: Added.
+
+2016-11-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Implement Node::ownerDocument
+        https://bugs.webkit.org/show_bug.cgi?id=164004
+
+        Reviewed by Darin Adler.
+
+        * js/dom/domjit-accessor-owner-document-expected.txt: Added.
+        * js/dom/domjit-accessor-owner-document.html: Added.
+
+2016-11-09  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix grid layout parsing
+        https://bugs.webkit.org/show_bug.cgi?id=164489
+
+        Reviewed by Dean Jackson.
+
+        * fast/css-grid-layout/grid-auto-columns-rows-auto-flow-resolution.html:
+
+2016-11-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Correct a typo in the name of a flaky test.
+        https://bugs.webkit.org/show_bug.cgi?id=164388
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-11-09  Daniel Bates  <dabates@apple.com>
+
+        Add test infrastructure and tests for existing HTTP 0.9 sandbox machinery
+        https://bugs.webkit.org/show_bug.cgi?id=164389
+        <rdar://problem/29101072>
+
+        Reviewed by Alex Christensen.
+
+        Add tests for the existing HTTP 0.9 sandbox machinery. Until we fix <https://bugs.webkit.org/show_bug.cgi?id=164387>,
+        these tests can only be run singly (i.e. pass --run-singly to run-webkit-tests). So, we skip
+        these tests to avoid test failures when run-webkit-tests runs in parallel mode (the default
+        mode and the mode used on the buildbots).
+
+        * TestExpectations:
+        * http/tests/security/http-0.9/default-port-plugin-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/default-port-plugin-blocked.html: Added.
+        * http/tests/security/http-0.9/default-port-script-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/default-port-script-blocked.html: Added.
+        * http/tests/security/http-0.9/iframe-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/iframe-blocked.html: Added.
+        * http/tests/security/http-0.9/image-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/image-blocked.html: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-expected.txt: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-ref-test-expected.html: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed-ref-test.html: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-default-port-page-allowed.html: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/image-on-HTTP-0.9-page-blocked.html: Added.
+        * http/tests/security/http-0.9/resources/blue-square.png: Added.
+        * http/tests/security/http-0.9/resources/nph-alert-fail.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-fail.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-image-on-HTTP-0.9-default-port-page-allowed.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-image-on-HTTP-0.9-page-blocked.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-image.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-load-plugin-fail.pl: Added.
+        * http/tests/security/http-0.9/resources/nph-worker-fail.pl: Added.
+        * http/tests/security/http-0.9/worker-connect-src-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/worker-connect-src-blocked.html: Added.
+        * http/tests/security/http-0.9/worker-importScripts-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/worker-importScripts-blocked.html: Added.
+        * http/tests/security/http-0.9/xhr-asynchronous-blocked-expected.txt: Added.
+        * http/tests/security/http-0.9/xhr-asynchronous-blocked.html: Added.
+
+2016-11-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        When editing IME, `compositionend` events should fire after input events
+        https://bugs.webkit.org/show_bug.cgi?id=164324
+        <rdar://problem/29050438>
+
+        Reviewed by Darin Adler.
+
+        Augments fast/events/input-events-ime-recomposition.html and fast/events/input-events-ime-composition.html to
+        verify that compositionend events are fired after input events. Also rebaselines
+        fast/events/ime-composition-events-001.html.
+
+        * fast/events/ime-composition-events-001-expected.txt:
+        * fast/events/input-events-ime-composition-expected.txt:
+        * fast/events/input-events-ime-composition.html:
+        * fast/events/input-events-ime-recomposition-expected.txt:
+        * fast/events/input-events-ime-recomposition.html:
+
+2016-11-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Setting foreground color when text is selected should fire an input event with color data
+        https://bugs.webkit.org/show_bug.cgi?id=164241
+        <rdar://problem/29032759>
+
+        Reviewed by Darin Adler.
+
+        Adds a new layout test verifying that selecting text and setting its foreground color will fire input events
+        with the correct RGB values in the data attribute.
+
+        * fast/events/input-events-selection-forecolor-data-expected.txt: Added.
+        * fast/events/input-events-selection-forecolor-data.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-08  Dean Jackson  <dino@apple.com>
+
+        Rendering support for ExtendedColors
+        https://bugs.webkit.org/show_bug.cgi?id=164443
+        <rdar://problems/29123243>
+
+        Reviewed by Simon Fraser and Darin Adler.
+
+        Tests that use the new color() syntax.
+
+        * css3/color/backgrounds-and-borders-expected.html: Added.
+        * css3/color/backgrounds-and-borders.html: Added.
+        * css3/color/box-shadows-expected.html: Added.
+        * css3/color/box-shadows.html: Added.
+        * css3/color/canvas-expected.html: Added.
+        * css3/color/canvas.html: Added.
+        * css3/color/composited-solid-backgrounds-expected.html: Added.
+        * css3/color/composited-solid-backgrounds.html: Added.
+        * css3/color/text-expected.html: Added.
+        * css3/color/text.html: Added.
+        * editing/mac/attributed-string/anchor-element-expected.txt: Updated.
+        * editing/mac/attributed-string/basic-expected.txt:
+
+2016-11-09  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] UI Library: StatusLabel
+        https://bugs.webkit.org/show_bug.cgi?id=164544
+        <rdar://problem/29179541>
+
+        Reviewed by Dean Jackson.
+
+        Adding new tests for the core properties of the new StatusLabel class, as well as adding a test
+        to check we use the correct layout when the StatusLabel has its text set and the time controls
+        needs to be replaced with it. We also make a few existing tests use the script loader so that
+        they continue to pass with the addition of a new JS class.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-constructor.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-status-label-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-status-label.html: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-slider-visibility.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-dropping-controls.html:
+        * media/modern-media-controls/macos-media-controls/macos-media-controls.html:
+        * media/modern-media-controls/media-controls/media-controls-constructor-expected.txt:
+        * media/modern-media-controls/media-controls/media-controls-constructor.html:
+        * media/modern-media-controls/media-controls/media-controls-placard.html:
+        * media/modern-media-controls/media-controls/media-controls-start-button.html:
+        * media/modern-media-controls/resources/media-controls-loader.js:
+        * media/modern-media-controls/status-label/status-label-expected.txt: Added.
+        * media/modern-media-controls/status-label/status-label.html: Added.
+
+2016-11-08  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] UI Library: iOS inline controls
+        https://bugs.webkit.org/show_bug.cgi?id=164513
+        <rdar://problem/27989475>
+
+        Reviewed by Dean Jackson.
+
+        Adding new tests for the IOSInlineMediaControls class.
+
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-constructor-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-constructor.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-controls-bar-styles-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-controls-bar-styles.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-layout-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-layout.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-dropping-controls-expected.txt: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-dropping-controls.html: Added.
+        * media/modern-media-controls/resources/media-controls-loader.js:
+
+2016-11-09  Simon Fraser  <simon.fraser@apple.com>
+
+        LayoutTest fast/visual-viewport/rtl-zoomed-rects.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=164491
+
+        Mark fast/visual-viewport/rtl-zoomed-rects.html as failing on Yosemite and El Capitan
+        in WK1.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Use Blob URL instead of webkit-fake-url when pasting an image
+        https://bugs.webkit.org/show_bug.cgi?id=49141
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage checking that the image shows as expected and that the
+        resulting URL is indeed a Blob URL.
+
+        * editing/pasteboard/paste-image-as-blob-url-expected.txt: Added.
+        * editing/pasteboard/paste-image-as-blob-url.html: Added.
+        * editing/pasteboard/paste-image-using-image-data-expected.html: Added.
+        * editing/pasteboard/paste-image-using-image-data.html: Added.
+
+2016-11-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] The implementation of 8 bit operation in MacroAssembler should care about uint8_t / int8_t
+        https://bugs.webkit.org/show_bug.cgi?id=164432
+
+        Reviewed by Michael Saboff.
+
+        Use ownerDocument. Once DOMJIT for ownerDocument is landed, this will use branch8.
+
+        * js/dom/domjit-accessor-owner-document-type-check-expected.txt: Added.
+        * js/dom/domjit-accessor-owner-document-type-check.html: Added.
+
+2016-11-08  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] UI Library: macOS fullscreen controls
+        https://bugs.webkit.org/show_bug.cgi?id=164414
+        <rdar://problem/27989474>
+
+        Reviewed by Dean Jackson.
+
+        Adding new tests for the MacOSFullscreenMediaControls class as well as making other tests
+        adopt the media-controls-loader.js utility.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles.html: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-constructor.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-slider-visibility.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-dropping-controls.html:
+        * media/modern-media-controls/macos-media-controls/macos-media-controls.html:
+        * media/modern-media-controls/media-controls/media-controls-constructor.html:
+        * media/modern-media-controls/media-controls/media-controls-placard.html:
+        * media/modern-media-controls/media-controls/media-controls-start-button.html:
+        * media/modern-media-controls/resources/media-controls-loader.js:
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        Add test coverage for radiusX / radiusY in WebPlatformTouchPoint.
+        https://bugs.webkit.org/show_bug.cgi?id=162801
+        <rdar://problem/28807455>
+
+        Reviewed by Darin Adler.
+
+        Add test coverage for radiusX / radiusY in WebPlatformTouchPoint.
+
+        * fast/events/touch/ios/touch-event-radius-expected.txt: Added.
+        * fast/events/touch/ios/touch-event-radius.html: Added.
+
+2016-11-09  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Introduce asynchronous backend for other RTCPeerConnection API
+        https://bugs.webkit.org/show_bug.cgi?id=164409
+
+        Reviewed by Eric Carlson.
+
+        Rebasing test as patch changes the order in which error cases are checked in case of setRemoteDescription/setLocalDescription.
+        New order tries to follow more closely https://www.w3.org/TR/webrtc/#set-description.
+
+        * fast/mediastream/RTCPeerConnection-stable-expected.txt:
+
+2016-11-09  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Wrong selected element at a given index in a list box (redux)
+        https://bugs.webkit.org/show_bug.cgi?id=164430
+
+        Reviewed by Darin Adler.
+
+        Add tests to ensure listboxes with no selected children do not report
+        a selected child. Modify select-element-at-index.html to reflect the
+        corrected behavior for ATK. Move the Mac port's expectations to the
+        shared expectations.
+
+        * accessibility/aria-listbox-no-selection-expected.txt: Added.
+        * accessibility/aria-listbox-no-selection.html: Added.
+        * accessibility/native-listbox-no-selection-expected.txt: Added.
+        * accessibility/native-listbox-no-selection.html: Added.
+        * accessibility/select-element-at-index-expected.txt: Modified.
+        * accessibility/select-element-at-index.html: Modified.
+        * platform/mac/accessibility/select-element-at-index-expected.txt: Removed.
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2][NETWORK_SESSION] Add support for downloading file backed blobs
+        https://bugs.webkit.org/show_bug.cgi?id=164458
+        <rdar://problem/28905514>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage for downloading blobs, both via <a download> or
+        because a load is later converted into a download.
+
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download-expected.txt: Added.
+        * fast/dom/HTMLAnchorElement/anchor-file-blob-download.html: Added.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Network cache speculative revalidation can cause loads to hang
+        https://bugs.webkit.org/show_bug.cgi?id=164532
+        <rdar://problem/28519331>
+
+        Reviewed by Alex Christensen.
+
+        Add layout test coverage. The test hangs without the fix.
+
+        * http/tests/cache/disk-cache/speculative-validation/http-auth-expected.txt: Added.
+        * http/tests/cache/disk-cache/speculative-validation/http-auth.html: Added.
+        * http/tests/cache/disk-cache/speculative-validation/resources/frame-with-authenticated-resource.php: Added.
+        * http/tests/cache/disk-cache/speculative-validation/resources/resource-with-auth.php: Added.
+
 2016-11-09  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r208422.
@@ -151,6 +2060,7 @@
 
         * fast/shadow-dom/css-scoping-slot-with-id-expected.html: Added.
         * fast/shadow-dom/css-scoping-slot-with-id.html: Added.
+
 
 2016-11-04  Brady Eidson  <beidson@apple.com>
 

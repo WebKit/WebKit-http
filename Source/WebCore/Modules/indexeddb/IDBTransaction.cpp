@@ -41,6 +41,7 @@
 #include "IDBEventDispatcher.h"
 #include "IDBGetRecordData.h"
 #include "IDBIndex.h"
+#include "IDBIterateCursorData.h"
 #include "IDBKeyData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBObjectStore.h"
@@ -149,6 +150,8 @@ ExceptionOr<Ref<IDBObjectStore>> IDBTransaction::objectStore(const String& objec
     if (isFinishedOrFinishing())
         return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'objectStore' on 'IDBTransaction': The transaction finished.") };
 
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+
     auto iterator = m_referencedObjectStores.find(objectStoreName);
     if (iterator != m_referencedObjectStores.end())
         return Ref<IDBObjectStore> { *iterator->value };
@@ -169,10 +172,11 @@ ExceptionOr<Ref<IDBObjectStore>> IDBTransaction::objectStore(const String& objec
     if (!info || (!found && !isVersionChange()))
         return Exception { IDBDatabaseException::NotFoundError, ASCIILiteral("Failed to execute 'objectStore' on 'IDBTransaction': The specified object store was not found.") };
 
-    auto objectStore = IDBObjectStore::create(*scriptExecutionContext(), *info, *this);
-    m_referencedObjectStores.set(objectStoreName, objectStore.ptr());
+    auto objectStore = std::make_unique<IDBObjectStore>(*scriptExecutionContext(), *info, *this);
+    auto* rawObjectStore = objectStore.get();
+    m_referencedObjectStores.set(objectStoreName, WTFMove(objectStore));
 
-    return WTFMove(objectStore);
+    return Ref<IDBObjectStore>(*rawObjectStore);
 }
 
 
@@ -195,7 +199,6 @@ void IDBTransaction::transitionedToFinishing(IndexedDB::TransactionState state)
     ASSERT(!isFinishedOrFinishing());
     m_state = state;
     ASSERT(isFinishedOrFinishing());
-    m_referencedObjectStores.clear();
 }
 
 ExceptionOr<void> IDBTransaction::abort()
@@ -220,6 +223,21 @@ void IDBTransaction::internalAbort()
     m_database->willAbortTransaction(*this);
 
     if (isVersionChange()) {
+        Locker<Lock> locker(m_referencedObjectStoreLock);
+
+        auto& info = m_database->info();
+        Vector<uint64_t> identifiersToRemove;
+        for (auto& iterator : m_deletedObjectStores) {
+            if (info.infoForExistingObjectStore(iterator.key)) {
+                auto name = iterator.value->info().name();
+                m_referencedObjectStores.set(name, WTFMove(iterator.value));
+                identifiersToRemove.append(iterator.key);
+            }
+        }
+
+        for (auto identifier : identifiersToRemove)
+            m_deletedObjectStores.remove(identifier);
+
         for (auto& objectStore : m_referencedObjectStores.values())
             objectStore->rollbackForVersionChangeAbort();
     }
@@ -517,12 +535,15 @@ Ref<IDBObjectStore> IDBTransaction::createObjectStore(const IDBObjectStoreInfo& 
     ASSERT(scriptExecutionContext());
     ASSERT(currentThread() == m_database->originThreadID());
 
-    Ref<IDBObjectStore> objectStore = IDBObjectStore::create(*scriptExecutionContext(), info, *this);
-    m_referencedObjectStores.set(info.name(), &objectStore.get());
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+
+    auto objectStore = std::make_unique<IDBObjectStore>(*scriptExecutionContext(), info, *this);
+    auto* rawObjectStore = objectStore.get();
+    m_referencedObjectStores.set(info.name(), WTFMove(objectStore));
 
     scheduleOperation(IDBClient::createTransactionOperation(*this, &IDBTransaction::didCreateObjectStoreOnServer, &IDBTransaction::createObjectStoreOnServer, info));
 
-    return objectStore;
+    return *rawObjectStore;
 }
 
 void IDBTransaction::createObjectStoreOnServer(IDBClient::TransactionOperation& operation, const IDBObjectStoreInfo& info)
@@ -544,6 +565,9 @@ void IDBTransaction::didCreateObjectStoreOnServer(const IDBResultData& resultDat
 void IDBTransaction::renameObjectStore(IDBObjectStore& objectStore, const String& newName)
 {
     LOG(IndexedDB, "IDBTransaction::renameObjectStore");
+
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+
     ASSERT(isVersionChange());
     ASSERT(scriptExecutionContext());
     ASSERT(currentThread() == m_database->originThreadID());
@@ -618,6 +642,8 @@ void IDBTransaction::didCreateIndexOnServer(const IDBResultData& resultData)
 void IDBTransaction::renameIndex(IDBIndex& index, const String& newName)
 {
     LOG(IndexedDB, "IDBTransaction::renameIndex");
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+
     ASSERT(isVersionChange());
     ASSERT(scriptExecutionContext());
     ASSERT(currentThread() == m_database->originThreadID());
@@ -701,7 +727,7 @@ void IDBTransaction::didOpenCursorOnServer(IDBRequest& request, const IDBResultD
     request.didOpenOrIterateCursor(resultData);
 }
 
-void IDBTransaction::iterateCursor(IDBCursor& cursor, const IDBKeyData& key, unsigned long count)
+void IDBTransaction::iterateCursor(IDBCursor& cursor, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBTransaction::iterateCursor");
     ASSERT(isActive());
@@ -710,15 +736,16 @@ void IDBTransaction::iterateCursor(IDBCursor& cursor, const IDBKeyData& key, uns
 
     addRequest(*cursor.request());
 
-    scheduleOperation(IDBClient::createTransactionOperation(*this, *cursor.request(), &IDBTransaction::didIterateCursorOnServer, &IDBTransaction::iterateCursorOnServer, key, count));
+    scheduleOperation(IDBClient::createTransactionOperation(*this, *cursor.request(), &IDBTransaction::didIterateCursorOnServer, &IDBTransaction::iterateCursorOnServer, data));
 }
 
-void IDBTransaction::iterateCursorOnServer(IDBClient::TransactionOperation& operation, const IDBKeyData& key, const unsigned long& count)
+// FIXME: changes here
+void IDBTransaction::iterateCursorOnServer(IDBClient::TransactionOperation& operation, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBTransaction::iterateCursorOnServer");
     ASSERT(currentThread() == m_database->originThreadID());
 
-    m_database->connectionProxy().iterateCursor(operation, key, count);
+    m_database->connectionProxy().iterateCursor(operation, data);
 }
 
 void IDBTransaction::didIterateCursorOnServer(IDBRequest& request, const IDBResultData& resultData)
@@ -1088,8 +1115,13 @@ void IDBTransaction::deleteObjectStore(const String& objectStoreName)
     ASSERT(currentThread() == m_database->originThreadID());
     ASSERT(isVersionChange());
 
-    if (auto objectStore = m_referencedObjectStores.take(objectStoreName))
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+
+    if (auto objectStore = m_referencedObjectStores.take(objectStoreName)) {
         objectStore->markAsDeleted();
+        auto identifier = objectStore->info().identifier();
+        m_deletedObjectStores.set(identifier, WTFMove(objectStore));
+    }
 
     scheduleOperation(IDBClient::createTransactionOperation(*this, &IDBTransaction::didDeleteObjectStoreOnServer, &IDBTransaction::deleteObjectStoreOnServer, objectStoreName));
 }
@@ -1195,6 +1227,15 @@ void IDBTransaction::connectionClosedFromServer(const IDBError& error)
     m_idbError = error;
     m_domError = error.toDOMError();
     fireOnAbort();
+}
+
+void IDBTransaction::visitReferencedObjectStores(JSC::SlotVisitor& visitor) const
+{
+    Locker<Lock> locker(m_referencedObjectStoreLock);
+    for (auto& objectStore : m_referencedObjectStores.values())
+        visitor.addOpaqueRoot(objectStore.get());
+    for (auto& objectStore : m_deletedObjectStores.values())
+        visitor.addOpaqueRoot(objectStore.get());
 }
 
 } // namespace WebCore

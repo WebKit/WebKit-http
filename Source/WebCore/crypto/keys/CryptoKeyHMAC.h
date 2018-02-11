@@ -23,15 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeyHMAC_h
-#define CryptoKeyHMAC_h
-
-#include "CryptoKey.h"
-#include <wtf/Vector.h>
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
 
+#include "CryptoKey.h"
+#include <wtf/Function.h>
+#include <wtf/Vector.h>
+
 namespace WebCore {
+
+struct JsonWebKey;
 
 class HmacKeyAlgorithm final : public KeyAlgorithm {
 public:
@@ -54,23 +56,27 @@ private:
 
 class CryptoKeyHMAC final : public CryptoKey {
 public:
-    static Ref<CryptoKeyHMAC> create(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage usage)
+    static Ref<CryptoKeyHMAC> create(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap usage)
     {
         return adoptRef(*new CryptoKeyHMAC(key, hash, extractable, usage));
     }
     virtual ~CryptoKeyHMAC();
 
-    // If lengthBytes is 0, a recommended length is used, which is the size of the associated hash function's block size.
-    static RefPtr<CryptoKeyHMAC> generate(size_t lengthBytes, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
+    static RefPtr<CryptoKeyHMAC> generate(size_t lengthBits, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap);
+    static RefPtr<CryptoKeyHMAC> importRaw(size_t lengthBits, CryptoAlgorithmIdentifier hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
+    using CheckAlgCallback = WTF::Function<bool(CryptoAlgorithmIdentifier, const Optional<String>&)>;
+    static RefPtr<CryptoKeyHMAC> importJwk(size_t lengthBits, CryptoAlgorithmIdentifier hash, JsonWebKey&&, bool extractable, CryptoKeyUsageBitmap, CheckAlgCallback&&);
 
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::HMAC; }
 
     const Vector<uint8_t>& key() const { return m_key; }
+    JsonWebKey exportJwk() const;
 
     CryptoAlgorithmIdentifier hashAlgorithmIdentifier() const { return m_hash; }
 
 private:
-    CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
+    CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap);
+    CryptoKeyHMAC(Vector<uint8_t>&& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsageBitmap);
 
     std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
     std::unique_ptr<CryptoKeyData> exportData() const final;
@@ -86,4 +92,3 @@ SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyHMAC, CryptoKeyClass::HMAC)
 SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(HmacKeyAlgorithm, KeyAlgorithmClass::HMAC)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKeyHMAC_h

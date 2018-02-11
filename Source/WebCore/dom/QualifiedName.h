@@ -53,10 +53,10 @@ public:
         const AtomicString m_namespace;
         mutable AtomicString m_localNameUpper;
 
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
         static ptrdiff_t localNameMemoryOffset() { return OBJECT_OFFSETOF(QualifiedNameImpl, m_localName); }
         static ptrdiff_t namespaceMemoryOffset() { return OBJECT_OFFSETOF(QualifiedNameImpl, m_namespace); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
 
     private:
         QualifiedNameImpl(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI)
@@ -91,12 +91,12 @@ public:
     // Uppercased localName, cached for efficiency
     const AtomicString& localNameUpper() const;
 
-    WEBCORE_EXPORT String toString() const;
+    String toString() const;
 
     QualifiedNameImpl* impl() const { return m_impl.get(); }
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
     static ptrdiff_t implMemoryOffset() { return OBJECT_OFFSETOF(QualifiedName, m_impl); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
     
     // Init routine for globals
     static void init();
@@ -142,6 +142,14 @@ struct QualifiedNameHash {
 
 void createQualifiedName(void* targetAddress, StringImpl* name);
 void createQualifiedName(void* targetAddress, StringImpl* name, const AtomicString& nameNamespace);
+
+inline String QualifiedName::toString() const
+{
+    if (!hasPrefix())
+        return localName();
+
+    return prefix().string() + ':' + localName().string();
+}
 
 } // namespace WebCore
 

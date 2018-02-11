@@ -17,11 +17,10 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef PatternAttributes_h
-#define PatternAttributes_h
+#pragma once
 
-#include "SVGLength.h"
-#include "SVGPreserveAspectRatio.h"
+#include "SVGLengthValue.h"
+#include "SVGPreserveAspectRatioValue.h"
 
 namespace WebCore {
 
@@ -51,36 +50,36 @@ struct PatternAttributes {
     {
     }
 
-    SVGLength x() const { return m_x; }
-    SVGLength y() const { return m_y; }
-    SVGLength width() const { return m_width; }
-    SVGLength height() const { return m_height; }
+    SVGLengthValue x() const { return m_x; }
+    SVGLengthValue y() const { return m_y; }
+    SVGLengthValue width() const { return m_width; }
+    SVGLengthValue height() const { return m_height; }
     FloatRect viewBox() const { return m_viewBox; }
-    SVGPreserveAspectRatio preserveAspectRatio() const { return m_preserveAspectRatio; }
+    SVGPreserveAspectRatioValue preserveAspectRatio() const { return m_preserveAspectRatio; }
     SVGUnitTypes::SVGUnitType patternUnits() const { return m_patternUnits; }
     SVGUnitTypes::SVGUnitType patternContentUnits() const { return m_patternContentUnits; }
     AffineTransform patternTransform() const { return m_patternTransform; }
     const SVGPatternElement* patternContentElement() const { return m_patternContentElement; }
 
-    void setX(const SVGLength& value)
+    void setX(SVGLengthValue value)
     {
         m_x = value;
         m_xSet = true;
     }
 
-    void setY(const SVGLength& value)
+    void setY(SVGLengthValue value)
     {
         m_y = value;
         m_ySet = true;
     }
 
-    void setWidth(const SVGLength& value)
+    void setWidth(SVGLengthValue value)
     {
         m_width = value;
         m_widthSet = true;
     }
 
-    void setHeight(const SVGLength& value)
+    void setHeight(SVGLengthValue value)
     {
         m_height = value;
         m_heightSet = true;
@@ -92,7 +91,7 @@ struct PatternAttributes {
         m_viewBoxSet = true;
     }
 
-    void setPreserveAspectRatio(const SVGPreserveAspectRatio& value)
+    void setPreserveAspectRatio(SVGPreserveAspectRatioValue value)
     {
         m_preserveAspectRatio = value;
         m_preserveAspectRatioSet = true;
@@ -135,12 +134,12 @@ struct PatternAttributes {
 
 private:
     // Properties
-    SVGLength m_x;
-    SVGLength m_y;
-    SVGLength m_width;
-    SVGLength m_height;
+    SVGLengthValue m_x;
+    SVGLengthValue m_y;
+    SVGLengthValue m_width;
+    SVGLengthValue m_height;
     FloatRect m_viewBox;
-    SVGPreserveAspectRatio m_preserveAspectRatio;
+    SVGPreserveAspectRatioValue m_preserveAspectRatio;
     SVGUnitTypes::SVGUnitType m_patternUnits;
     SVGUnitTypes::SVGUnitType m_patternContentUnits;
     AffineTransform m_patternTransform;
@@ -160,5 +159,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

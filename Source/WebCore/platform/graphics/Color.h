@@ -197,18 +197,20 @@ public:
     WEBCORE_EXPORT String cssText() const;
 
     // Returns the color serialized as either #RRGGBB or #RRGGBBAA
-    // The latter format is not a valid CSS color, and should only be seen in DRT dumps.
     String nameForRenderTreeAsText() const;
 
     bool isValid() const { return isExtended() || (m_colorData.rgbaAndFlags & validRGBAColorBit); }
 
-    bool hasAlpha() const { return alpha() < 255; }
+    bool isOpaque() const { return isValid() && (isExtended() ? asExtended().alpha() == 1.0 : alpha() == 255); }
+    bool isVisible() const { return isValid() && (isExtended() ? asExtended().alpha() > 0.0 : alpha() > 0); }
 
     int red() const { return redChannel(rgb()); }
     int green() const { return greenChannel(rgb()); }
     int blue() const { return blueChannel(rgb()); }
     int alpha() const { return alphaChannel(rgb()); }
-    
+
+    float alphaAsFloat() const { return isExtended() ? asExtended().alpha() : static_cast<float>(alphaChannel(rgb())) / 255; }
+
     RGBA32 rgb() const;
 
     // FIXME: Like operator==, this will give different values for ExtendedColors that
@@ -228,6 +230,12 @@ public:
     // This is an implementation of Porter-Duff's "source-over" equation
     Color blend(const Color&) const;
     Color blendWithWhite() const;
+
+    Color colorWithAlphaMultipliedBy(float) const;
+
+    // Returns a color that has the same RGB values, but with the given A.
+    Color colorWithAlpha(float) const;
+    Color opaqueColor() const { return colorWithAlpha(1.0f); }
 
 #if PLATFORM(GTK)
     Color(const GdkColor&);
@@ -265,6 +273,7 @@ public:
     static const RGBA32 lightGray = 0xFFC0C0C0;
     WEBCORE_EXPORT static const RGBA32 transparent = 0x00000000;
     static const RGBA32 cyan = 0xFF00FFFF;
+    static const RGBA32 yellow = 0xFFFFFF00;
 
 #if PLATFORM(IOS)
     static const RGBA32 compositionFill = 0x3CAFC0E3;
@@ -279,6 +288,9 @@ public:
     WEBCORE_EXPORT Color& operator=(Color&&);
 
     friend bool operator==(const Color& a, const Color& b);
+
+    static bool isBlackColor(const Color&);
+    static bool isWhiteColor(const Color&);
 
 private:
     void setRGB(int r, int g, int b) { setRGB(makeRGB(r, g, b)); }
@@ -421,5 +433,25 @@ inline void Color::setRGB(RGBA32 rgb)
 }
 
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Color&);
+
+inline bool Color::isBlackColor(const Color& color)
+{
+    if (color.isExtended()) {
+        const ExtendedColor& extendedColor = color.asExtended();
+        return !extendedColor.red() && !extendedColor.green() && !extendedColor.blue() && extendedColor.alpha() == 1;
+    }
+
+    return color.isValid() && color.rgb() == Color::black;
+}
+
+inline bool Color::isWhiteColor(const Color& color)
+{
+    if (color.isExtended()) {
+        const ExtendedColor& extendedColor = color.asExtended();
+        return extendedColor.red() == 1 && extendedColor.green() == 1 && extendedColor.blue() == 1 && extendedColor.alpha() == 1;
+    }
+    
+    return color.isValid() && color.rgb() == Color::white;
+}
 
 } // namespace WebCore

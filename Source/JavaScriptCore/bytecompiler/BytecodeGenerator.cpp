@@ -52,6 +52,7 @@
 #include "UnlinkedInstructionStream.h"
 #include "UnlinkedModuleProgramCodeBlock.h"
 #include "UnlinkedProgramCodeBlock.h"
+#include <wtf/BitVector.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/SmallPtrSet.h>
 #include <wtf/StdLibExtras.h>
@@ -561,6 +562,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         ASSERT(!isConstructor());
         ASSERT(constructorKind() == ConstructorKind::None);
         m_generatorRegister = addVar();
+        m_promiseCapabilityRegister = addVar();
 
         if (parseMode != SourceParseMode::AsyncArrowFunctionMode) {
             // FIXME: Emit to_this only when AsyncFunctionBody uses it.
@@ -573,6 +575,23 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         }
 
         emitNewObject(m_generatorRegister);
+
+        // let promiseCapability be @newPromiseCapability(@Promise)
+        auto varNewPromiseCapability = variable(propertyNames().builtinNames().newPromiseCapabilityPrivateName());
+        RefPtr<RegisterID> scope = newTemporary();
+        moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varNewPromiseCapability));
+        RefPtr<RegisterID> newPromiseCapability = emitGetFromScope(newTemporary(), scope.get(), varNewPromiseCapability, ThrowIfNotFound);
+
+        CallArguments args(*this, nullptr, 1);
+        emitLoad(args.thisRegister(), jsUndefined());
+
+        auto varPromiseConstructor = variable(propertyNames().builtinNames().PromisePrivateName());
+        moveToDestinationIfNeeded(scope.get(), emitResolveScope(scope.get(), varPromiseConstructor));
+        emitGetFromScope(args.argumentRegister(0), scope.get(), varPromiseConstructor, ThrowIfNotFound);
+
+        // JSTextPosition(int _line, int _offset, int _lineStartOffset)
+        JSTextPosition divot(m_scopeNode->firstLine(), m_scopeNode->startOffset(), m_scopeNode->lineStartOffset());
+        emitCall(promiseCapabilityRegister(), newPromiseCapability.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
         break;
     }
 
@@ -673,21 +692,17 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
         RefPtr<Label> catchHere = emitLabel(newLabel().get());
         popTryAndEmitCatch(tryFormalParametersData, exception.get(), thrownValue.get(), catchHere.get(), HandlerType::Catch);
 
-        // return @Promise.@reject(thrownValue);
-        Variable promiseVar = variable(m_vm->propertyNames->builtinNames().PromisePrivateName());
-        RefPtr<RegisterID> scope = emitResolveScope(newTemporary(), promiseVar);
-        RefPtr<RegisterID> promiseConstructor = emitGetFromScope(newTemporary(), scope.get(), promiseVar, ResolveMode::ThrowIfNotFound);
-        RefPtr<RegisterID> promiseReject = emitGetById(newTemporary(), promiseConstructor.get(), m_vm->propertyNames->builtinNames().rejectPrivateName());
+        // return promiseCapability.@reject(thrownValue)
+        RefPtr<RegisterID> reject = emitGetById(newTemporary(), promiseCapabilityRegister(), m_vm->propertyNames->builtinNames().rejectPrivateName());
 
         CallArguments args(*this, nullptr, 1);
-
-        emitMove(args.thisRegister(), promiseConstructor.get());
+        emitLoad(args.thisRegister(), jsUndefined());
         emitMove(args.argumentRegister(0), thrownValue.get());
 
         JSTextPosition divot(functionNode->firstLine(), functionNode->startOffset(), functionNode->lineStartOffset());
 
-        RefPtr<RegisterID> result = emitCall(newTemporary(), promiseReject.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
-        emitReturn(result.get());
+        RefPtr<RegisterID> result = emitCall(newTemporary(), reject.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
+        emitReturn(emitGetById(newTemporary(), promiseCapabilityRegister(), m_vm->propertyNames->builtinNames().promisePrivateName()));
 
         emitLabel(didNotThrow.get());
     }
@@ -2839,6 +2854,15 @@ RegisterID* BytecodeGenerator::emitAssert(RegisterID* condition, int line)
     return condition;
 }
 
+RegisterID* BytecodeGenerator::emitGetArgument(RegisterID* dst, int32_t index)
+{
+    UnlinkedValueProfile profile = emitProfiledOpcode(op_get_argument);
+    instructions().append(dst->index());
+    instructions().append(index + 1); // Including |this|.
+    instructions().append(profile);
+    return dst;
+}
+
 RegisterID* BytecodeGenerator::emitCreateThis(RegisterID* dst)
 {
     size_t begin = instructions().size();
@@ -3034,6 +3058,49 @@ RegisterID* BytecodeGenerator::emitNewArray(RegisterID* dst, ElementNode* elemen
     instructions().append(argv.size() ? argv[0]->index() : 0); // argv
     instructions().append(argv.size()); // argc
     instructions().append(newArrayAllocationProfile());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitNewArrayWithSpread(RegisterID* dst, ElementNode* elements)
+{
+    BitVector bitVector;
+    Vector<RefPtr<RegisterID>, 16> argv;
+    for (ElementNode* node = elements; node; node = node->next()) {
+        bitVector.set(argv.size(), node->value()->isSpreadExpression());
+
+        argv.append(newTemporary());
+        // op_new_array_with_spread requires the initial values to be a sequential range of registers.
+        RELEASE_ASSERT(argv.size() == 1 || argv[argv.size() - 1]->index() == argv[argv.size() - 2]->index() - 1);
+    }
+
+    RELEASE_ASSERT(argv.size());
+
+    {
+        unsigned i = 0;
+        for (ElementNode* node = elements; node; node = node->next()) {
+            if (node->value()->isSpreadExpression()) {
+                ExpressionNode* expression = static_cast<SpreadExpressionNode*>(node->value())->expression();
+                RefPtr<RegisterID> tmp = newTemporary();
+                emitNode(tmp.get(), expression);
+
+                emitOpcode(op_spread);
+                instructions().append(argv[i].get()->index());
+                instructions().append(tmp.get()->index());
+            } else {
+                ExpressionNode* expression = node->value();
+                emitNode(argv[i].get(), expression);
+            }
+            i++;
+        }
+    }
+
+    unsigned bitVectorIndex = m_codeBlock->addBitVector(WTFMove(bitVector));
+    emitOpcode(op_new_array_with_spread);
+    instructions().append(dst->index());
+    instructions().append(argv[0]->index()); // argv
+    instructions().append(argv.size()); // argc
+    instructions().append(bitVectorIndex);
+
     return dst;
 }
 

@@ -27,6 +27,7 @@
 #include "DownloadManager.h"
 
 #include "Download.h"
+#include "NetworkBlobRegistry.h"
 #include "NetworkLoad.h"
 #include "NetworkSession.h"
 #include "PendingDownload.h"
@@ -44,19 +45,29 @@ DownloadManager::DownloadManager(Client& client)
 {
 }
 
-void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
+void DownloadManager::startDownload(NetworkConnectionToWebProcess* connection, SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
 {
 #if USE(NETWORK_SESSION)
     auto* networkSession = SessionTracker::networkSession(sessionID);
     if (!networkSession)
         return;
+
     NetworkLoadParameters parameters;
     parameters.sessionID = sessionID;
     parameters.request = request;
     parameters.clientCredentialPolicy = ClientCredentialPolicy::MayAskClientForCredentials;
+    if (request.url().protocolIsBlob() && connection)
+        parameters.blobFileReferences = NetworkBlobRegistry::singleton().filesInBlob(*connection, request.url());
+
     m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(parameters), downloadID, *networkSession, suggestedName));
 #else
     auto download = std::make_unique<Download>(*this, downloadID, request, suggestedName);
+    if (request.url().protocolIsBlob() && connection) {
+        auto blobFileReferences = NetworkBlobRegistry::singleton().filesInBlob(*connection, request.url());
+        for (auto& fileReference : blobFileReferences)
+            fileReference->prepareForFileAccess();
+        download->setBlobFileReferences(WTFMove(blobFileReferences));
+    }
     download->start();
 
     ASSERT(!m_downloads.contains(downloadID));
@@ -67,7 +78,8 @@ void DownloadManager::startDownload(SessionID sessionID, DownloadID downloadID, 
 #if USE(NETWORK_SESSION)
 void DownloadManager::dataTaskBecameDownloadTask(DownloadID downloadID, std::unique_ptr<Download>&& download)
 {
-    ASSERT(!m_pendingDownloads.contains(downloadID));
+    ASSERT(m_pendingDownloads.contains(downloadID));
+    m_pendingDownloads.remove(downloadID);
     ASSERT(!m_downloads.contains(downloadID));
     m_downloadsAfterDestinationDecided.remove(downloadID);
     m_downloads.add(downloadID, WTFMove(download));
@@ -97,28 +109,38 @@ void DownloadManager::willDecidePendingDownloadDestination(NetworkDataTask& netw
     auto addResult = m_downloadsWaitingForDestination.set(downloadID, std::make_pair<RefPtr<NetworkDataTask>, ResponseCompletionHandler>(&networkDataTask, WTFMove(completionHandler)));
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 }
-#else
-void DownloadManager::convertHandleToDownload(DownloadID downloadID, ResourceHandle* handle, const ResourceRequest& request, const ResourceResponse& response)
-{
-    auto download = std::make_unique<Download>(*this, downloadID, request);
+#endif // USE(NETWORK_SESSION)
 
+void DownloadManager::convertNetworkLoadToDownload(DownloadID downloadID, std::unique_ptr<NetworkLoad>&& networkLoad, Vector<RefPtr<WebCore::BlobDataFileReference>>&& blobFileReferences, const ResourceRequest& request, const ResourceResponse& response)
+{
+#if USE(NETWORK_SESSION)
+    ASSERT(!m_pendingDownloads.contains(downloadID));
+    m_pendingDownloads.add(downloadID, std::make_unique<PendingDownload>(WTFMove(networkLoad), downloadID, request, response));
+#else
+    auto download = std::make_unique<Download>(*this, downloadID, request);
+    download->setBlobFileReferences(WTFMove(blobFileReferences));
+
+    auto* handle = networkLoad->handle();
+    ASSERT(handle);
     download->startWithHandle(handle, response);
     ASSERT(!m_downloads.contains(downloadID));
     m_downloads.add(downloadID, WTFMove(download));
+
+    // Unblock the URL connection operation queue.
+    handle->continueDidReceiveResponse();
+#endif
 }
-#endif // USE(NETWORK_SESSION)
 
 void DownloadManager::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
 {
 #if USE(NETWORK_SESSION)
     if (m_downloadsWaitingForDestination.contains(downloadID)) {
-        auto pendingDownload = m_pendingDownloads.take(downloadID);
         auto pair = m_downloadsWaitingForDestination.take(downloadID);
         auto networkDataTask = WTFMove(pair.first);
         auto completionHandler = WTFMove(pair.second);
         ASSERT(networkDataTask);
         ASSERT(completionHandler);
-        ASSERT(!pendingDownload || pendingDownload.get() == networkDataTask->pendingDownload());
+        ASSERT(m_pendingDownloads.contains(downloadID));
 
         networkDataTask->setPendingDownloadLocation(destination, sandboxExtensionHandle, allowOverwrite);
         completionHandler(PolicyDownload);

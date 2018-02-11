@@ -65,8 +65,6 @@ class TextControlInnerTextElement;
 
 struct InputElementClickState;
 
-typedef int ExceptionCode;
-
 // An InputType object represents the type-specific part of an HTMLInputElement.
 // Do not expose instances of InputType and classes derived from it to classes
 // other than HTMLInputElement.
@@ -257,7 +255,7 @@ public:
     virtual bool supportsReadOnly() const;
     virtual void updateInnerTextValue();
     virtual void updatePlaceholderText();
-    virtual void attributeChanged();
+    virtual void attributeChanged(const QualifiedName&);
     virtual void multipleAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void readonlyAttributeChanged();
@@ -324,3 +322,8 @@ private:
 };
 
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_INPUT_TYPE(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
+static bool isType(const WebCore::InputType& input) { return input.predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()

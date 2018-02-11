@@ -1,3 +1,268 @@
+2016-11-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Rename CONCURRENT_JIT/ConcurrentJIT to CONCURRENT_JS/ConcurrentJS
+        https://bugs.webkit.org/show_bug.cgi?id=164791
+
+        Reviewed by Geoffrey Garen.
+        
+        Both the concurrent GC and the concurrent JIT rely on concurrency support in fundamental
+        JSC runtime components like JSValue. So, the thing that guards it should be a "feature"
+        called CONCURRENT_JS not CONCURRENT_JIT.
+
+        * wtf/Platform.h:
+
+2016-11-15  Filip Pizlo  <fpizlo@apple.com>
+
+        The concurrent GC should have a timeslicing controller
+        https://bugs.webkit.org/show_bug.cgi?id=164783
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/LockAlgorithm.h: Added some comments.
+        * wtf/Seconds.h: Added support for modulo. It's necessary for timeslicing.
+        (WTF::Seconds::operator%):
+        (WTF::Seconds::operator%=):
+
+2016-11-11  Filip Pizlo  <fpizlo@apple.com>
+
+        The GC should be optionally concurrent and disabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=164454
+
+        Reviewed by Geoffrey Garen.
+        
+        The reason why I went to such great pains to make WTF::Lock fit in two bits is that I
+        knew that I would eventually need to stuff one into some miscellaneous bits of the
+        JSCell header. That time has come, because the concurrent GC has numerous race
+        conditions in visitChildren that can be trivially fixed if each object just has an
+        internal lock. Some cell types might use it to simply protect their entire visitChildren
+        function and anything that mutates the fields it touches, while other cell types might
+        use it as a "lock of last resort" to handle corner cases of an otherwise wait-free or
+        lock-free algorithm. Right now, it's used to protect certain transformations involving
+        indexing storage.
+        
+        To make this happen, I factored the WTF::Lock algorithm into a LockAlgorithm struct that
+        is templatized on lock type (uint8_t for WTF::Lock), the isHeldBit value (1 for
+        WTF::Lock), and the hasParkedBit value (2 for WTF::Lock). This could have been done as
+        a templatized Lock class that basically contains Atomic<LockType>. You could then make
+        any field into a lock by bitwise_casting it to TemplateLock<field type, bit1, bit2>. But
+        this felt too dirty, so instead, LockAlgorithm has static methods that take
+        Atomic<LockType>& as their first argument. I think that this makes it more natural to
+        project a LockAlgorithm onto an existing Atomic<> field. Sadly, some places have to cast
+        their non-Atomic<> field to Atomic<> in order for this to work. Like so many other things
+        we do, this just shows that the C++ style of labeling fields that are subject to atomic
+        ops as atomic is counterproductive. Maybe some day I'll change LockAlgorithm to use our
+        other Atomics API, which does not require Atomic<>.
+        
+        WTF::Lock now uses LockAlgorithm. The slow paths are still outlined. I don't feel too
+        bad about the LockAlgorithm.h header being included in so many places because we change
+        that algorithm so infrequently.
+        
+        Also, I added a hasElapsed(time) function. This function makes it so much more natural
+        to write timeslicing code, which the concurrent GC has to do a lot of.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/ListDump.h:
+        * wtf/Lock.cpp:
+        (WTF::LockBase::lockSlow):
+        (WTF::LockBase::unlockSlow):
+        (WTF::LockBase::unlockFairlySlow):
+        (WTF::LockBase::unlockSlowImpl): Deleted.
+        * wtf/Lock.h:
+        (WTF::LockBase::lock):
+        (WTF::LockBase::tryLock):
+        (WTF::LockBase::unlock):
+        (WTF::LockBase::unlockFairly):
+        (WTF::LockBase::isHeld):
+        (): Deleted.
+        * wtf/LockAlgorithm.h: Added.
+        (WTF::LockAlgorithm::lockFastAssumingZero):
+        (WTF::LockAlgorithm::lockFast):
+        (WTF::LockAlgorithm::lock):
+        (WTF::LockAlgorithm::tryLock):
+        (WTF::LockAlgorithm::unlockFastAssumingZero):
+        (WTF::LockAlgorithm::unlockFast):
+        (WTF::LockAlgorithm::unlock):
+        (WTF::LockAlgorithm::unlockFairly):
+        (WTF::LockAlgorithm::isLocked):
+        (WTF::LockAlgorithm::lockSlow):
+        (WTF::LockAlgorithm::unlockSlow):
+        * wtf/TimeWithDynamicClockType.cpp:
+        (WTF::hasElapsed):
+        * wtf/TimeWithDynamicClockType.h:
+
+2016-11-14  JF Bastien  <jfbastien@apple.com>
+
+        Expected: add missing `inline`
+        https://bugs.webkit.org/show_bug.cgi?id=164735
+
+        Reviewed by Yusuke Suzuki.
+
+        Free functions and full template specializations need to be
+        `inline`, or in a .cpp file, otherwise each .o creates a duplicate
+        symbol which makes the linker very sad.
+
+        * wtf/Expected.h:
+        (WTF::ExpectedDetail::Throw):
+        (WTF::makeExpected):
+
+2016-11-14  Mark Lam  <mark.lam@apple.com>
+
+        Build fix after r208690.
+        https://bugs.webkit.org/show_bug.cgi?id=164681
+
+        Not reviewed.
+
+        * wtf/FastMalloc.h:
+
+2016-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Add debugging facility to limit the max single allocation size.
+        https://bugs.webkit.org/show_bug.cgi?id=164681
+
+        Reviewed by Keith Miller.
+
+        This is useful for simulating memory allocation failures on resource constraint
+        devices for testing purposes.
+
+        This facility is only conditionally compiled in on debug builds.  It does not
+        have any burden on release builds at all.  When in use, the max single allocation
+        size limit applies to individual allocations.  For malloc (and similar), the
+        allocation will crash in FastMalloc if the requested size exceeds the set max
+        single allocation size.  For tryMalloc (and similar), the allocation returns
+        nullptr if the requested size exceeds the set max single allocation size.  The
+        max single allocation size is set to std::numeric_limit<size_t>::max() by default
+        (i.e. when not set and no limit is in effect).
+
+        Also fixed non-bmalloc versions of fastAlignedMalloc() to crash when allocation
+        fails.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastSetMaxSingleAllocationSize):
+        (WTF::fastAlignedMalloc):
+        (WTF::tryFastAlignedMalloc):
+        (WTF::tryFastMalloc):
+        (WTF::fastMalloc):
+        (WTF::tryFastCalloc):
+        (WTF::fastCalloc):
+        (WTF::fastRealloc):
+        * wtf/FastMalloc.h:
+
+2016-11-13  JF Bastien  <jfbastien@apple.com>
+
+        Implement WTF::Expected
+        https://bugs.webkit.org/show_bug.cgi?id=164526
+
+        Reviewed by Yusuke Suzuki.
+
+        std::expected isn't in C++17, and may be in C++20. It's a nice
+        complement to std::any / std::optional because it's a type-tagged
+        union which has a single expected result but could also contain an
+        error.
+
+        This would be useful in the WebAssembly parser, for example.
+
+        Using this implementation will allow us to provide feedback to the
+        standards committee and guide std::expected's design before it
+        gets standardized. I've already sent a bunch of feedback to the
+        author based on my experience implementing this.
+
+        This could supplement WTF::Either and WTF::ExceptionOr.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Compiler.h: Add RELAXED_CONSTEXPR
+        * wtf/Expected.h: Added.
+        (WTF::UnexpectedType::UnexpectedType):
+        (WTF::UnexpectedType::value):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::operator<):
+        (WTF::operator>):
+        (WTF::operator<=):
+        (WTF::operator>=):
+        (WTF::makeUnexpected):
+        (WTF::ExpectedDetail::Throw):
+        (WTF::ExpectedDetail::ConstexprBase::ConstexprBase):
+        (WTF::ExpectedDetail::Base::Base):
+        (WTF::ExpectedDetail::Base::~Base):
+        (WTF::Expected::Expected):
+        (WTF::Expected::operator=):
+        (WTF::Expected::swap):
+        (WTF::Expected::operator->):
+        (WTF::Expected::operator*):
+        (WTF::Expected::operator bool):
+        (WTF::Expected::hasValue):
+        (WTF::Expected::value):
+        (WTF::Expected::error):
+        (WTF::Expected::getUnexpected):
+        (WTF::Expected::valueOr):
+        (WTF::swap):
+        (WTF::makeExpected):
+        (WTF::makeExpectedFromError):
+
+2016-11-11  Alex Christensen  <achristensen@webkit.org>
+
+        Allow mutable lambdas in HashMap::ensure
+        https://bugs.webkit.org/show_bug.cgi?id=164642
+
+        Reviewed by Sam Weinig.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapEnsureTranslator::translate):
+        (WTF::X>::removeIf):
+
+2016-11-11  Beth Dakin  <bdakin@apple.com>
+
+        Get touch bar code building for open source builds
+        https://bugs.webkit.org/show_bug.cgi?id=164610
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/Platform.h:
+
+2016-11-10  JF Bastien  <jfbastien@apple.com>
+
+        ASSERTION FAILED: length > offset encountered with wasm.yaml/wasm/js-api/test_Module.js.default-wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164597
+
+        Reviewed by Keith Miller.
+
+        Decoding at end of file should fail, not assert.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeInt32):
+
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused CFURLCACHE code
+        https://bugs.webkit.org/show_bug.cgi?id=164551
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Platform.h:
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Allow RefPtrs of const ThreadSafeRefCounted types
+        https://bugs.webkit.org/show_bug.cgi?id=164548
+
+        Reviewed by Tim Horton.
+
+        * wtf/ThreadSafeRefCounted.h:
+        Make m_refCount mutable like we did with RefCounted in r203257.
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Stop using deprecated AppKit enumeration values
+        https://bugs.webkit.org/show_bug.cgi?id=164494
+
+        Reviewed by Darin Adler.
+
+        Stop using deprecated AppKit enumeration values.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
 2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
 
         Fixed compilation of LLInt with MinGW

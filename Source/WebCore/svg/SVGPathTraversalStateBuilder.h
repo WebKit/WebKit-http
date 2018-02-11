@@ -19,14 +19,13 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPathTraversalStateBuilder_h
-#define SVGPathTraversalStateBuilder_h
+#pragma once
 
 #include "SVGPathConsumer.h"
-#include "SVGPoint.h"
 
 namespace WebCore {
 
+class FloatPoint;
 class PathTraversalState;
 
 class SVGPathTraversalStateBuilder final : public SVGPathConsumer {
@@ -35,7 +34,7 @@ public:
 
     unsigned pathSegmentIndex() const { return m_segmentIndex; }
     float totalLength() const;
-    SVGPoint currentPoint() const;
+    FloatPoint currentPoint() const;
 
     void incrementPathSegmentCount() final { ++m_segmentIndex; }
     bool continueConsuming() final;
@@ -61,5 +60,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SVGPathTraversalStateBuilder_h

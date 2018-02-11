@@ -54,9 +54,9 @@ class JSGlobalObjectInspectorController;
 }
 
 namespace JSC {
-
 class ArrayConstructor;
 class ArrayPrototype;
+class ArrayIteratorAdaptiveWatchpoint;
 class AsyncFunctionPrototype;
 class BooleanPrototype;
 class ConsoleClient;
@@ -71,6 +71,7 @@ class GeneratorPrototype;
 class GeneratorFunctionPrototype;
 class GetterSetter;
 class GlobalCodeBlock;
+class IndirectEvalExecutable;
 class InputCursor;
 class JSArrayBuffer;
 class JSArrayBufferConstructor;
@@ -86,6 +87,7 @@ class JSSharedArrayBufferConstructor;
 class JSSharedArrayBufferPrototype;
 class JSTypedArrayViewConstructor;
 class JSTypedArrayViewPrototype;
+class DirectEvalExecutable;
 class LLIntOffsetsExtractor;
 class Microtask;
 class ModuleLoaderPrototype;
@@ -241,7 +243,6 @@ public:
     LazyProperty<JSGlobalObject, NativeErrorConstructor> m_syntaxErrorConstructor;
     WriteBarrier<NativeErrorConstructor> m_typeErrorConstructor;
     LazyProperty<JSGlobalObject, NativeErrorConstructor> m_URIErrorConstructor;
-    WriteBarrier<FunctionConstructor> m_functionConstructor;
     WriteBarrier<ObjectConstructor> m_objectConstructor;
     WriteBarrier<ArrayConstructor> m_arrayConstructor;
     WriteBarrier<JSPromiseConstructor> m_promiseConstructor;
@@ -259,6 +260,7 @@ public:
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoToStringFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_arrayProtoValuesFunction;
     LazyProperty<JSGlobalObject, JSFunction> m_initializePromiseFunction;
+    LazyProperty<JSGlobalObject, JSFunction> m_iteratorProtocolFunction;
     WriteBarrier<JSFunction> m_newPromiseCapabilityFunction;
     WriteBarrier<JSFunction> m_functionProtoHasInstanceSymbolFunction;
     LazyProperty<JSGlobalObject, GetterSetter> m_throwTypeErrorGetterSetter;
@@ -315,7 +317,8 @@ public:
     PropertyOffset m_functionNameOffset;
     WriteBarrier<Structure> m_privateNameStructure;
     WriteBarrier<Structure> m_regExpStructure;
-    LazyClassStructure m_asyncFunctionStructure;
+    WriteBarrier<AsyncFunctionPrototype> m_asyncFunctionPrototype;
+    WriteBarrier<Structure> m_asyncFunctionStructure;
     WriteBarrier<Structure> m_generatorFunctionStructure;
     WriteBarrier<Structure> m_dollarVMStructure;
     WriteBarrier<Structure> m_iteratorResultObjectStructure;
@@ -394,6 +397,15 @@ public:
     std::unique_ptr<JSGlobalObjectRareData> m_rareData;
 
     WeakRandom m_weakRandom;
+
+    InlineWatchpointSet& arrayIteratorProtocolWatchpoint() { return m_arrayIteratorProtocolWatchpoint; }
+    // If this hasn't been invalidated, it means the array iterator protocol
+    // is not observable to user code yet.
+    InlineWatchpointSet m_arrayIteratorProtocolWatchpoint;
+    std::unique_ptr<ArrayIteratorAdaptiveWatchpoint> m_arrayPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ArrayIteratorAdaptiveWatchpoint> m_arrayIteratorPrototypeNext;
+
+    bool isArrayIteratorProtocolFastAndNonObservable();
 
     TemplateRegistry m_templateRegistry;
 
@@ -513,6 +525,7 @@ public:
     JSFunction* arrayProtoToStringFunction() const { return m_arrayProtoToStringFunction.get(this); }
     JSFunction* arrayProtoValuesFunction() const { return m_arrayProtoValuesFunction.get(this); }
     JSFunction* initializePromiseFunction() const { return m_initializePromiseFunction.get(this); }
+    JSFunction* iteratorProtocolFunction() const { return m_iteratorProtocolFunction.get(this); }
     JSFunction* newPromiseCapabilityFunction() const { return m_newPromiseCapabilityFunction.get(); }
     JSFunction* functionProtoHasInstanceSymbolFunction() const { return m_functionProtoHasInstanceSymbolFunction.get(); }
     JSObject* regExpProtoExecFunction() const { return m_regExpProtoExec.get(); }
@@ -539,19 +552,7 @@ public:
     IteratorPrototype* iteratorPrototype() const { return m_iteratorPrototype.get(); }
     GeneratorFunctionPrototype* generatorFunctionPrototype() const { return m_generatorFunctionPrototype.get(); }
     GeneratorPrototype* generatorPrototype() const { return m_generatorPrototype.get(); }
-
-    LazyClassStructure& lazyAsyncFunctionStructure()
-    {
-        return m_asyncFunctionStructure;
-    }
-    const LazyClassStructure& lazyAsyncFunctionStructure() const
-    {
-        return m_asyncFunctionStructure;
-    }
-    AsyncFunctionPrototype* asyncFunctionPrototype() const { return reinterpret_cast<AsyncFunctionPrototype*>(lazyAsyncFunctionStructure().prototype(this)); }
-    AsyncFunctionPrototype* asyncFunctionPrototypeConcurrently() const { return reinterpret_cast<AsyncFunctionPrototype*>(lazyAsyncFunctionStructure().prototypeConcurrently()); }
-    Structure* asyncFunctionStructure() const { return lazyAsyncFunctionStructure().get(this); }
-    Structure* asyncFunctionStructureConcurrently() const { return lazyAsyncFunctionStructure().getConcurrently(); }
+    AsyncFunctionPrototype* asyncFunctionPrototype() const { return m_asyncFunctionPrototype.get(); }
 
     Structure* debuggerScopeStructure() const { return m_debuggerScopeStructure.get(this); }
     Structure* withScopeStructure() const { return m_withScopeStructure.get(this); }
@@ -611,6 +612,7 @@ public:
     Structure* mapStructure() const { return m_mapStructure.get(); }
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* generatorFunctionStructure() const { return m_generatorFunctionStructure.get(); }
+    Structure* asyncFunctionStructure() const { return m_asyncFunctionStructure.get(); }
     Structure* setStructure() const { return m_setStructure.get(this); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
     Structure* symbolObjectStructure() const { return m_symbolObjectStructure.get(); }
@@ -827,7 +829,8 @@ public:
     WeakRandom& weakRandom() { return m_weakRandom; }
 
     UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
-    UnlinkedEvalCodeBlock* createEvalCodeBlock(CallFrame*, EvalExecutable*, const VariableEnvironment*);
+    UnlinkedEvalCodeBlock* createLocalEvalCodeBlock(CallFrame*, DirectEvalExecutable*, const VariableEnvironment*);
+    UnlinkedEvalCodeBlock* createGlobalEvalCodeBlock(CallFrame*, IndirectEvalExecutable*);
     UnlinkedModuleProgramCodeBlock* createModuleProgramCodeBlock(CallFrame*, ModuleProgramExecutable*);
 
     bool needsSiteSpecificQuirks() const { return m_needsSiteSpecificQuirks; }

@@ -79,6 +79,7 @@ public:
     WEBCORE_EXPORT int compare(const IDBKeyData& other) const;
 
     void setArrayValue(const Vector<IDBKeyData>&);
+    void setBinaryValue(const ThreadSafeDataBuffer&);
     void setStringValue(const String&);
     void setDateValue(double);
     WEBCORE_EXPORT void setNumberValue(double);
@@ -95,6 +96,21 @@ public:
     KeyType type() const { return m_type; }
 
     bool operator<(const IDBKeyData&) const;
+    bool operator>(const IDBKeyData& other) const
+    {
+        return !(*this < other) && !(*this == other);
+    }
+
+    bool operator<=(const IDBKeyData& other) const
+    {
+        return !(*this > other);
+    }
+
+    bool operator>=(const IDBKeyData& other) const
+    {
+        return !(*this < other);
+    }
+
     bool operator==(const IDBKeyData& other) const;
     bool operator!=(const IDBKeyData& other) const
     {
@@ -155,6 +171,12 @@ public:
     {
         ASSERT(m_type == KeyType::Number);
         return WTF::get<double>(m_value);
+    }
+
+    const ThreadSafeDataBuffer& binary() const
+    {
+        ASSERT(m_type == KeyType::Binary);
+        return WTF::get<ThreadSafeDataBuffer>(m_value);
     }
 
     const Vector<IDBKeyData>& array() const

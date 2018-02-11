@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaStreamAudioSource_h
-#define MediaStreamAudioSource_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
@@ -41,15 +40,15 @@ namespace WebCore {
 class AudioBus;
 class RealtimeMediaSourceCapabilities;
 
-class MediaStreamAudioSource : public RealtimeMediaSource {
+class MediaStreamAudioSource final : public RealtimeMediaSource {
 public:
     static Ref<MediaStreamAudioSource> create();
 
     ~MediaStreamAudioSource() { }
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
-    const RealtimeMediaSourceSettings& settings() override;
-    
+    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final;
+    const RealtimeMediaSourceSettings& settings() const final;
+
     const String& deviceId() const { return m_deviceId; }
     void setDeviceId(const String& deviceId) { m_deviceId = deviceId; }
 
@@ -74,5 +73,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaStreamAudioSource_h

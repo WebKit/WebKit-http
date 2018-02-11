@@ -33,7 +33,6 @@
 #import "DragData.h"
 #import "Editor.h"
 #import "EditorClient.h"
-#import "ExceptionCodePlaceholder.h"
 #import "Frame.h"
 #import "FrameView.h"
 #import "FrameLoaderClient.h"
@@ -232,6 +231,13 @@ static long writeURLForTypes(const Vector<String>& types, const String& pasteboa
 void Pasteboard::write(const PasteboardURL& pasteboardURL)
 {
     m_changeCount = writeURLForTypes(writableTypesForURL(), m_pasteboardName, pasteboardURL);
+}
+
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL& pasteboardURL)
+{
+    NSURL *cocoaURL = pasteboardURL.url;
+    Vector<String> paths = { [cocoaURL absoluteString], pasteboardURL.title.stripWhiteSpace() };
+    m_changeCount = platformStrategies()->pasteboardStrategy()->setPathnamesForType(paths, WebURLsWithTitlesPboardType, m_pasteboardName);
 }
 
 static NSFileWrapper* fileWrapper(const PasteboardImage& pasteboardImage)
@@ -653,11 +659,8 @@ void Pasteboard::setDragImage(DragImageRef image, const IntPoint& location)
     // Hack: We must post an event to wake up the NSDragManager, which is sitting in a nextEvent call
     // up the stack from us because the CoreFoundation drag manager does not use the run loop by itself.
     // This is the most innocuous event to use, per Kristen Forster.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent* event = [NSEvent mouseEventWithType:NSMouseMoved location:NSZeroPoint
+    NSEvent* event = [NSEvent mouseEventWithType:NSEventTypeMouseMoved location:NSZeroPoint
         modifierFlags:0 timestamp:0 windowNumber:0 context:nil eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
     [NSApp postEvent:event atStart:YES];
 }
 #endif

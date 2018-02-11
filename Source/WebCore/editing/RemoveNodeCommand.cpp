@@ -26,7 +26,6 @@
 #include "config.h"
 #include "RemoveNodeCommand.h"
 
-#include "ExceptionCodePlaceholder.h"
 #include "RenderElement.h"
 #include "htmlediting.h"
 #include <wtf/Assertions.h>
@@ -62,7 +61,7 @@ void RemoveNodeCommand::doUnapply()
     if (!parent || !parent->hasEditableStyle())
         return;
 
-    parent->insertBefore(m_node, refChild.get(), IGNORE_EXCEPTION);
+    parent->insertBefore(m_node, refChild.get());
 }
 
 #ifndef NDEBUG

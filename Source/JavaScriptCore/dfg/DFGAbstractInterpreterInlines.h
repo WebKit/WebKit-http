@@ -1869,6 +1869,27 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_graph,
             m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingType()));
         break;
+
+    case NewArrayWithSpread:
+        if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            // We've compiled assuming we're not having a bad time, so to be consistent
+            // with StructureRegisterationPhase we must say we produce an original array
+            // allocation structure.
+            forNode(node).set(
+                m_graph,
+                m_graph.globalObjectFor(node->origin.semantic)->originalArrayStructureForIndexingType(ArrayWithContiguous));
+        } else {
+            forNode(node).set(
+                m_graph,
+                m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous));
+        }
+
+        break;
+
+    case Spread:
+        forNode(node).set(
+            m_graph, m_graph.m_vm.fixedArrayStructure.get());
+        break;
         
     case NewArrayBuffer:
         forNode(node).set(
@@ -1949,6 +1970,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
@@ -1991,6 +2013,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case NewGeneratorFunction:
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->generatorFunctionStructure());
+        break;
+
+    case NewAsyncFunction:
+        forNode(node).set(
+            m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->asyncFunctionStructure());
         break;
 
     case NewFunction:
@@ -2120,13 +2147,16 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PutToArguments:
         break;
 
+    case GetArgument:
+        forNode(node).makeHeapTop();
+        break;
+
     case TryGetById:
         // FIXME: This should constant fold at least as well as the normal GetById case.
         // https://bugs.webkit.org/show_bug.cgi?id=156422
         forNode(node).makeHeapTop();
         break;
 
-    case PureGetById:
     case GetById:
     case GetByIdFlush: {
         if (!node->prediction()) {
@@ -2158,10 +2188,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             }
         }
 
-        if (node->op() == PureGetById)
-            clobberStructures(clobberLimit);
-        else
-            clobberWorld(node->origin.semantic, clobberLimit);
+        clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).makeHeapTop();
         break;
     }

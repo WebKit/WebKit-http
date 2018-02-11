@@ -54,9 +54,11 @@
 #include "JSString.h"
 #include "JSTypedArrays.h"
 #include "LLIntData.h"
+#include "LLIntThunks.h"
 #include "ObjectConstructor.h"
 #include "ParserError.h"
 #include "ProfilerDatabase.h"
+#include "ProtoCallFrame.h"
 #include "SamplingProfiler.h"
 #include "ShadowChicken.h"
 #include "StackVisitor.h"
@@ -65,6 +67,7 @@
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
+#include "WasmPlan.h"
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
@@ -788,16 +791,97 @@ private:
     bool m_enableException { false };
 };
 
-const ClassInfo Element::s_info = { "Element", &Base::s_info, 0, CREATE_METHOD_TABLE(Element) };
-const ClassInfo Masquerader::s_info = { "Masquerader", &Base::s_info, 0, CREATE_METHOD_TABLE(Masquerader) };
-const ClassInfo Root::s_info = { "Root", &Base::s_info, 0, CREATE_METHOD_TABLE(Root) };
-const ClassInfo ImpureGetter::s_info = { "ImpureGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(ImpureGetter) };
-const ClassInfo CustomGetter::s_info = { "CustomGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(CustomGetter) };
-const ClassInfo DOMJITNode::s_info = { "DOMJITNode", &Base::s_info, 0, CREATE_METHOD_TABLE(DOMJITNode) };
-const ClassInfo DOMJITGetter::s_info = { "DOMJITGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(DOMJITGetter) };
-const ClassInfo DOMJITGetterComplex::s_info = { "DOMJITGetterComplex", &Base::s_info, 0, CREATE_METHOD_TABLE(DOMJITGetterComplex) };
-const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, 0, CREATE_METHOD_TABLE(RuntimeArray) };
-const ClassInfo SimpleObject::s_info = { "SimpleObject", &Base::s_info, 0, CREATE_METHOD_TABLE(SimpleObject) };
+class DOMJITFunctionObject : public DOMJITNode {
+public:
+    DOMJITFunctionObject(VM& vm, Structure* structure)
+        : Base(vm, structure)
+    {
+    }
+
+    DECLARE_INFO;
+    typedef DOMJITNode Base;
+    static const unsigned StructureFlags = Base::StructureFlags;
+
+
+    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
+    {
+        return Structure::create(vm, globalObject, prototype, TypeInfo(JSC::JSType(LastJSCObjectType + 1), StructureFlags), info());
+    }
+
+    static DOMJITFunctionObject* create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
+    {
+        DOMJITFunctionObject* object = new (NotNull, allocateCell<DOMJITFunctionObject>(vm.heap, sizeof(DOMJITFunctionObject))) DOMJITFunctionObject(vm, structure);
+        object->finishCreation(vm, globalObject);
+        return object;
+    }
+
+    static EncodedJSValue JSC_HOST_CALL safeFunction(ExecState* exec)
+    {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        DOMJITNode* thisObject = jsDynamicCast<DOMJITNode*>(exec->thisValue());
+        if (!thisObject)
+            return throwVMTypeError(exec, scope);
+        return JSValue::encode(jsNumber(thisObject->value()));
+    }
+
+#if ENABLE(JIT)
+    static EncodedJSValue JIT_OPERATION unsafeFunction(ExecState* exec, DOMJITNode* node)
+    {
+        NativeCallFrameTracer tracer(&exec->vm(), exec);
+        return JSValue::encode(jsNumber(node->value()));
+    }
+
+    static Ref<DOMJIT::Patchpoint> checkDOMJITNode()
+    {
+        static const double value = 42.0;
+        Ref<DOMJIT::Patchpoint> patchpoint = DOMJIT::Patchpoint::create();
+        patchpoint->numFPScratchRegisters = 1;
+        patchpoint->setGenerator([=](CCallHelpers& jit, DOMJIT::PatchpointParams& params) {
+            CCallHelpers::JumpList failureCases;
+            // May use scratch registers.
+            jit.loadDouble(CCallHelpers::TrustedImmPtr(&value), params.fpScratch(0));
+            failureCases.append(jit.branch8(
+                CCallHelpers::NotEqual,
+                CCallHelpers::Address(params[0].gpr(), JSCell::typeInfoTypeOffset()),
+                CCallHelpers::TrustedImm32(JSC::JSType(LastJSCObjectType + 1))));
+            return failureCases;
+        });
+        return patchpoint;
+    }
+#endif
+
+private:
+    void finishCreation(VM&, JSGlobalObject*);
+};
+
+#if ENABLE(JIT)
+static const DOMJIT::Signature DOMJITFunctionObjectSignature((uintptr_t)DOMJITFunctionObject::unsafeFunction, DOMJITFunctionObject::checkDOMJITNode, DOMJITFunctionObject::info(), DOMJIT::Effect::forRead(DOMJIT::HeapRange::top()), SpecInt32Only);
+#endif
+
+void DOMJITFunctionObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
+{
+    Base::finishCreation(vm);
+#if ENABLE(JIT)
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, safeFunction, NoIntrinsic, &DOMJITFunctionObjectSignature, ReadOnly);
+#else
+    putDirectNativeFunction(vm, globalObject, Identifier::fromString(&vm, "func"), 0, safeFunction, NoIntrinsic, nullptr, ReadOnly);
+#endif
+}
+
+
+const ClassInfo Element::s_info = { "Element", &Base::s_info, nullptr, CREATE_METHOD_TABLE(Element) };
+const ClassInfo Masquerader::s_info = { "Masquerader", &Base::s_info, nullptr, CREATE_METHOD_TABLE(Masquerader) };
+const ClassInfo Root::s_info = { "Root", &Base::s_info, nullptr, CREATE_METHOD_TABLE(Root) };
+const ClassInfo ImpureGetter::s_info = { "ImpureGetter", &Base::s_info, nullptr, CREATE_METHOD_TABLE(ImpureGetter) };
+const ClassInfo CustomGetter::s_info = { "CustomGetter", &Base::s_info, nullptr, CREATE_METHOD_TABLE(CustomGetter) };
+const ClassInfo DOMJITNode::s_info = { "DOMJITNode", &Base::s_info, nullptr, CREATE_METHOD_TABLE(DOMJITNode) };
+const ClassInfo DOMJITGetter::s_info = { "DOMJITGetter", &Base::s_info, nullptr, CREATE_METHOD_TABLE(DOMJITGetter) };
+const ClassInfo DOMJITGetterComplex::s_info = { "DOMJITGetterComplex", &Base::s_info, nullptr, CREATE_METHOD_TABLE(DOMJITGetterComplex) };
+const ClassInfo DOMJITFunctionObject::s_info = { "DOMJITFunctionObject", &Base::s_info, nullptr, CREATE_METHOD_TABLE(DOMJITFunctionObject) };
+const ClassInfo RuntimeArray::s_info = { "RuntimeArray", &Base::s_info, nullptr, CREATE_METHOD_TABLE(RuntimeArray) };
+const ClassInfo SimpleObject::s_info = { "SimpleObject", &Base::s_info, nullptr, CREATE_METHOD_TABLE(SimpleObject) };
 static bool test262AsyncPassed { false };
 static bool test262AsyncTest { false };
 
@@ -827,6 +911,7 @@ static EncodedJSValue JSC_HOST_CALL functionCreateCustomGetterObject(ExecState*)
 static EncodedJSValue JSC_HOST_CALL functionCreateDOMJITNodeObject(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateDOMJITGetterObject(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateDOMJITGetterComplexObject(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionCreateDOMJITFunctionObject(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateBuiltin(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionCreateGlobalObject(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSetImpureGetterDelegate(ExecState*);
@@ -905,6 +990,10 @@ static EncodedJSValue JSC_HOST_CALL functionStartSamplingProfiler(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState*);
 #endif
 
+#if ENABLE(WEBASSEMBLY)
+static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState*);
+#endif
+
 #if ENABLE(SAMPLING_FLAGS)
 static EncodedJSValue JSC_HOST_CALL functionSetSamplingFlags(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionClearSamplingFlags(ExecState*);
@@ -966,6 +1055,7 @@ public:
     String m_uncaughtExceptionName;
     bool m_alwaysDumpUncaughtException { false };
     bool m_dumpSamplingProfilerData { false };
+    bool m_enableRemoteDebugging { false };
 
     void parseArguments(int, char**);
 };
@@ -1117,6 +1207,7 @@ protected:
         addFunction(vm, "createDOMJITNodeObject", functionCreateDOMJITNodeObject, 0);
         addFunction(vm, "createDOMJITGetterObject", functionCreateDOMJITGetterObject, 0);
         addFunction(vm, "createDOMJITGetterComplexObject", functionCreateDOMJITGetterComplexObject, 0);
+        addFunction(vm, "createDOMJITFunctionObject", functionCreateDOMJITFunctionObject, 0);
         addFunction(vm, "createBuiltin", functionCreateBuiltin, 2);
         addFunction(vm, "createGlobalObject", functionCreateGlobalObject, 0);
         addFunction(vm, "setImpureGetterDelegate", functionSetImpureGetterDelegate, 2);
@@ -1149,6 +1240,10 @@ protected:
 #if ENABLE(SAMPLING_PROFILER)
         addFunction(vm, "startSamplingProfiler", functionStartSamplingProfiler, 0);
         addFunction(vm, "samplingProfilerStackTraces", functionSamplingProfilerStackTraces, 0);
+#endif
+
+#if ENABLE(WEBASSEMBLY)
+        addFunction(vm, "testWasmModuleFunctions", functionTestWasmModuleFunctions, 0);
 #endif
 
         if (!arguments.isEmpty()) {
@@ -1436,6 +1531,9 @@ JSInternalPromise* GlobalObject::moduleLoaderFetch(JSGlobalObject* globalObject,
 
 static EncodedJSValue printInternal(ExecState* exec, FILE* out)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (test262AsyncTest) {
         JSValue value = exec->argument(0);
         if (value.isString() && WTF::equal(asString(value)->value(exec).impl(), "Test262:AsyncTestComplete"))
@@ -1448,7 +1546,9 @@ static EncodedJSValue printInternal(ExecState* exec, FILE* out)
             if (EOF == fputc(' ', out))
                 goto fail;
 
-        if (fprintf(out, "%s", exec->uncheckedArgument(i).toString(exec)->view(exec).get().utf8().data()) < 0)
+        auto viewWithString = exec->uncheckedArgument(i).toString(exec)->viewWithUnderlyingString(*exec);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        if (fprintf(out, "%s", viewWithString.view.utf8().data()) < 0)
             goto fail;
     }
 
@@ -1474,7 +1574,11 @@ EncodedJSValue JSC_HOST_CALL functionDumpCallFrame(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionDebug(ExecState* exec)
 {
-    fprintf(stderr, "--> %s\n", exec->argument(0).toString(exec)->view(exec).get().utf8().data());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    auto viewWithString = exec->argument(0).toString(exec)->viewWithUnderlyingString(*exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    fprintf(stderr, "--> %s\n", viewWithString.view.utf8().data());
     return JSValue::encode(jsUndefined());
 }
 
@@ -1576,15 +1680,29 @@ EncodedJSValue JSC_HOST_CALL functionCreateSimpleObject(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL functionGetHiddenValue(ExecState* exec)
 {
-    JSLockHolder lock(exec);
-    SimpleObject* simpleObject = jsCast<SimpleObject*>(exec->argument(0).asCell());
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    SimpleObject* simpleObject = jsDynamicCast<SimpleObject*>(exec->argument(0));
+    if (UNLIKELY(!simpleObject)) {
+        throwTypeError(exec, scope, ASCIILiteral("Invalid use of getHiddenValue test function"));
+        return encodedJSValue();
+    }
     return JSValue::encode(simpleObject->hiddenValue());
 }
 
 EncodedJSValue JSC_HOST_CALL functionSetHiddenValue(ExecState* exec)
 {
-    JSLockHolder lock(exec);
-    SimpleObject* simpleObject = jsCast<SimpleObject*>(exec->argument(0).asCell());
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    SimpleObject* simpleObject = jsDynamicCast<SimpleObject*>(exec->argument(0));
+    if (UNLIKELY(!simpleObject)) {
+        throwTypeError(exec, scope, ASCIILiteral("Invalid use of setHiddenValue test function"));
+        return encodedJSValue();
+    }
     JSValue value = exec->argument(1);
     simpleObject->setHiddenValue(exec->vm(), value);
     return JSValue::encode(jsUndefined());
@@ -1653,17 +1771,32 @@ EncodedJSValue JSC_HOST_CALL functionCreateDOMJITGetterComplexObject(ExecState* 
     return JSValue::encode(result);
 }
 
-EncodedJSValue JSC_HOST_CALL functionSetImpureGetterDelegate(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL functionCreateDOMJITFunctionObject(ExecState* exec)
 {
     JSLockHolder lock(exec);
+    Structure* structure = DOMJITFunctionObject::createStructure(exec->vm(), exec->lexicalGlobalObject(), jsNull());
+    DOMJITFunctionObject* result = DOMJITFunctionObject::create(exec->vm(), exec->lexicalGlobalObject(), structure);
+    return JSValue::encode(result);
+}
+
+EncodedJSValue JSC_HOST_CALL functionSetImpureGetterDelegate(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue base = exec->argument(0);
     if (!base.isObject())
         return JSValue::encode(jsUndefined());
     JSValue delegate = exec->argument(1);
     if (!delegate.isObject())
         return JSValue::encode(jsUndefined());
-    ImpureGetter* impureGetter = jsCast<ImpureGetter*>(asObject(base.asCell()));
-    impureGetter->setDelegate(exec->vm(), asObject(delegate.asCell()));
+    ImpureGetter* impureGetter = jsDynamicCast<ImpureGetter*>(asObject(base.asCell()));
+    if (UNLIKELY(!impureGetter)) {
+        throwTypeError(exec, scope, ASCIILiteral("argument is not an ImpureGetter"));
+        return encodedJSValue();
+    }
+    impureGetter->setDelegate(vm, asObject(delegate.asCell()));
     return JSValue::encode(jsUndefined());
 }
 
@@ -2351,6 +2484,104 @@ EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState* exec
 }
 #endif // ENABLE(SAMPLING_PROFILER)
 
+#if ENABLE(WEBASSEMBLY)
+
+static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
+{
+    JSString* type = jsCast<JSString*>(wasmValue.get(exec, makeIdentifier(vm, "type")));
+    JSValue value = wasmValue.get(exec, makeIdentifier(vm, "value"));
+
+    const String& typeString = type->value(exec);
+    if (typeString == "i64") {
+        RELEASE_ASSERT(value.isString());
+        int64_t result;
+        RELEASE_ASSERT(sscanf(bitwise_cast<const char*>(jsCast<JSString*>(value)->value(exec).characters8()), "%lld", &result) != EOF);
+        return JSValue::decode(result);
+    }
+    RELEASE_ASSERT(value.isNumber());
+
+    if (typeString == "i32") {
+        RELEASE_ASSERT(value.isInt32());
+        return JSValue::decode(static_cast<uint32_t>(value.asInt32()));
+    }
+
+    if (typeString == "f32")
+        return JSValue::decode(bitwise_cast<uint32_t>(value.toFloat(exec)));
+
+    RELEASE_ASSERT(typeString == "f64");
+    return value;
+}
+
+static JSValue callWasmFunction(VM* vm, const B3::Compilation& code, Vector<JSValue>& boxedArgs)
+{
+    JSValue firstArgument;
+    int argCount = 1;
+    JSValue* remainingArgs = nullptr;
+    if (boxedArgs.size()) {
+        remainingArgs = boxedArgs.data();
+        firstArgument = *remainingArgs;
+        remainingArgs++;
+        argCount = boxedArgs.size();
+    }
+
+    ProtoCallFrame protoCallFrame;
+    protoCallFrame.init(nullptr, nullptr, firstArgument, argCount, remainingArgs);
+
+    return JSValue::decode(vmEntryToWasm(code.code().executableAddress(), vm, &protoCallFrame));
+}
+
+// testWasmModule(JSArrayBufferView source, number functionCount, ...[[WasmValue, [WasmValue]]]) where the ith copy of [[result, [args]]] is a list
+// of arguments to be passed to the ith wasm function as well as the expected result. WasmValue is an object with "type" and "value" properties.
+static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!Options::useWebAssembly())
+        return throwVMTypeError(exec, scope, ASCIILiteral("testWasmModule should only be called if the useWebAssembly option is set"));
+
+    JSArrayBufferView* source = jsCast<JSArrayBufferView*>(exec->argument(0));
+    uint32_t functionCount = exec->argument(1).toUInt32(exec);
+
+    if (exec->argumentCount() != functionCount + 2)
+        CRASH();
+
+    Wasm::Plan plan(&vm, static_cast<uint8_t*>(source->vector()), source->length());
+    plan.run();
+    if (plan.failed())
+        CRASH();
+
+    if (plan.compiledFunctionCount() != functionCount)
+        CRASH();
+
+    for (uint32_t i = 0; i < functionCount; ++i) {
+        if (!plan.compiledFunction(i))
+            dataLogLn("failed to compile function at index", i);
+
+        JSArray* testCases = jsCast<JSArray*>(exec->argument(i + 2));
+        for (unsigned testIndex = 0; testIndex < testCases->length(); ++testIndex) {
+            JSArray* test = jsCast<JSArray*>(testCases->getIndexQuickly(testIndex));
+            JSObject* result = jsCast<JSObject*>(test->getIndexQuickly(0));
+            JSArray* arguments = jsCast<JSArray*>(test->getIndexQuickly(1));
+
+            Vector<JSValue> boxedArgs;
+            for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
+                boxedArgs.append(box(exec, vm, arguments->getIndexQuickly(argIndex)));
+
+            JSValue callResult = callWasmFunction(&vm, *plan.compiledFunction(i)->jsEntryPoint, boxedArgs);
+            JSValue expected = box(exec, vm, result);
+            if (callResult != expected) {
+                WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, toCString(" (callResult == ", RawPointer(bitwise_cast<void*>(callResult)), ", expected == ", RawPointer(bitwise_cast<void*>(expected)), ")").data());
+                CRASH();
+            }
+        }
+    }
+
+    return encodedJSUndefined();
+}
+
+#endif // ENABLE(WEBASSEBLY)
+
 // Use SEH for Release builds only to get rid of the crash report dialog
 // (luckily the same tests fail in Release and Debug builds so far). Need to
 // be in a separate main function because the jscmain function requires object
@@ -2784,6 +3015,11 @@ void CommandLine::parseArguments(int argc, char** argv)
             continue;
         }
 
+        if (!strcmp(arg, "--remote-debug")) {
+            m_enableRemoteDebugging = true;
+            continue;
+        }
+
         static const unsigned strictFileStrLength = strlen("--strict-file=");
         if (!strncmp(arg, "--strict-file=", strictFileStrLength)) {
             m_scripts.append(Script(Script::StrictMode::Strict, Script::CodeSource::File, Script::ScriptType::Script, argv[i] + strictFileStrLength));
@@ -2851,6 +3087,7 @@ static int NEVER_INLINE runJSC(VM* vm, CommandLine options)
         vm->m_perBytecodeProfiler = std::make_unique<Profiler::Database>(*vm);
 
     GlobalObject* globalObject = GlobalObject::create(*vm, GlobalObject::createStructure(*vm, jsNull()), options.m_arguments);
+    globalObject->setRemoteDebuggingEnabled(options.m_enableRemoteDebugging);
     bool success = runWithScripts(globalObject, options.m_scripts, options.m_uncaughtExceptionName, options.m_alwaysDumpUncaughtException, options.m_dump, options.m_module);
     if (options.m_interactive && success)
         runInteractive(globalObject);

@@ -609,10 +609,6 @@
 #define USE_CFURLCONNECTION 1
 #endif
 
-#if USE(CFURLCONNECTION) || PLATFORM(COCOA)
-#define USE_CFURLCACHE 1
-#endif
-
 #if PLATFORM(HAIKU)
 #define USE_HAIKU 1
 #define USE_PTHREADS 1
@@ -783,12 +779,12 @@
 #endif
 #endif
 
-/* Concurrent JIT only works on 64-bit platforms because it requires that
+/* Concurrent JS only works on 64-bit platforms because it requires that
    values get stored to atomically. This is trivially true on 64-bit platforms,
    but not true at all on 32-bit platforms where values are composed of two
    separate sub-values. */
 #if ENABLE(DFG_JIT) && USE(JSVALUE64)
-#define ENABLE_CONCURRENT_JIT 1
+#define ENABLE_CONCURRENT_JS 1
 #endif
 
 /* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */
@@ -1245,5 +1241,14 @@
 /* Enable strict runtime stack buffer checks. */
 #pragma strict_gs_check(on)
 #endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#define HAVE_TOUCH_BAR 1
+#define HAVE_ADVANCED_SPELL_CHECKING 1
+
+#if defined(__LP64__)
+#define ENABLE_WEB_PLAYBACK_CONTROLS_MANAGER 1
+#endif
+#endif /* PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 */
 
 #endif /* WTF_Platform_h */

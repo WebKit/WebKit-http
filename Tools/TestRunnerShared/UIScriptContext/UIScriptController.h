@@ -27,6 +27,7 @@
 #define UIScriptController_h
 
 #include "JSWrappable.h"
+#include <JavaScriptCore/JSRetainPtr.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -118,6 +119,9 @@ public:
     JSObjectRef selectionRangeViewRects() const;
 
     void insertText(JSStringRef, int location, int length);
+    void removeAllDynamicDictionaries();
+    
+    JSRetainPtr<JSStringRef> scrollingTreeAsText() const;
 
     void uiScriptComplete(JSStringRef result);
 

@@ -26,10 +26,12 @@
 #import "config.h"
 #import "Editor.h"
 
+#import "Blob.h"
 #import "CSSPrimitiveValueMappings.h"
 #import "CSSValuePool.h"
 #import "CachedResourceLoader.h"
 #import "ColorMac.h"
+#import "DOMURL.h"
 #import "DataTransfer.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
@@ -40,6 +42,7 @@
 #import "Frame.h"
 #import "FrameLoaderClient.h"
 #import "FrameView.h"
+#import "HTMLAnchorElement.h"
 #import "HTMLAttachmentElement.h"
 #import "HTMLConverter.h"
 #import "HTMLElement.h"
@@ -153,13 +156,13 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
 
     NSMutableDictionary* result = [NSMutableDictionary dictionary];
 
-    if (style->visitedDependentColor(CSSPropertyBackgroundColor).isValid() && style->visitedDependentColor(CSSPropertyBackgroundColor).alpha() != 0)
+    if (style->visitedDependentColor(CSSPropertyBackgroundColor).isVisible())
         [result setObject:nsColor(style->visitedDependentColor(CSSPropertyBackgroundColor)) forKey:NSBackgroundColorAttributeName];
 
     if (auto ctFont = style->fontCascade().primaryFont().getCTFont())
         [result setObject:toNSFont(ctFont) forKey:NSFontAttributeName];
 
-    if (style->visitedDependentColor(CSSPropertyColor).isValid() && style->visitedDependentColor(CSSPropertyColor) != Color::black)
+    if (style->visitedDependentColor(CSSPropertyColor).isValid() && !Color::isBlackColor(style->visitedDependentColor(CSSPropertyColor)))
         [result setObject:nsColor(style->visitedDependentColor(CSSPropertyColor)) forKey:NSForegroundColorAttributeName];
 
     const ShadowData* shadow = style->textShadow();
@@ -333,7 +336,7 @@ RefPtr<Range> Editor::adjustedSelectionRange()
     ASSERT(commonAncestor);
     auto* enclosingAnchor = enclosingElementWithTag(firstPositionInNode(commonAncestor), HTMLNames::aTag);
     if (enclosingAnchor && comparePositions(firstPositionInOrBeforeNode(range->startPosition().anchorNode()), range->startPosition()) >= 0)
-        range->setStart(*enclosingAnchor, 0, IGNORE_EXCEPTION);
+        range->setStart(*enclosingAnchor, 0);
     return range;
 }
     
@@ -610,9 +613,14 @@ bool Editor::WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const Strin
     ASSERT(type.contains('/'));
     String typeAsFilenameWithExtension = type;
     typeAsFilenameWithExtension.replace('/', '.');
-    URL imageURL = URL::fakeURLWithRelativePart(typeAsFilenameWithExtension);
 
-    fragment = frame.editor().createFragmentForImageResourceAndAddResource(ArchiveResource::create(WTFMove(buffer), imageURL, type, emptyString(), emptyString()));
+    Vector<uint8_t> data;
+    data.append(buffer->data(), buffer->size());
+    auto blob = Blob::create(WTFMove(data), type);
+    ASSERT(frame.document());
+    String blobURL = DOMURL::createObjectURL(*frame.document(), blob);
+
+    fragment = frame.editor().createFragmentForImageAndURL(blobURL);
     return fragment;
 }
 
@@ -621,7 +629,7 @@ bool Editor::WebContentReader::readURL(const URL& url, const String& title)
     if (url.string().isEmpty())
         return false;
 
-    auto anchor = frame.document()->createElement(HTMLNames::aTag, false);
+    auto anchor = HTMLAnchorElement::create(*frame.document());
     anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
     anchor->appendChild(frame.document()->createTextNode([title precomposedStringWithCanonicalMapping]));
 
@@ -669,6 +677,17 @@ RefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResource(Re
     fragment->appendChild(imageElement);
 
     return WTFMove(fragment);
+}
+
+Ref<DocumentFragment> Editor::createFragmentForImageAndURL(const String& url)
+{
+    auto imageElement = HTMLImageElement::create(*m_frame.document());
+    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
+
+    auto fragment = document().createDocumentFragment();
+    fragment->appendChild(imageElement);
+
+    return fragment;
 }
 
 RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKey_h
-#define CryptoKey_h
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
 
@@ -78,7 +77,7 @@ private:
 class CryptoKey : public RefCounted<CryptoKey> {
 public:
     using Type = CryptoKeyType;
-    CryptoKey(CryptoAlgorithmIdentifier, Type, bool extractable, CryptoKeyUsage);
+    CryptoKey(CryptoAlgorithmIdentifier, Type, bool extractable, CryptoKeyUsageBitmap);
     virtual ~CryptoKey();
 
     virtual CryptoKeyClass keyClass() const = 0;
@@ -87,16 +86,13 @@ public:
     bool extractable() const { return m_extractable; }
     virtual std::unique_ptr<KeyAlgorithm> buildAlgorithm() const = 0;
 
-    // FIXME: Confusing to have CryptoKeyUsage and CryptoKey::Usage named almost the same, but be slightly different.
-    // CryptoKeyUsage values are bit masks so they can be combined with "or", while this is a normal enum that must
-    // match what is defined in the IDL. Maybe we can rename CryptoKeyUsage to CryptoKey::UsagesBitmap?
-    enum class Usage { Encrypt, Decrypt, Sign, Verify, DeriveKey, DeriveBits, WrapKey, UnwrapKey };
-    Vector<Usage> usages() const;
+    // Only for binding purpose.
+    Vector<CryptoKeyUsage> usages() const;
 
     CryptoAlgorithmIdentifier algorithmIdentifier() const { return m_algorithmIdentifier; }
-    CryptoKeyUsage usagesBitmap() const { return m_usages; }
-    void setUsagesBitmap(CryptoKeyUsage usage) { m_usages = usage; };
-    bool allows(CryptoKeyUsage usage) const { return usage == (m_usages & usage); }
+    CryptoKeyUsageBitmap usagesBitmap() const { return m_usages; }
+    void setUsagesBitmap(CryptoKeyUsageBitmap usage) { m_usages = usage; };
+    bool allows(CryptoKeyUsageBitmap usage) const { return usage == (m_usages & usage); }
 
     virtual std::unique_ptr<CryptoKeyData> exportData() const = 0;
 
@@ -106,7 +102,7 @@ private:
     CryptoAlgorithmIdentifier m_algorithmIdentifier;
     Type m_type;
     bool m_extractable;
-    CryptoKeyUsage m_usages;
+    CryptoKeyUsageBitmap m_usages;
 };
 
 inline auto CryptoKey::type() const -> Type
@@ -127,4 +123,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToClassName) \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKey_h

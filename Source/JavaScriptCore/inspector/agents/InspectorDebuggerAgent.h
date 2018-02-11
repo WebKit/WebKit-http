@@ -67,6 +67,7 @@ public:
     void setBreakpointByUrl(ErrorString&, int lineNumber, const String* optionalURL, const String* optionalURLRegex, const int* optionalColumnNumber, const Inspector::InspectorObject* options, Inspector::Protocol::Debugger::BreakpointId*, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Debugger::Location>>& locations) final;
     void setBreakpoint(ErrorString&, const Inspector::InspectorObject& location, const Inspector::InspectorObject* options, Inspector::Protocol::Debugger::BreakpointId*, RefPtr<Inspector::Protocol::Debugger::Location>& actualLocation) final;
     void removeBreakpoint(ErrorString&, const String& breakpointIdentifier) final;
+    void continueUntilNextRunLoop(ErrorString&) final;
     void continueToLocation(ErrorString&, const InspectorObject& location) final;
     void searchInContent(ErrorString&, const String& scriptID, const String& query, const bool* optionalCaseSensitive, const bool* optionalIsRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>&) final;
     void getScriptSource(ErrorString&, const String& scriptID, String* scriptSource) final;
@@ -90,6 +91,8 @@ public:
 
     void schedulePauseOnNextStatement(DebuggerFrontendDispatcher::Reason breakReason, RefPtr<InspectorObject>&& data);
     void cancelPauseOnNextStatement();
+    bool pauseOnNextStatementEnabled() const { return m_javaScriptPauseScheduled; }
+
     void breakProgram(DebuggerFrontendDispatcher::Reason breakReason, RefPtr<InspectorObject>&& data);
     void scriptExecutionBlockedByCSP(const String& directiveText);
 
@@ -98,7 +101,6 @@ public:
         virtual ~Listener() { }
         virtual void debuggerWasEnabled() = 0;
         virtual void debuggerWasDisabled() = 0;
-        virtual void didPause() = 0;
     };
     void setListener(Listener* listener) { m_listener = listener; }
 
@@ -141,6 +143,11 @@ private:
     void clearBreakDetails();
     void clearExceptionValue();
 
+    enum class ShouldDispatchResumed { No, WhenIdle, WhenContinued };
+    void registerIdleHandler();
+    void willStepAndMayBecomeIdle();
+    void didBecomeIdle();
+
     RefPtr<InspectorObject> buildBreakpointPauseReason(JSC::BreakpointID);
     RefPtr<InspectorObject> buildExceptionPauseReason(JSC::JSValue exception, const InjectedScript&);
 
@@ -165,11 +172,14 @@ private:
     JSC::BreakpointID m_continueToLocationBreakpointID;
     DebuggerFrontendDispatcher::Reason m_breakReason;
     RefPtr<InspectorObject> m_breakAuxData;
+    ShouldDispatchResumed m_conditionToDispatchResumed { ShouldDispatchResumed::No };
+    bool m_enablePauseWhenIdle { false };
     bool m_enabled { false };
     bool m_javaScriptPauseScheduled { false };
     bool m_hasExceptionValue { false };
     bool m_didPauseStopwatch { false };
     bool m_pauseOnAssertionFailures { false };
+    bool m_registeredIdleCallback { false };
 };
 
 } // namespace Inspector

@@ -17,12 +17,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedLengthList_h
-#define SVGAnimatedLengthList_h
+#pragma once
 
 #include "SVGAnimatedListPropertyTearOff.h"
 #include "SVGAnimatedTypeAnimator.h"
-#include "SVGLengthList.h"
+#include "SVGLength.h"
 
 namespace WebCore {
 
@@ -57,5 +56,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

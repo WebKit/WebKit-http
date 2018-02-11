@@ -21,7 +21,6 @@
 #include "config.h"
 #include "JSTestActiveDOMObject.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
@@ -123,6 +122,13 @@ const ClassInfo JSTestActiveDOMObject::s_info = { "TestActiveDOMObject", &Base::
 JSTestActiveDOMObject::JSTestActiveDOMObject(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestActiveDOMObject>&& impl)
     : JSDOMWrapper<TestActiveDOMObject>(structure, globalObject, WTFMove(impl))
 {
+}
+
+void JSTestActiveDOMObject::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
 }
 
 JSObject* JSTestActiveDOMObject::createPrototype(VM& vm, JSGlobalObject* globalObject)

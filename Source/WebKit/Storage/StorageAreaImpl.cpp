@@ -34,18 +34,20 @@
 #include <WebCore/storage/StorageMap.h>
 #include <wtf/MainThread.h>
 
-namespace WebCore {
+using namespace WebCore;
+
+namespace WebKit {
 
 StorageAreaImpl::~StorageAreaImpl()
 {
     ASSERT(isMainThread());
 }
 
-inline StorageAreaImpl::StorageAreaImpl(StorageType storageType, PassRefPtr<SecurityOrigin> origin, PassRefPtr<StorageSyncManager> syncManager, unsigned quota)
+inline StorageAreaImpl::StorageAreaImpl(StorageType storageType, const SecurityOriginData& origin, RefPtr<StorageSyncManager>&& syncManager, unsigned quota)
     : m_storageType(storageType)
     , m_securityOrigin(origin)
     , m_storageMap(StorageMap::create(quota))
-    , m_storageSyncManager(syncManager)
+    , m_storageSyncManager(WTFMove(syncManager))
 #ifndef NDEBUG
     , m_isShutdown(false)
 #endif
@@ -53,7 +55,6 @@ inline StorageAreaImpl::StorageAreaImpl(StorageType storageType, PassRefPtr<Secu
     , m_closeDatabaseTimer(*this, &StorageAreaImpl::closeDatabaseTimerFired)
 {
     ASSERT(isMainThread());
-    ASSERT(m_securityOrigin);
     ASSERT(m_storageMap);
     
     // Accessing the shared global StorageTracker when a StorageArea is created 
@@ -61,39 +62,36 @@ inline StorageAreaImpl::StorageAreaImpl(StorageType storageType, PassRefPtr<Secu
     StorageTracker::tracker();
 }
 
-Ref<StorageAreaImpl> StorageAreaImpl::create(StorageType storageType, PassRefPtr<SecurityOrigin> origin, PassRefPtr<StorageSyncManager> syncManager, unsigned quota)
+Ref<StorageAreaImpl> StorageAreaImpl::create(StorageType storageType, const SecurityOriginData& origin, RefPtr<StorageSyncManager>&& syncManager, unsigned quota)
 {
-    Ref<StorageAreaImpl> area = adoptRef(*new StorageAreaImpl(storageType, origin, syncManager, quota));
-
+    Ref<StorageAreaImpl> area = adoptRef(*new StorageAreaImpl(storageType, origin, WTFMove(syncManager), quota));
     // FIXME: If there's no backing storage for LocalStorage, the default WebKit behavior should be that of private browsing,
     // not silently ignoring it. https://bugs.webkit.org/show_bug.cgi?id=25894
     if (area->m_storageSyncManager) {
-        area->m_storageAreaSync = StorageAreaSync::create(area->m_storageSyncManager, area.ptr(), area->m_securityOrigin->databaseIdentifier());
+        area->m_storageAreaSync = StorageAreaSync::create(area->m_storageSyncManager.get(), area.copyRef(), area->m_securityOrigin.databaseIdentifier());
         ASSERT(area->m_storageAreaSync);
     }
-
     return area;
 }
 
-PassRefPtr<StorageAreaImpl> StorageAreaImpl::copy()
+Ref<StorageAreaImpl> StorageAreaImpl::copy()
 {
     ASSERT(!m_isShutdown);
-    return adoptRef(new StorageAreaImpl(this));
+    return adoptRef(*new StorageAreaImpl(*this));
 }
 
-StorageAreaImpl::StorageAreaImpl(StorageAreaImpl* area)
-    : m_storageType(area->m_storageType)
-    , m_securityOrigin(area->m_securityOrigin)
-    , m_storageMap(area->m_storageMap)
-    , m_storageSyncManager(area->m_storageSyncManager)
+StorageAreaImpl::StorageAreaImpl(const StorageAreaImpl& area)
+    : m_storageType(area.m_storageType)
+    , m_securityOrigin(area.m_securityOrigin)
+    , m_storageMap(area.m_storageMap)
+    , m_storageSyncManager(area.m_storageSyncManager)
 #ifndef NDEBUG
-    , m_isShutdown(area->m_isShutdown)
+    , m_isShutdown(area.m_isShutdown)
 #endif
     , m_accessCount(0)
     , m_closeDatabaseTimer(*this, &StorageAreaImpl::closeDatabaseTimerFired)
 {
     ASSERT(isMainThread());
-    ASSERT(m_securityOrigin);
     ASSERT(m_storageMap);
     ASSERT(!m_isShutdown);
 }
@@ -292,9 +290,9 @@ void StorageAreaImpl::closeDatabaseIfIdle()
 void StorageAreaImpl::dispatchStorageEvent(const String& key, const String& oldValue, const String& newValue, Frame* sourceFrame)
 {
     if (m_storageType == LocalStorage)
-        StorageEventDispatcher::dispatchLocalStorageEvents(key, oldValue, newValue, m_securityOrigin.get(), sourceFrame);
+        StorageEventDispatcher::dispatchLocalStorageEvents(key, oldValue, newValue, m_securityOrigin, sourceFrame);
     else
-        StorageEventDispatcher::dispatchSessionStorageEvents(key, oldValue, newValue, m_securityOrigin.get(), sourceFrame);
+        StorageEventDispatcher::dispatchSessionStorageEvents(key, oldValue, newValue, m_securityOrigin, sourceFrame);
 }
 
 } // namespace WebCore

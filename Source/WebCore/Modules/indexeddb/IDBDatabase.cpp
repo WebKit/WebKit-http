@@ -31,6 +31,7 @@
 #include "DOMStringList.h"
 #include "EventNames.h"
 #include "EventQueue.h"
+#include "ExceptionCode.h"
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServer.h"
 #include "IDBDatabaseException.h"
@@ -185,6 +186,15 @@ ExceptionOr<Ref<IDBTransaction>> IDBDatabase::transaction(StringOrVectorOfString
     if (m_versionChangeTransaction && !m_versionChangeTransaction->isFinishedOrFinishing())
         return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'transaction' on 'IDBDatabase': A version change transaction is running.") };
 
+    // It is valid for javascript to pass in a list of object store names with the same name listed twice,
+    // so we need to put them all in a set to get a unique list.
+    HashSet<String> objectStoreSet;
+    for (auto& objectStore : objectStores)
+        objectStoreSet.add(objectStore);
+
+    objectStores.clear();
+    copyToVector(objectStoreSet, objectStores);
+
     for (auto& objectStoreName : objectStores) {
         if (m_info.hasObjectStore(objectStoreName))
             continue;
@@ -228,7 +238,11 @@ void IDBDatabase::close()
 
     ASSERT(currentThread() == originThreadID());
 
-    m_closePending = true;
+    if (!m_closePending) {
+        m_closePending = true;
+        m_connectionProxy->databaseConnectionPendingClose(*this);
+    }
+
     maybeCloseInServer();
 }
 
@@ -253,11 +267,17 @@ void IDBDatabase::connectionToServerLost(const IDBError& error)
     for (auto& transaction : m_activeTransactions.values())
         transaction->connectionClosedFromServer(error);
 
-    Ref<Event> event = Event::create(m_eventNames.errorEvent, true, false);
-    event->setTarget(this);
+    auto errorEvent = Event::create(m_eventNames.errorEvent, true, false);
+    errorEvent->setTarget(this);
 
     if (auto* context = scriptExecutionContext())
-        context->eventQueue().enqueueEvent(WTFMove(event));
+        context->eventQueue().enqueueEvent(WTFMove(errorEvent));
+
+    auto closeEvent = Event::create(m_eventNames.closeEvent, true, false);
+    closeEvent->setTarget(this);
+
+    if (auto* context = scriptExecutionContext())
+        context->eventQueue().enqueueEvent(WTFMove(closeEvent));
 }
 
 void IDBDatabase::maybeCloseInServer()
@@ -272,7 +292,7 @@ void IDBDatabase::maybeCloseInServer()
     // 3.3.9 Database closing steps
     // Wait for all transactions created using this connection to complete.
     // Once they are complete, this connection is closed.
-    if (!m_activeTransactions.isEmpty())
+    if (!m_activeTransactions.isEmpty() || !m_committingTransactions.isEmpty())
         return;
 
     m_closedInServer = true;

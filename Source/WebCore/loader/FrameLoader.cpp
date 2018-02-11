@@ -85,6 +85,7 @@
 #include "MIMETypeRegistry.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
+#include "MemoryRelease.h"
 #include "Page.h"
 #include "PageCache.h"
 #include "PageTransitionEvent.h"
@@ -100,7 +101,6 @@
 #include "SVGDocument.h"
 #include "SVGLocatable.h"
 #include "SVGNames.h"
-#include "SVGPreserveAspectRatio.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "SchemeRegistry.h"
@@ -133,7 +133,6 @@
 
 #if PLATFORM(IOS)
 #include "DocumentType.h"
-#include "MemoryPressureHandler.h"
 #include "ResourceLoader.h"
 #include "RuntimeApplicationChecks.h"
 #include "SystemMemory.h"
@@ -456,13 +455,13 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->setParsing(false);
     }
 
-    if (Document* doc = m_frame.document()) {
+    if (auto* document = m_frame.document()) {
         // FIXME: HTML5 doesn't tell us to set the state to complete when aborting, but we do anyway to match legacy behavior.
         // http://www.w3.org/Bugs/Public/show_bug.cgi?id=10537
-        doc->setReadyState(Document::Complete);
+        document->setReadyState(Document::Complete);
 
         // FIXME: Should the DatabaseManager watch for something like ActiveDOMObject::stop() rather than being special-cased here?
-        DatabaseManager::singleton().stopDatabases(doc, 0);
+        DatabaseManager::singleton().stopDatabases(*document, nullptr);
     }
 
     // FIXME: This will cancel redirection timer, which really needs to be restarted when restoring the frame from b/f cache.
@@ -1775,7 +1774,7 @@ void FrameLoader::commitProvisionalLoad()
         // We are doing this here because we know for sure that a new page is about to be loaded.
         PageCache::singleton().addIfCacheable(*history().currentItem(), m_frame.page());
         
-        MemoryPressureHandler::singleton().jettisonExpensiveObjectsOnTopLevelNavigation();
+        WebCore::jettisonExpensiveObjectsOnTopLevelNavigation();
     }
 
     if (m_loadType != FrameLoadType::Replace)

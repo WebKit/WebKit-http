@@ -177,23 +177,27 @@
             "description": "Removes JavaScript breakpoint."
         },
         {
+            "name": "continueUntilNextRunLoop",
+            "description": "Continues execution until the current evaluation completes. This will trigger either a Debugger.paused or Debugger.resumed event."
+        },
+        {
             "name": "continueToLocation",
+            "description": "Continues execution until specific location is reached. This will trigger either a Debugger.paused or Debugger.resumed event.",
             "parameters": [
                 { "name": "location", "$ref": "Location", "description": "Location to continue to." }
-            ],
-            "description": "Continues execution until specific location is reached."
+            ]
         },
         {
             "name": "stepOver",
-            "description": "Steps over the statement."
+            "description": "Steps over the statement. This will trigger either a Debugger.paused or Debugger.resumed event."
         },
         {
             "name": "stepInto",
-            "description": "Steps into the function call."
+            "description": "Steps into the function call. This will trigger either a Debugger.paused or Debugger.resumed event."
         },
         {
             "name": "stepOut",
-            "description": "Steps out of the function call."
+            "description": "Steps out of the function call. This will trigger either a Debugger.paused or Debugger.resumed event."
         },
         {
             "name": "pause",
@@ -201,7 +205,7 @@
         },
         {
             "name": "resume",
-            "description": "Resumes JavaScript execution."
+            "description": "Resumes JavaScript execution. This will trigger a Debugger.resumed event."
         },
         {
             "name": "searchInContent",

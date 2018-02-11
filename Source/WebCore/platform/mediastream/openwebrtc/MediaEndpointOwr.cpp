@@ -37,6 +37,7 @@
 #include "MediaPayload.h"
 #include "NotImplemented.h"
 #include "OpenWebRTCUtilities.h"
+#include "RTCDataChannelHandler.h"
 #include "RealtimeMediaSourceOwr.h"
 #include <owr/owr.h>
 #include <owr/owr_audio_payload.h>
@@ -92,6 +93,13 @@ MediaEndpointOwr::~MediaEndpointOwr()
 void MediaEndpointOwr::setConfiguration(MediaEndpointConfiguration&& configuration)
 {
     m_configuration = WTFMove(configuration);
+}
+
+std::unique_ptr<RTCDataChannelHandler> MediaEndpointOwr::createDataChannelHandler(const String&, const RTCDataChannelInit&)
+{
+    // FIXME: Implement data channel.
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 static void cryptoDataCallback(gchar* privateKey, gchar* certificate, gchar* fingerprint, gchar* fingerprintFunction, gpointer data)
@@ -161,8 +169,8 @@ MediaPayloadVector MediaEndpointOwr::getDefaultVideoPayloads()
     payload3.type = 120;
     payload3.encodingName = "RTX";
     payload3.clockRate = 90000;
-    payload1.addParameter("apt", 100);
-    payload1.addParameter("rtxTime", 200);
+    payload3.addParameter("apt", 100);
+    payload3.addParameter("rtxTime", 200);
     payloads.append(WTFMove(payload3));
 
     return payloads;

@@ -33,6 +33,7 @@
 #include "IDBConnectionToServer.h"
 #include "IDBCursorInfo.h"
 #include "IDBGetRecordData.h"
+#include "IDBIterateCursorData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBRequestData.h"
@@ -342,10 +343,10 @@ void InProcessIDBServer::openCursor(const IDBRequestData& requestData, const IDB
     });
 }
 
-void InProcessIDBServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count)
+void InProcessIDBServer::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data)
 {
-    RunLoop::current().dispatch([this, protectedThis = makeRef(*this), requestData, key, count] {
-        m_server->iterateCursor(requestData, key, count);
+    RunLoop::current().dispatch([this, protectedThis = makeRef(*this), requestData, data] {
+        m_server->iterateCursor(requestData, data);
     });
 }
 
@@ -381,6 +382,13 @@ void InProcessIDBServer::notifyOpenDBRequestBlocked(const IDBResourceIdentifier&
 {
     RunLoop::current().dispatch([this, protectedThis = makeRef(*this), requestIdentifier, oldVersion, newVersion] {
         m_connectionToServer->notifyOpenDBRequestBlocked(requestIdentifier, oldVersion, newVersion);
+    });
+}
+
+void InProcessIDBServer::databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier)
+{
+    RunLoop::current().dispatch([this, protectedThis = makeRef(*this), databaseConnectionIdentifier] {
+        m_server->databaseConnectionPendingClose(databaseConnectionIdentifier);
     });
 }
 

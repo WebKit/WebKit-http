@@ -36,7 +36,6 @@
 #include "EditorClient.h"
 #include "Event.h"
 #include "EventHandler.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FormatBlockCommand.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -166,9 +165,7 @@ static bool executeInsertFragment(Frame& frame, PassRefPtr<DocumentFragment> fra
 static bool executeInsertNode(Frame& frame, Ref<Node>&& content)
 {
     auto fragment = DocumentFragment::create(*frame.document());
-    ExceptionCode ec = 0;
-    fragment->appendChild(content, ec);
-    if (ec)
+    if (fragment->appendChild(content).hasException())
         return false;
     return executeInsertFragment(frame, WTFMove(fragment));
 }
@@ -230,8 +227,8 @@ static unsigned verticalScrollDistance(Frame& frame)
 
 static RefPtr<Range> unionDOMRanges(Range& a, Range& b)
 {
-    Range& start = a.compareBoundaryPoints(Range::START_TO_START, b, ASSERT_NO_EXCEPTION) <= 0 ? a : b;
-    Range& end = a.compareBoundaryPoints(Range::END_TO_END, b, ASSERT_NO_EXCEPTION) <= 0 ? b : a;
+    Range& start = a.compareBoundaryPoints(Range::START_TO_START, b).releaseReturnValue() <= 0 ? a : b;
+    Range& end = a.compareBoundaryPoints(Range::END_TO_END, b).releaseReturnValue() <= 0 ? b : a;
     return Range::create(a.ownerDocument(), &start.startContainer(), start.startOffset(), &end.endContainer(), end.endOffset());
 }
 

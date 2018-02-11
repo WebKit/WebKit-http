@@ -15,6 +15,7 @@ displaylists [ Skip ]
 editing/mac [ Skip ]
 editing/pasteboard/gtk [ Skip ]
 tiled-drawing [ Skip ]
+fast/visual-viewport/tiled-drawing [ Skip ]
 swipe [ Skip ]
 fast/zooming/ios [ Skip ]
 fast/forms/ios [ Skip ]
@@ -22,6 +23,7 @@ fast/viewport/ios [ Skip ]
 fast/events/ios [ Skip ]
 fast/events/touch/ios [ Skip ]
 fast/scrolling/ios [ Skip ]
+scrollingcoordinator/ios [ Skip ]
 fast/content-observation [ Skip ]
 media/mac [ Skip ]
 media/controls/ipad [ Skip ]
@@ -65,6 +67,9 @@ fast/attachment/attachment-wrapping-action.html
 
 # Only iOS has selection UI drawn by UIKit
 editing/selection/character-granularity-rect.html [ Skip ]
+
+# This test is for ios-simulator-wk1
+editing/input/focus-change-with-marked-text.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -802,9 +807,6 @@ webkit.org/b/94458 http/tests/security/MessagePort/event-listener-context.html [
 ########################################
 ### START OF IndexedDB failures
 
-# Our IDL parser test harness is not what this test expects
-imported/w3c/web-platform-tests/IndexedDB/interfaces.html [ Skip ]
-
 # Times out for unexplored reasons                                                             
 storage/indexeddb/database-quota.html [ Skip ]
 storage/indexeddb/database-quota-private.html [ Skip ]
@@ -846,9 +848,8 @@ storage/indexeddb/deletedatabase-delayed-by-versionchange.html [ Skip ]
 # It's unclear if we need to continue supporting this.
 storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 
-# Completes with passing results, but too slowly for our test timeouts.
-imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
-imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Failure ]
+# In debug builds, runs too slowly for the test timeout.
+[ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
 
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
@@ -970,7 +971,7 @@ webkit.org/b/163706 imported/w3c/csswg-test/css-shapes-1/shape-outside/shape-ima
 imported/blink/http/tests/security/shape-image-cors-disallow-origin.html [ ImageOnlyFailure ]
 imported/blink/http/tests/security/shape-image-cors-port.html [ ImageOnlyFailure ]
 
-webkit.org/b/163636 media/modern-media-controls/media-controller/media-controller-resize.html [ Pass Timeout ]
+webkit.org/b/163636 media/modern-media-controls/media-controller/media-controller-resize.html [ Pass Failure Timeout ]
 
 webkit.org/b/163887 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass Crash ]
 
@@ -983,3 +984,55 @@ webkit.org/b/164229 media/modern-media-controls/volume-support/volume-support-cl
 
 webkit.org/b/164080 http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html [ Pass Failure ]
 webkit.org/b/164080 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Pass Failure ]
+
+# ES6 Modules are not yet enabled by default: ENABLE(ES6_MODULES)
+http/tests/misc/module-absolute-url.html [ Skip ]
+http/tests/misc/module-script-async.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-allowed.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-and-scripthash.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-basic-blocked.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-blocked.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-ignore-unsafeinline.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-enforced-policy-and-not-in-report-only.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-multiple-policies.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-same-origin.html [ Skip ]
+http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect.html [ Skip ]
+http/tests/security/contentSecurityPolicy/module-eval-blocked-in-external-script.html [ Skip ]
+http/tests/security/contentSecurityPolicy/module-eval-blocked.html [ Skip ]
+http/tests/security/module-correct-mime-types.html [ Skip ]
+http/tests/security/module-crossorigin-loads-correctly-credentials.html [ Skip ]
+http/tests/security/module-crossorigin-loads-omit.html [ Skip ]
+http/tests/security/module-crossorigin-loads-same-origin.html [ Skip ]
+http/tests/security/module-incorrect-mime-types.html [ Skip ]
+http/tests/security/module-no-mime-type.html [ Skip ]
+js/dom/modules/module-and-dom-content-loaded.html [ Skip ]
+js/dom/modules/module-and-window-load.html [ Skip ]
+js/dom/modules/module-async-and-window-load.html [ Skip ]
+js/dom/modules/module-document-write-src.html [ Skip ]
+js/dom/modules/module-document-write.html [ Skip ]
+js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html [ Skip ]
+js/dom/modules/module-execution-error-should-be-propagated-to-onerror.html [ Skip ]
+js/dom/modules/module-execution-order-inline.html [ Skip ]
+js/dom/modules/module-execution-order-mixed-with-classic-scripts.html [ Skip ]
+js/dom/modules/module-execution-order-mixed.html [ Skip ]
+js/dom/modules/module-incorrect-relative-specifier.html [ Skip ]
+js/dom/modules/module-incorrect-tag.html [ Skip ]
+js/dom/modules/module-inline-current-script.html [ Skip ]
+js/dom/modules/module-inline-dynamic.html [ Skip ]
+js/dom/modules/module-inline-simple.html [ Skip ]
+js/dom/modules/module-load-event-with-src.html [ Skip ]
+js/dom/modules/module-load-event.html [ Skip ]
+js/dom/modules/module-load-same-module-from-different-entry-point-dynamic.html [ Skip ]
+js/dom/modules/module-load-same-module-from-different-entry-point.html [ Skip ]
+js/dom/modules/module-not-found-error-event-with-src-and-import.html [ Skip ]
+js/dom/modules/module-not-found-error-event-with-src.html [ Skip ]
+js/dom/modules/module-not-found-error-event.html [ Skip ]
+js/dom/modules/module-src-current-script.html [ Skip ]
+js/dom/modules/module-src-dynamic.html [ Skip ]
+js/dom/modules/module-src-simple.html [ Skip ]
+js/dom/modules/module-type-case-insensitive.html [ Skip ]
+js/dom/modules/module-will-fire-beforeload.html [ Skip ]
+webkit.org/b/164539 http/tests/security/module-crossorigin-error-event-information.html [ Failure ]
+webkit.org/b/164539 http/tests/security/module-crossorigin-onerror-information.html [ Failure ]

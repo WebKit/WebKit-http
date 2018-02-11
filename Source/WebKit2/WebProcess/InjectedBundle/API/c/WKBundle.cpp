@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -37,7 +37,7 @@
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
-#include <WebCore/DatabaseManager.h>
+#include <WebCore/DatabaseTracker.h>
 
 using namespace WebCore;
 using namespace WebKit;
@@ -135,6 +135,11 @@ void WKBundleSetAllowFileAccessFromFileURLs(WKBundleRef bundleRef, WKBundlePageG
     toImpl(bundleRef)->setAllowFileAccessFromFileURLs(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetAllowStorageAccessFromFileURLS(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool needsQuirk)
+{
+    toImpl(bundleRef)->setNeedsStorageAccessFromFileURLsQuirk(toImpl(pageGroupRef), needsQuirk);
+}
+
 void WKBundleSetMinimumLogicalFontSize(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, int size)
 {
     toImpl(bundleRef)->setMinimumLogicalFontSize(toImpl(pageGroupRef), size);
@@ -207,14 +212,13 @@ void WKBundleReportException(JSContextRef context, JSValueRef exception)
 
 void WKBundleClearAllDatabases(WKBundleRef)
 {
-    DatabaseManager::singleton().deleteAllDatabasesImmediately();
+    DatabaseTracker::singleton().deleteAllDatabasesImmediately();
 }
 
 void WKBundleSetDatabaseQuota(WKBundleRef bundleRef, uint64_t quota)
 {
-    // Historically, we've used the following (somewhat non-sensical) string
-    // for the databaseIdentifier of local files.
-    DatabaseManager::singleton().setQuota(SecurityOrigin::createFromDatabaseIdentifier("file__0").ptr(), quota);
+    // Historically, we've used the following (somewhat nonsensical) string for the databaseIdentifier of local files.
+    DatabaseTracker::singleton().setQuota(*SecurityOriginData::fromDatabaseIdentifier("file__0"), quota);
 }
 
 WKDataRef WKBundleCreateWKDataFromUInt8Array(WKBundleRef bundle, JSContextRef context, JSValueRef data)
