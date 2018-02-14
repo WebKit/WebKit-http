@@ -96,6 +96,11 @@ private:
     bool m_isLocked;
 };
 
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL&)
+{
+    notImplemented();
+}
+
 void Pasteboard::writeString(const String& type, const String& data)
 {
     if (be_clipboard->Lock()) {

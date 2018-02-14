@@ -2446,7 +2446,6 @@ MediaKeys* HTMLMediaElement::mediaKeys() const
 
 void HTMLMediaElement::setMediaKeys(MediaKeys*, Ref<DeferredPromise>&&)
 {
-    notImplemented();
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA)

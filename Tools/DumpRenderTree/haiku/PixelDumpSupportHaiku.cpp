@@ -44,7 +44,7 @@
 
 extern BWebView* webView;
 
-PassRefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
+RefPtr<BitmapContext> createBitmapContextFromWebView(bool, bool, bool, bool drawSelectionRect)
 {
     BSize size;
     webView->LockLooper();

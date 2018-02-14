@@ -291,7 +291,12 @@ void TestRunner::setAllowFileAccessFromFileURLs(bool flag)
 {
     notImplemented();
 }
- 
+
+void TestRunner::setNeedsStorageAccessFromFileURLsQuirk(bool needsQuirk)
+{
+    notImplemented();
+}
+
 void TestRunner::setAuthorAndUserStylesEnabled(bool flag)
 {
     notImplemented();

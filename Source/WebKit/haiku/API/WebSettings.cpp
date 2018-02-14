@@ -413,7 +413,6 @@ void BWebSettings::_HandleSendIconForURL(BMessage* message)
 
 void BWebSettings::_HandleSetOfflineStoragePath(const BString& path)
 {
-    WebCore::DatabaseTracker::tracker().setDatabaseDirectoryPath(path);
 }
 
 void BWebSettings::_HandleSetOfflineStorageDefaultQuota(int64 maximumSize)

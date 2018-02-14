@@ -32,7 +32,7 @@
 #include <WebCore/page/PageGroup.h>
 #include <WebCore/platform/sql/SQLiteDatabaseTracker.h>
 #include <WebCore/platform/sql/SQLiteStatement.h>
-#include <WebCore/SecurityOriginData.h>
+#include <WebCore/page/SecurityOriginData.h>
 #include <WebCore/page/SecurityOrigin.h>
 #include <WebCore/platform/text/TextEncoding.h>
 #include <wtf/MainThread.h>
