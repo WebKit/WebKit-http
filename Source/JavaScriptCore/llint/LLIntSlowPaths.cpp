@@ -108,7 +108,7 @@ namespace JSC { namespace LLInt {
     } while (false)
 
 #define LLINT_CHECK_EXCEPTION() do {                    \
-        doExceptionFuzzingIfEnabled(exec, "LLIntSlowPaths", pc);    \
+        doExceptionFuzzingIfEnabled(exec, throwScope, "LLIntSlowPaths", pc);    \
         if (UNLIKELY(throwScope.exception())) {         \
             pc = returnToThrow(exec);                   \
             LLINT_END_IMPL();                           \
@@ -169,7 +169,7 @@ namespace JSC { namespace LLInt {
 #define LLINT_CALL_CHECK_EXCEPTION(exec, execCallee) do {               \
         ExecState* __cce_exec = (exec);                                 \
         ExecState* __cce_execCallee = (execCallee);                     \
-        doExceptionFuzzingIfEnabled(__cce_exec, "LLIntSlowPaths/call", nullptr); \
+        doExceptionFuzzingIfEnabled(__cce_exec, throwScope, "LLIntSlowPaths/call", nullptr); \
         if (UNLIKELY(throwScope.exception()))                           \
             LLINT_CALL_END_IMPL(0, callToThrow(__cce_execCallee));      \
     } while (false)
@@ -235,7 +235,7 @@ LLINT_SLOW_PATH_DECL(trace_prologue)
 
 static void traceFunctionPrologue(ExecState* exec, const char* comment, CodeSpecializationKind kind)
 {
-    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
     FunctionExecutable* executable = callee->jsExecutable();
     CodeBlock* codeBlock = executable->codeBlockFor(kind);
     dataLogF("%p / %p: in %s of function %p, executable %p; numVars = %u, numParameters = %u, numCalleeLocals = %u, caller = %p.\n",
@@ -393,22 +393,22 @@ LLINT_SLOW_PATH_DECL(entry_osr)
 
 LLINT_SLOW_PATH_DECL(entry_osr_function_for_call)
 {
-    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->callee())->jsExecutable()->codeBlockForCall(), "entry_osr_function_for_call", Prologue);
+    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->jsCallee())->jsExecutable()->codeBlockForCall(), "entry_osr_function_for_call", Prologue);
 }
 
 LLINT_SLOW_PATH_DECL(entry_osr_function_for_construct)
 {
-    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->callee())->jsExecutable()->codeBlockForConstruct(), "entry_osr_function_for_construct", Prologue);
+    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->jsCallee())->jsExecutable()->codeBlockForConstruct(), "entry_osr_function_for_construct", Prologue);
 }
 
 LLINT_SLOW_PATH_DECL(entry_osr_function_for_call_arityCheck)
 {
-    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->callee())->jsExecutable()->codeBlockForCall(), "entry_osr_function_for_call_arityCheck", ArityCheck);
+    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->jsCallee())->jsExecutable()->codeBlockForCall(), "entry_osr_function_for_call_arityCheck", ArityCheck);
 }
 
 LLINT_SLOW_PATH_DECL(entry_osr_function_for_construct_arityCheck)
 {
-    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->callee())->jsExecutable()->codeBlockForConstruct(), "entry_osr_function_for_construct_arityCheck", ArityCheck);
+    return entryOSR(exec, pc, jsCast<JSFunction*>(exec->jsCallee())->jsExecutable()->codeBlockForConstruct(), "entry_osr_function_for_construct_arityCheck", ArityCheck);
 }
 
 LLINT_SLOW_PATH_DECL(loop_osr)
@@ -814,7 +814,7 @@ static ALWAYS_INLINE JSValue getByVal(VM& vm, ExecState* exec, JSValue baseValue
         uint32_t i = subscript.asUInt32();
         if (isJSString(baseValue) && asString(baseValue)->canGetIndex(i))
             return asString(baseValue)->getIndex(exec, i);
-        
+        scope.release();
         return baseValue.get(exec, i);
     }
 
@@ -822,6 +822,7 @@ static ALWAYS_INLINE JSValue getByVal(VM& vm, ExecState* exec, JSValue baseValue
     RETURN_IF_EXCEPTION(scope, JSValue());
     auto property = subscript.toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, JSValue());
+    scope.release();
     return baseValue.get(exec, property);
 }
 
@@ -892,7 +893,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_by_val_direct)
     if (UNLIKELY(throwScope.exception()))
         LLINT_END();
 
-    if (Optional<uint32_t> index = parseIndex(property))
+    if (std::optional<uint32_t> index = parseIndex(property))
         baseObject->putDirectIndex(exec, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
     else {
         PutPropertySlot slot(baseObject, isStrictMode);
@@ -1306,7 +1307,8 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
 
         CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
         JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(vm, callee, scope, kind, *codeBlockSlot);
-        if (error)
+        ASSERT(throwScope.exception() == error);
+        if (UNLIKELY(error))
             LLINT_CALL_THROW(exec, error);
         codeBlock = *codeBlockSlot;
         ASSERT(codeBlock);
@@ -1446,6 +1448,7 @@ inline SlowPathReturnType varargsSetup(ExecState* exec, Instruction* pc, CodeSpe
     execCallee->uncheckedR(CallFrameSlot::callee) = calleeAsValue;
     exec->setCurrentVPC(pc);
 
+    throwScope.release();
     return setUpCall(execCallee, pc, kind, calleeAsValue);
 }
 
@@ -1479,8 +1482,10 @@ LLINT_SLOW_PATH_DECL(slow_path_call_eval)
     execCallee->setCodeBlock(0);
     exec->setCurrentVPC(pc);
     
-    if (!isHostFunction(calleeAsValue, globalFuncEval))
+    if (!isHostFunction(calleeAsValue, globalFuncEval)) {
+        throwScope.release();
         return setUpCall(execCallee, pc, CodeForCall, calleeAsValue);
+    }
     
     vm.hostCallReturnValue = eval(execCallee);
     LLINT_CALL_RETURN(exec, execCallee, LLInt::getCodePtr(getHostCallReturnValue));
@@ -1585,6 +1590,7 @@ LLINT_SLOW_PATH_DECL(slow_path_put_to_scope)
     }
 
     bool hasProperty = scope->hasProperty(exec, ident);
+    LLINT_CHECK_EXCEPTION();
     if (hasProperty
         && scope->isGlobalLexicalEnvironment()
         && !isInitialization(getPutInfo.initializationMode())) {
@@ -1621,7 +1627,7 @@ LLINT_SLOW_PATH_DECL(slow_path_log_shadow_chicken_prologue)
     LLINT_BEGIN();
     
     JSScope* scope = exec->uncheckedR(pc[1].u.operand).Register::scope();
-    vm.shadowChicken().log(vm, exec, ShadowChicken::Packet::prologue(exec->callee(), exec, exec->callerFrame(), scope));
+    vm.shadowChicken().log(vm, exec, ShadowChicken::Packet::prologue(exec->jsCallee(), exec, exec->callerFrame(), scope));
     
     LLINT_END();
 }

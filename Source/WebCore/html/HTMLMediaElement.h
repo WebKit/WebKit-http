@@ -495,7 +495,7 @@ protected:
     void willDetachRenderers() override;
     void didDetachRenderers() override;
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
     enum DisplayMode { Unknown, None, Poster, PosterWaitingForVideo, Video };
     DisplayMode displayMode() const { return m_displayMode; }
@@ -1023,6 +1023,7 @@ private:
 
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStream> m_mediaStreamSrcObject;
+    bool m_settingMediaStreamSrcObject { false };
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)

@@ -160,6 +160,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)isSpatialNavigationEnabled;
 - (void)setSpatialNavigationEnabled:(BOOL)flag;
 
+- (void)setSubtleCryptoEnabled:(BOOL)flag;
+- (BOOL)subtleCryptoEnabled;
+
 #if !TARGET_OS_IPHONE
 // zero means do AutoScale
 - (float)PDFScaleFactor;
@@ -281,6 +284,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setAllowsPictureInPictureMediaPlayback:(BOOL)flag;
 - (BOOL)allowsPictureInPictureMediaPlayback;
 
+- (void)setPointerLockEnabled:(BOOL)flag;
+- (BOOL)pointerLockEnabled;
+
 - (NSString *)pictographFontFamily;
 - (void)setPictographFontFamily:(NSString *)family;
 
@@ -336,8 +342,8 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)_alwaysRequestGeolocationPermission;
 - (void)_setAlwaysUseAcceleratedOverflowScroll:(BOOL)flag;
 - (BOOL)_alwaysUseAcceleratedOverflowScroll;
-- (void)_setLayoutInterval:(int)l;
-- (int)_layoutInterval;
+- (void)_setLayoutInterval:(int)milliseconds;
+- (int)_layoutInterval; // Milliseonds.
 - (void)_setMaxParseDuration:(float)d;
 - (float)_maxParseDuration;
 - (void)_setInterpolationQuality:(int)quality;
@@ -497,6 +503,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setDownloadAttributeEnabled:(BOOL)flag;
 - (BOOL)downloadAttributeEnabled;
 
+- (void)setES6ModulesEnabled:(BOOL)flag;
+- (BOOL)es6ModulesEnabled;
+
 - (void)setCSSGridLayoutEnabled:(BOOL)flag;
 - (BOOL)isCSSGridLayoutEnabled;
 
@@ -507,11 +516,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)modernMediaControlsEnabled;
 
 @property (nonatomic) BOOL visualViewportEnabled;
-@property (nonatomic) BOOL asyncImageDecodingEnabled;
+@property (nonatomic) BOOL largeImageAsyncDecodingEnabled;
+@property (nonatomic) BOOL animatedImageAsyncDecodingEnabled;
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;
 @property (nonatomic) BOOL attachmentElementEnabled;
 @property (nonatomic) BOOL allowsInlineMediaPlaybackAfterFullscreen;
-
+@property (nonatomic) BOOL intersectionObserverEnabled;
 
 @end

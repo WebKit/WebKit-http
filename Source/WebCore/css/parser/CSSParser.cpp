@@ -58,6 +58,7 @@
 #include "CSSPageRule.h"
 #include "CSSParserFastPaths.h"
 #include "CSSParserImpl.h"
+#include "CSSParserObserver.h"
 #include "CSSPendingSubstitutionValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPrimitiveValueMappings.h"
@@ -69,6 +70,7 @@
 #include "CSSSelectorParser.h"
 #include "CSSShadowValue.h"
 #include "CSSStyleSheet.h"
+#include "CSSSupportsParser.h"
 #include "CSSTimingFunctionValue.h"
 #include "CSSTokenizer.h"
 #include "CSSUnicodeRangeValue.h"
@@ -112,8 +114,8 @@
 #include <limits.h>
 #include <wtf/HexNumber.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -391,6 +393,11 @@ void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, cons
     m_logErrors = false;
 }
 
+void CSSParser::parseSheetForInspector(const CSSParserContext& context, StyleSheetContents* sheet, const String& string, CSSParserObserver& observer)
+{
+    return CSSParserImpl::parseStyleSheetForInspector(string, context, sheet, observer);
+}
+
 RefPtr<StyleRuleBase> CSSParser::parseRule(StyleSheetContents* sheet, const String& string)
 {
     if (m_context.useNewParser && m_context.mode != UASheetMode)
@@ -404,18 +411,30 @@ RefPtr<StyleRuleBase> CSSParser::parseRule(StyleSheetContents* sheet, const Stri
 
 RefPtr<StyleKeyframe> CSSParser::parseKeyframeRule(StyleSheetContents* sheet, const String& string)
 {
+    if (m_context.useNewParser && m_context.mode != UASheetMode) {
+        RefPtr<StyleRuleBase> keyframe = CSSParserImpl::parseRule(string, m_context, nullptr, CSSParserImpl::KeyframeRules);
+        return downcast<StyleKeyframe>(keyframe.get());
+    }
+
     setStyleSheet(sheet);
     setupParser("@-webkit-keyframe-rule{ ", string, "} ");
     cssyyparse(this);
     return m_keyframe;
 }
 
-bool CSSParser::parseSupportsCondition(const String& string)
+bool CSSParser::parseSupportsCondition(const String& condition)
 {
+    if (m_context.useNewParser && m_context.mode != UASheetMode) {
+        CSSTokenizer::Scope scope(condition);
+        CSSParserTokenRange range = scope.tokenRange();
+        CSSParserImpl parser(strictCSSParserContext());
+        return CSSSupportsParser::supportsCondition(range, parser) == CSSSupportsParser::Supported;
+    }
+
     m_supportsCondition = false;
     // can't use { because tokenizer state switches from supports to initial state when it sees { token.
     // instead insert one " " (which is WHITESPACE in CSSGrammar.y)
-    setupParser("@-webkit-supports-condition ", string, "} ");
+    setupParser("@-webkit-supports-condition ", condition, "} ");
     cssyyparse(this);
     return m_supportsCondition;
 }
@@ -1038,8 +1057,8 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueWhite || valueID == CSSValueWhiteOutline || valueID == CSSValueBlack)
             return true;
         break;
-    case CSSPropertyApplePayButtonType: // plain | buy | set-up | other
-        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp || valueID == CSSValueOther)
+    case CSSPropertyApplePayButtonType: // plain | buy | set-up | donate
+        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp || valueID == CSSValueDonate)
             return true;
         break;
 #endif
@@ -1440,11 +1459,13 @@ Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const Strin
     if (context.useNewParser)
         return CSSParserImpl::parseInlineStyleDeclaration(string, element);
 
-    return CSSParser(context).parseDeclaration(string, nullptr);
+    return CSSParser(context).parseDeclarationDeprecated(string, nullptr);
 }
 
-Ref<ImmutableStyleProperties> CSSParser::parseDeclaration(const String& string, StyleSheetContents* contextStyleSheet)
+Ref<ImmutableStyleProperties> CSSParser::parseDeclarationDeprecated(const String& string, StyleSheetContents* contextStyleSheet)
 {
+    ASSERT(!m_context.useNewParser);
+    
     setStyleSheet(contextStyleSheet);
 
     setupParser("@-webkit-decls{", string, "} ");
@@ -1459,6 +1480,9 @@ Ref<ImmutableStyleProperties> CSSParser::parseDeclaration(const String& string, 
 
 bool CSSParser::parseDeclaration(MutableStyleProperties& declaration, const String& string, RefPtr<CSSRuleSourceData>&& ruleSourceData, StyleSheetContents* contextStyleSheet)
 {
+    if (m_context.useNewParser && m_context.mode != UASheetMode)
+        return CSSParserImpl::parseDeclarationList(&declaration, string, m_context);
+
     // Length of the "@-webkit-decls{" prefix.
     static const unsigned prefixLength = 15;
 
@@ -1497,19 +1521,9 @@ bool CSSParser::parseDeclaration(MutableStyleProperties& declaration, const Stri
     return ok;
 }
 
-std::unique_ptr<MediaQuery> CSSParser::parseMediaQuery(const String& string)
+void CSSParser::parseDeclarationForInspector(const CSSParserContext& context, const String& string, CSSParserObserver& observer)
 {
-    if (string.isEmpty())
-        return nullptr;
-
-    ASSERT(!m_mediaQuery);
-
-    // can't use { because tokenizer state switches from mediaquery to initial state when it sees { token.
-    // instead insert one " " (which is WHITESPACE in CSSGrammar.y)
-    setupParser("@-webkit-mediaquery ", string, "} ");
-    cssyyparse(this);
-
-    return WTFMove(m_mediaQuery);
+    CSSParserImpl::parseDeclarationListForInspector(string, context, observer);
 }
 
 static inline void filterProperties(bool important, const ParsedPropertyVector& input, Vector<CSSProperty, 256>& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
@@ -1806,6 +1820,7 @@ void CSSParser::addExpandedPropertyForValue(CSSPropertyID propId, Ref<CSSValue>&
 
 RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propID, const CSSValue& value, const CustomPropertyValueMap& customProperties, TextDirection direction, WritingMode writingMode)
 {
+    // FIXME-NEWPARSER: Remove this block when old parser goes away.
     if (value.isVariableDependentValue()) {
         const CSSVariableDependentValue& dependentValue = downcast<CSSVariableDependentValue>(value);
         m_valueList.reset(new CSSParserValueList());
@@ -1843,7 +1858,7 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
             return nullptr;
         
         ParsedPropertyVector parsedProperties;
-        if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedTokens, m_context, parsedProperties, StyleRule::Style))
+        if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedTokens, m_context, nullptr, parsedProperties, StyleRule::Style))
             return nullptr;
         
         for (auto& property : parsedProperties) {
@@ -1863,7 +1878,7 @@ RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propI
         if (!variableData->resolveTokenRange(customProperties, variableData->tokens(), resolvedTokens))
             return nullptr;
         
-        return CSSPropertyParser::parseSingleValue(propID, resolvedTokens, m_context);
+        return CSSPropertyParser::parseSingleValue(propID, resolvedTokens, m_context, nullptr);
     }
     
     return nullptr;
@@ -3416,7 +3431,7 @@ bool CSSParser::parseFillShorthand(CSSPropertyID propId, const CSSPropertyID* pr
         return false;
 
     ShorthandScope scope(this, propId);
-    TemporaryChange<bool> change(m_implicitShorthand);
+    SetForScope<bool> change(m_implicitShorthand);
 
     bool parsedProperty[cMaxFillProperties] = { false };
     RefPtr<CSSValue> values[cMaxFillProperties];
@@ -3812,7 +3827,7 @@ bool CSSParser::parseShorthand(CSSPropertyID propId, const StylePropertyShorthan
 
     // Fill in any remaining properties with the initial value.
     auto& cssValuePool = CSSValuePool::singleton();
-    TemporaryChange<bool> change(m_implicitShorthand, true);
+    SetForScope<bool> change(m_implicitShorthand, true);
     const StylePropertyShorthand* propertiesForInitialization = shorthand.propertiesForInitialization();
     for (unsigned i = 0; i < shorthand.length(); ++i) {
         if (propertyFound[i])
@@ -3849,7 +3864,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important))
                 return false;
             CSSValue* value = m_parsedProperties.last().value();
-            TemporaryChange<bool> change(m_implicitShorthand, true);
+            SetForScope<bool> change(m_implicitShorthand, true);
             addProperty(properties[1], value, important);
             addProperty(properties[2], value, important);
             addProperty(properties[3], value, important);
@@ -3859,7 +3874,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important) || !parseValue(properties[1], important))
                 return false;
             CSSValue* value = m_parsedProperties[m_parsedProperties.size() - 2].value();
-            TemporaryChange<bool> change(m_implicitShorthand, true);
+            SetForScope<bool> change(m_implicitShorthand, true);
             addProperty(properties[2], value, important);
             value = m_parsedProperties[m_parsedProperties.size() - 2].value();
             addProperty(properties[3], value, important);
@@ -3869,7 +3884,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important) || !parseValue(properties[1], important) || !parseValue(properties[2], important))
                 return false;
             CSSValue* value = m_parsedProperties[m_parsedProperties.size() - 2].value();
-            TemporaryChange<bool> change(m_implicitShorthand, true);
+            SetForScope<bool> change(m_implicitShorthand, true);
             addProperty(properties[3], value, important);
             break;
         }
@@ -4943,34 +4958,9 @@ RefPtr<CSSPrimitiveValue> CSSParser::parseAnimationProperty(AnimationParseContex
 }
 
 /* static */
-Vector<double> CSSParser::parseKeyframeSelector(const String& selector) {
-    Vector<double> keys;
-    Vector<String> strings;
-    selector.split(',', strings);
-
-    keys.reserveInitialCapacity(strings.size());
-    for (size_t i = 0; i < strings.size(); ++i) {
-        double key = -1;
-        String cur = strings[i].stripWhiteSpace();
-
-        // For now the syntax MUST be 'xxx%' or 'from' or 'to', where xxx is a legal floating point number
-        if (equalLettersIgnoringASCIICase(cur, "from"))
-            key = 0;
-        else if (equalLettersIgnoringASCIICase(cur, "to"))
-            key = 1;
-        else if (cur.endsWith('%')) {
-            double k = cur.substring(0, cur.length() - 1).toDouble();
-            if (k >= 0 && k <= 100)
-                key = k / 100;
-        }
-        if (key < 0) {
-            keys.clear();
-            break;
-        }
-        keys.uncheckedAppend(key);
-    }
-
-    return keys;
+std::unique_ptr<Vector<double>> CSSParser::parseKeyframeKeyList(const String& selector)
+{
+    return CSSParserImpl::parseKeyframeKeyList(selector);
 }
 
 bool CSSParser::parseTransformOriginShorthand(RefPtr<CSSPrimitiveValue>& value1, RefPtr<CSSPrimitiveValue>& value2, RefPtr<CSSValue>& value3)
@@ -4996,29 +4986,29 @@ bool CSSParser::isSpringTimingFunctionEnabled() const
     return m_context.springTimingFunctionEnabled;
 }
 
-Optional<double> CSSParser::parseCubicBezierTimingFunctionValue(CSSParserValueList& args)
+std::optional<double> CSSParser::parseCubicBezierTimingFunctionValue(CSSParserValueList& args)
 {
     ValueWithCalculation argumentWithCalculation(*args.current());
     if (!validateUnit(argumentWithCalculation, FNumber))
-        return Nullopt;
-    Optional<double> result = parsedDouble(argumentWithCalculation);
+        return std::nullopt;
+    std::optional<double> result = parsedDouble(argumentWithCalculation);
     CSSParserValue* nextValue = args.next();
     if (!nextValue) {
         // The last number in the function has no comma after it, so we're done.
         return result;
     }
     if (!isComma(nextValue))
-        return Nullopt;
+        return std::nullopt;
     args.next();
     return result;
 }
 
-Optional<double> CSSParser::parseSpringTimingFunctionValue(CSSParserValueList& args)
+std::optional<double> CSSParser::parseSpringTimingFunctionValue(CSSParserValueList& args)
 {
     ValueWithCalculation argumentWithCalculation(*args.current());
     if (!validateUnit(argumentWithCalculation, FNumber))
-        return Nullopt;
-    Optional<double> result = parsedDouble(argumentWithCalculation);
+        return std::nullopt;
+    std::optional<double> result = parsedDouble(argumentWithCalculation);
     args.next();
     return result;
 }
@@ -7682,11 +7672,11 @@ bool CSSParser::parseRGBParameters(CSSParserValue& value, int* colorArray, bool 
     return true;
 }
 
-Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunctionParameters(CSSParserValue& value)
+std::optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunctionParameters(CSSParserValue& value)
 {
     CSSParserValueList* args = value.function->args.get();
     if (!args->size())
-        return Nullopt;
+        return std::nullopt;
 
     ColorSpace colorSpace;
     switch (args->current()->id) {
@@ -7697,7 +7687,7 @@ Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunc
         colorSpace = ColorSpaceDisplayP3;
         break;
     default:
-        return Nullopt;
+        return std::nullopt;
     }
 
     std::array<double, 4> colorValues = { { 0, 0, 0, 1 } };
@@ -7707,7 +7697,7 @@ Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunc
         if (valueOrNull) {
             ValueWithCalculation argumentWithCalculation(*valueOrNull);
             if (!validateUnit(argumentWithCalculation, FNumber))
-                return Nullopt;
+                return std::nullopt;
             colorValues[i] = std::max(0.0, std::min(1.0, parsedDouble(argumentWithCalculation)));
         }
     }
@@ -7717,13 +7707,13 @@ Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunc
         return { { colorValues, colorSpace } };
 
     if (!isForwardSlashOperator(*slashOrNull))
-        return Nullopt;
+        return std::nullopt;
 
     // Handle alpha.
 
     ValueWithCalculation argumentWithCalculation(*args->next());
     if (!validateUnit(argumentWithCalculation, FNumber | FPercent))
-        return Nullopt;
+        return std::nullopt;
     colorValues[3] = std::max(0.0, std::min(1.0, parseColorDouble(argumentWithCalculation)));
 
     // FIXME: Support the comma-separated list of fallback color values.
@@ -7731,7 +7721,7 @@ Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunc
 
     auto commaOrNull = args->next();
     if (commaOrNull && !isComma(commaOrNull))
-        return Nullopt;
+        return std::nullopt;
 
     return { { colorValues, colorSpace } };
 }
@@ -7825,7 +7815,7 @@ Color CSSParser::parseColorFromValue(CSSParserValue& value)
     } else if (value.unit == CSSParserValue::Function
         && value.function->args
         && equalLettersIgnoringASCIICase(value.function->name, "color(")) {
-        Optional<std::pair<std::array<double, 4>, ColorSpace>> colorData = parseColorFunctionParameters(value);
+        std::optional<std::pair<std::array<double, 4>, ColorSpace>> colorData = parseColorFunctionParameters(value);
         if (!colorData)
             return Color();
         return Color(colorData.value().first[0], colorData.value().first[1], colorData.value().first[2], colorData.value().first[3], colorData.value().second);
@@ -7908,9 +7898,9 @@ struct ShadowParseContext {
         }
     }
 
-    void commitColor(RefPtr<CSSPrimitiveValue>&& val)
+    void commitColor(Ref<CSSPrimitiveValue>&& value)
     {
-        color = val;
+        color = WTFMove(value);
         allowColor = false;
         if (allowX) {
             allowStyle = false;
@@ -8624,7 +8614,7 @@ bool CSSParser::parseBorderRadius(CSSPropertyID propId, bool important)
     } else
         completeBorderRadii(radii[1]);
 
-    TemporaryChange<bool> change(m_implicitShorthand, true);
+    SetForScope<bool> change(m_implicitShorthand, true);
     addProperty(CSSPropertyBorderTopLeftRadius, createPrimitiveValuePair(WTFMove(radii[0][0]), WTFMove(radii[1][0])), important);
     addProperty(CSSPropertyBorderTopRightRadius, createPrimitiveValuePair(WTFMove(radii[0][1]), WTFMove(radii[1][1])), important);
     addProperty(CSSPropertyBorderBottomRightRadius, createPrimitiveValuePair(WTFMove(radii[0][2]), WTFMove(radii[1][2])), important);
@@ -12947,7 +12937,7 @@ void CSSParser::markSupportsRuleHeaderStart()
     if (!m_supportsRuleDataStack)
         m_supportsRuleDataStack = std::make_unique<RuleSourceDataList>();
 
-    auto data = CSSRuleSourceData::create(CSSRuleSourceData::SUPPORTS_RULE);
+    auto data = CSSRuleSourceData::create(StyleRule::Supports);
     data->ruleHeaderRange.start = tokenStartOffset();
     m_supportsRuleDataStack->append(WTFMove(data));
 }
@@ -13347,7 +13337,7 @@ void CSSParser::fixUnparsedPropertyRanges(CSSRuleSourceData& ruleData)
     fixUnparsedProperties<UChar>(m_dataStart16.get() + m_parsedTextPrefixLength, ruleData);
 }
 
-void CSSParser::markRuleHeaderStart(CSSRuleSourceData::Type ruleType)
+void CSSParser::markRuleHeaderStart(StyleRule::Type ruleType)
 {
     if (!isExtractingSourceData())
         return;
@@ -13472,7 +13462,7 @@ void CSSParser::markPropertyEnd(bool isImportantFound, bool isPropertyParsed)
         // The property range is relative to the declaration start offset.
         SourceRange& topRuleBodyRange = m_currentRuleDataStack->last()->ruleBodyRange;
         m_currentRuleDataStack->last()->styleSourceData->propertyData.append(
-            CSSPropertySourceData(name, value, isImportantFound, isPropertyParsed, SourceRange(start - topRuleBodyRange.start, end - topRuleBodyRange.start)));
+            CSSPropertySourceData(name, value, isImportantFound, false, isPropertyParsed, SourceRange(start - topRuleBodyRange.start, end - topRuleBodyRange.start)));
     }
     resetPropertyRange();
 }

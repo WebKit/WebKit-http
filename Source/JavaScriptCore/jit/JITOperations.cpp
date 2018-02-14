@@ -571,7 +571,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
     auto property = subscript.toPropertyKey(callFrame);
     RETURN_IF_EXCEPTION(scope, void());
 
-    if (Optional<uint32_t> index = parseIndex(property)) {
+    if (std::optional<uint32_t> index = parseIndex(property)) {
         byValInfo->tookSlowPath = true;
         baseObject->putDirectIndex(callFrame, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
         return;
@@ -2271,9 +2271,11 @@ void JIT_OPERATION operationExceptionFuzz(ExecState* exec)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+    UNUSED_PARAM(scope);
 #if COMPILER(GCC_OR_CLANG)
     void* returnPC = __builtin_return_address(0);
-    doExceptionFuzzing(exec, "JITOperations", returnPC);
+    doExceptionFuzzing(exec, scope, "JITOperations", returnPC);
 #endif // COMPILER(GCC_OR_CLANG)
 }
 

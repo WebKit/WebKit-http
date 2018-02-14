@@ -217,7 +217,7 @@ CSSSelectorList CSSParserImpl::parsePageSelector(CSSParserTokenRange range, Styl
         selector = std::unique_ptr<CSSParserSelector>(new CSSParserSelector);
         if (!pseudo.isNull()) {
             selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePagePseudoSelector(pseudo));
-            if (!selector || selector->match() != CSSSelector::PseudoElement || selector->pseudoElementType() == CSSSelector::PseudoElementUnknown)
+            if (!selector || selector->match() != CSSSelector::PagePseudoClass)
                 return CSSSelectorList();
         }
         if (!typeSelector.isNull())
@@ -799,7 +799,7 @@ void CSSParserImpl::consumeVariableValue(CSSParserTokenRange range, const Atomic
 
 void CSSParserImpl::consumeDeclarationValue(CSSParserTokenRange range, CSSPropertyID propertyID, bool important, StyleRule::Type ruleType)
 {
-    CSSPropertyParser::parseValue(propertyID, important, range, m_context, m_parsedProperties, ruleType);
+    CSSPropertyParser::parseValue(propertyID, important, range, m_context, m_styleSheet.get(), m_parsedProperties, ruleType);
 }
 
 std::unique_ptr<Vector<double>> CSSParserImpl::consumeKeyframeKeyList(CSSParserTokenRange range)

@@ -216,6 +216,16 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     if (preference == "WebKitModernMediaControlsEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(enabled);
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    if (preference == "WebKitEncryptedMediaAPIEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setEncryptedMediaAPIEnabled(enabled);
+#endif
+
+#if ENABLE(SUBTLE_CRYPTO)
+    if (preference == "WebKitSubtleCryptoEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setSubtleCryptoEnabled(enabled);
+#endif
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
@@ -237,7 +247,9 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled) \
     macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled) \
     macro(WebKitVisualViewportEnabled, VisualViewportEnabled, visualViewportEnabled) \
-    macro(WebKitAsyncImageDecodingEnabled, AsyncImageDecodingEnabled, asyncImageDecodingEnabled) \
+    macro(WebKitLargeImageAsyncDecodingEnabled, LargeImageAsyncDecodingEnabled, largeImageAsyncDecodingEnabled) \
+    macro(WebKitAnimatedImageAsyncDecodingEnabled, AnimatedImageAsyncDecodingEnabled, animatedImageAsyncDecodingEnabled) \
+    macro(WebKitES6ModulesEnabled, Es6ModulesEnabled, es6ModulesEnabled) \
     \
 
 #define OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES(TestRunnerName, SettingsName, WebPreferencesName) \

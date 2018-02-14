@@ -96,6 +96,8 @@ StyleResolver& Scope::resolver()
         m_resolver = std::make_unique<StyleResolver>(m_document);
         m_resolver->appendAuthorStyleSheets(m_activeStyleSheets);
     }
+    ASSERT(!m_shadowRoot || &m_document == &m_shadowRoot->document());
+    ASSERT(&m_resolver->document() == &m_document);
     return *m_resolver;
 }
 
@@ -147,12 +149,6 @@ void Scope::removePendingSheet(RemovePendingSheetNotificationType notification)
     ASSERT(m_pendingStyleSheetCount > 0);
 
     m_pendingStyleSheetCount--;
-    
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Stylesheet loaded at time %d. %d stylesheets still remain.\n", elapsedTime(), m_pendingStylesheets);
-#endif
-
     if (m_pendingStyleSheetCount)
         return;
 

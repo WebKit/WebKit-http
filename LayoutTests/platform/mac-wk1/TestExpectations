@@ -93,6 +93,17 @@ fast/mediastream
 http/tests/media/media-stream
 http/tests/ssl/media-stream
 
+# These tests test the Shadow DOM based HTML form validation UI but Mac WK1 is using native dialogs instead.
+fast/forms/validation-message-on-listbox.html
+fast/forms/validation-message-on-menulist.html
+fast/forms/validation-message-on-radio.html
+fast/forms/validation-message-on-checkbox.html
+fast/forms/validation-message-on-range.html
+fast/forms/validation-message-clone.html
+fast/forms/validation-message-in-relative-body.html
+fast/forms/validation-message-appearance.html
+fast/forms/validation-message-on-textarea.html
+
 # Disable snapshotting tests on WK1 only
 plugins/snapshotting
 
@@ -243,10 +254,6 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
 
-# We do not support the new HTML validation UI on WebKit1 yet (rdar://problem/28944652).
-fast/forms/validation-custom-message.html [ Skip ]
-fast/forms/validation-messages.html [ Skip ]
-
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 
 webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Pass Failure ]
@@ -275,6 +282,10 @@ webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 webkit.org/b/161360 [ Release ] imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin.html [ Pass Failure ]
 
 webkit.org/b/163598 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Failure ]
+webkit.org/b/165318 media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html [ Pass Timeout ]
+webkit.org/b/165258 media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html [ Failure ]
+webkit.org/b/165262 media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-keyboard.html [ Failure ]
+webkit.org/b/165319 media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html [ Pass Timeout ]
 
 webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-exception.html [ Pass Failure ]
 webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
@@ -284,4 +295,6 @@ webkit.org/b/163750 compositing/iframes/page-cache-layer-tree.html [ Pass Failur
 
 webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
-webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Pass Crash ]
+webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Pass Crash Failure ]
+
+webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]

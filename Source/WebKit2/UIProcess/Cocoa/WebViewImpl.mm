@@ -97,7 +97,7 @@
 #import <WebKitSystemInterface.h>
 #import <sys/stat.h>
 #import <wtf/NeverDestroyed.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/SetForScope.h>
 
 #if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 SOFT_LINK_FRAMEWORK(AVKit)
@@ -122,6 +122,44 @@ SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 - (BOOL)handleEventByKeyboardLayout:(NSEvent *)event;
 @end
 
+@interface WKAccessibilitySettingsObserver : NSObject {
+    WebKit::WebViewImpl *_impl;
+}
+
+- (instancetype)initWithImpl:(WebKit::WebViewImpl&)impl;
+@end
+
+@implementation WKAccessibilitySettingsObserver
+
+- (instancetype)initWithImpl:(WebKit::WebViewImpl&)impl
+{
+    self = [super init];
+    if (!self)
+        return nil;
+
+    _impl = &impl;
+
+    NSNotificationCenter* workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
+    [workspaceNotificationCenter addObserver:self selector:@selector(_settingsDidChange:) name:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:nil];
+
+    return self;
+}
+
+- (void)dealloc
+{
+    NSNotificationCenter *workspaceNotificationCenter = [[NSWorkspace sharedWorkspace] notificationCenter];
+    [workspaceNotificationCenter removeObserver:self name:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:nil];
+
+    [super dealloc];
+}
+
+- (void)_settingsDidChange:(NSNotification *)notification
+{
+    _impl->accessibilitySettingsDidChange();
+}
+
+@end
+
 @interface WKWindowVisibilityObserver : NSObject {
     NSView *_view;
     WebKit::WebViewImpl *_impl;
@@ -133,7 +171,6 @@ SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 - (void)startObservingFontPanel;
 - (void)startObservingLookupDismissal;
 @end
-
 
 @implementation WKWindowVisibilityObserver
 
@@ -986,7 +1023,7 @@ void WebViewImpl::updateTextTouchBar()
     if (m_isUpdatingTextTouchBar)
         return;
 
-    TemporaryChange<bool> isUpdatingTextFunctionBar(m_isUpdatingTextTouchBar, true);
+    SetForScope<bool> isUpdatingTextFunctionBar(m_isUpdatingTextTouchBar, true);
 
     if (!m_textTouchBarItemController)
         m_textTouchBarItemController = adoptNS([[WKTextTouchBarItemController alloc] initWithWebViewImpl:this]);
@@ -1056,7 +1093,7 @@ void WebViewImpl::updateTextTouchBar()
 
 void WebViewImpl::updateMediaTouchBar()
 {
-#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER) && ENABLE(VIDEO_PRESENTATION_MODE)
     if (!m_mediaTouchBarProvider)
         m_mediaTouchBarProvider = adoptNS([allocAVFunctionBarPlaybackControlsProviderInstance() init]);
 
@@ -1180,6 +1217,7 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
     , m_layoutStrategy([WKViewLayoutStrategy layoutStrategyWithPage:m_page view:m_view viewImpl:*this mode:kWKLayoutModeViewSize])
     , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
     , m_windowVisibilityObserver(adoptNS([[WKWindowVisibilityObserver alloc] initWithView:view impl:*this]))
+    , m_accessibilitySettingsObserver(adoptNS([[WKAccessibilitySettingsObserver alloc] initWithImpl:*this]))
     , m_primaryTrackingArea(adoptNS([[NSTrackingArea alloc] initWithRect:m_view.frame options:trackingAreaOptions() owner:m_view userInfo:nil]))
 {
     static_cast<PageClientImpl&>(*m_pageClient).setImpl(*this);
@@ -1595,7 +1633,7 @@ void WebViewImpl::updateViewExposedRect()
         exposedRect = CGRectUnion(m_contentPreparationRect, exposedRect);
 
     if (auto drawingArea = m_page->drawingArea())
-        drawingArea->setViewExposedRect(m_clipsToVisibleRect ? Optional<WebCore::FloatRect>(exposedRect) : Nullopt);
+        drawingArea->setViewExposedRect(m_clipsToVisibleRect ? std::optional<WebCore::FloatRect>(exposedRect) : std::nullopt);
 }
 
 void WebViewImpl::setClipsToVisibleRect(bool clipsToVisibleRect)
@@ -1839,6 +1877,11 @@ bool WebViewImpl::mightBeginScrollWhileInactive()
     return false;
 }
 
+void WebViewImpl::accessibilitySettingsDidChange()
+{
+    m_page->accessibilitySettingsDidChange();
+}
+
 bool WebViewImpl::acceptsFirstMouse(NSEvent *event)
 {
     if (!mightBeginDragWhileInactive() && !mightBeginScrollWhileInactive())
@@ -2039,12 +2082,12 @@ NSColor *WebViewImpl::pageExtendedBackgroundColor() const
     return WebCore::nsColor(color);
 }
 
-void WebViewImpl::setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle)
+void WebViewImpl::setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle)
 {
     m_page->setOverlayScrollbarStyle(scrollbarStyle);
 }
 
-WTF::Optional<WebCore::ScrollbarOverlayStyle> WebViewImpl::overlayScrollbarStyle() const
+std::optional<WebCore::ScrollbarOverlayStyle> WebViewImpl::overlayScrollbarStyle() const
 {
     return m_page->overlayScrollbarStyle();
 }

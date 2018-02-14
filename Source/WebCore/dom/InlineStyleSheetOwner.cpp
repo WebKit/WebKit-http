@@ -56,7 +56,7 @@ static CSSParserContext parserContextForElement(const Element& element)
     return result;
 }
 
-static Optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
+static std::optional<InlineStyleSheetCacheKey> makeInlineStyleSheetCacheKey(const String& text, const Element& element)
 {
     // Only cache for shadow trees. Main document inline stylesheets are generally unique and can't be shared between documents.
     // FIXME: This could be relaxed when a stylesheet does not contain document-relative URLs (or #urls).
@@ -170,11 +170,7 @@ void InlineStyleSheetOwner::createSheet(Element& element, const String& text)
     if (!contentSecurityPolicy.allowInlineStyle(document.url(), m_startTextPosition.m_line, text, hasKnownNonce))
         return;
 
-    RefPtr<MediaQuerySet> mediaQueries;
-    if (element.isHTMLElement())
-        mediaQueries = MediaQuerySet::createAllowingDescriptionSyntax(m_media);
-    else
-        mediaQueries = MediaQuerySet::create(m_media);
+    RefPtr<MediaQuerySet> mediaQueries = MediaQuerySet::create(m_media);
 
     MediaQueryEvaluator screenEval(ASCIILiteral("screen"), true);
     MediaQueryEvaluator printEval(ASCIILiteral("print"), true);

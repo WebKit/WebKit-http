@@ -111,6 +111,7 @@
 #import "WebUIDelegate.h"
 #import "WebUIDelegatePrivate.h"
 #import "WebUserMediaClient.h"
+#import "WebValidationMessageClient.h"
 #import "WebViewGroup.h"
 #import "WebVisitedLinkStore.h"
 #import <CoreFoundation/CFSet.h>
@@ -118,7 +119,6 @@
 #import <JavaScriptCore/APICast.h>
 #import <JavaScriptCore/Exception.h>
 #import <JavaScriptCore/JSValueRef.h>
-#import <WebCore/AVKitSPI.h>
 #import <WebCore/AlternativeTextUIController.h>
 #import <WebCore/AnimationController.h>
 #import <WebCore/ApplicationCacheStorage.h>
@@ -195,6 +195,7 @@
 #import <WebCore/UserContentController.h>
 #import <WebCore/UserScript.h>
 #import <WebCore/UserStyleSheet.h>
+#import <WebCore/ValidationBubble.h>
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
@@ -219,8 +220,8 @@
 #import <wtf/RefCountedLeakCounter.h>
 #import <wtf/RefPtr.h>
 #import <wtf/RunLoop.h>
+#import <wtf/SetForScope.h>
 #import <wtf/StdLibExtras.h>
-#import <wtf/TemporaryChange.h>
 #import <wtf/spi/darwin/dyldSPI.h>
 
 #if !PLATFORM(IOS)
@@ -232,6 +233,7 @@
 #import "WebNSPasteboardExtras.h"
 #import "WebNSPrintOperationExtras.h"
 #import "WebPDFView.h"
+#import <WebCore/AVKitSPI.h>
 #import <WebCore/LookupSPI.h>
 #import <WebCore/NSImmediateActionGestureRecognizerSPI.h>
 #import <WebCore/SoftLinking.h>
@@ -1311,6 +1313,8 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #if !PLATFORM(IOS)
     pageConfiguration.chromeClient = new WebChromeClient(self);
     pageConfiguration.contextMenuClient = new WebContextMenuClient(self);
+    // FIXME: We should enable this on iOS as well.
+    pageConfiguration.validationMessageClient = std::make_unique<WebValidationMessageClient>(self);
 #if ENABLE(DRAG_SUPPORT)
     pageConfiguration.dragClient = new WebDragClient(self);
 #endif
@@ -1960,6 +1964,8 @@ static NSMutableSet *knownPluginMIMETypes()
     if (_private->mainViewIsScrollingOrZooming)
         return;
     _private->mainViewIsScrollingOrZooming = YES;
+
+    [self hideFormValidationMessage];
 
     // This suspends active DOM objects like timers, but not media.
     [[self mainFrame] setTimeoutsPaused:YES];
@@ -2643,7 +2649,11 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setJavaScriptCanAccessClipboard([preferences javaScriptCanAccessClipboard]);
     settings.setXSSAuditorEnabled([preferences isXSSAuditorEnabled]);
     settings.setDNSPrefetchingEnabled([preferences isDNSPrefetchingEnabled]);
-    
+
+#if ENABLE(POINTER_LOCK)
+    settings.setPointerLockEnabled([preferences pointerLockEnabled]);
+#endif
+
     settings.setAcceleratedCompositingEnabled([preferences acceleratedCompositingEnabled]);
     settings.setAcceleratedDrawingEnabled([preferences acceleratedDrawingEnabled]);
     settings.setDisplayListDrawingEnabled([preferences displayListDrawingEnabled]);
@@ -2732,7 +2742,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setStandalone([preferences _standalone]);
     settings.setTelephoneNumberParsingEnabled([preferences _telephoneNumberParsingEnabled]);
     settings.setAllowMultiElementImplicitSubmission([preferences _allowMultiElementImplicitFormSubmission]);
-    settings.setLayoutInterval(std::chrono::milliseconds([preferences _layoutInterval]));
+    settings.setLayoutInterval(Seconds::fromMilliseconds([preferences _layoutInterval]));
     settings.setMaxParseDuration([preferences _maxParseDuration]);
     settings.setAlwaysUseAcceleratedOverflowScroll([preferences _alwaysUseAcceleratedOverflowScroll]);
     settings.setAudioSessionCategoryOverride([preferences audioSessionCategoryOverride]);
@@ -2848,12 +2858,22 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setDownloadAttributeEnabled([preferences downloadAttributeEnabled]);
 #endif
 
+    settings.setEs6ModulesEnabled([preferences es6ModulesEnabled]);
+
 #if ENABLE(CSS_GRID_LAYOUT)
     RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled([preferences isCSSGridLayoutEnabled]);
 #endif
 
 #if ENABLE(WEB_ANIMATIONS)
     RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled([preferences webAnimationsEnabled]);
+#endif
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    RuntimeEnabledFeatures::sharedFeatures().setIntersectionObserverEnabled(preferences.intersectionObserverEnabled);
+#endif
+
+#if ENABLE(SUBTLE_CRYPTO)
+    RuntimeEnabledFeatures::sharedFeatures().setSubtleCryptoEnabled([preferences subtleCryptoEnabled]);
 #endif
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
@@ -2890,7 +2910,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertInvalidURLsToBlank(shouldConvertInvalidURLsToBlank());
 
-    settings.setAsyncImageDecodingEnabled([preferences asyncImageDecodingEnabled]);
+    settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
+    settings.setAnimatedImageAsyncDecodingEnabled([preferences animatedImageAsyncDecodingEnabled]);
 }
 
 static inline IMP getMethod(id o, SEL s)
@@ -4293,6 +4314,17 @@ static inline IMP getMethod(id o, SEL s)
     _private->validationMessageTimerMagnification = newValue;
 }
 
+- (NSDictionary *)_contentsOfUserInterfaceItem:(NSString *)userInterfaceItem
+{
+    if ([userInterfaceItem isEqualToString:@"validationBubble"]) {
+        auto* validationBubble = _private->formValidationBubble.get();
+        String message = validationBubble ? validationBubble->message() : emptyString();
+        return @{ userInterfaceItem: @{ @"message": (NSString *)message } };
+    }
+
+    return nil;
+}
+
 - (BOOL)_isSoftwareRenderable
 {
     Frame* coreFrame = [self _mainCoreFrame];
@@ -4612,6 +4644,8 @@ static Vector<String> toStringVector(NSArray* patterns)
 
 - (void)_scaleWebView:(float)scale atOrigin:(NSPoint)origin
 {
+    [self hideFormValidationMessage];
+
     _private->page->setPageScaleFactor(scale, IntPoint(origin));
 }
 
@@ -4910,6 +4944,12 @@ static Vector<String> toStringVector(NSArray* patterns)
 + (void)_setHTTPPipeliningEnabled:(BOOL)enabled
 {
     ResourceRequest::setHTTPPipeliningEnabled(enabled);
+}
+
+- (void)_didScrollDocumentInFrameView:(WebFrameView *)frameView
+{
+    [self hideFormValidationMessage];
+    [[self _UIDelegateForwarder] webView:self didScrollDocumentInFrameView:frameView];
 }
 
 #if PLATFORM(IOS)
@@ -6120,6 +6160,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     // NOTE: This has no visible effect when viewing a PDF (see <rdar://problem/4737380>)
     _private->zoomMultiplier = multiplier;
     _private->zoomsTextOnly = isTextOnly;
+
+    [self hideFormValidationMessage];
 
     // FIXME: It might be nice to rework this code so that _private->zoomMultiplier doesn't exist
     // and instead the zoom factors stored in Frame are used.
@@ -9220,7 +9262,25 @@ bool LayerFlushController::flushLayers()
 {
     [self _clearTextIndicatorWithAnimation:TextIndicatorWindowDismissalAnimation::FadeOut];
 }
+
 #endif // PLATFORM(MAC)
+
+- (void)showFormValidationMessage:(NSString *)message withAnchorRect:(NSRect)anchorRect
+{
+    // FIXME: We should enable this on iOS as well.
+#if PLATFORM(MAC)
+    _private->formValidationBubble = std::make_unique<ValidationBubble>(self, message);
+    _private->formValidationBubble->showRelativeTo(enclosingIntRect([self _convertRectFromRootView:anchorRect]));
+#else
+    UNUSED_PARAM(message);
+    UNUSED_PARAM(anchorRect);
+#endif
+}
+
+- (void)hideFormValidationMessage
+{
+    _private->formValidationBubble = nullptr;
+}
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET) && !PLATFORM(IOS)
 - (WebMediaPlaybackTargetPicker *) _devicePicker
@@ -9414,7 +9474,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
     if (_private->_isUpdatingTextTouchBar)
         return;
 
-    TemporaryChange<BOOL> isUpdatingTextTouchBar(_private->_isUpdatingTextTouchBar, YES);
+    SetForScope<BOOL> isUpdatingTextTouchBar(_private->_isUpdatingTextTouchBar, YES);
 
     if (!_private->_textTouchBarItemController)
         _private->_textTouchBarItemController = adoptNS([[WebTextTouchBarItemController alloc] initWithWebView:self]);
@@ -9508,7 +9568,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
 
 - (void)updateMediaTouchBar
 {
-#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER) && ENABLE(VIDEO_PRESENTATION_MODE)
     if (!_private->mediaTouchBarProvider)
         _private->mediaTouchBarProvider = adoptNS([allocAVFunctionBarPlaybackControlsProviderInstance() init]);
 

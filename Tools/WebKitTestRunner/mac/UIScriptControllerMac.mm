@@ -56,6 +56,11 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    return doAsyncTask(callback);
+}
+
 void UIScriptController::insertText(JSStringRef text, int location, int length)
 {
 #if WK_API_ENABLED
@@ -86,6 +91,25 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     }];
 #else
     UNUSED_PARAM(scale);
+    UNUSED_PARAM(callback);
+#endif
+}
+
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    NSNotificationCenter *center = [[NSWorkspace sharedWorkspace] notificationCenter];
+    [center postNotificationName:NSWorkspaceAccessibilityDisplayOptionsDidChangeNotification object:webView];
+
+    [webView _doAfterNextPresentationUpdate: ^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
     UNUSED_PARAM(callback);
 #endif
 }

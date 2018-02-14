@@ -822,6 +822,16 @@ bool WKPreferencesGetMediaControlsScaleWithPageZoom(WKPreferencesRef preferences
     return toImpl(preferencesRef)->mediaControlsScaleWithPageZoom();
 }
 
+void WKPreferencesSetModernMediaControlsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setModernMediaControlsEnabled(flag);
+}
+
+bool WKPreferencesGetModernMediaControlsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->modernMediaControlsEnabled();
+}
+
 void WKPreferencesSetShowsToolTipOverTruncatedText(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setShowsToolTipOverTruncatedText(flag);
@@ -1541,6 +1551,26 @@ bool WKPreferencesGetDownloadAttributeEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->downloadAttributeEnabled();
 }
 
+void WKPreferencesSetES6ModulesEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setES6ModulesEnabled(flag);
+}
+
+bool WKPreferencesGetES6ModulesEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->es6ModulesEnabled();
+}
+
+void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setIntersectionObserverEnabled(flag);
+}
+
+bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->intersectionObserverEnabled();
+}
+
 void WKPreferencesSetSelectionPaintingWithoutSelectionGapsEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setSelectionPaintingWithoutSelectionGapsEnabled(flag);
@@ -1579,4 +1609,14 @@ bool WKPreferencesGetApplePayCapabilityDisclosureAllowed(WKPreferencesRef prefer
 void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef, bool allowed)
 {
     WebKit::toImpl(preferencesRef)->setApplePayCapabilityDisclosureAllowed(allowed);
+}
+
+void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setSubtleCryptoEnabled(flag);
+}
+
+bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->subtleCryptoEnabled();
 }

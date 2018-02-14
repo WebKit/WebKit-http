@@ -912,15 +912,15 @@ ExceptionOr<void> Node::checkSetPrefix(const AtomicString& prefix)
     return { };
 }
 
-bool Node::isDescendantOf(const Node* other) const
+bool Node::isDescendantOf(const Node& other) const
 {
     // Return true if other is an ancestor of this, otherwise false
-    if (!other || !other->hasChildNodes() || inDocument() != other->inDocument())
+    if (!other.hasChildNodes() || inDocument() != other.inDocument())
         return false;
-    if (other->isDocumentNode())
-        return &document() == other && !isDocumentNode() && inDocument();
-    for (const ContainerNode* n = parentNode(); n; n = n->parentNode()) {
-        if (n == other)
+    if (other.isDocumentNode())
+        return &document() == &other && !isDocumentNode() && inDocument();
+    for (const auto* ancestor = parentNode(); ancestor; ancestor = ancestor->parentNode()) {
+        if (ancestor == &other)
             return true;
     }
     return false;
@@ -930,19 +930,19 @@ bool Node::isDescendantOrShadowDescendantOf(const Node* other) const
 {
     if (!other) 
         return false;
-    if (isDescendantOf(other))
+    if (isDescendantOf(*other))
         return true;
     const Node* shadowAncestorNode = deprecatedShadowAncestorNode();
     if (!shadowAncestorNode)
         return false;
-    return shadowAncestorNode == other || shadowAncestorNode->isDescendantOf(other);
+    return shadowAncestorNode == other || shadowAncestorNode->isDescendantOf(*other);
 }
 
 bool Node::contains(const Node* node) const
 {
     if (!node)
         return false;
-    return this == node || node->isDescendantOf(this);
+    return this == node || node->isDescendantOf(*this);
 }
 
 bool Node::containsIncludingShadowDOM(const Node* node) const
@@ -1864,7 +1864,7 @@ EventTargetInterface Node::eventTargetInterface() const
     return NodeEventTargetInterfaceType;
 }
 
-void Node::didMoveToNewDocument(Document* oldDocument)
+void Node::didMoveToNewDocument(Document& oldDocument)
 {
     TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(oldDocument);
 
@@ -1875,14 +1875,14 @@ void Node::didMoveToNewDocument(Document* oldDocument)
         }
     }
 
-    if (AXObjectCache::accessibilityEnabled() && oldDocument) {
-        if (auto* cache = oldDocument->existingAXObjectCache())
+    if (AXObjectCache::accessibilityEnabled()) {
+        if (auto* cache = oldDocument.existingAXObjectCache())
             cache->remove(this);
     }
 
     unsigned numWheelEventHandlers = eventListeners(eventNames().mousewheelEvent).size() + eventListeners(eventNames().wheelEvent).size();
     for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
-        oldDocument->didRemoveWheelEventHandler(*this);
+        oldDocument.didRemoveWheelEventHandler(*this);
         document().didAddWheelEventHandler(*this);
     }
 
@@ -1891,7 +1891,7 @@ void Node::didMoveToNewDocument(Document* oldDocument)
         numTouchEventHandlers += eventListeners(name).size();
 
     for (unsigned i = 0; i < numTouchEventHandlers; ++i) {
-        oldDocument->didRemoveTouchEventHandler(*this);
+        oldDocument.didRemoveTouchEventHandler(*this);
         document().didAddTouchEventHandler(*this);
     }
 

@@ -1,3 +1,479 @@
+2016-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Introduce StringImpl::StaticStringImpl with constexpr constructor
+        https://bugs.webkit.org/show_bug.cgi?id=165093
+
+        Reviewed by Darin Adler.
+
+        This patch adds new class, StringImpl::StaticStringImpl.
+        By using this class, we can easily create static StringImpls.
+        This class has constexpr constructor. You can initialize instances
+        of this class as global static variables without invoking global
+        constructors.
+
+        We already have similar system, StaticASCIILiteral. But using it
+        requires some special perl script since we need to calculate
+        hash value. On the other hand, we can use StaticStringImpl without
+        any script supports since we implement constexpr hash function.
+        In the future, we will replace all the use of StaticASCIILiteral
+        with this StaticStringImpl.
+
+        We define empty / null strings as StaticStringImpl. And we make
+        StringImpl::empty() & StringImpl::null() inline functions.
+
+        * wtf/Hasher.h:
+        (WTF::StringHasher::hashWithTop8BitsMasked):
+        (WTF::StringHasher::hash):
+        (WTF::StringHasher::finalize):
+        (WTF::StringHasher::finalizeAndMaskTop8Bits):
+        (WTF::StringHasher::computeLiteralHash):
+        (WTF::StringHasher::computeLiteralHashAndMaskTop8Bits):
+        (WTF::StringHasher::avalancheBits3):
+        (WTF::StringHasher::avalancheBits2):
+        (WTF::StringHasher::avalancheBits1):
+        (WTF::StringHasher::avalancheBits0):
+        (WTF::StringHasher::avalancheBits):
+        (WTF::StringHasher::avoidZero):
+        (WTF::StringHasher::processPendingCharacter):
+        (WTF::StringHasher::calculateWithRemainingLastCharacter1):
+        (WTF::StringHasher::calculateWithRemainingLastCharacter0):
+        (WTF::StringHasher::calculateWithRemainingLastCharacter):
+        (WTF::StringHasher::calculate1):
+        (WTF::StringHasher::calculate0):
+        (WTF::StringHasher::calculate):
+        (WTF::StringHasher::computeLiteralHashImpl):
+        * wtf/text/StringImpl.cpp:
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StaticStringImpl::StaticStringImpl):
+        (WTF::StringImpl::null):
+        (WTF::StringImpl::empty):
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::null): Deleted.
+        (WTF::StringImpl::empty): Deleted.
+
+2016-11-30  Darin Adler  <darin@apple.com>
+
+        Roll out StringBuilder changes from the previous patch.
+        They were a slowdown on a Kraken JSON test.
+
+        * wtf/text/StringBuilder.cpp:
+        * wtf/text/StringBuilder.h:
+        Roll out changes from below.
+
+2016-11-30  Darin Adler  <darin@apple.com>
+
+        Streamline and speed up tokenizer and segmented string classes
+        https://bugs.webkit.org/show_bug.cgi?id=165003
+
+        And do it without re-introducing:
+
+        REGRESSION (r209058): API test StringBuilderTest.Equal crashing
+        https://bugs.webkit.org/show_bug.cgi?id=165142
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::bufferCharacters<LChar>): Moved this here from
+        the header since it is only used inside the class. Also renamed from
+        getBufferCharacters.
+        (WTF::StringBuilder::bufferCharacters<UChar>): Ditto.
+        (WTF::StringBuilder::appendUninitializedUpconvert): Added. Helper
+        for the upconvert case in the 16-bit overload of StrinBuilder::append.
+        (WTF::StringBuilder::append): Changed to use appendUninitializedUpconvert.
+        (WTF::quotedJSONStringLength): Added. Used in new appendQuotedJSONString
+        implementation below that now correctly determines the size of what will
+        be appended by walking thorugh the string twice.
+        (WTF::appendQuotedJSONStringInternal): Moved the code that writes the
+        quote marks in here. Also made a few coding style tweaks.
+        (WTF::StringBuilder::appendQuotedJSONString): Rewrote to use a much
+        simpler algorithm that grows the string the same way the append function
+        does. The old code would use reserveCapacity in a way that was costly when
+        doing a lot of appends on the same string, and also allocated far too much
+        memory for normal use cases where characters did not need to be turned
+        into escape sequences.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append): Tweaked style a bit, fixed a bug where the
+        m_is8Bit field wasn't set correctly in one case, optimized the function that
+        adds substrings for the case where this is the first append and the substring
+        happens to cover the entire string. Also clarified the assertions and removed
+        an unneeded check from that substring overload.
+        (WTF::equal): Reimplemented, using equalCommon. Added an overload of the equal
+        function just for the case where the arguments are StringBuilder, String.
+        This is needed because of the peculiar behavior of is8Bit in String, different
+        from any of our other string classes. I think we should consider changing
+        String::is8Bit to return true for null strings. We could then remove this
+        overload and probably remove other checks for null and zero length elsewhere
+        that are also needed only to avoid calling is8Bit on a null String.
+
+2016-11-29  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: improve Instance
+        https://bugs.webkit.org/show_bug.cgi?id=164757
+
+        Reviewed by Keith Miller.
+
+        * wtf/Expected.h:
+        (WTF::ExpectedDetail::destroy): silence a warning
+
+2016-11-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209058 and r209074.
+        https://bugs.webkit.org/show_bug.cgi?id=165188
+
+        These changes caused API test StringBuilderTest.Equal to crash
+        and/or fail. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Streamline and speed up tokenizer and segmented string
+        classes"
+        https://bugs.webkit.org/show_bug.cgi?id=165003
+        http://trac.webkit.org/changeset/209058
+
+        "REGRESSION (r209058): API test StringBuilderTest.Equal
+        crashing"
+        https://bugs.webkit.org/show_bug.cgi?id=165142
+        http://trac.webkit.org/changeset/209074
+
+2016-11-29  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow TracePoint to take arbitrary data
+        https://bugs.webkit.org/show_bug.cgi?id=165182
+
+        Reviewed by Tim Horton.
+
+        Allow TracePoint() to take four numeric arguments, for arbitrary data.
+
+        #pragma once
+
+        * wtf/SystemTracing.h:
+        (WTF::TracePoint):
+
+2016-11-29  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Enable two clang warnings recommended by Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=164498
+
+        Reviewed by Mark Lam.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_INFINITE_RECURSION and CLANG_WARN_SUSPICIOUS_MOVE.
+
+2016-11-29  Darin Adler  <darin@apple.com>
+
+        REGRESSION (r209058): API test StringBuilderTest.Equal crashing
+        https://bugs.webkit.org/show_bug.cgi?id=165142
+
+        * wtf/text/StringBuilder.h: Added an overload of the equal function just
+        for the case where the arguments are StringBuilder, String. This is needed
+        because of the peculiar behavior of is8Bit in String, different from any of
+        our other string classes. I think we should consider changing String::is8Bit
+        to return true for null strings. We could then remove this overload and
+        probably remove other checks for null and zero length elsewhere that are
+        also needed only to avoid calling is8Bit on a null String.
+
+2016-11-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Scroll snapping on Mac should use AppKit animations
+        https://bugs.webkit.org/show_bug.cgi?id=147261
+        <rdar://problem/29395293>
+
+        Reviewed by Brent Fulgham.
+
+        Introduce HAVE(NSSCROLLING_FILTERS), which is on for macOS El Capitan and later.
+
+        * wtf/Platform.h:
+
+2016-11-28  Darin Adler  <darin@apple.com>
+
+        Streamline and speed up tokenizer and segmented string classes
+        https://bugs.webkit.org/show_bug.cgi?id=165003
+
+        Reviewed by Sam Weinig.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::StringBuilder::bufferCharacters<LChar>): Moved this here from
+        the header since it is only used inside the class. Also renamed from
+        getBufferCharacters.
+        (WTF::StringBuilder::bufferCharacters<UChar>): Ditto.
+        (WTF::StringBuilder::appendUninitializedUpconvert): Added. Helper
+        for the upconvert case in the 16-bit overload of StrinBuilder::append.
+        (WTF::StringBuilder::append): Changed to use appendUninitializedUpconvert.
+        (WTF::quotedJSONStringLength): Added. Used in new appendQuotedJSONString
+        implementation below that now correctly determines the size of what will
+        be appended by walking thorugh the string twice.
+        (WTF::appendQuotedJSONStringInternal): Moved the code that writes the
+        quote marks in here. Also made a few coding style tweaks.
+        (WTF::StringBuilder::appendQuotedJSONString): Rewrote to use a much
+        simpler algorithm that grows the string the same way the append function
+        does. The old code would use reserveCapacity in a way that was costly when
+        doing a lot of appends on the same string, and also allocated far too much
+        memory for normal use cases where characters did not need to be turned
+        into escape sequences.
+
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::append): Tweaked style a bit, fixed a bug where the
+        m_is8Bit field wasn't set correctly in one case, optimized the function that
+        adds substrings for the case where this is the first append and the substring
+        happens to cover the entire string. Also clarified the assertions and removed
+        an unneeded check from that substring overload.
+        (WTF::equal): Reimplemented, using equalCommon.
+
+2016-11-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Import std::optional reference implementation as WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=164199
+
+        Reviewed by Saam Barati and Sam Weinig.
+
+        Import std::optional reference implementation offered by the C++17
+        original proposal paper. It has the same interface and functionality
+        to the C++17's one. Previous WTF::Optional lacks several functionalities.
+        The largest one is the correct constexpr constructors. This fact prevents
+        us from using Optional<literal type> in constexpr context in WebKit.
+
+        In WebKit, we do not allow global constructors. So only the constexpr
+        constructor is the way to use WTF::Optional in the static const
+        global variables. WTF::Optional is used in DOMJIT::Effect and
+        we would like to emit static const global variables that includes
+        this DOMJIT::Effect. That is the main motivation of this work.
+        This functionality allows the IDL code generator to emit DOMJIT
+        signatures as static const global variables.
+
+        We import the reference implementation one instead of LLVM libc++'s one.
+        This is because LLVM libc++'s one depends on many macro and type_traits
+        offered by libc++ implementation. And adopting it to WebKit requires
+        large modification compared to this reference implementation one.
+        Furthermore, it is difficult to compile libc++'s optional in old GCC and VC++.
+        It also requires some more modifications. To keep the thing simple,
+        we import the reference implementation one now. Once C++17 is released
+        and we update the compiler baseline, we can smoothly switch to the standard
+        library's std::optional.
+
+        We also add support for the environment that does not use exceptions to this
+        reference implementation.
+
+        And we also add valueOrCompute helper function. That keeps the extended
+        functionality that previous WTF::Optional has.
+
+        * wtf/CrossThreadQueue.h:
+        (WTF::CrossThreadQueue<DataType>::tryGetMessage):
+        * wtf/Expected.h:
+        (WTF::makeExpected):
+        * wtf/Forward.h:
+        * wtf/HashTraits.h:
+        (WTF::HashTraits<Ref<P>>::take):
+        * wtf/MainThread.cpp:
+        (WTF::initializeGCThreads):
+        (WTF::mayBeGCThread):
+        * wtf/MainThread.h:
+        * wtf/Optional.h:
+        (std::detail_::is_assignable::has_assign):
+        (std::detail_::has_overloaded_addressof::has_overload):
+        (std::detail_::static_addressof):
+        (std::detail_::convert):
+        (std::nullopt_t::nullopt_t):
+        (std::bad_optional_access::bad_optional_access):
+        (std::optional_base::optional_base):
+        (std::optional_base::~optional_base):
+        (std::constexpr_optional_base::constexpr_optional_base):
+        (std::optional::dataptr):
+        (std::optional::contained_val):
+        (std::optional::__NOEXCEPT_):
+        (std::optional::optional):
+        (std::optional::operator=):
+        (std::optional::emplace):
+        (std::optional::operator ->):
+        (std::optional::operator *):
+        (std::optional::value):
+        (std::optional::value_or):
+        (std::operator==):
+        (std::operator!=):
+        (std::operator<):
+        (std::operator>):
+        (std::operator<=):
+        (std::operator>=):
+        (std::__NOEXCEPT_):
+        (std::make_optional):
+        (std::hash<std::optional<T>>::operator()):
+        (WTF::NulloptTag::NulloptTag): Deleted.
+        (WTF::Optional::Optional): Deleted.
+        (WTF::Optional::~Optional): Deleted.
+        (WTF::Optional::operator=): Deleted.
+        (WTF::Optional::operator bool): Deleted.
+        (WTF::Optional::operator->): Deleted.
+        (WTF::Optional::operator*): Deleted.
+        (WTF::Optional::value): Deleted.
+        (WTF::Optional::valueOr): Deleted.
+        (WTF::Optional::valueOrCompute): Deleted.
+        (WTF::Optional::asPtr): Deleted.
+        (WTF::Optional::destroy): Deleted.
+        (WTF::operator==): Deleted.
+        (WTF::operator!=): Deleted.
+        (WTF::makeOptional): Deleted.
+        (WTF::printInternal): Deleted.
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::GraphemeClusters::Iterator::Impl::Impl):
+        (WTF::StringView::GraphemeClusters::Iterator::Iterator):
+        * wtf/text/StringView.h:
+
+2016-11-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Migrate some layout timer-related code from std::chrono to Seconds and MonotonicTime
+        https://bugs.webkit.org/show_bug.cgi?id=164992
+
+        Reviewed by Darin Adler.
+
+        Add Seconds::zero() as a nicer way to express Seconds(0). 
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::zero):
+
+2016-11-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Add literals for various time units
+        https://bugs.webkit.org/show_bug.cgi?id=165074
+
+        Reviewed by Filip Pizlo.
+        
+        Add _min, _s, _ms, _us and _ns literals for easy creation of Seconds from long double
+        and unsigned long long types (those allowed for custom literals).
+        
+        Add minutes-related functions (there are one or two use cases in WebCore).
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::minutes):
+        (WTF::Seconds::fromMinutes):
+        (WTF::Seconds::fromMilliseconds):
+        (WTF::Seconds::fromMicroseconds):
+        (WTF::Seconds::fromNanoseconds):
+        (WTF::operator _min):
+        (WTF::operator _s):
+        (WTF::operator _ms):
+        (WTF::operator _us):
+        (WTF::operator _ns):
+
+2016-11-22  Darin Adler  <darin@apple.com>
+
+        One more tiny bit of follow-up.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::numCharactersInGraphemeClusters): Removed unneeded always-true check.
+
+2016-11-22  Darin Adler  <darin@apple.com>
+
+        Quick follow-up to previous patch.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::numCharactersInGraphemeClusters): Removed incorrect assertion.
+
+2016-11-22  Darin Adler  <darin@apple.com>
+
+        Make normal case fast in the input element limitString function
+        https://bugs.webkit.org/show_bug.cgi?id=165023
+
+        Reviewed by Dan Bernstein.
+
+        * wtf/text/LineBreakIteratorPoolICU.h: Removed many unneeded includes.
+        Simplified the class a bit, removing some extra definitions.
+        (WTF::LineBreakIteratorPool::sharedPool): Use NeverDestroyed instead of new.
+        (WTF::LineBreakIteratorPool::makeLocaleWithBreakKeyword): Reimplemented in
+        a simpler way without using StringBuilder. Also updated for change to
+        LineBreakIteratorMode.
+        (WTF::LineBreakIteratorPool::put): Use uncheckedAppend since the code is
+        careful to only use the inline capacity in the vector.
+
+        * wtf/text/TextBreakIterator.cpp: Moved some includes in here from the header.
+        (WTF::mapLineIteratorModeToRules): Updated for change to LineBreakIteratorMode.
+        (WTF::openLineBreakIterator): Ditto.
+        (WTF::numGraphemeClusters): Added a fast path for all 8-bit strings; don't
+        use ICU for that case, even if there is a CR character in it.
+        (WTF::numCharactersInGraphemeClusters): Added a fast path for strings that are
+        short enough to entirely fit without even looking at the characters; that's a
+        case we likely hit all the time. Also added a fast path for all 8-bit strings.
+
+        * wtf/text/TextBreakIterator.h: Changed LineBreakIteratorMode to be an enum
+        class and not repeat UAX14 in the names of the modes. Initialize data members
+        in the class definition rather than the constructors.
+
+2016-11-21  Mark Lam  <mark.lam@apple.com>
+
+        Hasher::addCharacters() should be able to handle zero length strings.
+        https://bugs.webkit.org/show_bug.cgi?id=165024
+
+        Reviewed by Yusuke Suzuki.
+
+        Currently, it will fail to handle zero length strings if it has a pending
+        character.  The fix is simply to return early if length is 0. 
+
+        * wtf/Hasher.h:
+        (WTF::StringHasher::addCharacters):
+
+2016-11-18  Jeremy Jones  <jeremyj@apple.com>
+
+        Add runtime flag to enable pointer lock. Enable pointer lock feature for mac.
+        https://bugs.webkit.org/show_bug.cgi?id=163801
+
+        Reviewed by Simon Fraser.
+
+        * wtf/FeatureDefines.h: ENABLE_POINTER_LOCK true for Mac.
+
+2016-11-17  Saam Barati  <sbarati@apple.com>
+
+        Remove async/await compile time flag and enable tests
+        https://bugs.webkit.org/show_bug.cgi?id=164828
+        <rdar://problem/28639334>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/FeatureDefines.h:
+
+2016-11-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] WTF::TemporaryChange with WTF::SetForScope
+        https://bugs.webkit.org/show_bug.cgi?id=164761
+
+        Reviewed by Saam Barati.
+
+        JavaScriptCore's bytecompiler/SetForScope.h is completely the same
+        to WTF::TemporaryChange. SetForScope sounds better name since it
+        says that this object works as Scope.
+
+        We rename WTF::TemporaryChange to WTF::SetForScope. And replace
+        all the use to this WTF::SetForScope.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/SetForScope.h: Renamed from Source/WTF/wtf/TemporaryChange.h.
+        (WTF::SetForScope::SetForScope):
+        (WTF::SetForScope::~SetForScope):
+
+2016-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6][WebCore] Change ES6_MODULES compile time flag to runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=164827
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2016-11-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSC] Build broken for 32-bit x86 after r208306 with GCC 4.9
+        https://bugs.webkit.org/show_bug.cgi?id=164588
+
+        Reviewed by Mark Lam.
+
+        Provide assembly for executing the cpuid instruction when compiling
+        in PIC mode with the GCC 4.9 EBX on 32-bit x86.
+
+        Note that the values returned by cpuid here are not used. The purpose
+        of calling this instruction is to force the CPU to complete and sync
+        any buffered modifications on registers, memory or flags before
+        fetching and executing the next instruction.
+
+        * wtf/Atomics.h:
+        (WTF::x86_cpuid):
+
 2016-11-15  Filip Pizlo  <fpizlo@apple.com>
 
         Rename CONCURRENT_JIT/ConcurrentJIT to CONCURRENT_JS/ConcurrentJS

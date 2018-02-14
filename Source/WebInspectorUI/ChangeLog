@@ -1,3 +1,308 @@
+2016-12-02  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r192344): Web Inspector: Turning off Code Coverage or Type Profiler logs an error
+        https://bugs.webkit.org/show_bug.cgi?id=164804
+        <rdar://problem/29278028>
+
+        Reviewed by Matt Baker.
+
+        BasicBlockAnnotator and TypeTokenAnnotator were instanciated for a resource in an inactive Debugger tab.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.showDefaultContentViewForTreeElement):
+        Don't show any content view if we are not in a selected tab.
+
+2016-12-01  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Show async stack traces for workers
+        https://bugs.webkit.org/show_bug.cgi?id=165235
+        <rdar://problem/29450172>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline > .children > .item.call-frame.async-boundary):
+        (.tree-outline:not(.single-thread) > .children > .item.call-frame.async-boundary):
+        (.tree-outline .item.call-frame.async-boundary::before):
+        (.tree-outline.single-thread .item.call-frame.async-boundary::before):
+        (.tree-outline .item.call-frame.async-boundary): Deleted.
+        Style changes for single/multiple-thread call stacks.
+        Padding changes to account for Thread tree element.
+        Make selectors more specific where needed.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger .tree-outline.single-thread > .item.thread):
+        (.sidebar > .panel.navigation.debugger .tree-outline.single-thread):
+        Style changes for single/multiple-thread call stacks.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        Use a single tree outline for showing a single thread or multiple threads.
+        For single-threaded, hide Thread tree element and un-indent children.
+
+        (WebInspector.DebuggerSidebarPanel.prototype._targetAdded):
+        (WebInspector.DebuggerSidebarPanel.prototype._targetRemoved):
+        (WebInspector.DebuggerSidebarPanel.prototype._updateCallStackTreeOutline):
+        Update tree style and whether Thread tree element is selectable.
+        (WebInspector.DebuggerSidebarPanel.prototype._debuggerActiveCallFrameDidChange):
+        Remove support for second tree outline.
+
+        (WebInspector.DebuggerSidebarPanel.prototype._updateSingleThreadCallStacks): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._selectActiveCallFrameTreeElement): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._showSingleThreadCallStacks): Deleted.
+        (WebInspector.DebuggerSidebarPanel.prototype._showMultipleThreadCallStacks): Deleted.
+        No longer needed after unifying tree outlines.
+
+        * UserInterface/Views/ThreadTreeElement.js:
+        (WebInspector.ThreadTreeElement.prototype.refresh):
+        Append call frames from the async stack trace.
+
+2016-11-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Clicking on link in Web Inspector can cause UIProcess to crash
+        https://bugs.webkit.org/show_bug.cgi?id=165157
+        <rdar://problem/27896562>
+
+        Reviewed by Brian Burg.
+
+        By correctly disallowing slashes in the scheme Web Inspector resolves
+        the correct absolute URL and doesn't end up trying to navigate to an
+        incorrect file URL.
+
+        * UserInterface/Base/URLUtilities.js:
+        (parseURL):
+        Disallow "/" characters in the scheme portion. (/http://example.com)
+        Allow path to be optional before a fragment portion. (http://example.com#frag)
+
+2016-11-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve name sorting in HeapSnapshot data grids
+        https://bugs.webkit.org/show_bug.cgi?id=165170
+        <rdar://problem/28784421>
+
+        Reviewed by Matt Baker.
+
+        When sorting the Name column, group named properties and unnamed
+        properties and sort them each individually:
+
+          - Sort named properties by their property name (property names will be unique if they exist)
+          - Sort unnamed properties by their class name (guaranteed)
+          - Sort any tied class names by their object id
+
+        This makes using the Object Graph with Name sort easier to follow.
+        In the ascending sort you see all the named properties first,
+        followed by the unnamed (internal) properties.
+
+        * UserInterface/Views/HeapSnapshotContentView.js:
+        (WebInspector.HeapSnapshotObjectGraphContentView):
+        Since this data grid column now sorts on more than just the "Class Name"
+        rename it to "Name".
+
+        * UserInterface/Views/HeapSnapshotDataGridTree.js:
+        (WebInspector.HeapSnapshotDataGridTree.buildSortComparator):
+        Make the sort of the `className` column more general to handle sorting
+        by property names, class names, and object identifiers.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.get propertyName):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.createCellContent):
+        Provide a lazy `propertyName` accessor where we compute it once and stash
+        it on the DataGridNode to avoid extra work when resorting.
+
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._populate.propertyName):
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype._populate):
+        In the initial populated sort, provide the necessary property name property
+        the sort comparator expects.
+
+2016-11-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Breakpoints button enabled state is too subtle
+        https://bugs.webkit.org/show_bug.cgi?id=165153
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Breakpoints.svg:
+        Change to path so stroke and fill can be styled.
+
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints):
+        (.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints.activated):
+        Fill and stroke styles for the active and inactive breakpoint button.
+
+2016-11-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Debugger should have an option for showing asynchronous call stacks
+        https://bugs.webkit.org/show_bug.cgi?id=163230
+        <rdar://problem/28698683>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string for generic async call stack boundary label: "(async)".
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        Create async stack depth setting and set default depth.
+        (WebInspector.DebuggerManager.prototype.get asyncStackTraceDepth):
+        (WebInspector.DebuggerManager.prototype.set asyncStackTraceDepth):
+        Make async stack depth setting accessible to the frontend.
+        (WebInspector.DebuggerManager.prototype.initializeTarget):
+        Set async stack depth value on the target.
+        (WebInspector.DebuggerManager.prototype.debuggerDidPause):
+        Plumbing for the async stack trace payload.
+
+        * UserInterface/Models/ConsoleMessage.js:
+        (WebInspector.ConsoleMessage):
+        Updated for new StackTrace.fromPayload use.
+
+        * UserInterface/Models/DebuggerData.js:
+        (WebInspector.DebuggerData):
+        (WebInspector.DebuggerData.prototype.get asyncStackTrace):
+        (WebInspector.DebuggerData.prototype.updateForPause):
+        (WebInspector.DebuggerData.prototype.updateForResume):
+        More plumbing.
+
+        * UserInterface/Models/StackTrace.js:
+        Update frontend model for use as new protocol object Console.StackTrace,
+        which was previously an alias for a simple array of Console.CallFrames.
+
+        (WebInspector.StackTrace):
+        (WebInspector.StackTrace.fromPayload):
+        (WebInspector.StackTrace.fromString):
+        (WebInspector.StackTrace.prototype.get topCallFrameIsBoundary):
+        (WebInspector.StackTrace.prototype.get parentStackTrace):
+
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WebInspector.DebuggerObserver.prototype.paused):
+        More plumbing.
+
+        * UserInterface/Views/CallFrameTreeElement.css:
+        (.tree-outline .item.call-frame.async-boundary):
+        Use default cursor since boundary element is not selectable.
+        (.tree-outline .item.call-frame.async-boundary .icon):
+        (.tree-outline .item.call-frame.async-boundary::before,):
+        (.tree-outline .item.call-frame.async-boundary::after):
+        (.tree-outline .item.call-frame.async-boundary::before):
+        Dimmed text and divider line styles for boundary element.
+
+        * UserInterface/Views/CallFrameTreeElement.js:
+        (WebInspector.CallFrameTreeElement):
+        Add a flag denoting whether the call frame is an async call trace
+        boundary, and set styles accordingly.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        Set async stack trace depth, if supported.
+        (WebInspector.DebuggerSidebarPanel.prototype._updateSingleThreadCallStacks):
+        Add call frames for async stack traces to the call stack TreeOutline.
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        Ensure that async call frames cannot become the active call frame.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add --text-color-gray-medium, for dimmed text in async boundary element.
+
+2016-11-18  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: TimelineDataGridNode assertions when refreshing page
+        https://bugs.webkit.org/show_bug.cgi?id=162642
+        <rdar://problem/28505898>
+
+        Reviewed by Timothy Hatcher.
+
+        This patch fixes a number of deficiencies in the Network tab that caused
+        TimelineDataGridNode graphs to refresh before the tab became visible.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView):
+        (WebInspector.ElementsTabContentView.prototype.shown):
+        Drive-by fix: defer showing the DOM content view until the tab is shown.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        Drive-by event listener cleanup.
+        (WebInspector.NetworkGridContentView.prototype.get startTime):
+        (WebInspector.NetworkGridContentView.prototype.get endTime):
+        Back endTime with a variable, instead of using the ruler value which
+        isn't valid before the tab is shown for the first time.
+
+        (WebInspector.NetworkGridContentView.prototype.shown):
+        Force the grid to update its layout, and that of the Timeline column ruler.
+        During layout the ruler's secondsPerPixel value is used, which isn't
+        valid until the ruler does an initial layout.
+
+        (WebInspector.NetworkGridContentView.prototype.reset):
+        Clear pending records. This was causing duplicates to appear when the
+        inspected page was refreshed multiple times prior to showing the Network
+        tab for the first time.
+
+        (WebInspector.NetworkGridContentView.prototype.layout):
+        Should more closely match behavior in NetworkTimelineView.prototype.layout.
+        Graph end time padding is added if no longer updating the current time.
+
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        Track endTime of the last record added, so that the graph end time can
+        be padded once the current time is no longer being updated.
+
+        (WebInspector.NetworkGridContentView.prototype._update):
+        (WebInspector.NetworkGridContentView.prototype._stopUpdatingCurrentTime):
+        Graph end time padding shouldn't be applied here, since this isn't called
+        if the inspected page finishes loading before the view is shown.
+
+        (WebInspector.NetworkGridContentView.prototype._clearNetworkItems): Deleted.
+        Replaced by an arrow function.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype._networkTimelineReset):
+        Don't show the content view if the tab is hidden.
+
+2016-11-17  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Shift clicking on named color value only shows its hex form
+        https://bugs.webkit.org/show_bug.cgi?id=162758
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Color.js:
+        (WebInspector.Color.prototype.nextFormat):
+        Reworked the logic for the formatting order to be the following:
+         - Long HEX and Long HEXAlpha
+         - RGB and RGBA
+         - HSL and HSLA
+         - Keyword (if applicable)
+         - Short HEX (if applicable)
+         - Short HEXAlpha (if applicable)
+        It will only show formats with alpha values if the color value has an alpha that is not 1.
+        If the alpha is not 1, it will not show formats with non-alpha values.
+
+        The changes to this function have no effect on the context menu items of InlineSwatch
+        elements.  The purpose of each of those items is to allow the user to change the format to
+        a specified type, whereas WebInspector.Color.prototype.nextFormat is used to cycle through
+        all of the relevant formats.
+
+        (WebInspector.Color.prototype._toRGBString):
+        (WebInspector.Color.prototype._toRGBAString):
+        (WebInspector.Color.prototype._toHSLString):
+        (WebInspector.Color.prototype._toHSLAString):
+        Unrelated fix of extra decimals when converting from HEX to RGB and HSL.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor._inlineSwatchValueChanged):
+        Removed assertion for `_hasActiveInlineSwatchEditor` since the value may change from
+        switching the format of a color swatch (Shift-Click).
+
+2016-11-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Background tabs are often updating non-stop because they think they are visible
+        https://bugs.webkit.org/show_bug.cgi?id=164841
+        <rdar://problem/29298658>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView.prototype._networkTimelineRecordAdded):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView.prototype._update):
+        Don't constantly update when this tab is not in the foreground.
+
 2016-11-15  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: SourceCodeTextEditor should display execution lines for background threads

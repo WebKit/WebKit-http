@@ -41,6 +41,7 @@
 #include "WebCoreKeyboardUIMode.h"
 #include <runtime/ConsoleTypes.h>
 #include <wtf/Forward.h>
+#include <wtf/Seconds.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -232,7 +233,7 @@ public:
     virtual void didPreventDefaultForEvent() = 0;
 #endif
 
-    virtual std::chrono::milliseconds eventThrottlingDelay() { return 0ms; };
+    virtual Seconds eventThrottlingDelay() { return 0_s; };
 
 #if PLATFORM(IOS)
     virtual void didReceiveMobileDocType(bool) = 0;
@@ -389,7 +390,7 @@ public:
     virtual void notifyScrollerThumbIsVisibleInRect(const IntRect&) { }
     virtual void recommendedScrollbarStyleDidChange(ScrollbarStyle) { }
 
-    virtual WTF::Optional<ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() { return ScrollbarOverlayStyleDefault; }
+    virtual std::optional<ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() { return ScrollbarOverlayStyleDefault; }
 
     virtual void wheelEventHandlersChanged(bool hasHandlers) = 0;
         

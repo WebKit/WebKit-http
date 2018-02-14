@@ -388,7 +388,7 @@ void ScrollingTreeFrameScrollingNodeMac::setScrollPositionWithoutContentEdgeCons
 {
     updateMainFramePinState(scrollPosition);
 
-    Optional<FloatPoint> layoutViewportOrigin;
+    std::optional<FloatPoint> layoutViewportOrigin;
     if (scrollingTree().visualViewportEnabled()) {
         FloatPoint visibleContentOrigin = scrollPosition;
         float counterScale = 1 / frameScaleFactor();
@@ -400,7 +400,7 @@ void ScrollingTreeFrameScrollingNodeMac::setScrollPositionWithoutContentEdgeCons
 
     if (shouldUpdateScrollLayerPositionSynchronously()) {
         m_probableMainThreadScrollPosition = scrollPosition;
-        scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, layoutViewportOrigin, SetScrollingLayerPosition);
+        scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, layoutViewportOrigin, ScrollingLayerPositionAction::Set);
         return;
     }
 
@@ -581,10 +581,9 @@ static void logThreadedScrollingMode(unsigned synchronousScrollingReasons)
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-LayoutUnit ScrollingTreeFrameScrollingNodeMac::scrollOffsetOnAxis(ScrollEventAxis axis) const
+FloatPoint ScrollingTreeFrameScrollingNodeMac::scrollOffset() const
 {
-    const FloatPoint& currentPosition = scrollPosition();
-    return axis == ScrollEventAxis::Horizontal ? currentPosition.x() : currentPosition.y();
+    return scrollPosition();
 }
 
 void ScrollingTreeFrameScrollingNodeMac::immediateScrollOnAxis(ScrollEventAxis axis, float delta)
@@ -618,6 +617,12 @@ LayoutSize ScrollingTreeFrameScrollingNodeMac::scrollExtent() const
 {
     return LayoutSize(totalContentsSize());
 }
+
+FloatSize ScrollingTreeFrameScrollingNodeMac::viewportSize() const
+{
+    return scrollableAreaSize();
+}
+
 #endif
 
 void ScrollingTreeFrameScrollingNodeMac::deferTestsForReason(WheelEventTestTrigger::ScrollableAreaIdentifier identifier, WheelEventTestTrigger::DeferTestTriggerReason reason) const

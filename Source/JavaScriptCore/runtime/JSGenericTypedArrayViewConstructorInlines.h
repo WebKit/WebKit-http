@@ -100,21 +100,22 @@ inline JSObject* constructGenericTypedArrayViewFromIterator(ExecState* exec, Str
     }
 
     ViewClass* result = ViewClass::createUninitialized(exec, structure, storage.size());
-    if (!result)
-        RETURN_IF_EXCEPTION(scope, nullptr);
+    ASSERT(!!scope.exception() == !result);
+    if (UNLIKELY(!result))
+        return nullptr;
 
     for (unsigned i = 0; i < storage.size(); ++i) {
-        if (!result->setIndex(exec, i, storage.at(i))) {
-            ASSERT(scope.exception());
+        bool success = result->setIndex(exec, i, storage.at(i));
+        ASSERT(scope.exception() || success);
+        if (!success)
             return nullptr;
-        }
     }
 
     return result;
 }
 
 template<typename ViewClass>
-inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, Structure* structure, EncodedJSValue firstArgument, unsigned offset, Optional<unsigned> lengthOpt)
+inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, Structure* structure, EncodedJSValue firstArgument, unsigned offset, std::optional<unsigned> lengthOpt)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -133,6 +134,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
             length = (buffer->byteLength() - offset) / ViewClass::elementSize;
         }
 
+        scope.release();
         return ViewClass::create(exec, structure, buffer, offset, length);
     }
     ASSERT(!offset && !lengthOpt);
@@ -154,6 +156,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
             // So we use VMInquiry. And purge the opaque object cases (proxy and namespace object) by isTaintedByOpaqueObject() guard.
             PropertySlot lengthSlot(object, PropertySlot::InternalMethodType::VMInquiry);
             object->getPropertySlot(exec, vm.propertyNames->length, lengthSlot);
+            RETURN_IF_EXCEPTION(scope, nullptr);
 
             JSValue iteratorFunc = object->get(exec, vm.propertyNames->iteratorSymbol);
             RETURN_IF_EXCEPTION(scope, nullptr);
@@ -178,6 +181,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
                     JSValue iterator = call(exec, iteratorFunc, callType, callData, object, arguments);
                     RETURN_IF_EXCEPTION(scope, nullptr);
 
+                    scope.release();
                     return constructGenericTypedArrayViewFromIterator<ViewClass>(exec, structure, iterator);
             }
 
@@ -187,11 +191,11 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
 
         
         ViewClass* result = ViewClass::createUninitialized(exec, structure, length);
-        if (!result) {
-            ASSERT(scope.exception());
+        ASSERT(!!scope.exception() == !result);
+        if (UNLIKELY(!result))
             return nullptr;
-        }
         
+        scope.release();
         if (!result->set(exec, 0, object, 0, length))
             return nullptr;
         
@@ -203,6 +207,7 @@ inline JSObject* constructGenericTypedArrayViewWithArguments(ExecState* exec, St
 
     unsigned length = firstValue.toIndex(exec, "length");
     RETURN_IF_EXCEPTION(scope, nullptr);
+    scope.release();
     return ViewClass::create(exec, structure, length);
 }
 
@@ -215,7 +220,7 @@ EncodedJSValue JSC_HOST_CALL constructGenericTypedArrayView(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    InternalFunction* function = asInternalFunction(exec->callee());
+    InternalFunction* function = asInternalFunction(exec->jsCallee());
     Structure* parentStructure = function->globalObject()->typedArrayStructure(ViewClass::TypedArrayStorageType);
     Structure* structure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), parentStructure);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
@@ -226,12 +231,13 @@ EncodedJSValue JSC_HOST_CALL constructGenericTypedArrayView(ExecState* exec)
         if (ViewClass::TypedArrayStorageType == TypeDataView)
             return throwVMTypeError(exec, scope, ASCIILiteral("DataView constructor requires at least one argument."));
 
+        scope.release();
         return JSValue::encode(ViewClass::create(exec, structure, 0));
     }
 
     JSValue firstValue = exec->uncheckedArgument(0);
     unsigned offset = 0;
-    Optional<unsigned> length = Nullopt;
+    std::optional<unsigned> length = std::nullopt;
     if (jsDynamicCast<JSArrayBuffer*>(firstValue) && argCount > 1) {
         offset = exec->uncheckedArgument(1).toIndex(exec, "byteOffset");
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
@@ -251,6 +257,7 @@ EncodedJSValue JSC_HOST_CALL constructGenericTypedArrayView(ExecState* exec)
         }
     }
 
+    scope.release();
     return JSValue::encode(constructGenericTypedArrayViewWithArguments<ViewClass>(exec, structure, JSValue::encode(firstValue), offset, length));
 }
 

@@ -27,7 +27,7 @@
 namespace WebCore {
     
 class AffineTransform;
-class SVGTransformList;
+class SVGTransformListValues;
 
 class SVGTransformable : public SVGLocatable {
 public:
@@ -38,7 +38,7 @@ public:
 
     virtual ~SVGTransformable();
 
-    static bool parseTransformAttribute(SVGTransformList&, const UChar*& ptr, const UChar* end, TransformParsingMode mode = ClearList);
+    static bool parseTransformAttribute(SVGTransformListValues&, const UChar*& ptr, const UChar* end, TransformParsingMode = ClearList);
     static bool parseTransformValue(SVGTransformValue::SVGTransformType, const UChar*& ptr, const UChar* end, SVGTransformValue&);
     static SVGTransformValue::SVGTransformType parseTransformType(const String&);
 

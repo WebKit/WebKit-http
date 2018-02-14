@@ -366,8 +366,12 @@ bool CachedResource::isCORSSameOrigin() const
 {
     // Following resource types do not use CORS
     ASSERT(type() != CachedResource::Type::FontResource);
+#if ENABLE(SVG_FONTS)
     ASSERT(type() != CachedResource::Type::SVGFontResource);
+#endif
+#if ENABLE(XSLT)
     ASSERT(type() != CachedResource::XSLStyleSheet);
+#endif
 
     // https://html.spec.whatwg.org/multipage/infrastructure.html#cors-same-origin
     return !loadFailedOrCanceled() && m_responseTainting != ResourceResponse::Tainting::Opaque;
@@ -802,7 +806,7 @@ bool CachedResource::areAllClientsXMLHttpRequests() const
     return true;
 }
 
-void CachedResource::setLoadPriority(const Optional<ResourceLoadPriority>& loadPriority)
+void CachedResource::setLoadPriority(const std::optional<ResourceLoadPriority>& loadPriority)
 {
     if (loadPriority)
         m_loadPriority = loadPriority.value();

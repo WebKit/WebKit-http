@@ -664,9 +664,34 @@ public:
         m_assembler.orr<64>(dest, dest, dataTempRegister);
     }
 
+    void rotateRight32(RegisterID src, TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.ror<32>(dest, src, imm.m_value & 31);
+    }
+
+    void rotateRight32(TrustedImm32 imm, RegisterID srcDst)
+    {
+        rotateRight32(srcDst, imm, srcDst);
+    }
+
+    void rotateRight32(RegisterID src, RegisterID shiftAmmount, RegisterID dest)
+    {
+        m_assembler.ror<32>(dest, src, shiftAmmount);
+    }
+
+    void rotateRight64(RegisterID src, TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.ror<64>(dest, src, imm.m_value & 63);
+    }
+
     void rotateRight64(TrustedImm32 imm, RegisterID srcDst)
     {
-        m_assembler.ror<64>(srcDst, srcDst, imm.m_value & 63);
+        rotateRight64(srcDst, imm, srcDst);
+    }
+
+    void rotateRight64(RegisterID src, RegisterID shiftAmmount, RegisterID dest)
+    {
+        m_assembler.ror<64>(dest, src, shiftAmmount);
     }
 
     void rshift32(RegisterID src, RegisterID shiftAmount, RegisterID dest)
@@ -1657,7 +1682,17 @@ public:
     {
         m_assembler.scvtf<32, 64>(dest, src);
     }
-    
+
+    void convertUInt64ToDouble(RegisterID src, FPRegisterID dest)
+    {
+        m_assembler.ucvtf<64, 64>(dest, src);
+    }
+
+    void convertUInt64ToFloat(RegisterID src, FPRegisterID dest)
+    {
+        m_assembler.ucvtf<32, 64>(dest, src);
+    }
+
     void divDouble(FPRegisterID src, FPRegisterID dest)
     {
         divDouble(dest, src, dest);
@@ -3267,7 +3302,7 @@ public:
         return static_cast<RelationalCondition>(ARM64Assembler::invert(static_cast<ARM64Assembler::Condition>(cond)));
     }
 
-    static Optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
+    static std::optional<ResultCondition> commuteCompareToZeroIntoTest(RelationalCondition cond)
     {
         switch (cond) {
         case Equal:
@@ -3280,7 +3315,7 @@ public:
             return PositiveOrZero;
             break;
         default:
-            return Nullopt;
+            return std::nullopt;
         }
     }
 

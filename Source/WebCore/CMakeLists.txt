@@ -29,6 +29,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/vibration"
     "${WEBCORE_DIR}/Modules/webaudio"
     "${WEBCORE_DIR}/Modules/webdatabase"
+    "${WEBCORE_DIR}/Modules/webdriver"
     "${WEBCORE_DIR}/Modules/websockets"
     "${WEBCORE_DIR}/accessibility"
     "${WEBCORE_DIR}/animation"
@@ -320,6 +321,8 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webdatabase/SQLTransactionCallback.idl
     Modules/webdatabase/SQLTransactionErrorCallback.idl
 
+    Modules/webdriver/NavigatorWebDriver.idl
+
     Modules/websockets/CloseEvent.idl
     Modules/websockets/WebSocket.idl
 
@@ -340,11 +343,13 @@ set(WebCore_NON_SVG_IDL_FILES
     crypto/SubtleCrypto.idl
     crypto/WebKitSubtleCrypto.idl
 
+    crypto/parameters/AesCbcParams.idl
     crypto/parameters/AesKeyGenParams.idl
     crypto/parameters/HmacKeyParams.idl
     crypto/parameters/RsaHashedImportParams.idl
     crypto/parameters/RsaHashedKeyGenParams.idl
     crypto/parameters/RsaKeyGenParams.idl
+    crypto/parameters/RsaOaepParams.idl
 
     css/CSSFontFaceLoadEvent.idl
     css/CSSFontFaceRule.idl
@@ -456,6 +461,8 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/StaticRange.idl
     dom/StringCallback.idl
     dom/Text.idl
+    dom/TextDecoder.idl
+    dom/TextEncoder.idl
     dom/TextEvent.idl
     dom/Touch.idl
     dom/TouchEvent.idl
@@ -471,6 +478,8 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/XMLDocument.idl
 
     fileapi/Blob.idl
+    fileapi/BlobLineEndings.idl
+    fileapi/BlobPropertyBag.idl
     fileapi/File.idl
     fileapi/FileError.idl
     fileapi/FileException.idl
@@ -1018,6 +1027,8 @@ set(WebCore_SOURCES
     Modules/webdatabase/SQLTransactionCoordinator.cpp
     Modules/webdatabase/SQLTransactionStateMachine.cpp
 
+    Modules/webdriver/NavigatorWebDriver.cpp
+
     Modules/websockets/ThreadableWebSocketChannel.cpp
     Modules/websockets/ThreadableWebSocketChannelClientWrapper.cpp
     Modules/websockets/WebSocket.cpp
@@ -1138,7 +1149,6 @@ set(WebCore_SOURCES
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
     bindings/js/JSExceptionBase.cpp
-    bindings/js/JSFileCustom.cpp
     bindings/js/JSFileReaderCustom.cpp
     bindings/js/JSGeolocationCustom.cpp
     bindings/js/JSHTMLAllCollectionCustom.cpp
@@ -1527,6 +1537,8 @@ set(WebCore_SOURCES
     dom/StyledElement.cpp
     dom/TagCollection.cpp
     dom/Text.cpp
+    dom/TextDecoder.cpp
+    dom/TextEncoder.cpp
     dom/TextEvent.cpp
     dom/TextNodeTraversal.cpp
     dom/Touch.cpp
@@ -1616,6 +1628,7 @@ set(WebCore_SOURCES
 
     fileapi/AsyncFileStream.cpp
     fileapi/Blob.cpp
+    fileapi/BlobBuilder.cpp
     fileapi/BlobURL.cpp
     fileapi/File.cpp
     fileapi/FileException.cpp
@@ -1624,7 +1637,6 @@ set(WebCore_SOURCES
     fileapi/FileReaderLoader.cpp
     fileapi/FileReaderSync.cpp
     fileapi/ThreadableBlobRegistry.cpp
-    fileapi/WebKitBlobBuilder.cpp
 
     history/BackForwardController.cpp
     history/CachedFrame.cpp
@@ -2068,6 +2080,7 @@ set(WebCore_SOURCES
     page/PageVisibilityState.cpp
     page/Performance.cpp
     page/PerformanceEntry.cpp
+    page/PerformanceLogging.cpp
     page/PerformanceNavigation.cpp
     page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
@@ -2347,6 +2360,7 @@ set(WebCore_SOURCES
     platform/mediastream/RealtimeMediaSource.cpp
     platform/mediastream/RealtimeMediaSourceCenter.cpp
     platform/mediastream/RealtimeMediaSourceSettings.cpp
+    platform/mediastream/SDPProcessorScriptResource.cpp
 
     platform/mock/DeviceMotionClientMock.cpp
     platform/mock/DeviceOrientationClientMock.cpp
@@ -2778,7 +2792,7 @@ set(WebCore_SOURCES
     svg/SVGImageLoader.cpp
     svg/SVGLangSpace.cpp
     svg/SVGLengthContext.cpp
-    svg/SVGLengthList.cpp
+    svg/SVGLengthListValues.cpp
     svg/SVGLengthValue.cpp
     svg/SVGLineElement.cpp
     svg/SVGLinearGradientElement.cpp
@@ -2788,7 +2802,7 @@ set(WebCore_SOURCES
     svg/SVGMaskElement.cpp
     svg/SVGMetadataElement.cpp
     svg/SVGMissingGlyphElement.cpp
-    svg/SVGNumberList.cpp
+    svg/SVGNumberListValues.cpp
     svg/SVGPaint.cpp
     svg/SVGParserUtilities.cpp
     svg/SVGPathBlender.cpp
@@ -2800,12 +2814,13 @@ set(WebCore_SOURCES
     svg/SVGPathSegList.cpp
     svg/SVGPathSegListBuilder.cpp
     svg/SVGPathSegListSource.cpp
+    svg/SVGPathSegListValues.cpp
     svg/SVGPathStringBuilder.cpp
     svg/SVGPathStringSource.cpp
     svg/SVGPathTraversalStateBuilder.cpp
     svg/SVGPathUtilities.cpp
     svg/SVGPatternElement.cpp
-    svg/SVGPointList.cpp
+    svg/SVGPointListValues.cpp
     svg/SVGPolyElement.cpp
     svg/SVGPolygonElement.cpp
     svg/SVGPolylineElement.cpp
@@ -2816,7 +2831,7 @@ set(WebCore_SOURCES
     svg/SVGScriptElement.cpp
     svg/SVGSetElement.cpp
     svg/SVGStopElement.cpp
-    svg/SVGStringList.cpp
+    svg/SVGStringListValues.cpp
     svg/SVGStyleElement.cpp
     svg/SVGSwitchElement.cpp
     svg/SVGSymbolElement.cpp
@@ -2831,7 +2846,7 @@ set(WebCore_SOURCES
     svg/SVGToOTFFontConversion.cpp
     svg/SVGTransform.cpp
     svg/SVGTransformDistance.cpp
-    svg/SVGTransformList.cpp
+    svg/SVGTransformListValues.cpp
     svg/SVGTransformValue.cpp
     svg/SVGTransformable.cpp
     svg/SVGURIReference.cpp
@@ -2856,7 +2871,6 @@ set(WebCore_SOURCES
 
     svg/properties/SVGAnimatedProperty.cpp
     svg/properties/SVGAttributeToPropertyMap.cpp
-    svg/properties/SVGPathSegListPropertyTearOff.cpp
     svg/properties/SVGPropertyInfo.cpp
 
     workers/AbstractWorker.cpp
@@ -3002,7 +3016,7 @@ if (ENABLE_ALLINONE_BUILD)
 endif ()
 
 set(WebCore_CSS_PROPERTY_NAMES
-    ${WEBCORE_DIR}/css/CSSPropertyNames.in
+    ${WEBCORE_DIR}/css/CSSProperties.json
 )
 
 set(WebCore_CSS_VALUE_KEYWORDS
@@ -3602,12 +3616,12 @@ list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/HTTPHeaderNam
 
 # Generate CSS property names
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.h ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.cpp
+    OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/CSSProperties.json ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.h ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.gperf ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.h ${DERIVED_SOURCES_WEBCORE_DIR}/StylePropertyShorthandFunctions.cpp
     MAIN_DEPENDENCY ${WEBCORE_DIR}/css/makeprop.pl
     DEPENDS ${WebCore_CSS_PROPERTY_NAMES}
     WORKING_DIRECTORY ${DERIVED_SOURCES_WEBCORE_DIR}
-    COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_PROPERTY_NAMES} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.in
-    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --preprocessor "${CODE_GENERATOR_PREPROCESSOR}" --gperf-executable "${GPERF_EXECUTABLE}"
+    COMMAND ${PERL_EXECUTABLE} -ne "print" ${WebCore_CSS_PROPERTY_NAMES} > ${DERIVED_SOURCES_WEBCORE_DIR}/CSSProperties.json
+    COMMAND ${PERL_EXECUTABLE} ${WEBCORE_DIR}/css/makeprop.pl --defines "${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}" --gperf-executable "${GPERF_EXECUTABLE}"
     VERBATIM)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/CSSPropertyNames.cpp)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/StyleBuilder.cpp)
@@ -3669,11 +3683,13 @@ if (WebCore_USER_AGENT_SCRIPTS)
     )
 endif ()
 
-if (WebCore_SDP_PROCESSOR_SCRIPTS)
+if (ENABLE_WEB_RTC)
     # Necessary variables:
     # WebCore_SDP_PROCESSOR_SCRIPTS containing the JavaScript sources list
     # WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES containing the source file that will load the scripts to add the proper
     #   dependency and having them built at the right moment
+    set(WebCore_SDP_PROCESSOR_SCRIPTS ${WEBCORE_DIR}/Modules/mediastream/sdp.js)
+    set(WebCore_SDP_PROCESSOR_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/mediastream/SDPProcessorScriptResource.cpp)
 
     MAKE_JS_FILE_ARRAYS(
         ${DERIVED_SOURCES_WEBCORE_DIR}/SDPProcessorScriptsData.cpp

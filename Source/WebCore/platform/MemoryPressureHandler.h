@@ -90,13 +90,22 @@ public:
     public:
         explicit ReliefLogger(const char *log)
             : m_logString(log)
+#if !RELEASE_LOG_DISABLED
+            , m_initialMemory(platformMemoryUsage())
+#else
             , m_initialMemory(s_loggingEnabled ? platformMemoryUsage() : 0)
+#endif
         {
         }
 
         ~ReliefLogger()
         {
+#if !RELEASE_LOG_DISABLED
             logMemoryUsageChange();
+#else
+            if (s_loggingEnabled)
+                logMemoryUsageChange();
+#endif
         }
 
         const char* logString() const { return m_logString; }
@@ -139,7 +148,7 @@ private:
     private:
         void readAndNotify() const;
 
-        Optional<int> m_fd;
+        std::optional<int> m_fd;
         std::function<void ()> m_notifyHandler;
 #if USE(GLIB)
         GRefPtr<GSource> m_source;
@@ -164,8 +173,8 @@ private:
     CFRunLoopObserverRef m_observer { nullptr };
     Lock m_observerMutex;
 #elif OS(LINUX)
-    Optional<int> m_eventFD;
-    Optional<int> m_pressureLevelFD;
+    std::optional<int> m_eventFD;
+    std::optional<int> m_pressureLevelFD;
     std::unique_ptr<EventFDPoller> m_eventFDPoller;
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();

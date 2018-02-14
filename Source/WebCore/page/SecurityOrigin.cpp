@@ -108,7 +108,7 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     m_domain = m_host;
 
     if (m_port && isDefaultPortForProtocol(m_port.value(), m_protocol))
-        m_port = Nullopt;
+        m_port = std::nullopt;
 
     // By default, only local SecurityOrigins can load local resources.
     m_canLoadLocalResources = isLocal();
@@ -342,7 +342,10 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
     if (shouldAllowFromThirdParty == AlwaysAllowFromThirdParty)
         return true;
 
-    if ((m_storageBlockingPolicy == BlockThirdPartyStorage || topOrigin->m_storageBlockingPolicy == BlockThirdPartyStorage) && topOrigin->isThirdParty(this))
+    if (m_universalAccess)
+        return true;
+
+    if ((m_storageBlockingPolicy == BlockThirdPartyStorage || topOrigin->m_storageBlockingPolicy == BlockThirdPartyStorage) && !topOrigin->isSameOriginAs(this))
         return false;
 
     return true;
@@ -357,18 +360,15 @@ SecurityOrigin::Policy SecurityOrigin::canShowNotifications() const
     return Ask;
 }
 
-bool SecurityOrigin::isThirdParty(const SecurityOrigin* child) const
+bool SecurityOrigin::isSameOriginAs(const SecurityOrigin* other) const
 {
-    if (child->m_universalAccess)
-        return false;
-
-    if (this == child)
-        return false;
-
-    if (isUnique() || child->isUnique())
+    if (this == other)
         return true;
 
-    return !isSameSchemeHostPort(child);
+    if (isUnique() || other->isUnique())
+        return false;
+
+    return isSameSchemeHostPort(other);
 }
 
 void SecurityOrigin::grantLoadLocalResources()
@@ -486,7 +486,7 @@ Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
     return SecurityOrigin::create(URL(URL(), originString));
 }
 
-Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, Optional<uint16_t> port)
+Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, std::optional<uint16_t> port)
 {
     String decodedHost = decodeURLEscapeSequences(host);
     auto origin = create(URL(URL(), protocol + "://" + host + "/"));

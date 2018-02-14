@@ -116,7 +116,7 @@ HTMLInputElement::HTMLInputElement(const QualifiedName& tagName, Document& docum
 #if ENABLE(TOUCH_EVENTS)
     , m_hasTouchEventHandler(false)
 #endif
-    , m_isSpellCheckingEnabled(true)
+    , m_isSpellcheckDisabledExceptTextReplacement(false)
     // m_inputType is lazily created when constructed by the parser to avoid constructing unnecessarily a text inputType and
     // its shadow subtree, just to destroy them when the |type| attribute gets set by the parser to something else than 'text'.
     , m_inputType(createdByParser ? nullptr : InputType::createText(*this))
@@ -381,7 +381,7 @@ StepRange HTMLInputElement::createStepRange(AnyStepHandling anyStepHandling) con
 }
 
 #if ENABLE(DATALIST_ELEMENT)
-Optional<Decimal> HTMLInputElement::findClosestTickMarkValue(const Decimal& value)
+std::optional<Decimal> HTMLInputElement::findClosestTickMarkValue(const Decimal& value)
 {
     return m_inputType->findClosestTickMarkValue(value);
 }
@@ -462,11 +462,6 @@ void HTMLInputElement::endEditing()
 bool HTMLInputElement::shouldUseInputMethod()
 {
     return m_inputType->shouldUseInputMethod();
-}
-
-bool HTMLInputElement::isSpellCheckingEnabled() const
-{
-    return m_isSpellCheckingEnabled && HTMLTextFormControlElement::isSpellCheckingEnabled();
 }
 
 void HTMLInputElement::handleFocusEvent(Node* oldFocusedNode, FocusDirection direction)
@@ -1531,23 +1526,21 @@ void HTMLInputElement::removedFrom(ContainerNode& insertionPoint)
 #endif
 }
 
-void HTMLInputElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLInputElement::didMoveToNewDocument(Document& oldDocument)
 {
     if (imageLoader())
         imageLoader()->elementDidMoveToNewDocument();
 
     bool needsSuspensionCallback = this->needsSuspensionCallback();
-    if (oldDocument) {
-        // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
-        if (needsSuspensionCallback)
-            oldDocument->unregisterForDocumentSuspensionCallbacks(this);
-        if (isRadioButton())
-            oldDocument->formController().radioButtonGroups().removeButton(this);
+    // Always unregister for cache callbacks when leaving a document, even if we would otherwise like to be registered
+    if (needsSuspensionCallback)
+        oldDocument.unregisterForDocumentSuspensionCallbacks(this);
+    if (isRadioButton())
+        oldDocument.formController().radioButtonGroups().removeButton(this);
 #if ENABLE(TOUCH_EVENTS)
-        if (m_hasTouchEventHandler)
-            oldDocument->didRemoveEventTargetNode(*this);
+    if (m_hasTouchEventHandler)
+        oldDocument.didRemoveEventTargetNode(*this);
 #endif
-    }
 
     if (needsSuspensionCallback)
         document().registerForDocumentSuspensionCallbacks(this);
@@ -1782,7 +1775,7 @@ bool HTMLInputElement::isEmptyValue() const
 void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 {
     unsigned oldEffectiveMaxLength = effectiveMaxLength();
-    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
+    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
     if (oldEffectiveMaxLength != effectiveMaxLength())
         updateValueIfNeeded();
 
@@ -1794,7 +1787,7 @@ void HTMLInputElement::maxLengthAttributeChanged(const AtomicString& newValue)
 void HTMLInputElement::minLengthAttributeChanged(const AtomicString& newValue)
 {
     int oldMinLength = minLength();
-    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
+    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).value_or(-1));
     if (oldMinLength != minLength())
         updateValueIfNeeded();
 

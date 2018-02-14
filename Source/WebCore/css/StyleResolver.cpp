@@ -138,8 +138,8 @@
 #include "WebKitFontFamilyNames.h"
 #include "XMLNames.h"
 #include <bitset>
+#include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -164,7 +164,6 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-static const CSSPropertyID lastHighPriorityProperty = CSSPropertyFontSynthesis;
 static const CSSPropertyID firstLowPriorityProperty = static_cast<CSSPropertyID>(lastHighPriorityProperty + 1);
 
 static void extractDirectionAndWritingMode(const RenderStyle&, const StyleResolver::MatchResult&, TextDirection&, WritingMode&);
@@ -1844,6 +1843,20 @@ void StyleResolver::addViewportDependentMediaQueryResult(const MediaQueryExpress
 bool StyleResolver::hasMediaQueriesAffectedByViewportChange() const
 {
     for (auto& result : m_viewportDependentMediaQueryResults) {
+        if (m_mediaQueryEvaluator.evaluate(result.expression) != result.result)
+            return true;
+    }
+    return false;
+}
+
+void StyleResolver::addAccessibilitySettingsDependentMediaQueryResult(const MediaQueryExpression& expression, bool result)
+{
+    m_accessibilitySettingsDependentMediaQueryResults.append(MediaQueryResult { expression, result });
+}
+
+bool StyleResolver::hasMediaQueriesAffectedByAccessibilitySettingsChange() const
+{
+    for (auto& result : m_accessibilitySettingsDependentMediaQueryResults) {
         if (m_mediaQueryEvaluator.evaluate(result.expression) != result.result)
             return true;
     }

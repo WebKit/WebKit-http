@@ -59,7 +59,7 @@
 #include <runtime/JSLock.h>
 #include <runtime/JSModuleRecord.h>
 #include <runtime/JSNativeStdFunction.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/Threading.h>
 #include <wtf/text/TextPosition.h>
 
@@ -252,7 +252,7 @@ JSC::JSValue ScriptController::evaluateModule(const URL& sourceURL, JSModuleReco
 
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
-    TemporaryChange<const String*> sourceURLScope(m_sourceURL, &sourceURL.string());
+    SetForScope<const String*> sourceURLScope(m_sourceURL, &sourceURL.string());
 
     Ref<Frame> protector(m_frame);
 
@@ -383,7 +383,7 @@ void ScriptController::setupModuleScriptHandlers(CachedModuleScript& moduleScrip
             if (symbol->privateName() == moduleLoaderAlreadyReportedErrorSymbol) {
                 moduleScript->notifyLoadFailed(LoadableScript::Error {
                     LoadableScript::ErrorType::CachedScript,
-                    Nullopt
+                    std::nullopt
                 });
                 return JSValue::encode(jsUndefined());
             }
@@ -637,7 +637,7 @@ void ScriptController::clearScriptObjects()
 
 JSValue ScriptController::executeScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
     ScriptSourceCode sourceCode(script, m_frame.document()->url());
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
@@ -663,7 +663,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 
 JSValue ScriptController::executeScript(const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
     return executeScript(ScriptSourceCode(script, m_frame.document()->url()), exceptionDetails);
 }
 

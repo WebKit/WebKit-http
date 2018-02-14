@@ -33,12 +33,12 @@ class MediaControllerSupport
         for (let eventType of this.mediaEvents)
             mediaController.media.addEventListener(eventType, this);
 
+        this.syncControl();
+
         if (!this.control)
             return;
 
         this.control.uiDelegate = this;
-
-        this.syncControl();
     }
 
     // Public
@@ -74,8 +74,7 @@ class MediaControllerSupport
     handleEvent(event)
     {
         // Implemented by subclasses.
-        if (this.control)
-            this.syncControl();
+        this.syncControl();
     }
 
     syncControl()

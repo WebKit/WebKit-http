@@ -190,13 +190,17 @@ const _checkStackReturn = (op, ret) => {
             case "prev": break; // FIXME implement prev, checking for whetever the parameter type was. https://bugs.webkit.org/show_bug.cgi?id=163421
             case "size": break; // FIXME implement size. https://bugs.webkit.org/show_bug.cgi?id=163421
             default: throw new Error(`Implementation problem: unhandled meta-type "${expect}" on "${op}"`);
-                                            }
+            }
         }
     }
 };
 
 const _checkImms = (op, imms, expectedImms, ret) => {
-    assert.eq(imms.length, expectedImms.length, `"${op}" expects ${expectedImms.length} immediates, got ${imms.length}`);
+    const minExpectedImms = expectedImms.filter(i => i.type.slice(-1) !== '*').length;
+    if (minExpectedImms !== expectedImms.length)
+        assert.ge(imms.length, minExpectedImms, `"${op}" expects at least ${minExpectedImms} immediate${minExpectedImms !== 1 ? 's' : ''}, got ${imms.length}`);
+    else
+         assert.eq(imms.length, minExpectedImms, `"${op}" expects exactly ${minExpectedImms} immediate${minExpectedImms !== 1 ? 's' : ''}, got ${imms.length}`);
     for (let idx = 0; idx !== expectedImms.length; ++idx) {
         const got = imms[idx];
         const expect = expectedImms[idx];
@@ -205,20 +209,23 @@ const _checkImms = (op, imms, expectedImms, ret) => {
             assert.truthy(_isValidValue(got, "i32"), `Invalid value on ${op}: got "${got}", expected i32`);
             // FIXME check function indices. https://bugs.webkit.org/show_bug.cgi?id=163421
             break;
-        case "local_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "global_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "type_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "local_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "global_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "type_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         case "value":
             assert.truthy(_isValidValue(got, ret[0]), `Invalid value on ${op}: got "${got}", expected ${ret[0]}`);
             break;
-        case "flags": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "offset": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "flags": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "offset": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
             // Control:
-        case "default_target": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "relative_depth": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "sig": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "target_count": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "target_table": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "default_target": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "relative_depth": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "sig":
+            // FIXME this should be isValidBlockType https://bugs.webkit.org/show_bug.cgi?id=164724
+            assert.truthy(imms[idx] === "void" || WASM.isValidValueType(imms[idx]), `Invalid block type on ${op}: "${imms[idx]}"`);
+            break;
+        case "target_count": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "target_table": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         default: throw new Error(`Implementation problem: unhandled immediate "${expect.name}" on "${op}"`);
         }
     }
@@ -355,6 +362,7 @@ export default class Builder {
                     return typeBuilder;
                 };
                 break;
+
             case "Import":
                 this[section] = function() {
                     const s = this._addSection(section);
@@ -367,6 +375,41 @@ export default class Builder {
                     importBuilder.Function = _importFunctionContinuation(this, s, importBuilder);
                     return importBuilder;
                 };
+                break;
+
+            case "Function":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const exportBuilder = {
+                        End: () => this
+                        // FIXME: add ability to add this with whatever.
+                    };
+                    return exportBuilder;
+                };
+                break;
+
+            case "Table":
+                // FIXME Implement table https://bugs.webkit.org/show_bug.cgi?id=164135
+                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                break;
+
+            case "Memory":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const exportBuilder = {
+                        End: () => this,
+                        InitialMaxPages: (initial, max) => {
+                            s.data.push({ initial, max });
+                            return exportBuilder;
+                        }
+                    };
+                    return exportBuilder;
+                };
+                break;
+
+            case "Global":
+                // FIXME implement global https://bugs.webkit.org/show_bug.cgi?id=164133
+                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
                 break;
 
             case "Export":
@@ -383,29 +426,14 @@ export default class Builder {
                 };
                 break;
 
-            case "Memory":
-                this[section] = function() {
-                    const s = this._addSection(section);
-                    const exportBuilder = {
-                        End: () => this,
-                        InitialMaxPages: (initial, max) => {
-                            s.data.push({ initial, max });
-                            return exportBuilder;
-                        }
-                    };
-                    return exportBuilder;
-                }
+            case "Start":
+                // FIXME implement start https://bugs.webkit.org/show_bug.cgi?id=161709
+                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
                 break;
 
-            case "Function":
-                this[section] = function() {
-                    const s = this._addSection(section);
-                    const exportBuilder = {
-                        End: () => this
-                        // FIXME: add ability to add this with whatever.
-                    }
-                    return exportBuilder;
-                }
+            case "Element":
+                // FIXME implement element https://bugs.webkit.org/show_bug.cgi?id=161709
+                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
                 break;
 
             case "Code":
@@ -453,11 +481,17 @@ export default class Builder {
                 };
                 break;
 
-            default:
+            case "Data":
+                // FIXME implement data https://bugs.webkit.org/show_bug.cgi?id=161709
                 this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                break;
+
+            default:
+                this[section] = () => { throw new Error(`Unknown section type "${section}"`); };
                 break;
             }
         }
+
         this.Unknown = function(name) {
             const s = this._addSection(name);
             const builder = this;

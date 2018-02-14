@@ -50,6 +50,7 @@ namespace WebCore {
 class AnimationParseContext;
 class CSSBorderImageSliceValue;
 class CSSContentDistributionValue;
+class CSSParserObserver;
 class CSSPrimitiveValue;
 class CSSSelectorList;
 class CSSValue;
@@ -116,7 +117,7 @@ public:
         void setCalculation(RefPtr<CSSCalcValue>&& calculation)
         {
             ASSERT(isCalculation(m_value));
-            m_calculation = calculation;
+            m_calculation = WTFMove(calculation);
         }
 
     private:
@@ -132,8 +133,11 @@ public:
     RefPtr<StyleKeyframe> parseKeyframeRule(StyleSheetContents*, const String&);
     bool parseSupportsCondition(const String&);
 
+    static void parseSheetForInspector(const CSSParserContext&, StyleSheetContents*, const String&, CSSParserObserver&);
+    static void parseDeclarationForInspector(const CSSParserContext&, const String&, CSSParserObserver&);
+
     static ParseResult parseValue(MutableStyleProperties&, CSSPropertyID, const String&, bool important, const CSSParserContext&, StyleSheetContents*);
-    static ParseResult parseCustomPropertyValue(MutableStyleProperties&, const AtomicString& propertyName, const String&, bool important, const CSSParserContext&, StyleSheetContents* contextStyleSheet);
+    static ParseResult parseCustomPropertyValue(MutableStyleProperties&, const AtomicString& propertyName, const String&, bool important, const CSSParserContext&, StyleSheetContents*);
 
     static Color parseColor(const String&, bool strict = false);
     static bool isValidSystemColorValue(CSSValueID);
@@ -141,9 +145,9 @@ public:
     static RefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     RefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
 
+    // FIXME-NEWPARSER: Can remove the last two arguments once the new parser is turned on.
     WEBCORE_EXPORT bool parseDeclaration(MutableStyleProperties&, const String&, RefPtr<CSSRuleSourceData>&&, StyleSheetContents* contextStyleSheet);
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
-    std::unique_ptr<MediaQuery> parseMediaQuery(const String&);
 
     void addProperty(CSSPropertyID, RefPtr<CSSValue>&&, bool important, bool implicit = false);
     void rollbackLastProperties(int num);
@@ -171,7 +175,7 @@ public:
         SourceSize(MediaQueryExpression&&, Ref<CSSValue>&&);
     };
     Vector<SourceSize> parseSizesAttribute(StringView);
-    Optional<SourceSize> sourceSize(MediaQueryExpression&&, CSSParserValue&);
+    std::optional<SourceSize> sourceSize(MediaQueryExpression&&, CSSParserValue&);
 
     bool parseFillImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
@@ -207,11 +211,11 @@ public:
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     RefPtr<CSSValue> parseAnimationTrigger();
 #endif
-    static Vector<double> parseKeyframeSelector(const String&);
+    static std::unique_ptr<Vector<double>> parseKeyframeKeyList(const String&);
 
     bool parseTransformOriginShorthand(RefPtr<CSSPrimitiveValue>&, RefPtr<CSSPrimitiveValue>&, RefPtr<CSSValue>&);
-    Optional<double> parseCubicBezierTimingFunctionValue(CSSParserValueList&);
-    Optional<double> parseSpringTimingFunctionValue(CSSParserValueList&);
+    std::optional<double> parseCubicBezierTimingFunctionValue(CSSParserValueList&);
+    std::optional<double> parseSpringTimingFunctionValue(CSSParserValueList&);
     bool parseAnimationProperty(CSSPropertyID, RefPtr<CSSValue>&, AnimationParseContext&);
     bool parseTransitionShorthand(CSSPropertyID, bool important);
     bool parseAnimationShorthand(CSSPropertyID, bool important);
@@ -276,7 +280,7 @@ public:
 
     bool parseRGBParameters(CSSParserValue&, int* colorValues, bool parseAlpha);
     bool parseHSLParameters(CSSParserValue&, double* colorValues, bool parseAlpha);
-    Optional<std::pair<std::array<double, 4>, ColorSpace>> parseColorFunctionParameters(CSSParserValue&);
+    std::optional<std::pair<std::array<double, 4>, ColorSpace>> parseColorFunctionParameters(CSSParserValue&);
     RefPtr<CSSPrimitiveValue> parseColor(CSSParserValue* = nullptr);
     Color parseColorFromValue(CSSParserValue&);
     void parseSelector(const String&, CSSSelectorList&);
@@ -457,7 +461,7 @@ public:
     RuleSourceDataList* m_ruleSourceDataResult { nullptr };
 
     void fixUnparsedPropertyRanges(CSSRuleSourceData&);
-    void markRuleHeaderStart(CSSRuleSourceData::Type);
+    void markRuleHeaderStart(StyleRule::Type);
     void markRuleHeaderEnd();
 
     void startNestedSelectorList() { ++m_nestedSelectorLevel; }
@@ -592,7 +596,9 @@ private:
     bool parseGeneratedImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
     ParseResult parseValue(MutableStyleProperties&, CSSPropertyID, const String&, bool important, StyleSheetContents* contextStyleSheet);
-    Ref<ImmutableStyleProperties> parseDeclaration(const String&, StyleSheetContents* contextStyleSheet);
+    
+    // FIXME-NEWPARSER: Remove once old parser is gone.
+    Ref<ImmutableStyleProperties> parseDeclarationDeprecated(const String&, StyleSheetContents* contextStyleSheet);
 
     RefPtr<CSSBasicShapeInset> parseInsetRoundedCorners(Ref<CSSBasicShapeInset>&&, CSSParserValueList&);
 

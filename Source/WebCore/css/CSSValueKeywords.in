@@ -1150,6 +1150,7 @@ isolate
 scale-down
 
 // background-image, etc.
+container-scroll
 cross-fade
 image-set
 linear-gradient
@@ -1292,7 +1293,7 @@ white-outline
 plain
 buy
 set-up
-other
+donate
 #endif
 
 // font-synthesis

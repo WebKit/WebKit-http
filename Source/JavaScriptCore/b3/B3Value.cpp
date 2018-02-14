@@ -343,6 +343,16 @@ Value* Value::zShrConstant(Procedure&, const Value*) const
     return nullptr;
 }
 
+Value* Value::rotRConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
+Value* Value::rotLConstant(Procedure&, const Value*) const
+{
+    return nullptr;
+}
+
 Value* Value::bitwiseCastConstant(Procedure&) const
 {
     return nullptr;
@@ -447,7 +457,7 @@ Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
         return nullptr;
-    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
+    if (std::optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
         ASSERT(!kind().hasExtraBits());
         return proc.add<Value>(*invertedOpcode, type(), origin(), children());
     }
@@ -550,6 +560,8 @@ Effects Value::effects() const
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Clz:
     case Abs:
     case Ceil:
@@ -696,6 +708,8 @@ ValueKey Value::key() const
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -777,6 +791,8 @@ Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Clz:
     case Abs:
     case Ceil:

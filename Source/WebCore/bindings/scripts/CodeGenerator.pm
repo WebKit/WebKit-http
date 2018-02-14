@@ -65,6 +65,7 @@ my %floatingPointTypeHash = (
 );
 
 my %stringTypeHash = (
+    "ByteString" => 1,
     "DOMString" => 1,
     "USVString" => 1,
 );
@@ -90,12 +91,6 @@ my %primitiveTypeHash = (
     "Date" => 1
 );
 
-# WebCore types used directly in IDL files.
-my %webCoreTypeHash = (
-    "Dictionary" => 1,
-    "SerializedScriptValue" => 1,
-);
-
 my %dictionaryTypeImplementationNameOverrides = ();
 my %enumTypeImplementationNameOverrides = ();
 
@@ -116,15 +111,6 @@ my %svgAttributesInHTMLHash = (
     "onresize" => 1,
     "onscroll" => 1,
     "onunload" => 1,
-);
-
-my %svgTypeNeedingTearOff = (
-    "SVGLengthList" => "SVGListPropertyTearOff<SVGLengthList>",
-    "SVGNumberList" => "SVGListPropertyTearOff<SVGNumberList>",
-    "SVGPointList" => "SVGListPropertyTearOff<SVGPointList>",
-    "SVGStringList" => "SVGStaticListPropertyTearOff<SVGStringList>",
-    "SVGPathSegList" => "SVGPathSegListPropertyTearOff",
-    "SVGTransformList" => "SVGTransformListPropertyTearOff"
 );
 
 # Cache of IDL file pathnames.
@@ -360,23 +346,6 @@ sub ParseInterface
 
 # Helpers for all CodeGenerator***.pm modules
 
-sub SkipIncludeHeader
-{
-    my ($object, $typeName) = @_;
-
-    # FIXME: This is a lot like !IsRefPtrType. Maybe they could share code?
-
-    return 1 if $primitiveTypeHash{$typeName};
-    return 1 if $integerTypeHash{$typeName};
-    return 1 if $floatingPointTypeHash{$typeName};
-    return 1 if $typedArrayTypes{$typeName};
-    return 1 if $stringTypeHash{$typeName};
-    return 1 if $typeName eq "BufferSource";
-    return 1 if $typeName eq "any";
-
-    return 0;
-}
-
 sub IsNumericType
 {
     my ($object, $type) = @_;
@@ -604,16 +573,6 @@ sub IsNonPointerType
     return 0;
 }
 
-sub IsSVGTypeNeedingTearOff
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    return 1 if exists $svgTypeNeedingTearOff{$type->name};
-    return 0;
-}
-
 sub IsTypedArrayType
 {
     my ($object, $type) = @_;
@@ -634,41 +593,12 @@ sub IsRefPtrType
     return 0 if $object->IsDictionaryType($type);
     return 0 if $object->IsEnumType($type);
     return 0 if $object->IsSequenceOrFrozenArrayType($type);
+    return 0 if $object->IsRecordType($type);
     return 0 if $object->IsStringType($type);
+    return 0 if $type->isUnion;
     return 0 if $type->name eq "any";
 
     return 1;
-}
-
-sub GetSVGTypeNeedingTearOff
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    return $svgTypeNeedingTearOff{$type->name} if exists $svgTypeNeedingTearOff{$type->name};
-    return undef;
-}
-
-sub GetSVGWrappedTypeNeedingTearOff
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    my $svgTypeNeedingTearOff = $object->GetSVGTypeNeedingTearOff($type);
-    return $svgTypeNeedingTearOff if not $svgTypeNeedingTearOff;
-
-    if ($svgTypeNeedingTearOff =~ /SVGListPropertyTearOff/) {
-        $svgTypeNeedingTearOff =~ s/SVGListPropertyTearOff<//;
-    } elsif ($svgTypeNeedingTearOff =~ /SVGStaticListPropertyTearOff/) {
-        $svgTypeNeedingTearOff =~ s/SVGStaticListPropertyTearOff<//;
-    }  elsif ($svgTypeNeedingTearOff =~ /SVGTransformListPropertyTearOff/) {
-        $svgTypeNeedingTearOff =~ s/SVGTransformListPropertyTearOff<//;
-    } 
-
-    $svgTypeNeedingTearOff =~ s/>//;
-    return $svgTypeNeedingTearOff;
 }
 
 sub IsSVGAnimatedTypeName
@@ -705,15 +635,6 @@ sub IsSequenceType
     return $type->name eq "sequence";
 }
 
-sub GetSequenceInnerType
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    return @{$type->subtypes}[0];
-}
-
 sub IsFrozenArrayType
 {
     my ($object, $type) = @_;
@@ -721,15 +642,6 @@ sub IsFrozenArrayType
     assert("Not a type") if ref($type) ne "IDLType";
 
     return $type->name eq "FrozenArray";
-}
-
-sub GetFrozenArrayInnerType
-{
-    my ($object, $type) = @_;
-
-    assert("Not a type") if ref($type) ne "IDLType";
-
-    return @{$type->subtypes}[0];
 }
 
 sub IsSequenceOrFrozenArrayType
@@ -741,13 +653,13 @@ sub IsSequenceOrFrozenArrayType
     return $object->IsSequenceType($type) || $object->IsFrozenArrayType($type);
 }
 
-sub GetSequenceOrFrozenArrayInnerType
+sub IsRecordType
 {
     my ($object, $type) = @_;
 
     assert("Not a type") if ref($type) ne "IDLType";
 
-    return @{$type->subtypes}[0];
+    return $type->name eq "record";
 }
 
 # These match WK_lcfirst and WK_ucfirst defined in builtins_generator.py.
@@ -937,19 +849,52 @@ sub SetterExpression
     return ($functionName, $contentAttributeName);
 }
 
+sub IsBuiltinType
+{
+    my ($object, $type) = @_;
+
+    assert("Not a type") if ref($type) ne "IDLType";
+
+    return 1 if $object->IsPrimitiveType($type);
+    return 1 if $object->IsSequenceOrFrozenArrayType($type);
+    return 1 if $object->IsRecordType($type);
+    return 1 if $object->IsStringType($type);
+    return 1 if $object->IsTypedArrayType($type);
+    return 1 if $type->isUnion;
+    return 1 if $type->name eq "any";
+    return 1 if $type->name eq "BufferSource";
+    return 1 if $type->name eq "Promise";
+    return 1 if $type->name eq "XPathNSResolver";    
+    return 1 if $type->name eq "EventListener";    
+    return 1 if $type->name eq "Dictionary";    
+    return 1 if $type->name eq "SerializedScriptValue";    
+
+    return 0;
+}
+
+sub IsInterfaceType
+{
+    my ($object, $type) = @_;
+
+    assert("Not a type") if ref($type) ne "IDLType";
+
+    return 0 if $object->IsBuiltinType($type);
+    return 0 if $object->IsDictionaryType($type);
+    return 0 if $object->IsEnumType($type);
+
+    return 1;
+}
+
 sub IsWrapperType
 {
     my ($object, $type) = @_;
 
     assert("Not a type") if ref($type) ne "IDLType";
 
-    return 0 if !$object->IsRefPtrType($type);
-    return 0 if $object->IsTypedArrayType($type);
-    return 0 if $type->name eq "BufferSource";
-    return 0 if $type->name eq "UNION";
-    return 0 if $webCoreTypeHash{$type->name};
+    return 1 if $object->IsInterfaceType($type);
+    return 1 if $type->name eq "XPathNSResolver";
 
-    return 1;
+    return 0;
 }
 
 sub GetInterfaceExtendedAttributesFromName
@@ -990,7 +935,7 @@ sub ComputeIsCallbackInterface
 
     assert("Not a type") if ref($type) ne "IDLType";
 
-    return 0 unless $object->IsWrapperType($type);
+    return 0 unless $object->IsInterfaceType($type);
 
     my $typeName = $type->name;
     my $idlFile = $object->IDLFileForInterface($typeName) or assert("Could NOT find IDL file for interface \"$typeName\"!\n");
@@ -1027,7 +972,7 @@ sub ComputeIsCallbackFunction
 
     assert("Not a type") if ref($type) ne "IDLType";
 
-    return 0 unless $object->IsWrapperType($type);
+    return 0 unless $object->IsInterfaceType($type);
 
     my $typeName = $type->name;
     my $idlFile = $object->IDLFileForInterface($typeName) or assert("Could NOT find IDL file for interface \"$typeName\"!\n");
@@ -1175,14 +1120,5 @@ sub InheritsExtendedAttribute
     return $found;
 }
 
-sub ShouldPassWrapperByReference
-{
-    my ($object, $argument) = @_;
-
-    return 0 if $argument->type->isNullable;
-    return 0 if !$object->IsWrapperType($argument->type) && !$object->IsTypedArrayType($argument->type);
-
-    return 1;
-}
 
 1;

@@ -53,7 +53,7 @@ public:
     static Ref<SecurityOrigin> createUnique();
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, Optional<uint16_t> port);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, std::optional<uint16_t> port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -81,7 +81,7 @@ public:
     const String& protocol() const { return m_protocol; }
     const String& host() const { return m_host; }
     const String& domain() const { return m_domain; }
-    Optional<uint16_t> port() const { return m_port; }
+    std::optional<uint16_t> port() const { return m_port; }
 
     // Returns true if a given URL is secure, based either directly on its
     // own protocol, or, when relevant, on the protocol of its "inner URL"
@@ -196,6 +196,10 @@ public:
     // (and whether it was set) but considering the host. It is used for postMessage.
     WEBCORE_EXPORT bool isSameSchemeHostPort(const SecurityOrigin*) const;
 
+    // This method implements the "same origin" algorithm from the HTML Standard:
+    // https://html.spec.whatwg.org/multipage/browsers.html#same-origin
+    bool isSameOriginAs(const SecurityOrigin*) const;
+
     static URL urlWithUniqueSecurityOrigin();
 
 private:
@@ -205,7 +209,6 @@ private:
 
     // FIXME: Rename this function to something more semantic.
     bool passesFileCheck(const SecurityOrigin*) const;
-    bool isThirdParty(const SecurityOrigin*) const;
 
     // This method checks that the scheme for this origin is an HTTP-family
     // scheme, e.g. HTTP and HTTPS.
@@ -218,7 +221,7 @@ private:
     String m_host;
     String m_domain;
     String m_filePath;
-    Optional<uint16_t> m_port;
+    std::optional<uint16_t> m_port;
     bool m_isUnique { false };
     bool m_universalAccess { false };
     bool m_domainWasSetInDOM { false };

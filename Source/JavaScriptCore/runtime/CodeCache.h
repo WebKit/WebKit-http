@@ -30,7 +30,6 @@
 #include "JSCInlines.h"
 #include "Parser.h"
 #include "ParserModes.h"
-#include "SourceCode.h"
 #include "SourceCodeKey.h"
 #include "Strong.h"
 #include "StrongInlines.h"
@@ -38,6 +37,7 @@
 #include "UnlinkedEvalCodeBlock.h"
 #include "UnlinkedModuleProgramCodeBlock.h"
 #include "UnlinkedProgramCodeBlock.h"
+#include "UnlinkedSourceCode.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/Forward.h>
 #include <wtf/text/WTFString.h>
@@ -194,7 +194,7 @@ class CodeCache {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     UnlinkedProgramCodeBlock* getUnlinkedProgramCodeBlock(VM&, ProgramExecutable*, const SourceCode&, JSParserStrictMode, DebuggerMode, ParserError&);
-    UnlinkedEvalCodeBlock* getUnlinkedGlobalEvalCodeBlock(VM&, IndirectEvalExecutable*, const SourceCode&, JSParserStrictMode, DebuggerMode, ParserError&, EvalContextType);
+    UnlinkedEvalCodeBlock* getUnlinkedEvalCodeBlock(VM&, IndirectEvalExecutable*, const SourceCode&, JSParserStrictMode, DebuggerMode, ParserError&, EvalContextType);
     UnlinkedModuleProgramCodeBlock* getUnlinkedModuleProgramCodeBlock(VM&, ModuleProgramExecutable*, const SourceCode&, DebuggerMode, ParserError&);
     UnlinkedFunctionExecutable* getUnlinkedGlobalFunctionExecutable(VM&, const Identifier&, const SourceCode&, DebuggerMode, ParserError&);
 
@@ -246,7 +246,7 @@ UnlinkedCodeBlockType* generateUnlinkedCodeBlock(VM& vm, ExecutableType* executa
     executable->recordParse(rootNode->features() | arrowContextFeature, rootNode->hasCapturedVariables(), rootNode->firstLine(), rootNode->lastLine(), startColumn, endColumn);
 
     UnlinkedCodeBlockType* unlinkedCodeBlock = UnlinkedCodeBlockType::create(&vm, executable->executableInfo(), debuggerMode);
-    unlinkedCodeBlock->recordParse(rootNode->features(), rootNode->hasCapturedVariables(), rootNode->firstLine() - source.firstLine(), lineCount, unlinkedEndColumn);
+    unlinkedCodeBlock->recordParse(rootNode->features(), rootNode->hasCapturedVariables(), lineCount, unlinkedEndColumn);
     unlinkedCodeBlock->setSourceURLDirective(source.provider()->sourceURL());
     unlinkedCodeBlock->setSourceMappingURLDirective(source.provider()->sourceMappingURL());
 

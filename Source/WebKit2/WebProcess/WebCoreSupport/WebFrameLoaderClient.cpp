@@ -439,7 +439,7 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
     webPage->send(Messages::WebPageProxy::DidReceiveTitleForFrame(m_frame->frameID(), title.string(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent> hasInsecureContent)
+void WebFrameLoaderClient::dispatchDidCommitLoad(std::optional<HasInsecureContent> hasInsecureContent)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
@@ -454,7 +454,7 @@ void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent> ha
     webPage->sandboxExtensionTracker().didCommitProvisionalLoad(m_frame);
 
     // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), documentLoader.response().certificateInfo().valueOrCompute([] { return CertificateInfo(); }), m_frame->coreFrame()->document()->isPluginDocument(), hasInsecureContent, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+    webPage->send(Messages::WebPageProxy::DidCommitLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), documentLoader.response().mimeType(), m_frameHasCustomContentProvider, static_cast<uint32_t>(m_frame->coreFrame()->loader().loadType()), valueOrCompute(documentLoader.response().certificateInfo(), [] { return CertificateInfo(); }), m_frame->coreFrame()->document()->isPluginDocument(), hasInsecureContent, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
     webPage->didCommitLoad(m_frame);
 }
 
@@ -1747,6 +1747,27 @@ void WebFrameLoaderClient::didRestoreScrollPosition()
         return;
 
     webPage->didRestoreScrollPosition();
+}
+
+bool WebFrameLoaderClient::useIconLoadingClient()
+{
+    return m_useIconLoadingClient;
+}
+
+void WebFrameLoaderClient::getLoadDecisionForIcon(const LinkIcon& icon, uint64_t callbackID)
+{
+    if (WebPage* webPage { m_frame->page() })
+        webPage->send(Messages::WebPageProxy::GetLoadDecisionForIcon(icon, callbackID));
+}
+
+void WebFrameLoaderClient::finishedLoadingIcon(uint64_t loadIdentifier, SharedBuffer* data)
+{
+    if (WebPage* webPage { m_frame->page() }) {
+        if (data)
+            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(loadIdentifier, { reinterpret_cast<const uint8_t*>(data->data()), data->size() }));
+        else
+            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(loadIdentifier, { nullptr, 0 }));
+    }
 }
 
 } // namespace WebKit

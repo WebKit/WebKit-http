@@ -39,7 +39,7 @@ class HTMLImageElement : public HTMLElement, public FormNamedItem {
 public:
     static Ref<HTMLImageElement> create(Document&);
     static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-    static Ref<HTMLImageElement> createForJSConstructor(Document&, Optional<unsigned> width, Optional<unsigned> height);
+    static Ref<HTMLImageElement> createForJSConstructor(Document&, std::optional<unsigned> width, std::optional<unsigned> height);
 
     virtual ~HTMLImageElement();
 
@@ -97,7 +97,7 @@ public:
 protected:
     HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
 private:
     void parseAttribute(const QualifiedName&, const AtomicString&) override;

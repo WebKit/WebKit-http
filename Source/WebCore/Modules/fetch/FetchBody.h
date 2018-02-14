@@ -46,9 +46,7 @@ class JSValue;
 
 namespace WebCore {
 
-class DOMFormData;
 class FetchBodyOwner;
-class FetchHeaders;
 class FetchResponseSource;
 class ScriptExecutionContext;
 
@@ -71,7 +69,7 @@ public:
     bool isURLSearchParams() const { return WTF::holds_alternative<Ref<const URLSearchParams>>(m_data); }
     bool isText() const { return WTF::holds_alternative<String>(m_data); }
 
-    static Optional<FetchBody> extract(ScriptExecutionContext&, JSC::ExecState&, JSC::JSValue, String&);
+    static std::optional<FetchBody> extract(ScriptExecutionContext&, JSC::ExecState&, JSC::JSValue, String&);
     static FetchBody loadingBody() { return { }; }
 
     void loadingFailed();

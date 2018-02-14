@@ -227,8 +227,23 @@ public:
     bool isCSSGridLayoutEnabled() const { return m_cssGridLayoutEnabled; }
 #endif
 
+#if ENABLE(INTERSECTION_OBSERVER)
+    void setIntersectionObserverEnabled(bool isEnabled) { m_intersectionObserverEnabled = isEnabled; }
+    bool intersectionObserverEnabled() const { return m_intersectionObserverEnabled; }
+#endif
+
     void setModernMediaControlsEnabled(bool areEnabled) { m_areModernMediaControlsEnabled = areEnabled; }
     bool modernMediaControlsEnabled() const { return m_areModernMediaControlsEnabled; }
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void setEncryptedMediaAPIEnabled(bool isEnabled) { m_encryptedMediaAPIEnabled = isEnabled; }
+    bool encryptedMediaAPIEnabled() const { return m_encryptedMediaAPIEnabled; }
+#endif
+
+#if ENABLE(SUBTLE_CRYPTO)
+    void setSubtleCryptoEnabled(bool isEnabled) { m_isSubtleCryptoEnabled = isEnabled; }
+    bool subtleCryptoEnabled() const { return m_isSubtleCryptoEnabled; }
+#endif
 
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
@@ -342,6 +357,18 @@ private:
 
 #if ENABLE(CSS_GRID_LAYOUT)
     bool m_cssGridLayoutEnabled;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    bool m_encryptedMediaAPIEnabled { false };
+#endif
+
+#if ENABLE(INTERSECTION_OBSERVER)
+    bool m_intersectionObserverEnabled { false };
+#endif
+
+#if ENABLE(SUBTLE_CRYPTO)
+    bool m_isSubtleCryptoEnabled;
 #endif
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;

@@ -53,7 +53,7 @@ struct ArityCheckData {
 
 ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
 {
-    JSFunction* callee = jsCast<JSFunction*>(exec->callee());
+    JSFunction* callee = jsCast<JSFunction*>(exec->jsCallee());
     ASSERT(!callee->isHostFunction());
     CodeBlock* newCodeBlock = callee->jsExecutable()->codeBlockFor(kind);
     int argumentCountIncludingThis = exec->argumentCountIncludingThis();
@@ -83,11 +83,14 @@ inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
     JSObject* baseObj = asObject(baseVal);
 
     uint32_t i;
-    if (propName.getUInt32(i))
+    if (propName.getUInt32(i)) {
+        scope.release();
         return baseObj->hasProperty(exec, i);
+    }
 
     auto property = propName.toPropertyKey(exec);
     RETURN_IF_EXCEPTION(scope, false);
+    scope.release();
     return baseObj->hasProperty(exec, property);
 }
 

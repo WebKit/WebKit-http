@@ -26,6 +26,7 @@
 #ifndef PlatformWheelEvent_h
 #define PlatformWheelEvent_h
 
+#include "FloatPoint.h"
 #include "IntPoint.h"
 #include "PlatformEvent.h"
 #include <wtf/WindowsExtras.h>
@@ -123,11 +124,12 @@ namespace WebCore {
             return copy;
         }
 
-        PlatformWheelEvent copyWithDeltas(float deltaX, float deltaY) const
+        PlatformWheelEvent copyWithDeltasAndVelocity(float deltaX, float deltaY, const FloatSize& velocity) const
         {
             PlatformWheelEvent copy = *this;
             copy.m_deltaX = deltaX;
             copy.m_deltaY = deltaY;
+            copy.m_scrollingVelocity = velocity;
             return copy;
         }
 
@@ -174,6 +176,8 @@ namespace WebCore {
         bool useLatchedEventElement() const { return false; }
 #endif
 
+        FloatSize scrollingVelocity() const { return m_scrollingVelocity; }
+
 #if PLATFORM(WIN)
         PlatformWheelEvent(HWND, WPARAM, LPARAM, bool isMouseHWheel);
         PlatformWheelEvent(HWND, const FloatSize& delta, const FloatPoint& location);
@@ -188,6 +192,9 @@ namespace WebCore {
         float m_wheelTicksY;
         PlatformWheelEventGranularity m_granularity;
         bool m_directionInvertedFromDevice;
+
+        // Scrolling velocity in pixels per second.
+        FloatSize m_scrollingVelocity;
 #if PLATFORM(COCOA)
         bool m_hasPreciseScrollingDeltas;
         PlatformWheelEventPhase m_phase;

@@ -437,32 +437,37 @@ void GraphicsLayer::resumeAnimations()
 
 void GraphicsLayer::getDebugBorderInfo(Color& color, float& width) const
 {
+    width = 2;
+
+    if (needsBackdrop()) {
+        color = Color(255, 0, 255, 128); // has backdrop: magenta
+        width = 12;
+        return;
+    }
+    
     if (drawsContent()) {
         if (m_usingTiledBacking) {
             color = Color(255, 128, 0, 128); // tiled layer: orange
-            width = 2;
             return;
         }
 
         color = Color(0, 128, 32, 128); // normal layer: green
-        width = 2;
         return;
     }
 
     if (usesContentsLayer()) {
-        color = Color(255, 150, 255, 200); // non-painting layer with contents: pink
-        width = 2;
+        color = Color(0, 64, 128, 150); // non-painting layer with contents: blue
+        width = 8;
         return;
     }
     
     if (masksToBounds()) {
         color = Color(128, 255, 255, 48); // masking layer: pale blue
-        width = 20;
+        width = 16;
         return;
     }
 
     color = Color(255, 255, 0, 192); // container: yellow
-    width = 2;
 }
 
 void GraphicsLayer::updateDebugIndicators()
@@ -690,6 +695,11 @@ void GraphicsLayer::dumpProperties(TextStream& ts, int indent, LayerTreeAsTextBe
     if (m_position != FloatPoint()) {
         writeIndent(ts, indent + 1);
         ts << "(position " << m_position.x() << " " << m_position.y() << ")\n";
+    }
+
+    if (m_approximatePosition) {
+        writeIndent(ts, indent + 1);
+        ts << "(approximate position " << m_approximatePosition.value().x() << " " << m_approximatePosition.value().y() << ")\n";
     }
 
     if (m_boundsOrigin != FloatPoint()) {

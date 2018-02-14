@@ -37,6 +37,7 @@
 #include "APIGeometry.h"
 #include "APIHistoryClient.h"
 #include "APIHitTestResult.h"
+#include "APIIconLoadingClient.h"
 #include "APILegacyContextHistoryClient.h"
 #include "APILoaderClient.h"
 #include "APINavigation.h"
@@ -404,6 +405,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_sessionID(m_configuration->sessionID())
     , m_isPageSuspended(false)
     , m_addsVisitedLinks(true)
+    , m_controlledByAutomation(m_configuration->isControlledByAutomation())
 #if ENABLE(REMOTE_INSPECTOR)
     , m_allowsRemoteInspection(true)
 #endif
@@ -625,6 +627,20 @@ void WebPageProxy::setUIClient(std::unique_ptr<API::UIClient> uiClient)
 
     m_process->send(Messages::WebPage::SetCanRunBeforeUnloadConfirmPanel(m_uiClient->canRunBeforeUnloadConfirmPanel()), m_pageID);
     setCanRunModal(m_uiClient->canRunModal());
+}
+
+void WebPageProxy::setIconLoadingClient(std::unique_ptr<API::IconLoadingClient> iconLoadingClient)
+{
+    bool hasClient = iconLoadingClient.get();
+    if (!iconLoadingClient)
+        m_iconLoadingClient = std::make_unique<API::IconLoadingClient>();
+    else
+        m_iconLoadingClient = WTFMove(iconLoadingClient);
+
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetUseIconLoadingClient(hasClient), m_pageID);
 }
 
 void WebPageProxy::setFindClient(std::unique_ptr<API::FindClient> findClient)
@@ -1557,7 +1573,7 @@ void WebPageProxy::dispatchActivityStateChange()
         m_process->responsivenessTimer().stop();
 
 #if ENABLE(POINTER_LOCK)
-    if ((changed & ActivityState::IsVisible) && !isViewVisible())
+    if (((changed & ActivityState::IsVisible) && !isViewVisible()) || ((changed & ActivityState::WindowIsActive) && !m_pageClient.isViewWindowActive()))
         requestPointerUnlock();
 #endif
 
@@ -1592,15 +1608,6 @@ void WebPageProxy::updateThrottleState()
         m_preventProcessSuppressionCount = m_process->processPool().processSuppressionDisabledForPageCount();
     else if (!m_preventProcessSuppressionCount)
         m_preventProcessSuppressionCount = nullptr;
-
-    // We should suppress if the page is not active, is visually idle, and supression is enabled.
-    bool isLoading = m_activityState & ActivityState::IsLoading;
-    bool isPlayingAudio = m_activityState & ActivityState::IsAudible;
-    bool pageShouldBeSuppressed = !isLoading && !isPlayingAudio && processSuppressionEnabled && (m_activityState & ActivityState::IsVisuallyIdle);
-    if (m_pageSuppressed != pageShouldBeSuppressed) {
-        m_pageSuppressed = pageShouldBeSuppressed;
-        m_process->send(Messages::WebPage::SetPageSuppressed(m_pageSuppressed), m_pageID);
-    }
 
     if (m_activityState & ActivityState::IsVisuallyIdle)
         m_pageIsUserObservableCount = nullptr;
@@ -1794,7 +1801,7 @@ void WebPageProxy::performDragControllerAction(DragControllerAction action, Drag
     WebSelectionData selection(*dragData.platformData());
     m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData.clientPosition(), dragData.globalPosition(), dragData.draggingSourceOperationMask(), selection, dragData.flags()), m_pageID);
 #else
-    m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData.clientPosition(), dragData.globalPosition(), dragData.draggingSourceOperationMask(), dragStorageName, dragData.flags(), sandboxExtensionHandle, sandboxExtensionsForUpload), m_pageID);
+    m_process->send(Messages::WebPage::PerformDragControllerAction(action, dragData, sandboxExtensionHandle, sandboxExtensionsForUpload), m_pageID);
 #endif
 }
 
@@ -2588,6 +2595,14 @@ void WebPageProxy::setCustomDeviceScaleFactor(float customScaleFactor)
         m_drawingArea->deviceScaleFactorDidChange();
 }
 
+void WebPageProxy::accessibilitySettingsDidChange()
+{
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::AccessibilitySettingsDidChange(), m_pageID);
+}
+
 void WebPageProxy::setUseFixedLayout(bool fixed)
 {
     if (!isValid())
@@ -3272,7 +3287,7 @@ void WebPageProxy::clearLoadDependentCallbacks()
     }
 }
 
-void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, Optional<HasInsecureContent> hasInsecureContent, const UserData& userData)
+void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t opaqueFrameLoadType, const WebCore::CertificateInfo& certificateInfo, bool containsPluginDocument, std::optional<HasInsecureContent> hasInsecureContent, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -5478,6 +5493,10 @@ void WebPageProxy::resetStateAfterProcessExited()
     m_pageClient.dismissContentRelativeChildWindows();
 #endif
 
+#if ENABLE(POINTER_LOCK)
+    requestPointerUnlock();
+#endif
+
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
     m_pageLoadState.reset(transaction);
 
@@ -5525,7 +5544,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     if (m_scrollbarOverlayStyle)
         parameters.scrollbarOverlayStyle = m_scrollbarOverlayStyle.value();
     else
-        parameters.scrollbarOverlayStyle = Nullopt;
+        parameters.scrollbarOverlayStyle = std::nullopt;
     parameters.backgroundExtendsBeyondPage = m_backgroundExtendsBeyondPage;
     parameters.layerHostingMode = m_layerHostingMode;
     parameters.controlledByAutomation = m_controlledByAutomation;
@@ -5704,6 +5723,12 @@ void WebPageProxy::enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t 
 #endif
 }
 
+void WebPageProxy::clearUserMediaState()
+{
+#if ENABLE(MEDIA_STREAM)
+    m_userMediaPermissionRequestManager.clearCachedState();
+#endif
+}
 
 void WebPageProxy::requestNotificationPermission(uint64_t requestID, const String& originString)
 {
@@ -6153,7 +6178,7 @@ void WebPageProxy::setScrollPinningBehavior(ScrollPinningBehavior pinning)
         m_process->send(Messages::WebPage::SetScrollPinningBehavior(pinning), m_pageID);
 }
 
-void WebPageProxy::setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle)
+void WebPageProxy::setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle)
 {
     if (!m_scrollbarOverlayStyle && !scrollbarStyle)
         return;
@@ -6163,7 +6188,7 @@ void WebPageProxy::setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOver
 
     m_scrollbarOverlayStyle = scrollbarStyle;
 
-    WTF::Optional<uint32_t> scrollbarStyleForMessage;
+    std::optional<uint32_t> scrollbarStyleForMessage;
     if (scrollbarStyle)
         scrollbarStyleForMessage = static_cast<ScrollbarOverlayStyle>(scrollbarStyle.value());
 
@@ -6381,6 +6406,13 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state,
 
     if (state == m_mediaState)
         return;
+
+    WebCore::MediaProducer::MediaStateFlags oldMediaStateHasActiveCapture = m_mediaState & (WebCore::MediaProducer::HasActiveAudioCaptureDevice | WebCore::MediaProducer::HasActiveVideoCaptureDevice);
+    WebCore::MediaProducer::MediaStateFlags newMediaStateHasActiveCapture = state & (WebCore::MediaProducer::HasActiveAudioCaptureDevice | WebCore::MediaProducer::HasActiveVideoCaptureDevice);
+    if (!oldMediaStateHasActiveCapture && newMediaStateHasActiveCapture)
+        m_uiClient->didBeginCaptureSession();
+    if (oldMediaStateHasActiveCapture && !newMediaStateHasActiveCapture)
+        m_uiClient->didEndCaptureSession();
 
     MediaProducer::MediaStateFlags playingMediaMask = MediaProducer::IsPlayingAudio | MediaProducer::IsPlayingVideo;
     MediaProducer::MediaStateFlags oldState = m_mediaState;
@@ -6635,6 +6667,30 @@ void WebPageProxy::didRestoreScrollPosition()
     m_pageClient.didRestoreScrollPosition();
 }
 
+void WebPageProxy::getLoadDecisionForIcon(const WebCore::LinkIcon& icon, uint64_t loadIdentifier)
+{
+    if (!m_iconLoadingClient)
+        return;
+
+    m_iconLoadingClient->getLoadDecisionForIcon(icon, [this, protectedThis = Ref<WebPageProxy>(*this), loadIdentifier](std::function<void (API::Data*, CallbackBase::Error)> callbackFunction) {
+        if (!isValid()) {
+            if (callbackFunction)
+                callbackFunction(nullptr, CallbackBase::Error::Unknown);
+            return;
+        }
+
+        bool decision = (bool)callbackFunction;
+        uint64_t newCallbackIdentifier = decision ? m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken()) : 0;
+
+        m_process->send(Messages::WebPage::DidGetLoadDecisionForIcon(decision, loadIdentifier, newCallbackIdentifier), m_pageID);
+    });
+}
+
+void WebPageProxy::finishedLoadingIcon(uint64_t callbackIdentifier, const IPC::DataReference& data)
+{
+    dataCallback(data, callbackIdentifier);
+}
+
 void WebPageProxy::setResourceCachingDisabled(bool disabled)
 {
     if (m_isResourceCachingDisabled == disabled)
@@ -6671,31 +6727,53 @@ void WebPageProxy::hideValidationMessage()
 #if ENABLE(POINTER_LOCK)
 void WebPageProxy::requestPointerLock()
 {
+    ASSERT(!m_isPointerLockPending);
+    ASSERT(!m_isPointerLocked);
+    m_isPointerLockPending = true;
     if (!isViewVisible()) {
-        m_process->send(Messages::WebPage::DidNotAcquirePointerLock(), m_pageID);
+        didDenyPointerLock();
         return;
     }
-
-    didAllowPointerLock();
+    m_uiClient->requestPointerLock(this);
 }
     
 void WebPageProxy::didAllowPointerLock()
 {
+    ASSERT(m_isPointerLockPending && !m_isPointerLocked);
+    m_isPointerLocked = true;
+    m_isPointerLockPending = false;
+#if PLATFORM(MAC)
     CGDisplayHideCursor(CGMainDisplayID());
     CGAssociateMouseAndMouseCursorPosition(false);
+#endif
     m_process->send(Messages::WebPage::DidAcquirePointerLock(), m_pageID);
 }
     
 void WebPageProxy::didDenyPointerLock()
 {
+    ASSERT(m_isPointerLockPending && !m_isPointerLocked);
+    m_isPointerLockPending = false;
     m_process->send(Messages::WebPage::DidNotAcquirePointerLock(), m_pageID);
 }
 
 void WebPageProxy::requestPointerUnlock()
 {
-    CGDisplayShowCursor(CGMainDisplayID());
-    CGAssociateMouseAndMouseCursorPosition(true);
-    m_process->send(Messages::WebPage::DidLosePointerLock(), m_pageID);
+    if (m_isPointerLocked) {
+#if PLATFORM(MAC)
+        CGAssociateMouseAndMouseCursorPosition(true);
+        CGDisplayShowCursor(CGMainDisplayID());
+#endif
+        m_uiClient->didLosePointerLock(this);
+        m_process->send(Messages::WebPage::DidLosePointerLock(), m_pageID);
+    }
+
+    if (m_isPointerLockPending) {
+        m_uiClient->didLosePointerLock(this);
+        m_process->send(Messages::WebPage::DidNotAcquirePointerLock(), m_pageID);
+    }
+
+    m_isPointerLocked = false;
+    m_isPointerLockPending = false;
 }
 #endif
 

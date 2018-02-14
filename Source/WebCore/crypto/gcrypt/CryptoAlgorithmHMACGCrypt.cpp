@@ -32,6 +32,7 @@
 #include "CryptoAlgorithmHmacParamsDeprecated.h"
 #include "CryptoKeyHMAC.h"
 #include "ExceptionCode.h"
+#include "NotImplemented.h"
 #include <gcrypt.h>
 #include <wtf/CryptographicUtilities.h>
 
@@ -55,7 +56,7 @@ static int getGCryptDigestAlgorithm(CryptoAlgorithmIdentifier hashFunction)
     }
 }
 
-static Optional<Vector<uint8_t>> calculateSignature(int algorithm, const Vector<uint8_t>& key, const CryptoOperationData& data)
+static std::optional<Vector<uint8_t>> calculateSignature(int algorithm, const Vector<uint8_t>& key, const CryptoOperationData& data)
 {
     size_t digestLength = gcry_mac_get_algo_maclen(algorithm);
     const void* keyData = key.data() ? key.data() : reinterpret_cast<const uint8_t*>("");
@@ -91,9 +92,19 @@ cleanup:
         gcry_mac_close(hd);
 
     if (!result)
-        return Nullopt;
+        return std::nullopt;
 
     return WTFMove(signature);
+}
+
+void CryptoAlgorithmHMAC::platformSign(Ref<CryptoKey>&&, Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&)
+{
+    notImplemented();
+}
+
+void CryptoAlgorithmHMAC::platformVerify(Ref<CryptoKey>&&, Vector<uint8_t>&&, Vector<uint8_t>&&, BoolCallback&&, ExceptionCallback&&, ScriptExecutionContext&, WorkQueue&)
+{
+    notImplemented();
 }
 
 ExceptionOr<void> CryptoAlgorithmHMAC::platformSign(const CryptoAlgorithmHmacParamsDeprecated& parameters, const CryptoKeyHMAC& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)

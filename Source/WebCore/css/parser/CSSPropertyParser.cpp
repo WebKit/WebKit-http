@@ -30,6 +30,9 @@
 #include "config.h"
 #include "CSSPropertyParser.h"
 
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+#include "CSSAnimationTriggerScrollValue.h"
+#endif
 #include "CSSAspectRatioValue.h"
 #include "CSSBasicShapes.h"
 #include "CSSBorderImage.h"
@@ -39,6 +42,9 @@
 #include "CSSCustomIdentValue.h"
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
+#if ENABLE(VARIATION_FONTS)
+#include "CSSFontVariationValue.h"
+#endif
 #include "CSSFunctionValue.h"
 #include "CSSGridAutoRepeatValue.h"
 #include "CSSGridLineNamesValue.h"
@@ -202,10 +208,10 @@ CSSPropertyID cssPropertyID(StringView string)
     
 using namespace CSSPropertyParserHelpers;
 
-CSSPropertyParser::CSSPropertyParser(const CSSParserTokenRange& range,
-    const CSSParserContext& context, Vector<CSSProperty, 256>* parsedProperties)
+CSSPropertyParser::CSSPropertyParser(const CSSParserTokenRange& range, const CSSParserContext& context, StyleSheetContents* styleSheetContents, Vector<CSSProperty, 256>* parsedProperties)
     : m_range(range)
     , m_context(context)
+    , m_styleSheetContents(styleSheetContents)
     , m_parsedProperties(parsedProperties)
 {
     m_range.consumeWhitespace();
@@ -236,13 +242,11 @@ void CSSPropertyParser::addExpandedPropertyForValue(CSSPropertyID property, Ref<
         addProperty(longhands[i], property, value.copyRef(), important);
 }
     
-bool CSSPropertyParser::parseValue(CSSPropertyID propertyID, bool important,
-    const CSSParserTokenRange& range, const CSSParserContext& context,
-    ParsedPropertyVector& parsedProperties, StyleRule::Type ruleType)
+bool CSSPropertyParser::parseValue(CSSPropertyID propertyID, bool important, const CSSParserTokenRange& range, const CSSParserContext& context, StyleSheetContents* styleSheetContents, ParsedPropertyVector& parsedProperties, StyleRule::Type ruleType)
 {
     int parsedPropertiesSize = parsedProperties.size();
 
-    CSSPropertyParser parser(range, context, &parsedProperties);
+    CSSPropertyParser parser(range, context, styleSheetContents, &parsedProperties);
     bool parseSuccess;
 
 #if ENABLE(CSS_DEVICE_ADAPTATION)
@@ -261,9 +265,9 @@ bool CSSPropertyParser::parseValue(CSSPropertyID propertyID, bool important,
     return parseSuccess;
 }
 
-RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, const CSSParserTokenRange& range, const CSSParserContext& context)
+RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, const CSSParserTokenRange& range, const CSSParserContext& context, StyleSheetContents* styleSheetContents)
 {
-    CSSPropertyParser parser(range, context, nullptr);
+    CSSPropertyParser parser(range, context, styleSheetContents, nullptr);
     RefPtr<CSSValue> value = parser.parseSingleValue(property);
     if (!value || !parser.m_range.atEnd())
         return nullptr;
@@ -370,11 +374,9 @@ bool CSSPropertyParser::consumeTransformOrigin(bool important)
         RefPtr<CSSPrimitiveValue> resultZ = consumeLength(m_range, m_context.mode, ValueRangeAll);
         if (!resultZ && !atEnd)
             return false;
-        if (!resultZ)
-            resultZ = CSSValuePool::singleton().createValue(0, CSSPrimitiveValue::UnitTypes::CSS_PX);
         addProperty(CSSPropertyTransformOriginX, CSSPropertyTransformOrigin, resultX.releaseNonNull(), important);
         addProperty(CSSPropertyTransformOriginY, CSSPropertyTransformOrigin, resultY.releaseNonNull(), important);
-        addProperty(CSSPropertyTransformOriginZ, CSSPropertyTransformOrigin, resultZ.releaseNonNull(), important);
+        addProperty(CSSPropertyTransformOriginZ, CSSPropertyTransformOrigin, resultZ ? resultZ.releaseNonNull() : CSSValuePool::singleton().createValue(0, CSSPrimitiveValue::UnitTypes::CSS_PX), important, !resultZ);
         
         return true;
     }
@@ -490,6 +492,53 @@ static RefPtr<CSSValue> consumeFontFeatureSettings(CSSParserTokenRange& range)
     return settings;
 }
 
+#if ENABLE(VARIATION_FONTS)
+static RefPtr<CSSValue> consumeFontVariationTag(CSSParserTokenRange& range)
+{
+    if (range.peek().type() != StringToken)
+        return nullptr;
+    
+    auto string = range.consumeIncludingWhitespace().value().toString();
+    
+    FontTag tag;
+    if (string.length() != tag.size())
+        return nullptr;
+    for (unsigned i = 0; i < tag.size(); ++i) {
+        // Limits the range of characters to 0x20-0x7E, following the tag name rules defiend in the OpenType specification.
+        UChar character = string[i];
+        if (character < 0x20 || character > 0x7E)
+            return nullptr;
+        tag[i] = character;
+    }
+    
+    if (range.atEnd() || range.peek().type() != NumberToken)
+        return nullptr;
+
+    float tagValue = range.consumeIncludingWhitespace().numericValue();
+    
+    return CSSFontVariationValue::create(tag, tagValue);
+}
+    
+static RefPtr<CSSValue> consumeFontVariationSettings(CSSParserTokenRange& range)
+{
+    if (range.peek().id() == CSSValueNormal)
+        return consumeIdent(range);
+    
+    auto settings = CSSValueList::createCommaSeparated();
+    do {
+        RefPtr<CSSValue> variationValue = consumeFontVariationTag(range);
+        if (!variationValue)
+            return nullptr;
+        settings->append(variationValue.releaseNonNull());
+    } while (consumeCommaIncludingWhitespace(range));
+    
+    if (!settings->length())
+        return nullptr;
+
+    return WTFMove(settings);
+}
+#endif // ENABLE(VARIATION_FONTS)
+
 static RefPtr<CSSValue> consumePage(CSSParserTokenRange& range)
 {
     if (range.peek().id() == CSSValueAuto)
@@ -595,11 +644,119 @@ static RefPtr<CSSValue> consumeFontVariantLigatures(CSSParserTokenRange& range)
     return ligaturesParser.finalizeValue();
 }
 
+static RefPtr<CSSValue> consumeFontVariantEastAsian(CSSParserTokenRange& range)
+{
+    if (range.peek().id() == CSSValueNormal)
+        return consumeIdent(range);
+    
+    RefPtr<CSSValueList> values = CSSValueList::createSpaceSeparated();
+    FontVariantEastAsianVariant variant = FontVariantEastAsianVariant::Normal;
+    FontVariantEastAsianWidth width = FontVariantEastAsianWidth::Normal;
+    FontVariantEastAsianRuby ruby = FontVariantEastAsianRuby::Normal;
+    
+    while (!range.atEnd()) {
+        if (range.peek().type() != IdentToken)
+            return nullptr;
+        
+        auto id = range.peek().id();
+        
+        switch (id) {
+        case CSSValueJis78:
+            variant = FontVariantEastAsianVariant::Jis78;
+            break;
+        case CSSValueJis83:
+            variant = FontVariantEastAsianVariant::Jis83;
+            break;
+        case CSSValueJis90:
+            variant = FontVariantEastAsianVariant::Jis90;
+            break;
+        case CSSValueJis04:
+            variant = FontVariantEastAsianVariant::Jis04;
+            break;
+        case CSSValueSimplified:
+            variant = FontVariantEastAsianVariant::Simplified;
+            break;
+        case CSSValueTraditional:
+            variant = FontVariantEastAsianVariant::Traditional;
+            break;
+        case CSSValueFullWidth:
+            width = FontVariantEastAsianWidth::Full;
+            break;
+        case CSSValueProportionalWidth:
+            width = FontVariantEastAsianWidth::Proportional;
+            break;
+        case CSSValueRuby:
+            ruby = FontVariantEastAsianRuby::Yes;
+            break;
+        default:
+            return nullptr;
+        }
+        
+        range.consumeIncludingWhitespace();
+    }
+        
+    switch (variant) {
+    case FontVariantEastAsianVariant::Normal:
+        break;
+    case FontVariantEastAsianVariant::Jis78:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueJis78));
+        break;
+    case FontVariantEastAsianVariant::Jis83:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueJis83));
+        break;
+    case FontVariantEastAsianVariant::Jis90:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueJis90));
+        break;
+    case FontVariantEastAsianVariant::Jis04:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueJis04));
+        break;
+    case FontVariantEastAsianVariant::Simplified:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueSimplified));
+        break;
+    case FontVariantEastAsianVariant::Traditional:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueTraditional));
+        break;
+    }
+        
+    switch (width) {
+    case FontVariantEastAsianWidth::Normal:
+        break;
+    case FontVariantEastAsianWidth::Full:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueFullWidth));
+        break;
+    case FontVariantEastAsianWidth::Proportional:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueProportionalWidth));
+        break;
+    }
+        
+    switch (ruby) {
+    case FontVariantEastAsianRuby::Normal:
+        break;
+    case FontVariantEastAsianRuby::Yes:
+        values->append(CSSValuePool::singleton().createIdentifierValue(CSSValueRuby));
+    }
+
+    if (!values->length())
+        return nullptr;
+
+    return values;
+}
+    
 static RefPtr<CSSPrimitiveValue> consumeFontVariantCaps(CSSParserTokenRange& range)
 {
     return consumeIdent<CSSValueNormal, CSSValueSmallCaps, CSSValueAllSmallCaps,
         CSSValuePetiteCaps, CSSValueAllPetiteCaps,
         CSSValueUnicase, CSSValueTitlingCaps>(range);
+}
+
+static RefPtr<CSSPrimitiveValue> consumeFontVariantAlternates(CSSParserTokenRange& range)
+{
+    return consumeIdent<CSSValueNormal, CSSValueHistoricalForms>(range);
+}
+
+static RefPtr<CSSPrimitiveValue> consumeFontVariantPosition(CSSParserTokenRange& range)
+{
+    return consumeIdent<CSSValueNormal, CSSValueSub, CSSValueSuper>(range);
 }
 
 class FontVariantNumericParser {
@@ -696,30 +853,6 @@ static RefPtr<CSSPrimitiveValue> consumeFontVariantCSS21(CSSParserTokenRange& ra
     return consumeIdent<CSSValueNormal, CSSValueSmallCaps>(range);
 }
 
-static RefPtr<CSSValue> consumeFontVariantList(CSSParserTokenRange& range)
-{
-    RefPtr<CSSValueList> values = CSSValueList::createCommaSeparated();
-    do {
-        if (range.peek().id() == CSSValueAll) {
-            // FIXME: CSSPropertyParser::parseFontVariant() implements
-            // the old css3 draft:
-            // http://www.w3.org/TR/2002/WD-css3-webfonts-20020802/#font-variant
-            // 'all' is only allowed in @font-face and with no other values.
-            if (values->length())
-                return nullptr;
-            return consumeIdent(range);
-        }
-        RefPtr<CSSPrimitiveValue> fontVariant = consumeFontVariantCSS21(range);
-        if (fontVariant)
-            values->append(fontVariant.releaseNonNull());
-    } while (consumeCommaIncludingWhitespace(range));
-
-    if (values->length())
-        return values;
-
-    return nullptr;
-}
-
 static RefPtr<CSSPrimitiveValue> consumeFontWeight(CSSParserTokenRange& range)
 {
     const CSSParserToken& token = range.peek();
@@ -784,6 +917,24 @@ static RefPtr<CSSValueList> consumeFontFamily(CSSParserTokenRange& range)
             }
         }
     } while (consumeCommaIncludingWhitespace(range));
+    return list;
+}
+
+static RefPtr<CSSValueList> consumeFontFamilyDescriptor(CSSParserTokenRange& range)
+{
+    // FIXME-NEWPARSER: For compatibility with the old parser, we have to make
+    // a list here, even though the list always contains only a single family name.
+    // Once the old parser is gone, we can delete this function, make the caller
+    // use consumeFamilyName instead, and then patch the @font-face code to
+    // not expect a list with a single name in it.
+    RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+    RefPtr<CSSValue> parsedValue = consumeFamilyName(range);
+    if (parsedValue)
+        list->append(parsedValue.releaseNonNull());
+    
+    if (!range.atEnd() || !list->length())
+        return nullptr;
+
     return list;
 }
 
@@ -1152,6 +1303,12 @@ static RefPtr<CSSValue> consumeTransitionProperty(CSSParserTokenRange& range)
     if (CSSPropertyID property = token.parseAsCSSPropertyID()) {
         range.consumeIncludingWhitespace();
         
+        // FIXME-NEWPARSER: No reason why we can't use the "all" property now that it exists.
+        // The old parser used a value keyword for "all", though, since it predated support for
+        // the property.
+        if (property == CSSPropertyAll)
+            return CSSValuePool::singleton().createIdentifierValue(CSSValueAll);
+
         // FIXME-NEWPARSER: Want to use a CSSCustomIdentValue here eventually.
         return CSSValuePool::singleton().createIdentifierValue(property);
     }
@@ -1265,6 +1422,40 @@ static RefPtr<CSSValue> consumeAnimationTimingFunction(CSSParserTokenRange& rang
     return nullptr;
 }
 
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+static RefPtr<CSSValue> consumeWebkitAnimationTrigger(CSSParserTokenRange& range, CSSParserMode mode)
+{
+    if (range.peek().id() == CSSValueAuto)
+        return consumeIdent(range);
+    
+    if (range.peek().functionId() != CSSValueContainerScroll)
+        return nullptr;
+    
+    CSSParserTokenRange rangeCopy = range;
+    CSSParserTokenRange args = consumeFunction(rangeCopy);
+
+    RefPtr<CSSPrimitiveValue> startValue = consumeLength(args, mode, ValueRangeAll, UnitlessQuirk::Forbid);
+    if (!startValue)
+        return nullptr;
+    
+    if (args.atEnd()) {
+        range = rangeCopy;
+        return CSSAnimationTriggerScrollValue::create(startValue.releaseNonNull());
+    }
+
+    if (!consumeCommaIncludingWhitespace(args))
+        return nullptr;
+
+    RefPtr<CSSPrimitiveValue> endValue = consumeLength(args, mode, ValueRangeAll, UnitlessQuirk::Forbid);
+    if (!endValue || !args.atEnd())
+        return nullptr;
+
+    range = rangeCopy;
+
+    return CSSAnimationTriggerScrollValue::create(startValue.releaseNonNull(), endValue.releaseNonNull());
+}
+#endif
+    
 static RefPtr<CSSValue> consumeAnimationValue(CSSPropertyID property, CSSParserTokenRange& range, const CSSParserContext& context)
 {
     switch (property) {
@@ -1289,6 +1480,10 @@ static RefPtr<CSSValue> consumeAnimationValue(CSSPropertyID property, CSSParserT
     case CSSPropertyAnimationTimingFunction:
     case CSSPropertyTransitionTimingFunction:
         return consumeAnimationTimingFunction(range, context);
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    case CSSPropertyWebkitAnimationTrigger:
+        return consumeWebkitAnimationTrigger(range, context.mode);
+#endif
     default:
         ASSERT_NOT_REACHED();
         return nullptr;
@@ -1307,19 +1502,36 @@ static bool isValidAnimationPropertyList(CSSPropertyID property, const CSSValueL
     return true;
 }
 
-static RefPtr<CSSValueList> consumeAnimationPropertyList(CSSPropertyID property, CSSParserTokenRange& range, const CSSParserContext& context)
+static RefPtr<CSSValue> consumeAnimationPropertyList(CSSPropertyID property, CSSParserTokenRange& range, const CSSParserContext& context)
 {
-    RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+    RefPtr<CSSValueList> list;
+    RefPtr<CSSValue> singleton;
     do {
-        RefPtr<CSSValue> value = consumeAnimationValue(property, range, context);
-        if (!value)
+        RefPtr<CSSValue> currentValue = consumeAnimationValue(property, range, context);
+        if (!currentValue)
             return nullptr;
-        list->append(value.releaseNonNull());
+        
+        if (singleton && !list) {
+            list = CSSValueList::createCommaSeparated();
+            list->append(singleton.releaseNonNull());
+        }
+        
+        if (list)
+            list->append(currentValue.releaseNonNull());
+        else
+            singleton = WTFMove(currentValue);
+        
     } while (consumeCommaIncludingWhitespace(range));
-    if (!isValidAnimationPropertyList(property, *list))
-        return nullptr;
-    ASSERT(list->length());
-    return list;
+
+    if (list) {
+        if (!isValidAnimationPropertyList(property, *list))
+            return nullptr;
+    
+        ASSERT(list->length());
+        return list;
+    }
+    
+    return singleton;
 }
 
 bool CSSPropertyParser::consumeAnimationShorthand(const StylePropertyShorthand& shorthand, bool important)
@@ -1398,7 +1610,11 @@ static RefPtr<CSSValue> consumeTextDecorationLine(CSSParserTokenRange& range)
 
     RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
     while (true) {
+#if ENABLE(LETTERPRESS)
+        RefPtr<CSSPrimitiveValue> ident = consumeIdent<CSSValueBlink, CSSValueUnderline, CSSValueOverline, CSSValueLineThrough, CSSValueWebkitLetterpress>(range);
+#else
         RefPtr<CSSPrimitiveValue> ident = consumeIdent<CSSValueBlink, CSSValueUnderline, CSSValueOverline, CSSValueLineThrough>(range);
+#endif
         if (!ident)
             break;
         if (list->hasValue(ident.get()))
@@ -1816,6 +2032,14 @@ static RefPtr<CSSValue> consumeFlexBasis(CSSParserTokenRange& range, CSSParserMo
     return consumeLengthOrPercent(range, cssParserMode, ValueRangeNonNegative);
 }
 
+static RefPtr<CSSValue> consumeKerning(CSSParserTokenRange& range, CSSParserMode mode)
+{
+    RefPtr<CSSValue> result = consumeIdent<CSSValueAuto, CSSValueNormal>(range);
+    if (result)
+        return result;
+    return consumeLength(range, mode, ValueRangeAll, UnitlessQuirk::Allow);
+}
+
 static RefPtr<CSSValue> consumeStrokeDasharray(CSSParserTokenRange& range)
 {
     CSSValueID id = range.peek().id();
@@ -1894,11 +2118,11 @@ static RefPtr<CSSValue> consumeAttr(CSSParserTokenRange args, CSSParserContext c
     if (args.peek().type() != IdentToken)
         return nullptr;
     
-    StringView stringView = args.consumeIncludingWhitespace().value();
+    CSSParserToken token = args.consumeIncludingWhitespace();
     if (context.isHTMLDocument)
-        convertToASCIILowercaseInPlace(stringView);
+        token.convertToASCIILowercaseInPlace();
 
-    String attrName = stringView.toString();
+    String attrName = token.value().toString();
     if (!args.atEnd())
         return nullptr;
 
@@ -2529,6 +2753,9 @@ static RefPtr<CSSValue> consumeWebkitBorderImage(CSSPropertyID property, CSSPars
 
 static RefPtr<CSSValue> consumeReflect(CSSParserTokenRange& range, const CSSParserContext& context)
 {
+    if (range.peek().id() == CSSValueNone)
+        return consumeIdent(range);
+    
     RefPtr<CSSPrimitiveValue> direction = consumeIdent<CSSValueAbove, CSSValueBelow, CSSValueLeft, CSSValueRight>(range);
     if (!direction)
         return nullptr;
@@ -2624,7 +2851,7 @@ static RefPtr<CSSPrimitiveValue> consumeBackgroundSize(CSSPropertyID property, C
     }
     if (!vertical)
         return horizontal;
-    return createPrimitiveValuePair(horizontal.releaseNonNull(), vertical.releaseNonNull(), Pair::IdenticalValueEncoding::DoNotCoalesce);
+    return createPrimitiveValuePair(horizontal.releaseNonNull(), vertical.releaseNonNull(), property == CSSPropertyWebkitBackgroundSize ? Pair::IdenticalValueEncoding::Coalesce : Pair::IdenticalValueEncoding::DoNotCoalesce);
 }
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -3368,7 +3595,7 @@ static RefPtr<CSSValue> consumeTextEmphasisPosition(CSSParserTokenRange& range)
 RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSSPropertyID currentShorthand)
 {
     if (CSSParserFastPaths::isKeywordPropertyID(property)) {
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(property, m_range.peek().id(), m_context.mode))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(property, m_range.peek().id(), m_context.mode, m_styleSheetContents))
             return nullptr;
         return consumeIdent(m_range);
     }
@@ -3385,6 +3612,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeFontVariantLigatures(m_range);
     case CSSPropertyFontVariantNumeric:
         return consumeFontVariantNumeric(m_range);
+    case CSSPropertyFontVariantEastAsian:
+        return consumeFontVariantEastAsian(m_range);
     case CSSPropertyFontFeatureSettings:
         return consumeFontFeatureSettings(m_range);
     case CSSPropertyFontFamily:
@@ -3393,6 +3622,12 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeFontWeight(m_range);
     case CSSPropertyFontSynthesis:
         return consumeFontSynthesis(m_range);
+#if ENABLE(VARIATION_FONTS)
+    case CSSPropertyFontVariationSettings:
+        if (m_context.variationFontsEnabled)
+            return consumeFontVariationSettings(m_range);
+        return nullptr;
+#endif
     case CSSPropertyLetterSpacing:
         return consumeLetterSpacing(m_range, m_context.mode);
     case CSSPropertyWordSpacing:
@@ -3507,6 +3742,9 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyTransitionProperty:
     case CSSPropertyAnimationTimingFunction:
     case CSSPropertyTransitionTimingFunction:
+#if ENABLE(CSS_ANIMATIONS_LEVEL_2)
+    case CSSPropertyWebkitAnimationTrigger:
+#endif
         return consumeAnimationPropertyList(property, m_range, m_context);
 #if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyGridColumnGap:
@@ -3630,6 +3868,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeNumber(m_range, ValueRangeAll);
     case CSSPropertyBaselineShift:
         return consumeBaselineShift(m_range);
+    case CSSPropertyKerning:
+        return consumeKerning(m_range, m_context.mode);
     case CSSPropertyStrokeMiterlimit:
         return consumeNumber(m_range, ValueRangeNonNegative);
     case CSSPropertyStrokeWidth:
@@ -3882,7 +4122,7 @@ bool CSSPropertyParser::parseFontFaceDescriptor(CSSPropertyID propId)
     RefPtr<CSSValue> parsedValue;
     switch (propId) {
     case CSSPropertyFontFamily:
-        parsedValue = consumeFontFamily(m_range);
+        parsedValue = consumeFontFamilyDescriptor(m_range);
         break;
     case CSSPropertySrc: // This is a list of urls or local references.
         parsedValue = consumeFontFaceSrc(m_range, m_context);
@@ -3893,14 +4133,31 @@ bool CSSPropertyParser::parseFontFaceDescriptor(CSSPropertyID propId)
     case CSSPropertyFontStretch:
     case CSSPropertyFontStyle: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(propId, id, m_context.mode))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(propId, id, m_context.mode, m_styleSheetContents))
             return false;
         parsedValue = CSSValuePool::singleton().createIdentifierValue(id);
         break;
     }
-    case CSSPropertyFontVariant:
-        parsedValue = consumeFontVariantList(m_range);
+    case CSSPropertyFontVariantCaps:
+        parsedValue = consumeFontVariantCaps(m_range);
         break;
+    case CSSPropertyFontVariantLigatures:
+        parsedValue = consumeFontVariantLigatures(m_range);
+        break;
+    case CSSPropertyFontVariantNumeric:
+        parsedValue = consumeFontVariantNumeric(m_range);
+        break;
+    case CSSPropertyFontVariantEastAsian:
+        parsedValue = consumeFontVariantEastAsian(m_range);
+        break;
+    case CSSPropertyFontVariantAlternates:
+        parsedValue = consumeFontVariantAlternates(m_range);
+        break;
+    case CSSPropertyFontVariantPosition:
+        parsedValue = consumeFontVariantPosition(m_range);
+        break;
+    case CSSPropertyFontVariant:
+        return consumeFontVariantShorthand(false);
     case CSSPropertyFontWeight:
         parsedValue = consumeFontWeight(m_range);
         break;
@@ -3960,7 +4217,7 @@ bool CSSPropertyParser::consumeFont(bool important)
     // FIXME-NEWPARSER: Implement. RefPtr<CSSPrimitiveValue> fontStretch;
     while (!m_range.atEnd()) {
         CSSValueID id = m_range.peek().id();
-        if (!fontStyle && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStyle, id, m_context.mode)) {
+        if (!fontStyle && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStyle, id, m_context.mode, m_styleSheetContents)) {
             fontStyle = consumeIdent(m_range);
             continue;
         }
@@ -3977,7 +4234,7 @@ bool CSSPropertyParser::consumeFont(bool important)
                 continue;
         }
         /* FIXME-NEWPARSER: Implement
-         if (!fontStretch && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStretch, id, m_context.mode))
+         if (!fontStretch && CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyFontStretch, id, m_context.mode, m_styleSheetContents))
             fontStretch = consumeIdent(m_range);
         else*/
         break;
@@ -3986,17 +4243,17 @@ bool CSSPropertyParser::consumeFont(bool important)
     if (m_range.atEnd())
         return false;
 
-    addProperty(CSSPropertyFontStyle, CSSPropertyFont, fontStyle ? fontStyle.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
-    addProperty(CSSPropertyFontVariantCaps, CSSPropertyFont, fontVariantCaps ? fontVariantCaps.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontStyle, CSSPropertyFont, fontStyle ? fontStyle.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, !fontStyle);
+    addProperty(CSSPropertyFontVariantCaps, CSSPropertyFont, fontVariantCaps ? fontVariantCaps.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, !fontVariantCaps);
 /*  
     // FIXME-NEWPARSER: What do we do with these? They aren't part of our fontShorthand().
-    addProperty(CSSPropertyFontVariantLigatures, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
-    addProperty(CSSPropertyFontVariantNumeric, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontVariantLigatures, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, true);
+    addProperty(CSSPropertyFontVariantNumeric, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, true);
 */
     
-    addProperty(CSSPropertyFontWeight, CSSPropertyFont, fontWeight ? fontWeight.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontWeight, CSSPropertyFont, fontWeight ? fontWeight.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, !fontWeight);
     /* FIXME-NEWPARSER: Implement.
-    addProperty(CSSPropertyFontStretch, CSSPropertyFont, fontStretch ? fontStretch.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontStretch, CSSPropertyFont, fontStretch ? fontStretch.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, !fontStretch);
     */
 
     // Now a font size _must_ come.
@@ -4012,7 +4269,7 @@ bool CSSPropertyParser::consumeFont(bool important)
             return false;
         addProperty(CSSPropertyLineHeight, CSSPropertyFont, lineHeight.releaseNonNull(), important);
     } else {
-        addProperty(CSSPropertyLineHeight, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+        addProperty(CSSPropertyLineHeight, CSSPropertyFont, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important, true);
     }
 
     // Font family must come now.
@@ -4033,13 +4290,37 @@ bool CSSPropertyParser::consumeFontVariantShorthand(bool important)
     if (identMatches<CSSValueNormal, CSSValueNone>(m_range.peek().id())) {
         addProperty(CSSPropertyFontVariantLigatures, CSSPropertyFontVariant, consumeIdent(m_range).releaseNonNull(), important);
         addProperty(CSSPropertyFontVariantCaps, CSSPropertyFontVariant, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+        addProperty(CSSPropertyFontVariantEastAsian, CSSPropertyFontVariant, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+        addProperty(CSSPropertyFontVariantPosition, CSSPropertyFontVariant, CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
         return m_range.atEnd();
     }
 
     RefPtr<CSSPrimitiveValue> capsValue;
+    RefPtr<CSSPrimitiveValue> alternatesValue;
+    RefPtr<CSSPrimitiveValue> positionValue;
+
+    RefPtr<CSSValue> eastAsianValue;
     FontVariantLigaturesParser ligaturesParser;
     FontVariantNumericParser numericParser;
     do {
+        if (!capsValue) {
+            capsValue = consumeFontVariantCaps(m_range);
+            if (capsValue)
+                continue;
+        }
+        
+        if (!positionValue) {
+            positionValue = consumeFontVariantPosition(m_range);
+            if (positionValue)
+                continue;
+        }
+
+        if (!alternatesValue) {
+            alternatesValue = consumeFontVariantAlternates(m_range);
+            if (alternatesValue)
+                continue;
+        }
+
         FontVariantLigaturesParser::ParseResult ligaturesParseResult = ligaturesParser.consumeLigature(m_range);
         FontVariantNumericParser::ParseResult numericParseResult = numericParser.consumeNumeric(m_range);
         if (ligaturesParseResult == FontVariantLigaturesParser::ParseResult::ConsumedValue
@@ -4050,27 +4331,27 @@ bool CSSPropertyParser::consumeFontVariantShorthand(bool important)
             || numericParseResult == FontVariantNumericParser::ParseResult::DisallowedValue)
             return false;
 
-        CSSValueID id = m_range.peek().id();
-        switch (id) {
-        case CSSValueSmallCaps:
-        case CSSValueAllSmallCaps:
-        case CSSValuePetiteCaps:
-        case CSSValueAllPetiteCaps:
-        case CSSValueUnicase:
-        case CSSValueTitlingCaps:
-            // Only one caps value permitted in font-variant grammar.
-            if (capsValue)
-                return false;
-            capsValue = consumeIdent(m_range);
-            break;
-        default:
-            return false;
+        if (!eastAsianValue) {
+            eastAsianValue = consumeFontVariantEastAsian(m_range);
+            if (eastAsianValue)
+            continue;
         }
+
+        // Saw some value that didn't match anything else.
+        return false;
+
     } while (!m_range.atEnd());
 
     addProperty(CSSPropertyFontVariantLigatures, CSSPropertyFontVariant, ligaturesParser.finalizeValue().releaseNonNull(), important);
     addProperty(CSSPropertyFontVariantNumeric, CSSPropertyFontVariant, numericParser.finalizeValue().releaseNonNull(), important);
     addProperty(CSSPropertyFontVariantCaps, CSSPropertyFontVariant, capsValue ? capsValue.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontVariantAlternates, CSSPropertyFontVariant, alternatesValue ? alternatesValue.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    addProperty(CSSPropertyFontVariantPosition, CSSPropertyFontVariant, positionValue ? positionValue.releaseNonNull() : CSSValuePool::singleton().createIdentifierValue(CSSValueNormal), important);
+    
+    if (!eastAsianValue)
+        eastAsianValue = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
+    addProperty(CSSPropertyFontVariantEastAsian, CSSPropertyFontVariant, eastAsianValue.releaseNonNull(), important);
+    
     return true;
 }
 
@@ -4176,37 +4457,48 @@ bool CSSPropertyParser::parseViewportDescriptor(CSSPropertyID propId, bool impor
 
 #endif
 
-static bool consumeColumnWidthOrCount(CSSParserTokenRange& range, RefPtr<CSSValue>& columnWidth, RefPtr<CSSValue>& columnCount)
-{
-    if (range.peek().id() == CSSValueAuto) {
-        consumeIdent(range);
-        return true;
-    }
-    if (!columnWidth) {
-        columnWidth = consumeColumnWidth(range);
-        if (columnWidth)
-            return true;
-    }
-    if (!columnCount)
-        columnCount = consumeColumnCount(range);
-    return columnCount;
-}
-
 bool CSSPropertyParser::consumeColumns(bool important)
 {
     RefPtr<CSSValue> columnWidth;
     RefPtr<CSSValue> columnCount;
-    if (!consumeColumnWidthOrCount(m_range, columnWidth, columnCount))
-        return false;
-    consumeColumnWidthOrCount(m_range, columnWidth, columnCount);
+    bool hasPendingExplicitAuto = false;
+    
+    for (unsigned propertiesParsed = 0; propertiesParsed < 2 && !m_range.atEnd(); ++propertiesParsed) {
+        if (!propertiesParsed && m_range.peek().id() == CSSValueAuto) {
+            // 'auto' is a valid value for any of the two longhands, and at this point
+            // we don't know which one(s) it is meant for. We need to see if there are other values first.
+            consumeIdent(m_range);
+            hasPendingExplicitAuto = true;
+        } else {
+            if (!columnWidth) {
+                if ((columnWidth = consumeColumnWidth(m_range)))
+                    continue;
+            }
+            if (!columnCount) {
+                if ((columnCount = consumeColumnCount(m_range)))
+                    continue;
+            }
+            // If we didn't find at least one match, this is an invalid shorthand and we have to ignore it.
+            return false;
+        }
+    }
+    
     if (!m_range.atEnd())
         return false;
-    if (!columnWidth)
-        columnWidth = CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
-    if (!columnCount)
-        columnCount = CSSValuePool::singleton().createIdentifierValue(CSSValueAuto);
-    addProperty(CSSPropertyColumnWidth, CSSPropertyInvalid, columnWidth.releaseNonNull(), important);
-    addProperty(CSSPropertyColumnCount, CSSPropertyInvalid, columnCount.releaseNonNull(), important);
+    
+    // Any unassigned property at this point will become implicit 'auto'.
+    if (columnWidth)
+        addProperty(CSSPropertyColumnWidth, CSSPropertyInvalid, columnWidth.releaseNonNull(), important);
+    else {
+        addProperty(CSSPropertyColumnWidth, CSSPropertyInvalid, CSSValuePool::singleton().createIdentifierValue(CSSValueAuto), important, !hasPendingExplicitAuto /* implicit */);
+        hasPendingExplicitAuto = false;
+    }
+    
+    if (columnCount)
+        addProperty(CSSPropertyColumnCount, CSSPropertyInvalid, columnCount.releaseNonNull(), important);
+    else
+        addProperty(CSSPropertyColumnCount, CSSPropertyInvalid, CSSValuePool::singleton().createIdentifierValue(CSSValueAuto), important, !hasPendingExplicitAuto /* implicit */);
+    
     return true;
 }
 
@@ -4280,7 +4572,7 @@ bool CSSPropertyParser::consumeFlex(bool important)
         if (flexShrink == unsetValue)
             flexShrink = 1;
         if (!flexBasis)
-            flexBasis = CSSPrimitiveValue::create(0, CSSPrimitiveValue::UnitTypes::CSS_PERCENTAGE);
+            flexBasis = CSSPrimitiveValue::create(0, CSSPrimitiveValue::UnitTypes::CSS_PX);
     }
 
     if (!m_range.atEnd())
@@ -4351,6 +4643,10 @@ bool CSSPropertyParser::consume4Values(const StylePropertyShorthand& shorthand, 
             left = parseSingleValue(longhands[3], shorthand.id());
     }
 
+    bool rightImplicit = !right;
+    bool bottomImplicit = !bottom;
+    bool leftImplicit = !left;
+
     if (!right)
         right = top;
     if (!bottom)
@@ -4359,9 +4655,9 @@ bool CSSPropertyParser::consume4Values(const StylePropertyShorthand& shorthand, 
         left = right;
 
     addProperty(longhands[0], shorthand.id(), top.releaseNonNull(), important);
-    addProperty(longhands[1], shorthand.id(), right.releaseNonNull(), important);
-    addProperty(longhands[2], shorthand.id(), bottom.releaseNonNull(), important);
-    addProperty(longhands[3], shorthand.id(), left.releaseNonNull(), important);
+    addProperty(longhands[1], shorthand.id(), right.releaseNonNull(), important, rightImplicit);
+    addProperty(longhands[2], shorthand.id(), bottom.releaseNonNull(), important, bottomImplicit);
+    addProperty(longhands[3], shorthand.id(), left.releaseNonNull(), important, leftImplicit);
 
     return m_range.atEnd();
 }
@@ -4654,6 +4950,7 @@ bool CSSPropertyParser::consumeBackgroundShorthand(const StylePropertyShorthand&
     return true;
 }
 
+#if ENABLE(CSS_GRID_LAYOUT)
 // FIXME-NEWPARSER: Hack to work around the fact that we aren't using CSSCustomIdentValue
 // for stuff yet. This can be replaced by CSSValue::isCustomIdentValue() once we switch
 // to using CSSCustomIdentValue everywhere.
@@ -4662,7 +4959,6 @@ static bool isCustomIdentValue(const CSSValue& value)
     return is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).isString();
 }
 
-#if ENABLE(CSS_GRID_LAYOUT)
 bool CSSPropertyParser::consumeGridItemPositionShorthand(CSSPropertyID shorthandId, bool important)
 {
     const StylePropertyShorthand& shorthand = shorthandForProperty(shorthandId);
@@ -4928,7 +5224,7 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
     switch (property) {
     case CSSPropertyWebkitMarginCollapse: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginBeforeCollapse, id, m_context.mode))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginBeforeCollapse, id, m_context.mode, m_styleSheetContents))
             return false;
         addProperty(CSSPropertyWebkitMarginBeforeCollapse, CSSPropertyWebkitMarginCollapse, CSSValuePool::singleton().createIdentifierValue(id), important);
         if (m_range.atEnd()) {
@@ -4936,14 +5232,14 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
             return true;
         }
         id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginAfterCollapse, id, m_context.mode))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyWebkitMarginAfterCollapse, id, m_context.mode, m_styleSheetContents))
             return false;
         addProperty(CSSPropertyWebkitMarginAfterCollapse, CSSPropertyWebkitMarginCollapse, CSSValuePool::singleton().createIdentifierValue(id), important);
         return true;
     }
     case CSSPropertyOverflow: {
         CSSValueID id = m_range.consumeIncludingWhitespace().id();
-        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyOverflowY, id, m_context.mode))
+        if (!CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyOverflowY, id, m_context.mode, m_styleSheetContents))
             return false;
         if (!m_range.atEnd())
             return false;
@@ -5016,7 +5312,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
         return consumeShorthandGreedily(columnRuleShorthand(), important);
     case CSSPropertyListStyle:
         return consumeShorthandGreedily(listStyleShorthand(), important);
-    case CSSPropertyBorderRadius: {
+    case CSSPropertyBorderRadius:
+    case CSSPropertyWebkitBorderRadius: {
         RefPtr<CSSPrimitiveValue> horizontalRadii[4];
         RefPtr<CSSPrimitiveValue> verticalRadii[4];
         if (!consumeRadii(horizontalRadii, verticalRadii, m_range, m_context.mode, property == CSSPropertyWebkitBorderRadius))

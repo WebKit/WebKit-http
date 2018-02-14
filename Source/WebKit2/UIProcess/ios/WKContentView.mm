@@ -92,15 +92,14 @@ public:
     HistoricalVelocityData()
         : m_historySize(0)
         , m_latestDataIndex(0)
-        , m_lastAppendTimestamp(0)
     {
     }
 
-    VelocityData velocityForNewData(CGPoint newPosition, double scale, double timestamp)
+    VelocityData velocityForNewData(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         // Due to all the source of rect update, the input is very noisy. To smooth the output, we accumulate all changes
         // within 1 frame as a single update. No speed computation is ever done on data within the same frame.
-        const double filteringThreshold = 1 / 60.;
+        const Seconds filteringThreshold(1.0 / 60);
 
         VelocityData velocityData;
         if (m_historySize > 0) {
@@ -111,14 +110,14 @@ public:
             else
                 oldestDataIndex = m_historySize - (distanceToLastHistoricalData - m_latestDataIndex);
 
-            double timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
+            Seconds timeDelta = timestamp - m_history[oldestDataIndex].timestamp;
             if (timeDelta > filteringThreshold) {
                 Data& oldestData = m_history[oldestDataIndex];
-                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta, (newPosition.y - oldestData.position.y) / timeDelta, (scale - oldestData.scale) / timeDelta);
+                velocityData = VelocityData((newPosition.x - oldestData.position.x) / timeDelta.seconds(), (newPosition.y - oldestData.position.y) / timeDelta.seconds(), (scale - oldestData.scale) / timeDelta.seconds());
             }
         }
 
-        double timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
+        Seconds timeSinceLastAppend = timestamp - m_lastAppendTimestamp;
         if (timeSinceLastAppend > filteringThreshold)
             append(newPosition, scale, timestamp);
         else
@@ -129,7 +128,7 @@ public:
     void clear() { m_historySize = 0; }
 
 private:
-    void append(CGPoint newPosition, double scale, double timestamp)
+    void append(CGPoint newPosition, double scale, MonotonicTime timestamp)
     {
         m_latestDataIndex = (m_latestDataIndex + 1) % maxHistoryDepth;
         m_history[m_latestDataIndex] = { timestamp, newPosition, scale };
@@ -146,10 +145,10 @@ private:
 
     unsigned m_historySize;
     unsigned m_latestDataIndex;
-    double m_lastAppendTimestamp;
+    MonotonicTime m_lastAppendTimestamp;
 
     struct Data {
-        double timestamp;
+        MonotonicTime timestamp;
         CGPoint position;
         double scale;
     } m_history[maxHistoryDepth];
@@ -370,7 +369,7 @@ private:
     if (!drawingArea)
         return;
 
-    double timestamp = monotonicallyIncreasingTime();
+    MonotonicTime timestamp = MonotonicTime::now();
     HistoricalVelocityData::VelocityData velocityData;
     if (!isStableState)
         velocityData = _historicalKinematicData.velocityForNewData(visibleRect.origin, zoomScale, timestamp);
@@ -379,8 +378,6 @@ private:
 
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
     FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredRect, _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
-
-    LOG_WITH_STREAM(VisibleRects, stream << "didUpdateVisibleRect: visibleRect:" << visibleRect << " unobscuredRect:" << unobscuredRect << " fixedPositionRectForLayout:" << fixedPositionRectForLayout << " stable: " << isStableState);
 
     VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
         visibleRect,
@@ -398,6 +395,8 @@ private:
         velocityData.verticalVelocity,
         velocityData.scaleChangeRate,
         downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea).lastCommittedLayerTreeTransactionID());
+
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKContentView didUpdateVisibleRect]" << visibleContentRectUpdateInfo.dump());
 
     _page->updateVisibleContentRects(visibleContentRectUpdateInfo);
 

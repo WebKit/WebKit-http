@@ -48,6 +48,7 @@ VPATH = \
     $(WebCore)/Modules/streams \
     $(WebCore)/Modules/webaudio \
     $(WebCore)/Modules/webdatabase \
+    $(WebCore)/Modules/webdriver \
     $(WebCore)/Modules/websockets \
     $(WebCore)/animation \
     $(WebCore)/bindings/generic \
@@ -240,6 +241,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/SQLTransaction.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLTransactionErrorCallback.idl \
+    $(WebCore)/Modules/webdriver/NavigatorWebDriver.idl \
     $(WebCore)/Modules/websockets/CloseEvent.idl \
     $(WebCore)/Modules/websockets/WebSocket.idl \
     $(WebCore)/animation/Animatable.idl \
@@ -254,11 +256,13 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/CryptoKeyPair.idl \
     $(WebCore)/crypto/CryptoKeyUsage.idl \
     $(WebCore)/crypto/JsonWebKey.idl \
+    $(WebCore)/crypto/parameters/AesCbcParams.idl \
     $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
     $(WebCore)/crypto/parameters/HmacKeyParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/RsaOaepParams.idl \
     $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
@@ -374,6 +378,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
+    $(WebCore)/dom/TextDecoder.idl \
+    $(WebCore)/dom/TextEncoder.idl \
     $(WebCore)/dom/TextEvent.idl \
     $(WebCore)/dom/TransitionEvent.idl \
     $(WebCore)/dom/TreeWalker.idl \
@@ -385,6 +391,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/WheelEvent.idl \
     $(WebCore)/dom/XMLDocument.idl \
     $(WebCore)/fileapi/Blob.idl \
+    $(WebCore)/fileapi/BlobLineEndings.idl \
+    $(WebCore)/fileapi/BlobPropertyBag.idl \
     $(WebCore)/fileapi/File.idl \
     $(WebCore)/fileapi/FileError.idl \
     $(WebCore)/fileapi/FileException.idl \
@@ -827,10 +835,6 @@ vpath %.in $(WEBKITADDITIONS_HEADER_SEARCH_PATHS)
 ADDITIONAL_EVENT_NAMES =
 ADDITIONAL_EVENT_TARGET_FACTORY =
 
--include WebCoreDerivedSourcesAdditions.make
-
--include ApplePayWebCoreDerivedSourcesAdditions.make
-
 JS_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
 
 all : $(ADDITIONAL_BINDING_IDLS:%.idl=JS%.h)
@@ -930,18 +934,27 @@ endif
 
 # --------
 
+ADDITIONAL_CSS_PROPERTIES_DEFINES :=
+
+ifeq ($(WTF_PLATFORM_IOS), 1)
+    ADDITIONAL_CSS_PROPERTIES_DEFINES := WTF_PLATFORM_IOS
+endif
+
+# --------
+
 # CSS property names and value keywords
 
-WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSPropertyNames.in
+WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSProperties.json
 WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WEBCORE_CSS_VALUE_KEYWORDS) $(WebCore)/css/SVGCSSValueKeywords.in
 WEBCORE_CSS_VALUE_KEYWORDS_DEFINES := $(FEATURE_DEFINES) $(ADDITIONAL_CSS_VALUE_KEYWORDS_DEFINES)
+WEBCORE_CSS_PROPERTIES_DEFINES := $(FEATURE_DEFINES) $(ADDITIONAL_CSS_PROPERTIES_DEFINES)
 
 CSSPropertyNames.h CSSPropertyNames.cpp StyleBuilder.cpp StylePropertyShorthandFunctions.h StylePropertyShorthandFunctions.cpp : makeprop.intermediate
 .INTERMEDIATE : makeprop.intermediate
-makeprop.intermediate : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) -pe '' $(WEBCORE_CSS_PROPERTY_NAMES) > CSSPropertyNames.in
-	$(PERL) "$(WebCore)/css/makeprop.pl" --defines "$(FEATURE_DEFINES)"
+makeprop.intermediate : $(WEBCORE_CSS_PROPERTY_NAMES) css/makeprop.pl $(PLATFORM_FEATURE_DEFINES)
+	$(PERL) -pe '' $(WEBCORE_CSS_PROPERTY_NAMES) > CSSProperties.json
+	$(PERL) "$(WebCore)/css/makeprop.pl" --defines "$(WEBCORE_CSS_PROPERTIES_DEFINES)"
 
 CSSValueKeywords.h CSSValueKeywords.cpp : makevalues.intermediate
 .INTERMEDIATE : makevalues.intermediate
@@ -1279,6 +1292,7 @@ IDL_INCLUDES = \
     $(WebCore)/plugins \
     $(WebCore)/storage \
     $(WebCore)/svg \
+    $(WebCore)/testing \
     $(WebCore)/workers \
     $(WebCore)/xml
 

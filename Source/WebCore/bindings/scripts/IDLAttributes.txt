@@ -59,6 +59,7 @@ DoNotCheckSecurityOnSetter
 DocumentEventHandler
 EnabledAtRuntime=*
 EnabledBySetting=*
+EnabledForWorld=*
 EnforceRange
 ExportMacro=WEBCORE_EXPORT|WEBCORE_TESTSUPPORT_EXPORT
 ExportToWrappedFunction
@@ -95,7 +96,6 @@ NamedConstructor=*
 NewImpurePropertyFiresWatchpoints
 NewObject
 NoInterfaceObject
-Nondeterministic
 NotEnumerable
 OverrideBuiltins
 PassContext

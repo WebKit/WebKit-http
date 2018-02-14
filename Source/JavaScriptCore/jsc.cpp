@@ -75,6 +75,7 @@
 #include <string.h>
 #include <thread>
 #include <type_traits>
+#include <wtf/CommaPrinter.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
@@ -421,7 +422,7 @@ public:
             return true;
         }
 
-        Optional<uint32_t> index = parseIndex(propertyName);
+        std::optional<uint32_t> index = parseIndex(propertyName);
         if (index && index.value() < thisObject->getLength()) {
             slot.setValue(thisObject, DontDelete | DontEnum, jsNumber(thisObject->m_vector[index.value()]));
             return true;
@@ -990,6 +991,8 @@ static EncodedJSValue JSC_HOST_CALL functionStartSamplingProfiler(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState*);
 #endif
 
+static EncodedJSValue JSC_HOST_CALL functionMaxArguments(ExecState*);
+
 #if ENABLE(WEBASSEMBLY)
 static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState*);
 #endif
@@ -1241,6 +1244,8 @@ protected:
         addFunction(vm, "startSamplingProfiler", functionStartSamplingProfiler, 0);
         addFunction(vm, "samplingProfilerStackTraces", functionSamplingProfilerStackTraces, 0);
 #endif
+
+        addFunction(vm, "maxArguments", functionMaxArguments, 0);
 
 #if ENABLE(WEBASSEMBLY)
         addFunction(vm, "testWasmModuleFunctions", functionTestWasmModuleFunctions, 0);
@@ -2484,7 +2489,24 @@ EncodedJSValue JSC_HOST_CALL functionSamplingProfilerStackTraces(ExecState* exec
 }
 #endif // ENABLE(SAMPLING_PROFILER)
 
+EncodedJSValue JSC_HOST_CALL functionMaxArguments(ExecState*)
+{
+    return JSValue::encode(jsNumber(JSC::maxArguments));
+}
+
 #if ENABLE(WEBASSEMBLY)
+
+static CString valueWithTypeOfWasmValue(ExecState* exec, VM& vm, JSValue value, JSValue wasmValue)
+{
+    JSString* type = jsCast<JSString*>(wasmValue.get(exec, makeIdentifier(vm, "type")));
+
+    const String& typeString = type->value(exec);
+    if (typeString == "i64" || typeString == "i32")
+        return toCString(typeString, " ", RawPointer(bitwise_cast<void*>(value)));
+    if (typeString == "f32")
+        return toCString(typeString, " hex: ", RawPointer(bitwise_cast<void*>(value)), ", float: ", bitwise_cast<float>(static_cast<uint32_t>(JSValue::encode(value))));
+    return toCString(typeString, " hex: ", RawPointer(bitwise_cast<void*>(value)), ", double: ", bitwise_cast<double>(value));
+}
 
 static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
 {
@@ -2493,9 +2515,14 @@ static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
 
     const String& typeString = type->value(exec);
     if (typeString == "i64") {
-        RELEASE_ASSERT(value.isString());
         int64_t result;
-        RELEASE_ASSERT(sscanf(bitwise_cast<const char*>(jsCast<JSString*>(value)->value(exec).characters8()), "%lld", &result) != EOF);
+        const char* str = toCString(jsCast<JSString*>(value)->value(exec)).data();
+        int scanResult;
+        if (std::strlen(str) > 2 && str[0] == '0' && str[1] == 'x')
+            scanResult = sscanf(str, "%llx", &result);
+        else
+            scanResult = sscanf(str, "%lld", &result);
+        RELEASE_ASSERT(scanResult != EOF);
         return JSValue::decode(result);
     }
     RELEASE_ASSERT(value.isNumber());
@@ -2509,7 +2536,7 @@ static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
         return JSValue::decode(bitwise_cast<uint32_t>(value.toFloat(exec)));
 
     RELEASE_ASSERT(typeString == "f64");
-    return value;
+    return JSValue::decode(bitwise_cast<uint64_t>(value.asNumber()));
 }
 
 static JSValue callWasmFunction(VM* vm, const B3::Compilation& code, Vector<JSValue>& boxedArgs)
@@ -2548,8 +2575,10 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
 
     Wasm::Plan plan(&vm, static_cast<uint8_t*>(source->vector()), source->length());
     plan.run();
-    if (plan.failed())
+    if (plan.failed()) {
+        dataLogLn("failed to parse module: ", plan.errorMessage());
         CRASH();
+    }
 
     if (plan.compiledFunctionCount() != functionCount)
         CRASH();
@@ -2571,7 +2600,13 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
             JSValue callResult = callWasmFunction(&vm, *plan.compiledFunction(i)->jsEntryPoint, boxedArgs);
             JSValue expected = box(exec, vm, result);
             if (callResult != expected) {
-                WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, toCString(" (callResult == ", RawPointer(bitwise_cast<void*>(callResult)), ", expected == ", RawPointer(bitwise_cast<void*>(expected)), ")").data());
+                dataLog("Arguments: ");
+                CommaPrinter comma(", ");
+                for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
+                    dataLog(comma, valueWithTypeOfWasmValue(exec, vm, boxedArgs[argIndex], arguments->getIndexQuickly(argIndex)));
+                dataLogLn();
+
+                WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, toCString(" (callResult == ", valueWithTypeOfWasmValue(exec, vm, callResult, result), ", expected == ", valueWithTypeOfWasmValue(exec, vm, expected, result), ")").data());
                 CRASH();
             }
         }
@@ -2598,14 +2633,25 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
 int jscmain(int argc, char** argv);
 
 static double s_desiredTimeout;
+static double s_timeoutMultiplier = 1.0;
 
 static NO_RETURN_DUE_TO_CRASH void timeoutThreadMain(void*)
 {
-    auto timeout = std::chrono::microseconds(static_cast<std::chrono::microseconds::rep>(s_desiredTimeout * 1000000));
-    std::this_thread::sleep_for(timeout);
-    
-    dataLog("Timed out after ", s_desiredTimeout, " seconds!\n");
+    Seconds timeoutDuration(s_desiredTimeout * s_timeoutMultiplier);
+    sleep(timeoutDuration);
+    dataLog("Timed out after ", timeoutDuration, " seconds!\n");
     CRASH();
+}
+
+static void startTimeoutThreadIfNeeded()
+{
+    if (char* timeoutString = getenv("JSCTEST_timeout")) {
+        if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
+            dataLog("WARNING: timeout string is malformed, got ", timeoutString,
+                " but expected a number. Not using a timeout.\n");
+        } else
+            createThread(timeoutThreadMain, 0, "jsc Timeout Thread");
+    }
 }
 
 int main(int argc, char** argv)
@@ -2649,15 +2695,6 @@ int main(int argc, char** argv)
     // threading yet, since that would do somethings that we'd like to defer until after we
     // have a chance to parse options.
     WTF::initializeThreading();
-
-    if (char* timeoutString = getenv("JSCTEST_timeout")) {
-        if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
-            dataLog(
-                "WARNING: timeout string is malformed, got ", timeoutString,
-                " but expected a number. Not using a timeout.\n");
-        } else
-            createThread(timeoutThreadMain, 0, "jsc Timeout Thread");
-    }
 
 #if PLATFORM(IOS)
     Options::crashIfCantAllocateJITMemory() = true;
@@ -3010,6 +3047,15 @@ void CommandLine::parseArguments(int argc, char** argv)
             continue;
         }
 
+        static const char* timeoutMultiplierOptStr = "--timeoutMultiplier=";
+        static const unsigned timeoutMultiplierOptStrLength = strlen(timeoutMultiplierOptStr);
+        if (!strncmp(arg, timeoutMultiplierOptStr, timeoutMultiplierOptStrLength)) {
+            const char* valueStr = &arg[timeoutMultiplierOptStrLength];
+            if (sscanf(valueStr, "%lf", &s_timeoutMultiplier) != 1)
+                dataLog("WARNING: --timeoutMultiplier=", valueStr, " is invalid. Expects a numeric ratio.\n");
+            continue;
+        }
+
         if (!strcmp(arg, "--test262-async")) {
             test262AsyncTest = true;
             continue;
@@ -3136,6 +3182,7 @@ int jscmain(int argc, char** argv)
     // Initialize JSC before getting VM.
     WTF::initializeMainThread();
     JSC::initializeThreading();
+    startTimeoutThreadIfNeeded();
 
     VM* vm = &VM::create(LargeHeap).leakRef();
     int result;

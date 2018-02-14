@@ -53,30 +53,10 @@ void dumpProcedure(void* ptr)
 
 namespace JSC { namespace Wasm {
 
-namespace {
-
 using namespace B3;
 
+namespace {
 const bool verbose = false;
-
-inline B3::Opcode toB3Op(BinaryOpType op)
-{
-    switch (op) {
-#define CREATE_CASE(name, op, b3op) case BinaryOpType::name: return b3op;
-    FOR_EACH_WASM_BINARY_OP(CREATE_CASE)
-#undef CREATE_CASE
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-}
-
-inline B3::Opcode toB3Op(UnaryOpType op)
-{
-    switch (op) {
-#define CREATE_CASE(name, op, b3op) case UnaryOpType::name: return b3op;
-    FOR_EACH_WASM_UNARY_OP(CREATE_CASE)
-#undef CREATE_CASE
-    }
-    RELEASE_ASSERT_NOT_REACHED();
 }
 
 class B3IRGenerator {
@@ -164,8 +144,10 @@ public:
     bool WARN_UNUSED_RETURN store(StoreOpType, ExpressionType pointer, ExpressionType value, uint32_t offset);
 
     // Basic operators
-    bool WARN_UNUSED_RETURN binaryOp(BinaryOpType, ExpressionType left, ExpressionType right, ExpressionType& result);
-    bool WARN_UNUSED_RETURN unaryOp(UnaryOpType, ExpressionType arg, ExpressionType& result);
+    template<OpType>
+    bool WARN_UNUSED_RETURN addOp(ExpressionType arg, ExpressionType& result);
+    template<OpType>
+    bool WARN_UNUSED_RETURN addOp(ExpressionType left, ExpressionType right, ExpressionType& result);
     bool WARN_UNUSED_RETURN addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result);
 
     // Control flow
@@ -450,22 +432,6 @@ bool B3IRGenerator::store(StoreOpType op, ExpressionType pointer, ExpressionType
     return true;
 }
 
-bool B3IRGenerator::unaryOp(UnaryOpType op, ExpressionType arg, ExpressionType& result)
-{
-    if (!isSimple(op))
-        return false;
-    result = m_currentBlock->appendNew<Value>(m_proc, toB3Op(op), Origin(), arg);
-    return true;
-}
-
-bool B3IRGenerator::binaryOp(BinaryOpType op, ExpressionType left, ExpressionType right, ExpressionType& result)
-{
-    if (!isSimple(op))
-        return false;
-    result = m_currentBlock->appendNew<Value>(m_proc, toB3Op(op), Origin(), left, right);
-    return true;
-}
-
 bool B3IRGenerator::addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result)
 {
     result = m_currentBlock->appendNew<Value>(m_proc, B3::Select, Origin(), condition, nonZero, zero);
@@ -675,9 +641,6 @@ void B3IRGenerator::dump(const Vector<ControlEntry>& controlStack, const Express
     dataLogLn("\n");
 }
 
-} // anonymous namespace
-
-
 static std::unique_ptr<Compilation> createJSWrapper(VM& vm, const Signature* signature, MacroAssemblerCodePtr mainFunction, Memory* memory)
 {
     Procedure proc;
@@ -778,6 +741,50 @@ std::unique_ptr<FunctionCompilation> parseAndCompile(VM& vm, const uint8_t* func
     return result;
 }
 
+// Custom wasm ops. These are the ones too messy to do in wasm.json.
+
+template<>
+bool B3IRGenerator::addOp<F64ConvertUI64>(ExpressionType arg, ExpressionType& result)
+{
+    PatchpointValue* patchpoint = m_currentBlock->appendNew<PatchpointValue>(m_proc, Float, Origin());
+    if (isX86())
+        patchpoint->numGPScratchRegisters = 1;
+    patchpoint->append(ConstrainedValue(arg, ValueRep::WarmAny));
+    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+        AllowMacroScratchRegisterUsage allowScratch(jit);
+#if CPU(X86_64)
+        jit.convertUInt64ToDouble(params[1].gpr(), params[0].fpr(), params.gpScratch(0));
+#else
+        jit.convertUInt64ToDouble(params[1].gpr(), params[0].fpr());
+#endif
+    });
+    patchpoint->effects = Effects::none();
+    result = patchpoint;
+    return true;
+}
+
+template<>
+bool B3IRGenerator::addOp<OpType::F32ConvertUI64>(ExpressionType arg, ExpressionType& result)
+{
+    PatchpointValue* patchpoint = m_currentBlock->appendNew<PatchpointValue>(m_proc, Float, Origin());
+    if (isX86())
+        patchpoint->numGPScratchRegisters = 1;
+    patchpoint->append(ConstrainedValue(arg, ValueRep::WarmAny));
+    patchpoint->setGenerator([=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+        AllowMacroScratchRegisterUsage allowScratch(jit);
+#if CPU(X86_64)
+        jit.convertUInt64ToFloat(params[1].gpr(), params[0].fpr(), params.gpScratch(0));
+#else
+        jit.convertUInt64ToFloat(params[1].gpr(), params[0].fpr());
+#endif
+    });
+    patchpoint->effects = Effects::none();
+    result = patchpoint;
+    return true;
+}
+
 } } // namespace JSC::Wasm
+
+#include "WasmB3IRGeneratorInlines.h"
 
 #endif // ENABLE(WEBASSEMBLY)

@@ -714,10 +714,10 @@ String URL::host() const
     return m_string.substring(start, m_hostEnd - start);
 }
 
-Optional<uint16_t> URL::port() const
+std::optional<uint16_t> URL::port() const
 {
     if (!m_portEnd || m_hostEnd >= m_portEnd - 1)
-        return Nullopt;
+        return std::nullopt;
 
     bool ok = false;
     unsigned number;
@@ -726,8 +726,15 @@ Optional<uint16_t> URL::port() const
     else
         number = charactersToUIntStrict(m_string.characters16() + m_hostEnd + 1, m_portEnd - m_hostEnd - 1, &ok);
     if (!ok || number > std::numeric_limits<uint16_t>::max())
-        return Nullopt;
+        return std::nullopt;
     return number;
+}
+
+String URL::hostAndPort() const
+{
+    if (auto port = this->port())
+        return host() + ':' + String::number(port.value());
+    return host();
 }
 
 String URL::user() const
@@ -819,7 +826,7 @@ void clearDefaultPortForProtocolMapForTesting()
     defaultPortForProtocolMapForTesting().clear();
 }
 
-Optional<uint16_t> defaultPortForProtocol(StringView protocol)
+std::optional<uint16_t> defaultPortForProtocol(StringView protocol)
 {
     const auto& defaultPortForProtocolMap = defaultPortForProtocolMapForTesting();
     auto iterator = defaultPortForProtocolMap.find(protocol.toStringWithoutCopying());
@@ -1675,12 +1682,22 @@ void URL::parse(const char* url, const String* originalString)
     }
 
     // assemble it all, remembering the real ranges
+    Checked<unsigned, RecordOverflow> bufferLength = fragmentEnd;
+    bufferLength *= 3;
 
     // The magic number 10 comes from the worst-case addition of characters for password start,
     // user info, and colon for port number, colon after scheme, plus inserting missing slashes
     // after protocol, slash for empty path, and possible end-of-query '#' character. This
     // yields a max of nine additional characters, plus a null.
-    Vector<char, 4096> buffer(fragmentEnd * 3 + 10);
+    bufferLength += 10;
+
+    if (bufferLength.hasOverflowed()) {
+        m_string = originalString ? *originalString : url;
+        invalidate();
+        return;
+    }
+
+    Vector<char, 4096> buffer(bufferLength.unsafeGet());
 
     char* p = buffer.data();
     const char* strPtr = url;
@@ -2271,7 +2288,7 @@ bool URL::isBlankURL() const
 
 bool portAllowed(const URL& url)
 {
-    Optional<uint16_t> port = url.port();
+    std::optional<uint16_t> port = url.port();
 
     // Since most URLs don't have a port, return early for the "no port" case.
     if (!port)

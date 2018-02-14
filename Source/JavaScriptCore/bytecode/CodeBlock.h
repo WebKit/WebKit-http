@@ -42,7 +42,7 @@
 #include "DFGCommon.h"
 #include "DFGExitProfile.h"
 #include "DeferredCompilationCallback.h"
-#include "EvalCodeCache.h"
+#include "DirectEvalCodeCache.h"
 #include "EvalExecutable.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
@@ -233,7 +233,7 @@ public:
     void expressionRangeForBytecodeOffset(unsigned bytecodeOffset, int& divot,
         int& startOffset, int& endOffset, unsigned& line, unsigned& column) const;
 
-    Optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
+    std::optional<unsigned> bytecodeOffsetFromCallSiteIndex(CallSiteIndex);
 
     void getStubInfoMap(const ConcurrentJSLocker&, StubInfoMap& result);
     void getStubInfoMap(StubInfoMap& result);
@@ -616,7 +616,7 @@ public:
     StringJumpTable& addStringSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_stringSwitchJumpTables.append(StringJumpTable()); return m_rareData->m_stringSwitchJumpTables.last(); }
     StringJumpTable& stringSwitchJumpTable(int tableIndex) { RELEASE_ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
 
-    EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
+    DirectEvalCodeCache& directEvalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_directEvalCodeCache; }
 
     enum ShrinkMode {
         // Shrink prior to generating machine code that may point directly into vectors.
@@ -836,7 +836,7 @@ public:
     // concurrent compilation threads finish what they're doing.
     mutable ConcurrentJSLock m_lock;
 
-    Atomic<bool> m_visitWeaklyHasBeenCalled;
+    bool m_visitWeaklyHasBeenCalled;
 
     bool m_shouldAlwaysBeInlined; // Not a bitfield because the JIT wants to store to it.
 
@@ -870,7 +870,7 @@ public:
         Vector<SimpleJumpTable> m_switchJumpTables;
         Vector<StringJumpTable> m_stringSwitchJumpTables;
 
-        EvalCodeCache m_evalCodeCache;
+        DirectEvalCodeCache m_directEvalCodeCache;
     };
 
     void clearExceptionHandlers()
@@ -889,7 +889,7 @@ public:
 
 #if ENABLE(JIT)
     void setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&&);
-    Optional<CodeOrigin> findPC(void* pc);
+    std::optional<CodeOrigin> findPC(void* pc);
 #endif
 
 protected:
@@ -947,16 +947,16 @@ private:
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
     void dumpArithProfile(PrintStream&, ArithProfile*, bool& hasPrintedProfiling);
 
-    bool shouldVisitStrongly();
+    bool shouldVisitStrongly(const ConcurrentJSLocker&);
     bool shouldJettisonDueToWeakReference();
-    bool shouldJettisonDueToOldAge();
+    bool shouldJettisonDueToOldAge(const ConcurrentJSLocker&);
     
-    void propagateTransitions(SlotVisitor&);
-    void determineLiveness(SlotVisitor&);
+    void propagateTransitions(const ConcurrentJSLocker&, SlotVisitor&);
+    void determineLiveness(const ConcurrentJSLocker&, SlotVisitor&);
         
-    void stronglyVisitStrongReferences(SlotVisitor&);
-    void stronglyVisitWeakReferences(SlotVisitor&);
-    void visitOSRExitTargets(SlotVisitor&);
+    void stronglyVisitStrongReferences(const ConcurrentJSLocker&, SlotVisitor&);
+    void stronglyVisitWeakReferences(const ConcurrentJSLocker&, SlotVisitor&);
+    void visitOSRExitTargets(const ConcurrentJSLocker&, SlotVisitor&);
 
     std::chrono::milliseconds timeSinceCreation()
     {
@@ -1079,7 +1079,7 @@ inline Register& ExecState::uncheckedR(VirtualRegister reg)
 
 inline void CodeBlock::clearVisitWeaklyHasBeenCalled()
 {
-    m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitWeaklyHasBeenCalled = false;
 }
 
 template <typename ExecutableType>

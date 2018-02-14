@@ -1,3 +1,250 @@
+2016-12-02  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r209252): HTML interactive validation should not be enabled on iOS WK1 yet
+        https://bugs.webkit.org/show_bug.cgi?id=165328
+
+        Reviewed by Simon Fraser.
+
+        Only enable HTML interactive form validation on Mac WK1, not iOS WK1.
+
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate init]):
+
+2016-12-02  Chris Dumez  <cdumez@apple.com>
+
+        [Mac][WK1] Implement new HTML interactive form validation user interface
+        https://bugs.webkit.org/show_bug.cgi?id=164483
+
+        Reviewed by Simon Fraser.
+
+        Implement new HTML interactive form validation user interface on Mac
+        WK1 and enable it by default.
+
+        * WebCoreSupport/WebValidationMessageClient.h: Added.
+        * WebCoreSupport/WebValidationMessageClient.mm: Added.
+        (WebValidationMessageClient::WebValidationMessageClient):
+        (WebValidationMessageClient::~WebValidationMessageClient):
+        (WebValidationMessageClient::showValidationMessage):
+        (WebValidationMessageClient::hideValidationMessage):
+        (WebValidationMessageClient::isValidationMessageVisible):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _frameOrBoundsChanged]):
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _willStartScrollingOrZooming]):
+        (-[WebView _contentsOfUserInterfaceItem:]):
+        (-[WebView _scaleWebView:atOrigin:]):
+        (-[WebView _didScrollDocumentInFrameView:]):
+        (-[WebView _setZoomMultiplier:isTextOnly:]):
+        (-[WebView showFormValidationMessage:withAnchorRect:]):
+        (-[WebView hideFormValidationMessage]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate init]):
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2016-12-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add a runtime flag for SubtleCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=164982
+
+        Reviewed by Brent Fulgham.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences subtleCryptoEnabled]):
+        (-[WebPreferences setSubtleCryptoEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add separate settings and preferences to enable/disable async decoding for large images and animated images
+        https://bugs.webkit.org/show_bug.cgi?id=165177
+
+        Reviewed by Simon Fraser.
+        
+        Hook up the async image decoding settings for WebKit1.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences largeImageAsyncDecodingEnabled]):
+        (-[WebPreferences setLargeImageAsyncDecodingEnabled:]):
+        (-[WebPreferences animatedImageAsyncDecodingEnabled]):
+        (-[WebPreferences setAnimatedImageAsyncDecodingEnabled:]):
+        (-[WebPreferences asyncImageDecodingEnabled]): Deleted.
+        (-[WebPreferences setAsyncImageDecodingEnabled:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-29  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Enable two clang warnings recommended by Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=164498
+
+        Reviewed by Mark Lam.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_INFINITE_RECURSION and CLANG_WARN_SUSPICIOUS_MOVE.
+
+2016-11-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Import std::optional reference implementation as WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=164199
+
+        Reviewed by Saam Barati and Sam Weinig.
+
+        Use WTF::Optional::value_or.
+
+        * DOM/DOMHTMLOptionsCollection.mm:
+        (-[DOMHTMLOptionsCollection add:index:]):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView sendEvent:isDrawRect:]):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidCommitLoad):
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::completeShippingMethodSelection):
+        (WebPaymentCoordinatorClient::completeShippingContactSelection):
+        (WebPaymentCoordinatorClient::completePaymentMethodSelection):
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin port]):
+        * WebView/WebHTMLView.mm:
+        (toAction):
+        (toTag):
+
+2016-11-26  Sam Weinig  <sam@webkit.org>
+
+        Convert IntersectionObserver over to using RuntimeEnabledFeatures so it can be properly excluded from script
+        https://bugs.webkit.org/show_bug.cgi?id=164965
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences intersectionObserverEnabled]):
+        (-[WebPreferences setIntersectionObserverEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        Add a preference, defaulting to off, for enabling IntersectionObserver.
+
+2016-11-22  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] In Legacy WebKit, pressing an arrow key in editable content doesn’t hide the mouse cursor
+        https://bugs.webkit.org/show_bug.cgi?id=165036
+        <rdar://problem/5708580>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView performKeyEquivalent:]): Hide the cursor if WebCore handled the event,
+          similarly to what we do in -keyDown: and to what WKWebView does with all key events.
+
+2016-11-21  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Sierra CMake build after r208452
+        https://bugs.webkit.org/show_bug.cgi?id=164437
+
+        * WebView/WebView.mm:
+        (-[WebView updateMediaTouchBar]):
+        I haven't enabled VIDEO_PRESENTATION_MODE in the CMake build yet.
+        It's needed for playbackSessionInterface to exist.
+
+2016-11-18  Enrica Casucci  <enrica@apple.com>
+
+        Refactor drag and drop for WebKit2 to encode DragData message exchange.
+        https://bugs.webkit.org/show_bug.cgi?id=164945
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::actionMaskForDrag):
+        (WebDragClient::willPerformDragDestinationAction):
+
+2016-11-18  Jeremy Jones  <jeremyj@apple.com>
+
+        Add runtime flag to enable pointer lock. Enable pointer lock feature for mac.
+        https://bugs.webkit.org/show_bug.cgi?id=163801
+
+        Reviewed by Simon Fraser.
+
+        Plumb through PointerLockEnabled setting.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::requestPointerUnlock):
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences pointerLockEnabled]):
+        (-[WebPreferences setPointerLockEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-17  Dan Bernstein  <mitz@apple.com>
+
+        Try to fix some non-macOS builds.
+
+        * WebView/WebView.mm:
+
+2016-11-16  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Add @supports, @keyframe and media query parsing options
+        https://bugs.webkit.org/show_bug.cgi?id=164821
+
+        Reviewed by Sam Weinig and Zalan Bujtas.
+
+        Fix up the create call now that fallback descriptor syntax is gone.
+
+        * DOM/DOM.mm:
+        (-[DOMHTMLLinkElement _mediaQueryMatches]):
+
+2016-11-17  Saam Barati  <sbarati@apple.com>
+
+        Remove async/await compile time flag and enable tests
+        https://bugs.webkit.org/show_bug.cgi?id=164828
+        <rdar://problem/28639334>
+
+        Reviewed by Yusuke Suzuki.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-11-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] WTF::TemporaryChange with WTF::SetForScope
+        https://bugs.webkit.org/show_bug.cgi?id=164761
+
+        Reviewed by Saam Barati.
+
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+
+2016-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6][WebCore] Change ES6_MODULES compile time flag to runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=164827
+
+        Reviewed by Ryosuke Niwa.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences es6ModulesEnabled]):
+        (-[WebPreferences setES6ModulesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
 2016-11-14  Alex Christensen  <achristensen@webkit.org>
 
         Move SecurityOrigin::createFromDatabaseIdentifier to SecurityOriginData

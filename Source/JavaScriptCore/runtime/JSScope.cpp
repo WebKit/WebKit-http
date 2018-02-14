@@ -26,10 +26,11 @@
 #include "config.h"
 #include "JSScope.h"
 
+#include "AbstractModuleRecord.h"
+#include "Exception.h"
 #include "JSGlobalObject.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
-#include "JSModuleRecord.h"
 #include "JSWithScope.h"
 #include "JSCInlines.h"
 #include "VariableEnvironment.h"
@@ -77,10 +78,10 @@ static inline bool abstractAccess(ExecState* exec, JSScope* scope, const Identif
 
         if (scope->type() == ModuleEnvironmentType) {
             JSModuleEnvironment* moduleEnvironment = jsCast<JSModuleEnvironment*>(scope);
-            JSModuleRecord* moduleRecord = moduleEnvironment->moduleRecord();
-            JSModuleRecord::Resolution resolution = moduleRecord->resolveImport(exec, ident);
-            if (resolution.type == JSModuleRecord::Resolution::Type::Resolved) {
-                JSModuleRecord* importedRecord = resolution.moduleRecord;
+            AbstractModuleRecord* moduleRecord = moduleEnvironment->moduleRecord();
+            AbstractModuleRecord::Resolution resolution = moduleRecord->resolveImport(exec, ident);
+            if (resolution.type == AbstractModuleRecord::Resolution::Type::Resolved) {
+                AbstractModuleRecord* importedRecord = resolution.moduleRecord;
                 JSModuleEnvironment* importedEnvironment = importedRecord->moduleEnvironment();
                 SymbolTable* symbolTable = importedEnvironment->symbolTable();
                 ConcurrentJSLocker locker(symbolTable->m_lock);
@@ -229,19 +230,26 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
         if (++it == end) {
             JSScope* globalScopeExtension = scope->globalObject(vm)->globalScopeExtension();
             if (UNLIKELY(globalScopeExtension)) {
-                if (object->hasProperty(exec, ident))
+                bool hasProperty = object->hasProperty(exec, ident);
+                RETURN_IF_EXCEPTION(throwScope, nullptr);
+                if (hasProperty)
                     return object;
                 JSObject* extensionScopeObject = JSScope::objectAtScope(globalScopeExtension);
-                if (extensionScopeObject->hasProperty(exec, ident))
+                hasProperty = extensionScopeObject->hasProperty(exec, ident);
+                RETURN_IF_EXCEPTION(throwScope, nullptr);
+                if (hasProperty)
                     return extensionScopeObject;
             }
             return object;
         }
 
-        if (object->hasProperty(exec, ident)) {
-            if (!isUnscopable(exec, scope, object, ident))
+        bool hasProperty = object->hasProperty(exec, ident);
+        RETURN_IF_EXCEPTION(throwScope, nullptr);
+        if (hasProperty) {
+            bool unscopable = isUnscopable(exec, scope, object, ident);
+            ASSERT(!throwScope.exception() || !unscopable);
+            if (!unscopable)
                 return object;
-            ASSERT_WITH_MESSAGE_UNUSED(throwScope, !throwScope.exception(), "When an exception occurs, the result of isUnscopable becomes false");
         }
     }
 }
@@ -270,7 +278,7 @@ void JSScope::collectClosureVariablesUnderTDZ(JSScope* scope, VariableEnvironmen
             continue;
 
         if (scope->isModuleScope()) {
-            JSModuleRecord* moduleRecord = jsCast<JSModuleEnvironment*>(scope)->moduleRecord();
+            AbstractModuleRecord* moduleRecord = jsCast<JSModuleEnvironment*>(scope)->moduleRecord();
             for (const auto& pair : moduleRecord->importEntries())
                 result.add(pair.key);
         }

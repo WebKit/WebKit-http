@@ -342,6 +342,8 @@ public:
     
 #if ENABLE(WEBASSEMBLY)
     WriteBarrier<Structure> m_webAssemblyStructure;
+    WriteBarrier<Structure> m_webAssemblyModuleRecordStructure;
+    WriteBarrier<Structure> m_webAssemblyFunctionStructure;
     FOR_EACH_WEBASSEMBLY_CONSTRUCTOR_TYPE(DEFINE_STORAGE_FOR_SIMPLE_TYPE)
 #endif // ENABLE(WEBASSEMBLY)
 
@@ -625,6 +627,10 @@ public:
     Structure* proxyRevokeStructure() const { return m_proxyRevokeStructure.get(); }
     Structure* moduleLoaderStructure() const { return m_moduleLoaderStructure.get(); }
     Structure* restParameterStructure() const { return arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous); }
+#if ENABLE(WEBASSEMBLY)
+    Structure* webAssemblyModuleRecordStructure() const { return m_webAssemblyModuleRecordStructure.get(); }
+    Structure* webAssemblyFunctionStructure() const { return m_webAssemblyFunctionStructure.get(); }
+#endif // ENABLE(WEBASSEMBLY)
 
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
     JS_EXPORT_PRIVATE bool remoteDebuggingEnabled() const;
@@ -827,11 +833,6 @@ public:
     double weakRandomNumber() { return m_weakRandom.get(); }
     unsigned weakRandomInteger() { return m_weakRandom.getUint32(); }
     WeakRandom& weakRandom() { return m_weakRandom; }
-
-    UnlinkedProgramCodeBlock* createProgramCodeBlock(CallFrame*, ProgramExecutable*, JSObject** exception);
-    UnlinkedEvalCodeBlock* createLocalEvalCodeBlock(CallFrame*, DirectEvalExecutable*, const VariableEnvironment*);
-    UnlinkedEvalCodeBlock* createGlobalEvalCodeBlock(CallFrame*, IndirectEvalExecutable*);
-    UnlinkedModuleProgramCodeBlock* createModuleProgramCodeBlock(CallFrame*, ModuleProgramExecutable*);
 
     bool needsSiteSpecificQuirks() const { return m_needsSiteSpecificQuirks; }
 

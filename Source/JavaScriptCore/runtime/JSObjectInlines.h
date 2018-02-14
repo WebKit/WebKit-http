@@ -167,9 +167,9 @@ inline void JSObject::putDirectWithoutTransition(VM& vm, PropertyName propertyNa
     unsigned oldOutOfLineCapacity = structure->outOfLineCapacity();
     structure->addPropertyWithoutTransition(
         vm, propertyName, attributes,
-        [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset) {
-            if (structure->outOfLineCapacity() != oldOutOfLineCapacity) {
-                butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, structure->outOfLineCapacity());
+        [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, unsigned newOutOfLineCapacity) {
+            if (newOutOfLineCapacity != oldOutOfLineCapacity) {
+                butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, newOutOfLineCapacity);
                 WTF::storeStoreFence();
                 setButterfly(vm, butterfly);
             }
@@ -196,7 +196,7 @@ ALWAYS_INLINE bool JSObject::putInline(JSCell* cell, ExecState* exec, PropertyNa
 
     // Try indexed put first. This is required for correctness, since loads on property names that appear like
     // valid indices will never look in the named property storage.
-    if (Optional<uint32_t> index = parseIndex(propertyName))
+    if (std::optional<uint32_t> index = parseIndex(propertyName))
         return putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
 
     if (thisObject->canPerformFastPutInline(exec, vm, propertyName)) {
@@ -266,15 +266,14 @@ ALWAYS_INLINE bool JSObject::putDirectInternal(VM& vm, PropertyName propertyName
         unsigned oldOutOfLineCapacity = structure->outOfLineCapacity();
         offset = structure->addPropertyWithoutTransition(
             vm, propertyName, attributes,
-            [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset) {
+            [&] (const GCSafeConcurrentJSLocker&, PropertyOffset offset, unsigned newOutOfLineCapacity) {
                 Butterfly* butterfly = this->butterfly();
-                if (structure->outOfLineCapacity() != oldOutOfLineCapacity) {
-                    butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, structure->outOfLineCapacity());
+                if (newOutOfLineCapacity != oldOutOfLineCapacity) {
+                    butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, newOutOfLineCapacity);
                     WTF::storeStoreFence();
                     setButterfly(vm, butterfly);
                 }
                 validateOffset(offset);
-                ASSERT(structure->isValidOffset(offset));
                 putDirect(vm, offset, value);
             });
 

@@ -70,14 +70,14 @@ public:
     const Vector<LayoutUnit>& columnPositions() const { return m_columnPositions; }
     const Vector<LayoutUnit>& rowPositions() const { return m_rowPositions; }
 
-    size_t autoRepeatCountForDirection(GridTrackSizingDirection) const;
+    unsigned autoRepeatCountForDirection(GridTrackSizingDirection direction) const { return m_grid.autoRepeatTracks(direction); }
 
 private:
     const char* renderName() const override;
     bool isRenderGrid() const override { return true; }
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
 
-    Optional<LayoutUnit> computeIntrinsicLogicalContentHeightUsing(Length logicalHeightLength, Optional<LayoutUnit> intrinsicContentHeight, LayoutUnit borderAndPadding) const override;
+    std::optional<LayoutUnit> computeIntrinsicLogicalContentHeightUsing(Length logicalHeightLength, std::optional<LayoutUnit> intrinsicContentHeight, LayoutUnit borderAndPadding) const override;
 
     class GridIterator;
     class GridSizingData;
@@ -88,16 +88,10 @@ private:
     LayoutUnit computeUsedBreadthOfMaxLength(const GridTrackSize&, LayoutUnit usedBreadth, LayoutUnit maxSize) const;
     void resolveContentBasedTrackSizingFunctions(GridTrackSizingDirection, GridSizingData&) const;
 
-    void ensureGridSize(unsigned maximumRowSize, unsigned maximumColumnSize);
-    void insertItemIntoGrid(RenderBox&, const GridArea&);
-
     unsigned computeAutoRepeatTracksCount(GridTrackSizingDirection, SizingOperation) const;
 
     typedef ListHashSet<size_t> OrderedTrackIndexSet;
     std::unique_ptr<OrderedTrackIndexSet> computeEmptyTracksForAutoRepeat(GridTrackSizingDirection) const;
-
-    bool hasAutoRepeatEmptyTracks(GridTrackSizingDirection) const;
-    bool isEmptyAutoRepeatTrack(GridTrackSizingDirection, unsigned track) const;
 
     void placeItemsOnGrid(SizingOperation);
     void populateExplicitGridAndOrderIterator();
@@ -190,43 +184,93 @@ private:
 
     bool spanningItemCrossesFlexibleSizedTracks(const GridSpan&, GridTrackSizingDirection, SizingOperation) const;
 
-    unsigned gridColumnCount() const;
-    unsigned gridRowCount() const;
+    unsigned numTracks(GridTrackSizingDirection) const;
 
     LayoutUnit translateRTLCoordinate(LayoutUnit) const;
 
     bool isOrthogonalChild(const RenderBox&) const;
     GridTrackSizingDirection flowAwareDirectionForChild(const RenderBox&, GridTrackSizingDirection) const;
 
-    Vector<Vector<Vector<RenderBox*, 1>>> m_grid;
+    typedef Vector<RenderBox*, 1> GridCell;
+    typedef Vector<Vector<GridCell>> GridAsMatrix;
+    class Grid final {
+    public:
+        Grid(RenderGrid& grid) : m_orderIterator(grid) { }
+
+        unsigned numTracks(GridTrackSizingDirection) const;
+
+        void ensureGridSize(unsigned maximumRowSize, unsigned maximumColumnSize);
+        void insert(RenderBox&, const GridArea&);
+
+        // Note that each in flow child of a grid container becomes a grid item. This means that
+        // this method will return false for a grid container with only out of flow children.
+        bool hasGridItems() const { return !m_gridItemArea.isEmpty(); }
+
+        // FIXME: move this to SizingData once placeItemsOnGrid() takes it as argument.
+        bool hasAnyOrthogonalGridItem() const { return m_hasAnyOrthogonalGridItem; }
+        void setHasAnyOrthogonalGridItem(bool hasAnyOrthogonalGridItem) { m_hasAnyOrthogonalGridItem = hasAnyOrthogonalGridItem; }
+
+        GridArea gridItemArea(const RenderBox& item) const;
+        void setGridItemArea(const RenderBox& item, GridArea);
+
+        GridSpan gridItemSpan(const RenderBox&, GridTrackSizingDirection) const;
+
+        const GridCell& cell(unsigned row, unsigned column) const { return m_grid[row][column]; }
+
+        int smallestTrackStart(GridTrackSizingDirection) const;
+        void setSmallestTracksStart(int rowStart, int columnStart);
+
+        unsigned autoRepeatTracks(GridTrackSizingDirection) const;
+        void setAutoRepeatTracks(unsigned autoRepeatRows, unsigned autoRepeatColumns);
+
+        void setAutoRepeatEmptyColumns(std::unique_ptr<OrderedTrackIndexSet>);
+        void setAutoRepeatEmptyRows(std::unique_ptr<OrderedTrackIndexSet>);
+
+        unsigned autoRepeatEmptyTracksCount(GridTrackSizingDirection) const;
+        bool hasAutoRepeatEmptyTracks(GridTrackSizingDirection) const;
+        bool isEmptyAutoRepeatTrack(GridTrackSizingDirection, unsigned) const;
+
+        OrderedTrackIndexSet* autoRepeatEmptyTracks(GridTrackSizingDirection) const;
+
+        OrderIterator& orderIterator() { return m_orderIterator; }
+
+        void shrinkToFit() { m_grid.shrinkToFit(); }
+
+        void clear();
+
+    private:
+        friend class GridIterator;
+
+        OrderIterator m_orderIterator;
+
+        int m_smallestColumnStart { 0 };
+        int m_smallestRowStart { 0 };
+
+        unsigned m_autoRepeatColumns { 0 };
+        unsigned m_autoRepeatRows { 0 };
+
+        bool m_hasAnyOrthogonalGridItem { false };
+
+        GridAsMatrix m_grid;
+
+        HashMap<const RenderBox*, GridArea> m_gridItemArea;
+        HashMap<const RenderBox*, size_t> m_gridItemsIndexesMap;
+
+        std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyColumns;
+        std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyRows;
+    };
+    Grid m_grid;
+
     Vector<LayoutUnit> m_columnPositions;
     Vector<LayoutUnit> m_rowPositions;
     LayoutUnit m_offsetBetweenColumns;
     LayoutUnit m_offsetBetweenRows;
-    HashMap<const RenderBox*, GridArea> m_gridItemArea;
-    OrderIterator m_orderIterator;
 
-    Optional<LayoutUnit> m_minContentHeight;
-    Optional<LayoutUnit> m_maxContentHeight;
-
-    int m_smallestColumnStart;
-    int m_smallestRowStart;
-
-    unsigned m_autoRepeatColumns { 0 };
-    unsigned m_autoRepeatRows { 0 };
-
-    bool m_hasAnyOrthogonalChild;
+    std::optional<LayoutUnit> m_minContentHeight;
+    std::optional<LayoutUnit> m_maxContentHeight;
 
     bool m_gridIsDirty { true };
-
-    std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyColumns { nullptr };
-    std::unique_ptr<OrderedTrackIndexSet> m_autoRepeatEmptyRows { nullptr };
 };
-
-size_t inline RenderGrid::autoRepeatCountForDirection(GridTrackSizingDirection direction) const
-{
-    return direction == ForColumns ? m_autoRepeatColumns : m_autoRepeatRows;
-}
 
 } // namespace WebCore
 

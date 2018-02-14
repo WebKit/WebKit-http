@@ -104,6 +104,7 @@ public:
 
     unsigned imageFrameIndex(HTMLImageElement&);
     void setImageFrameDecodingDuration(HTMLImageElement&, float duration);
+    void resetImageAnimation(HTMLImageElement&);
 
     void clearPageCache();
     unsigned pageCacheSize() const;
@@ -120,6 +121,10 @@ public:
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
     bool areTimersThrottled() const;
+
+    enum EventThrottlingBehavior { Responsive, Unresponsive };
+    void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior>);
+    std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const;
 
     // Spatial Navigation testing.
     ExceptionOr<unsigned> lastSpatialNavigationCandidateCount() const;

@@ -152,6 +152,7 @@ public:
     void textChanged() override;
     void addChildren() override;
     bool canHaveChildren() const override;
+    bool canHaveSelectedChildren() const override;
     void selectedChildren(AccessibilityChildrenVector&) override;
     void visibleChildren(AccessibilityChildrenVector&) override;
     void tabChildren(AccessibilityChildrenVector&) override;
@@ -273,7 +274,7 @@ private:
     const String ariaLiveRegionStatus() const override;
     const AtomicString& ariaLiveRegionRelevant() const override;
     bool ariaLiveRegionAtomic() const override;
-    bool ariaLiveRegionBusy() const override;
+    bool isBusy() const override;
 
     bool inheritsPresentationalRole() const override;
 

@@ -63,7 +63,7 @@
 #include "TiledBacking.h"
 #include "TransformState.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -453,9 +453,8 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
     if (GraphicsLayer* rootLayer = rootGraphicsLayer()) {
 #if PLATFORM(IOS)
         FloatRect exposedRect = frameView.exposedContentRect();
-        LOG(Compositing, "RenderLayerCompositor %p flushPendingLayerChanges(%d) %.2f, %.2f, %.2fx%.2f (stable viewport %d)", this, isFlushRoot,
-            exposedRect.x(), exposedRect.y(), exposedRect.width(), exposedRect.height(), frameView.viewportIsStable());
-        rootLayer->flushCompositingState(exposedRect, frameView.viewportIsStable());
+        LOG_WITH_STREAM(Compositing, stream << "RenderLayerCompositor " << this << " flushPendingLayerChanges (root " << isFlushRoot << ") exposedRect " << exposedRect);
+        rootLayer->flushCompositingState(exposedRect);
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
         FloatRect visibleRect = m_clipLayer ? FloatRect({ 0, 0 }, frameView.sizeForVisibleContent()) : frameView.visibleContentRect();
@@ -463,8 +462,8 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
         if (frameView.viewExposedRect())
             visibleRect.intersect(frameView.viewExposedRect().value());
 
-        LOG_WITH_STREAM(Compositing,  stream << "RenderLayerCompositor " << this << " flushPendingLayerChanges(" << isFlushRoot << ") " << visibleRect << " (stable viewport " << frameView.viewportIsStable() << ")");
-        rootLayer->flushCompositingState(visibleRect, frameView.viewportIsStable());
+        LOG_WITH_STREAM(Compositing,  stream << "RenderLayerCompositor " << this << " flushPendingLayerChanges(" << isFlushRoot << ") " << visibleRect);
+        rootLayer->flushCompositingState(visibleRect);
 #endif
     }
     
@@ -680,7 +679,7 @@ bool RenderLayerCompositor::updateCompositingLayers(CompositingUpdateType update
 
     AnimationUpdateBlock animationUpdateBlock(&m_renderView.frameView().frame().animation());
 
-    TemporaryChange<bool> postLayoutChange(m_inPostLayoutUpdate, true);
+    SetForScope<bool> postLayoutChange(m_inPostLayoutUpdate, true);
     
     bool checkForHierarchyUpdate = m_reevaluateCompositingAfterLayout;
     bool needGeometryUpdate = false;

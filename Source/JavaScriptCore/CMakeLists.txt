@@ -623,9 +623,9 @@ set(JavaScriptCore_SOURCES
     parser/NodesAnalyzeModule.cpp
     parser/Parser.cpp
     parser/ParserArena.cpp
-    parser/SourceCode.cpp
     parser/SourceProvider.cpp
     parser/SourceProviderCache.cpp
+    parser/UnlinkedSourceCode.cpp
     parser/VariableEnvironment.cpp
 
     profiler/ProfilerBytecode.cpp
@@ -644,6 +644,7 @@ set(JavaScriptCore_SOURCES
     profiler/ProfilerProfiledBytecodes.cpp
     profiler/ProfilerUID.cpp
 
+    runtime/AbstractModuleRecord.cpp
     runtime/ArgList.cpp
     runtime/ArrayBuffer.cpp
     runtime/ArrayBufferNeuteringWatchpoint.cpp
@@ -866,6 +867,8 @@ set(JavaScriptCore_SOURCES
     runtime/SymbolPrototype.cpp
     runtime/SymbolTable.cpp
     runtime/TemplateRegistry.cpp
+    runtime/TemplateRegistryKey.cpp
+    runtime/TemplateRegistryKeyTable.cpp
     runtime/TestRunnerUtils.cpp
     runtime/ThrowScope.cpp
     runtime/TypeLocationCache.cpp
@@ -910,12 +913,15 @@ set(JavaScriptCore_SOURCES
     wasm/js/JSWebAssemblyTable.cpp
     wasm/js/WebAssemblyCompileErrorConstructor.cpp
     wasm/js/WebAssemblyCompileErrorPrototype.cpp
+    wasm/js/WebAssemblyFunction.cpp
+    wasm/js/WebAssemblyFunctionCell.cpp
     wasm/js/WebAssemblyInstanceConstructor.cpp
     wasm/js/WebAssemblyInstancePrototype.cpp
     wasm/js/WebAssemblyMemoryConstructor.cpp
     wasm/js/WebAssemblyMemoryPrototype.cpp
     wasm/js/WebAssemblyModuleConstructor.cpp
     wasm/js/WebAssemblyModulePrototype.cpp
+    wasm/js/WebAssemblyModuleRecord.cpp
     wasm/js/WebAssemblyPrototype.cpp
     wasm/js/WebAssemblyRuntimeErrorConstructor.cpp
     wasm/js/WebAssemblyRuntimeErrorPrototype.cpp
@@ -1157,6 +1163,7 @@ macro(GENERATE_PYTHON _generator _input _output)
 endmacro()
 GENERATE_PYTHON(${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasmOpsHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/wasm.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WasmOps.h)
 GENERATE_PYTHON(${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasmValidateInlinesHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/wasm.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WasmValidateInlines.h)
+GENERATE_PYTHON(${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasmB3IRGeneratorInlinesHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/wasm.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WasmB3IRGeneratorInlines.h)
 
 # LUT generator
 

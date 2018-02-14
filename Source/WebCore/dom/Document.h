@@ -602,7 +602,7 @@ public:
 
     void cancelParsing();
 
-    void write(const SegmentedString& text, Document* ownerDocument = nullptr);
+    void write(SegmentedString&& text, Document* ownerDocument = nullptr);
     WEBCORE_EXPORT void write(const String& text, Document* ownerDocument = nullptr);
     WEBCORE_EXPORT void writeln(const String& text, Document* ownerDocument = nullptr);
 
@@ -671,11 +671,11 @@ public:
     void setReadyState(ReadyState);
     void setParsing(bool);
     bool parsing() const { return m_bParsing; }
-    std::chrono::milliseconds minimumLayoutDelay();
+    Seconds minimumLayoutDelay();
 
     bool shouldScheduleLayout();
     bool isLayoutTimerActive();
-    std::chrono::milliseconds elapsedTime() const;
+    Seconds timeSinceDocumentCreation() const;
     
     void setTextColor(const Color& color) { m_textColor = color; }
     const Color& textColor() const { return m_textColor; }
@@ -707,7 +707,7 @@ public:
     void setFocusNavigationStartingNode(Node*);
     Element* focusNavigationStartingNode(FocusDirection) const;
 
-    void removeFocusedNodeOfSubtree(Node*, bool amongChildrenOnly = false);
+    void removeFocusedNodeOfSubtree(Node&, bool amongChildrenOnly = false);
     void hoveredElementDidDetach(Element*);
     void elementInActiveChainDidDetach(Element*);
 
@@ -735,7 +735,7 @@ public:
 
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
-    void moveNodeIteratorsToNewDocument(Node*, Document*);
+    void moveNodeIteratorsToNewDocument(Node&, Document&);
 
     void attachRange(Range*);
     void detachRange(Range*);
@@ -1109,7 +1109,7 @@ public:
     void fullScreenChangeDelayTimerFired();
     bool fullScreenIsAllowedForElement(Element*) const;
     void fullScreenElementRemoved();
-    void removeFullScreenElementOfSubtree(Node*, bool amongChildrenOnly = false);
+    void removeFullScreenElementOfSubtree(Node&, bool amongChildrenOnly = false);
     bool isAnimatingFullScreen() const;
     WEBCORE_EXPORT void setAnimatingFullScreen(bool);
 
@@ -1527,7 +1527,7 @@ private:
     bool m_loadEventFinished;
 
     RefPtr<SerializedScriptValue> m_pendingStateObject;
-    std::chrono::steady_clock::time_point m_startTime;
+    MonotonicTime m_documentCreationTime;
     bool m_overMinimumLayoutThreshold;
     
     std::unique_ptr<ScriptRunner> m_scriptRunner;

@@ -174,7 +174,7 @@ private:
     void webAppOrientationsUpdated() override;
     void showPlaybackTargetPicker(bool hasVideo) override;
 
-    std::chrono::milliseconds eventThrottlingDelay() override;
+    Seconds eventThrottlingDelay() override;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -280,7 +280,7 @@ private:
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&) override;
     void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle newStyle) override;
 
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() override;
+    std::optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() override;
 
     WebCore::Color underlayColor() const override;
 

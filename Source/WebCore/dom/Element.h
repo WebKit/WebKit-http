@@ -444,6 +444,8 @@ public:
     virtual bool isInRange() const { return false; }
     virtual bool isOutOfRange() const { return false; }
     virtual bool isFrameElementBase() const { return false; }
+    virtual bool isUploadButton() const { return false; }
+    virtual bool isSliderContainerElement() const { return false; }
 
     bool canContainRangeEndPoint() const override;
 
@@ -482,7 +484,7 @@ public:
     const AtomicString& UIActions() const;
 #endif
     
-    virtual bool isSpellCheckingEnabled() const;
+    bool isSpellCheckingEnabled() const;
 
     RenderNamedFlowFragment* renderNamedFlowFragment() const;
 
@@ -512,14 +514,14 @@ public:
 
     WEBCORE_EXPORT bool dispatchMouseForceWillBegin();
 
-    virtual bool willRecalcStyle(Style::Change);
+    virtual void willRecalcStyle(Style::Change);
     virtual void didRecalcStyle(Style::Change);
     virtual void willResetComputedStyle();
     virtual void willAttachRenderers();
     virtual void didAttachRenderers();
     virtual void willDetachRenderers();
     virtual void didDetachRenderers();
-    virtual Optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle);
+    virtual std::optional<ElementStyle> resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle* shadowHostStyle);
 
     LayoutRect absoluteEventHandlerBounds(bool& includesFixedPositionElements) override;
 
@@ -586,7 +588,7 @@ protected:
     void childrenChanged(const ChildChange&) override;
     void removeAllEventListeners() final;
     virtual void parserDidSetAttributes();
-    void didMoveToNewDocument(Document*) override;
+    void didMoveToNewDocument(Document&) override;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);

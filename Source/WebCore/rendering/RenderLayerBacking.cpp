@@ -790,9 +790,9 @@ private:
         return m_fromAncestorGraphicsLayer.value();
     }
 
-    Optional<LayoutSize> m_fromAncestorGraphicsLayer;
-    Optional<LayoutSize> m_fromParentGraphicsLayer;
-    Optional<LayoutSize> m_fromPrimaryGraphicsLayer;
+    std::optional<LayoutSize> m_fromAncestorGraphicsLayer;
+    std::optional<LayoutSize> m_fromParentGraphicsLayer;
+    std::optional<LayoutSize> m_fromPrimaryGraphicsLayer;
     
     const RenderLayer& m_renderLayer;
     // Location is relative to the renderer.
@@ -1809,7 +1809,7 @@ Color RenderLayerBacking::rendererBackgroundColor() const
 
 void RenderLayerBacking::updateDirectlyCompositedBackgroundColor(bool isSimpleContainer, bool& didUpdateContentsRect)
 {
-    if (!isSimpleContainer) {
+    if (!isSimpleContainer || (is<RenderBox>(renderer()) && !downcast<RenderBox>(renderer()).paintsOwnBackground())) {
         m_graphicsLayer->setContentsToSolidColor(Color());
         return;
     }

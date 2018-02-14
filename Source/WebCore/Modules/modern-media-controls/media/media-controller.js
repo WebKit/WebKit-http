@@ -32,6 +32,11 @@ class MediaController
         this.media = media;
         this.host = host;
 
+        if (host) {
+            media.addEventListener("webkitpresentationmodechanged", this);
+            shadowRoot.appendChild(host.textTrackContainer);
+        }
+
         this._updateControlsIfNeeded();
 
         media.addEventListener("resize", this);
@@ -56,15 +61,25 @@ class MediaController
 
     set usesLTRUserInterfaceLayoutDirection(flag)
     {
-        // FIXME: To be implemented.
+        this.controls.usesLTRUserInterfaceLayoutDirection = flag;
     }
 
     handleEvent(event)
     {
-        if (event.type === "resize" && event.currentTarget === this.media)
+        if (event.currentTarget !== this.media)
+            return;
+
+        switch (event.type) {
+        case "resize":
             this._updateControlsSize();
-        else if (event.type === "webkitfullscreenchange" && event.currentTarget === this.media)
+            break;
+        case "webkitfullscreenchange":
             this._updateControlsIfNeeded();
+            break;
+        case "webkitpresentationmodechanged":
+            this._returnMediaLayerToInlineIfNeeded();
+            break;
+        }
     }
 
     // Private
@@ -86,13 +101,13 @@ class MediaController
         this.controls = new ControlsClass;
 
         if (previousControls)
-            this.shadowRoot.replaceChild(this.controls.element, previousControls.element);
-        else
-            this.shadowRoot.appendChild(this.controls.element);        
+            this.controls.usesLTRUserInterfaceLayoutDirection = previousControls.usesLTRUserInterfaceLayoutDirection;
+
+        this.controls.presentInElement(this.shadowRoot, !!previousControls);
 
         this._updateControlsSize();
 
-        this._supportingObjects = [AirplaySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
+        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
             return new SupportClass(this);
         }, this);
     }
@@ -101,6 +116,11 @@ class MediaController
     {
         this.controls.width = this.media.offsetWidth;
         this.controls.height = this.media.offsetHeight;
+    }
+
+    _returnMediaLayerToInlineIfNeeded()
+    {
+        window.requestAnimationFrame(() => this.host.setPreparedToReturnVideoLayerToInline(this.media.webkitPresentationMode !== PiPMode));
     }
 
     _controlsClass()

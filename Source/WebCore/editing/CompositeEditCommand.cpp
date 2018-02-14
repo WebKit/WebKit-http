@@ -1301,7 +1301,7 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(const Position& start, 
             auto clonedNode = node->cloneNode(true);
             insertNodeAfter(clonedNode.ptr(), lastNode);
             lastNode = WTFMove(clonedNode);
-            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node.get()))
+            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(*node))
                 break;
         }
     }
@@ -1535,11 +1535,11 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     }
 }
 
-Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
+std::optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
 {
     auto emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
     if (!emptyListItem)
-        return Nullopt;
+        return std::nullopt;
 
     auto listNode = emptyListItem->parentNode();
     // FIXME: Can't we do something better when the immediate parent wasn't a list node?
@@ -1547,7 +1547,7 @@ Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem()
         || (!listNode->hasTagName(ulTag) && !listNode->hasTagName(olTag))
         || !listNode->hasEditableStyle()
         || listNode == emptyListItem->rootEditableElement())
-        return Nullopt;
+        return std::nullopt;
 
     return VisibleSelection(endingSelection().start().previous(BackwardDeletion), endingSelection().end());
 }

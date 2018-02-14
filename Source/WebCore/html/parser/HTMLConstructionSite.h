@@ -31,7 +31,7 @@
 #include "HTMLFormattingElementList.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -131,7 +131,7 @@ public:
     bool shouldFosterParent() const;
     void fosterParent(Ref<Node>&&);
 
-    Optional<unsigned> indexOfFirstUnopenFormattingElement() const;
+    std::optional<unsigned> indexOfFirstUnopenFormattingElement() const;
     void reconstructTheActiveFormattingElements();
 
     void generateImpliedEndTags();
@@ -170,7 +170,7 @@ public:
         { }
 
     private:
-        TemporaryChange<bool> m_redirectAttachToFosterParentChange;
+        SetForScope<bool> m_redirectAttachToFosterParentChange;
     };
 
     static bool isFormattingTag(const AtomicString&);

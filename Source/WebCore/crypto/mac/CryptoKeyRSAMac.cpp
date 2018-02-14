@@ -37,6 +37,8 @@
 
 namespace WebCore {
 
+// FIXME: We should get rid of magic number 16384. It assumes that the length of provided key will not exceed 16KB.
+// https://bugs.webkit.org/show_bug.cgi?id=164942
 static CCCryptorStatus getPublicKeyComponents(CCRSACryptorRef rsaKey, Vector<uint8_t>& modulus, Vector<uint8_t>& publicExponent)
 {
     ASSERT(CCRSAGetKeyType(rsaKey) == ccRSAKeyPublic || CCRSAGetKeyType(rsaKey) == ccRSAKeyPrivate);
@@ -117,6 +119,9 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
         return nullptr;
     }
     CCRSACryptorRef cryptor;
+    // FIXME: It is so weired that we recaculate the private exponent from first prime factor and second prime factor,
+    // given the fact that we have already had it. Also, the re-caculated private exponent may not match the given one.
+    // See <rdar://problem/15452324>.
     CCCryptorStatus status = CCRSACryptorCreateFromData(
         keyData.type() == CryptoKeyDataRSAComponents::Type::Public ? ccRSAKeyPublic : ccRSAKeyPrivate,
         (uint8_t*)keyData.modulus().data(), keyData.modulus().size(),
@@ -230,7 +235,9 @@ static bool bigIntegerToUInt32(const Vector<uint8_t>& bigInteger, uint32_t& resu
     return true;
 }
 
-void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgorithmIdentifier hash, bool hasHash, unsigned modulusLength, const Vector<uint8_t>& publicExponent, bool extractable, CryptoKeyUsageBitmap usage, KeyPairCallback callback, VoidCallback failureCallback, ScriptExecutionContext* context)
+// FIXME: We should use WorkQueue here instead of dispatch_async once WebKitSubtleCrypto is deprecated.
+// https://bugs.webkit.org/show_bug.cgi?id=164943
+void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgorithmIdentifier hash, bool hasHash, unsigned modulusLength, const Vector<uint8_t>& publicExponent, bool extractable, CryptoKeyUsageBitmap usage, KeyPairCallback&& callback, VoidCallback&& failureCallback, ScriptExecutionContext* context)
 {
     uint32_t e;
     if (!bigIntegerToUInt32(publicExponent, e)) {

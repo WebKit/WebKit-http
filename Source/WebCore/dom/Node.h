@@ -386,7 +386,9 @@ public:
 
     ExceptionOr<void> checkSetPrefix(const AtomicString& prefix);
 
-    WEBCORE_EXPORT bool isDescendantOf(const Node*) const;
+    WEBCORE_EXPORT bool isDescendantOf(const Node&) const;
+    bool isDescendantOf(const Node* other) const { return other && isDescendantOf(*other); }
+
     bool isDescendantOrShadowDescendantOf(const Node*) const;
     WEBCORE_EXPORT bool contains(const Node*) const;
     bool containsIncludingShadowDOM(const Node*) const;
@@ -628,7 +630,7 @@ protected:
     };
     Node(Document&, ConstructionType);
 
-    virtual void didMoveToNewDocument(Document* oldDocument);
+    virtual void didMoveToNewDocument(Document& oldDocument);
     
     virtual void addSubresourceAttributeURLs(ListHashSet<URL>&) const { }
 

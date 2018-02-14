@@ -42,6 +42,7 @@
 #include "MediaSample.h"
 #include "PlatformLayer.h"
 #include "RealtimeMediaSourceCapabilities.h"
+#include "RealtimeMediaSourcePreview.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
@@ -94,7 +95,7 @@ public:
     using SuccessHandler = std::function<void()>;
     using FailureHandler = std::function<void(const String& badConstraint, const String& errorString)>;
     void applyConstraints(const MediaConstraints&, SuccessHandler, FailureHandler);
-    Optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
+    std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
     virtual bool supportsConstraints(const MediaConstraints&, String&);
 
@@ -126,9 +127,9 @@ public:
 
     virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
 
-    virtual PlatformLayer* platformLayer() const { return nullptr; }
     virtual RefPtr<Image> currentFrameImage() { return nullptr; }
     virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) { }
+    virtual RefPtr<RealtimeMediaSourcePreview> preview() { return nullptr; }
 
     void setWidth(int);
     void setHeight(int);
@@ -173,11 +174,11 @@ protected:
 
     virtual bool selectSettings(const MediaConstraints&, FlattenedConstraint&, String&);
     virtual double fitnessDistance(const MediaConstraint&);
-    virtual bool supportsSizeAndFrameRate(Optional<IntConstraint> width, Optional<IntConstraint> height, Optional<DoubleConstraint>, String&);
-    virtual bool supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    virtual bool supportsSizeAndFrameRate(std::optional<IntConstraint> width, std::optional<IntConstraint> height, std::optional<DoubleConstraint>, String&);
+    virtual bool supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
     virtual void applyConstraint(const MediaConstraint&);
     virtual void applyConstraints(const FlattenedConstraint&);
-    virtual void applySizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double>);
+    virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
     bool m_muted { false };
 

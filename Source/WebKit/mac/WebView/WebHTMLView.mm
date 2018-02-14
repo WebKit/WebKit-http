@@ -182,7 +182,7 @@ using namespace WTF;
 - (void)forwardContextMenuAction:(id)sender;
 @end
 
-static Optional<ContextMenuAction> toAction(NSInteger tag)
+static std::optional<ContextMenuAction> toAction(NSInteger tag)
 {
     if (tag >= ContextMenuItemBaseCustomTag && tag <= ContextMenuItemLastCustomTag) {
         // Just pass these through.
@@ -357,14 +357,14 @@ static Optional<ContextMenuAction> toAction(NSInteger tag)
     case WebMenuItemTagDictationAlternative:
         return ContextMenuItemTagDictationAlternative;
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
-static Optional<NSInteger> toTag(ContextMenuAction action)
+static std::optional<NSInteger> toTag(ContextMenuAction action)
 {
     switch (action) {
     case ContextMenuItemTagNoAction:
-        return Nullopt;
+        return std::nullopt;
 
     case ContextMenuItemTagOpenLinkInNewWindow:
         return WebMenuItemTagOpenLinkInNewWindow;
@@ -547,7 +547,7 @@ static Optional<NSInteger> toTag(ContextMenuAction action)
         ASSERT_NOT_REACHED();
     }
 
-    return Nullopt;
+    return std::nullopt;
 }
 
 static WebMenuTarget* target;
@@ -1689,7 +1689,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
         [_private->completionController endRevertingChange:NO moveLeft:NO];
 #endif
         
-        [[webView _UIDelegateForwarder] webView:webView didScrollDocumentInFrameView:[self _frameView]];
+        [webView _didScrollDocumentInFrameView:[self _frameView]];
     }
     _private->lastScrollPosition = origin;
 }
@@ -5529,7 +5529,9 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         if (Frame* frame = core([self _frame]))
             ret = frame->eventHandler().keyEvent(event);
 
-    if (!ret)
+    if (ret)
+        [NSCursor setHiddenUntilMouseMoves:YES];
+    else
         ret = [self _handleStyleKeyEquivalent:event] || [super performKeyEquivalent:event];
 
     [self release];

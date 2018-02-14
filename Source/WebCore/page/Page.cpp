@@ -553,7 +553,7 @@ bool Page::showAllPlugins() const
     return false;
 }
 
-inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
+inline std::optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
@@ -561,7 +561,7 @@ inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMedi
         if (MediaCanStartListener* listener = frame->document()->takeAnyMediaCanStartListener())
             return { { *listener, *frame->document() } };
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
 void Page::setCanStartMedia(bool canStartMedia)
@@ -1993,8 +1993,14 @@ void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
 
 WheelEventTestTrigger& Page::ensureTestTrigger()
 {
-    if (!m_testTrigger)
+    if (!m_testTrigger) {
         m_testTrigger = adoptRef(new WheelEventTestTrigger());
+        // We need to update the scrolling coordinator so that the mainframe scrolling node can expect wheel event test triggers.
+        if (auto* frameView = mainFrame().view()) {
+            if (m_scrollingCoordinator)
+                m_scrollingCoordinator->updateExpectsWheelEventTestTriggerWithFrameView(*frameView);
+        }
+    }
 
     return *m_testTrigger;
 }
@@ -2056,6 +2062,26 @@ void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
     m_captionUserPreferencesStyleSheet = styleSheet;
     
     invalidateInjectedStyleSheetCacheInAllFrames();
+}
+
+void Page::accessibilitySettingsDidChange()
+{
+    bool neededRecalc = false;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document()) {
+            auto* styleResolver = document->styleScope().resolverIfExists();
+            if (styleResolver && styleResolver->hasMediaQueriesAffectedByAccessibilitySettingsChange()) {
+                document->styleScope().didChangeStyleSheetEnvironment();
+                neededRecalc = true;
+                // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
+                InspectorInstrumentation::mediaQueryResultChanged(*document);
+            }
+        }
+    }
+
+    if (neededRecalc)
+        LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
 }
 
 } // namespace WebCore

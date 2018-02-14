@@ -39,12 +39,13 @@ public:
 
     static const unsigned magicNumber = 0xc;
 
-    ModuleParser(const uint8_t* sourceBuffer, size_t sourceLength)
+    ModuleParser(VM* vm, const uint8_t* sourceBuffer, size_t sourceLength)
         : Parser(sourceBuffer, sourceLength)
+        , m_vm(vm)
     {
     }
-    ModuleParser(const Vector<uint8_t>& sourceBuffer)
-        : Parser(sourceBuffer.data(), sourceBuffer.size())
+    ModuleParser(VM* vm, const Vector<uint8_t>& sourceBuffer)
+        : ModuleParser(vm, sourceBuffer.data(), sourceBuffer.size())
     {
     }
 
@@ -67,6 +68,7 @@ private:
     FOR_EACH_WASM_SECTION(WASM_SECTION_DECLARE_PARSER)
 #undef WASM_SECTION_DECLARE_PARSER
 
+    VM* m_vm;
     std::unique_ptr<ModuleInformation> m_module;
     bool m_failed { true };
     String m_errorMessage;

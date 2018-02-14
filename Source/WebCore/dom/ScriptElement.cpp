@@ -142,7 +142,7 @@ void ScriptElement::dispatchErrorEvent()
     m_element.dispatchEvent(Event::create(eventNames().errorEvent, false, false));
 }
 
-Optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(LegacyTypeSupport supportLegacyTypes) const
+std::optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(LegacyTypeSupport supportLegacyTypes) const
 {
     // FIXME: isLegacySupportedJavaScriptLanguage() is not valid HTML5. It is used here to maintain backwards compatibility with existing layout tests. The specific violations are:
     // - Allowing type=javascript. type= should only support MIME types, such as text/javascript.
@@ -156,19 +156,28 @@ Optional<ScriptElement::ScriptType> ScriptElement::determineScriptType(LegacyTyp
             return ScriptType::Classic;
         if (isLegacySupportedJavaScriptLanguage(language))
             return ScriptType::Classic;
-        return Nullopt;
+        return std::nullopt;
     }
     if (MIMETypeRegistry::isSupportedJavaScriptMIMEType(type.stripWhiteSpace()))
         return ScriptType::Classic;
     if (supportLegacyTypes == AllowLegacyTypeInTypeAttribute && isLegacySupportedJavaScriptLanguage(type))
         return ScriptType::Classic;
-#if ENABLE(ES6_MODULES)
+
+    // FIXME: XHTML spec defines "defer" attribute. But WebKit does not implement it for a long time.
+    // And module tag also uses defer attribute semantics. We disable script type="module" for non HTML document.
+    // Once "defer" is implemented, we can reconsider enabling modules in XHTML.
+    // https://bugs.webkit.org/show_bug.cgi?id=123387
+    if (!m_element.document().isHTMLDocument())
+        return std::nullopt;
+
+    auto* settings = m_element.document().settings();
+    if (!settings || !settings->es6ModulesEnabled())
+        return std::nullopt;
     // https://html.spec.whatwg.org/multipage/scripting.html#attr-script-type
     // Setting the attribute to an ASCII case-insensitive match for the string "module" means that the script is a module script.
     if (equalLettersIgnoringASCIICase(type, "module"))
         return ScriptType::Module;
-#endif
-    return Nullopt;
+    return std::nullopt;
 }
 
 // http://dev.w3.org/html5/spec/Overview.html#prepare-a-script
@@ -195,7 +204,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
         return false;
 
     ScriptType scriptType = ScriptType::Classic;
-    if (Optional<ScriptType> result = determineScriptType(supportLegacyTypes))
+    if (std::optional<ScriptType> result = determineScriptType(supportLegacyTypes))
         scriptType = result.value();
     else
         return false;
@@ -269,7 +278,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     } else {
         ASSERT(scriptType == ScriptType::Classic);
         TextPosition position = document.isInDocumentWrite() ? TextPosition() : scriptStartPosition;
-        executeScript(ScriptSourceCode(scriptContent(), document.url(), position, JSC::SourceProviderSourceType::Program));
+        executeClassicScript(ScriptSourceCode(scriptContent(), document.url(), position, JSC::SourceProviderSourceType::Program));
     }
 
     return true;
@@ -384,7 +393,7 @@ CachedResourceHandle<CachedScript> ScriptElement::requestScriptWithCache(const U
     return document.cachedResourceLoader().requestScript(WTFMove(request));
 }
 
-void ScriptElement::executeScript(const ScriptSourceCode& sourceCode)
+void ScriptElement::executeClassicScript(const ScriptSourceCode& sourceCode)
 {
     ASSERT(m_alreadyStarted);
 
@@ -429,8 +438,8 @@ void ScriptElement::executeModuleScript(CachedModuleScript& moduleScript)
 
 void ScriptElement::executeScriptAndDispatchEvent(LoadableScript& loadableScript)
 {
-    if (Optional<LoadableScript::Error> error = loadableScript.error()) {
-        if (Optional<LoadableScript::ConsoleMessage> message = error->consoleMessage)
+    if (std::optional<LoadableScript::Error> error = loadableScript.error()) {
+        if (std::optional<LoadableScript::ConsoleMessage> message = error->consoleMessage)
             m_element.document().addConsoleMessage(message->source, message->level, message->message);
         dispatchErrorEvent();
     } else if (!loadableScript.wasCanceled()) {
@@ -440,14 +449,14 @@ void ScriptElement::executeScriptAndDispatchEvent(LoadableScript& loadableScript
     }
 }
 
-void ScriptElement::executeScriptForScriptRunner(PendingScript& pendingScript)
+void ScriptElement::executePendingScript(PendingScript& pendingScript)
 {
     if (auto* loadableScript = pendingScript.loadableScript())
         executeScriptAndDispatchEvent(*loadableScript);
     else {
         ASSERT(!pendingScript.error());
-        JSC::SourceProviderSourceType sourceType = scriptType() == ScriptType::Module ? JSC::SourceProviderSourceType::Module : JSC::SourceProviderSourceType::Program;
-        executeScript(ScriptSourceCode(scriptContent(), m_element.document().url(), pendingScript.startingPosition(), sourceType));
+        ASSERT_WITH_MESSAGE(scriptType() == ScriptType::Classic, "Module script always have a loadableScript pointer.");
+        executeClassicScript(ScriptSourceCode(scriptContent(), m_element.document().url(), pendingScript.startingPosition(), JSC::SourceProviderSourceType::Program));
         dispatchLoadEvent();
     }
 }

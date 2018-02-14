@@ -50,8 +50,8 @@
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/SetForScope.h>
 #include <wtf/SystemTracing.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
@@ -787,7 +787,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
         clearBackdropFilters();
     }
 
-    noteLayerPropertyChanged(BackdropFiltersChanged);
+    noteLayerPropertyChanged(BackdropFiltersChanged | DebugIndicatorsChanged);
     return canCompositeFilters;
 }
 
@@ -1126,20 +1126,20 @@ FloatPoint GraphicsLayerCA::computePositionRelativeToBase(float& pageScale) cons
     return FloatPoint();
 }
 
-void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect, bool viewportIsStable)
+void GraphicsLayerCA::flushCompositingState(const FloatRect& clipRect)
 {
     TransformState state(TransformState::UnapplyInverseTransformDirection, FloatQuad(clipRect));
     FloatQuad coverageQuad(clipRect);
     state.setSecondaryQuad(&coverageQuad);
-    recursiveCommitChanges(CommitState(viewportIsStable), state);
+    recursiveCommitChanges(CommitState(), state);
 }
 
-void GraphicsLayerCA::flushCompositingStateForThisLayerOnly(bool viewportIsStable)
+void GraphicsLayerCA::flushCompositingStateForThisLayerOnly()
 {
     float pageScaleFactor;
     bool hadChanges = m_uncommittedChanges;
     
-    CommitState commitState(viewportIsStable);
+    CommitState commitState;
 
     FloatPoint offset = computePositionRelativeToBase(pageScaleFactor);
     commitLayerChangesBeforeSublayers(commitState, pageScaleFactor, offset);
@@ -1234,7 +1234,7 @@ TransformationMatrix GraphicsLayerCA::layerTransform(const FloatPoint& position,
 
 GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCoverageRect(TransformState& state, bool preserves3D, ComputeVisibleRectFlags flags) const
 {
-    FloatPoint position = m_position;
+    FloatPoint position = approximatePosition();
     client().customPositionForVisibleRectComputation(this, position);
 
     TransformationMatrix layerTransform;
@@ -1274,7 +1274,7 @@ GraphicsLayerCA::VisibleAndCoverageRects GraphicsLayerCA::computeVisibleAndCover
     }
 
     FloatRect coverageRect = clipRectForSelf;
-    Optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
+    std::optional<FloatQuad> quad = state.mappedSecondaryQuad(&mapWasClamped);
     if (quad && !mapWasClamped && !applyWasClamped)
         coverageRect = (*quad).boundingBox();
 
@@ -1306,14 +1306,11 @@ bool GraphicsLayerCA::adjustCoverageRect(VisibleAndCoverageRects& rects, const F
     return true;
 }
 
-void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool isViewportConstrained, bool viewportIsStable)
+void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& rects, bool isViewportConstrained)
 {
     bool visibleRectChanged = rects.visibleRect != m_visibleRect;
     bool coverageRectChanged = rects.coverageRect != m_coverageRect;
     if (!visibleRectChanged && !coverageRectChanged)
-        return;
-
-    if (isViewportConstrained && !viewportIsStable)
         return;
 
     // FIXME: we need to take reflections into account when determining whether this layer intersects the coverage rect.
@@ -1366,7 +1363,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
             localState.setLastPlanarSecondaryQuad(&secondaryQuad);
         }
     }
-    setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained, commitState.viewportIsStable);
+    setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained);
 
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
@@ -1534,7 +1531,7 @@ static bool isCustomBackdropLayerType(PlatformCALayer::LayerType layerType)
 
 void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState, float pageScaleFactor, const FloatPoint& positionRelativeToBase)
 {
-    TemporaryChange<bool> committingChangesChange(m_isCommittingChanges, true);
+    SetForScope<bool> committingChangesChange(m_isCommittingChanges, true);
 
     ++commitState.treeDepth;
     if (m_structuralLayer)
@@ -1688,7 +1685,7 @@ void GraphicsLayerCA::commitLayerChangesAfterSublayers(CommitState& commitState)
     if (!m_uncommittedChanges)
         return;
 
-    TemporaryChange<bool> committingChangesChange(m_isCommittingChanges, true);
+    SetForScope<bool> committingChangesChange(m_isCommittingChanges, true);
 
     if (m_uncommittedChanges & MaskLayerChanged)
         updateMaskLayer();

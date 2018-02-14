@@ -33,28 +33,30 @@
 
 namespace JSC {
 
+class SymbolTable;
+
 class JSWebAssemblyModule : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
 
-    static JSWebAssemblyModule* create(VM&, Structure*, std::unique_ptr<Wasm::ModuleInformation>&, Wasm::CompiledFunctions&);
+    static JSWebAssemblyModule* create(VM&, Structure*, std::unique_ptr<Wasm::ModuleInformation>&, Wasm::CompiledFunctions&, SymbolTable*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
 
-    const Wasm::ModuleInformation* moduleInformation() const
-    {
-        return m_moduleInformation.get();
-    }
+    const Wasm::ModuleInformation& moduleInformation() const { return *m_moduleInformation.get(); }
+    const Wasm::CompiledFunctions& compiledFunctions() const { return m_compiledFunctions; }
+    SymbolTable* exportSymbolTable() const { return m_exportSymbolTable.get(); }
 
 protected:
     JSWebAssemblyModule(VM&, Structure*, std::unique_ptr<Wasm::ModuleInformation>&, Wasm::CompiledFunctions&);
-    void finishCreation(VM&);
+    void finishCreation(VM&, SymbolTable*);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 private:
     std::unique_ptr<Wasm::ModuleInformation> m_moduleInformation;
     Wasm::CompiledFunctions m_compiledFunctions;
+    WriteBarrier<SymbolTable> m_exportSymbolTable;
 };
 
 } // namespace JSC

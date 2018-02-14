@@ -354,6 +354,13 @@ void TestRunner::setCustomElementsEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
+void TestRunner::setSubtleCryptoEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitSubtleCryptoEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
 void TestRunner::setDOMIteratorEnabled(bool enabled)
 {
     WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitDOMIteratorEnabled"));
@@ -385,6 +392,20 @@ void TestRunner::setFetchAPIEnabled(bool enabled)
 void TestRunner::setDownloadAttributeEnabled(bool enabled)
 {
     WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitDownloadAttributeEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
+void TestRunner::setES6ModulesEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitES6ModulesEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
+void TestRunner::setEncryptedMediaAPIEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitEncryptedMediaAPIEnabled"));
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
@@ -875,11 +896,25 @@ void TestRunner::setUserMediaPermission(bool enabled)
     InjectedBundle::singleton().setUserMediaPermission(enabled);
 }
 
-void TestRunner::setUserMediaPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin)
+void TestRunner::setUserMediaPersistentPermissionForOrigin(bool permission, JSStringRef origin, JSStringRef parentOrigin)
 {
     WKRetainPtr<WKStringRef> originWK = toWK(origin);
     WKRetainPtr<WKStringRef> parentOriginWK = toWK(parentOrigin);
-    InjectedBundle::singleton().setUserMediaPermissionForOrigin(permission, originWK.get(), parentOriginWK.get());
+    InjectedBundle::singleton().setUserMediaPersistentPermissionForOrigin(permission, originWK.get(), parentOriginWK.get());
+}
+
+unsigned TestRunner::userMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin) const
+{
+    WKRetainPtr<WKStringRef> originWK = toWK(origin);
+    WKRetainPtr<WKStringRef> parentOriginWK = toWK(parentOrigin);
+    return InjectedBundle::singleton().userMediaPermissionRequestCountForOrigin(originWK.get(), parentOriginWK.get());
+}
+
+void TestRunner::resetUserMediaPermissionRequestCountForOrigin(JSStringRef origin, JSStringRef parentOrigin)
+{
+    WKRetainPtr<WKStringRef> originWK = toWK(origin);
+    WKRetainPtr<WKStringRef> parentOriginWK = toWK(parentOrigin);
+    InjectedBundle::singleton().resetUserMediaPermissionRequestCountForOrigin(originWK.get(), parentOriginWK.get());
 }
 
 bool TestRunner::callShouldCloseOnWebView()

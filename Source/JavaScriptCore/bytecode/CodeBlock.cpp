@@ -1797,17 +1797,6 @@ void CodeBlock::dumpBytecode(
     macro(functionExpressions) \
     macro(constantRegisters)
 
-#define FOR_EACH_MEMBER_VECTOR_RARE_DATA(macro) \
-    macro(regexps) \
-    macro(functions) \
-    macro(exceptionHandlers) \
-    macro(switchJumpTables) \
-    macro(stringSwitchJumpTables) \
-    macro(evalCodeCache) \
-    macro(expressionInfo) \
-    macro(lineInfo) \
-    macro(callReturnIndexVector)
-
 template<typename T>
 static size_t sizeInBytes(const Vector<T>& vector)
 {
@@ -1873,7 +1862,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, CodeBlock
     , m_reoptimizationRetryCounter(0)
     , m_creationTime(std::chrono::steady_clock::now())
 {
-    m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitWeaklyHasBeenCalled = false;
 
     ASSERT(heap()->isDeferred());
     ASSERT(m_scopeRegister.isLocal());
@@ -1932,7 +1921,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_reoptimizationRetryCounter(0)
     , m_creationTime(std::chrono::steady_clock::now())
 {
-    m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
+    m_visitWeaklyHasBeenCalled = false;
 
     ASSERT(heap()->isDeferred());
     ASSERT(m_scopeRegister.isLocal());
@@ -2487,7 +2476,7 @@ void CodeBlock::setNumParameters(int newValue)
     m_argumentValueProfiles = RefCountedArray<ValueProfile>(newValue);
 }
 
-void EvalCodeCache::visitAggregate(SlotVisitor& visitor)
+void DirectEvalCodeCache::visitAggregate(SlotVisitor& visitor)
 {
     EvalCacheMap::iterator end = m_cacheMap.end();
     for (EvalCacheMap::iterator ptr = m_cacheMap.begin(); ptr != end; ++ptr)
@@ -2508,18 +2497,20 @@ CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
 
 void CodeBlock::visitWeakly(SlotVisitor& visitor)
 {
-    bool setByMe = !m_visitWeaklyHasBeenCalled.compareExchangeStrong(false, true);
-    if (!setByMe)
+    ConcurrentJSLocker locker(m_lock);
+    if (m_visitWeaklyHasBeenCalled)
         return;
+    
+    m_visitWeaklyHasBeenCalled = true;
 
     if (Heap::isMarkedConcurrently(this))
         return;
 
-    if (shouldVisitStrongly()) {
+    if (shouldVisitStrongly(locker)) {
         visitor.appendUnbarrieredReadOnlyPointer(this);
         return;
     }
-
+    
     // There are two things that may use unconditional finalizers: inline cache clearing
     // and jettisoning. The probability of us wanting to do at least one of those things
     // is probably quite close to 1. So we add one no matter what and when it runs, it
@@ -2549,10 +2540,10 @@ void CodeBlock::visitWeakly(SlotVisitor& visitor)
     // decision by calling harvestWeakReferences().
 
     m_allTransitionsHaveBeenMarked = false;
-    propagateTransitions(visitor);
+    propagateTransitions(locker, visitor);
 
     m_jitCode->dfgCommon()->livenessHasBeenProved = false;
-    determineLiveness(visitor);
+    determineLiveness(locker, visitor);
 #endif // ENABLE(DFG_JIT)
 }
 
@@ -2575,6 +2566,7 @@ void CodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 void CodeBlock::visitChildren(SlotVisitor& visitor)
 {
+    ConcurrentJSLocker locker(m_lock);
     // There are two things that may use unconditional finalizers: inline cache clearing
     // and jettisoning. The probability of us wanting to do at least one of those things
     // is probably quite close to 1. So we add one no matter what and when it runs, it
@@ -2592,19 +2584,19 @@ void CodeBlock::visitChildren(SlotVisitor& visitor)
         visitor.reportExtraMemoryVisited(m_instructions.size() * sizeof(Instruction) / refCount);
     }
 
-    stronglyVisitStrongReferences(visitor);
-    stronglyVisitWeakReferences(visitor);
+    stronglyVisitStrongReferences(locker, visitor);
+    stronglyVisitWeakReferences(locker, visitor);
 
     m_allTransitionsHaveBeenMarked = false;
-    propagateTransitions(visitor);
+    propagateTransitions(locker, visitor);
 }
 
-bool CodeBlock::shouldVisitStrongly()
+bool CodeBlock::shouldVisitStrongly(const ConcurrentJSLocker& locker)
 {
     if (Options::forceCodeBlockLiveness())
         return true;
 
-    if (shouldJettisonDueToOldAge())
+    if (shouldJettisonDueToOldAge(locker))
         return false;
 
     // Interpreter and Baseline JIT CodeBlocks don't need to be jettisoned when
@@ -2656,7 +2648,7 @@ static std::chrono::milliseconds timeToLive(JITCode::JITType jitType)
     }
 }
 
-bool CodeBlock::shouldJettisonDueToOldAge()
+bool CodeBlock::shouldJettisonDueToOldAge(const ConcurrentJSLocker&)
 {
     if (Heap::isMarkedConcurrently(this))
         return false;
@@ -2683,7 +2675,7 @@ static bool shouldMarkTransition(DFG::WeakReferenceTransition& transition)
 }
 #endif // ENABLE(DFG_JIT)
 
-void CodeBlock::propagateTransitions(SlotVisitor& visitor)
+void CodeBlock::propagateTransitions(const ConcurrentJSLocker&, SlotVisitor& visitor)
 {
     UNUSED_PARAM(visitor);
 
@@ -2764,7 +2756,7 @@ void CodeBlock::propagateTransitions(SlotVisitor& visitor)
         m_allTransitionsHaveBeenMarked = true;
 }
 
-void CodeBlock::determineLiveness(SlotVisitor& visitor)
+void CodeBlock::determineLiveness(const ConcurrentJSLocker&, SlotVisitor& visitor)
 {
     UNUSED_PARAM(visitor);
     
@@ -2810,9 +2802,9 @@ void CodeBlock::WeakReferenceHarvester::visitWeakReferences(SlotVisitor& visitor
     CodeBlock* codeBlock =
         bitwise_cast<CodeBlock*>(
             bitwise_cast<char*>(this) - OBJECT_OFFSETOF(CodeBlock, m_weakReferenceHarvester));
-
-    codeBlock->propagateTransitions(visitor);
-    codeBlock->determineLiveness(visitor);
+    
+    codeBlock->propagateTransitions(NoLockingNecessary, visitor);
+    codeBlock->determineLiveness(NoLockingNecessary, visitor);
 }
 
 void CodeBlock::clearLLIntGetByIdCache(Instruction* instruction)
@@ -2951,7 +2943,9 @@ void CodeBlock::UnconditionalFinalizer::finalizeUnconditionally()
 {
     CodeBlock* codeBlock = bitwise_cast<CodeBlock*>(
         bitwise_cast<char*>(this) - OBJECT_OFFSETOF(CodeBlock, m_unconditionalFinalizer));
-
+    
+    codeBlock->updateAllPredictions();
+    
 #if ENABLE(DFG_JIT)
     if (codeBlock->shouldJettisonDueToWeakReference()) {
         codeBlock->jettison(Profiler::JettisonDueToWeakReference);
@@ -2959,7 +2953,7 @@ void CodeBlock::UnconditionalFinalizer::finalizeUnconditionally()
     }
 #endif // ENABLE(DFG_JIT)
 
-    if (codeBlock->shouldJettisonDueToOldAge()) {
+    if (codeBlock->shouldJettisonDueToOldAge(NoLockingNecessary)) {
         codeBlock->jettison(Profiler::JettisonDueToOldAge);
         return;
     }
@@ -3099,7 +3093,7 @@ void CodeBlock::resetJITData()
 }
 #endif
 
-void CodeBlock::visitOSRExitTargets(SlotVisitor& visitor)
+void CodeBlock::visitOSRExitTargets(const ConcurrentJSLocker&, SlotVisitor& visitor)
 {
     // We strongly visit OSR exits targets because we don't want to deal with
     // the complexity of generating an exit target CodeBlock on demand and
@@ -3119,13 +3113,15 @@ void CodeBlock::visitOSRExitTargets(SlotVisitor& visitor)
 #endif
 }
 
-void CodeBlock::stronglyVisitStrongReferences(SlotVisitor& visitor)
+void CodeBlock::stronglyVisitStrongReferences(const ConcurrentJSLocker& locker, SlotVisitor& visitor)
 {
+    UNUSED_PARAM(locker);
+    
     visitor.append(&m_globalObject);
     visitor.append(&m_ownerExecutable);
     visitor.append(&m_unlinkedCode);
     if (m_rareData)
-        m_rareData->m_evalCodeCache.visitAggregate(visitor);
+        m_rareData->m_directEvalCodeCache.visitAggregate(visitor);
     visitor.appendValues(m_constantRegisters.data(), m_constantRegisters.size());
     for (size_t i = 0; i < m_functionExprs.size(); ++i)
         visitor.append(&m_functionExprs[i]);
@@ -3141,13 +3137,11 @@ void CodeBlock::stronglyVisitStrongReferences(SlotVisitor& visitor)
 
 #if ENABLE(DFG_JIT)
     if (JITCode::isOptimizingJIT(jitType()))
-        visitOSRExitTargets(visitor);
+        visitOSRExitTargets(locker, visitor);
 #endif
-
-    updateAllPredictions();
 }
 
-void CodeBlock::stronglyVisitWeakReferences(SlotVisitor& visitor)
+void CodeBlock::stronglyVisitWeakReferences(const ConcurrentJSLocker&, SlotVisitor& visitor)
 {
     UNUSED_PARAM(visitor);
 
@@ -4507,29 +4501,29 @@ void CodeBlock::setPCToCodeOriginMap(std::unique_ptr<PCToCodeOriginMap>&& map)
     m_pcToCodeOriginMap = WTFMove(map);
 }
 
-Optional<CodeOrigin> CodeBlock::findPC(void* pc)
+std::optional<CodeOrigin> CodeBlock::findPC(void* pc)
 {
     if (m_pcToCodeOriginMap) {
-        if (Optional<CodeOrigin> codeOrigin = m_pcToCodeOriginMap->findPC(pc))
+        if (std::optional<CodeOrigin> codeOrigin = m_pcToCodeOriginMap->findPC(pc))
             return codeOrigin;
     }
 
     for (Bag<StructureStubInfo>::iterator iter = m_stubInfos.begin(); !!iter; ++iter) {
         StructureStubInfo* stub = *iter;
         if (stub->containsPC(pc))
-            return Optional<CodeOrigin>(stub->codeOrigin);
+            return std::optional<CodeOrigin>(stub->codeOrigin);
     }
 
-    if (Optional<CodeOrigin> codeOrigin = m_jitCode->findPC(this, pc))
+    if (std::optional<CodeOrigin> codeOrigin = m_jitCode->findPC(this, pc))
         return codeOrigin;
 
-    return Nullopt;
+    return std::nullopt;
 }
 #endif // ENABLE(JIT)
 
-Optional<unsigned> CodeBlock::bytecodeOffsetFromCallSiteIndex(CallSiteIndex callSiteIndex)
+std::optional<unsigned> CodeBlock::bytecodeOffsetFromCallSiteIndex(CallSiteIndex callSiteIndex)
 {
-    Optional<unsigned> bytecodeOffset;
+    std::optional<unsigned> bytecodeOffset;
     JITCode::JITType jitType = this->jitType();
     if (jitType == JITCode::InterpreterThunk || jitType == JITCode::BaselineJIT) {
 #if USE(JSVALUE64)

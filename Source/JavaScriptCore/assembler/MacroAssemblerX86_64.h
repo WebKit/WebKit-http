@@ -402,10 +402,10 @@ public:
             m_assembler.shlq_CLr(dest);
         else {
             ASSERT(src != dest);
-            
+
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
-            m_assembler.shlq_CLr(dest);
+            m_assembler.shlq_CLr(dest == X86Registers::ecx ? src : dest);
             swap(src, X86Registers::ecx);
         }
     }
@@ -424,7 +424,7 @@ public:
             
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
-            m_assembler.sarq_CLr(dest);
+            m_assembler.sarq_CLr(dest == X86Registers::ecx ? src : dest);
             swap(src, X86Registers::ecx);
         }
     }
@@ -443,7 +443,45 @@ public:
             
             // Can only shift by ecx, so we do some swapping if we see anything else.
             swap(src, X86Registers::ecx);
-            m_assembler.shrq_CLr(dest);
+            m_assembler.shrq_CLr(dest == X86Registers::ecx ? src : dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
+    void rotateRight64(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.rorq_i8r(imm.m_value, dest);
+    }
+
+    void rotateRight64(RegisterID src, RegisterID dest)
+    {
+        if (src == X86Registers::ecx)
+            m_assembler.rorq_CLr(dest);
+        else {
+            ASSERT(src != dest);
+
+            // Can only rotate by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.rorq_CLr(dest == X86Registers::ecx ? src : dest);
+            swap(src, X86Registers::ecx);
+        }
+    }
+
+    void rotateLeft64(TrustedImm32 imm, RegisterID dest)
+    {
+        m_assembler.rolq_i8r(imm.m_value, dest);
+    }
+
+    void rotateLeft64(RegisterID src, RegisterID dest)
+    {
+        if (src == X86Registers::ecx)
+            m_assembler.rolq_CLr(dest);
+        else {
+            ASSERT(src != dest);
+
+            // Can only rotate by ecx, so we do some swapping if we see anything else.
+            swap(src, X86Registers::ecx);
+            m_assembler.rolq_CLr(dest == X86Registers::ecx ? src : dest);
             swap(src, X86Registers::ecx);
         }
     }
@@ -541,11 +579,6 @@ public:
     {
         move(src, dest);
         or64(imm, dest);
-    }
-    
-    void rotateRight64(TrustedImm32 imm, RegisterID srcDst)
-    {
-        m_assembler.rorq_i8r(imm.m_value, srcDst);
     }
 
     void sub64(RegisterID src, RegisterID dest)
@@ -1270,6 +1303,47 @@ public:
     void convertInt64ToFloat(Address src, FPRegisterID dest)
     {
         m_assembler.cvtsi2ssq_mr(src.offset, src.base, dest);
+    }
+
+    // One of scratch or scratch2 may be the same as src
+    void convertUInt64ToDouble(RegisterID src, FPRegisterID dest, RegisterID scratch)
+    {
+        RegisterID scratch2 = scratchRegister();
+
+        m_assembler.testq_rr(src, src);
+        AssemblerLabel signBitSet = m_assembler.jCC(x86Condition(Signed));
+        m_assembler.cvtsi2sdq_rr(src, dest);
+        AssemblerLabel done = m_assembler.jmp();
+        m_assembler.linkJump(signBitSet, m_assembler.label());
+        if (scratch != src)
+            m_assembler.movq_rr(src, scratch);
+        m_assembler.movq_rr(src, scratch2);
+        m_assembler.shrq_i8r(1, scratch);
+        m_assembler.andq_ir(1, scratch2);
+        m_assembler.orq_rr(scratch, scratch2);
+        m_assembler.cvtsi2sdq_rr(scratch2, dest);
+        m_assembler.addsd_rr(dest, dest);
+        m_assembler.linkJump(done, m_assembler.label());
+    }
+
+    // One of scratch or scratch2 may be the same as src
+    void convertUInt64ToFloat(RegisterID src, FPRegisterID dest, RegisterID scratch)
+    {
+        RegisterID scratch2 = scratchRegister();
+        m_assembler.testq_rr(src, src);
+        AssemblerLabel signBitSet = m_assembler.jCC(x86Condition(Signed));
+        m_assembler.cvtsi2ssq_rr(src, dest);
+        AssemblerLabel done = m_assembler.jmp();
+        m_assembler.linkJump(signBitSet, m_assembler.label());
+        if (scratch != src)
+            m_assembler.movq_rr(src, scratch);
+        m_assembler.movq_rr(src, scratch2);
+        m_assembler.shrq_i8r(1, scratch);
+        m_assembler.andq_ir(1, scratch2);
+        m_assembler.orq_rr(scratch, scratch2);
+        m_assembler.cvtsi2ssq_rr(scratch2, dest);
+        m_assembler.addss_rr(dest, dest);
+        m_assembler.linkJump(done, m_assembler.label());
     }
 
     static bool supportsFloatingPoint() { return true; }

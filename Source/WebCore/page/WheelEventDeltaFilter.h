@@ -39,11 +39,13 @@ public:
     WEBCORE_EXPORT virtual void updateFromDelta(const FloatSize&) = 0;
     WEBCORE_EXPORT virtual void beginFilteringDeltas() = 0;
     WEBCORE_EXPORT virtual void endFilteringDeltas() = 0;
+    WEBCORE_EXPORT FloatSize filteredVelocity() const;
     WEBCORE_EXPORT bool isFilteringDeltas() const;
     WEBCORE_EXPORT FloatSize filteredDelta() const;
 
 protected:
     FloatSize m_currentFilteredDelta;
+    FloatSize m_currentFilteredVelocity;
     bool m_isFilteringDeltas { false };
 };
 

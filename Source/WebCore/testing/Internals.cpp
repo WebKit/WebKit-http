@@ -662,6 +662,19 @@ void Internals::setImageFrameDecodingDuration(HTMLImageElement& element, float d
     downcast<BitmapImage>(*image).setFrameDecodingDurationForTesting(duration);
 }
 
+void Internals::resetImageAnimation(HTMLImageElement& element)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return;
+
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return;
+
+    image->resetAnimation();
+}
+
 void Internals::clearPageCache()
 {
     PageCache::singleton().pruneToSizeNow(0, PruningReason::None);
@@ -852,6 +865,47 @@ bool Internals::isRequestAnimationFrameThrottled() const
 bool Internals::areTimersThrottled() const
 {
     return contextDocument()->isTimerThrottlingEnabled();
+}
+
+void Internals::setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> value)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return;
+
+    if (!value) {
+        document->page()->setEventThrottlingBehaviorOverride(std::nullopt);
+        return;
+    }
+
+    switch (value.value()) {
+    case Internals::EventThrottlingBehavior::Responsive:
+        document->page()->setEventThrottlingBehaviorOverride(WebCore::EventThrottlingBehavior::Responsive);
+        break;
+    case Internals::EventThrottlingBehavior::Unresponsive:
+        document->page()->setEventThrottlingBehaviorOverride(WebCore::EventThrottlingBehavior::Unresponsive);
+        break;
+    }
+}
+
+std::optional<Internals::EventThrottlingBehavior> Internals::eventThrottlingBehaviorOverride() const
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return std::nullopt;
+
+    auto behavior = document->page()->eventThrottlingBehaviorOverride();
+    if (!behavior)
+        return std::nullopt;
+    
+    switch (behavior.value()) {
+    case WebCore::EventThrottlingBehavior::Responsive:
+        return Internals::EventThrottlingBehavior::Responsive;
+    case WebCore::EventThrottlingBehavior::Unresponsive:
+        return Internals::EventThrottlingBehavior::Unresponsive;
+    }
+
+    return std::nullopt;
 }
 
 String Internals::visiblePlaceholder(Element& element)

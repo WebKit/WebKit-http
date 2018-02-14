@@ -101,8 +101,10 @@ JSValue toJS(ExecState& state, JSGlobalObject& globalObject, IDBKey* key)
         unsigned size = inArray.size();
         auto outArray = constructEmptyArray(&state, 0, &globalObject, size);
         RETURN_IF_EXCEPTION(scope, JSValue());
-        for (size_t i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i) {
             outArray->putDirectIndex(&state, i, toJS(state, globalObject, inArray.at(i).get()));
+            RETURN_IF_EXCEPTION(scope, JSValue());
+        }
         return outArray;
     }
     case KeyType::Binary: {
@@ -412,7 +414,7 @@ void generateIndexKeyForValue(ExecState& exec, const IDBIndexInfo& info, JSValue
     outKey = IndexKey(WTFMove(keyDatas));
 }
 
-JSValue toJS(ExecState& state, JSDOMGlobalObject& globalObject, const Optional<IDBKeyPath>& keyPath)
+JSValue toJS(ExecState& state, JSDOMGlobalObject& globalObject, const std::optional<IDBKeyPath>& keyPath)
 {
     if (!keyPath)
         return jsNull();

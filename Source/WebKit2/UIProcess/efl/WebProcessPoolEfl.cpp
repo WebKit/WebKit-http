@@ -32,7 +32,6 @@
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
 #include "WebProcessMessages.h"
-#include "WebSoupCustomProtocolRequestManager.h"
 #include <Efreet.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/IconDatabase.h>
@@ -132,6 +131,10 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     return API::WebsiteDataStore::defaultNetworkCacheDirectory();
+}
+
+void WebProcessPool::platformResolvePathsForSandboxExtensions()
+{
 }
 
 } // namespace WebKit

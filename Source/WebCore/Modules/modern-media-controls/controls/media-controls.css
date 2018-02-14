@@ -23,11 +23,29 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+:host(audio) {
+    width: 200px;
+    height: 50px;
+}
+
 /* We need to use relative positioning due to webkit.org/b/163603 */
 .media-controls {
     position: relative;
+    font-family: -apple-system;
+    -webkit-user-select: none;
+    cursor: default;
 }
 
 .media-controls > .controls-bar {
     position: absolute;
+}
+
+.media-controls.fade-in {
+    animation-name: fade-in;
+    animation-duration: 350ms;
+}
+
+@keyframes fade-in {
+    from { opacity: 0 }
+    to   { opacity: 1 }
 }

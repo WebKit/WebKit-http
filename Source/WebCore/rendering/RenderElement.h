@@ -56,7 +56,6 @@ public:
     // The pseudo element style can be cached or uncached.  Use the cached method if the pseudo element doesn't respect
     // any pseudo classes (and therefore has no concept of changing state).
     const RenderStyle* getCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr) const;
-    RenderStyle* getMutableCachedPseudoStyle(PseudoId, const RenderStyle* parentStyle = nullptr);
     std::unique_ptr<RenderStyle> getUncachedPseudoStyle(const PseudoStyleRequest&, const RenderStyle* parentStyle = nullptr, const RenderStyle* ownStyle = nullptr) const;
 
     // This is null for anonymous renderers.
@@ -131,10 +130,6 @@ public:
 
     // Return the renderer whose background style is used to paint the root background. Should only be called on the renderer for which isDocumentElementRenderer() is true.
     RenderElement& rendererForRootBackground();
-
-    // Used only by Element::pseudoStyleCacheIsInvalid to get a first line style based off of a
-    // given new style, without accessing the cache.
-    std::unique_ptr<RenderStyle> uncachedFirstLineStyle(RenderStyle*) const;
 
     // Updates only the local style ptr of the object. Does not update the state of the object,
     // and so only should be called when the style is known not to have changed (or from setStyle).
@@ -307,7 +302,8 @@ private:
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
 
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
-    const RenderStyle* cachedFirstLineStyle() const;
+    std::unique_ptr<RenderStyle> computeFirstLineStyle() const;
+    void invalidateCachedFirstLineStyle();
 
     void newImageAnimationFrameAvailable(CachedImage&) final;
 
@@ -329,6 +325,7 @@ private:
     unsigned m_hasCounterNodeMap : 1;
     unsigned m_isCSSAnimating : 1;
     unsigned m_hasContinuation : 1;
+    mutable unsigned m_hasValidCachedFirstLineStyle : 1;
 
     unsigned m_renderBlockHasMarginBeforeQuirk : 1;
     unsigned m_renderBlockHasMarginAfterQuirk : 1;

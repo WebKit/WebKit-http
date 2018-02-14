@@ -705,15 +705,16 @@ LineBreakIteratorMode mapLineBreakToIteratorMode(LineBreak lineBreak)
     switch (lineBreak) {
     case LineBreakAuto:
     case LineBreakAfterWhiteSpace:
-        return LineBreakIteratorModeUAX14;
+        return LineBreakIteratorMode::Default;
     case LineBreakLoose:
-        return LineBreakIteratorModeUAX14Loose;
+        return LineBreakIteratorMode::Loose;
     case LineBreakNormal:
-        return LineBreakIteratorModeUAX14Normal;
+        return LineBreakIteratorMode::Normal;
     case LineBreakStrict:
-        return LineBreakIteratorModeUAX14Strict;
+        return LineBreakIteratorMode::Strict;
     }
-    return LineBreakIteratorModeUAX14;
+    ASSERT_NOT_REACHED();
+    return LineBreakIteratorMode::Default;
 }
 
 void RenderText::computePreferredLogicalWidths(float leadWidth)
@@ -799,7 +800,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
     bool isSpace = false;
     bool firstWord = true;
     bool firstLine = true;
-    Optional<unsigned> nextBreakable;
+    std::optional<unsigned> nextBreakable;
     unsigned lastWordBoundary = 0;
 
     // Non-zero only when kerning is enabled, in which case we measure words with their trailing
@@ -821,7 +822,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         minimumSuffixLength = after < 0 ? 2 : after;
     }
 
-    Optional<int> firstGlyphLeftOverflow;
+    std::optional<int> firstGlyphLeftOverflow;
 
     bool breakNBSP = style.autoWrap() && style.nbspMode() == SPACE;
     
@@ -897,7 +898,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
             float currMinWidth = 0;
             bool isSpace = (j < len) && isSpaceAccordingToStyle(c, style);
             float w;
-            Optional<float> wordTrailingSpaceWidth;
+            std::optional<float> wordTrailingSpaceWidth;
             if (isSpace)
                 wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
             if (wordTrailingSpaceWidth)
@@ -914,7 +915,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
 
                 if (suffixStart) {
                     float suffixWidth;
-                    Optional<float> wordTrailingSpaceWidth;
+                    std::optional<float> wordTrailingSpaceWidth;
                     if (isSpace)
                         wordTrailingSpaceWidth = wordTrailingSpace.width(fallbackFonts);
                     if (wordTrailingSpaceWidth)
@@ -999,7 +1000,7 @@ void RenderText::computePreferredLogicalWidths(float leadWidth, HashSet<const Fo
         }
     }
 
-    glyphOverflow.left = firstGlyphLeftOverflow.valueOr(glyphOverflow.left);
+    glyphOverflow.left = firstGlyphLeftOverflow.value_or(glyphOverflow.left);
 
     if ((needsWordSpacing && len > 1) || (ignoringSpaces && !firstWord))
         currMaxWidth += wordSpacing;
@@ -1675,9 +1676,9 @@ void RenderText::momentarilyRevealLastTypedCharacter(unsigned offsetAfterLastTyp
     secureTextTimer->restart(offsetAfterLastTypedCharacter);
 }
 
-StringView RenderText::stringView(unsigned start, Optional<unsigned> stop) const
+StringView RenderText::stringView(unsigned start, std::optional<unsigned> stop) const
 {
-    unsigned destination = stop.valueOr(textLength());
+    unsigned destination = stop.value_or(textLength());
     ASSERT(start <= length());
     ASSERT(destination <= length());
     ASSERT(start <= destination);

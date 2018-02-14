@@ -43,6 +43,7 @@
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
+OBJC_CLASS WKAccessibilitySettingsObserver;
 OBJC_CLASS WKBrowsingContextController;
 OBJC_CLASS WKEditorUndoTargetObjC;
 OBJC_CLASS WKFullScreenWindowController;
@@ -208,6 +209,8 @@ public:
     bool shouldDelayWindowOrderingForEvent(NSEvent *);
     bool windowResizeMouseLocationIsInVisibleScrollerThumb(CGPoint);
 
+    void accessibilitySettingsDidChange();
+
     // -[NSView mouseDownCanMoveWindow] returns YES when the NSView is transparent,
     // but we don't want a drag in the NSView to move the window, even if it's transparent.
     static bool mouseDownCanMoveWindow() { return false; }
@@ -227,8 +230,8 @@ public:
     NSColor *underlayColor() const;
     NSColor *pageExtendedBackgroundColor() const;
 
-    void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
+    void setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
+    std::optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
 
     void beginDeferringViewInWindowChanges();
     // FIXME: Merge these two?
@@ -631,6 +634,7 @@ private:
 #endif
 
     RetainPtr<WKWindowVisibilityObserver> m_windowVisibilityObserver;
+    RetainPtr<WKAccessibilitySettingsObserver> m_accessibilitySettingsObserver;
 
     bool m_shouldDeferViewInWindowChanges { false };
     bool m_viewInWindowChangeWasDeferred { false };
@@ -682,7 +686,7 @@ private:
     String m_promisedFilename;
     String m_promisedURL;
 
-    WTF::Optional<NSInteger> m_spellCheckerDocumentTag;
+    std::optional<NSInteger> m_spellCheckerDocumentTag;
 
     CGFloat m_totalHeightOfBanners { 0 };
 

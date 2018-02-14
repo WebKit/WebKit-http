@@ -37,6 +37,7 @@
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
 #include "RenderView.h"
+#include "Settings.h"
 #include "SizesAttributeParser.h"
 #include <wtf/MainThread.h>
 
@@ -203,15 +204,18 @@ private:
             }
             if (match(attributeName, mediaAttr) && m_mediaAttribute.isNull()) {
                 m_mediaAttribute = attributeValue;
-                auto mediaSet = MediaQuerySet::createAllowingDescriptionSyntax(attributeValue);
+                auto mediaSet = MediaQuerySet::create(attributeValue);
                 auto* documentElement = document.documentElement();
                 m_mediaMatched = MediaQueryEvaluator { document.printing() ? "print" : "screen", document, documentElement ? documentElement->computedStyle() : nullptr }.evaluate(mediaSet.get());
             }
             break;
         case TagId::Script:
             if (match(attributeName, typeAttr)) {
-                m_moduleScript = equalLettersIgnoringASCIICase(attributeValue, "module") ? PreloadRequest::ModuleScript::Yes : PreloadRequest::ModuleScript::No;
-                break;
+                auto* settings = document.settings();
+                if (settings && settings->es6ModulesEnabled()) {
+                    m_moduleScript = equalLettersIgnoringASCIICase(attributeValue, "module") ? PreloadRequest::ModuleScript::Yes : PreloadRequest::ModuleScript::No;
+                    break;
+                }
             }
             processImageAndScriptAttribute(attributeName, attributeValue);
             break;

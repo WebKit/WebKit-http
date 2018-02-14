@@ -55,6 +55,18 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
     });
 }
 
+void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView _doAfterNextPresentationUpdate:^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
 void UIScriptController::zoomToScale(double scale, JSValueRef callback)
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -62,6 +74,21 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
 
     [webView zoomToScale:scale animated:YES completionHandler:^{
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* webView = TestController::singleton().mainWebView()->platformView();
+    NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+    [center postNotificationName:UIAccessibilityInvertColorsStatusDidChangeNotification object:webView];
+
+    [webView _doAfterNextPresentationUpdate: ^{
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
@@ -342,6 +369,18 @@ void UIScriptController::scrollToOffset(long x, long y)
     [webView.scrollView setContentOffset:contentOffsetBoundedInValidRange(webView.scrollView, CGPointMake(x, y)) animated:YES];
 }
 
+void UIScriptController::immediateScrollToOffset(long x, long y)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView.scrollView setContentOffset:contentOffsetBoundedInValidRange(webView.scrollView, CGPointMake(x, y)) animated:NO];
+}
+
+void UIScriptController::immediateZoomToScale(double scale)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    [webView.scrollView setZoomScale:scale animated:NO];
+}
+
 void UIScriptController::keyboardAccessoryBarNext()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -364,6 +403,24 @@ double UIScriptController::maximumZoomScale() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     return webView.scrollView.maximumZoomScale;
+}
+
+std::optional<bool> UIScriptController::stableStateOverride() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    if (webView._stableStateOverride)
+        return webView._stableStateOverride.boolValue;
+
+    return std::nullopt;
+}
+
+void UIScriptController::setStableStateOverride(std::optional<bool> overrideValue)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    if (overrideValue)
+        webView._stableStateOverride = @(overrideValue.value());
+    else
+        webView._stableStateOverride = nil;
 }
 
 JSObjectRef UIScriptController::contentVisibleRect() const

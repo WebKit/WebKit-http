@@ -27,10 +27,16 @@
 #define VisibleContentRectUpdateInfo_h
 
 #include <WebCore/FloatRect.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/text/WTFString.h>
 
 namespace IPC {
 class Decoder;
 class Encoder;
+}
+
+namespace WebCore {
+class TextStream;
 }
 
 namespace WebKit {
@@ -42,7 +48,7 @@ public:
     VisibleContentRectUpdateInfo(const WebCore::FloatRect& exposedContentRect, const WebCore::FloatRect& unobscuredContentRect,
         const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect,
         const WebCore::FloatSize& obscuredInset, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, bool enclosedInScrollableAncestorView,
-        double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
+        MonotonicTime timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
         : m_exposedContentRect(exposedContentRect)
         , m_unobscuredContentRect(unobscuredContentRect)
         , m_unobscuredRectInScrollViewCoordinates(unobscuredRectInScrollViewCoordinates)
@@ -73,7 +79,7 @@ public:
     bool allowShrinkToFit() const { return m_allowShrinkToFit; }
     bool enclosedInScrollableAncestorView() const { return m_enclosedInScrollableAncestorView; }
 
-    double timestamp() const { return m_timestamp; }
+    MonotonicTime timestamp() const { return m_timestamp; }
     double horizontalVelocity() const { return m_horizontalVelocity; }
     double verticalVelocity() const { return m_verticalVelocity; }
     double scaleChangeRate() const { return m_scaleChangeRate; }
@@ -83,6 +89,8 @@ public:
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, VisibleContentRectUpdateInfo&);
 
+    String dump() const;
+
 private:
     WebCore::FloatRect m_exposedContentRect;
     WebCore::FloatRect m_unobscuredContentRect;
@@ -91,7 +99,7 @@ private:
     WebCore::FloatSize m_obscuredInset;
     uint64_t m_lastLayerTreeTransactionID { 0 };
     double m_scale { -1 };
-    double m_timestamp { 0 };
+    MonotonicTime m_timestamp;
     double m_horizontalVelocity { 0 };
     double m_verticalVelocity { 0 };
     double m_scaleChangeRate { 0 };
@@ -116,6 +124,8 @@ inline bool operator==(const VisibleContentRectUpdateInfo& a, const VisibleConte
         && a.allowShrinkToFit() == b.allowShrinkToFit()
         && a.enclosedInScrollableAncestorView() == b.enclosedInScrollableAncestorView();
 }
+
+WebCore::TextStream& operator<<(WebCore::TextStream&, const VisibleContentRectUpdateInfo&);
 
 } // namespace WebKit
 

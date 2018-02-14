@@ -567,6 +567,15 @@ HTMLMediaElement::~HTMLMediaElement()
     updatePlaybackControlsManager();
 }
 
+static bool needsPlaybackControlsManagerQuirk(Page& page)
+{
+    if (!page.settings().needsSiteSpecificQuirks())
+        return false;
+
+    String host = page.mainFrame().document()->url().host();
+    return equalLettersIgnoringASCIICase(host, "netflix.com") || host.endsWithIgnoringASCIICase(".netflix.com");
+}
+
 HTMLMediaElement* HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
 {
     auto allSessions = PlatformMediaSessionManager::sharedManager().currentSessionsMatching([] (const PlatformMediaSession& session) {
@@ -591,7 +600,15 @@ HTMLMediaElement* HTMLMediaElement::bestMediaElementForShowingPlaybackControlsMa
     if (!strongestSessionCandidate.isVisibleInViewportOrFullscreen && !strongestSessionCandidate.isPlayingAudio && atLeastOneNonCandidateMayBeConfusedForMainContent)
         return nullptr;
 
-    return &strongestSessionCandidate.session->element();
+    HTMLMediaElement* strongestElementCandidate = &strongestSessionCandidate.session->element();
+    if (strongestElementCandidate) {
+        if (Page* page = strongestElementCandidate->document().page()) {
+            if (needsPlaybackControlsManagerQuirk(*page))
+                return nullptr;
+        }
+    }
+
+    return strongestElementCandidate;
 }
 
 void HTMLMediaElement::registerWithDocument(Document& document)
@@ -664,16 +681,14 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
     removeElementFromDocumentMap(*this, document);
 }
 
-void HTMLMediaElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLMediaElement::didMoveToNewDocument(Document& oldDocument)
 {
     if (m_shouldDelayLoadEvent) {
-        if (oldDocument)
-            oldDocument->decrementLoadEventDelayCount();
+        oldDocument.decrementLoadEventDelayCount();
         document().incrementLoadEventDelayCount();
     }
 
-    if (oldDocument)
-        unregisterWithDocument(*oldDocument);
+    unregisterWithDocument(oldDocument);
 
     registerWithDocument(document());
 
@@ -1050,8 +1065,11 @@ void HTMLMediaElement::setSrcObject(ScriptExecutionContext& context, MediaStream
     // https://bugs.webkit.org/show_bug.cgi?id=124896
 
     m_mediaStreamSrcObject = mediaStream;
-    if (mediaStream)
+    if (mediaStream) {
+        m_settingMediaStreamSrcObject = true;
         setSrc(DOMURL::createPublicURL(context, *mediaStream));
+        m_settingMediaStreamSrcObject = false;
+    }
 }
 #endif
 
@@ -3573,6 +3591,7 @@ void HTMLMediaElement::addVideoTrack(Ref<VideoTrack>&& track)
 void HTMLMediaElement::removeAudioTrack(AudioTrack& track)
 {
     m_audioTracks->remove(track);
+    track.clearClient();
 }
 
 void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
@@ -3590,6 +3609,7 @@ void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
 void HTMLMediaElement::removeVideoTrack(VideoTrack& track)
 {
     m_videoTracks->remove(track);
+    track.clearClient();
 }
 
 void HTMLMediaElement::forgetResourceSpecificTracks()
@@ -4803,6 +4823,12 @@ void HTMLMediaElement::updateVolume()
         m_player->setVolume(m_volume * volumeMultiplier);
     }
 
+#if ENABLE(MEDIA_SESSION)
+    document().updateIsPlayingMedia(m_elementID);
+#else
+    document().updateIsPlayingMedia();
+#endif
+
     if (hasMediaControls())
         mediaControls()->changedVolume();
 #endif
@@ -4981,6 +5007,11 @@ void HTMLMediaElement::userCancelledLoad()
 void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
 {
     LOG(Media, "HTMLMediaElement::clearMediaPlayer(%p) - flags = %s", this, actionName(flags).utf8().data());
+
+#if ENABLE(MEDIA_STREAM)
+    if (!m_settingMediaStreamSrcObject)
+        m_mediaStreamSrcObject = nullptr;
+#endif
 
 #if ENABLE(MEDIA_SOURCE)
     detachMediaSource();
@@ -5745,9 +5776,13 @@ void HTMLMediaElement::privateBrowsingStateDidChange()
 MediaControls* HTMLMediaElement::mediaControls() const
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    return 0;
+    return nullptr;
 #else
-    return toMediaControls(userAgentShadowRoot()->firstChild());
+    ShadowRoot* root = userAgentShadowRoot();
+    if (!root)
+        return nullptr;
+    
+    return childrenOfType<MediaControls>(*root).first();
 #endif
 }
 
@@ -5758,7 +5793,7 @@ bool HTMLMediaElement::hasMediaControls() const
 #else
 
     if (ShadowRoot* userAgent = userAgentShadowRoot()) {
-        Node* node = userAgent->firstChild();
+        Node* node = childrenOfType<MediaControls>(*root).first();
         ASSERT_WITH_SECURITY_IMPLICATION(!node || node->isMediaControls());
         return node;
     }

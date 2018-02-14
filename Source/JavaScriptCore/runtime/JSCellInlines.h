@@ -60,8 +60,7 @@ inline void JSCell::finishCreation(VM& vm)
 {
     // This object is ready to be escaped so the concurrent GC may see it at any time. We have
     // to make sure that none of our stores sink below here.
-    if (isX86() || UNLIKELY(vm.heap.mutatorShouldBeFenced()))
-        WTF::storeStoreFence();
+    vm.heap.mutatorFence();
 #if ENABLE(GC_VALIDATION)
     ASSERT(vm.isInitializingObject());
     vm.setInitializingObjectClass(0);
@@ -124,9 +123,9 @@ inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 ALWAYS_INLINE VM& ExecState::vm() const
 {
-    ASSERT(callee());
-    ASSERT(callee()->vm());
-    ASSERT(!callee()->isLargeAllocation());
+    ASSERT(jsCallee());
+    ASSERT(jsCallee()->vm());
+    ASSERT(!jsCallee()->isLargeAllocation());
     // This is an important optimization since we access this so often.
     return *calleeAsValue().asCell()->markedBlock().vm();
 }

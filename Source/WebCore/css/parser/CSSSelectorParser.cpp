@@ -388,10 +388,10 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeId(CSSParserTokenRa
     
     // FIXME-NEWPARSER: Avoid having to do this, but the old parser does and we need
     // to be compatible for now.
-    StringView stringView = range.consume().value();
+    CSSParserToken token = range.consume();
     if (m_context.mode == HTMLQuirksMode)
-        convertToASCIILowercaseInPlace(stringView);
-    selector->setValue(stringView.toAtomicString());
+        token.convertToASCIILowercaseInPlace();
+    selector->setValue(token.value().toAtomicString());
 
     return selector;
 }
@@ -408,10 +408,10 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeClass(CSSParserToke
     
     // FIXME-NEWPARSER: Avoid having to do this, but the old parser does and we need
     // to be compatible for now.
-    StringView stringView = range.consume().value();
+    CSSParserToken token = range.consume();
     if (m_context.mode == HTMLQuirksMode)
-        convertToASCIILowercaseInPlace(stringView);
-    selector->setValue(stringView.toAtomicString());
+        token.convertToASCIILowercaseInPlace();
+    selector->setValue(token.value().toAtomicString());
 
     return selector;
 }
@@ -461,7 +461,7 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumeAttribute(CSSParser
     return selector;
 }
 
-static bool isPseudoClassFunction(CSSSelector::PseudoClassType pseudoClassType)
+static bool isOnlyPseudoClassFunction(CSSSelector::PseudoClassType pseudoClassType)
 {
     switch (pseudoClassType) {
     case CSSSelector::PseudoClassNot:
@@ -483,12 +483,10 @@ static bool isPseudoClassFunction(CSSSelector::PseudoClassType pseudoClassType)
     return false;
 }
     
-static bool isPseudoElementFunction(CSSSelector::PseudoElementType pseudoElementType)
+static bool isOnlyPseudoElementFunction(CSSSelector::PseudoElementType pseudoElementType)
 {
+    // Note that we omit cue since it can be both an ident or a function.
     switch (pseudoElementType) {
-#if ENABLE(VIDEO_TRACK)
-    case CSSSelector::PseudoElementCue:
-#endif
     case CSSSelector::PseudoElementSlotted:
         return true;
     default:
@@ -513,6 +511,10 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
         return nullptr;
 
     std::unique_ptr<CSSParserSelector> selector;
+    
+    // FIXME-NEWPARSER: Would like to eliminate this.
+    const_cast<CSSParserToken&>(token).convertToASCIILowercaseInPlace();
+    
     StringView value = token.value();
     
     // FIXME-NEWPARSER: We can't change the pseudoclass/element maps that the old parser
@@ -529,16 +531,32 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
 
     if (colons == 1)
         selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePseudoClassSelectorFromStringView(value));
-    else
+    else {
         selector = std::unique_ptr<CSSParserSelector>(CSSParserSelector::parsePseudoElementSelectorFromStringView(value));
+#if ENABLE(VIDEO_TRACK)
+        if (selector && selector->match() == CSSSelector::PseudoElement && selector->pseudoElementType() == CSSSelector::PseudoElementWebKitCustom) {
+            // FIXME-NEWPARSER: The old parser treats cue as two pseudo-element types, because it
+            // is unable to handle a dual pseudo-element (one that can be both an ident or a
+            // function) without splitting them up.
+            //
+            // This means that "cue" is being parsed as PseudoElementWebkitCustom when used as an
+            // identifier, and it's being parsed as PseudoElementCue when used as a function.
+            //
+            // We have to mimic this behavior until the old parser is gone, at which point we can
+            // make all code use PseudoElementCue.
+            if (token.type() == FunctionToken && value.startsWithIgnoringASCIICase("cue"))
+                selector->setPseudoElementType(CSSSelector::PseudoElementCue);
+        }
+#endif
+    }
 
     if (!selector || (selector->match() == CSSSelector::PseudoElement && m_disallowPseudoElements))
         return nullptr;
 
     if (token.type() == IdentToken) {
         range.consume();
-        if ((selector->match() == CSSSelector::PseudoElement && (selector->pseudoElementType() == CSSSelector::PseudoElementUnknown || isPseudoElementFunction(selector->pseudoElementType())))
-            || (selector->match() == CSSSelector::PseudoClass && (selector->pseudoClassType() == CSSSelector::PseudoClassUnknown || isPseudoClassFunction(selector->pseudoClassType()))))
+        if ((selector->match() == CSSSelector::PseudoElement && (selector->pseudoElementType() == CSSSelector::PseudoElementUnknown || isOnlyPseudoElementFunction(selector->pseudoElementType())))
+            || (selector->match() == CSSSelector::PseudoClass && (selector->pseudoClassType() == CSSSelector::PseudoClassUnknown || isOnlyPseudoClassFunction(selector->pseudoClassType()))))
             return nullptr;
         return selector;
     }
@@ -610,7 +628,6 @@ std::unique_ptr<CSSParserSelector> CSSSelectorParser::consumePseudo(CSSParserTok
         }
         case CSSSelector::PseudoClassAny:
         case CSSSelector::PseudoClassHost: {
-            DisallowPseudoElementsScope scope(this);
             std::unique_ptr<CSSSelectorList> selectorList = std::unique_ptr<CSSSelectorList>(new CSSSelectorList());
             *selectorList = consumeCompoundSelectorList(block);
             if (!selectorList->componentCount() || !block.atEnd())

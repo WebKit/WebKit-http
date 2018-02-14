@@ -72,7 +72,6 @@
 #include "PlatformKeyboardEvent.h"
 #include "PlatformWheelEvent.h"
 #include "PluginDocument.h"
-#include "PointerLockController.h"
 #include "RenderFrameSet.h"
 #include "RenderLayer.h"
 #include "RenderListBox.h"
@@ -118,6 +117,10 @@
 
 #if ENABLE(MAC_GESTURE_EVENTS)
 #include "PlatformGestureEventMac.h"
+#endif
+
+#if ENABLE(POINTER_LOCK)
+#include "PointerLockController.h"
 #endif
 
 namespace WebCore {
@@ -300,7 +303,7 @@ static inline bool didScrollInScrollableArea(ScrollableArea* scrollableArea, Whe
     return didHandleWheelEvent;
 }
 
-static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, WheelEvent& wheelEvent, Element** stopElement, const FloatSize& filteredPlatformDelta)
+static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, WheelEvent& wheelEvent, Element** stopElement, const FloatSize& filteredPlatformDelta, const FloatSize& filteredVelocity)
 {
     bool shouldHandleEvent = wheelEvent.deltaX() || wheelEvent.deltaY();
 #if PLATFORM(MAC)
@@ -321,9 +324,10 @@ static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, Wh
         if (RenderLayer* boxLayer = currentEnclosingBox->layer()) {
             const PlatformWheelEvent* platformEvent = wheelEvent.wheelEvent();
             bool scrollingWasHandled;
-            if (platformEvent != nullptr)
-                scrollingWasHandled = boxLayer->handleWheelEvent(platformEvent->copyWithDeltas(filteredPlatformDelta.width(), filteredPlatformDelta.height()));
-            else
+            if (platformEvent != nullptr) {
+                auto copiedEvent = platformEvent->copyWithDeltasAndVelocity(filteredPlatformDelta.width(), filteredPlatformDelta.height(), filteredVelocity);
+                scrollingWasHandled = boxLayer->handleWheelEvent(copiedEvent);
+            } else
                 scrollingWasHandled = didScrollInScrollableArea(boxLayer, wheelEvent);
 
             if (scrollingWasHandled) {
@@ -608,7 +612,7 @@ void EventHandler::selectClosestContextualWordOrLinkFromMouseEvent(const MouseEv
     if (targetNode && targetNode->renderer() && m_mouseDownMayStartSelect) {
         VisibleSelection newSelection;
         VisiblePosition pos(targetNode->renderer()->positionForPoint(result.localPoint(), nullptr));
-        if (pos.isNotNull() && pos.deepEquivalent().deprecatedNode()->isDescendantOf(urlElement))
+        if (pos.isNotNull() && pos.deepEquivalent().deprecatedNode()->isDescendantOf(*urlElement))
             newSelection = VisibleSelection::selectionFromContentsOfNode(urlElement);
 
         updateSelectionForMouseDownDispatchingSelectStart(targetNode, expandSelectionToRespectSelectOnMouseDown(*targetNode, newSelection), WordGranularity);
@@ -2754,6 +2758,7 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent& wheelEv
     Ref<Frame> protectedFrame(m_frame);
 
     FloatSize filteredPlatformDelta(wheelEvent.deltaX(), wheelEvent.deltaY());
+    FloatSize filteredVelocity;
     if (const PlatformWheelEvent* platformWheelEvent = wheelEvent.wheelEvent()) {
         filteredPlatformDelta.setWidth(platformWheelEvent->deltaX());
         filteredPlatformDelta.setHeight(platformWheelEvent->deltaY());
@@ -2763,14 +2768,16 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent& wheelEv
     ScrollLatchingState* latchedState = m_frame.mainFrame().latchingState();
     Element* stopElement = latchedState ? latchedState->previousWheelScrolledElement() : nullptr;
 
-    if (m_frame.mainFrame().wheelEventDeltaFilter()->isFilteringDeltas())
+    if (m_frame.mainFrame().wheelEventDeltaFilter()->isFilteringDeltas()) {
         filteredPlatformDelta = m_frame.mainFrame().wheelEventDeltaFilter()->filteredDelta();
+        filteredVelocity = m_frame.mainFrame().wheelEventDeltaFilter()->filteredVelocity();
+    }
 #else
     Element* stopElement = nullptr;
 #endif
     
     
-    if (handleWheelEventInAppropriateEnclosingBox(startNode, wheelEvent, &stopElement, filteredPlatformDelta))
+    if (handleWheelEventInAppropriateEnclosingBox(startNode, wheelEvent, &stopElement, filteredPlatformDelta, filteredVelocity))
         wheelEvent.setDefaultHandled();
     
 #if PLATFORM(MAC)

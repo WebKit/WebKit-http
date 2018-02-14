@@ -425,7 +425,7 @@ bool TiledCoreAnimationDrawingArea::flushLayers()
 
         // Because our view-relative overlay root layer is not attached to the main GraphicsLayer tree, we need to flush it manually.
         if (m_viewOverlayRootLayer)
-            m_viewOverlayRootLayer->flushCompositingState(visibleRect, m_webPage.mainFrameView()->viewportIsStable());
+            m_viewOverlayRootLayer->flushCompositingState(visibleRect);
 
         RefPtr<WebPage> retainedPage = &m_webPage;
 #if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
@@ -511,7 +511,7 @@ void TiledCoreAnimationDrawingArea::resumePainting()
     [[NSNotificationCenter defaultCenter] postNotificationName:@"NSCAViewRenderDidResumeNotification" object:nil userInfo:[NSDictionary dictionaryWithObject:m_hostingLayer.get() forKey:@"layer"]];
 }
 
-void TiledCoreAnimationDrawingArea::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void TiledCoreAnimationDrawingArea::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     m_viewExposedRect = viewExposedRect;
     updateScrolledExposedRect();

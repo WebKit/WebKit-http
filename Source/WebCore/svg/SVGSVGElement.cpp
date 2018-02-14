@@ -98,10 +98,9 @@ SVGSVGElement::~SVGSVGElement()
     document().accessSVGExtensions().removeTimeContainer(this);
 }
 
-void SVGSVGElement::didMoveToNewDocument(Document* oldDocument)
+void SVGSVGElement::didMoveToNewDocument(Document& oldDocument)
 {
-    if (oldDocument)
-        oldDocument->unregisterForDocumentSuspensionCallbacks(this);
+    oldDocument.unregisterForDocumentSuspensionCallbacks(this);
     document().registerForDocumentSuspensionCallbacks(this);
     SVGGraphicsElement::didMoveToNewDocument(oldDocument);
 }
@@ -695,11 +694,11 @@ Element* SVGSVGElement::getElementById(const AtomicString& id)
         return nullptr;
 
     Element* element = treeScope().getElementById(id);
-    if (element && element->isDescendantOf(this))
+    if (element && element->isDescendantOf(*this))
         return element;
     if (treeScope().containsMultipleElementsWithId(id)) {
         for (auto* element : *treeScope().getAllElementsById(id)) {
-            if (element->isDescendantOf(this))
+            if (element->isDescendantOf(*this))
                 return element;
         }
     }

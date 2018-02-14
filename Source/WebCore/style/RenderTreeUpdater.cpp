@@ -70,7 +70,7 @@ RenderTreeUpdater::Parent::Parent(ContainerNode& root)
 RenderTreeUpdater::Parent::Parent(Element& element, Style::Change styleChange)
     : element(&element)
     , styleChange(styleChange)
-    , renderTreePosition(element.renderer() ? makeOptional(RenderTreePosition(*element.renderer())) : Nullopt)
+    , renderTreePosition(element.renderer() ? std::make_optional(RenderTreePosition(*element.renderer())) : std::nullopt)
 {
 }
 
@@ -235,24 +235,12 @@ static bool pseudoStyleCacheIsInvalid(RenderElement* renderer, RenderStyle* newS
         return false;
 
     for (auto& cache : *pseudoStyleCache) {
-        std::unique_ptr<RenderStyle> newPseudoStyle;
         PseudoId pseudoId = cache->styleType();
-        if (pseudoId == FIRST_LINE || pseudoId == FIRST_LINE_INHERITED)
-            newPseudoStyle = renderer->uncachedFirstLineStyle(newStyle);
-        else
-            newPseudoStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(pseudoId), newStyle, newStyle);
+        std::unique_ptr<RenderStyle> newPseudoStyle = renderer->getUncachedPseudoStyle(PseudoStyleRequest(pseudoId), newStyle, newStyle);
         if (!newPseudoStyle)
             return true;
         if (*newPseudoStyle != *cache) {
-            if (pseudoId < FIRST_INTERNAL_PSEUDOID)
-                newStyle->setHasPseudoStyle(pseudoId);
             newStyle->addCachedPseudoStyle(WTFMove(newPseudoStyle));
-            if (pseudoId == FIRST_LINE || pseudoId == FIRST_LINE_INHERITED) {
-                // FIXME: We should do an actual diff to determine whether a repaint vs. layout
-                // is needed, but for now just assume a layout will be required. The diff code
-                // in RenderObject::setStyle would need to be factored out so that it could be reused.
-                renderer->setNeedsLayoutAndPrefWidthsRecalc();
-            }
             return true;
         }
     }
@@ -269,14 +257,14 @@ void RenderTreeUpdater::updateElementRenderer(Element& element, Style::ElementUp
     if (shouldTearDownRenderers)
         tearDownRenderers(element, TeardownType::KeepHoverAndActive);
 
-    bool hasDisplayContest = update.style && update.style->display() == CONTENTS;
-    if (hasDisplayContest != element.hasDisplayContents()) {
-        element.setHasDisplayContents(hasDisplayContest);
+    bool hasDisplayContents = update.style && update.style->display() == CONTENTS;
+    if (hasDisplayContents != element.hasDisplayContents()) {
+        element.setHasDisplayContents(hasDisplayContents);
         // Render tree position needs to be recomputed as rendering siblings may be found from the display:contents subtree.
         renderTreePosition().invalidateNextSibling();
     }
 
-    bool shouldCreateNewRenderer = !element.renderer() && update.style && !hasDisplayContest;
+    bool shouldCreateNewRenderer = !element.renderer() && update.style && !hasDisplayContents;
     if (shouldCreateNewRenderer) {
         if (element.hasCustomStyleResolveCallbacks())
             element.willAttachRenderers();
@@ -491,8 +479,7 @@ void RenderTreeUpdater::updateBeforeOrAfterPseudoElement(Element& current, Pseud
 {
     PseudoElement* pseudoElement = pseudoId == BEFORE ? current.beforePseudoElement() : current.afterPseudoElement();
 
-    auto* renderer = pseudoElement ? pseudoElement->renderer() : nullptr;
-    if (renderer)
+    if (auto* renderer = pseudoElement ? pseudoElement->renderer() : nullptr)
         renderTreePosition().invalidateNextSibling(*renderer);
 
     bool needsPseudoElement = WebCore::needsPseudoElement(current, pseudoId);
@@ -506,21 +493,25 @@ void RenderTreeUpdater::updateBeforeOrAfterPseudoElement(Element& current, Pseud
         return;
     }
 
+    RefPtr<PseudoElement> newPseudoElement;
+    if (!pseudoElement) {
+        newPseudoElement = PseudoElement::create(current, pseudoId);
+        pseudoElement = newPseudoElement.get();
+    }
+
     auto newStyle = RenderStyle::clonePtr(*current.renderer()->getCachedPseudoStyle(pseudoId, &current.renderer()->style()));
 
-    auto elementUpdate = Style::TreeResolver::createAnimatedElementUpdate(WTFMove(newStyle), renderer, m_document);
+    auto elementUpdate = Style::TreeResolver::createAnimatedElementUpdate(WTFMove(newStyle), *pseudoElement, Style::NoChange);
 
     if (elementUpdate.change == Style::NoChange)
         return;
 
-    if (!pseudoElement) {
-        auto newPseudoElement = PseudoElement::create(current, pseudoId);
-        pseudoElement = newPseudoElement.ptr();
-        InspectorInstrumentation::pseudoElementCreated(m_document.page(), newPseudoElement);
+    if (newPseudoElement) {
+        InspectorInstrumentation::pseudoElementCreated(m_document.page(), *newPseudoElement);
         if (pseudoId == BEFORE)
-            current.setBeforePseudoElement(WTFMove(newPseudoElement));
+            current.setBeforePseudoElement(newPseudoElement.releaseNonNull());
         else
-            current.setAfterPseudoElement(WTFMove(newPseudoElement));
+            current.setAfterPseudoElement(newPseudoElement.releaseNonNull());
     }
 
     updateElementRenderer(*pseudoElement, elementUpdate);

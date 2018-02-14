@@ -159,7 +159,7 @@ DebuggerScope* DebuggerCallFrame::scope()
             scope = m_shadowChickenFrame.scope;
         else if (codeBlock && codeBlock->scopeRegister().isValid())
             scope = m_validMachineFrame->scope(codeBlock->scopeRegister().offset());
-        else if (JSCallee* callee = jsDynamicCast<JSCallee*>(m_validMachineFrame->callee()))
+        else if (JSCallee* callee = jsDynamicCast<JSCallee*>(m_validMachineFrame->jsCallee()))
             scope = callee->scope();
         else
             scope = m_validMachineFrame->lexicalGlobalObject()->globalLexicalEnvironment();
@@ -178,7 +178,7 @@ DebuggerCallFrame::Type DebuggerCallFrame::type() const
     if (isTailDeleted())
         return FunctionType;
 
-    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->callee()))
+    if (jsDynamicCast<JSFunction*>(m_validMachineFrame->jsCallee()))
         return FunctionType;
 
     return ProgramType;
@@ -290,7 +290,7 @@ TextPosition DebuggerCallFrame::currentPosition()
 
     if (isTailDeleted()) {
         CodeBlock* codeBlock = m_shadowChickenFrame.codeBlock;
-        if (Optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
+        if (std::optional<unsigned> bytecodeOffset = codeBlock->bytecodeOffsetFromCallSiteIndex(m_shadowChickenFrame.callSiteIndex)) {
             return TextPosition(OrdinalNumber::fromOneBasedInt(codeBlock->lineNumberForBytecodeOffset(*bytecodeOffset)),
                 OrdinalNumber::fromOneBasedInt(codeBlock->columnNumberForBytecodeOffset(*bytecodeOffset)));
         }

@@ -38,9 +38,16 @@
 #import "NotImplemented.h"
 #import "PlatformLayer.h"
 #import "RealtimeMediaSourceCenter.h"
+#import "RealtimeMediaSourcePreview.h"
 #import "RealtimeMediaSourceSettings.h"
+#import "WebActionDisablingCALayerDelegate.h"
 #import <AVFoundation/AVFoundation.h>
 #import <objc/runtime.h>
+
+#if PLATFORM(IOS)
+#include "WebCoreThread.h"
+#include "WebCoreThreadRun.h"
+#endif
 
 #import "CoreMediaSoftLink.h"
 #import "CoreVideoSoftLink.h"
@@ -78,7 +85,7 @@ SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset1280x720, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset960x540, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset640x480, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset352x288, NSString *)
-SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset320x240, NSString*)
+SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPreset320x240, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPresetLow, NSString *)
 
 #define AVCaptureSessionPreset1280x720 getAVCaptureSessionPreset1280x720()
@@ -88,7 +95,111 @@ SOFT_LINK_POINTER(AVFoundation, AVCaptureSessionPresetLow, NSString *)
 #define AVCaptureSessionPreset320x240 getAVCaptureSessionPreset320x240()
 #define AVCaptureSessionPresetLow getAVCaptureSessionPresetLow()
 
+using namespace WebCore;
+
+@interface WebCoreAVVideoCaptureSourceObserver : NSObject<CALayerDelegate> {
+    AVVideoSourcePreview *_parent;
+    BOOL _hasObserver;
+}
+
+- (void)setParent:(AVVideoSourcePreview *)parent;
+- (void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context;
+@end
+
 namespace WebCore {
+
+class AVVideoSourcePreview: public AVMediaSourcePreview {
+public:
+    static RefPtr<AVMediaSourcePreview> create(AVCaptureSession*, AVCaptureDeviceTypedef*, AVVideoCaptureSource*);
+
+    void backgroundLayerBoundsChanged();
+    PlatformLayer* platformLayer() const final { return m_previewBackgroundLayer.get(); }
+
+private:
+    AVVideoSourcePreview(AVCaptureSession*, AVCaptureDeviceTypedef*, AVVideoCaptureSource*);
+
+    void invalidate() final;
+
+    void play() const final;
+    void pause() const final;
+    void setVolume(double) const final { };
+    void setEnabled(bool) final;
+    void setPaused(bool) const;
+
+    RetainPtr<AVCaptureVideoPreviewLayerType> m_previewLayer;
+    RetainPtr<PlatformLayer> m_previewBackgroundLayer;
+    RetainPtr<AVCaptureDeviceTypedef> m_device;
+    RetainPtr<WebCoreAVVideoCaptureSourceObserver> m_objcObserver;
+};
+
+RefPtr<AVMediaSourcePreview> AVVideoSourcePreview::create(AVCaptureSession *session, AVCaptureDeviceTypedef* device, AVVideoCaptureSource* parent)
+{
+    return adoptRef(new AVVideoSourcePreview(session, device, parent));
+}
+
+AVVideoSourcePreview::AVVideoSourcePreview(AVCaptureSession *session, AVCaptureDeviceTypedef* device, AVVideoCaptureSource* parent)
+    : AVMediaSourcePreview(parent)
+    , m_objcObserver(adoptNS([[WebCoreAVVideoCaptureSourceObserver alloc] init]))
+{
+    m_device = device;
+    m_previewLayer = adoptNS([allocAVCaptureVideoPreviewLayerInstance() initWithSession:session]);
+    m_previewLayer.get().contentsGravity = kCAGravityResize;
+    m_previewLayer.get().anchorPoint = CGPointZero;
+    [m_previewLayer.get() setDelegate:[WebActionDisablingCALayerDelegate shared]];
+
+    m_previewBackgroundLayer = adoptNS([[CALayer alloc] init]);
+    m_previewBackgroundLayer.get().contentsGravity = kCAGravityResizeAspect;
+    m_previewBackgroundLayer.get().anchorPoint = CGPointZero;
+    m_previewBackgroundLayer.get().needsDisplayOnBoundsChange = YES;
+    [m_previewBackgroundLayer.get() setDelegate:[WebActionDisablingCALayerDelegate shared]];
+
+#ifndef NDEBUG
+    m_previewLayer.get().name = @"AVVideoCaptureSource preview layer";
+    m_previewBackgroundLayer.get().name = @"AVVideoSourcePreview parent layer";
+#endif
+
+    [m_previewBackgroundLayer addSublayer:m_previewLayer.get()];
+
+    [m_objcObserver.get() setParent:this];
+}
+
+void AVVideoSourcePreview::backgroundLayerBoundsChanged()
+{
+    if (m_previewBackgroundLayer && m_previewLayer)
+        [m_previewLayer.get() setBounds:m_previewBackgroundLayer.get().bounds];
+}
+
+void AVVideoSourcePreview::invalidate()
+{
+    [m_objcObserver.get() setParent:nil];
+    m_objcObserver = nullptr;
+    m_previewLayer = nullptr;
+    m_previewBackgroundLayer = nullptr;
+    m_device = nullptr;
+    AVMediaSourcePreview::invalidate();
+}
+
+void AVVideoSourcePreview::play() const
+{
+    setPaused(false);
+}
+
+void AVVideoSourcePreview::pause() const
+{
+    setPaused(true);
+}
+
+void AVVideoSourcePreview::setPaused(bool paused) const
+{
+    [m_device lockForConfiguration:nil];
+    m_previewLayer.get().connection.enabled = !paused;
+    [m_device unlockForConfiguration];
+}
+
+void AVVideoSourcePreview::setEnabled(bool enabled)
+{
+    m_previewLayer.get().hidden = !enabled;
+}
 
 const OSType videoCaptureFormat = kCVPixelFormatType_32BGRA;
 
@@ -215,11 +326,35 @@ bool AVVideoCaptureSource::applySize(const IntSize& size)
 {
     NSString *preset = bestSessionPresetForVideoDimensions(size.width(), size.height());
     if (!preset || ![session() canSetSessionPreset:preset]) {
-        LOG(Media, "AVVideoCaptureSource::applySize%p), unable find or set preset for width: %i, height: %i", this, size.width(), size.height());
+        LOG(Media, "AVVideoCaptureSource::applySize(%p), unable find or set preset for width: %i, height: %i", this, size.width(), size.height());
         return false;
     }
 
     return setPreset(preset);
+}
+
+static IntSize sizeForPreset(NSString* preset)
+{
+    if (!preset)
+        return { };
+
+    if ([preset isEqualToString:AVCaptureSessionPreset1280x720])
+        return { 1280, 720 };
+
+    if ([preset isEqualToString:AVCaptureSessionPreset960x540])
+        return { 960, 540 };
+
+    if ([preset isEqualToString:AVCaptureSessionPreset640x480])
+        return { 640, 480 };
+
+    if ([preset isEqualToString:AVCaptureSessionPreset352x288])
+        return { 352, 288 };
+
+    if ([preset isEqualToString:AVCaptureSessionPreset320x240])
+        return { 320, 240 };
+    
+    return { };
+    
 }
 
 bool AVVideoCaptureSource::setPreset(NSString *preset)
@@ -228,12 +363,17 @@ bool AVVideoCaptureSource::setPreset(NSString *preset)
         m_pendingPreset = preset;
         return true;
     }
-    m_pendingPreset = nullptr;
-    if (!preset)
+
+    auto size = sizeForPreset(preset);
+    if (size.width() == m_width && size.height() == m_height)
         return true;
 
     @try {
         session().sessionPreset = preset;
+#if PLATFORM(MAC)
+        auto settingsDictionary = @{ (NSString*)kCVPixelBufferPixelFormatTypeKey: @(videoCaptureFormat), (NSString*)kCVPixelBufferWidthKey: @(size.width()), (NSString*)kCVPixelBufferHeightKey: @(size.height()), };
+        [m_videoOutput setVideoSettings:settingsDictionary];
+#endif
     } @catch(NSException *exception) {
         LOG(Media, "AVVideoCaptureSource::applySize(%p), exception thrown configuring device: <%s> %s", this, [[exception name] UTF8String], [[exception reason] UTF8String]);
         return false;
@@ -277,7 +417,7 @@ bool AVVideoCaptureSource::applyFrameRate(double rate)
     return true;
 }
 
-void AVVideoCaptureSource::applySizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double> frameRate)
+void AVVideoCaptureSource::applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double> frameRate)
 {
     setPreset(bestSessionPresetForVideoDimensions(WTFMove(width), WTFMove(height)));
 
@@ -287,9 +427,6 @@ void AVVideoCaptureSource::applySizeAndFrameRate(Optional<int> width, Optional<i
 
 void AVVideoCaptureSource::setupCaptureSession()
 {
-    if (m_pendingPreset)
-        setPreset(m_pendingPreset.get());
-
     NSError *error = nil;
     RetainPtr<AVCaptureDeviceInputType> videoIn = adoptNS([allocAVCaptureDeviceInputInstance() initWithDevice:device() error:&error]);
     if (error) {
@@ -303,22 +440,34 @@ void AVVideoCaptureSource::setupCaptureSession()
     }
     [session() addInput:videoIn.get()];
 
-    RetainPtr<AVCaptureVideoDataOutputType> videoOutput = adoptNS([allocAVCaptureVideoDataOutputInstance() init]);
-    RetainPtr<NSDictionary> settingsDictionary = adoptNS([[NSDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:videoCaptureFormat], kCVPixelBufferPixelFormatTypeKey, nil]);
-    [videoOutput setVideoSettings:settingsDictionary.get()];
-    [videoOutput setAlwaysDiscardsLateVideoFrames:YES];
-    setVideoSampleBufferDelegate(videoOutput.get());
+    m_videoOutput = adoptNS([allocAVCaptureVideoDataOutputInstance() init]);
+    auto settingsDictionary = adoptNS([[NSMutableDictionary alloc] initWithObjectsAndKeys: [NSNumber numberWithInt:videoCaptureFormat], kCVPixelBufferPixelFormatTypeKey, nil]);
+    if (m_pendingPreset) {
+#if PLATFORM(MAC)
+        auto size = sizeForPreset(m_pendingPreset.get());
+        [settingsDictionary.get() setObject:[NSNumber numberWithInt:size.width()] forKey:(NSString*)kCVPixelBufferWidthKey];
+        [settingsDictionary.get() setObject:[NSNumber numberWithInt:size.height()] forKey:(NSString*)kCVPixelBufferHeightKey];
+#endif
+    }
 
-    if (![session() canAddOutput:videoOutput.get()]) {
+    [m_videoOutput setVideoSettings:settingsDictionary.get()];
+    [m_videoOutput setAlwaysDiscardsLateVideoFrames:YES];
+    setVideoSampleBufferDelegate(m_videoOutput.get());
+
+    if (![session() canAddOutput:m_videoOutput.get()]) {
         LOG(Media, "AVVideoCaptureSource::setupCaptureSession(%p), unable to add video sample buffer output delegate", this);
         return;
     }
-    [session() addOutput:videoOutput.get()];
+    [session() addOutput:m_videoOutput.get()];
+
+#if PLATFORM(IOS)
+    setPreset(m_pendingPreset.get());
+#endif
+
 }
 
 void AVVideoCaptureSource::shutdownCaptureSession()
 {
-    m_videoPreviewLayer = nullptr;
     m_buffer = nullptr;
     m_lastImage = nullptr;
     m_videoFrameTimeStamps.clear();
@@ -365,12 +514,14 @@ void AVVideoCaptureSource::processNewFrame(RetainPtr<CMSampleBufferRef> sampleBu
     ASSERT(newSampleBuffer);
 
     CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(newSampleBuffer, true);
-    for (CFIndex i = 0; i < CFArrayGetCount(attachmentsArray); ++i) {
-        CFMutableDictionaryRef attachments = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachmentsArray, i);
-        CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
+    if (attachmentsArray) {
+        for (CFIndex i = 0; i < CFArrayGetCount(attachmentsArray); ++i) {
+            CFMutableDictionaryRef attachments = (CFMutableDictionaryRef)CFArrayGetValueAtIndex(attachmentsArray, i);
+            CFDictionarySetValue(attachments, kCMSampleAttachmentKey_DisplayImmediately, kCFBooleanTrue);
+        }
     }
 
-    m_buffer = newSampleBuffer;
+    m_buffer = adoptCF(newSampleBuffer);
     m_lastImage = nullptr;
 
     bool settingsChanged = false;
@@ -450,20 +601,12 @@ void AVVideoCaptureSource::paintCurrentFrameInContext(GraphicsContext& context, 
     CGContextDrawImage(context.platformContext(), CGRectMake(0, 0, paintRect.width(), paintRect.height()), m_lastImage.get());
 }
 
-PlatformLayer* AVVideoCaptureSource::platformLayer() const
+RefPtr<AVMediaSourcePreview> AVVideoCaptureSource::createPreview()
 {
-    if (m_videoPreviewLayer)
-        return m_videoPreviewLayer.get();
-
-    m_videoPreviewLayer = adoptNS([allocAVCaptureVideoPreviewLayerInstance() initWithSession:session()]);
-#ifndef NDEBUG
-    m_videoPreviewLayer.get().name = @"AVVideoCaptureSource preview layer";
-#endif
-
-    return m_videoPreviewLayer.get();
+    return AVVideoSourcePreview::create(session(), device(), this);
 }
 
-NSString *AVVideoCaptureSource::bestSessionPresetForVideoDimensions(Optional<int> width, Optional<int> height) const
+NSString* AVVideoCaptureSource::bestSessionPresetForVideoDimensions(std::optional<int> width, std::optional<int> height) const
 {
     if (!width && !height)
         return nil;
@@ -487,7 +630,7 @@ NSString *AVVideoCaptureSource::bestSessionPresetForVideoDimensions(Optional<int
     return nil;
 }
 
-bool AVVideoCaptureSource::supportsSizeAndFrameRate(Optional<int> width, Optional<int> height, Optional<double> frameRate)
+bool AVVideoCaptureSource::supportsSizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double> frameRate)
 {
     if (!height && !width && !frameRate)
         return true;
@@ -508,5 +651,47 @@ bool AVVideoCaptureSource::supportsSizeAndFrameRate(Optional<int> width, Optiona
 }
 
 } // namespace WebCore
+
+@implementation WebCoreAVVideoCaptureSourceObserver
+
+static NSString * const KeyValueBoundsChangeKey = @"bounds";
+
+- (void)setParent:(AVVideoSourcePreview *)parent
+{
+    if (_parent && _hasObserver && _parent->platformLayer()) {
+        _hasObserver = false;
+        [_parent->platformLayer() removeObserver:self forKeyPath:KeyValueBoundsChangeKey];
+    }
+
+    _parent = parent;
+
+    if (_parent && _parent->platformLayer()) {
+        _hasObserver = true;
+        [_parent->platformLayer() addObserver:self forKeyPath:KeyValueBoundsChangeKey options:0 context:nullptr];
+    }
+}
+
+- (void)observeValueForKeyPath:keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
+{
+    UNUSED_PARAM(context);
+
+    if (!_parent)
+        return;
+
+    if ([[change valueForKey:NSKeyValueChangeNotificationIsPriorKey] boolValue])
+        return;
+
+#if PLATFORM(IOS)
+    WebThreadRun(^ {
+        if ([keyPath isEqual:KeyValueBoundsChangeKey] && object == _parent->platformLayer())
+            _parent->backgroundLayerBoundsChanged();
+    });
+#else
+    if ([keyPath isEqual:KeyValueBoundsChangeKey] && object == _parent->platformLayer())
+        _parent->backgroundLayerBoundsChanged();
+#endif
+}
+
+@end
 
 #endif // ENABLE(MEDIA_STREAM)

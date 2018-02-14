@@ -129,6 +129,11 @@ enum {
 typedef uint32_t WKMediaMutedState;
 WK_EXPORT void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted);
 
+WK_EXPORT void WKPageClearUserMediaState(WKPageRef page);
+
+WK_EXPORT void WKPageDidAllowPointerLock(WKPageRef page);
+WK_EXPORT void WKPageDidDenyPointerLock(WKPageRef page);
+
 enum {
     kWKMediaIsNotPlaying = 0,
     kWKMediaIsPlayingAudio = 1 << 0,

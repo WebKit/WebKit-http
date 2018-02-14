@@ -74,8 +74,10 @@ IDBTransaction::IDBTransaction(IDBDatabase& database, const IDBTransactionInfo& 
     : IDBActiveDOMObject(database.scriptExecutionContext())
     , m_database(database)
     , m_info(info)
-    , m_operationTimer(*this, &IDBTransaction::operationTimerFired)
+    , m_pendingOperationTimer(*this, &IDBTransaction::pendingOperationTimerFired)
+    , m_completedOperationTimer(*this, &IDBTransaction::completedOperationTimerFired)
     , m_openDBRequest(request)
+    , m_currentlyCompletingRequest(request)
 
 {
     LOG(IndexedDB, "IDBTransaction::IDBTransaction - %s", m_info.loggingString().utf8().data());
@@ -244,28 +246,66 @@ void IDBTransaction::internalAbort()
 
     transitionedToFinishing(IndexedDB::TransactionState::Aborting);
     
-    m_abortQueue.swap(m_transactionOperationQueue);
+    m_abortQueue.swap(m_pendingTransactionOperationQueue);
 
     scheduleOperation(IDBClient::createTransactionOperation(*this, nullptr, &IDBTransaction::abortOnServerAndCancelRequests));
+}
+
+void IDBTransaction::abortInProgressOperations(const IDBError& error)
+{
+    LOG(IndexedDB, "IDBTransaction::abortInProgressOperations");
+
+    Vector<RefPtr<IDBClient::TransactionOperation>> inProgressAbortVector;
+    inProgressAbortVector.reserveInitialCapacity(m_transactionOperationsInProgressQueue.size());
+    while (!m_transactionOperationsInProgressQueue.isEmpty())
+        inProgressAbortVector.uncheckedAppend(m_transactionOperationsInProgressQueue.takeFirst());
+
+    for (auto& operation : inProgressAbortVector) {
+        m_transactionOperationsInProgressQueue.append(operation.get());
+        m_currentlyCompletingRequest = nullptr;
+        operation->doComplete(IDBResultData::error(operation->identifier(), error));
+    }
+
+    Vector<RefPtr<IDBClient::TransactionOperation>> completedOnServerAbortVector;
+    completedOnServerAbortVector.reserveInitialCapacity(m_completedOnServerQueue.size());
+    while (!m_completedOnServerQueue.isEmpty())
+        completedOnServerAbortVector.uncheckedAppend(m_completedOnServerQueue.takeFirst().first);
+
+    for (auto& operation : completedOnServerAbortVector) {
+        m_currentlyCompletingRequest = nullptr;
+        operation->doComplete(IDBResultData::error(operation->identifier(), error));
+    }
+
+    connectionProxy().forgetActiveOperations(inProgressAbortVector);
 }
 
 void IDBTransaction::abortOnServerAndCancelRequests(IDBClient::TransactionOperation& operation)
 {
     LOG(IndexedDB, "IDBTransaction::abortOnServerAndCancelRequests");
     ASSERT(currentThread() == m_database->originThreadID());
-    ASSERT(m_transactionOperationQueue.isEmpty());
+    ASSERT(m_pendingTransactionOperationQueue.isEmpty());
 
     m_database->connectionProxy().abortTransaction(*this);
 
     ASSERT(m_transactionOperationMap.contains(operation.identifier()));
+    ASSERT(m_transactionOperationsInProgressQueue.last() == &operation);
     m_transactionOperationMap.remove(operation.identifier());
+    m_transactionOperationsInProgressQueue.removeLast();
 
+    m_currentlyCompletingRequest = nullptr;
+    
     IDBError error(IDBDatabaseException::AbortError);
-    for (auto& operation : m_abortQueue)
-        operation->completed(IDBResultData::error(operation->identifier(), error));
+
+    abortInProgressOperations(error);
+
+    for (auto& operation : m_abortQueue) {
+        m_currentlyCompletingRequest = nullptr;
+        m_transactionOperationsInProgressQueue.append(operation.get());
+        operation->doComplete(IDBResultData::error(operation->identifier(), error));
+    }
 
     // Since we're aborting, it should be impossible to have queued any further operations.
-    ASSERT(m_transactionOperationQueue.isEmpty());
+    ASSERT(m_pendingTransactionOperationQueue.isEmpty());
 }
 
 const char* IDBTransaction::activeDOMObjectName() const
@@ -339,33 +379,46 @@ void IDBTransaction::scheduleOperation(RefPtr<IDBClient::TransactionOperation>&&
     ASSERT(!m_transactionOperationMap.contains(operation->identifier()));
     ASSERT(currentThread() == m_database->originThreadID());
 
-    m_transactionOperationQueue.append(operation);
+    m_pendingTransactionOperationQueue.append(operation);
     m_transactionOperationMap.set(operation->identifier(), WTFMove(operation));
 
-    scheduleOperationTimer();
+    schedulePendingOperationTimer();
 }
 
-void IDBTransaction::scheduleOperationTimer()
+void IDBTransaction::schedulePendingOperationTimer()
 {
     ASSERT(currentThread() == m_database->originThreadID());
 
-    if (!m_operationTimer.isActive())
-        m_operationTimer.startOneShot(0);
+    if (!m_pendingOperationTimer.isActive())
+        m_pendingOperationTimer.startOneShot(0);
 }
 
-void IDBTransaction::operationTimerFired()
+void IDBTransaction::pendingOperationTimerFired()
 {
-    LOG(IndexedDB, "IDBTransaction::operationTimerFired (%p)", this);
+    LOG(IndexedDB, "IDBTransaction::pendingOperationTimerFired (%p)", this);
     ASSERT(currentThread() == m_database->originThreadID());
 
     if (!m_startedOnServer)
         return;
 
-    if (!m_transactionOperationQueue.isEmpty()) {
-        auto operation = m_transactionOperationQueue.takeFirst();
+    // If the last in-progress operation we've sent to the server is not an IDBRequest operation,
+    // then we have to wait until it completes before sending any more.
+    if (!m_transactionOperationsInProgressQueue.isEmpty() && !m_transactionOperationsInProgressQueue.last()->nextRequestCanGoToServer())
+        return;
+
+    // We want to batch operations together without spinning the runloop for performance,
+    // but don't want to affect responsiveness of the main thread.
+    // This number is a good compromise in ad-hoc testing.
+    static const size_t operationBatchLimit = 128;
+
+    for (size_t iterations = 0; !m_pendingTransactionOperationQueue.isEmpty() && iterations < operationBatchLimit; ++iterations) {
+        auto operation = m_pendingTransactionOperationQueue.takeFirst();
+        m_transactionOperationsInProgressQueue.append(operation.get());
         operation->perform();
 
-        return;
+        if (!operation->nextRequestCanGoToServer())
+            break;
+
     }
 
     if (!m_transactionOperationMap.isEmpty() || !m_openRequests.isEmpty())
@@ -373,6 +426,67 @@ void IDBTransaction::operationTimerFired()
 
     if (!isFinishedOrFinishing())
         commit();
+}
+
+void IDBTransaction::operationCompletedOnServer(const IDBResultData& data, IDBClient::TransactionOperation& operation)
+{
+    ASSERT(currentThread() == m_database->originThreadID());
+    ASSERT(currentThread() == operation.originThreadID());
+
+    m_completedOnServerQueue.append({ &operation, data });
+    scheduleCompletedOperationTimer();
+}
+
+void IDBTransaction::scheduleCompletedOperationTimer()
+{
+    ASSERT(currentThread() == m_database->originThreadID());
+
+    if (!m_completedOperationTimer.isActive())
+        m_completedOperationTimer.startOneShot(0);
+}
+
+void IDBTransaction::completedOperationTimerFired()
+{
+    LOG(IndexedDB, "IDBTransaction::completedOperationTimerFired (%p)", this);
+    ASSERT(currentThread() == m_database->originThreadID());
+
+    if (m_completedOnServerQueue.isEmpty() || m_currentlyCompletingRequest)
+        return;
+
+    auto iterator = m_completedOnServerQueue.takeFirst();
+    iterator.first->doComplete(iterator.second);
+
+    if (!m_completedOnServerQueue.isEmpty() && !m_currentlyCompletingRequest)
+        scheduleCompletedOperationTimer();
+}
+
+void IDBTransaction::completeNoncursorRequest(IDBRequest& request, const IDBResultData& result)
+{
+    ASSERT(!m_currentlyCompletingRequest);
+
+    request.completeRequestAndDispatchEvent(result);
+
+    m_currentlyCompletingRequest = &request;
+}
+
+void IDBTransaction::completeCursorRequest(IDBRequest& request, const IDBResultData& result)
+{
+    ASSERT(!m_currentlyCompletingRequest);
+
+    request.didOpenOrIterateCursor(result);
+
+    m_currentlyCompletingRequest = &request;
+}
+
+void IDBTransaction::finishedDispatchEventForRequest(IDBRequest& request)
+{
+    if (isFinishedOrFinishing())
+        return;
+
+    ASSERT_UNUSED(request, !m_currentlyCompletingRequest || m_currentlyCompletingRequest == &request);
+
+    m_currentlyCompletingRequest = nullptr;
+    scheduleCompletedOperationTimer();
 }
 
 void IDBTransaction::commit()
@@ -393,6 +507,10 @@ void IDBTransaction::commitOnServer(IDBClient::TransactionOperation& operation)
     ASSERT(currentThread() == m_database->originThreadID());
 
     m_database->connectionProxy().commitTransaction(*this);
+
+    ASSERT(!m_transactionOperationsInProgressQueue.isEmpty());
+    ASSERT(m_transactionOperationsInProgressQueue.last() == &operation);
+    m_transactionOperationsInProgressQueue.removeLast();
 
     ASSERT(m_transactionOperationMap.contains(operation.identifier()));
     m_transactionOperationMap.remove(operation.identifier());
@@ -422,7 +540,7 @@ void IDBTransaction::didStart(const IDBError& error)
         return;
     }
 
-    scheduleOperationTimer();
+    schedulePendingOperationTimer();
 }
 
 void IDBTransaction::notifyDidAbort(const IDBError& error)
@@ -724,7 +842,7 @@ void IDBTransaction::didOpenCursorOnServer(IDBRequest& request, const IDBResultD
     LOG(IndexedDB, "IDBTransaction::didOpenCursorOnServer");
     ASSERT(currentThread() == m_database->originThreadID());
 
-    request.didOpenOrIterateCursor(resultData);
+    completeCursorRequest(request, resultData);
 }
 
 void IDBTransaction::iterateCursor(IDBCursor& cursor, const IDBIterateCursorData& data)
@@ -753,10 +871,10 @@ void IDBTransaction::didIterateCursorOnServer(IDBRequest& request, const IDBResu
     LOG(IndexedDB, "IDBTransaction::didIterateCursorOnServer");
     ASSERT(currentThread() == m_database->originThreadID());
 
-    request.didOpenOrIterateCursor(resultData);
+    completeCursorRequest(request, resultData);
 }
 
-Ref<IDBRequest> IDBTransaction::requestGetAllObjectStoreRecords(JSC::ExecState& state, IDBObjectStore& objectStore, const IDBKeyRangeData& keyRangeData, IndexedDB::GetAllType getAllType, Optional<uint32_t> count)
+Ref<IDBRequest> IDBTransaction::requestGetAllObjectStoreRecords(JSC::ExecState& state, IDBObjectStore& objectStore, const IDBKeyRangeData& keyRangeData, IndexedDB::GetAllType getAllType, std::optional<uint32_t> count)
 {
     LOG(IndexedDB, "IDBTransaction::requestGetAllObjectStoreRecords");
     ASSERT(isActive());
@@ -774,7 +892,7 @@ Ref<IDBRequest> IDBTransaction::requestGetAllObjectStoreRecords(JSC::ExecState& 
     return request;
 }
 
-Ref<IDBRequest> IDBTransaction::requestGetAllIndexRecords(JSC::ExecState& state, IDBIndex& index, const IDBKeyRangeData& keyRangeData, IndexedDB::GetAllType getAllType, Optional<uint32_t> count)
+Ref<IDBRequest> IDBTransaction::requestGetAllIndexRecords(JSC::ExecState& state, IDBIndex& index, const IDBKeyRangeData& keyRangeData, IndexedDB::GetAllType getAllType, std::optional<uint32_t> count)
 {
     LOG(IndexedDB, "IDBTransaction::requestGetAllIndexRecords");
     ASSERT(isActive());
@@ -806,7 +924,7 @@ void IDBTransaction::didGetAllRecordsOnServer(IDBRequest& request, const IDBResu
     ASSERT(currentThread() == m_database->originThreadID());
 
     if (resultData.type() == IDBResultType::Error) {
-        request.requestCompleted(resultData);
+        completeNoncursorRequest(request, resultData);
         return;
     }
 
@@ -822,7 +940,7 @@ void IDBTransaction::didGetAllRecordsOnServer(IDBRequest& request, const IDBResu
         break;
     }
 
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestGetRecord(ExecState& state, IDBObjectStore& objectStore, const IDBGetRecordData& getRecordData)
@@ -834,7 +952,9 @@ Ref<IDBRequest> IDBTransaction::requestGetRecord(ExecState& state, IDBObjectStor
 
     ASSERT_UNUSED(state, scriptExecutionContext() == scriptExecutionContextFromExecState(&state));
 
-    auto request = IDBRequest::create(*scriptExecutionContext(), objectStore, *this);
+    IndexedDB::ObjectStoreRecordType type = getRecordData.type == IDBGetRecordDataType::KeyAndValue ? IndexedDB::ObjectStoreRecordType::ValueOnly : IndexedDB::ObjectStoreRecordType::KeyOnly;
+
+    auto request = IDBRequest::createObjectStoreGet(*scriptExecutionContext(), objectStore, type, *this);
     addRequest(request.get());
 
     scheduleOperation(IDBClient::createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, getRecordData));
@@ -870,7 +990,7 @@ Ref<IDBRequest> IDBTransaction::requestIndexRecord(ExecState& state, IDBIndex& i
     auto request = IDBRequest::createIndexGet(*scriptExecutionContext(), index, type, *this);
     addRequest(request.get());
 
-    IDBGetRecordData getRecordData = { range };
+    IDBGetRecordData getRecordData = { range, IDBGetRecordDataType::KeyAndValue };
     scheduleOperation(IDBClient::createTransactionOperation(*this, request.get(), &IDBTransaction::didGetRecordOnServer, &IDBTransaction::getRecordOnServer, getRecordData));
 
     return request;
@@ -890,15 +1010,19 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
     ASSERT(currentThread() == m_database->originThreadID());
 
     if (resultData.type() == IDBResultType::Error) {
-        request.requestCompleted(resultData);
+        completeNoncursorRequest(request, resultData);
         return;
     }
 
     ASSERT(resultData.type() == IDBResultType::GetRecordSuccess);
 
+    bool useResultKey = request.sourceIndexIdentifier() && request.requestedIndexRecordType() == IndexedDB::IndexRecordType::Key;
+    if (!useResultKey)
+        useResultKey = request.requestedObjectStoreRecordType() == IndexedDB::ObjectStoreRecordType::KeyOnly;
+
     const IDBGetResult& result = resultData.getResult();
 
-    if (request.sourceIndexIdentifier() && request.requestedIndexRecordType() == IndexedDB::IndexRecordType::Key) {
+    if (useResultKey) {
         if (!result.keyData().isNull())
             request.setResult(result.keyData());
         else
@@ -910,7 +1034,7 @@ void IDBTransaction::didGetRecordOnServer(IDBRequest& request, const IDBResultDa
             request.setResultToUndefined();
     }
 
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestCount(ExecState& state, IDBObjectStore& objectStore, const IDBKeyRangeData& range)
@@ -961,7 +1085,7 @@ void IDBTransaction::didGetCountOnServer(IDBRequest& request, const IDBResultDat
     ASSERT(currentThread() == m_database->originThreadID());
 
     request.setResult(resultData.resultInteger());
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestDeleteRecord(ExecState& state, IDBObjectStore& objectStore, const IDBKeyRangeData& range)
@@ -994,7 +1118,7 @@ void IDBTransaction::didDeleteRecordOnServer(IDBRequest& request, const IDBResul
     ASSERT(currentThread() == m_database->originThreadID());
 
     request.setResultToUndefined();
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestClearObjectStore(ExecState& state, IDBObjectStore& objectStore)
@@ -1028,7 +1152,7 @@ void IDBTransaction::didClearObjectStoreOnServer(IDBRequest& request, const IDBR
     ASSERT(currentThread() == m_database->originThreadID());
 
     request.setResultToUndefined();
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 Ref<IDBRequest> IDBTransaction::requestPutOrAdd(ExecState& state, IDBObjectStore& objectStore, IDBKey* key, SerializedScriptValue& value, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
@@ -1074,11 +1198,15 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
             RefPtr<IDBClient::TransactionOperation> protectedOperation(&operation);
             auto result = IDBResultData::error(operation.identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
             scriptExecutionContext()->postTask([protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)](ScriptExecutionContext&) {
-                protectedOperation->completed(result);
+                protectedOperation->doComplete(result);
             });
         }
         return;
     }
+
+    // Since this request won't actually go to the server until the blob writes are complete,
+    // stop future requests from going to the server ahead of it.
+    operation.setNextRequestCanGoToServer(false);
 
     value->writeBlobsToDiskForIndexedDB([protectedThis = makeRef(*this), this, protectedOperation = Ref<IDBClient::TransactionOperation>(operation), keyData = IDBKeyData(key.get()).isolatedCopy(), overwriteMode](const IDBValue& idbValue) mutable {
         ASSERT(currentThread() == originThreadID());
@@ -1092,7 +1220,7 @@ void IDBTransaction::putOrAddOnServer(IDBClient::TransactionOperation& operation
         // In that case, we cannot successfully store this record, so we callback with an error.
         auto result = IDBResultData::error(protectedOperation->identifier(), { IDBDatabaseException::UnknownError, ASCIILiteral("Error preparing Blob/File data to be stored in object store") });
         callOnMainThread([protectedThis = WTFMove(protectedThis), protectedOperation = WTFMove(protectedOperation), result = WTFMove(result)]() mutable {
-            protectedOperation->completed(result);
+            protectedOperation->doComplete(result);
         });
     });
 }
@@ -1106,7 +1234,7 @@ void IDBTransaction::didPutOrAddOnServer(IDBRequest& request, const IDBResultDat
         request.setResult(*result);
     else
         request.setResultToUndefined();
-    request.requestCompleted(resultData);
+    completeNoncursorRequest(request, resultData);
 }
 
 void IDBTransaction::deleteObjectStore(const String& objectStoreName)
@@ -1167,15 +1295,19 @@ void IDBTransaction::didDeleteIndexOnServer(const IDBResultData& resultData)
     ASSERT_UNUSED(resultData, resultData.type() == IDBResultType::DeleteIndexSuccess || resultData.type() == IDBResultType::Error);
 }
 
-void IDBTransaction::operationDidComplete(IDBClient::TransactionOperation& operation)
+void IDBTransaction::operationCompletedOnClient(IDBClient::TransactionOperation& operation)
 {
-    ASSERT(m_transactionOperationMap.get(operation.identifier()) == &operation);
+    LOG(IndexedDB, "IDBTransaction::operationCompletedOnClient");
+
     ASSERT(currentThread() == m_database->originThreadID());
     ASSERT(currentThread() == operation.originThreadID());
+    ASSERT(m_transactionOperationMap.get(operation.identifier()) == &operation);
+    ASSERT(m_transactionOperationsInProgressQueue.first() == &operation);
 
     m_transactionOperationMap.remove(operation.identifier());
+    m_transactionOperationsInProgressQueue.removeFirst();
 
-    scheduleOperationTimer();
+    schedulePendingOperationTimer();
 }
 
 void IDBTransaction::establishOnServer()
@@ -1203,7 +1335,7 @@ void IDBTransaction::deactivate()
     if (m_state == IndexedDB::TransactionState::Active)
         m_state = IndexedDB::TransactionState::Inactive;
 
-    scheduleOperationTimer();
+    schedulePendingOperationTimer();
 }
 
 void IDBTransaction::connectionClosedFromServer(const IDBError& error)
@@ -1212,15 +1344,21 @@ void IDBTransaction::connectionClosedFromServer(const IDBError& error)
 
     m_state = IndexedDB::TransactionState::Aborting;
 
+    abortInProgressOperations(error);
+
     Vector<RefPtr<IDBClient::TransactionOperation>> operations;
     copyValuesToVector(m_transactionOperationMap, operations);
 
-    for (auto& operation : operations)
-        operation->completed(IDBResultData::error(operation->identifier(), error));
+    for (auto& operation : operations) {
+        m_currentlyCompletingRequest = nullptr;
+        m_transactionOperationsInProgressQueue.append(operation.get());
+        ASSERT(m_transactionOperationsInProgressQueue.first() == operation.get());
+        operation->doComplete(IDBResultData::error(operation->identifier(), error));
+    }
 
     connectionProxy().forgetActiveOperations(operations);
 
-    m_transactionOperationQueue.clear();
+    m_pendingTransactionOperationQueue.clear();
     m_abortQueue.clear();
     m_transactionOperationMap.clear();
 

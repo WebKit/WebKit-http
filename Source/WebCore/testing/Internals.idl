@@ -70,6 +70,11 @@ enum UserInterfaceLayoutDirection {
     "RTL"
 };
 
+enum EventThrottlingBehavior {
+    "responsive",
+    "unresponsive"
+};
+
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
@@ -222,6 +227,7 @@ enum UserInterfaceLayoutDirection {
 
     unsigned long imageFrameIndex(HTMLImageElement element);
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
+    void resetImageAnimation(HTMLImageElement element);
 
     readonly attribute InternalSettings settings;
     readonly attribute unsigned long workerThreadCount;
@@ -326,6 +332,9 @@ enum UserInterfaceLayoutDirection {
 
     boolean isRequestAnimationFrameThrottled();
     boolean areTimersThrottled();
+
+    // Override the behavior of WebPage::eventThrottlingDelay(), which only affects iOS.
+    attribute EventThrottlingBehavior? eventThrottlingBehaviorOverride;
 
     [MayThrowException] void startTrackingStyleRecalcs();
     [MayThrowException] unsigned long styleRecalcCount();

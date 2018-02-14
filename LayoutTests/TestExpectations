@@ -56,8 +56,7 @@ http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
-fast/harness/ui-side-scripts.html [ Skip ]
-fast/harness/concurrent-ui-side-scripts.html [ Skip ]
+fast/harness/uiscriptcontroller [ Skip ]
 
 # This test only makes sense on Mac
 fast/attachment/attachment-subtitle-resize.html
@@ -70,6 +69,12 @@ editing/selection/character-granularity-rect.html [ Skip ]
 
 # This test is for ios-simulator-wk1
 editing/input/focus-change-with-marked-text.html [ Skip ]
+
+# These only run on Mac and iOS WK2
+fast/media/mq-inverted-colors-live-update.html [ Skip ]
+fast/media/mq-inverted-colors-live-update-in-subframes.html [ Skip ]
+fast/media/mq-monochrome-live-update.html [ Skip ]
+fast/media/mq-prefers-reduced-motion-live-update.html [ Skip ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific tests.
@@ -920,12 +925,7 @@ webkit.org/b/159678 http/tests/preload/single_download_preload_runner.html [ Tim
 # This test is just way too slow.
 workers/bomb-with-v8.html [ Skip ]
 
-# WebCryptoAPI tests, skip for unimplemented features. webkit.org/b/159638
-imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.html [ Skip ]
-imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_ctr.html [ Skip ]
-imported/w3c/WebCryptoAPI/encrypt_decrypt/test_aes_gcm.html [ Skip ]
-imported/w3c/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.html [ Skip ]
-# Take too long to complete, need to scale down.
+# WebCryptoAPI tests that take too long to complete, need to scale down. webkit.org/b/159638
 imported/w3c/WebCryptoAPI/generateKey/test_failures.html [ Slow ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html [ Skip ]
 imported/w3c/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Slow ]
@@ -978,61 +978,84 @@ webkit.org/b/163887 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass
 # Temporary failure until we start using ANGLE as a WebGL backend
 webkit.org/b/163924 fast/canvas/webgl/bufferData-offset-length.html [ Pass Failure ]
 
-webkit.org/b/164158 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Timeout ]
+webkit.org/b/165327 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Failure ]
 webkit.org/b/164226 media/modern-media-controls/volume-support/volume-support-drag.html [ Pass Failure ]
 webkit.org/b/164229 media/modern-media-controls/volume-support/volume-support-click.html [ Pass Timeout ]
 
 webkit.org/b/164080 http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html [ Pass Failure ]
 webkit.org/b/164080 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Pass Failure ]
 
-# ES6 Modules are not yet enabled by default: ENABLE(ES6_MODULES)
-http/tests/misc/module-absolute-url.html [ Skip ]
-http/tests/misc/module-script-async.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-allowed.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-and-scripthash.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-basic-blocked.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-blocked.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-ignore-unsafeinline.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-enforced-policy-and-not-in-report-only.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-in-one-enforced-policy-neither-in-another-enforced-policy-nor-report-policy.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-multiple-policies.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect-same-origin.html [ Skip ]
-http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-redirect.html [ Skip ]
-http/tests/security/contentSecurityPolicy/module-eval-blocked-in-external-script.html [ Skip ]
-http/tests/security/contentSecurityPolicy/module-eval-blocked.html [ Skip ]
-http/tests/security/module-correct-mime-types.html [ Skip ]
-http/tests/security/module-crossorigin-loads-correctly-credentials.html [ Skip ]
-http/tests/security/module-crossorigin-loads-omit.html [ Skip ]
-http/tests/security/module-crossorigin-loads-same-origin.html [ Skip ]
-http/tests/security/module-incorrect-mime-types.html [ Skip ]
-http/tests/security/module-no-mime-type.html [ Skip ]
-js/dom/modules/module-and-dom-content-loaded.html [ Skip ]
-js/dom/modules/module-and-window-load.html [ Skip ]
-js/dom/modules/module-async-and-window-load.html [ Skip ]
-js/dom/modules/module-document-write-src.html [ Skip ]
-js/dom/modules/module-document-write.html [ Skip ]
-js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html [ Skip ]
-js/dom/modules/module-execution-error-should-be-propagated-to-onerror.html [ Skip ]
-js/dom/modules/module-execution-order-inline.html [ Skip ]
-js/dom/modules/module-execution-order-mixed-with-classic-scripts.html [ Skip ]
-js/dom/modules/module-execution-order-mixed.html [ Skip ]
-js/dom/modules/module-incorrect-relative-specifier.html [ Skip ]
-js/dom/modules/module-incorrect-tag.html [ Skip ]
-js/dom/modules/module-inline-current-script.html [ Skip ]
-js/dom/modules/module-inline-dynamic.html [ Skip ]
-js/dom/modules/module-inline-simple.html [ Skip ]
-js/dom/modules/module-load-event-with-src.html [ Skip ]
-js/dom/modules/module-load-event.html [ Skip ]
-js/dom/modules/module-load-same-module-from-different-entry-point-dynamic.html [ Skip ]
-js/dom/modules/module-load-same-module-from-different-entry-point.html [ Skip ]
-js/dom/modules/module-not-found-error-event-with-src-and-import.html [ Skip ]
-js/dom/modules/module-not-found-error-event-with-src.html [ Skip ]
-js/dom/modules/module-not-found-error-event.html [ Skip ]
-js/dom/modules/module-src-current-script.html [ Skip ]
-js/dom/modules/module-src-dynamic.html [ Skip ]
-js/dom/modules/module-src-simple.html [ Skip ]
-js/dom/modules/module-type-case-insensitive.html [ Skip ]
-js/dom/modules/module-will-fire-beforeload.html [ Skip ]
 webkit.org/b/164539 http/tests/security/module-crossorigin-error-event-information.html [ Failure ]
 webkit.org/b/164539 http/tests/security/module-crossorigin-onerror-information.html [ Failure ]
+
+# Clean layout tree after FrameView::layout
+webkit.org/b/164856 [ Debug ] editing/execCommand/indent-block-in-list.html [ Skip ]
+webkit.org/b/162831 [ Debug ] imported/blink/css3/flexbox/relpos-with-scrollable-with-abspos-crash.html  [ Skip ]
+webkit.org/b/162828 [ Debug ] tables/table-section-overflow-clip-crash.html  [ Skip ]
+
+webkit.org/b/164797 js/dom/domjit-function-get-element-by-id-licm.html [ Pass Timeout ]
+webkit.org/b/164797 js/dom/domjit-function-get-element-by-id-changed.html [ Pass Timeout ]
+
+# The following layout tests are allowed to fail temporarily until we get the new CSS parser
+# enabled. Once it is turned on, all of these tests should have their results reset.
+webkit.org/b/165195 css3/parsing-css3-nthchild.html [ Pass Failure ]
+webkit.org/b/165195 css3/scroll-snap/scroll-snap-position-values.html [ Pass Failure ]
+webkit.org/b/165195 css3/scroll-snap/scroll-snap-position-values.html [ Pass Failure ]
+webkit.org/b/165195 editing/execCommand/insert-list-with-noneditable-content.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/object-position/parsing-object-position.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-css-number-types.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-css-wrap.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/transform-origin-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/transform-inline-style-remove.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/variables/custom-property-dynamic-update.html [ Pass Failure ]
+webkit.org/b/165195 fast/events/mouse-cursor.html [ Pass Failure ]
+webkit.org/b/165195 fast/forms/basic-selects.html [ Pass Failure ]
+webkit.org/b/165195 fast/shadow-dom/slotted-pseudo-element-css-text.html [ Pass Failure ]
+webkit.org/b/165195 fast/inspector-support/style.html [ Pass Failure ]
+
+# The following layout tests need to be changed when the new CSS Parser is turned on, since they
+# incorrectly indicate failures on valid syntax.
+webkit.org/b/165195 css3/font-variant-parsing.html [ Pass Failure ]
+webkit.org/b/165195 css3/supports-cssom.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/attr-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-family-parse-keyword.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-property-priority.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font_property_normal.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/image-set-unprefixed.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/invalid-cursor-property-crash.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-css-attribute-case-insensitive-value-1.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-css-attribute-case-insensitive-value-2.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-css-nth-child.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parsing-text-emphasis.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/css-set-selector-text.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/remove-shorthand.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/transform-inline-style.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/uri-token-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/dom/Window/getMatchedCSSRules-with-pseudo-elements-complex.html [ Pass Failure ]
+webkit.org/b/165195 fast/gradients/css3-gradient-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/gradients/unprefixed-gradient-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/media/mq-any-hover-invalid.html [ Pass Failure ]
+webkit.org/b/165195 fast/media/mq-any-pointer-invalid.html [ Pass Failure ]
+webkit.org/b/165195 fast/media/mq-hover-invalid.html [ Pass Failure ]
+webkit.org/b/165195 fast/media/mq-pointer-invalid.html [ Pass Failure ]
+webkit.org/b/165195 fast/regions/region-styling/parsing-region-style-rule.html [ Pass Failure ]
+webkit.org/b/165195 fast/selectors/querySelector-pseudo-element.html [ Pass Failure ]
+webkit.org/b/165195 fast/selectors/querySelector-pseudo-element-inside-functional-pseudo-class-any.html [ Pass Failure ]
+webkit.org/b/165195 fast/shapes/parsing/parsing-shape-image-threshold.html [ Pass Failure ]
+webkit.org/b/165195 fast/shapes/shape-outside-floats/shape-outside-animation.html [ Pass Failure ]
+webkit.org/b/165195 svg/webarchive/svg-cursor-subresources.svg [ Pass Failure ]
+
+# The following tests match Blink/Chrome, but we're not sure yet what to do with them when the
+# new CSS parser is turned on. The tests may be right, and these may be bugs in Blink/Chrome, or
+# the tests may be wrong.
+webkit.org/b/165195 fast/css/parsing-css-allowed-string-characters.html [ Pass Failure ]
+webkit.org/b/165195 fast/selectors/invalid-functional-pseudo-class.html [ Pass Failure ]
+webkit.org/b/165195 fast/selectors/nth-child-bounds.html [ Pass Failure ]
+webkit.org/b/165195 fast/selectors/nth-last-child-bounds.html [ Pass Failure ]
+webkit.org/b/165195 fast/text/text-combine-crash.html [ Pass Failure ]
+
+# The following tests should probably just be removed, since they will never pass. Do this once
+# the new CSS Parser turns on.
+webkit.org/b/165195 svg/dom/SVGColor.html [ Pass Failure ]
+webkit.org/b/165195 svg/dom/SVGPaint.html [ Pass Failure ]
+

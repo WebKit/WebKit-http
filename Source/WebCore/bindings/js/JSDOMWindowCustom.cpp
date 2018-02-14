@@ -134,7 +134,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
         // FIXME comment on prototype search below.)
         throwSecurityError(*exec, scope, errorMessage);
         slot.setUndefined();
-        return true;
+        return false;
     }
 
     // Check for child frames by name before built-in properties to match Mozilla. This does
@@ -148,7 +148,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
 
     throwSecurityError(*exec, scope, errorMessage);
     slot.setUndefined();
-    return true;
+    return false;
 }
 
 // Property access sequence is:
@@ -159,7 +159,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
 {
     // (1) First, indexed properties.
     // Hand off all indexed access to getOwnPropertySlotByIndex, which supports the indexed getter.
-    if (Optional<unsigned> index = parseIndex(propertyName))
+    if (std::optional<unsigned> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, state, index.value(), slot);
 
     auto* thisObject = jsCast<JSDOMWindow*>(object);
