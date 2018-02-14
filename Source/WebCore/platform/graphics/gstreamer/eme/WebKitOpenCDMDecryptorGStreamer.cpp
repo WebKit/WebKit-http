@@ -29,6 +29,7 @@
 
 #include <open_cdm.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/PrintStream.h>
 
 #define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptPrivate))
 
@@ -102,22 +103,26 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
     ASSERT(session);
     ASSERT(protectionEvent);
 
-    if (priv->m_session != session.get()) {
-        if (priv->m_protectionEvent == protectionEvent) {
+    GST_DEBUG_OBJECT(self, "handling session %s for event %u (ours %u)", session.get(), protectionEvent, priv->m_protectionEvent);
+    if (priv->m_protectionEvent == protectionEvent) {
+        if (priv->m_session != session.get()) {
             priv->m_session = session.get();
             priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
             GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
             returnValue = true;
-        }
+        } else
+            GST_DEBUG_OBJECT(self, "session already selected!");
     } else
-        GST_DEBUG_OBJECT(self, "session %s already selected!", priv->m_session.utf8().data());
+        GST_TRACE_OBJECT(self, "session for another decryptor, discarding");
 
+    GST_TRACE_OBJECT(self, "session was handled: %s", boolForPrinting(returnValue));
     return returnValue;
 }
 
 void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt* self, unsigned protectionEvent)
 {
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
+    GST_TRACE_OBJECT(self, "considering only event %u", protectionEvent);
     priv->m_protectionEvent = protectionEvent;
 }
 

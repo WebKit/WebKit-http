@@ -492,6 +492,14 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const String& initData, const boo
     return result;
 }
 
+bool CDMInstanceOpenCDM::isSessionIdUsable(const String& sessionId) const
+{
+    std::string sessionIdAsStdString(sessionId.utf8().data());
+    const auto& element = m_sessionIdMap.find(sessionIdAsStdString);
+
+    return element != m_sessionIdMap.end() && element->second.lastStatus() == media::OpenCdm::KeyStatus::Usable;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)

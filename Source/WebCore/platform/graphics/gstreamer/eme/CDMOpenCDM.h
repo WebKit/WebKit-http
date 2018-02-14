@@ -82,7 +82,8 @@ private:
            return (m_buffer);
         }
         inline media::OpenCdm::KeyStatus Update(const uint8_t* data, const uint16_t length, std::string& response) {
-            return (m_session.Update(data, length, response));
+            m_lastStatus = m_session.Update(data, length, response);
+            return m_lastStatus;
         }
         inline int Load(std::string& response) {
             return (m_session.Load(response));
@@ -92,6 +93,9 @@ private:
         }
         inline int Close() {
             return (m_session.Close());
+        }
+        inline media::OpenCdm::KeyStatus lastStatus() const {
+            return m_lastStatus;
         }
         inline bool operator== (const String& data) const {
             return ( (m_buffer->size() == data.sizeInBytes()) &&
@@ -107,6 +111,7 @@ private:
         std::string m_url;
         bool m_needIndividualisation;
         Ref<WebCore::SharedBuffer> m_buffer;
+        media::OpenCdm::KeyStatus m_lastStatus { media::OpenCdm::KeyStatus::StatusPending };
     };
 
 public:
@@ -152,6 +157,7 @@ public:
 
     // The initial Data, is the only way to find a proper SessionId.
     String sessionIdByInitData(const String&, const bool firstInLine) const;
+    bool isSessionIdUsable(const String&) const;
 
 private:
     media::OpenCdm m_openCdm;

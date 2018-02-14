@@ -1067,7 +1067,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
             if (!sessionId.isEmpty()) {
                 GST_TRACE("using %s", sessionId.utf8().data());
                 if (m_reportedProtectionEvents.contains(protectionEvent)) {
-                    m_protectionEventToSessionCache.add(protectionEvent, sessionId);
+                    // m_protectionEventToSessionCache.add(protectionEvent, sessionId);
                     it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
                 } else {
                     GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, protectionEvent, nullptr));
@@ -1087,7 +1087,7 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionSession(const String& ses
         GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr));
         it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
     }
-    m_protectionEventToSessionCache.remove(eventId);
+    // m_protectionEventToSessionCache.remove(eventId);
 }
 #endif
 

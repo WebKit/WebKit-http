@@ -1364,10 +1364,11 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
             // Retrieve SessionId using initData.
             String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initDataEventsMatch.key, (m_initDataToProtectionEventsMap.size() == 1));
             if (!sessionId.isEmpty()) {
-                GST_TRACE("using %s", sessionId.utf8().data());
-                dispatchOrStoreDecryptionSession(sessionId, initDataEventsMatch.value);
-                m_initDataToProtectionEventsMap.remove(initDataEventsMatch.key);
-                break;
+                if (cdmInstanceOpenCDM.isSessionIdUsable(sessionId)) {
+                    GST_TRACE("using %s", sessionId.utf8().data());
+                    dispatchDecryptionSession(sessionId, initDataEventsMatch.value);
+                } else
+                    GST_DEBUG("session %s is not usable yet", sessionId.utf8().data());
             } else
                 GST_WARNING("found no session id to dispatch");
         }
@@ -1393,31 +1394,36 @@ void MediaPlayerPrivateGStreamerBase::mapProtectionEventToInitData(const InitDat
 {
     auto& eventIds = m_initDataToProtectionEventsMap.ensure(initData, [] { return Vector<GstEventSeqNum> { }; }).iterator->value;
     eventIds.append(eventId);
+    m_protectionEventToInitDataMap.add(eventId, initData);
+}
+
+void MediaPlayerPrivateGStreamerBase::unmapProtectionEventFromInitData(GstEventSeqNum eventId)
+{
+    ASSERT(m_protectionEventToInitDataMap.contains(eventId));
+    const InitData& initData = m_protectionEventToInitDataMap.get(eventId);
+    const auto& addResult = m_initDataToProtectionEventsMap.add(initData, Vector<GstEventSeqNum>());
+    ASSERT(!addResult.isNewEntry);
+    Vector<GstEventSeqNum>& eventIds = addResult.iterator->value;
+    if (eventIds.size() <= 1)
+        m_initDataToProtectionEventsMap.remove(initData);
+    else
+        eventIds.removeFirst(eventId);
+    m_protectionEventToInitDataMap.remove(eventId);
 }
 
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
 {
     bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr)));
+    if (eventHandled)
+        unmapProtectionEventFromInitData(eventId);
     GST_TRACE("emitted decryption session %s on pipeline for event %u, event handled %s", sessionId.utf8().data(), eventId, boolForPrinting(eventHandled));
  }
 
-void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
-{
-    if (m_reportedProtectionEvents.contains(eventId))
-        m_protectionEventToSessionCache.add(eventId, sessionId);
-    else {
-        dispatchDecryptionSession(sessionId, eventId);
-
-        if (m_protectionEventToSessionCache.contains(eventId))
-            m_protectionEventToSessionCache.remove(eventId);
-    }
-}
-
-void MediaPlayerPrivateGStreamerBase::dispatchOrStoreDecryptionSession(const String& sessionId, const Vector<GstEventSeqNum>& eventIds)
+void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId, const Vector<GstEventSeqNum>& eventIds)
 {
     for (auto eventId : eventIds)
-        dispatchOrStoreDecryptionSession(sessionId, eventId);
+        dispatchDecryptionSession(sessionId, eventId);
  }
 #endif
 
@@ -1425,20 +1431,47 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     LockHolder lock(m_protectionMutex);
 
+#if USE(OPENCDM)
+    GST_DEBUG("waiting for a CDM instance");
+    m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
+        return this->m_cdmInstance;
+    });
+    if (!m_cdmInstance) {
+        GST_ERROR("we should have a CDM instance at this point");
+        return;
+    }
+#endif
+
+    // Check whether the protection event was already reported or not to JavaScript. If it was, we resend the decryption information to the decryptor.
     size_t eventPosition = m_reportedProtectionEvents.find(GST_EVENT_SEQNUM(event));
     if (eventPosition != notFound) {
-        GST_DEBUG("event %u already handled", GST_EVENT_SEQNUM(event));
+        GST_DEBUG("event %u already reported to JS", GST_EVENT_SEQNUM(event));
         m_reportedProtectionEvents.remove(eventPosition);
-        if (m_needToResendCredentials) {
-            GST_DEBUG("resending credentials");
-            attemptToDecryptWithLocalInstance();
-        }
 #if USE(OPENCDM)
-        else {
-            if (m_protectionEventToSessionCache.contains(GST_EVENT_SEQNUM(event)))
-                dispatchOrStoreDecryptionSession(m_protectionEventToSessionCache.get(GST_EVENT_SEQNUM(event)), GST_EVENT_SEQNUM(event));
-        }
+        if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
+            auto mappedInitData = m_protectionEventToInitDataMap.find(GST_EVENT_SEQNUM(event));
+            if (mappedInitData != m_protectionEventToInitDataMap.end()) {
+                const InitData& initData = mappedInitData->value;
+                auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
+                String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(initData, (m_initDataToProtectionEventsMap.size() == 1));
+                if (!sessionId.isEmpty()) {
+                    if (cdmInstanceOpenCDM.isSessionIdUsable(sessionId)) {
+                        GST_TRACE("using %s", sessionId.utf8().data());
+                        dispatchDecryptionSession(sessionId, GST_EVENT_SEQNUM(event));
+                    } else
+                        GST_DEBUG("session %s is not usable yet", sessionId.utf8().data());
+                } else
+                    GST_WARNING("found no session id to dispatch");
+            } else
+                GST_DEBUG("event %u is not mapped, decryptor should have the session already", GST_EVENT_SEQNUM(event));
+        } else
 #endif
+        {
+            if (m_needToResendCredentials) {
+                GST_DEBUG("resending credentials");
+                attemptToDecryptWithLocalInstance();
+            }
+        }
         return;
     }
 

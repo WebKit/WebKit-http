@@ -318,10 +318,10 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
             GST_DEBUG_OBJECT(self, "key received");
             priv->keyReceived = true;
             priv->condition.notifyOne();
+            result = TRUE;
         }
 
         gst_event_unref(event);
-        result = TRUE;
         break;
     }
     default:
