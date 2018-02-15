@@ -1373,7 +1373,8 @@ void MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance()
     if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
         GST_DEBUG("handling OpenCDM %s keys", m_cdmInstance->keySystem().utf8().data());
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(*m_cdmInstance);
-        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
+        //FIXME: Correct initData should be passed to cdmInstanceOpenCDM to retrieve proper session
+        String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(String());
         ASSERT(!sessionId.isEmpty());
         dispatchDecryptionSession(sessionId);
     }
