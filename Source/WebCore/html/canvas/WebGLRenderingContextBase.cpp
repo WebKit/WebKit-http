@@ -631,7 +631,7 @@ void WebGLRenderingContextBase::addActivityStateChangeObserverIfNecessary()
 {
     // We are only interested in visibility changes for contexts
     // that are using the high-performance GPU.
-    if (!isHighPerformanceContext(m_context))
+    if (!isHighPerformanceContext(m_context) && !canvas().document().frame()->settings().nonCompositedWebGLEnabled())
         return;
 
     auto* page = canvas().document().page();
@@ -5969,8 +5969,23 @@ void WebGLRenderingContextBase::activityStateDidChange(ActivityState::Flags oldA
         return;
 
     ActivityState::Flags changed = oldActivityState ^ newActivityState;
-    if (changed & ActivityState::IsVisible)
-        m_context->setContextVisibility(newActivityState & ActivityState::IsVisible);
+    if (isHighPerformanceContext(m_context)) {
+        if (changed & ActivityState::IsVisible) {
+            m_context->setContextVisibility(newActivityState & ActivityState::IsVisible);
+        }
+    }
+
+    if (canvas().document().frame()->settings().nonCompositedWebGLEnabled()) {
+        if ((changed & ActivityState::IsInWindow) && !(newActivityState & ActivityState::IsInWindow)) {
+            if (m_scissorEnabled)
+                m_context->disable(GraphicsContext3D::SCISSOR_TEST);
+            m_context->clearColor(0, 0, 0, 0);
+            m_context->clear(GraphicsContext3D::COLOR_BUFFER_BIT);
+            m_context->platformLayer()->swapBuffersIfNeeded();
+            if (m_scissorEnabled)
+                m_context->enable(GraphicsContext3D::SCISSOR_TEST);
+        }
+    }
 }
 
 void WebGLRenderingContextBase::setFailNextGPUStatusCheck()
