@@ -87,7 +87,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     bool dispatchDidReceiveInvalidCertificate(DocumentLoader*,
         const CertificateInfo& certificate, const char* message) override;
 
-    void dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>) override;
+    void dispatchDidCommitLoad(std::optional<WebCore::HasInsecureContent>) override;
     void dispatchDidReceiveResponse(DocumentLoader*, unsigned long,
                                             const ResourceResponse&) override;
     void dispatchDidReceiveContentLength(DocumentLoader*, unsigned long, int) override;

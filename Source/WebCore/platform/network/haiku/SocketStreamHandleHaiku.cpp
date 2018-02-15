@@ -77,7 +77,7 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
 }
 
 
-Optional<size_t> SocketStreamHandleImpl::platformSend(const char* buffer, size_t length)
+std::optional<size_t> SocketStreamHandleImpl::platformSend(const char* buffer, size_t length)
 {
 	int32 writtenLength = 0;
 	bool flagForPending = false;

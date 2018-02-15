@@ -518,9 +518,6 @@ inline void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObjec
 
 inline AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache*) { }
 inline AXAttributeCacheEnabler::~AXAttributeCacheEnabler() { }
-
-inline AccessibilityReplacedText::AccessibilityReplacedText(WebCore::VisibleSelection const&) { }
-inline void AccessibilityReplacedText::postTextStateChangeNotification(WebCore::AXObjectCache*, WebCore::AXTextEditType, WTF::String const&, WebCore::VisibleSelection const&) { }
 #endif
 
 } // namespace WebCore

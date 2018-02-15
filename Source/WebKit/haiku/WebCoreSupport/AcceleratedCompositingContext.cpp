@@ -82,7 +82,7 @@ bool AcceleratedCompositingContext::flushPendingLayerChanges()
 {
 #if USE(TEXTURE_MAPPER)
     if (m_rootLayer)
-        m_rootLayer->flushCompositingStateForThisLayerOnly(true);
+        m_rootLayer->flushCompositingStateForThisLayerOnly();
 #endif
     return m_view->WebPage()->MainFrame()->Frame()->view()->flushCompositingStateIncludingSubframes();
 }

@@ -380,7 +380,7 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchDidCommitLoad(WTF::Optional<WebCore::HasInsecureContent>)
+void FrameLoaderClientHaiku::dispatchDidCommitLoad(std::optional<WebCore::HasInsecureContent>)
 {
     CALLED();
     if (m_loadingErrorPage) {

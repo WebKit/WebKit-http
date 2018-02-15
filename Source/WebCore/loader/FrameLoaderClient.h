@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include "CertificateInfo.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LinkIcon.h"

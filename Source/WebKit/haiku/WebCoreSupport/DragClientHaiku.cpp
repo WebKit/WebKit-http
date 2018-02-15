@@ -37,13 +37,13 @@ DragClientHaiku::DragClientHaiku(BWebView* webView)
     : m_webView(webView)
 {}
 
-DragDestinationAction DragClientHaiku::actionMaskForDrag(DragData&)
+DragDestinationAction DragClientHaiku::actionMaskForDrag(const DragData&)
 {
     notImplemented();
     return DragDestinationActionAny;
 }
 
-void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, DragData&)
+void DragClientHaiku::willPerformDragDestinationAction(DragDestinationAction, const DragData&)
 {
     notImplemented();
 }
