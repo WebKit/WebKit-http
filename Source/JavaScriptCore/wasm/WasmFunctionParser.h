@@ -207,13 +207,21 @@ template<typename Context>
 bool FunctionParser<Context>::parseExpression(OpType op)
 {
     switch (op) {
-#define CREATE_CASE(name, id, b3op) case OpType::name: return binaryCase<OpType::name>();
+#define CREATE_CASE(name, id, b3op, inc) case OpType::name: return binaryCase<OpType::name>();
     FOR_EACH_WASM_SIMPLE_BINARY_OP(CREATE_CASE)
 #undef CREATE_CASE
 
     case OpType::F32ConvertUI64: return unaryCase<OpType::F32ConvertUI64>();
     case OpType::F64ConvertUI64: return unaryCase<OpType::F64ConvertUI64>();
-#define CREATE_CASE(name, id, b3op) case OpType::name: return unaryCase<OpType::name>();
+    case OpType::F32Nearest: return unaryCase<OpType::F32Nearest>();
+    case OpType::F64Nearest: return unaryCase<OpType::F64Nearest>();
+    case OpType::F32Trunc: return unaryCase<OpType::F32Trunc>();
+    case OpType::F64Trunc: return unaryCase<OpType::F64Trunc>();
+    case OpType::I32Ctz: return unaryCase<OpType::I32Ctz>();
+    case OpType::I64Ctz: return unaryCase<OpType::I64Ctz>();
+    case OpType::I32Popcnt: return unaryCase<OpType::I32Popcnt>();
+    case OpType::I64Popcnt: return unaryCase<OpType::I64Popcnt>();
+#define CREATE_CASE(name, id, b3op, inc) case OpType::name: return unaryCase<OpType::name>();
     FOR_EACH_WASM_SIMPLE_UNARY_OP(CREATE_CASE)
 #undef CREATE_CASE
 
@@ -238,7 +246,7 @@ bool FunctionParser<Context>::parseExpression(OpType op)
         return true;
     }
 
-#define CREATE_CASE(name, id, b3op) case OpType::name:
+#define CREATE_CASE(name, id, b3op, inc) case OpType::name:
     FOR_EACH_WASM_MEMORY_LOAD_OP(CREATE_CASE) {
         uint32_t alignment;
         if (!parseVarUInt32(alignment))

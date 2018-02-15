@@ -32,12 +32,12 @@
 #include "JSCInlines.h"
 #include "JSFunctionInlines.h"
 #include "JSObject.h"
+#include "JSWebAssemblyCallee.h"
 #include "JSWebAssemblyInstance.h"
 #include "LLIntThunks.h"
 #include "ProtoCallFrame.h"
 #include "VM.h"
 #include "WasmFormat.h"
-#include "WebAssemblyFunctionCell.h"
 
 namespace JSC {
 
@@ -45,14 +45,12 @@ const ClassInfo WebAssemblyFunction::s_info = { "WebAssemblyFunction", &Base::s_
 
 static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
 {
-    auto& vm = exec->vm();
+    VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    WebAssemblyFunction* callee = jsDynamicCast<WebAssemblyFunction*>(exec->jsCallee());
-    if (!callee)
+    WebAssemblyFunction* wasmFunction = jsDynamicCast<WebAssemblyFunction*>(exec->jsCallee());
+    if (!wasmFunction)
         return JSValue::encode(throwException(exec, scope, createTypeError(exec, "expected a WebAssembly function", defaultSourceAppender, runtimeTypeForValue(exec->jsCallee()))));
-    const CallableWebAssemblyFunction& callable = callee->webAssemblyFunctionCell()->function();
-    const B3::Compilation* jsEntryPoint = callable.jsEntryPoint;
-    const Wasm::Signature* signature = callable.signature;
+    const Wasm::Signature* signature = wasmFunction->signature();
 
     // FIXME is this the right behavior? https://bugs.webkit.org/show_bug.cgi?id=164876
     if (exec->argumentCount() != signature->arguments.size())
@@ -63,10 +61,6 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
     for (unsigned argIndex = 0; argIndex < exec->argumentCount(); ++argIndex) {
         JSValue arg = exec->uncheckedArgument(argIndex);
         switch (signature->arguments[argIndex]) {
-        case Wasm::Void:
-        case Wasm::I64:
-            RELEASE_ASSERT_NOT_REACHED();
-            break;
         case Wasm::I32:
             arg = JSValue::decode(arg.toInt32(exec));
             break;
@@ -76,6 +70,11 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
         case Wasm::F64:
             arg = JSValue::decode(bitwise_cast<uint64_t>(arg.toNumber(exec)));
             break;
+        case Wasm::Void:
+        case Wasm::I64:
+        case Wasm::Func:
+        case Wasm::Anyfunc:
+            RELEASE_ASSERT_NOT_REACHED();
         }
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
         boxedArgs.append(arg);
@@ -91,34 +90,40 @@ static EncodedJSValue JSC_HOST_CALL callWebAssemblyFunction(ExecState* exec)
         argCount = boxedArgs.size();
     }
 
+    // Note: we specifically use the WebAsseblyFunction as the callee to begin with in the ProtoCallFrame.
+    // The reason for this is that calling into the llint may stack overflow, and the stack overflow
+    // handler might read the global object from the callee. The JSWebAssemblyCallee doesn't have a
+    // global object, but the WebAssemblyFunction does.
     ProtoCallFrame protoCallFrame;
-    protoCallFrame.init(nullptr, callee, firstArgument, argCount, remainingArgs);
+    protoCallFrame.init(nullptr, wasmFunction, firstArgument, argCount, remainingArgs);
     
-    EncodedJSValue rawResult = vmEntryToWasm(jsEntryPoint->code().executableAddress(), &vm, &protoCallFrame);
+    EncodedJSValue rawResult = vmEntryToWasm(wasmFunction->webAssemblyCallee()->jsEntryPoint(), &vm, &protoCallFrame);
     // FIXME is this correct? https://bugs.webkit.org/show_bug.cgi?id=164876
     switch (signature->returnType) {
     case Wasm::Void:
         return JSValue::encode(jsUndefined());
-    case Wasm::I64:
-        RELEASE_ASSERT_NOT_REACHED();
     case Wasm::I32:
         return JSValue::encode(JSValue(static_cast<int32_t>(rawResult)));
     case Wasm::F32:
         return JSValue::encode(JSValue(bitwise_cast<float>(static_cast<int32_t>(rawResult))));
     case Wasm::F64:
         return JSValue::encode(JSValue(bitwise_cast<double>(rawResult)));
+    case Wasm::I64:
+    case Wasm::Func:
+    case Wasm::Anyfunc:
+        break;
     }
 
     RELEASE_ASSERT_NOT_REACHED();
+    return EncodedJSValue();
 }
 
-WebAssemblyFunction* WebAssemblyFunction::create(VM& vm, JSGlobalObject* globalObject, int length, const String& name, JSWebAssemblyInstance* instance, CallableWebAssemblyFunction&& callable)
+WebAssemblyFunction* WebAssemblyFunction::create(VM& vm, JSGlobalObject* globalObject, unsigned length, const String& name, JSWebAssemblyInstance* instance, JSWebAssemblyCallee* callee, Wasm::Signature* signature)
 {
     NativeExecutable* executable = vm.getHostFunction(callWebAssemblyFunction, NoIntrinsic, callHostFunctionAsConstructor, nullptr, name);
-    WebAssemblyFunctionCell* functionCell = WebAssemblyFunctionCell::create(vm, WTFMove(callable));
     Structure* structure = globalObject->webAssemblyFunctionStructure();
     WebAssemblyFunction* function = new (NotNull, allocateCell<WebAssemblyFunction>(vm.heap)) WebAssemblyFunction(vm, globalObject, structure);
-    function->finishCreation(vm, executable, length, name, instance, functionCell);
+    function->finishCreation(vm, executable, length, name, instance, callee, signature);
     return function;
 }
 
@@ -139,15 +144,16 @@ void WebAssemblyFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_instance);
-    visitor.append(&thisObject->m_functionCell);
+    visitor.append(&thisObject->m_wasmCallee);
 }
 
-void WebAssemblyFunction::finishCreation(VM& vm, NativeExecutable* executable, int length, const String& name, JSWebAssemblyInstance* instance, WebAssemblyFunctionCell* functionCell)
+void WebAssemblyFunction::finishCreation(VM& vm, NativeExecutable* executable, unsigned length, const String& name, JSWebAssemblyInstance* instance, JSWebAssemblyCallee* wasmCallee, Wasm::Signature* signature)
 {
     Base::finishCreation(vm, executable, length, name);
     ASSERT(inherits(info()));
     m_instance.set(vm, this, instance);
-    m_functionCell.set(vm, this, functionCell);
+    m_wasmCallee.set(vm, this, wasmCallee);
+    m_signature = signature;
 }
 
 } // namespace JSC

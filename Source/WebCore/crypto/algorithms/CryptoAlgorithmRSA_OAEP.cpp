@@ -97,10 +97,10 @@ void CryptoAlgorithmRSA_OAEP::generateKey(const CryptoAlgorithmParameters& param
         return;
     }
 
-    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair& pair) {
-        pair.publicKey()->setUsagesBitmap(pair.publicKey()->usagesBitmap() & (CryptoKeyUsageEncrypt | CryptoKeyUsageWrapKey));
-        pair.privateKey()->setUsagesBitmap(pair.privateKey()->usagesBitmap() & (CryptoKeyUsageDecrypt | CryptoKeyUsageUnwrapKey));
-        capturedCallback(nullptr, &pair);
+    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair&& pair) {
+        pair.publicKey->setUsagesBitmap(pair.publicKey->usagesBitmap() & (CryptoKeyUsageEncrypt | CryptoKeyUsageWrapKey));
+        pair.privateKey->setUsagesBitmap(pair.privateKey->usagesBitmap() & (CryptoKeyUsageDecrypt | CryptoKeyUsageUnwrapKey));
+        capturedCallback(WTFMove(pair));
     };
     auto failureCallback = [capturedCallback = WTFMove(exceptionCallback)]() {
         capturedCallback(OperationError);
@@ -166,6 +166,15 @@ void CryptoAlgorithmRSA_OAEP::importKey(SubtleCrypto::KeyFormat format, KeyData&
         result = CryptoKeyRSA::importJwk(rsaParameters.identifier, rsaParameters.hashIdentifier, WTFMove(key), extractable, usages);
         break;
     }
+    case SubtleCrypto::KeyFormat::Spki: {
+        if ((usages ^ CryptoKeyUsageEncrypt) && (usages ^ CryptoKeyUsageWrapKey) && (usages ^ (CryptoKeyUsageEncrypt | CryptoKeyUsageWrapKey))) {
+            exceptionCallback(SYNTAX_ERR);
+            return;
+        }
+        // FIXME: <webkit.org/b/165436>
+        result = CryptoKeyRSA::importSpki(rsaParameters.identifier, rsaParameters.hashIdentifier, WTFMove(WTF::get<Vector<uint8_t>>(data)), extractable, usages);
+        break;
+    }
     default:
         exceptionCallback(NOT_SUPPORTED_ERR);
         return;
@@ -213,6 +222,16 @@ void CryptoAlgorithmRSA_OAEP::exportKey(SubtleCrypto::KeyFormat format, Ref<Cryp
         result = WTFMove(jwk);
         break;
     }
+    case SubtleCrypto::KeyFormat::Spki: {
+        // FIXME: <webkit.org/b/165437>
+        auto spki = rsaKey.exportSpki();
+        if (spki.hasException()) {
+            exceptionCallback(spki.releaseException().code());
+            return;
+        }
+        result = spki.releaseReturnValue();
+        break;
+    }
     default:
         exceptionCallback(NOT_SUPPORTED_ERR);
         return;
@@ -240,8 +259,8 @@ ExceptionOr<void> CryptoAlgorithmRSA_OAEP::decrypt(const CryptoAlgorithmParamete
 ExceptionOr<void> CryptoAlgorithmRSA_OAEP::generateKey(const CryptoAlgorithmParametersDeprecated& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, VoidCallback&& failureCallback, ScriptExecutionContext& context)
 {
     auto& rsaParameters = downcast<CryptoAlgorithmRsaKeyGenParamsDeprecated>(parameters);
-    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair& pair) {
-        capturedCallback(nullptr, &pair);
+    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair&& pair) {
+        capturedCallback(WTFMove(pair));
     };
     CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier::RSA_OAEP, rsaParameters.hash, rsaParameters.hasHash, rsaParameters.modulusLength, rsaParameters.publicExponent, extractable, usages, WTFMove(keyPairCallback), WTFMove(failureCallback), &context);
     return { };

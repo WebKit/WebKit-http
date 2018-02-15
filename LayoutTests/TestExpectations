@@ -659,6 +659,9 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+# Skip modern-media-controls tests until flakiness can be resolved - webkit.org/b/164322
+media/modern-media-controls [ Skip ]
+
 # Only iOS WK1 has testRunner.setPagePaused.
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
 
@@ -971,16 +974,10 @@ webkit.org/b/163706 imported/w3c/csswg-test/css-shapes-1/shape-outside/shape-ima
 imported/blink/http/tests/security/shape-image-cors-disallow-origin.html [ ImageOnlyFailure ]
 imported/blink/http/tests/security/shape-image-cors-port.html [ ImageOnlyFailure ]
 
-webkit.org/b/163636 media/modern-media-controls/media-controller/media-controller-resize.html [ Pass Failure Timeout ]
-
 webkit.org/b/163887 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass Crash ]
 
 # Temporary failure until we start using ANGLE as a WebGL backend
 webkit.org/b/163924 fast/canvas/webgl/bufferData-offset-length.html [ Pass Failure ]
-
-webkit.org/b/165327 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Pass Failure ]
-webkit.org/b/164226 media/modern-media-controls/volume-support/volume-support-drag.html [ Pass Failure ]
-webkit.org/b/164229 media/modern-media-controls/volume-support/volume-support-click.html [ Pass Timeout ]
 
 webkit.org/b/164080 http/tests/websocket/tests/hybi/closed-when-entering-page-cache.html [ Pass Failure ]
 webkit.org/b/164080 http/tests/websocket/tests/hybi/stop-on-resume-in-error-handler.html [ Pass Failure ]
@@ -1003,22 +1000,24 @@ webkit.org/b/165195 css3/scroll-snap/scroll-snap-position-values.html [ Pass Fai
 webkit.org/b/165195 css3/scroll-snap/scroll-snap-position-values.html [ Pass Failure ]
 webkit.org/b/165195 editing/execCommand/insert-list-with-noneditable-content.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/object-position/parsing-object-position.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/large-value-csstext.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/parsing-css-number-types.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/parsing-css-wrap.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/transform-origin-parsing.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/transform-inline-style-remove.html [ Pass Failure ]
-webkit.org/b/165195 fast/css/variables/custom-property-dynamic-update.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/variables/custom-property-dynamic-update.html [ Skip ]
 webkit.org/b/165195 fast/events/mouse-cursor.html [ Pass Failure ]
 webkit.org/b/165195 fast/forms/basic-selects.html [ Pass Failure ]
 webkit.org/b/165195 fast/shadow-dom/slotted-pseudo-element-css-text.html [ Pass Failure ]
 webkit.org/b/165195 fast/inspector-support/style.html [ Pass Failure ]
+webkit.org/b/165195 svg/webarchive/svg-script-subresouces.svg [ Pass Failure ]
 
 # The following layout tests need to be changed when the new CSS Parser is turned on, since they
 # incorrectly indicate failures on valid syntax.
 webkit.org/b/165195 css3/font-variant-parsing.html [ Pass Failure ]
 webkit.org/b/165195 css3/supports-cssom.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/attr-parsing.html [ Pass Failure ]
-webkit.org/b/165195 fast/css/font-family-parse-keyword.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-family-parse-keyword.html [ Skip ]
 webkit.org/b/165195 fast/css/font-property-priority.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/font_property_normal.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/image-set-unprefixed.html [ Pass Failure ]
@@ -1027,6 +1026,7 @@ webkit.org/b/165195 fast/css/parsing-css-attribute-case-insensitive-value-1.html
 webkit.org/b/165195 fast/css/parsing-css-attribute-case-insensitive-value-2.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/parsing-css-nth-child.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/parsing-text-emphasis.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/css-selector-text.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/css-set-selector-text.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/remove-shorthand.html [ Pass Failure ]
 webkit.org/b/165195 fast/css/transform-inline-style.html [ Pass Failure ]
@@ -1044,6 +1044,25 @@ webkit.org/b/165195 fast/selectors/querySelector-pseudo-element-inside-functiona
 webkit.org/b/165195 fast/shapes/parsing/parsing-shape-image-threshold.html [ Pass Failure ]
 webkit.org/b/165195 fast/shapes/shape-outside-floats/shape-outside-animation.html [ Pass Failure ]
 webkit.org/b/165195 svg/webarchive/svg-cursor-subresources.svg [ Pass Failure ]
+webkit.org/b/165195 fast/backgrounds/background-shorthand-after-set-backgroundSize.html [ Pass Failure ]
+webkit.org/b/165195 fast/backgrounds/background-position-parsing-2.html [ Pass Failure ]
+webkit.org/b/165195 fast/backgrounds/background-shorthand-with-backgroundSize-style.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-family-parse-keyword.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/variables/custom-property-dynamic-update.html [ Skip ]
+webkit.org/b/165195 transitions/transitions-parsing.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/flex-shrink-calculated-value.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/webkit-line-clamp-calculated-value.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/z-index-calculated-value.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/aspect-ratio-parsing-tests.html [ Pass Failure ]
+webkit.org/b/165195 fast/css-grid-layout/grid-auto-flow-get-set.html [ Pass Failure ]
+webkit.org/b/165195 fast/css-grid-layout/grid-columns-rows-get-set.html [ Pass Failure ]
+webkit.org/b/165195 fast/css-grid-layout/non-grid-columns-rows-get-set.html [ Pass Failure ]
+webkit.org/b/165195 fast/masking/parsing-mask.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-calculated-value.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-shorthand.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/negative-calc-values.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/text-shadow-calc-value.html [ Pass Failure ]
+webkit.org/b/165195 fast/shadow-dom/slotted-pseudo-element-css-text.html [ Pass Failure ]
 
 # The following tests match Blink/Chrome, but we're not sure yet what to do with them when the
 # new CSS parser is turned on. The tests may be right, and these may be bugs in Blink/Chrome, or
@@ -1053,9 +1072,17 @@ webkit.org/b/165195 fast/selectors/invalid-functional-pseudo-class.html [ Pass F
 webkit.org/b/165195 fast/selectors/nth-child-bounds.html [ Pass Failure ]
 webkit.org/b/165195 fast/selectors/nth-last-child-bounds.html [ Pass Failure ]
 webkit.org/b/165195 fast/text/text-combine-crash.html [ Pass Failure ]
+webkit.org/b/165195 fast/css-grid-layout/grid-template-shorthand-get-set.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/font-shorthand-from-longhands.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/parse-color-int-or-percent-crash.html [ Pass Failure ]
+webkit.org/b/165195 fast/css/string-quote-binary.html [ Pass Failure ]
 
 # The following tests should probably just be removed, since they will never pass. Do this once
 # the new CSS Parser turns on.
 webkit.org/b/165195 svg/dom/SVGColor.html [ Pass Failure ]
 webkit.org/b/165195 svg/dom/SVGPaint.html [ Pass Failure ]
+webkit.org/b/165195 svg/dom/rgb-color-parser.html [ Pass Failure ]
 
+# Visual viewports
+webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-no-content.html [ Failure ]
+webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-out-of-view.html [ Failure ]

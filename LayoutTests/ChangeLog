@@ -1,3 +1,986 @@
+2016-12-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/table/003.html after r209421.
+        https://bugs.webkit.org/show_bug.cgi?id=165513
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/fast/table/003-expected.txt:
+
+2016-12-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Use tap and pinch gestures on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=165518
+
+        Reviewed by Dean Jackson.
+
+        With the addition of new gesture recognizer source files, some tests were failing
+        due to linking to only a subset of the modern media controls resources.
+
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+        * media/modern-media-controls/aspect-ratio-button/aspect-ratio-button.html:
+        * media/modern-media-controls/button/button.html:
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property.html:
+        * media/modern-media-controls/buttons-container/buttons-container-constructor.html:
+        * media/modern-media-controls/buttons-container/buttons-container-layout.html:
+        * media/modern-media-controls/fullscreen-button/fullscreen-button.html:
+        * media/modern-media-controls/icon-button/icon-button-active-state.html:
+        * media/modern-media-controls/icon-button/icon-button.html:
+        * media/modern-media-controls/mute-button/mute-button.html:
+        * media/modern-media-controls/pip-button/pip-button.html:
+        * media/modern-media-controls/placard/placard.html:
+        * media/modern-media-controls/play-pause-button/play-pause-button.html:
+        * media/modern-media-controls/skip-back-button/skip-back-button.html:
+        * media/modern-media-controls/start-button/start-button-styles.html:
+        * media/modern-media-controls/start-button/start-button.html:
+        * media/modern-media-controls/tracks-button/tracks-button.html:
+
+2016-12-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/security/module-incorrect-mime-types.html as flaky on ios-simulator-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=165344
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Two tiled drawing tests failing with visual viewports enabled.
+        https://bugs.webkit.org/show_bug.cgi?id=165489
+
+        Reviewed by Dean Jackson.
+        
+        Unfail and rebaseline.
+
+        * platform/mac-wk2/TestExpectations:
+        * tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+
+2016-12-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        After preventing a beforeinput event, an input event is fired when formatting rich text
+        https://bugs.webkit.org/show_bug.cgi?id=165435
+        <rdar://problem/29522314>
+
+        Reviewed by Ryosuke Niwa.
+
+        Augmented a layout test to verify that when preventing beforeinput events, a corresponding input event is not
+        fired in addition to the style not being applied to the text.
+
+        * fast/events/before-input-prevent-biu.html:
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix behavior of background-attachment:fixed with visual viewports
+        https://bugs.webkit.org/show_bug.cgi?id=165465
+        
+        Fixed backgrounds are working correctly. Unskip and land a new image result for this test.
+
+        * TestExpectations:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed-expected.png:
+
+2016-12-06  Mark Lam  <mark.lam@apple.com>
+
+        GetByID IC is wrongly unwrapping the global proxy this value for getter/setters.
+        https://bugs.webkit.org/show_bug.cgi?id=165401
+
+        Reviewed by Saam Barati.
+
+        Set the test loose now that this bug is fixed.
+
+        * TestExpectations:
+        * js/script-tests/prototype-assignment.js:
+
+2016-12-06  Dean Jackson  <dino@apple.com>
+
+        Apply styling to media documents with modern controls
+        https://bugs.webkit.org/show_bug.cgi?id=165499
+        <rdar://problems/29543847>
+
+        Reviewed by Antoine Quint.
+
+        Make sure that the small test video has the correct background,
+        and is not anchored to the top left of the page.
+
+        * media/modern-media-controls/media-documents/background-color-and-centering-expected.html: Added.
+        * media/modern-media-controls/media-documents/background-color-and-centering.html: Added.
+
+2016-12-05  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [Part 1 of 2] Add support for SPKI format while doing SubtleCrypto.importKey/exportKey
+        https://bugs.webkit.org/show_bug.cgi?id=129978
+        <rdar://problem/21799829>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/import-key-malformed-parameters.html:
+        * crypto/subtle/rsa-export-key-malformed-parameters-expected.txt:
+        * crypto/subtle/rsa-export-key-malformed-parameters.html:
+        * crypto/subtle/rsa-import-jwk-key-export-spki-key-expected.txt: Added.
+        * crypto/subtle/rsa-import-jwk-key-export-spki-key.html: Added.
+        * crypto/subtle/rsa-import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/rsa-import-key-malformed-parameters.html:
+        * crypto/subtle/rsa-import-spki-key-export-jwk-key-expected.txt: Added.
+        * crypto/subtle/rsa-import-spki-key-export-jwk-key.html: Added.
+        * crypto/subtle/rsa-import-spki-key-export-spki-key-expected.txt: Added.
+        * crypto/subtle/rsa-import-spki-key-export-spki-key.html: Added.
+        * crypto/subtle/rsa-import-spki-small-key-expected.txt: Added.
+        * crypto/subtle/rsa-import-spki-small-key.html: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-spki-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-generate-export-key-spki.html: Added.
+        * crypto/subtle/rsa-oaep-import-spki-key-expected.txt: Added.
+        * crypto/subtle/rsa-oaep-import-spki-key.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-spki-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-spki.html: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-spki-key-expected.txt: Added.
+        * crypto/subtle/rsaes-pkcs1-v1_5-import-spki-key.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-spki-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-spki.html: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-spki-key-expected.txt: Added.
+        * crypto/subtle/rsassa-pkcs1-v1_5-import-spki-key.html: Added.
+        * crypto/workers/subtle/resources/rsa-export-spki-key.js: Added.
+        * crypto/workers/subtle/resources/rsa-import-spki-key.js: Added.
+        * crypto/workers/subtle/rsa-export-spki-key-expected.txt: Added.
+        * crypto/workers/subtle/rsa-export-spki-key.html: Added.
+        * crypto/workers/subtle/rsa-import-spki-key-expected.txt: Added.
+        * crypto/workers/subtle/rsa-import-spki-key.html: Added.
+
+2016-12-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Media controls use the fullscreen layout after going from inline to fullscreen to PiP to inline
+        https://bugs.webkit.org/show_bug.cgi?id=165494
+
+        Reviewed by Dean Jackson.
+
+        Add a new tests that goes from inline to fullscreen to PiP to inline and checks the controls have the right type on the way.
+
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html: Added.
+
+2016-12-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Rendering issues with controls bar when captions are on
+        https://bugs.webkit.org/show_bug.cgi?id=165390
+
+        Reviewed by Dean Jackson.
+
+        We add a new test that checks we have the expected element structure with a single <div> containing
+        the captions and the media controls elements. Three other tests needed updating since they made
+        assumptions on the DOM structure that were no longer holding.
+
+        * media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * media/modern-media-controls/media-controller/media-controller-single-container-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-single-container.html: Added.
+
+2016-12-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Automatically hide the controls bar when the mouse is idle
+        https://bugs.webkit.org/show_bug.cgi?id=165492
+
+        Reviewed by Dean Jackson.
+
+        We add new tests to check the following scenarios:
+
+        1. media-controller-auto-hide-mouse-enter-and-mouse-leave.html checks that, during media playback,
+        as the mouse enters the media the controls bar becomes visible, and as the mouse exits the media,
+        the controls bar becomes faded.
+
+        2. media-controller-auto-hide-mouse-enter-over-controls-bar.html checks that, during media playback,
+        as the mouse enters the media and remains idle over the controls bar, the controls bar remain visible.
+
+        3. media-controller-auto-hide-mouse-leave-after-play.html checks that when the media goes from paused
+        to playing, having the mouse enter and leave the media does not hide the media controls until the initial
+        auto-hide timer started as the playback status changed has elapsed.
+
+        4. media-controller-auto-hide-pause.html checks that the controls bar remains visible as the media is paused.
+
+        5. media-controller-auto-hide-rewind-with-mouse-enter.html checks that the controls bar becomes visible
+        as the mouse enters the media.
+
+        6. media-controller-auto-hide.html checks that the controls bar becomes faded after the auto-hide timer
+        has elapsed after initial playback.
+
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter-expected.txt: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html: Added.
+        * media/modern-media-controls/media-controller/media-controller-auto-hide.html: Added.
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Test fast/selectors/040.html fails on iOS Simulator following <https://trac.webkit.org/changeset/209404>
+        (https://bugs.webkit.org/show_bug.cgi?id=79694)
+
+        Skip test fast/selectors/040.html as we do not visually highlight a programmatic selection on iOS from
+        observation.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-06  Zalan Bujtas  <zalan@apple.com>
+
+        Can not select whole line when using flexbox
+        https://bugs.webkit.org/show_bug.cgi?id=165299
+
+        Reviewed by David Hyatt.
+
+        * fast/flexbox/flexbox-fail-to-select-same-line-expected.html: Added.
+        * fast/flexbox/flexbox-fail-to-select-same-line.html: Added.
+
+2016-12-06  Jer Noble  <jer.noble@apple.com>
+
+        YouTube sometimes pauses when switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=165468
+
+        Reviewed by Eric Carlson.
+
+        * media/media-session-restrictions.html: Added.
+        * platform/ios-simulator/media/media-session-restrictions-expected.txt: Added.
+        * platform/mac/media/media-session-restrictions-expected.txt: Added.
+
+2016-12-06  Mark Lam  <mark.lam@apple.com>
+
+        Introduce the concept of Immutable Prototype Exotic Objects to comply with the spec.
+        https://bugs.webkit.org/show_bug.cgi?id=165227
+        <rdar://problem/29442665>
+
+        Reviewed by Saam Barati.
+
+        The new prototype-assignment.js test is currently only enabled for LLInt only
+        run in the JSC tests until webkit.org/b/165401 is fixed.
+
+        * TestExpectations:
+        - Skip js/prototype-assignment.html for now until webkit.org/b/165401 is fixed.
+
+        * http/tests/security/window-named-valueOf-expected.txt:
+        * js/dom/proxy-is-not-allowed-in-global-prototype-chain-expected.txt:
+        * js/dom/proxy-is-not-allowed-in-global-prototype-chain.html:
+        - Updated error messages.
+
+        * js/prototype-assignment-expected.txt: Added.
+        * js/prototype-assignment.html: Added.
+        * js/script-tests/prototype-assignment.js: Added.
+        (else):
+        (reportError):
+        (shouldEqual):
+        (shouldThrow):
+        (stringify):
+        (makeTestID):
+        (doInternalSetPrototypeOf):
+        (ordinarySetPrototypeOf):
+        (setImmutablePrototype):
+        (windowProxySetPrototypeOf):
+        (initSetterExpectation):
+        (throwIfNoExceptionPending):
+        (objectSetPrototypeOf):
+        (setUnderscoreProto):
+        (reflectSetPrototypeOf):
+        (newObjectProto.toString):
+        (this.testObject.targets.push.value):
+        (this.testProxy.targets.push.setPrototypeOf):
+        (Symbol):
+        (test):
+        (runTests):
+        * js/setPrototypeOf-expected.txt:
+
+2016-12-06  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION (Safari 10): Scrolling not working inside height 100% table
+        https://bugs.webkit.org/show_bug.cgi?id=164366
+        <rdar://problem/29095535>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/table/overflow-percent-height-regression-expected.html: Added.
+        * fast/table/overflow-percent-height-regression.html: Added.
+
+2016-12-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/shadow-dom/slotted-pseudo-element-css-text.html after r209396.
+
+        Unreviewed test gardening.
+
+        * fast/shadow-dom/slotted-pseudo-element-css-text-expected.txt:
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark two tiled-drawing tests as flakey. Layout viewport rect computation has issues in subframes,
+        covered by https://bugs.webkit.org/show_bug.cgi?id=165489.
+
+        * platform/mac-wk2/TestExpectations:
+        * tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+
+2016-12-06  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r209396): animations/font-variations/font-variation-settings* tests timing out
+        https://bugs.webkit.org/show_bug.cgi?id=165475
+
+        Reviewed by Myles C. Maxfield.
+
+        The new parser only allows strings for @keyframe names when @-webkit-keyframe is used. Patch
+        the tests to use identifiers instead.
+
+        * animations/font-variations/font-variation-settings-order.html:
+        * animations/font-variations/font-variation-settings-unlike.html:
+        * animations/font-variations/font-variation-settings.html:
+
+2016-12-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the behavior of scroll-into-view when the target is inside position:fixed
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/overflow/scroll-anchor-in-position-fixed-expected.txt: Added.
+        * fast/overflow/scroll-anchor-in-position-fixed.html: Added.
+        * fast/transforms/selection-bounds-in-transformed-view.html:
+        * fast/visual-viewport/zoomed-scroll-into-view-fixed-expected.txt: Added.
+        * fast/visual-viewport/zoomed-scroll-into-view-fixed.html: Added.
+        * fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed-expected.txt: Added.
+        * fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] REGRESSION(r205396): Intermediate CTRuns with initial advances get double counted when glyph origins are enabled
+        https://bugs.webkit.org/show_bug.cgi?id=165084
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/initial-advance-in-intermediate-run-complex-expected.html: Added.
+        * fast/text/initial-advance-in-intermediate-run-complex.html: Added.
+        * platform/ios-simulator/TestExpectations: Disable the test on iOS because it relies
+        on Arial being used to draw Arabic, which we explicitly don't allow.
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable visual viewports by default on Mac, and iOS Wk2
+        https://bugs.webkit.org/show_bug.cgi?id=165452
+
+        Reviewed by Zalan Bujtas.
+
+        Skip, fix or adjust tests for visual viewports.
+
+        * TestExpectations:
+        * animations/trigger-container-scroll-boundaries.html:
+        * animations/trigger-container-scroll-empty.html:
+        * animations/trigger-container-scroll-simple.html:
+        * compositing/geometry/fixed-position-composited-page-scale-smaller-than-viewport.html:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled-expected.txt:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled-scroll-expected.txt:
+        * fast/scrolling/ios/remove-scrolling-role-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed-expected.txt:
+        * fast/zooming/client-rect-in-fixed-zoomed.html:
+        * platform/ios-simulator-wk2/compositing/geometry/fixed-in-composited-expected.txt: Removed.
+        * platform/ios-simulator-wk2/compositing/geometry/limit-layer-bounds-fixed-expected.txt:
+        * platform/ios-simulator-wk2/compositing/geometry/limit-layer-bounds-fixed-positioned-expected.txt:
+        * platform/ios-simulator-wk2/compositing/layer-creation/fixed-position-under-transform-expected.txt:
+        * platform/ios-simulator-wk2/compositing/layer-creation/no-compositing-for-sticky-expected.txt:
+        * platform/ios-simulator-wk2/fast/overflow/position-fixed-transform-clipping-expected.txt:
+        * platform/ios-simulator/compositing/absolute-inside-out-of-view-fixed-expected.txt:
+        * platform/ios-simulator/compositing/geometry/fixed-in-composited-expected.txt:
+        * scrollingcoordinator/ios/non-stable-viewport-scroll-expected.txt:
+        * scrollingcoordinator/ios/ui-scrolling-tree-expected.txt:
+        * tiled-drawing/fixed-layout-size-fixed-attachment-cover.html:
+        * tiled-drawing/fixed-layout-size-fixed-attachment-local.html:
+        * tiled-drawing/scrolling/clamp-out-of-bounds-scrolls-expected.txt:
+        * tiled-drawing/scrolling/fixed-background/fixed-body-background-zoomed-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/absolute-inside-out-of-view-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-in-overflow-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/fixed-position-out-of-view-negative-zindex-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-with-header-and-footer-expected.txt:
+        * tiled-drawing/scrolling/fixed/four-bars-zoomed-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/fixed/negative-scroll-offset-in-view-expected.txt:
+        * tiled-drawing/scrolling/fixed/nested-fixed-expected.txt:
+        * tiled-drawing/scrolling/fixed/percentage-inside-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-gain-scrolling-ancestor-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-in-fixed-expected.txt:
+        * tiled-drawing/scrolling/frames/coordinated-frame-lose-scrolling-ancestor-expected.txt:
+        * tiled-drawing/scrolling/frames/fixed-inside-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/frameset-frame-scrollability-expected.txt:
+        * tiled-drawing/scrolling/frames/frameset-nested-frame-scrollability-expected.txt:
+        * tiled-drawing/scrolling/frames/remove-coordinated-frame-expected.txt:
+        * tiled-drawing/scrolling/frames/scroll-region-after-frame-layout-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-after-scroll-expected.txt:
+        * tiled-drawing/scrolling/scrolling-tree-slow-scrolling-expected.txt:
+        * tiled-drawing/scrolling/sticky/negative-scroll-offset-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-horizontal-expected.txt:
+        * tiled-drawing/scrolling/sticky/sticky-vertical-expected.txt:
+
+2016-12-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip modern-media-controls tests until flakiness can be resolved.
+        https://bugs.webkit.org/show_bug.cgi?id=164784
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Make fast/selectors/040.html actually test background-color painting for ::selection when run in DRT
+        https://bugs.webkit.org/show_bug.cgi?id=79694
+
+        Reviewed by Beth Dakin.
+
+        Currently the test case fast/selectors/040.html doesn't actually test that we
+        honor the background-color of ::selection when run in DRT. In particular, it
+        doesn't programmatically select any text and hence the DRT results reflect a
+        paragraph of non-selected text. Instead, we should programmatically select the
+        test paragraph so that DRT can capture the painting of background-color for ::selection.
+
+        * fast/selectors/040-expected.html: Added.
+        * fast/selectors/040.html:
+        * platform/efl/fast/selectors/040-expected.png: Removed.
+        * platform/efl/fast/selectors/040-expected.txt: Removed.
+        * platform/gtk/fast/selectors/040-expected.png: Removed.
+        * platform/gtk/fast/selectors/040-expected.txt: Removed.
+        * platform/ios-simulator/fast/selectors/040-expected.txt: Removed.
+        * platform/mac/fast/selectors/040-expected.png: Removed.
+        * platform/mac/fast/selectors/040-expected.txt: Removed.
+        * platform/win/fast/selectors/040-expected.txt: Removed.
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Test insecure-xhr-sync-in-main-frame.html fails with CORS error if run before r203542
+        https://bugs.webkit.org/show_bug.cgi?id=165407
+
+        Reviewed by Alexey Proskuryakov.
+
+        Make the test insecure-xhr-sync-in-main-frame.html demonstrate a mixed content failure
+        instead of a CORS failure when run before r203542.
+
+        In r203542 the test http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame.html
+        was added to ensure that we block loading insecure data via XHR from an HTTPS page. When
+        this test is run prior to r203542 it fails due to a CORS errors as opposed to showing
+        the intended JavaScript alert failure message. The CORS error is due to loading a
+        cross-origin resource that did not return an appropriate Access-Control-Allow-Origin header
+        to allow reading of the response.
+
+        * http/tests/security/mixedContent/insecure-xhr-sync-in-main-frame-expected.txt: Update expected result
+        based on the change below.
+        * http/tests/security/mixedContent/resources/insecure-xhr-sync-in-main-frame-window.html:
+        Load a resource that returns "Access-Control-Allow-Origin: *" so that origin (http, 127.0.0.1, 8000)
+        can read the response returned from origin (https, 127.0.0.1, 8443).
+
+2016-12-06  Tim Horton  <timothy_horton@apple.com>
+
+        PDF markup/annotations visible in Mail on macOS but not on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=165444
+        <rdar://problem/28942896>
+
+        Reviewed by Simon Fraser.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-06  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Avoid more test
+        https://bugs.webkit.org/show_bug.cgi?id=165463
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+
+2016-12-06  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add support for converting dictionaries to JS
+        https://bugs.webkit.org/show_bug.cgi?id=165367
+
+        Reviewed by Darin Adler and Alex Christensen.
+
+        * crypto/subtle/rsa-oaep-generate-key-expected.txt:
+        * crypto/subtle/rsa-oaep-generate-key.html:
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-key-extractable-expected.txt:
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-key-extractable.html:
+        * crypto/subtle/rsaes-pkcs1-v1_5-generate-key.html:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key.html:
+        * crypto/webkitSubtle/rsa-oaep-generate-non-extractable-key-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-generate-non-extractable-key.html:
+        * crypto/webkitSubtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-key-manipulation.html:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent.html:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key.html:
+        * crypto/workers/subtle/resources/rsa-generate-key.js:
+        * crypto/workers/subtle/rsa-generate-key-expected.txt:
+        Update tests and expected results to show that CryptoKeyPair is now a vanilla object, not a platform object.
+
+2016-12-05  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Controls bar in fullscreen cannot be dragged
+        https://bugs.webkit.org/show_bug.cgi?id=165448
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that simulates a dragging interaction of the controls bar in fullscreen.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Skip more bad tests
+        https://bugs.webkit.org/show_bug.cgi?id=165449
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+        The font tests have illegal declarations where the
+        ordering of the sub-properties is all wrong. Skip for
+        now until we can rewrite them.
+
+        The negative-calc value test is wrong, since tab-size
+        takes only positive integers, so a calc that resolves
+        to a negative number must be rejected. Avoid the test
+        for now until we can rewrite it.
+
+2016-12-05  Antoine Quint  <graouts@apple.com>
+
+        ERROR: post-layout: dirty renderer(s) - Encountered with LayoutTest media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html
+        https://bugs.webkit.org/show_bug.cgi?id=165312
+
+        Reviewed by Simon Fraser.
+
+        Restore previously skipped tests.
+
+        * platform/mac/TestExpectations:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Tweak more layout tests to pass
+        https://bugs.webkit.org/show_bug.cgi?id=165447
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+        Add a few more tests to avoid.
+
+        * fast/css/parsing-font-variant-ligatures-expected.txt:
+        * fast/css/parsing-font-variant-ligatures.html:
+        Remove the assumption that multiple occurrences of the
+        same value are allowed.
+
+        * fast/filter-image/parse-filter-image-expected.txt:
+        * fast/filter-image/parse-filter-image.html:
+        Change the test to require url(), since you cannot omit it
+        and expect the filter to parse properly.
+
+2016-12-05  Dean Jackson  <dino@apple.com>
+
+        MediaDocuments crash with modern media controls
+        https://bugs.webkit.org/show_bug.cgi?id=165446
+        <rdar://problem/29524959>
+
+        Reviewed by Antoine Quint.
+
+        * media/modern-media-controls/media-documents/insert-style-should-not-crash-expected.txt: Added.
+        * media/modern-media-controls/media-documents/insert-style-should-not-crash.html: Added.
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Avoid more tests
+        https://bugs.webkit.org/show_bug.cgi?id=165445
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations:
+        Just skip the custom property test, since it's a ref test.
+
+2016-12-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Object.shallowEqual([{}], [{}]) should return true
+        https://bugs.webkit.org/show_bug.cgi?id=165397
+
+        Reviewed by Brian Burg.
+
+        Added passing and failing inputs for TestHarness.prototype.expectShallowEqual.
+
+        * inspector/unit-tests/test-harness-expect-functions-expected.txt:
+        * inspector/unit-tests/test-harness-expect-functions.html:
+
+2016-12-05  Dean Jackson  <dino@apple.com>
+
+        pointer lock needs to be feature detectable
+        https://bugs.webkit.org/show_bug.cgi?id=165426
+        <rdar://problem/29486715>
+
+        Reviewed by Antoine Quint.
+
+        Checks that the API is hidden when the feature is turned off.
+
+        * pointer-lock/pointerlock-interface-disabled-expected.txt: Added.
+        * pointer-lock/pointerlock-interface-disabled.html: Added.
+        * pointer-lock/pointerlock-interface-expected.txt: Added.
+        * pointer-lock/pointerlock-interface.html: Added.
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Skip a grid test
+        https://bugs.webkit.org/show_bug.cgi?id=165427
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Avoid more invalid tests
+        https://bugs.webkit.org/show_bug.cgi?id=165424
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+        Avoid the aspect-ratio test, since it thinks whitespace should not be allowed, even though
+        it should be. Avoid a couple of grid tests that assume the grid breadth can't be 0fr, even
+        though it can be. Non-negative means < 0, not <= 0 like the old parser assumes.
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix invalid column-span test
+        https://bugs.webkit.org/show_bug.cgi?id=165420
+
+        Reviewed by Dean Jackson.
+
+        * fast/multicol/newmulticol/spanner-becomes-regular-block.html:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Avoid more tests
+        https://bugs.webkit.org/show_bug.cgi?id=165417
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+
+2016-12-05  Antti Koivisto  <antti@apple.com>
+
+        keyframes do not work when defined inside a style in a shadowRoot
+        https://bugs.webkit.org/show_bug.cgi?id=164608
+        <rdar://problem/29210251>
+
+        Reviewed by Darin Adler.
+
+        * fast/shadow-dom/shadow-host-animation-expected.html: Added.
+        * fast/shadow-dom/shadow-host-animation.html: Added.
+
+2016-12-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip three media/modern-media-controls tests.
+        https://bugs.webkit.org/show_bug.cgi?id=165312
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r209299.
+
+        This change appears to have caused LayoutTest failures on
+        Sierra WK1.
+
+        Reverted changeset:
+
+        "Improve the behavior of scroll-into-view when the target is
+        inside position:fixed"
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+        http://trac.webkit.org/changeset/209299
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix column tests with illegal syntax
+        https://bugs.webkit.org/show_bug.cgi?id=165411
+
+        Reviewed by Zalan Bujtas.
+
+        Patch column-span layout tests that use invalid syntax
+        to use the spec-compliant syntax instead (none instead of 1).
+
+        * fast/multicol/newmulticol/remove-spanner4.html:
+        * fast/multicol/newmulticol/remove-spanner5.html:
+        * fast/multicol/newmulticol/remove-spanner6.html:
+        * fast/multicol/span/span-as-immediate-child-property-removal.html:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Avoid a few more tests
+        https://bugs.webkit.org/show_bug.cgi?id=165404
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix flex property parsing test
+        https://bugs.webkit.org/show_bug.cgi?id=165402
+
+        Reviewed by Simon Fraser.
+
+        flex-grow and flex-shrink must occur together. They cannot be before and after
+        the flex-basis. Since this test is about valid property declarations, just fix it
+        by removing the invalid ones.
+
+        * css3/flexbox/flex-property-parsing-expected.txt:
+        * css3/flexbox/flex-property-parsing.html:
+
+2016-12-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/seek-backward-support/seek-backward-support.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=165386
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-12-05  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Remove calc column-span test
+        https://bugs.webkit.org/show_bug.cgi?id=165393
+
+        Reviewed by Zalan Bujtas.
+
+        "1" is not a legal value for column-span, let alone allowing it to support a calc that
+        resolves to 1.
+
+        * fast/css/webkit-column-span-calculated-value-expected.txt: Removed.
+        * fast/css/webkit-column-span-calculated-value.html: Removed.
+
+2016-12-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/media-controller/media-controller-resize.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=164571
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-04  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Eliminate in-place lowercasing in the parser.
+        https://bugs.webkit.org/show_bug.cgi?id=165368
+
+        Reviewed by Darin Adler.
+
+        * fast/media/mq-pointer-expected.txt:
+
+2016-12-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Assertion Failures breakpoint should respect global Breakpoints enabled setting
+        https://bugs.webkit.org/show_bug.cgi?id=165277
+        <rdar://problem/29467098>
+
+        Reviewed by Mark Lam.
+
+        New test for DebuggerManager.prototype.breakPointsEnabled.
+
+        * inspector/debugger/breakpoints-disabled-expected.txt: Added.
+        * inspector/debugger/breakpoints-disabled.html: Added.
+
+2016-12-03  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Remove Inspector test of Bison errors
+        https://bugs.webkit.org/show_bug.cgi?id=165362
+
+        Reviewed by Simon Fraser.
+
+        The old parser logs invalid property declaration errors whenever a Bison error
+        occurs. This catches only a fraction of declaration errors,
+        since Bison accepts practically everything and leaves it up to the specific
+        parser functions to determine validity of a property.
+
+        The new parser does not have this error reporting. The old reporting will be
+        removed from CSSParser when the new parser turns on. This patch removes the
+        test of Bison errors.
+
+        * inspector/console/css-source-locations-expected.txt: Removed.
+        * inspector/console/css-source-locations.html: Removed.
+
+2016-12-02  Sam Weinig  <sam@webkit.org>
+
+        optional sequence values not handled correctly by binding generator
+        https://bugs.webkit.org/show_bug.cgi?id=142562
+
+        Reviewed by Darin Adler.
+
+        * fast/canvas/webgl/resources/typed-array-worker.js:
+        * fast/dom/Window/window-postmessage-args-expected.txt:
+        * fast/dom/Window/window-postmessage-args.html:
+        * fast/events/message-port-deleted-document.html:
+        * fast/events/message-port-deleted-frame.html:
+        * fast/events/message-port-inactive-document.html:
+        * fast/events/message-port-multi-expected.txt:
+        * fast/events/message-port.html:
+        * fast/workers/worker-context-multi-port-expected.txt:
+        * fast/workers/worker-multi-port-expected.txt:
+        * webgl/1.0.2/resources/webgl_test_files/conformance/typedarrays/resources/typed-array-worker.js:
+        * webgl/1.0.3/resources/webgl_test_files/conformance/typedarrays/resources/typed-array-worker.js:
+        Update for new exceptions and stricter enforcement of the postMessage signature. 
+
+2016-12-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the behavior of scroll-into-view when the target is inside position:fixed
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/overflow/scroll-anchor-in-position-fixed-expected.txt: Added.
+        * fast/overflow/scroll-anchor-in-position-fixed.html: Added.
+        * fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed-expected.txt: Added.
+        * fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-11-30  Simon Fraser  <simon.fraser@apple.com>
+
+        localToAbsolute() does incorrect conversion for elements inside position:fixed with zooming
+        https://bugs.webkit.org/show_bug.cgi?id=165244
+
+        Reviewed by Zalan Bujtas.
+        
+        Test getBoundingClientRect() (which internally calls localToAbsolute())
+        for an element inside position:fixed after zooming.
+
+        * fast/visual-viewport/zoomed-fixed-expected.txt: Rebaseline
+        * fast/zooming/client-rect-in-fixed-zoomed-expected.txt: Added.
+        * fast/zooming/client-rect-in-fixed-zoomed.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip new test on iOS; test requires window.scrollTo to be synchronous.
+
+
+2016-12-02  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Update the media controls size as the media element is resized
+        https://bugs.webkit.org/show_bug.cgi?id=165346
+
+        Reviewed by Dean Jackson.
+
+        Write an accurate test to check for media controls updating their size to match the
+        media's layout size and no longer mark that test as flaky.
+
+        * TestExpectations:
+        * media/modern-media-controls/media-controller/media-controller-resize-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/dom/Window/window-resize-contents.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=165352
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2016-12-02  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Turn off more tests until new parser is on
+        https://bugs.webkit.org/show_bug.cgi?id=165349
+
+        Reviewed by Dean Jackson.
+
+        * TestExpectations:
+
+2016-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/text/crash-complex-text-surrogate.html after r209279.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/fast/text/crash-complex-text-surrogate-expected.txt:
+        * platform/mac-yosemite/fast/text/crash-complex-text-surrogate-expected.txt:
+
+2016-12-02  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Fix errors in numerous layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=165343
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/backgrounds/repeat/parsing-background-repeat-expected.txt:
+        * fast/backgrounds/repeat/script-tests/parsing-background-repeat.js:
+        The old parser partially applies shorthands, even if it rejects later on.
+        The new parser properly rejects the entire shorthand. Fix the test so that
+        the numbers at the end are not unitless so that the entire shorthand parses, allowing
+        the components to be obtained.
+
+        * fast/css/unknown-pseudo-element-matching-expected.txt:
+        * fast/css/unknown-pseudo-element-matching.html:
+        * fast/text/crash-complex-text-surrogate.html:
+        The old parser allows the tag name to be omitted following a namespace bar (|). This
+        is not legal according to the namespaces spec, and the new parser behaves correctly.
+        For the crash test, it's important that all the code still runs, so we know the crash
+        doesn't happen, so I patched the test to put in '*' for the tag names to keep everything
+        the same.
+
+        For the unknown-pseudo-element test, I just removed the five invalid cases.
+
+2016-12-02  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Turn off the large value test, since clamping is not the same.
+        https://bugs.webkit.org/show_bug.cgi?id=165341
+
+        Reviewed by Zalan Bujtas.
+
+        * TestExpectations:
+
+2016-12-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking three imported/w3c/web-platform-tests/IndexedDB/idbindex-* tests as flaky on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=165222
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-02  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Add rewind and fast-forward support
+        https://bugs.webkit.org/show_bug.cgi?id=165294
+
+        Reviewed by Dean Jackson.
+
+        New test for the LayoutNode.parentOfType() method and the seeking buttons.
+
+        * media/modern-media-controls/forward-button/forward-button.html:
+        * media/modern-media-controls/layout-node/layout-node-parent-of-type-expected.txt: Added.
+        * media/modern-media-controls/layout-node/layout-node-parent-of-type.html: Added.
+        * media/modern-media-controls/rewind-button/rewind-button.html:
+        * media/modern-media-controls/seek-backward-support/seek-backward-support-expected.txt: Added.
+        * media/modern-media-controls/seek-backward-support/seek-backward-support.html: Added.
+        * media/modern-media-controls/seek-forward-support/seek-forward-support-expected.txt: Added.
+        * media/modern-media-controls/seek-forward-support/seek-forward-support.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
 2016-12-02  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking media/modern-media-controls/scrubber-support/scrubber-support-click.html as a flaky failure.

@@ -28,6 +28,7 @@
 
 #include "DataReference.h"
 #include "ImportanceAssertion.h"
+#include "MachMessage.h"
 #include "MachPort.h"
 #include "MachUtilities.h"
 #include <WebCore/AXObjectCache.h>
@@ -258,19 +259,6 @@ bool Connection::open()
     return true;
 }
 
-static inline size_t machMessageSize(size_t bodySize, size_t numberOfPortDescriptors = 0, size_t numberOfOOLMemoryDescriptors = 0)
-{
-    size_t size = sizeof(mach_msg_header_t) + bodySize;
-    if (numberOfPortDescriptors || numberOfOOLMemoryDescriptors) {
-        size += sizeof(mach_msg_body_t);
-        if (numberOfPortDescriptors)
-            size += (numberOfPortDescriptors * sizeof(mach_msg_port_descriptor_t));
-        if (numberOfOOLMemoryDescriptors)
-            size += (numberOfOOLMemoryDescriptors * sizeof(mach_msg_ool_descriptor_t));
-    }
-    return round_msg(size);
-}
-
 bool Connection::platformCanSendOutgoingMessages() const
 {
     return true;
@@ -288,27 +276,21 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
             numberOfPortDescriptors++;
     }
     
-    size_t messageSize = machMessageSize(encoder->bufferSize(), numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
+    size_t messageSize = MachMessage::messageSize(encoder->bufferSize(), numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
 
     bool messageBodyIsOOL = false;
     if (messageSize > inlineMessageMaxSize) {
         messageBodyIsOOL = true;
 
         numberOfOOLMemoryDescriptors++;
-        messageSize = machMessageSize(0, numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
+        messageSize = MachMessage::messageSize(0, numberOfPortDescriptors, numberOfOOLMemoryDescriptors);
     }
 
-    char stackBuffer[inlineMessageMaxSize];
-    char* buffer = &stackBuffer[0];
-    if (messageSize > inlineMessageMaxSize) {
-        buffer = (char*)mmap(0, messageSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-        if (buffer == MAP_FAILED)
-            return false;
-    }
+    auto message = MachMessage::create(messageSize);
 
-    bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors > 0);
+    bool isComplex = (numberOfPortDescriptors + numberOfOOLMemoryDescriptors) > 0;
 
-    mach_msg_header_t* header = reinterpret_cast<mach_msg_header_t*>(buffer);
+    mach_msg_header_t* header = message->header();
     header->msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_COPY_SEND, 0);
     header->msgh_size = messageSize;
     header->msgh_remote_port = m_sendPort;
@@ -371,9 +353,6 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
         // FIXME: What should we do here?
     }
 
-    if (buffer != &stackBuffer[0])
-        munmap(buffer, messageSize);
-
     return true;
 }
 
@@ -400,7 +379,7 @@ static std::unique_ptr<Decoder> createMessageDecoder(mach_msg_header_t* header)
         uint8_t* body = reinterpret_cast<uint8_t*>(header + 1);
         size_t bodySize = header->msgh_size - sizeof(mach_msg_header_t);
 
-        return std::make_unique<Decoder>(DataReference(body, bodySize), Vector<Attachment>());
+        return std::make_unique<Decoder>(body, bodySize, nullptr, Vector<Attachment> { });
     }
 
     bool messageBodyIsOOL = header->msgh_id & MessageBodyIsOutOfLine;
@@ -439,9 +418,9 @@ static std::unique_ptr<Decoder> createMessageDecoder(mach_msg_header_t* header)
         uint8_t* messageBody = static_cast<uint8_t*>(descriptor->out_of_line.address);
         size_t messageBodySize = descriptor->out_of_line.size;
 
-        auto decoder = std::make_unique<Decoder>(DataReference(messageBody, messageBodySize), WTFMove(attachments));
-
-        vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(descriptor->out_of_line.address), descriptor->out_of_line.size);
+        auto decoder = std::make_unique<Decoder>(messageBody, messageBodySize, [](const uint8_t* buffer, size_t length) {
+            vm_deallocate(mach_task_self(), reinterpret_cast<vm_address_t>(buffer), length);
+        }, WTFMove(attachments));
 
         return decoder;
     }
@@ -449,7 +428,7 @@ static std::unique_ptr<Decoder> createMessageDecoder(mach_msg_header_t* header)
     uint8_t* messageBody = descriptorData;
     size_t messageBodySize = header->msgh_size - (descriptorData - reinterpret_cast<uint8_t*>(header));
 
-    return std::make_unique<Decoder>(DataReference(messageBody, messageBodySize), attachments);
+    return std::make_unique<Decoder>(messageBody, messageBodySize, nullptr, attachments);
 }
 
 // The receive buffer size should always include the maximum trailer size.

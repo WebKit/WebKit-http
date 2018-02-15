@@ -62,7 +62,7 @@ CSSParserImpl::CSSParserImpl(const CSSParserContext& context, StyleSheetContents
 {
 }
 
-bool CSSParserImpl::parseValue(MutableStyleProperties* declaration, CSSPropertyID propertyID, const String& string, bool important, const CSSParserContext& context)
+CSSParser::ParseResult CSSParserImpl::parseValue(MutableStyleProperties* declaration, CSSPropertyID propertyID, const String& string, bool important, const CSSParserContext& context)
 {
     CSSParserImpl parser(context);
     StyleRule::Type ruleType = StyleRule::Style;
@@ -73,8 +73,18 @@ bool CSSParserImpl::parseValue(MutableStyleProperties* declaration, CSSPropertyI
     CSSTokenizer::Scope scope(string);
     parser.consumeDeclarationValue(scope.tokenRange(), propertyID, important, ruleType);
     if (parser.m_parsedProperties.isEmpty())
-        return false;
-    return declaration->addParsedProperties(parser.m_parsedProperties);
+        return CSSParser::ParseResult::Error;
+    return declaration->addParsedProperties(parser.m_parsedProperties) ? CSSParser::ParseResult::Changed : CSSParser::ParseResult::Unchanged;
+}
+
+CSSParser::ParseResult CSSParserImpl::parseCustomPropertyValue(MutableStyleProperties* declaration, const AtomicString& propertyName, const String& string, bool important, const CSSParserContext& context)
+{
+    CSSParserImpl parser(context);
+    CSSTokenizer::Scope scope(string);
+    parser.consumeCustomPropertyValue(scope.tokenRange(), propertyName, important);
+    if (parser.m_parsedProperties.isEmpty())
+        return CSSParser::ParseResult::Error;
+    return declaration->addParsedProperties(parser.m_parsedProperties) ? CSSParser::ParseResult::Changed : CSSParser::ParseResult::Unchanged;
 }
 
 static inline void filterProperties(bool important, const ParsedPropertyVector& input, ParsedPropertyVector& output, size_t& unusedEntries, std::bitset<numCSSProperties>& seenProperties, HashSet<AtomicString>& seenCustomProperties)
@@ -689,8 +699,7 @@ RefPtr<StyleRule> CSSParserImpl::consumeStyleRule(CSSParserTokenRange prelude, C
 
     consumeDeclarationList(block, StyleRule::Style);
 
-    // FIXME-NEWPARSER: Line number is in the StyleRule constructor (gross), need to figure this out.
-    RefPtr<StyleRule> rule = StyleRule::create(0, createStyleProperties(m_parsedProperties, m_context.mode));
+    RefPtr<StyleRule> rule = StyleRule::create(createStyleProperties(m_parsedProperties, m_context.mode));
     rule->wrapperAdoptSelectorList(selectorList);
     return rule;
 }
@@ -775,7 +784,7 @@ void CSSParserImpl::consumeDeclaration(CSSParserTokenRange range, StyleRule::Typ
     size_t propertiesCount = m_parsedProperties.size();
     if (propertyID == CSSPropertyInvalid && CSSVariableParser::isValidVariableName(token)) {
         AtomicString variableName = token.value().toAtomicString();
-        consumeVariableValue(range.makeSubRange(&range.peek(), declarationValueEnd), variableName, important);
+        consumeCustomPropertyValue(range.makeSubRange(&range.peek(), declarationValueEnd), variableName, important);
     }
 
     if (important && (ruleType == StyleRule::FontFace || ruleType == StyleRule::Keyframe))
@@ -791,7 +800,7 @@ void CSSParserImpl::consumeDeclaration(CSSParserTokenRange range, StyleRule::Typ
     }
 }
 
-void CSSParserImpl::consumeVariableValue(CSSParserTokenRange range, const AtomicString& variableName, bool important)
+void CSSParserImpl::consumeCustomPropertyValue(CSSParserTokenRange range, const AtomicString& variableName, bool important)
 {
     if (RefPtr<CSSCustomPropertyValue> value = CSSVariableParser::parseDeclarationValue(variableName, range))
         m_parsedProperties.append(CSSProperty(CSSPropertyCustom, WTFMove(value), important));

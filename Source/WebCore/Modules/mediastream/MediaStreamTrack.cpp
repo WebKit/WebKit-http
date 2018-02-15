@@ -30,7 +30,6 @@
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "Dictionary.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "JSOverconstrainedError.h"
@@ -38,7 +37,6 @@
 #include "MediaSourceSettings.h"
 #include "MediaStream.h"
 #include "MediaStreamPrivate.h"
-#include "MediaTrackConstraints.h"
 #include "NotImplemented.h"
 #include "OverconstrainedError.h"
 #include "ScriptExecutionContext.h"
@@ -150,13 +148,6 @@ void MediaStreamTrack::stopProducingData()
     m_private->endTrack();
 }
 
-RefPtr<MediaTrackConstraints> MediaStreamTrack::getConstraints() const
-{
-    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=122428
-    notImplemented();
-    return 0;
-}
-
 RefPtr<MediaSourceSettings> MediaStreamTrack::getSettings() const
 {
     return MediaSourceSettings::create(m_private->settings());
@@ -187,7 +178,7 @@ void MediaStreamTrack::applyConstraints(const MediaConstraints& constraints)
         if (!weakThis || !weakThis->m_promise)
             return;
 
-        weakThis->m_promise->reject(OverconstrainedError::create(failedConstraint, message).get());
+        weakThis->m_promise->rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(failedConstraint, message).get());
     };
 
     std::function<void()> successHandler = [weakThis]() {

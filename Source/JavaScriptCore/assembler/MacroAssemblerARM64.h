@@ -427,6 +427,20 @@ public:
         m_assembler.clz<64>(dest, src);
     }
 
+    void countTrailingZeros32(RegisterID src, RegisterID dest)
+    {
+        // Arm does not have a count trailing zeros only a count leading zeros.
+        m_assembler.rbit<32>(dest, src);
+        m_assembler.clz<32>(dest, dest);
+    }
+
+    void countTrailingZeros64(RegisterID src, RegisterID dest)
+    {
+        // Arm does not have a count trailing zeros only a count leading zeros.
+        m_assembler.rbit<64>(dest, src);
+        m_assembler.clz<64>(dest, dest);
+    }
+
     void lshift32(RegisterID src, RegisterID shiftAmount, RegisterID dest)
     {
         m_assembler.lsl<32>(dest, src, shiftAmount);
@@ -1560,6 +1574,16 @@ public:
         m_assembler.frintm<32>(dest, src);
     }
 
+    void roundTowardNearestIntDouble(FPRegisterID src, FPRegisterID dest)
+    {
+        m_assembler.frintn<64>(dest, src);
+    }
+
+    void roundTowardNearestIntFloat(FPRegisterID src, FPRegisterID dest)
+    {
+        m_assembler.frintn<32>(dest, src);
+    }
+
     void roundTowardZeroDouble(FPRegisterID src, FPRegisterID dest)
     {
         m_assembler.frintz<64>(dest, src);
@@ -1569,6 +1593,7 @@ public:
     {
         m_assembler.frintz<32>(dest, src);
     }
+
 
     // Convert 'src' to an integer, and places the resulting 'dest'.
     // If the result is not representable as a 32 bit value, branch.

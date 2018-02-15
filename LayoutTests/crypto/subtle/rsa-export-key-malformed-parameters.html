@@ -24,14 +24,16 @@ var extractable = true;
 
 crypto.subtle.generateKey(algorithmKeyGen, extractable, ["decrypt", "encrypt", "wrapKey", "unwrapKey"]).then(function(result) {
     publicKey = result.publicKey;
+    privateKey = result.privateKey;
 
     // Currently not support format.
-    return shouldReject('crypto.subtle.exportKey("spki", publicKey)');
-}).then(function() {
     return shouldReject('crypto.subtle.exportKey("pkcs8", publicKey)');
 }).then(function() {
     // Not support format.
     return shouldReject('crypto.subtle.exportKey("raw", publicKey)');
+}).then(function() {
+    // Wrong key and format.
+    return shouldReject('crypto.subtle.exportKey("spki", privateKey)');
 }).then(finishJSTest, finishJSTest);
 
 </script>

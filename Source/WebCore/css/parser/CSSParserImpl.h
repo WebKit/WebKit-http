@@ -29,6 +29,7 @@
 
 #pragma once
 
+#include "CSSParser.h"
 #include "CSSParserMode.h"
 #include "CSSParserTokenRange.h"
 #include "CSSProperty.h"
@@ -61,7 +62,7 @@ class StyleSheetContents;
 class ImmutableStyleProperties;
 class Element;
 class MutableStyleProperties;
-
+    
 class CSSParserImpl {
     WTF_MAKE_NONCOPYABLE(CSSParserImpl);
 public:
@@ -82,7 +83,8 @@ public:
         NoRules, // For parsing at-rules inside declaration lists
     };
 
-    static bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, const CSSParserContext&);
+    static CSSParser::ParseResult parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, const CSSParserContext&);
+    static CSSParser::ParseResult parseCustomPropertyValue(MutableStyleProperties*, const AtomicString& propertyName, const String&, bool important, const CSSParserContext&);
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     static bool parseDeclarationList(MutableStyleProperties*, const String&, const CSSParserContext&);
     static RefPtr<StyleRuleBase> parseRule(const String&, const CSSParserContext&, StyleSheetContents*, AllowedRulesType);
@@ -134,7 +136,7 @@ private:
     void consumeDeclarationList(CSSParserTokenRange, StyleRule::Type);
     void consumeDeclaration(CSSParserTokenRange, StyleRule::Type);
     void consumeDeclarationValue(CSSParserTokenRange, CSSPropertyID, bool important, StyleRule::Type);
-    void consumeVariableValue(CSSParserTokenRange, const AtomicString& propertyName, bool important);
+    void consumeCustomPropertyValue(CSSParserTokenRange, const AtomicString& propertyName, bool important);
 
     static std::unique_ptr<Vector<double>> consumeKeyframeKeyList(CSSParserTokenRange);
 

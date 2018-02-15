@@ -100,8 +100,7 @@ public:
         if (!m_calcValue)
             return nullptr;
         m_sourceRange = m_range;
-        CSSPrimitiveValue::UnitTypes unitType = m_calcValue->isInt() ? CSSPrimitiveValue::UnitTypes::CSS_PARSER_INTEGER : CSSPrimitiveValue::UnitTypes::CSS_NUMBER;
-        return CSSValuePool::singleton().createValue(m_calcValue->doubleValue(), unitType);
+        return CSSValuePool::singleton().createValue(m_calcValue->doubleValue(), CSSPrimitiveValue::UnitTypes::CSS_NUMBER);
     }
 
     bool consumeNumberRaw(double& result)
@@ -209,7 +208,7 @@ RefPtr<CSSPrimitiveValue> consumeLength(CSSParserTokenRange& range, CSSParserMod
         default:
             return nullptr;
         }
-        if (valueRange == ValueRangeNonNegative && token.numericValue() < 0)
+        if ((valueRange == ValueRangeNonNegative && token.numericValue() < 0) || std::isinf(token.numericValue()))
             return nullptr;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), token.unitType());
     }
@@ -217,11 +216,11 @@ RefPtr<CSSPrimitiveValue> consumeLength(CSSParserTokenRange& range, CSSParserMod
         if (!shouldAcceptUnitlessValue(token.numericValue(), cssParserMode, unitless)
             || (valueRange == ValueRangeNonNegative && token.numericValue() < 0))
             return nullptr;
+        if (std::isinf(token.numericValue()))
+            return nullptr;
         CSSPrimitiveValue::UnitTypes unitType = CSSPrimitiveValue::UnitTypes::CSS_PX;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), unitType);
     }
-    if (cssParserMode == SVGAttributeMode)
-        return nullptr;
     CalcParser calcParser(range, valueRange);
     if (calcParser.value() && calcParser.value()->category() == CalcLength)
         return calcParser.consumeValue();
@@ -232,7 +231,7 @@ RefPtr<CSSPrimitiveValue> consumePercent(CSSParserTokenRange& range, ValueRange 
 {
     const CSSParserToken& token = range.peek();
     if (token.type() == PercentageToken) {
-        if (valueRange == ValueRangeNonNegative && token.numericValue() < 0)
+        if ((valueRange == ValueRangeNonNegative && token.numericValue() < 0) || std::isinf(token.numericValue()))
             return nullptr;
         return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitTypes::CSS_PERCENTAGE);
     }
@@ -288,8 +287,7 @@ RefPtr<CSSPrimitiveValue> consumeAngle(CSSParserTokenRange& range, CSSParserMode
         }
     }
     if (token.type() == NumberToken && shouldAcceptUnitlessValue(token.numericValue(), cssParserMode, unitless)) {
-        range.consumeIncludingWhitespace();
-        return CSSValuePool::singleton().createValue(0, CSSPrimitiveValue::UnitTypes::CSS_DEG);
+        return CSSValuePool::singleton().createValue(range.consumeIncludingWhitespace().numericValue(), CSSPrimitiveValue::UnitTypes::CSS_DEG);
     }
 
     CalcParser calcParser(range, ValueRangeAll);

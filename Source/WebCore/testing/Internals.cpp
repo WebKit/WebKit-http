@@ -138,6 +138,7 @@
 #include <runtime/JSCJSValue.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuffer.h>
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
 #include "ColorChooser.h"
@@ -1552,10 +1553,6 @@ String Internals::parserMetaData(JSC::JSValue code)
         result.appendLiteral("module");
     else if (executable->isProgramExecutable())
         result.appendLiteral("program");
-#if ENABLE(WEBASSEMBLY)
-    else if (executable->isWebAssemblyExecutable())
-        result.appendLiteral("WebAssembly");
-#endif
     else
         ASSERT_NOT_REACHED();
 
@@ -2760,18 +2757,24 @@ void Internals::applicationWillEnterBackground() const
     PlatformMediaSessionManager::sharedManager().applicationWillEnterBackground();
 }
 
+static PlatformMediaSession::MediaType mediaTypeFromString(const String& mediaTypeString)
+{
+    if (equalLettersIgnoringASCIICase(mediaTypeString, "video"))
+        return PlatformMediaSession::Video;
+    if (equalLettersIgnoringASCIICase(mediaTypeString, "audio"))
+        return PlatformMediaSession::Audio;
+    if (equalLettersIgnoringASCIICase(mediaTypeString, "videoaudio"))
+        return PlatformMediaSession::VideoAudio;
+    if (equalLettersIgnoringASCIICase(mediaTypeString, "webaudio"))
+        return PlatformMediaSession::WebAudio;
+
+    return PlatformMediaSession::None;
+}
+
 ExceptionOr<void> Internals::setMediaSessionRestrictions(const String& mediaTypeString, const String& restrictionsString)
 {
-    PlatformMediaSession::MediaType mediaType = PlatformMediaSession::None;
-    if (equalLettersIgnoringASCIICase(mediaTypeString, "video"))
-        mediaType = PlatformMediaSession::Video;
-    else if (equalLettersIgnoringASCIICase(mediaTypeString, "audio"))
-        mediaType = PlatformMediaSession::Audio;
-    else if (equalLettersIgnoringASCIICase(mediaTypeString, "videoaudio"))
-        mediaType = PlatformMediaSession::VideoAudio;
-    else if (equalLettersIgnoringASCIICase(mediaTypeString, "webaudio"))
-        mediaType = PlatformMediaSession::WebAudio;
-    else
+    PlatformMediaSession::MediaType mediaType = mediaTypeFromString(mediaTypeString);
+    if (mediaType == PlatformMediaSession::None)
         return Exception { INVALID_ACCESS_ERR };
 
     PlatformMediaSessionManager::SessionRestrictions restrictions = PlatformMediaSessionManager::sharedManager().restrictions(mediaType);
@@ -2793,6 +2796,37 @@ ExceptionOr<void> Internals::setMediaSessionRestrictions(const String& mediaType
     }
     PlatformMediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
     return { };
+}
+
+ExceptionOr<String> Internals::mediaSessionRestrictions(const String& mediaTypeString) const
+{
+    PlatformMediaSession::MediaType mediaType = mediaTypeFromString(mediaTypeString);
+    if (mediaType == PlatformMediaSession::None)
+        return Exception { INVALID_ACCESS_ERR };
+
+    PlatformMediaSessionManager::SessionRestrictions restrictions = PlatformMediaSessionManager::sharedManager().restrictions(mediaType);
+    if (restrictions == PlatformMediaSessionManager::NoRestrictions)
+        return String();
+
+    StringBuilder builder;
+    if (restrictions & PlatformMediaSessionManager::ConcurrentPlaybackNotPermitted)
+        builder.append("concurrentplaybacknotpermitted");
+    if (restrictions & PlatformMediaSessionManager::BackgroundProcessPlaybackRestricted) {
+        if (!builder.isEmpty())
+            builder.append(',');
+        builder.append("backgroundprocessplaybackrestricted");
+    }
+    if (restrictions & PlatformMediaSessionManager::BackgroundTabPlaybackRestricted) {
+        if (!builder.isEmpty())
+            builder.append(',');
+        builder.append("backgroundtabplaybackrestricted");
+    }
+    if (restrictions & PlatformMediaSessionManager::InterruptedPlaybackNotPermitted) {
+        if (!builder.isEmpty())
+            builder.append(',');
+        builder.append("interruptedplaybacknotpermitted");
+    }
+    return builder.toString();
 }
 
 void Internals::setMediaElementRestrictions(HTMLMediaElement& element, const String& restrictionsString)

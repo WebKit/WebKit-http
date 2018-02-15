@@ -53,6 +53,10 @@ public:
     uint64_t lastCommittedLayerTreeTransactionID() const { return m_transactionIDForPendingCACommit; }
 
     void didRefreshDisplay();
+    
+    uint32_t contentUpdateFrequency() const;
+
+    bool hasDebugIndicator() const { return !!m_debugIndicatorLayerTreeHost; }
 
 private:
     void sizeDidChange() override;
@@ -77,6 +81,8 @@ private:
     void hideContentUntilPendingUpdate() override;
     void hideContentUntilAnyUpdate() override;
     bool hasVisibleContent() const override;
+
+    void prepareForAppSuspension() final;
     
     WebCore::FloatPoint indicatorLocation() const;
 

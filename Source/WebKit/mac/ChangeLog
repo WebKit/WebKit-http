@@ -1,3 +1,95 @@
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-12-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the behavior of scroll-into-view when the target is inside position:fixed
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+
+        Reviewed by Zalan Bujtas.
+
+        Plumb through 'insideFixed'. We don't get compute it, so behavior from
+        these call sites won't change.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable visual viewports by default on Mac, and iOS Wk2
+        https://bugs.webkit.org/show_bug.cgi?id=165452
+
+        Reviewed by Zalan Bujtas.
+
+        Turn visual viewports on by default for WK1 on Mac.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2016-12-05  Dean Jackson  <dino@apple.com>
+
+        pointer lock needs to be feature detectable
+        https://bugs.webkit.org/show_bug.cgi?id=165426
+        <rdar://problem/29486715>
+
+        Reviewed by Antoine Quint.
+
+        Set the RuntimeEnabledFeature as preferences
+        change.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-12-05  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r209299.
+
+        This change appears to have caused LayoutTest failures on
+        Sierra WK1.
+
+        Reverted changeset:
+
+        "Improve the behavior of scroll-into-view when the target is
+        inside position:fixed"
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+        http://trac.webkit.org/changeset/209299
+
+2016-12-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve the behavior of scroll-into-view when the target is inside position:fixed
+        https://bugs.webkit.org/show_bug.cgi?id=165354
+
+        Reviewed by Zalan Bujtas.
+
+        Plumb through 'insideFixed'. We don't get compute it, so behavior from
+        these call sites won't change.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _scrollDOMRangeToVisible:]):
+        (-[WebFrame _scrollDOMRangeToVisible:withInset:]):
+
+2016-12-02  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Adopt the PRODUCT_BUNDLE_IDENTIFIER build setting
+        https://bugs.webkit.org/show_bug.cgi?id=164492
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig: Set PRODUCT_BUNDLE_IDENTIFIER to
+        com.apple.$(PRODUCT_NAME:rfc1034identifier).
+        * Info.plist: Changed CFBundleIdentifier's value from com.apple.${PRODUCT_NAME} to
+        ${PRODUCT_BUNDLE_IDENTIFIER}.
+
 2016-12-02  Chris Dumez  <cdumez@apple.com>
 
         Regression(r209252): HTML interactive validation should not be enabled on iOS WK1 yet

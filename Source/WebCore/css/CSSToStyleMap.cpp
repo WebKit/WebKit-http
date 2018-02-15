@@ -412,7 +412,7 @@ void CSSToStyleMap::mapAnimationName(Animation& layer, const CSSValue& value)
     if (primitiveValue.valueID() == CSSValueNone)
         layer.setIsNoneAnimation(true);
     else
-        layer.setName(primitiveValue.stringValue());
+        layer.setName(primitiveValue.stringValue(), m_resolver->state().styleScopeOrdinal());
 }
 
 void CSSToStyleMap::mapAnimationPlayState(Animation& layer, const CSSValue& value)
@@ -447,7 +447,7 @@ void CSSToStyleMap::mapAnimationProperty(Animation& animation, const CSSValue& v
     } else if (primitiveValue.valueID() == CSSValueNone) {
         animation.setAnimationMode(Animation::AnimateNone);
         animation.setProperty(CSSPropertyInvalid);
-    } else {
+    } else if (primitiveValue.propertyID() != CSSPropertyInvalid) {
         animation.setAnimationMode(Animation::AnimateSingleProperty);
         animation.setProperty(primitiveValue.propertyID());
     }

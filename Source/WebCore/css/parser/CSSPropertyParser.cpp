@@ -66,6 +66,9 @@
 #include "CSSVariableParser.h"
 #include "CSSVariableReferenceValue.h"
 #include "Counter.h"
+#if ENABLE(DASHBOARD_SUPPORT)
+#include "DashboardRegion.h"
+#endif
 #include "FontFace.h"
 #include "HashTools.h"
 // FIXME-NEWPARSER: Replace Pair and Rect with actual CSSValue subclasses (CSSValuePair and CSSQuadValue).
@@ -1201,8 +1204,6 @@ static RefPtr<CSSValue> consumeTouchAction(CSSParserTokenRange& range)
 
 static RefPtr<CSSPrimitiveValue> consumeLineClamp(CSSParserTokenRange& range)
 {
-    if (range.peek().type() != PercentageToken && range.peek().type() != NumberToken)
-        return nullptr;
     RefPtr<CSSPrimitiveValue> clampValue = consumePercent(range, ValueRangeNonNegative);
     if (clampValue)
         return clampValue;
@@ -1231,7 +1232,7 @@ static RefPtr<CSSValue> consumeColumnWidth(CSSParserTokenRange& range)
     // Always parse lengths in strict mode here, since it would be ambiguous otherwise when used in
     // the 'columns' shorthand property.
     RefPtr<CSSPrimitiveValue> columnWidth = consumeLength(range, HTMLStandardMode, ValueRangeNonNegative);
-    if (!columnWidth || (!columnWidth->isCalculated() && columnWidth->doubleValue() == 0))
+    if (!columnWidth || (!columnWidth->isCalculated() && !columnWidth->doubleValue()) || (columnWidth->cssCalcValue() && !columnWidth->cssCalcValue()->doubleValue()))
         return nullptr;
     return columnWidth;
 }
@@ -1466,7 +1467,7 @@ static RefPtr<CSSValue> consumeAnimationValue(CSSPropertyID property, CSSParserT
         return consumeIdent<CSSValueNormal, CSSValueAlternate, CSSValueReverse, CSSValueAlternateReverse>(range);
     case CSSPropertyAnimationDuration:
     case CSSPropertyTransitionDuration:
-        return consumeTime(range, context.mode, ValueRangeNonNegative, UnitlessQuirk::Forbid);
+        return consumeTime(range, context.mode, ValueRangeNonNegative, UnitlessQuirk::Allow);
     case CSSPropertyAnimationFillMode:
         return consumeIdent<CSSValueNone, CSSValueForwards, CSSValueBackwards, CSSValueBoth>(range);
     case CSSPropertyAnimationIterationCount:
@@ -1967,6 +1968,17 @@ static RefPtr<CSSValue> consumePaintStroke(CSSParserTokenRange& range, CSSParser
     return consumeColor(range, cssParserMode);
 }
 
+static RefPtr<CSSValue> consumeGlyphOrientation(CSSParserTokenRange& range, CSSParserMode mode, CSSPropertyID property)
+{
+    if (range.peek().id() == CSSValueAuto) {
+        if (property == CSSPropertyGlyphOrientationVertical)
+            return consumeIdent(range);
+        return nullptr;
+    }
+    
+    return consumeAngle(range, mode, UnitlessQuirk::Allow);
+}
+
 static RefPtr<CSSValue> consumePaintOrder(CSSParserTokenRange& range)
 {
     if (range.peek().id() == CSSValueNormal)
@@ -2066,8 +2078,10 @@ static RefPtr<CSSPrimitiveValue> consumeBaselineShift(CSSParserTokenRange& range
 
 static RefPtr<CSSPrimitiveValue> consumeRxOrRy(CSSParserTokenRange& range)
 {
-    if (range.peek().id() == CSSValueAuto)
-        return consumeIdent(range);
+    // FIXME-NEWPARSER: We don't support auto values when mapping, so for now turn this
+    // off until we can figure out if we're even supposed to support it.
+    // if (range.peek().id() == CSSValueAuto)
+    //     return consumeIdent(range);
     return consumeLengthOrPercent(range, SVGAttributeMode, ValueRangeAll, UnitlessQuirk::Forbid);
 }
 
@@ -2119,10 +2133,10 @@ static RefPtr<CSSValue> consumeAttr(CSSParserTokenRange args, CSSParserContext c
         return nullptr;
     
     CSSParserToken token = args.consumeIncludingWhitespace();
+    auto attrName = token.value().toAtomicString();
     if (context.isHTMLDocument)
-        token.convertToASCIILowercaseInPlace();
+        attrName = attrName.convertToASCIILowercase();
 
-    String attrName = token.value().toString();
     if (!args.atEnd())
         return nullptr;
 
@@ -2518,7 +2532,7 @@ static RefPtr<CSSValue> consumeBasicShapeOrBox(CSSParserTokenRange& range, const
         list->append(componentValue.releaseNonNull());
     }
     
-    if (!range.atEnd())
+    if (!range.atEnd() || !list->length())
         return nullptr;
     
     return list;
@@ -3502,7 +3516,7 @@ static RefPtr<CSSValue> consumeWebkitMarqueeIncrement(CSSParserTokenRange& range
 {
     if (range.peek().type() == IdentToken)
         return consumeIdent<CSSValueSmall, CSSValueMedium, CSSValueLarge>(range);
-    return consumeLengthOrPercent(range, cssParserMode, ValueRangeAll);
+    return consumeLengthOrPercent(range, cssParserMode, ValueRangeAll, UnitlessQuirk::Allow);
 }
 
 static RefPtr<CSSValue> consumeWebkitMarqueeRepetition(CSSParserTokenRange& range)
@@ -3592,6 +3606,103 @@ static RefPtr<CSSValue> consumeTextEmphasisPosition(CSSParserTokenRange& range)
     return list;
 }
     
+#if ENABLE(DASHBOARD_SUPPORT)
+
+static RefPtr<CSSValue> consumeWebkitDashboardRegion(CSSParserTokenRange& range, CSSParserMode mode)
+{
+    if (range.atEnd())
+        return nullptr;
+    
+    if (range.peek().id() == CSSValueNone)
+        return consumeIdent(range);
+    
+    auto firstRegion = DashboardRegion::create();
+    DashboardRegion* region = nullptr;
+    
+    bool requireCommas = false;
+    
+    while (!range.atEnd()) {
+        if (!region)
+            region = firstRegion.ptr();
+        else {
+            auto nextRegion = DashboardRegion::create();
+            region->m_next = nextRegion.copyRef();
+            region = nextRegion.ptr();
+        }
+        
+        if (range.peek().functionId() != CSSValueDashboardRegion)
+            return nullptr;
+        
+        CSSParserTokenRange rangeCopy = range;
+        CSSParserTokenRange args = consumeFunction(rangeCopy);
+        if (rangeCopy.end() == args.end())
+            return nullptr; // No ) was found. Be strict about this, since tests are.
+
+        // First arg is a label.
+        if (args.peek().type() != IdentToken)
+            return nullptr;
+        region->m_label = args.consumeIncludingWhitespace().value().toString();
+        
+        // Comma is optional, so don't fail if we can't consume one.
+        requireCommas = consumeCommaIncludingWhitespace(args);
+
+        // Second arg is a type.
+        if (args.peek().type() != IdentToken)
+            return nullptr;
+        region->m_geometryType = args.consumeIncludingWhitespace().value().toString();
+        if (equalLettersIgnoringASCIICase(region->m_geometryType, "circle"))
+            region->m_isCircle = true;
+        else if (equalLettersIgnoringASCIICase(region->m_geometryType, "rectangle"))
+            region->m_isRectangle = true;
+        else
+            return nullptr;
+        
+        if (args.atEnd()) {
+            // This originally used CSSValueInvalid by accident. It might be more logical to use something else.
+            RefPtr<CSSPrimitiveValue> amount = CSSValuePool::singleton().createIdentifierValue(CSSValueInvalid);
+            region->setTop(amount.copyRef());
+            region->setRight(amount.copyRef());
+            region->setBottom(amount.copyRef());
+            region->setLeft(WTFMove(amount));
+            range = rangeCopy;
+            continue;
+        }
+        
+        // Next four arguments must be offset numbers or auto.
+        for (int i = 0; i < 4; ++i) {
+            if (args.atEnd() || (requireCommas && !consumeCommaIncludingWhitespace(args)))
+                return nullptr;
+
+            if (args.atEnd())
+                return nullptr;
+            
+            RefPtr<CSSPrimitiveValue> amount;
+            if (args.peek().id() == CSSValueAuto)
+                amount = consumeIdent(args);
+            else
+                amount = consumeLength(args, mode, ValueRangeAll);
+        
+            if (!i)
+                region->setTop(WTFMove(amount));
+            else if (i == 1)
+                region->setRight(WTFMove(amount));
+            else if (i == 2)
+                region->setBottom(WTFMove(amount));
+            else
+                region->setLeft(WTFMove(amount));
+        }
+        
+        if (!args.atEnd())
+            return nullptr;
+        
+        range = rangeCopy;
+    }
+    
+    return CSSValuePool::singleton().createValue(RefPtr<DashboardRegion>(WTFMove(firstRegion)));
+}
+    
+#endif
+
 RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSSPropertyID currentShorthand)
 {
     if (CSSParserFastPaths::isKeywordPropertyID(property)) {
@@ -3842,6 +3953,9 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyFill:
     case CSSPropertyStroke:
         return consumePaintStroke(m_range, m_context.mode);
+    case CSSPropertyGlyphOrientationVertical:
+    case CSSPropertyGlyphOrientationHorizontal:
+        return consumeGlyphOrientation(m_range, m_context.mode, property);
     case CSSPropertyPaintOrder:
         return consumePaintOrder(m_range);
     case CSSPropertyMarkerStart:
@@ -3912,8 +4026,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
     case CSSPropertyOrder:
         return consumeInteger(m_range);
     case CSSPropertyWebkitTextUnderlinePosition:
-        // auto | [ under || [ left | right ] ], but we only support auto | under for now
-        return consumeIdent<CSSValueAuto, CSSValueUnder>(m_range);
+        // auto | alphabetic | [ under || [ left | right ] ], but we only support auto | alphabetic | under for now
+        return consumeIdent<CSSValueAuto, CSSValueUnder, CSSValueAlphabetic>(m_range);
     case CSSPropertyVerticalAlign:
         return consumeVerticalAlign(m_range, m_context.mode);
     case CSSPropertyShapeOutside:
@@ -4033,6 +4147,10 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeWebkitAspectRatio(m_range);
     case CSSPropertyWebkitTextEmphasisPosition:
         return consumeTextEmphasisPosition(m_range);
+#if ENABLE(DASHBOARD_SUPPORT)
+    case CSSPropertyWebkitDashboardRegion:
+        return consumeWebkitDashboardRegion(m_range, m_context.mode);
+#endif
     default:
         return nullptr;
     }
@@ -5275,6 +5393,9 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
     case CSSPropertyTransition:
         return consumeAnimationShorthand(transitionShorthandForParsing(), important);
     case CSSPropertyTextDecoration:
+    case CSSPropertyWebkitTextDecoration:
+        // FIXME-NEWPARSER: We need to unprefix -line/-style/-color ASAP and get rid
+        // of -webkit-text-decoration completely.
         return consumeShorthandGreedily(webkitTextDecorationShorthand(), important);
     case CSSPropertyMargin:
         return consume4Values(marginShorthand(), important);

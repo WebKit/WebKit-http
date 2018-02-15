@@ -32,16 +32,20 @@ class MediaController
         this.media = media;
         this.host = host;
 
-        if (host) {
-            media.addEventListener("webkitpresentationmodechanged", this);
-            shadowRoot.appendChild(host.textTrackContainer);
-        }
+        this.container = shadowRoot.appendChild(document.createElement("div"));
+        this.container.className = "media-controls-container";
+
+        if (host)
+            this.container.appendChild(host.textTrackContainer);
 
         this._updateControlsIfNeeded();
 
-        media.addEventListener("resize", this);
+        shadowRoot.addEventListener("resize", this);
 
-        media.addEventListener("webkitfullscreenchange", this);
+        if (media.webkitSupportsPresentationMode)
+            media.addEventListener("webkitpresentationmodechanged", this);
+        else
+            media.addEventListener("webkitfullscreenchange", this);
     }
 
     get layoutTraits()
@@ -66,19 +70,12 @@ class MediaController
 
     handleEvent(event)
     {
-        if (event.currentTarget !== this.media)
-            return;
-
-        switch (event.type) {
-        case "resize":
+        if (event.type === "resize" && event.currentTarget === this.shadowRoot)
             this._updateControlsSize();
-            break;
-        case "webkitfullscreenchange":
+        else if (event.currentTarget === this.media) {
             this._updateControlsIfNeeded();
-            break;
-        case "webkitpresentationmodechanged":
-            this._returnMediaLayerToInlineIfNeeded();
-            break;
+            if (event.type === "webkitpresentationmodechanged")
+                this._returnMediaLayerToInlineIfNeeded();
         }
     }
 
@@ -100,14 +97,19 @@ class MediaController
 
         this.controls = new ControlsClass;
 
-        if (previousControls)
-            this.controls.usesLTRUserInterfaceLayoutDirection = previousControls.usesLTRUserInterfaceLayoutDirection;
+        if (this.shadowRoot.host && this.shadowRoot.host.dataset.autoHideDelay)
+            this.controls.controlsBar.autoHideDelay = this.shadowRoot.host.dataset.autoHideDelay;
 
-        this.controls.presentInElement(this.shadowRoot, !!previousControls);
+        if (previousControls) {
+            this.controls.fadeIn();
+            this.container.replaceChild(this.controls.element, previousControls.element);
+            this.controls.usesLTRUserInterfaceLayoutDirection = previousControls.usesLTRUserInterfaceLayoutDirection;
+        } else
+            this.container.appendChild(this.controls.element);        
 
         this._updateControlsSize();
 
-        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
+        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SeekBackwardSupport, SeekForwardSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
             return new SupportClass(this);
         }, this);
     }
@@ -120,12 +122,15 @@ class MediaController
 
     _returnMediaLayerToInlineIfNeeded()
     {
-        window.requestAnimationFrame(() => this.host.setPreparedToReturnVideoLayerToInline(this.media.webkitPresentationMode !== PiPMode));
+        if (this.host)
+            window.requestAnimationFrame(() => this.host.setPreparedToReturnVideoLayerToInline(this.media.webkitPresentationMode !== PiPMode));
     }
 
     _controlsClass()
     {
         const layoutTraits = this.layoutTraits;
+        if (layoutTraits & LayoutTraits.iOS)
+            return IOSInlineMediaControls;
         if (layoutTraits & LayoutTraits.Fullscreen)
             return MacOSFullscreenMediaControls;
         return MacOSInlineMediaControls;

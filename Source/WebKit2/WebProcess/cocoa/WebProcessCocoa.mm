@@ -51,6 +51,7 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSAccessibilitySPI.h>
+#import <WebCore/PerformanceLogging.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/VNodeTracker.h>
 #import <WebCore/WebCoreNSURLExtras.h>
@@ -193,6 +194,24 @@ void WebProcess::registerWithStateDumper()
             // Create a dictionary to contain the collected state. This
             // dictionary will be serialized and passed back to os_state.
             auto stateDict = adoptNS([[NSMutableDictionary alloc] init]);
+
+            {
+                auto memoryUsageStats = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::memoryUsageStatistics(ShouldIncludeExpensiveComputations::Yes)) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [memoryUsageStats setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:memoryUsageStats.get() forKey:@"Memory Usage Stats"];
+            }
+
+            {
+                auto jsObjectCounts = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::javaScriptObjectCounts()) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [jsObjectCounts setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:jsObjectCounts.get() forKey:@"JavaScript Object Counts"];
+            }
 
             auto pageLoadTimes = adoptNS([[NSMutableArray alloc] init]);
             for (auto& page : m_pageMap.values()) {

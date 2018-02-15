@@ -27,8 +27,8 @@
 
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIInterface_Private.h>
-#import <UIKit/UIPopoverPresentationController_Private.h>
 #import <UIKit/UIScreen_Private.h>
+#import <UIKit/UIViewController_Private.h>
 
 #else
 
@@ -58,10 +58,8 @@
 
 @end
 
-@interface UIPopoverPresentationController()
-
-+ (void)_setAlwaysAllowPopoverPresentations:(BOOL)flag;
-
+@interface UIViewController ()
++ (UIViewController *)viewControllerForView:(UIView *)view;
 @end
 
 #endif

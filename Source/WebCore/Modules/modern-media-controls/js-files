@@ -1,3 +1,6 @@
+gesture-recognizers/gesture-recognizer.js
+gesture-recognizers/tap.js
+gesture-recognizers/pinch.js
 controls/scheduler.js
 controls/layout-node.js
 controls/layout-item.js
@@ -18,6 +21,7 @@ controls/pip-button.js
 controls/tracks-button.js
 controls/fullscreen-button.js
 controls/aspect-ratio-button.js
+controls/seek-button.js
 controls/rewind-button.js
 controls/forward-button.js
 controls/buttons-container.js
@@ -44,6 +48,9 @@ media/placard-support.js
 media/playback-support.js
 media/remaining-time-support.js
 media/scrubbing-support.js
+media/seek-support.js
+media/seek-backward-support.js
+media/seek-forward-support.js
 media/skip-back-support.js
 media/start-support.js
 media/status-support.js

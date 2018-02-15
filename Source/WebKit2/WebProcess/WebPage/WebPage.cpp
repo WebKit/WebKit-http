@@ -304,6 +304,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #if ENABLE(CONTEXT_MENUS)
     , m_contextMenuClient(std::make_unique<API::InjectedBundle::PageContextMenuClient>())
 #endif
+    , m_editorClient { std::make_unique<API::InjectedBundle::EditorClient>() }
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(this)
@@ -619,9 +620,14 @@ void WebPage::setInjectedBundleContextMenuClient(std::unique_ptr<API::InjectedBu
 }
 #endif
 
-void WebPage::initializeInjectedBundleEditorClient(WKBundlePageEditorClientBase* client)
+void WebPage::setInjectedBundleEditorClient(std::unique_ptr<API::InjectedBundle::EditorClient> editorClient)
 {
-    m_editorClient.initialize(client);
+    if (!editorClient) {
+        m_editorClient = std::make_unique<API::InjectedBundle::EditorClient>();
+        return;
+    }
+
+    m_editorClient = WTFMove(editorClient);
 }
 
 void WebPage::setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::FormClient> formClient)
@@ -1059,7 +1065,7 @@ void WebPage::close()
 #if ENABLE(CONTEXT_MENUS)
     m_contextMenuClient = std::make_unique<API::InjectedBundle::PageContextMenuClient>();
 #endif
-    m_editorClient.initialize(0);
+    m_editorClient = std::make_unique<API::InjectedBundle::EditorClient>();
     m_formClient = std::make_unique<API::InjectedBundle::FormClient>();
     m_loaderClient.initialize(0);
     m_policyClient.initialize(0);
@@ -2986,9 +2992,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #if ENABLE(ATTACHMENT_ELEMENT)
     settings.setAttachmentElementEnabled(store.getBoolValueForKey(WebPreferencesKey::attachmentElementEnabledKey()));
 #endif
-#if ENABLE(POINTER_LOCK)
-    settings.setPointerLockEnabled(store.getBoolValueForKey(WebPreferencesKey::pointerLockEnabledKey()));
-#endif
     settings.setAllowsPictureInPictureMediaPlayback(store.getBoolValueForKey(WebPreferencesKey::allowsPictureInPictureMediaPlaybackKey()));
     settings.setMediaControlsScaleWithPageZoom(store.getBoolValueForKey(WebPreferencesKey::mediaControlsScaleWithPageZoomKey()));
     settings.setMockScrollbarsEnabled(store.getBoolValueForKey(WebPreferencesKey::mockScrollbarsEnabledKey()));
@@ -3180,6 +3183,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    RuntimeEnabledFeatures::sharedFeatures().setPointerLockEnabled(store.getBoolValueForKey(WebPreferencesKey::pointerLockEnabledKey()));
 #endif
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));

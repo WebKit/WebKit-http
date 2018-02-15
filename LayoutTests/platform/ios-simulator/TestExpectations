@@ -1447,7 +1447,6 @@ fast/images/gray-scale-jpeg-with-color-profile.html [ Failure ]
 fast/images/icon-decoding.html [ Failure ]
 fast/images/image-in-map.html [ Failure ]
 fast/images/imagemap-focus-ring-zoom.html [ Failure ]
-fast/images/pdf-as-image-with-annotations.html [ ImageOnlyFailure ]
 fast/images/repaint-subrect-grid.html [ Failure ]
 fast/images/support-broken-image-delegate.html [ Failure ]
 fast/images/webp-image-decoding.html [ Failure ]
@@ -2704,16 +2703,6 @@ fast/text/letterpress-different.html [ Pass ]
 
 webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
-webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
-webkit.org/b/163669 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
-webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
-webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
-webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-click.html [ Skip ]
-webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-drag.html [ Skip ]
-webkit.org/b/164250 media/modern-media-controls/volume-support/volume-support-media-api.html [ Skip ]
-webkit.org/b/164314 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
-
 # This variation font test requires Skia which isn't available on iOS.
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
 
@@ -2741,21 +2730,18 @@ webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 # Only Mac has implemented DictionaryLookup
 fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 
-# Internal APIs to test PiP and AirPlay are not available on iOS, and we don't support showing the tracks button on iOS.
-media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
-media/modern-media-controls/pip-support [ Skip ]
-media/modern-media-controls/placard-support [ Skip ]
-media/modern-media-controls/tracks-support [ Skip ]
-media/modern-media-controls/audio [ Skip ]
-
-# Mac-specific tests for fullscreen.
-media/modern-media-controls/media-controller/media-controller-fullscreen-change.html [ Skip ]
-media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html  [ Skip ]
-media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html [ Skip ]
-
-# These tests are all Mac-specific, we never show the tracks menu on iOS
-media/modern-media-controls/tracks-panel
-
 webkit.org/b/164594 http/tests/cache/disk-cache/disk-cache-request-headers.html [ Pass Timeout ]
 
 webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
+
+# Test relies on window.scrollTo
+fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
+fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html [ Skip ]
+fast/visual-viewport/zoomed-scroll-into-view-fixed.html [ Skip ]
+
+# This test relies on Arial being used to draw Arabic. However, on iOS,
+# we explicitly disallow this because this font is too slow.
+fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
+
+# On iOS we do not visually highlight a programmatic selection
+fast/selectors/040.html

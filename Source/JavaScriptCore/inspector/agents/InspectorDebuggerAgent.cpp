@@ -248,6 +248,9 @@ RefPtr<Inspector::Protocol::Console::StackTrace> InspectorDebuggerAgent::buildAs
 
 void InspectorDebuggerAgent::handleConsoleAssert(const String& message)
 {
+    if (!m_scriptDebugServer.breakpointsActive())
+        return;
+
     if (m_pauseOnAssertionFailures)
         breakProgram(DebuggerFrontendDispatcher::Reason::Assert, buildAssertPauseReason(message));
 }
@@ -1148,7 +1151,6 @@ void InspectorDebuggerAgent::refAsyncCallData(const AsyncCallIdentifier& identif
 void InspectorDebuggerAgent::derefAsyncCallData(const AsyncCallIdentifier& identifier)
 {
     auto iterator = m_asyncCallIdentifierToData.find(identifier);
-    ASSERT(iterator != m_asyncCallIdentifierToData.end());
     if (iterator == m_asyncCallIdentifierToData.end())
         return;
 

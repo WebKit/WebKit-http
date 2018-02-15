@@ -1,3 +1,703 @@
+2016-12-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Merge PromiseReactions
+        https://bugs.webkit.org/show_bug.cgi?id=165526
+
+        Reviewed by Sam Weinig.
+
+        Our promise implementation has two arrays per Promise; promiseFulfillReactions and promiseRejectReactions.
+        And everytime we call `promise.then`, we create two promise reactions for fullfill and reject.
+        However, these two reactions and the arrays for reactions can be merged into one array and one reaction.
+        It reduces the unnecessary object allocations.
+
+        No behavior change.
+
+        * builtins/BuiltinNames.h:
+        * builtins/PromiseOperations.js:
+        (globalPrivate.newPromiseReaction):
+        (globalPrivate.triggerPromiseReactions):
+        (globalPrivate.rejectPromise):
+        (globalPrivate.fulfillPromise):
+        (globalPrivate.promiseReactionJob):
+        (globalPrivate.initializePromise):
+        * builtins/PromisePrototype.js:
+        (then):
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::finishCreation):
+
+2016-12-06  Mark Lam  <mark.lam@apple.com>
+
+        GetByID IC is wrongly unwrapping the global proxy this value for getter/setters.
+        https://bugs.webkit.org/show_bug.cgi?id=165401
+
+        Reviewed by Saam Barati.
+
+        When the this value for a property access is the JS global and that property
+        access is via a GetterSetter, the underlying getter / setter functions would
+        expect the this value they receive to be the JSProxy instance instead of the
+        JSGlobalObject.  This is consistent with how the LLINT and runtime code behaves.
+        The IC code should behave the same way.
+
+        Also added some ASSERTs to document invariants in the code, and help detect
+        bugs sooner if the code gets changed in a way that breaks those invariants in
+        the future.
+
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+
+2016-12-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        DumpRenderTree ASSERT in JSC::ExecutableBase::isHostFunction seen on bots
+        https://bugs.webkit.org/show_bug.cgi?id=165497
+        <rdar://problem/29538973>
+
+        Reviewed by Saam Barati.
+
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        (Inspector::InspectorScriptProfilerAgent::trackingComplete):
+        Defer collection when extracting and processing the samples to avoid
+        any objects held by the samples from getting collected while processing.
+        This is because while processing we call into functions that can
+        allocate and we must prevent those functions from syncing with the
+        GC thread which may collect other sample data yet to be processed.
+
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-12-06  Saam Barati  <sbarati@apple.com>
+
+        Remove old Wasm object model
+        https://bugs.webkit.org/show_bug.cgi?id=165481
+
+        Reviewed by Keith Miller and Mark Lam.
+
+        It's confusing to see code that consults both the old
+        Wasm object model alongside the new one. The old object
+        model is not a thing, and it's not being used. Let's
+        remove it now to prevent further confusion.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        (JSC::CodeBlock::replacement):
+        (JSC::CodeBlock::computeCapabilityLevel):
+        (JSC::CodeBlock::updateAllPredictions):
+        * bytecode/CodeBlock.h:
+        * bytecode/WebAssemblyCodeBlock.cpp: Removed.
+        * bytecode/WebAssemblyCodeBlock.h: Removed.
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::isSupportedForInlining):
+        * interpreter/Interpreter.cpp:
+        (JSC::GetStackTraceFunctor::operator()):
+        (JSC::UnwindFunctor::operator()):
+        (JSC::isWebAssemblyExecutable): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::setUpCall):
+        * runtime/ExecutableBase.cpp:
+        (JSC::ExecutableBase::clearCode):
+        * runtime/ExecutableBase.h:
+        (JSC::ExecutableBase::isWebAssemblyExecutable): Deleted.
+        * runtime/JSFunction.cpp:
+        * runtime/JSFunction.h:
+        * runtime/JSFunctionInlines.h:
+        (JSC::JSFunction::isBuiltinFunction):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * runtime/WebAssemblyExecutable.cpp: Removed.
+        * runtime/WebAssemblyExecutable.h: Removed.
+
+2016-12-06  JF Bastien  <jfbastien@apple.com>
+
+        PureNaN: fix typo
+        https://bugs.webkit.org/show_bug.cgi?id=165493
+
+        Reviewed by Mark Lam.
+
+        * runtime/PureNaN.h:
+
+2016-12-06  Mark Lam  <mark.lam@apple.com>
+
+        Introduce the concept of Immutable Prototype Exotic Objects to comply with the spec.
+        https://bugs.webkit.org/show_bug.cgi?id=165227
+        <rdar://problem/29442665>
+
+        Reviewed by Saam Barati.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::setPrototypeWithCycleCheck):
+        - This is where we check for immutable prototype exotic objects and refuse to set
+          the prototype if needed.
+          See https://tc39.github.io/ecma262/#sec-immutable-prototype-exotic-objects.
+
+        * runtime/JSTypeInfo.h:
+        (JSC::TypeInfo::isImmutablePrototypeExoticObject):
+        * runtime/Structure.h:
+        - Add flag for declaring immutable prototype exotic objects.
+
+        * runtime/ObjectPrototype.h:
+        - Declare that Object.prototype is an immutable prototype exotic object.
+          See https://tc39.github.io/ecma262/#sec-properties-of-the-object-prototype-object.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorSetPrototypeOf):
+        - Use better error messages.
+
+2016-12-04  Darin Adler  <darin@apple.com>
+
+        Use ASCIICType more, and improve it a little bit
+        https://bugs.webkit.org/show_bug.cgi?id=165360
+
+        Reviewed by Sam Weinig.
+
+        * inspector/InspectorValues.cpp:
+        (Inspector::readHexDigits): Use isASCIIHexDigit.
+        (Inspector::hextoInt): Deleted.
+        (decodeString): Use toASCIIHexValue.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::parseDigit): Use isASCIIDigit, isASCIIUpper, and isASCIILower.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::substituteBackreferencesSlow): Use isASCIIDigit.
+
+2016-12-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Add storeFence support for ARMv7
+        https://bugs.webkit.org/show_bug.cgi?id=164733
+
+        Reviewed by Saam Barati.
+
+        * assembler/ARMAssembler.h:
+        (JSC::ARMAssembler::dmbISHST): Added.
+        * assembler/ARMv7Assembler.h: Typo fixed, DMB has only T1 encoding.
+        (JSC::ARMv7Assembler::dmbSY):
+        (JSC::ARMv7Assembler::dmbISHST): Added.
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::storeFence):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::storeFence):
+
+2016-12-05  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: remove ASSERT from InspectorDebuggerAgent::derefAsyncCallData
+        https://bugs.webkit.org/show_bug.cgi?id=165413
+        <rdar://problem/29517587>
+
+        Reviewed by Brian Burg.
+
+        DOMTimer::removeById can call into InspectorInstrumentation with an
+        invalid identifier, so don't assert that async call data exists.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::derefAsyncCallData):
+
+2016-12-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Fixed a bug in my last patch.
+
+        Unreviewed.
+
+        * bytecode/UnlinkedFunctionExecutable.h: Restore the conversion to
+        one-based counting.
+
+2016-12-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Moved start and end column linking into helper functions
+        https://bugs.webkit.org/show_bug.cgi?id=165422
+
+        Reviewed by Sam Weinig.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecode/UnlinkedFunctionExecutable.h:
+
+2016-12-05  Mark Lam  <mark.lam@apple.com>
+
+        Fix JSC files so that we can build a release build with NDEBUG #undef'ed.
+        https://bugs.webkit.org/show_bug.cgi?id=165409
+
+        Reviewed by Keith Miller.
+
+        This allows us to run a release build with DEBUG ASSERTs enabled.
+
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        * bytecode/UnlinkedEvalCodeBlock.cpp:
+        * bytecode/UnlinkedFunctionCodeBlock.cpp:
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        * runtime/EvalExecutable.cpp:
+
+2016-12-05  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed source => parentSource
+        https://bugs.webkit.org/show_bug.cgi?id=165419
+
+        Reviewed by Saam Barati.
+
+        This should help clarify that a FunctionExecutable holds the source
+        code to its *parent* scope, and not its own SourceCode.
+
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::createExecutable):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecode/UnlinkedFunctionExecutable.h:
+
+2016-12-05  Geoffrey Garen  <ggaren@apple.com>
+
+        ScriptExecutable should not contain a copy of firstLine and startColumn
+        https://bugs.webkit.org/show_bug.cgi?id=165415
+
+        Reviewed by Keith Miller.
+
+        We already have this data in SourceCode.
+
+        It's super confusing to have two copies of this data, where one is
+        allowed to mutate. In reality, your line and column number never change.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::link):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        * runtime/CodeCache.h:
+        (JSC::generateUnlinkedCodeBlock):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::FunctionExecutable):
+        * runtime/FunctionExecutable.h:
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::ScriptExecutable):
+        (JSC::ScriptExecutable::newCodeBlockFor):
+        * runtime/ScriptExecutable.h:
+        (JSC::ScriptExecutable::firstLine):
+        (JSC::ScriptExecutable::startColumn):
+        (JSC::ScriptExecutable::recordParse):
+
+2016-12-05  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] report unexpected token when "async" is followed by identifier 
+        https://bugs.webkit.org/show_bug.cgi?id=165091
+
+        Reviewed by Mark Lam.
+
+        Report a SyntaxError, in order to report correct error in contexts
+        an async ArrowFunction cannot occur. Also corrects errors in comment
+        describing JSTokenType bitfield, which was added in r209293.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/ParserTokens.h:
+
+2016-12-05  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm i64 to i32 conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=165378
+
+        Reviewed by Filip Pizlo.
+
+        It turns out the wrap operation is just B3's Trunc.
+
+        * wasm/wasm.json:
+
+2016-12-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r208985): SafariForWebKitDevelopment Symbol Not Found looking for method with WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=165351
+
+        Reviewed by Yusuke Suzuki.
+
+        Some versions of Safari expect:
+
+            Inspector::BackendDispatcher::reportProtocolError(WTF::Optional<long>, Inspector::BackendDispatcher::CommonErrorCode, WTF::String const&)
+        
+        Which we had updated to use std::optional. Expose a version with the original
+        Symbol for these Safaris. This stub will just call through to the new version.
+
+        * inspector/InspectorBackendDispatcher.cpp:
+        (Inspector::BackendDispatcher::reportProtocolError):
+        * inspector/InspectorBackendDispatcher.h:
+
+2016-12-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Add __STDC_FORMAT_MACROS before inttypes.h is included
+        https://bugs.webkit.org/show_bug.cgi?id=165374
+
+        We need formatting macros like PRIu64 to be available in all places where
+        inttypes.h header is used. All these usages get inttypes.h definitions
+        via wtf/Assertions.h header, except SQLiteFileSystem.cpp where formatting
+        macros are not used anymore since r185129.
+
+        This patch fixes multiple build errors with MinGW and reduces number of
+        independent __STDC_FORMAT_MACROS uses in the code base.
+
+        Reviewed by Darin Adler.
+
+        * disassembler/ARM64/A64DOpcode.cpp: Removed __STDC_FORMAT_MACROS
+        because it is obtained via Assertions.h now
+        * disassembler/ARM64Disassembler.cpp: Ditto.
+
+2016-12-04  Keith Miller  <keith_miller@apple.com>
+
+        Add support for Wasm ctz and popcnt
+        https://bugs.webkit.org/show_bug.cgi?id=165369
+
+        Reviewed by Saam Barati.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::countTrailingZeros32):
+        (JSC::MacroAssemblerARM64::countTrailingZeros64):
+        * assembler/MacroAssemblerX86Common.cpp:
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::countTrailingZeros32):
+        (JSC::MacroAssemblerX86Common::supportsBMI1):
+        (JSC::MacroAssemblerX86Common::ctzAfterBsf):
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::countTrailingZeros64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::tzcnt_rr):
+        (JSC::X86Assembler::tzcntq_rr):
+        (JSC::X86Assembler::bsf_rr):
+        (JSC::X86Assembler::bsfq_rr):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32Ctz>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64Ctz>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32Popcnt>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64Popcnt>):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+
+2016-12-04  Saam Barati  <sbarati@apple.com>
+
+        We should have a Wasm callee
+        https://bugs.webkit.org/show_bug.cgi?id=165163
+
+        Reviewed by Keith Miller.
+
+        This patch adds JSWebAssemblyCallee and stores it into the
+        callee slot in the call frame as part of the prologue of a
+        wasm function. This is the first step in implementing
+        unwinding from/through wasm frames. We will use the callee
+        to identify that a machine frame belongs to wasm code.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jsc.cpp:
+        (callWasmFunction):
+        (functionTestWasmModuleFunctions):
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/JSWebAssembly.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::setupFrameInPrologue):
+        * wasm/WasmFormat.h:
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::initializeCallees):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::compiledFunction):
+        (JSC::Wasm::Plan::getCompiledFunctions): Deleted.
+        * wasm/js/JSWebAssemblyCallee.cpp: Added.
+        (JSC::JSWebAssemblyCallee::JSWebAssemblyCallee):
+        (JSC::JSWebAssemblyCallee::finishCreation):
+        (JSC::JSWebAssemblyCallee::destroy):
+        * wasm/js/JSWebAssemblyCallee.h: Added.
+        (JSC::JSWebAssemblyCallee::create):
+        (JSC::JSWebAssemblyCallee::createStructure):
+        (JSC::JSWebAssemblyCallee::jsEntryPoint):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::create):
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        (JSC::JSWebAssemblyModule::visitChildren):
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::moduleInformation):
+        (JSC::JSWebAssemblyModule::callee):
+        (JSC::JSWebAssemblyModule::callees):
+        (JSC::JSWebAssemblyModule::offsetOfCallees):
+        (JSC::JSWebAssemblyModule::allocationSize):
+        (JSC::JSWebAssemblyModule::compiledFunctions): Deleted.
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        (JSC::WebAssemblyFunction::create):
+        (JSC::WebAssemblyFunction::visitChildren):
+        (JSC::WebAssemblyFunction::finishCreation):
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::webAssemblyCallee):
+        (JSC::WebAssemblyFunction::instance):
+        (JSC::WebAssemblyFunction::signature):
+        (JSC::CallableWebAssemblyFunction::CallableWebAssemblyFunction): Deleted.
+        (JSC::WebAssemblyFunction::webAssemblyFunctionCell): Deleted.
+        * wasm/js/WebAssemblyFunctionCell.cpp:
+        (JSC::WebAssemblyFunctionCell::create): Deleted.
+        (JSC::WebAssemblyFunctionCell::WebAssemblyFunctionCell): Deleted.
+        (JSC::WebAssemblyFunctionCell::destroy): Deleted.
+        (JSC::WebAssemblyFunctionCell::createStructure): Deleted.
+        * wasm/js/WebAssemblyFunctionCell.h:
+        (JSC::WebAssemblyFunctionCell::function): Deleted.
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-04  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Assertion Failures breakpoint should respect global Breakpoints enabled setting
+        https://bugs.webkit.org/show_bug.cgi?id=165277
+        <rdar://problem/29467098>
+
+        Reviewed by Mark Lam.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::handleConsoleAssert):
+        Check that breakpoints are active before pausing.
+
+2016-12-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Refactor SymbolImpl layout
+        https://bugs.webkit.org/show_bug.cgi?id=165247
+
+        Reviewed by Darin Adler.
+
+        Use SymbolImpl::{create, createNullSymbol} instead.
+
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::PrivateName):
+
+2016-12-03  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: update binary format to 0xD version
+        https://bugs.webkit.org/show_bug.cgi?id=165345
+
+        Reviewed by Keith Miller.
+
+        As described in the following PR: https://github.com/WebAssembly/design/pull/836
+        Originally committed in r209175, reverted in r209242, and fixed in r209284.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::zeroForType):
+        (JSC::Wasm::B3IRGenerator::addConstant):
+        (JSC::Wasm::createJSWrapper):
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::marshallArgument):
+        * wasm/WasmFormat.cpp:
+        (JSC::Wasm::toString): Deleted.
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::isValueType):
+        (JSC::Wasm::toB3Type): Deleted.
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parse):
+        (JSC::Wasm::ModuleParser::parseType):
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser::parseResultType):
+        * wasm/generateWasm.py:
+        (Wasm.__init__):
+        * wasm/generateWasmOpsHeader.py:
+        (cppMacro):
+        (typeMacroizer):
+        (opcodeMacroizer):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/wasm.json:
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm copysign
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+
+        Reviewed by Filip Pizlo.
+
+        This patch also makes two other important changes:
+
+        1) allows for i64 constants in the B3 generator language.
+        2) Fixes a bug with F64ConvertUI64 where the operation returned a Float instead
+           of a Double in B3.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<F64ConvertUI64>):
+        * wasm/generateWasmB3IRGeneratorInlinesHeader.py:
+        (CodeGenerator.generateOpcode):
+        (generateConstCode):
+        (generateI32ConstCode): Deleted.
+        * wasm/wasm.json:
+
+2016-12-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209298.
+        https://bugs.webkit.org/show_bug.cgi?id=165359
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "Add Wasm copysign"
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+        http://trac.webkit.org/changeset/209298
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm copysign
+        https://bugs.webkit.org/show_bug.cgi?id=165355
+
+        Reviewed by Filip Pizlo.
+
+        This patch also makes two other important changes:
+
+        1) allows for i64 constants in the B3 generator language.
+        2) Fixes a bug with F64ConvertUI64 where the operation returned a Float instead
+           of a Double in B3.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<F64ConvertUI64>):
+        * wasm/generateWasmB3IRGeneratorInlinesHeader.py:
+        (CodeGenerator.generateOpcode):
+        (generateConstCode):
+        (generateI32ConstCode): Deleted.
+        * wasm/wasm.json:
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix git having a breakdown over trying to reland a rollout.
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm floating point nearest and trunc
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+
+        Reviewed by Saam Barati.
+
+        This patch also allows any wasm primitive type to be passed as a
+        string.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::nearestIntDouble):
+        (JSC::MacroAssemblerARM64::nearestIntFloat):
+        (JSC::MacroAssemblerARM64::truncDouble):
+        (JSC::MacroAssemblerARM64::truncFloat):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::nearestIntDouble):
+        (JSC::MacroAssemblerX86Common::nearestIntFloat):
+        * jsc.cpp:
+        (box):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<F64ConvertUI64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32ConvertUI64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F64Nearest>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32Nearest>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F64Trunc>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32Trunc>):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+
+2016-12-02  Caitlin Potter  <caitp@igalia.com>
+
+[JSC] add additional bit to JSTokenType bitfield
+        https://bugs.webkit.org/show_bug.cgi?id=165091
+
+        Reviewed by Geoffrey Garen.
+
+        Avoid overflow which causes keyword tokens to be treated as unary
+        tokens now that "async" is tokenized as a keyword, by granting an
+        additional 64 bits to be occupied by token IDs.
+
+        * parser/ParserTokens.h:
+
+2016-12-02  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Adopt the PRODUCT_BUNDLE_IDENTIFIER build setting
+        https://bugs.webkit.org/show_bug.cgi?id=164492
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/JavaScriptCore.xcconfig: Set PRODUCT_BUNDLE_IDENTIFIER to
+        com.apple.$(PRODUCT_NAME:rfc1034identifier).
+        * Info.plist: Changed CFBundleIdentifier's value from com.apple.${PRODUCT_NAME} to
+        ${PRODUCT_BUNDLE_IDENTIFIER}.
+
+2016-12-02  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: mark WasmOps.h as private
+        https://bugs.webkit.org/show_bug.cgi?id=165335
+
+        Reviewed by Mark Lam.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj: WasmOps.h will be used by non-JSC and should therefore be private
+
+2016-12-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209275 and r209276.
+        https://bugs.webkit.org/show_bug.cgi?id=165348
+
+        "broke the arm build" (Requested by keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Add Wasm floating point nearest and trunc"
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+        http://trac.webkit.org/changeset/209275
+
+        "Unreviewed, forgot to change instruction after renaming."
+        http://trac.webkit.org/changeset/209276
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, forgot to change instruction after renaming.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::nearestIntDouble):
+        (JSC::MacroAssemblerARM64::nearestIntFloat):
+
+2016-12-02  Keith Miller  <keith_miller@apple.com>
+
+        Add Wasm floating point nearest and trunc
+        https://bugs.webkit.org/show_bug.cgi?id=165339
+
+        Reviewed by Filip Pizlo.
+
+        This patch also allows any wasm primitive type to be passed as a
+        string.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::nearestIntDouble):
+        (JSC::MacroAssemblerARM64::nearestIntFloat):
+        (JSC::MacroAssemblerARM64::truncDouble):
+        (JSC::MacroAssemblerARM64::truncFloat):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::nearestIntDouble):
+        (JSC::MacroAssemblerX86Common::nearestIntFloat):
+        * jsc.cpp:
+        (box):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<F64ConvertUI64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32ConvertUI64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F64Nearest>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32Nearest>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F64Trunc>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::F32Trunc>):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+
 2016-12-02  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: revert patch causing odd breakage

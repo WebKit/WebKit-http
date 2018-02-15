@@ -1048,7 +1048,6 @@ selector_list:
         if ($1) {
             $$ = parser->createSelectorVector().release();
             $$->append(std::unique_ptr<CSSParserSelector>($1));
-            parser->updateLastSelectorLineAndPosition();
         }
     }
     | selector_list at_selector_end ',' maybe_space before_selector_group_item complex_selector %prec UNIMPORTANT_TOK {
@@ -1058,7 +1057,6 @@ selector_list:
         if (selectorList && selector) {
             $$ = selectorList.release();
             $$->append(WTFMove(selector));
-            parser->updateLastSelectorLineAndPosition();
         }
     }
     | selector_list error {
@@ -1216,19 +1214,15 @@ specifier:
     IDSEL {
         $$ = new CSSParserSelector;
         $$->setMatch(CSSSelector::Id);
-        if (parser->m_context.mode == HTMLQuirksMode)
-            $1.convertToASCIILowercaseInPlace();
-        $$->setValue($1);
+        $$->setValue($1, parser->m_context.mode == HTMLQuirksMode);
     }
   | HEX {
-        if ($1[0] >= '0' && $1[0] <= '9')
+        if (isASCIIDigit($1[0]))
             $$ = nullptr;
         else {
             $$ = new CSSParserSelector;
             $$->setMatch(CSSSelector::Id);
-            if (parser->m_context.mode == HTMLQuirksMode)
-                $1.convertToASCIILowercaseInPlace();
-            $$->setValue($1);
+            $$->setValue($1, parser->m_context.mode == HTMLQuirksMode);
         }
     }
   | class
@@ -1240,9 +1234,7 @@ class:
     '.' IDENT {
         $$ = new CSSParserSelector;
         $$->setMatch(CSSSelector::Class);
-        if (parser->m_context.mode == HTMLQuirksMode)
-            $2.convertToASCIILowercaseInPlace();
-        $$->setValue($2);
+        $$->setValue($2, parser->m_context.mode == HTMLQuirksMode);
     }
   ;
 

@@ -74,6 +74,22 @@ SOFT_LINK_CLASS(UIKit, UIViewController);
 
 @end
 
+@interface WebValidationBubbleDelegate : NSObject <UIPopoverPresentationControllerDelegate> {
+}
+@end
+
+@implementation WebValidationBubbleDelegate
+
+- (UIModalPresentationStyle)adaptivePresentationStyleForPresentationController:(UIPresentationController *)controller traitCollection:(UITraitCollection *)traitCollection
+{
+    UNUSED_PARAM(controller);
+    UNUSED_PARAM(traitCollection);
+    // This is needed to force UIKit to use a popover on iPhone as well.
+    return UIModalPresentationNone;
+}
+
+@end
+
 namespace WebCore {
 
 static const CGFloat horizontalPadding = 8;
@@ -114,11 +130,24 @@ void ValidationBubble::show()
     [m_presentingViewController presentViewController:m_popoverController.get() animated:NO completion:nil];
 }
 
+static UIViewController *fallbackViewController(UIView *view)
+{
+    for (UIView *currentView = view; currentView; currentView = currentView.superview) {
+        if (UIViewController *viewController = [getUIViewControllerClass() viewControllerForView:currentView])
+            return viewController;
+    }
+    NSLog(@"Failed to find a view controller to show form validation popover");
+    return nil;
+}
+
 void ValidationBubble::setAnchorRect(const IntRect& anchorRect, UIViewController* presentingViewController)
 {
+    if (!presentingViewController)
+        presentingViewController = fallbackViewController(m_view);
+
     UIPopoverPresentationController *presentationController = [m_popoverController popoverPresentationController];
-    // This is needed to force UIKit to use a popover on iPhone as well.
-    [getUIPopoverPresentationControllerClass() _setAlwaysAllowPopoverPresentations:YES];
+    m_popoverDelegate = adoptNS([[WebValidationBubbleDelegate alloc] init]);
+    presentationController.delegate = m_popoverDelegate.get();
     presentationController.passthroughViews = [NSArray arrayWithObjects:presentingViewController.view, m_view, nil];
 
     presentationController.permittedArrowDirections = UIPopoverArrowDirectionUp;

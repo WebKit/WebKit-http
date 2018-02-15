@@ -130,6 +130,7 @@
 		515F794F1CFC9F4A00CCED93 /* CrossThreadCopier.h in Headers */ = {isa = PBXBuildFile; fileRef = 515F794C1CFC9F4A00CCED93 /* CrossThreadCopier.h */; };
 		515F79501CFC9F4A00CCED93 /* CrossThreadTask.h in Headers */ = {isa = PBXBuildFile; fileRef = 515F794D1CFC9F4A00CCED93 /* CrossThreadTask.h */; };
 		515F79561CFD3A6900CCED93 /* CrossThreadQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 515F79551CFD3A6900CCED93 /* CrossThreadQueue.h */; };
+		52183012C99E476A84EEBEA8 /* SymbolImpl.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F72BBDB107FA424886178B9E /* SymbolImpl.cpp */; };
 		539EB0631D55284200C82EF7 /* LEBDecoder.h in Headers */ = {isa = PBXBuildFile; fileRef = 539EB0621D55284200C82EF7 /* LEBDecoder.h */; };
 		553071CA1C40427200384898 /* TinyLRUCache.h in Headers */ = {isa = PBXBuildFile; fileRef = 553071C91C40427200384898 /* TinyLRUCache.h */; };
 		5597F82F1D94B9970066BC21 /* SynchronizedFixedQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = 5597F82C1D94B9970066BC21 /* SynchronizedFixedQueue.h */; };
@@ -161,6 +162,7 @@
 		9BD8F40B176C2B470002D865 /* AtomicStringTable.h in Headers */ = {isa = PBXBuildFile; fileRef = 9BD8F40A176C2AD80002D865 /* AtomicStringTable.h */; };
 		A5098B001C169E0700087797 /* SandboxSPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A5098AFF1C169E0700087797 /* SandboxSPI.h */; };
 		A5098B021C16A4F900087797 /* SecuritySPI.h in Headers */ = {isa = PBXBuildFile; fileRef = A5098B011C16A4F900087797 /* SecuritySPI.h */; };
+		A561F3101DF2642100FF675D /* DeprecatedOptional.h in Headers */ = {isa = PBXBuildFile; fileRef = A561F30F1DF2642100FF675D /* DeprecatedOptional.h */; };
 		A5BA15F3182433A900A82E69 /* StringMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F2182433A900A82E69 /* StringMac.mm */; };
 		A5BA15F51824348000A82E69 /* StringImplMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F41824348000A82E69 /* StringImplMac.mm */; };
 		A5BA15FA182435A600A82E69 /* AtomicStringImplCF.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A5BA15F7182435A600A82E69 /* AtomicStringImplCF.cpp */; };
@@ -527,6 +529,7 @@
 		9C67C542589348E285B49699 /* IndexedContainerIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IndexedContainerIterator.h; sourceTree = "<group>"; };
 		A5098AFF1C169E0700087797 /* SandboxSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SandboxSPI.h; sourceTree = "<group>"; };
 		A5098B011C16A4F900087797 /* SecuritySPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecuritySPI.h; sourceTree = "<group>"; };
+		A561F30F1DF2642100FF675D /* DeprecatedOptional.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeprecatedOptional.h; sourceTree = "<group>"; };
 		A5BA15F2182433A900A82E69 /* StringMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = StringMac.mm; path = mac/StringMac.mm; sourceTree = "<group>"; };
 		A5BA15F41824348000A82E69 /* StringImplMac.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = StringImplMac.mm; path = mac/StringImplMac.mm; sourceTree = "<group>"; };
 		A5BA15F7182435A600A82E69 /* AtomicStringImplCF.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AtomicStringImplCF.cpp; path = cf/AtomicStringImplCF.cpp; sourceTree = "<group>"; };
@@ -718,6 +721,7 @@
 		E4A0AD381A96245500536DF6 /* WorkQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WorkQueue.h; sourceTree = "<group>"; };
 		E4A0AD3C1A96253C00536DF6 /* WorkQueueCocoa.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WorkQueueCocoa.cpp; sourceTree = "<group>"; };
 		EB95E1EF161A72410089A2F5 /* ByteOrder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ByteOrder.h; sourceTree = "<group>"; };
+		F72BBDB107FA424886178B9E /* SymbolImpl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SymbolImpl.cpp; sourceTree = "<group>"; };
 		FE8225301B2A1E5B00BA68FD /* NakedPtr.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = NakedPtr.h; sourceTree = "<group>"; };
 		FE8925AF1D00DAEC0046907E /* Indenter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Indenter.h; sourceTree = "<group>"; };
 		FEDACD3B1630F83F00C69634 /* StackStats.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StackStats.cpp; sourceTree = "<group>"; };
@@ -912,6 +916,7 @@
 				A8A4727B151A825A004123FF /* DecimalNumber.cpp */,
 				A8A4727C151A825A004123FF /* DecimalNumber.h */,
 				0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */,
+				A561F30F1DF2642100FF675D /* DeprecatedOptional.h */,
 				A8A4727E151A825A004123FF /* Deque.h */,
 				A8A4727F151A825A004123FF /* DisallowCType.h */,
 				0F4570421BE5B58F0062A629 /* Dominators.h */,
@@ -1187,6 +1192,7 @@
 				70ECA60C1B02426800449739 /* UniquedStringImpl.h */,
 				A8A4732D151A825B004123FF /* WTFString.cpp */,
 				A8A4732E151A825B004123FF /* WTFString.h */,
+				F72BBDB107FA424886178B9E /* SymbolImpl.cpp */,
 			);
 			path = text;
 			sourceTree = "<group>";
@@ -1428,6 +1434,7 @@
 				A8A47417151A825B004123FF /* RedBlackTree.h in Headers */,
 				26299B6E17A9E5B800ADEBE5 /* Ref.h in Headers */,
 				A8A47418151A825B004123FF /* RefCounted.h in Headers */,
+				A561F3101DF2642100FF675D /* DeprecatedOptional.h in Headers */,
 				A8A47419151A825B004123FF /* RefCountedArray.h in Headers */,
 				A8A4741B151A825B004123FF /* RefCountedLeakCounter.h in Headers */,
 				86F46F611A2840EE00CCBF22 /* RefCounter.h in Headers */,
@@ -1710,6 +1717,7 @@
 				E4A0AD3D1A96253C00536DF6 /* WorkQueueCocoa.cpp in Sources */,
 				A8A47445151A825B004123FF /* WTFString.cpp in Sources */,
 				A8A47486151A825B004123FF /* WTFThreadData.cpp in Sources */,
+				52183012C99E476A84EEBEA8 /* SymbolImpl.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

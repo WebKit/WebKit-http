@@ -33,7 +33,7 @@
 namespace JSC {
 
 class JSGlobalObject;
-class WebAssemblyFunctionCell;
+class JSWebAssemblyCallee;
 class WebAssemblyInstance;
 
 namespace B3 {
@@ -44,22 +44,6 @@ namespace Wasm {
 struct Signature;
 }
 
-class CallableWebAssemblyFunction {
-    WTF_MAKE_NONCOPYABLE(CallableWebAssemblyFunction);
-    CallableWebAssemblyFunction() = delete;
-
-public:
-    CallableWebAssemblyFunction(CallableWebAssemblyFunction&&) = default;
-
-    const B3::Compilation* jsEntryPoint;
-    const Wasm::Signature* signature;
-    CallableWebAssemblyFunction(const B3::Compilation* jsEntryPoint, const Wasm::Signature* signature)
-        : jsEntryPoint(jsEntryPoint)
-        , signature(signature)
-    {
-    }
-};
-
 class WebAssemblyFunction : public JSFunction {
 public:
     typedef JSFunction Base;
@@ -68,21 +52,28 @@ public:
 
     DECLARE_EXPORT_INFO;
 
-    JS_EXPORT_PRIVATE static WebAssemblyFunction* create(VM&, JSGlobalObject*, int, const String&, JSWebAssemblyInstance*, CallableWebAssemblyFunction&&);
+    JS_EXPORT_PRIVATE static WebAssemblyFunction* create(VM&, JSGlobalObject*, unsigned, const String&, JSWebAssemblyInstance*, JSWebAssemblyCallee*, Wasm::Signature*);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
-    const WebAssemblyFunctionCell* webAssemblyFunctionCell() const { return m_functionCell.get(); }
+    JSWebAssemblyCallee* webAssemblyCallee() const { return m_wasmCallee.get(); }
+    const JSWebAssemblyInstance* instance() const { return m_instance.get(); }
+    const Wasm::Signature* signature()
+    { 
+        ASSERT(m_signature);
+        return m_signature;
+    }
 
 protected:
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    void finishCreation(VM&, NativeExecutable*, int length, const String& name, JSWebAssemblyInstance*, WebAssemblyFunctionCell*);
+    void finishCreation(VM&, NativeExecutable*, unsigned length, const String& name, JSWebAssemblyInstance*, JSWebAssemblyCallee*, Wasm::Signature*);
 
 private:
     WebAssemblyFunction(VM&, JSGlobalObject*, Structure*);
 
     WriteBarrier<JSWebAssemblyInstance> m_instance;
-    WriteBarrier<WebAssemblyFunctionCell> m_functionCell;
+    WriteBarrier<JSWebAssemblyCallee> m_wasmCallee;
+    Wasm::Signature* m_signature;
 };
 
 } // namespace JSC

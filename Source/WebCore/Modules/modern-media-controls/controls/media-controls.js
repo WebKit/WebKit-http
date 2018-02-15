@@ -45,7 +45,7 @@ class MediaControls extends LayoutNode
         this.statusLabel = new StatusLabel(this)
         this.timeControl = new TimeControl(this);
 
-        this.controlsBar = new ControlsBar;
+        this.controlsBar = new ControlsBar(this);
 
         this.airplayPlacard = new AirplayPlacard(this);
         this.invalidPlacard = new InvalidPlacard(this);
@@ -101,11 +101,9 @@ class MediaControls extends LayoutNode
         this._invalidateChildren();
     }
 
-    presentInElement(parentElement, animated)
+    fadeIn()
     {
-        if (animated)
-            this.element.classList.add("fade-in");
-        parentElement.appendChild(this.element);
+        this.element.classList.add("fade-in");
     }
 
     // Private

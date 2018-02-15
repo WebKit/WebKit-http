@@ -813,6 +813,25 @@ template<> struct JSConverter<IDLUSVString> {
 };
 
 // MARK: -
+// MARK: Object type
+
+template<> struct Converter<IDLObject> : DefaultConverter<IDLObject> {
+    template<typename ExceptionThrower = DefaultExceptionThrower>
+    static JSC::Strong<JSC::JSObject> convert(JSC::ExecState& state, JSC::JSValue value, ExceptionThrower&& exceptionThrower = ExceptionThrower())
+    {
+        JSC::VM& vm = state.vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
+        if (!value.isObject()) {
+            exceptionThrower(state, scope);
+            return { };
+        }
+        
+        return { vm, JSC::asObject(value) };
+    }
+};
+
+// MARK: -
 // MARK: Array-like types
 
 namespace Detail {
@@ -1044,6 +1063,16 @@ template<typename T> struct Converter<IDLDictionary<T>> : DefaultConverter<IDLDi
     static ReturnType convert(JSC::ExecState& state, JSC::JSValue value)
     {
         return convertDictionary<T>(state, value);
+    }
+};
+
+template<typename T> struct JSConverter<IDLDictionary<T>> {
+    static constexpr bool needsState = true;
+    static constexpr bool needsGlobalObject = true;
+
+    static JSC::JSValue convert(JSC::ExecState& state, JSDOMGlobalObject& globalObject, const T& dictionary)
+    {
+        return convertDictionaryToJS(state, globalObject, dictionary);
     }
 };
 

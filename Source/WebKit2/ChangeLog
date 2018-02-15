@@ -1,3 +1,735 @@
+2016-12-07  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, GTK build fix after r209407.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::processMessage):
+        * UIProcess/LegacySessionStateCodingNone.cpp:
+        (WebKit::decodeLegacySessionState):
+
+2016-12-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r209422.
+
+        This change caused assertion failures during API tests.
+
+        Reverted changeset:
+
+        "[MediaStream][Mac] Revoke sandbox extensions when capture
+        ends"
+        https://bugs.webkit.org/show_bug.cgi?id=165476
+        http://trac.webkit.org/changeset/209422
+
+2016-12-06  Dean Jackson  <dino@apple.com>
+
+        Include default value in Experimental Feature information
+        https://bugs.webkit.org/show_bug.cgi?id=165509
+        <rdar://problems/29547177>
+
+        Reviewed by Tim Horton.
+
+        Add a defaultValue member variable to experimental
+        features, both the C++ and ObjC interfaces.
+
+        * UIProcess/API/APIExperimentalFeature.cpp:
+        (API::ExperimentalFeature::create):
+        (API::ExperimentalFeature::ExperimentalFeature):
+        * UIProcess/API/APIExperimentalFeature.h:
+        * UIProcess/API/Cocoa/_WKExperimentalFeature.h:
+        * UIProcess/API/Cocoa/_WKExperimentalFeature.mm:
+        (-[_WKExperimentalFeature description]):
+        (-[_WKExperimentalFeature defaultValue]):
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::createExperimentalFeaturesVector):
+
+2016-12-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209391.
+        https://bugs.webkit.org/show_bug.cgi?id=165501
+
+        requires explicit nullptr checks so missing env vars don't
+        flip AC mode (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[GTK] Process accelerated compositing env variables only if
+        they are really enabled"
+        https://bugs.webkit.org/show_bug.cgi?id=165300
+        http://trac.webkit.org/changeset/209391
+
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-12-06  Andreas Kling  <akling@apple.com>
+
+        [Cocoa] Add some memory usage related information to sysdiagnose state dumps
+        <https://webkit.org/b/165375>
+        <rdar://problem/29057243>
+
+        Reviewed by Darin Adler.
+
+        Follow-up to address two more review comments.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::registerWithStateDumper): Use adoptNS() instead of autorelease for NSStrings.
+
+2016-12-06  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream][Mac] Revoke sandbox extensions when capture ends
+        https://bugs.webkit.org/show_bug.cgi?id=165476
+
+        Reviewed by Brady Eidson.
+        
+        Track media capture by process so it is possible to revoke the sandbox extensions issued to
+        a web process when capture stops.
+
+        * CMakeLists.txt: Add new files.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy): Register
+          with process manager.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        (WebKit::UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted): Move sandbox 
+          extension code to the process manager.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::startedCaptureSession): New, report state
+          change to the process manager.
+        (WebKit::UserMediaPermissionRequestManagerProxy::endedCaptureSession): Ditto.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp: Added.
+        (WebKit::ProcessState::ProcessState):
+        (WebKit::ProcessState::managers):
+        (WebKit::ProcessState::sandboxExtensionsGranted):
+        (WebKit::ProcessState::setSandboxExtensionsGranted):
+        (WebKit::stateMap):
+        (WebKit::processState):
+        (WebKit::ProcessState::addRequestManager):
+        (WebKit::ProcessState::removeRequestManager):
+        (WebKit::UserMediaProcessManager::singleton):
+        (WebKit::UserMediaProcessManager::addUserMediaPermissionRequestManagerProxy):
+        (WebKit::UserMediaProcessManager::removeUserMediaPermissionRequestManagerProxy):
+        (WebKit::UserMediaProcessManager::willCreateMediaStream):
+        (WebKit::UserMediaProcessManager::startedCaptureSession):
+        (WebKit::UserMediaProcessManager::endedCaptureSession):
+        * UIProcess/UserMediaProcessManager.h: Added.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::isPlayingMediaDidChange): Report capture state changes to the request
+          manager proxy.
+        * UIProcess/WebPageProxy.h:
+
+        * WebKit2.xcodeproj/project.pbxproj: Add new files.
+
+        * WebProcess/MediaStream/MediaDeviceSandboxExtensions.cpp: Added.
+        (WebKit::MediaDeviceSandboxExtensions::MediaDeviceSandboxExtensions):
+        (WebKit::MediaDeviceSandboxExtensions::encode):
+        (WebKit::MediaDeviceSandboxExtensions::decode):
+        (WebKit::MediaDeviceSandboxExtensions::operator[]):
+        (WebKit::MediaDeviceSandboxExtensions::size):
+        * WebProcess/MediaStream/MediaDeviceSandboxExtensions.h: Added.
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::~UserMediaPermissionRequestManager): Sandbox extension
+          is now in a HashMap, not a Vector.
+        (WebKit::UserMediaPermissionRequestManager::grantUserMediaDeviceSandboxExtensions): Record
+          IDs with extensions so they can be revoked later.
+        (WebKit::UserMediaPermissionRequestManager::revokeUserMediaDeviceSandboxExtensions): New.
+        (WebKit::UserMediaPermissionRequestManager::grantUserMediaDevicesSandboxExtension): Deleted.
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::grantUserMediaDeviceSandboxExtensions):
+        (WebKit::WebPage::revokeUserMediaDeviceSandboxExtensions):
+        (WebKit::WebPage::grantUserMediaDevicesSandboxExtension): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2016-12-06  Anders Carlsson  <andersca@apple.com>
+
+        Add a new MachMessage class and use it for sending outgoing messages
+        https://bugs.webkit.org/show_bug.cgi?id=165484
+
+        Reviewed by Sam Weinig.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::sendOutgoingMessage):
+        Instead of trying to randomly use memory from the stack as well as using mmap for the message data for out of line messages
+        (which makes no sense at all, since the body data is already mmapped), just always create a MachMessage object and use it.
+        
+        (IPC::machMessageSize): Deleted.
+        This has been moved to MachMessage::messageSize().
+        
+        * Platform/IPC/mac/MachMessage.cpp: Added.
+        (IPC::MachMessage::create):
+        Allocate extra memory to store the actual buffer.
+
+        (IPC::MachMessage::MachMessage):
+        Initialize variables. m_size isn't really used right now, but will be in a subsequent patch.
+
+        (IPC::MachMessage::header):
+        Return the header.
+        
+        * Platform/IPC/mac/MachMessage.h: Added.
+        (IPC::MachMessage::length):
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add new files.
+
+2016-12-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable visual viewports by default on Mac, and iOS Wk2
+        https://bugs.webkit.org/show_bug.cgi?id=165452
+
+        Reviewed by Zalan Bujtas.
+
+        Turn visual viewports on by default for WK2.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        WebKitTestRunner: Plugins are disabled in new windows
+        https://bugs.webkit.org/show_bug.cgi?id=165410
+
+        Reviewed by Alex Christensen.
+
+        Remove SPI exposed to explicitly toggle plugins from WebKitTestRunner.
+        Instead we will update WebKitTestRunner to make use of the SPI
+        WKBundleOverrideBoolPreferenceForTestRunner() to toggle plugins in
+        all windows.
+
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleSetPluginsEnabled): Deleted.
+        * WebProcess/InjectedBundle/API/c/WKBundlePrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setPluginsEnabled): Deleted.
+
+2016-12-05  Anders Carlsson  <andersca@apple.com>
+
+        Don't memcpy out of line data
+        https://bugs.webkit.org/show_bug.cgi?id=165434
+
+        Reviewed by Sam Weinig.
+
+        Change the Decoder constructor to take a buffer deallocator parameter. If the buffer deallocator is null, the
+        data will be copied as before. Otherwise, the memory will be adopted by the Decoder object, and will be deallocated
+        by invoking the data deallocator.
+
+        * Platform/IPC/Decoder.cpp:
+        (IPC::copyBuffer):
+        Add a new helper.
+
+        (IPC::Decoder::Decoder):
+        Copy the buffer if the deallocator is null.
+
+        (IPC::Decoder::~Decoder):
+        Invoke the deallocator or call fastFree if it is null.
+
+        (IPC::Decoder::unwrapForTesting):
+        Update constructor.
+        
+        (IPC::roundUpToAlignment):
+        (IPC::Decoder::alignBufferPosition):
+        (IPC::Decoder::decodeVariableLengthByteArray):
+        (IPC::decodeValueFromBuffer):
+        Change all these to deal with const pointers.
+
+        * Platform/IPC/Decoder.h:
+        Add new members.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::createMessageDecoder):
+        When we have out of line data, pass a deallocator that calls vm_deallocate, instead of copying the data
+        and then immediately throwing the original away.
+
+2016-12-06  Tim Horton  <timothy_horton@apple.com>
+
+        Almost half-second stall scrolling apple.com because of synchronous getPositionInformation
+        https://bugs.webkit.org/show_bug.cgi?id=165403
+        <rdar://problem/29493285>
+
+        Reviewed by Enrica Casucci.
+
+        When retrieving interaction information, we don't always need to do
+        snapshots for 3D Touch or the action sheet, especially if we're
+        synchronously blocking the UI process main thread waiting for the reply.
+
+        Add a new InteractionInformationRequest, which allows callers of
+        getPositionInformation and requestPositionInformation to specify which
+        optional pieces of information they would like to compute.
+
+        * Shared/AssistedNodeInformation.h:
+        Fix a incorrect comment.
+
+        * Shared/ios/InteractionInformationRequest.cpp: Added.
+        (WebKit::InteractionInformationRequest::encode):
+        (WebKit::InteractionInformationRequest::decode):
+        (WebKit::InteractionInformationRequest::isValidForRequest):
+        * Shared/ios/InteractionInformationRequest.h: Added.
+        (WebKit::InteractionInformationRequest::InteractionInformationRequest):
+        * WebKit2.xcodeproj/project.pbxproj:
+        Add InteractionInformationRequest, which encapsulates all of the
+        parameters required to generate an InteractionInformationAtPosition.
+        Previously, that was just a point, but now we have two new parameters:
+        whether we should generate a snapshot of the element, and whether
+        we should generate a TextIndicator if the element is a link.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode):
+        (WebKit::InteractionInformationAtPosition::decode):
+        (WebKit::InteractionInformationAtPosition::mergeCompatibleOptionalInformation):
+        Adopt InteractionInformationRequest.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::getPositionInformation):
+        (WebKit::WebPageProxy::requestPositionInformation):
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant initialPresentationRectInHostViewForSheet]):
+        (-[WKActionSheetAssistant presentationRectInHostViewForSheet]):
+        (-[WKActionSheetAssistant showImageSheet]):
+        (-[WKActionSheetAssistant showLinkSheet]):
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView annotation:isBeingPressedAtPoint:controller:]):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        Adopt InteractionInformationRequest.
+        
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _showAttachmentSheet]):
+        (-[WKContentView ensurePositionInformationIsUpToDate:]):
+        If we have a outstanding asynchronous position information request
+        for the current point, instead of sending a second separate request,
+        just wait for the async one to come in.
+
+        (-[WKContentView requestAsynchronousPositionInformationUpdate:]):
+        If asked to do an asynchronous request with more optional bits than
+        the current otherwise-valid response's request, update the position information.
+
+        (-[WKContentView gestureRecognizerShouldBegin:]):
+        The design of this mechanism is that during the highlight long press,
+        we do an async position information update, and then when we actually
+        begin a 3D Touch gesture, we hope to already have the requisite snapshots
+        ready (so that we can avoid synchronously blocking for them, there).
+        So, in the highlight long-press async request, ask for all the goodies.
+
+        (-[WKContentView hasSelectablePositionAtPoint:]):
+        (-[WKContentView pointIsNearMarkedText:]):
+        (-[WKContentView pointIsInAssistedNode:]):
+        (-[WKContentView _didNotHandleTapAsClick:]):
+        (-[WKContentView _positionInformationDidChange:]):
+        If we get a position information update for the same point, but with less
+        goodies attached (the snapshot/link indicator), copy them over from the old
+        position information, so that we never accidentally "downgrade" our info.
+
+        (-[WKContentView updatePositionInformationForActionSheetAssistant:]):
+        (-[WKContentView actionSheetAssistant:willStartInteractionWithElement:]):
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        (-[WKContentView _presentedViewControllerForPreviewItemController:]):        
+        More adoption.
+        
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleTap):
+        (WebKit::WebPage::handleTwoFingerTapAtPoint):
+        (WebKit::WebPage::commitPotentialTap):
+        Adopt InteractionInformationRequest.
+
+        (WebKit::WebPage::getPositionInformation):
+        (WebKit::WebPage::requestPositionInformation):
+        Copy the request into the response.
+        Only snapshot if the request wants a snapshot.
+        Only make a link indicator if the request wants one.
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Rename some HTTP 0.9-specific functions to conform to WebKit Code Style Guidelines
+        https://bugs.webkit.org/show_bug.cgi?id=165451
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/NetworkDataTask.cpp:
+        (WebKit::NetworkDataTask::didReceiveResponse):
+
+2016-12-06  Daniel Bates  <dabates@apple.com>
+
+        Remove unused InjectedBundle::overrideXSSAuditorEnabledForTestRunner()
+        https://bugs.webkit.org/show_bug.cgi?id=165408
+
+        Reviewed by Alex Christensen.
+
+        InjectedBundle::overrideXSSAuditorEnabledForTestRunner() is unused. This function was only
+        called by WKBundleOverrideXSSAuditorEnabledForTestRunner(), which was removed in r106005.
+
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideXSSAuditorEnabledForTestRunner): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+
+2016-12-04  Darin Adler  <darin@apple.com>
+
+        Use ASCIICType more, and improve it a little bit
+        https://bugs.webkit.org/show_bug.cgi?id=165360
+
+        Reviewed by Sam Weinig.
+
+        * WebProcess/Plugins/Netscape/NetscapeBrowserFuncs.cpp:
+        (WebKit::capitalizeRFC822HeaderFieldName): Removed unneeded checks to simplify code.
+
+2016-12-06  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Turn on the new CSS parser
+        https://bugs.webkit.org/show_bug.cgi?id=165213
+
+        Reviewed by Zalan Bujtas.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-12-06  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Process accelerated compositing env variables only if they are really enabled
+        https://bugs.webkit.org/show_bug.cgi?id=165300
+
+        Don't process the WEBKIT_FORCE_COMPOSITING_MODE and
+        WEBKIT_DISABLE_COMPOSITING_MODE env variables if they are disabled
+        (eg. WEBKIT_DISABLE_COMPOSITING_MODE=0).
+
+        Reviewed by Michael Catanzaro.
+
+        * UIProcess/gtk/WebPreferencesGtk.cpp:
+        (WebKit::WebPreferences::platformInitializeStore):
+
+2016-12-06  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add support for converting dictionaries to JS
+        https://bugs.webkit.org/show_bug.cgi?id=165367
+
+        Reviewed by Darin Adler and Alex Christensen.
+
+        * CMakeLists.txt:
+        Add missing directories to look in for headers.
+
+2016-12-05  Tim Horton  <timothy_horton@apple.com>
+
+        Try to fix the iOS Simulator build.
+
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::mapAllIOSurfaceBackingStore):
+
+2016-12-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Minor reformat and renames in -didUpdateVisibleRect:
+        https://bugs.webkit.org/show_bug.cgi?id=165365
+
+        Reviewed by Dave Hyatt.
+        
+        didUpdateVisibleRect:... has lots of parameters. Put one on each line.
+
+        Rename the rects to make it clear they are "content" rects (i.e. in document coordinates).
+
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+
+2016-12-05  Tim Horton  <timothy_horton@apple.com>
+
+        Adopt CAMachPort-as-layer-contents
+        https://bugs.webkit.org/show_bug.cgi?id=141687
+        <rdar://problem/19393233>
+
+        Reviewed by Darin Adler.
+
+        * Shared/mac/RemoteLayerBackingStore.h:
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::decode):
+        On the UI process side, instead of actually looking up the surface,
+        just keep the MachSendRight around, to later be turned into a CAMachPort.
+
+        (WebKit::RemoteLayerBackingStore::applyBackingStoreToLayer):
+        Make a CAMachPort and leak our send right into it. CAMachPort
+        will adopt the port and destroy it when needed.
+
+        (WebKit::RemoteLayerBackingStore::setBufferVolatility):
+        Tiny style fix.
+
+        * Shared/mac/RemoteLayerTreePropertyApplier.h:
+        * Shared/mac/RemoteLayerTreePropertyApplier.mm:
+        (WebKit::applyPropertiesToLayer):
+        (WebKit::RemoteLayerTreePropertyApplier::applyProperties):
+        * UIProcess/DrawingAreaProxy.h:
+        (WebKit::DrawingAreaProxy::prepareForAppSuspension):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::applicationDidFinishSnapshottingAfterEnteringBackground):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::prepareForAppSuspension):
+        * UIProcess/mac/RemoteLayerTreeHost.h:
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+        (WebKit::RemoteLayerTreeHost::mapAllIOSurfaceBackingStore):
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::recursiveBuildTransaction):
+        Two supporting changes in order to fix the two regressions that this
+        caused when we tried to land it two years ago:
+
+        When an app is being suspended, resolve all CAMachPort backing store
+        into actual IOSurfaces. Otherwise, any live CAMachPorts will keep a
+        +1 on their respective IOSurface's use count, causing us to fail to
+        mark them volatile, keeping the app alive for more time (re-trying the
+        volatility change), and increasing the likelihood of background jetsam.
+
+        If the debugging tile map is enabled, do not use CAMachPort, because
+        we don't have a great way to plumb the same CAMachPort to two layers
+        (and it doesn't seem to work even if you do). Instead, just map the
+        IOSurface into the UI process like we used to.
+
+2016-12-05  Dean Jackson  <dino@apple.com>
+
+        pointer lock needs to be feature detectable
+        https://bugs.webkit.org/show_bug.cgi?id=165426
+        <rdar://problem/29486715>
+
+        Reviewed by Antoine Quint.
+
+        Set the RuntimeEnabledFeature as preferences
+        change.
+
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetPointerLockEnabled):
+        (WKPreferencesGetPointerLockEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2016-12-05  Andreas Kling  <akling@apple.com>
+
+        [Cocoa] Add some memory usage related information to sysdiagnose state dumps
+        <https://webkit.org/b/165375>
+        <rdar://problem/29057243>
+
+        Reviewed by Darin Adler.
+
+        Add two new entries to the sysdiagnose state dumps for WebContent processes:
+        "Memory Usage Stats" and "JavaScript Object Counts".
+
+        The first category contains all the interesting stuff from task_info()
+        along with some WebCore and JavaScriptCore object/memory counters.
+
+        The second category contains a list of all the JS object types currently live
+        on the heap, along with a count.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::registerWithStateDumper): Add two new entries to the
+        state dictionary: "Memory Usage Stats" and "JavaScript Object Counts".
+
+2016-12-05  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed cmake buildfix after r209307.
+
+        * PlatformMac.cmake:
+
+2016-12-03  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Expose InjectedBundlePageEditorClient via the Objective-C bundle SPI
+        https://bugs.webkit.org/show_bug.cgi?id=165276
+        <rdar://problem/29467040>
+
+        Reviewed by Darin Adler.
+
+        Test: TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegate.mm
+
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject): Wrap InjectedBundleRangeHandle in WKWebProcessPlugInRangeHandle.
+
+        * WebKit2.xcodeproj/project.pbxproj: Added references to new files, making
+          WKWebProcessPlugInEditingDelegate.h and WKWebProcessPlugInRangeHandle.h private headers.
+
+        * WebProcess/InjectedBundle/API/APIInjectedBundleEditorClient.h: Added. An base class
+          based on InjectedBundlePageEditorClient.
+        (API::InjectedBundle::EditorClient::~EditorClient):
+        (API::InjectedBundle::EditorClient::shouldBeginEditing):
+        (API::InjectedBundle::EditorClient::shouldEndEditing):
+        (API::InjectedBundle::EditorClient::shouldInsertNode):
+        (API::InjectedBundle::EditorClient::shouldInsertText):
+        (API::InjectedBundle::EditorClient::shouldDeleteRange):
+        (API::InjectedBundle::EditorClient::shouldChangeSelectedRange):
+        (API::InjectedBundle::EditorClient::shouldApplyStyle):
+        (API::InjectedBundle::EditorClient::didBeginEditing):
+        (API::InjectedBundle::EditorClient::didEndEditing):
+        (API::InjectedBundle::EditorClient::didChange):
+        (API::InjectedBundle::EditorClient::didChangeSelection):
+        (API::InjectedBundle::EditorClient::willWriteToPasteboard):
+        (API::InjectedBundle::EditorClient::getPasteboardDataForRange):
+        (API::InjectedBundle::EditorClient::didWriteToPasteboard):
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInEditingDelegate.h: Added. Declares
+          the new delegate protocol, currently comprising three methods corresponding to
+          willWriteToPasteboard, getPasteboardDataForRange, and didWriteToPasteboard.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInFrame.mm:
+        (-[WKWebProcessPlugInFrame jsRangeForRangeHandle:inWorld:]): Added. Gets the JS wrapper for
+          the specified range handle.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.h: Added.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm: Added.
+        (-[WKWebProcessPlugInRangeHandle dealloc]): Call the InjectedBundleRangeHandle destructor.
+        (+[WKWebProcessPlugInRangeHandle rangeHandleWithJSValue:inContext:]): Get or create an
+          InjectedBundleRangeHandle for the specified object.
+        (-[WKWebProcessPlugInRangeHandle frame]): Return the range’s owner document’s frame.
+        (-[WKWebProcessPlugInRangeHandle _rangeHandle]): Return the InjectedBundleRangeHandle.
+        (-[WKWebProcessPlugInRangeHandle _apiObject]): Ditto.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandleInternal.h: Added.
+        (WebKit::wrapper):
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePageSetEditorClient): Updated for WebPage change.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (-[WKWebProcessPlugInBrowserContextController _editingDelegate]): Added. Returns the
+          delegate.
+        (-[WKWebProcessPlugInBrowserContextController _setEditingDelegate:]): Added. Defines a
+          Client class, which derives from API::InjectedBundle::EditorClient, and invokes the
+          delegate methods. Instantiates a Client and sets it on the WebPage.
+
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextControllerPrivate.h:
+          Declared new _editingDelegate property.
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::document): Added. Returns an InjectedBundleNodeHandle
+          for the range’s owner document.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.h:
+
+        * WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp:
+        (WebKit::InjectedBundlePageEditorClient::InjectedBundlePageEditorClient): Added. Calls
+          initialize().
+        (WebKit::InjectedBundlePageEditorClient::shouldBeginEditing): Updated for type change.
+        (WebKit::InjectedBundlePageEditorClient::shouldEndEditing): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::shouldInsertNode): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::shouldInsertText): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::shouldDeleteRange): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::shouldChangeSelectedRange): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::shouldApplyStyle): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::didBeginEditing): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::didEndEditing): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::didChange): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::didChangeSelection): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::willWriteToPasteboard): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::getPasteboardDataForRange): Ditto.
+        (WebKit::InjectedBundlePageEditorClient::didWriteToPasteboard): Ditto.
+        * WebProcess/InjectedBundle/InjectedBundlePageEditorClient.h: Now derives from
+          API::InjectedBundle::EditorClient.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::shouldDeleteRange): Ditto.
+        (WebKit::WebEditorClient::shouldBeginEditing): Ditto.
+        (WebKit::WebEditorClient::shouldEndEditing): Ditto.
+        (WebKit::WebEditorClient::shouldInsertNode): Ditto.
+        (WebKit::WebEditorClient::shouldInsertText): Ditto.
+        (WebKit::WebEditorClient::shouldChangeSelectedRange): Ditto.
+        (WebKit::WebEditorClient::shouldApplyStyle): Ditto.
+        (WebKit::WebEditorClient::didBeginEditing): Ditto.
+        (WebKit::WebEditorClient::respondToChangedContents): Ditto.
+        (WebKit::WebEditorClient::respondToChangedSelection): Ditto.
+        (WebKit::WebEditorClient::didEndEditing): Ditto.
+        (WebKit::WebEditorClient::didWriteSelectionToPasteboard): Ditto.
+        (WebKit::WebEditorClient::willWriteSelectionToPasteboard): Ditto.
+        (WebKit::WebEditorClient::getClientPasteboardDataForRange): Ditto.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::WebPage): Initialize m_editorClient.
+        (WebKit::WebPage::setInjectedBundleEditorClient): Replaces
+          initializeInjectedBundleEditorClient and just sets m_editorClient.
+        (WebKit::WebPage::close): Resets m_editorClient.
+
+        * WebProcess/WebPage/WebPage.h: Changed m_editorClient to a unique_ptr.
+
+2016-12-02  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] Add a WebView private configuration for changing the WebContent update frequency
+        https://bugs.webkit.org/show_bug.cgi?id=165289
+        <rdar://problem/29472577>
+
+        Reviewed by Tim Horton.
+        
+        Expose a preference which allows us to control the fps of web content updates.
+
+        * UIProcess/API/APIPageConfiguration.h:
+        (API::PageConfiguration::contentUpdateFrequency):
+        (API::PageConfiguration::setContentUpdateFrequency):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _contentUpdateFrequency]):
+        (-[WKWebViewConfiguration _setContentUpdateFrequency:]):
+        * UIProcess/API/Cocoa/WKWebViewConfigurationPrivate.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (-[WKOneShotDisplayLinkHandler initWithDrawingAreaProxy:]):
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::contentUpdateFrequency):
+
+2016-12-02  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Adopt the PRODUCT_BUNDLE_IDENTIFIER build setting
+        https://bugs.webkit.org/show_bug.cgi?id=164492
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/DatabaseService.xcconfig: Set PRODUCT_BUNDLE_IDENTIFIER to
+        $(PRODUCT_NAME).
+        * Configurations/NetworkService.xcconfig: Ditto.
+        * Configurations/PluginService.32.xcconfig: Ditto.
+        * Configurations/PluginService.64.xcconfig: Ditto.
+        * Configurations/WebContentService.xcconfig: Ditto.
+        * Configurations/WebKit.xcconfig: Set PRODUCT_BUNDLE_IDENTIFIER to
+        com.apple.$(PRODUCT_NAME:rfc1034identifier).
+        * DatabaseProcess/EntryPoint/mac/XPCService/DatabaseService/Info.plist: Changed
+        CFBundleIdentifier's value from ${PRODUCT_NAME} to ${PRODUCT_BUNDLE_IDENTIFIER}.
+        * Info.plist: Changed CFBundleIdentifier's value from com.apple.${PRODUCT_NAME} to
+        ${PRODUCT_BUNDLE_IDENTIFIER}.
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX-10.9-10.10.plist: Changed
+        CFBundleIdentifier's value from ${PRODUCT_NAME} to ${PRODUCT_BUNDLE_IDENTIFIER}.
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX.plist: Ditto.
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-iOS.plist: Ditto.
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64-10.9-10.10.Info.plist: Ditto.
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist: Ditto.
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX-10.9-10.10.plist: Ditto.
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist: Ditto.
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-iOS.plist: Ditto.
+
+2016-12-02  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac] Update sandbox profiles to use modern syntax and avoid duplication
+        https://bugs.webkit.org/show_bug.cgi?id=165332
+        <rdar://problem/26898991>
+
+        Reviewed by Anders Carlsson.
+
+        Update the Mac sandbox profiles to reflect that modern Cocoa applications
+        communicate with cfprefsd, rather than plists on disk (and have done so
+        for the past several releases).
+
+        Get rid of some duplicated rules, as well as old compatibility rules that
+        are never triggered under supported operating systems.
+
+        * DatabaseProcess/mac/com.apple.WebKit.Databases.sb.in:
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+        * PluginProcess/mac/com.apple.WebKit.plugin-common.sb.in:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
 2016-12-02  Gustavo Sverzut Barbieri  <barbieri@profusion.mobi>
 
         Fix build break when disabling some features.

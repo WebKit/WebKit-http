@@ -1264,15 +1264,18 @@ bool RenderBox::nodeAtPoint(const HitTestRequest& request, HitTestResult& result
 
 void RenderBox::paintRootBoxFillLayers(const PaintInfo& paintInfo)
 {
+    ASSERT(isDocumentElementRenderer());
     if (paintInfo.skipRootBackground())
         return;
 
-    auto& rootBackgroundRenderer = rendererForRootBackground();
-    
-    const FillLayer* bgLayer = rootBackgroundRenderer.style().backgroundLayers();
-    Color bgColor = rootBackgroundRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
+    auto* rootBackgroundRenderer = view().rendererForRootBackground();
+    if (!rootBackgroundRenderer)
+        return;
 
-    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(), BackgroundBleedNone, CompositeSourceOver, &rootBackgroundRenderer);
+    const FillLayer* bgLayer = rootBackgroundRenderer->style().backgroundLayers();
+    Color bgColor = rootBackgroundRenderer->style().visitedDependentColor(CSSPropertyBackgroundColor);
+
+    paintFillLayers(paintInfo, bgColor, bgLayer, view().backgroundRect(), BackgroundBleedNone, CompositeSourceOver, rootBackgroundRenderer);
 }
 
 BackgroundBleedAvoidance RenderBox::determineBackgroundBleedAvoidance(GraphicsContext& context) const
@@ -3014,7 +3017,7 @@ std::optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length
             // don't care if the cell specified a height or not. We just always make ourselves
             // be a percentage of the cell's current content height.
             if (!cb->hasOverrideLogicalContentHeight())
-                return tableCellShouldHaveZeroInitialSize(*cb, scrollsOverflowY()) ? std::optional<LayoutUnit>() : std::nullopt;
+                return tableCellShouldHaveZeroInitialSize(*cb, scrollsOverflowY()) ? std::optional<LayoutUnit>(0) : std::nullopt;
 
             availableHeight = cb->overrideLogicalContentHeight();
             includeBorderPadding = true;

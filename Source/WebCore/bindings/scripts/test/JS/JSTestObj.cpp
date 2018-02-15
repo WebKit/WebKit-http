@@ -682,6 +682,127 @@ template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState&
     return result;
 }
 
+JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, const TestObj::Dictionary& dictionary)
+{
+    auto& vm = state.vm();
+
+    auto result = constructEmptyObject(&state);
+
+    auto anyTypedefValueValue = toJS<IDLAny>(state, globalObject, dictionary.anyTypedefValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyTypedefValue"), anyTypedefValueValue);
+    auto anyValueValue = toJS<IDLAny>(state, globalObject, dictionary.anyValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValue"), anyValueValue);
+    auto anyValueWithNullDefaultValue = toJS<IDLAny>(state, globalObject, dictionary.anyValueWithNullDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValueWithNullDefault"), anyValueWithNullDefaultValue);
+    auto booleanWithDefaultValue = toJS<IDLBoolean>(state, globalObject, dictionary.booleanWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithDefault"), booleanWithDefaultValue);
+    if (dictionary.booleanWithoutDefault) {
+        auto booleanWithoutDefaultValue = toJS<IDLBoolean>(state, globalObject, dictionary.booleanWithoutDefault);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithoutDefault"), booleanWithoutDefaultValue);
+    }
+    if (dictionary.bufferSourceValue) {
+        auto bufferSourceValueValue = toJS<IDLBufferSource>(state, globalObject, dictionary.bufferSourceValue);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "bufferSourceValue"), bufferSourceValueValue);
+    }
+    if (dictionary.dictionaryMember) {
+        auto dictionaryMemberValue = toJS<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, globalObject, dictionary.dictionaryMember);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "dictionaryMember"), dictionaryMemberValue);
+    }
+    auto enumerationValueWithDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, dictionary.enumerationValueWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithDefault"), enumerationValueWithDefaultValue);
+    auto enumerationValueWithEmptyStringDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, dictionary.enumerationValueWithEmptyStringDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithEmptyStringDefault"), enumerationValueWithEmptyStringDefaultValue);
+    if (dictionary.enumerationValueWithoutDefault) {
+        auto enumerationValueWithoutDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, dictionary.enumerationValueWithoutDefault);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithoutDefault"), enumerationValueWithoutDefaultValue);
+    }
+    if (dictionary.integer) {
+        auto integerValue = toJS<IDLLong>(state, globalObject, dictionary.integer);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "integer"), integerValue);
+    }
+    auto integerWithDefaultValue = toJS<IDLLong>(state, globalObject, dictionary.integerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "integerWithDefault"), integerWithDefaultValue);
+    if (dictionary.largeInteger) {
+        auto largeIntegerValue = toJS<IDLLongLong>(state, globalObject, dictionary.largeInteger);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeInteger"), largeIntegerValue);
+    }
+    auto largeIntegerWithDefaultValue = toJS<IDLLongLong>(state, globalObject, dictionary.largeIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeIntegerWithDefault"), largeIntegerWithDefaultValue);
+    auto nullableIntegerWithDefaultValue = toJS<IDLNullable<IDLLong>>(state, globalObject, dictionary.nullableIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableIntegerWithDefault"), nullableIntegerWithDefaultValue);
+    auto nullableNodeValue = toJS<IDLNullable<IDLInterface<Node>>>(state, globalObject, dictionary.nullableNode);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableNode"), nullableNodeValue);
+    auto nullableStringWithDefaultValue = toJS<IDLNullable<IDLDOMString>>(state, globalObject, dictionary.nullableStringWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableStringWithDefault"), nullableStringWithDefaultValue);
+    auto nullableUnionMemberValue = toJS<IDLNullable<IDLUnion<IDLLong, IDLInterface<Node>>>>(state, globalObject, dictionary.nullableUnionMember);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableUnionMember"), nullableUnionMemberValue);
+    if (dictionary.restrictedDouble) {
+        auto restrictedDoubleValue = toJS<IDLDouble>(state, globalObject, dictionary.restrictedDouble);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDouble"), restrictedDoubleValue);
+    }
+    auto restrictedDoubleWithDefaultValue = toJS<IDLDouble>(state, globalObject, dictionary.restrictedDoubleWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDoubleWithDefault"), restrictedDoubleWithDefaultValue);
+    if (dictionary.restrictedFloat) {
+        auto restrictedFloatValue = toJS<IDLFloat>(state, globalObject, dictionary.restrictedFloat);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloat"), restrictedFloatValue);
+    }
+    auto restrictedFloatWithDefaultValue = toJS<IDLFloat>(state, globalObject, dictionary.restrictedFloatWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloatWithDefault"), restrictedFloatWithDefaultValue);
+    if (dictionary.sequenceOfStrings) {
+        auto sequenceOfStringsValue = toJS<IDLSequence<IDLDOMString>>(state, globalObject, dictionary.sequenceOfStrings);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "sequenceOfStrings"), sequenceOfStringsValue);
+    }
+    if (dictionary.smallIntegerClamped) {
+        auto smallIntegerClampedValue = toJS<IDLByte>(state, globalObject, dictionary.smallIntegerClamped);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerClamped"), smallIntegerClampedValue);
+    }
+    if (dictionary.smallIntegerWithDefault) {
+        auto smallIntegerWithDefaultValue = toJS<IDLByte>(state, globalObject, dictionary.smallIntegerWithDefault);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerWithDefault"), smallIntegerWithDefaultValue);
+    }
+    if (dictionary.smallUnsignedIntegerEnforcedRange) {
+        auto smallUnsignedIntegerEnforcedRangeValue = toJS<IDLOctet>(state, globalObject, dictionary.smallUnsignedIntegerEnforcedRange);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerEnforcedRange"), smallUnsignedIntegerEnforcedRangeValue);
+    }
+    auto smallUnsignedIntegerWithDefaultValue = toJS<IDLOctet>(state, globalObject, dictionary.smallUnsignedIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerWithDefault"), smallUnsignedIntegerWithDefaultValue);
+    auto stringWithDefaultValue = toJS<IDLDOMString>(state, globalObject, dictionary.stringWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithDefault"), stringWithDefaultValue);
+    if (dictionary.stringWithoutDefault) {
+        auto stringWithoutDefaultValue = toJS<IDLDOMString>(state, globalObject, dictionary.stringWithoutDefault);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithoutDefault"), stringWithoutDefaultValue);
+    }
+    if (dictionary.unionMember) {
+        auto unionMemberValue = toJS<IDLUnion<IDLLong, IDLInterface<Node>>>(state, globalObject, dictionary.unionMember);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unionMember"), unionMemberValue);
+    }
+    if (dictionary.unrestrictedDouble) {
+        auto unrestrictedDoubleValue = toJS<IDLUnrestrictedDouble>(state, globalObject, dictionary.unrestrictedDouble);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDouble"), unrestrictedDoubleValue);
+    }
+    auto unrestrictedDoubleWithDefaultValue = toJS<IDLUnrestrictedDouble>(state, globalObject, dictionary.unrestrictedDoubleWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDoubleWithDefault"), unrestrictedDoubleWithDefaultValue);
+    if (dictionary.unrestrictedFloat) {
+        auto unrestrictedFloatValue = toJS<IDLUnrestrictedFloat>(state, globalObject, dictionary.unrestrictedFloat);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloat"), unrestrictedFloatValue);
+    }
+    auto unrestrictedFloatWithDefaultValue = toJS<IDLUnrestrictedFloat>(state, globalObject, dictionary.unrestrictedFloatWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloatWithDefault"), unrestrictedFloatWithDefaultValue);
+    if (dictionary.unsignedInteger) {
+        auto unsignedIntegerValue = toJS<IDLUnsignedLong>(state, globalObject, dictionary.unsignedInteger);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedInteger"), unsignedIntegerValue);
+    }
+    auto unsignedIntegerWithDefaultValue = toJS<IDLUnsignedLong>(state, globalObject, dictionary.unsignedIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedIntegerWithDefault"), unsignedIntegerWithDefaultValue);
+    if (dictionary.unsignedLargeInteger) {
+        auto unsignedLargeIntegerValue = toJS<IDLUnsignedLongLong>(state, globalObject, dictionary.unsignedLargeInteger);
+        result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeInteger"), unsignedLargeIntegerValue);
+    }
+    auto unsignedLargeIntegerWithDefaultValue = toJS<IDLUnsignedLongLong>(state, globalObject, dictionary.unsignedLargeIntegerWithDefault);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeIntegerWithDefault"), unsignedLargeIntegerWithDefaultValue);
+    return result;
+}
+
 template<> TestObj::DictionaryThatShouldNotTolerateNull convertDictionary<TestObj::DictionaryThatShouldNotTolerateNull>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
@@ -1015,6 +1136,7 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalSe
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBoolean(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalse(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalAny(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalObject(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapper(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNull(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolver(JSC::ExecState*);
@@ -1240,6 +1362,8 @@ JSC::EncodedJSValue jsTestObjCachedAttribute1(JSC::ExecState*, JSC::EncodedJSVal
 JSC::EncodedJSValue jsTestObjCachedAttribute2(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjAnyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjAnyAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
+JSC::EncodedJSValue jsTestObjObjectAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
+bool setJSTestObjObjectAttribute(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 JSC::EncodedJSValue jsTestObjContentDocument(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 JSC::EncodedJSValue jsTestObjMutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestObjMutablePoint(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
@@ -1540,6 +1664,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "cachedAttribute1", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "cachedAttribute2", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "anyAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnyAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnyAttribute) } },
+    { "objectAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjObjectAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjObjectAttribute) } },
     { "contentDocument", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
     { "mutablePoint", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjMutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjMutablePoint) } },
     { "immutablePoint", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImmutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjImmutablePoint) } },
@@ -1652,6 +1777,7 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
     { "methodWithOptionalBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalBoolean), (intptr_t) (0) } },
     { "methodWithOptionalBooleanIsFalse", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalBooleanIsFalse), (intptr_t) (0) } },
     { "methodWithOptionalAny", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalAny), (intptr_t) (0) } },
+    { "methodWithOptionalObject", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalObject), (intptr_t) (0) } },
     { "methodWithOptionalNullableWrapper", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapper), (intptr_t) (0) } },
     { "methodWithOptionalNullableWrapperIsNull", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalNullableWrapperIsNull), (intptr_t) (0) } },
     { "methodWithOptionalXPathNSResolver", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionMethodWithOptionalXPathNSResolver), (intptr_t) (0) } },
@@ -3022,6 +3148,22 @@ static inline JSValue jsTestObjAnyAttributeGetter(ExecState& state, JSTestObj& t
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
     JSValue result = toJS<IDLAny>(impl.anyAttribute());
+    return result;
+}
+
+static inline JSValue jsTestObjObjectAttributeGetter(ExecState&, JSTestObj&, ThrowScope& throwScope);
+
+EncodedJSValue jsTestObjObjectAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSTestObj>::attribute<jsTestObjObjectAttributeGetter>(state, thisValue, "objectAttribute");
+}
+
+static inline JSValue jsTestObjObjectAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = toJS<IDLObject>(impl.objectAttribute());
     return result;
 }
 
@@ -4619,6 +4761,25 @@ static inline bool setJSTestObjAnyAttributeFunction(ExecState& state, JSTestObj&
     auto nativeValue = convert<IDLAny>(state, value);
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setAnyAttribute(WTFMove(nativeValue));
+    return true;
+}
+
+
+static inline bool setJSTestObjObjectAttributeFunction(ExecState&, JSTestObj&, JSValue, ThrowScope&);
+
+bool setJSTestObjObjectAttribute(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
+{
+    return BindingCaller<JSTestObj>::setAttribute<setJSTestObjObjectAttributeFunction>(state, thisValue, encodedValue, "objectAttribute");
+}
+
+static inline bool setJSTestObjObjectAttributeFunction(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = thisObject.wrapped();
+    auto nativeValue = convert<IDLObject>(state, value);
+    RETURN_IF_EXCEPTION(throwScope, false);
+    impl.setObjectAttribute(WTFMove(nativeValue));
     return true;
 }
 
@@ -6430,6 +6591,24 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalAn
     auto a = convert<IDLAny>(*state, state->argument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.methodWithOptionalAny(WTFMove(a));
+    return JSValue::encode(jsUndefined());
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalObjectCaller(JSC::ExecState*, JSTestObj*, JSC::ThrowScope&);
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionMethodWithOptionalObject(ExecState* state)
+{
+    return BindingCaller<JSTestObj>::callOperation<jsTestObjPrototypeFunctionMethodWithOptionalObjectCaller>(state, "methodWithOptionalObject");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionMethodWithOptionalObjectCaller(JSC::ExecState* state, JSTestObj* castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    auto a = state->argument(0).isUndefined() ? std::optional<JSC::Strong<JSC::JSObject>>() : convert<IDLObject>(*state, state->uncheckedArgument(0));
+    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
+    impl.methodWithOptionalObject(WTFMove(a));
     return JSValue::encode(jsUndefined());
 }
 

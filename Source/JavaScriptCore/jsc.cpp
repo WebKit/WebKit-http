@@ -53,6 +53,7 @@
 #include "JSProxy.h"
 #include "JSString.h"
 #include "JSTypedArrays.h"
+#include "JSWebAssemblyCallee.h"
 #include "LLIntData.h"
 #include "LLIntThunks.h"
 #include "ObjectConstructor.h"
@@ -2510,36 +2511,63 @@ static CString valueWithTypeOfWasmValue(ExecState* exec, VM& vm, JSValue value, 
 
 static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
 {
+
     JSString* type = jsCast<JSString*>(wasmValue.get(exec, makeIdentifier(vm, "type")));
     JSValue value = wasmValue.get(exec, makeIdentifier(vm, "value"));
+
+    auto unboxString = [&] (const char* hexFormat, const char* decFormat, auto& result) {
+        if (!value.isString())
+            return false;
+
+        const char* str = toCString(jsCast<JSString*>(value)->value(exec)).data();
+        int scanResult;
+        int length = std::strlen(str);
+        if ((length > 2 && (str[0] == '0' && str[1] == 'x'))
+            || (length > 3 && (str[0] == '-' && str[1] == '0' && str[2] == 'x')))
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
+#endif
+            scanResult = sscanf(str, hexFormat, &result);
+        else
+            scanResult = sscanf(str, decFormat, &result);
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
+        RELEASE_ASSERT(scanResult != EOF);
+        return true;
+    };
 
     const String& typeString = type->value(exec);
     if (typeString == "i64") {
         int64_t result;
-        const char* str = toCString(jsCast<JSString*>(value)->value(exec)).data();
-        int scanResult;
-        if (std::strlen(str) > 2 && str[0] == '0' && str[1] == 'x')
-            scanResult = sscanf(str, "%llx", &result);
-        else
-            scanResult = sscanf(str, "%lld", &result);
-        RELEASE_ASSERT(scanResult != EOF);
+        if (!unboxString("%llx", "%lld", result))
+            CRASH();
         return JSValue::decode(result);
     }
-    RELEASE_ASSERT(value.isNumber());
 
     if (typeString == "i32") {
-        RELEASE_ASSERT(value.isInt32());
-        return JSValue::decode(static_cast<uint32_t>(value.asInt32()));
+        int32_t result;
+        if (!unboxString("%x", "%d", result))
+            result = value.asInt32();
+        return JSValue::decode(static_cast<uint32_t>(result));
     }
 
-    if (typeString == "f32")
-        return JSValue::decode(bitwise_cast<uint32_t>(value.toFloat(exec)));
+    if (typeString == "f32") {
+        float result;
+        if (!unboxString("%a", "%f", result))
+            result = value.toFloat(exec);
+        return JSValue::decode(bitwise_cast<uint32_t>(result));
+    }
 
     RELEASE_ASSERT(typeString == "f64");
-    return JSValue::decode(bitwise_cast<uint64_t>(value.asNumber()));
+    double result;
+    if (!unboxString("%la", "%lf", result))
+        result = value.asNumber();
+    return JSValue::decode(bitwise_cast<uint64_t>(result));
 }
 
-static JSValue callWasmFunction(VM* vm, const B3::Compilation& code, Vector<JSValue>& boxedArgs)
+static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, JSWebAssemblyCallee* wasmCallee, Vector<JSValue>& boxedArgs)
 {
     JSValue firstArgument;
     int argCount = 1;
@@ -2552,9 +2580,9 @@ static JSValue callWasmFunction(VM* vm, const B3::Compilation& code, Vector<JSVa
     }
 
     ProtoCallFrame protoCallFrame;
-    protoCallFrame.init(nullptr, nullptr, firstArgument, argCount, remainingArgs);
+    protoCallFrame.init(nullptr, globalObject->globalExec()->jsCallee(), firstArgument, argCount, remainingArgs);
 
-    return JSValue::decode(vmEntryToWasm(code.code().executableAddress(), vm, &protoCallFrame));
+    return JSValue::decode(vmEntryToWasm(wasmCallee->jsEntryPoint(), vm, &protoCallFrame));
 }
 
 // testWasmModule(JSArrayBufferView source, number functionCount, ...[[WasmValue, [WasmValue]]]) where the ith copy of [[result, [args]]] is a list
@@ -2583,10 +2611,18 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
     if (plan.compiledFunctionCount() != functionCount)
         CRASH();
 
-    for (uint32_t i = 0; i < functionCount; ++i) {
-        if (!plan.compiledFunction(i))
-            dataLogLn("failed to compile function at index", i);
+    MarkedArgumentBuffer callees;
+    {
+        unsigned lastIndex = UINT_MAX;
+        plan.initializeCallees(exec->lexicalGlobalObject(),
+            [&] (unsigned calleeIndex, JSWebAssemblyCallee* callee) {
+                RELEASE_ASSERT(!calleeIndex || (calleeIndex - 1 == lastIndex));
+                callees.append(callee);
+                lastIndex = calleeIndex;
+            });
+    }
 
+    for (uint32_t i = 0; i < functionCount; ++i) {
         JSArray* testCases = jsCast<JSArray*>(exec->argument(i + 2));
         for (unsigned testIndex = 0; testIndex < testCases->length(); ++testIndex) {
             JSArray* test = jsCast<JSArray*>(testCases->getIndexQuickly(testIndex));
@@ -2597,7 +2633,7 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
             for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
                 boxedArgs.append(box(exec, vm, arguments->getIndexQuickly(argIndex)));
 
-            JSValue callResult = callWasmFunction(&vm, *plan.compiledFunction(i)->jsEntryPoint, boxedArgs);
+            JSValue callResult = callWasmFunction(&vm, exec->lexicalGlobalObject(), jsCast<JSWebAssemblyCallee*>(callees.at(i)), boxedArgs);
             JSValue expected = box(exec, vm, result);
             if (callResult != expected) {
                 dataLog("Arguments: ");

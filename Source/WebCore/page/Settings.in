@@ -250,7 +250,7 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
-newCSSParserEnabled initial=false
+newCSSParserEnabled initial=true
 
 httpEquivEnabled initial=true
 
@@ -293,4 +293,3 @@ largeImageAsyncDecodingEnabled initial=true
 animatedImageAsyncDecodingEnabled initial=true
 
 es6ModulesEnabled initial=false
-pointerLockEnabled initial=false

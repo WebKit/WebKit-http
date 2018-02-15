@@ -1798,17 +1798,25 @@ LayoutPoint FrameView::computeLayoutViewportOrigin(const LayoutRect& visualViewp
 {
     LayoutPoint layoutViewportOrigin = layoutViewport.location();
 
-    if (visualViewport.x() < layoutViewport.x() || visualViewport.x() < stableLayoutViewportOriginMin.x())
+    if (visualViewport.width() > layoutViewport.width())
         layoutViewportOrigin.setX(visualViewport.x());
+    else {
+        if (visualViewport.x() < layoutViewport.x() || visualViewport.x() < stableLayoutViewportOriginMin.x())
+            layoutViewportOrigin.setX(visualViewport.x());
 
-    if (visualViewport.y() < layoutViewport.y() || visualViewport.y() < stableLayoutViewportOriginMin.y())
+        if (visualViewport.maxX() > layoutViewport.maxX() || (visualViewport.maxX() - layoutViewport.width()) > stableLayoutViewportOriginMax.x())
+            layoutViewportOrigin.setX(visualViewport.maxX() - layoutViewport.width());
+    }
+
+    if (visualViewport.height() > layoutViewport.height())
         layoutViewportOrigin.setY(visualViewport.y());
+    else {
+        if (visualViewport.y() < layoutViewport.y() || visualViewport.y() < stableLayoutViewportOriginMin.y())
+            layoutViewportOrigin.setY(visualViewport.y());
 
-    if (visualViewport.maxX() > layoutViewport.maxX() || (visualViewport.maxX() - layoutViewport.width()) > stableLayoutViewportOriginMax.x())
-        layoutViewportOrigin.setX(visualViewport.maxX() - layoutViewport.width());
-
-    if (visualViewport.maxY() > layoutViewport.maxY() || (visualViewport.maxY() - layoutViewport.height()) > stableLayoutViewportOriginMax.y())
-        layoutViewportOrigin.setY(visualViewport.maxY() - layoutViewport.height());
+        if (visualViewport.maxY() > layoutViewport.maxY() || (visualViewport.maxY() - layoutViewport.height()) > stableLayoutViewportOriginMax.y())
+            layoutViewportOrigin.setY(visualViewport.maxY() - layoutViewport.height());
+    }
 
     return layoutViewportOrigin;
 }
@@ -1854,6 +1862,11 @@ LayoutSize FrameView::baseLayoutViewportSize() const
 void FrameView::updateLayoutViewport()
 {
     if (!frame().settings().visualViewportEnabled())
+        return;
+    
+    // Don't update the layout viewport if we're in the middle of adjusting scrollbars. We'll get another call
+    // as a post-layout task.
+    if (m_layoutPhase == InViewSizeAdjust)
         return;
     
     if (m_layoutViewportOverrideRect) {
@@ -2351,7 +2364,7 @@ void FrameView::scrollElementToRect(const Element& element, const IntRect& rect)
 
     LayoutRect bounds;
     if (RenderElement* renderer = element.renderer())
-        bounds = renderer->anchorRect();
+        bounds = renderer->absoluteAnchorRect();
     int centeringOffsetX = (rect.width() - bounds.width()) / 2;
     int centeringOffsetY = (rect.height() - bounds.height()) / 2;
     setScrollPosition(IntPoint(bounds.x() - centeringOffsetX - rect.x(), bounds.y() - centeringOffsetY - rect.y()));
@@ -3175,20 +3188,20 @@ FrameView::ExtendedBackgroundMode FrameView::calculateExtendedBackgroundMode() c
     if (!document)
         return ExtendedBackgroundModeNone;
 
-    auto* documentElement = document->documentElement();
-    auto* documentElementRenderer = documentElement ? documentElement->renderer() : nullptr;
-    if (!documentElementRenderer)
+    if (!renderView())
+        return ExtendedBackgroundModeNone;
+    
+    auto* rootBackgroundRenderer = renderView()->rendererForRootBackground();
+    if (!rootBackgroundRenderer)
         return ExtendedBackgroundModeNone;
 
-    auto& renderer = documentElementRenderer->rendererForRootBackground();
-    if (!renderer.style().hasBackgroundImage())
+    if (!rootBackgroundRenderer->style().hasBackgroundImage())
         return ExtendedBackgroundModeNone;
 
     ExtendedBackgroundMode mode = ExtendedBackgroundModeNone;
-
-    if (renderer.style().backgroundRepeatX() == RepeatFill)
+    if (rootBackgroundRenderer->style().backgroundRepeatX() == RepeatFill)
         mode |= ExtendedBackgroundModeHorizontal;
-    if (renderer.style().backgroundRepeatY() == RepeatFill)
+    if (rootBackgroundRenderer->style().backgroundRepeatY() == RepeatFill)
         mode |= ExtendedBackgroundModeVertical;
 
     return mode;
@@ -3271,17 +3284,18 @@ void FrameView::scrollToAnchor()
         return;
 
     LayoutRect rect;
+    bool insideFixed = false;
     if (anchorNode != frame().document() && anchorNode->renderer())
-        rect = anchorNode->renderer()->anchorRect();
+        rect = anchorNode->renderer()->absoluteAnchorRect(&insideFixed);
 
     // Scroll nested layers and frames to reveal the anchor.
     // Align to the top and to the closest side (this matches other browsers).
     if (anchorNode->renderer()->style().isHorizontalWritingMode())
-        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
     else if (anchorNode->renderer()->style().isFlippedBlocksWritingMode())
-        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, insideFixed, ScrollAlignment::alignRightAlways, ScrollAlignment::alignToEdgeIfNeeded);
     else
-        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
+        anchorNode->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, rect, insideFixed, ScrollAlignment::alignLeftAlways, ScrollAlignment::alignToEdgeIfNeeded);
 
     if (AXObjectCache* cache = frame().document()->existingAXObjectCache())
         cache->handleScrolledToAnchor(anchorNode.get());

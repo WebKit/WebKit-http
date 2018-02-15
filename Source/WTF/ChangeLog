@@ -1,3 +1,170 @@
+2016-12-06  Alexey Proskuryakov  <ap@apple.com>
+
+        Correct SDKROOT values in xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=165487
+        rdar://problem/29539209
+
+        Reviewed by Dan Bernstein.
+
+        Fix suggested by Dan Bernstein.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2016-12-06  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209399): Causes crashes when dumping JIT disassembly
+        https://bugs.webkit.org/show_bug.cgi?id=165483
+
+        Reviewed by Geoffrey Garen.
+
+        Fixed the RELEASE_ASSERT() to check that the 6 character string is terminated by a null
+        character.
+
+        * wtf/SixCharacterHash.cpp:
+        (WTF::sixCharacterHashStringToInteger):
+
+2016-12-04  Darin Adler  <darin@apple.com>
+
+        Use ASCIICType more, and improve it a little bit
+        https://bugs.webkit.org/show_bug.cgi?id=165360
+
+        Reviewed by Sam Weinig.
+
+        * wtf/ASCIICType.h: Added declarations of all the functions to the top of the file,
+        so we have a list of what's available, not just a mix of that and the implementation.
+
+        * wtf/HexNumber.h:
+        (WTF::Internal::hexDigitsForMode): Moved lowerHexDigits and upperHexDigits
+        inside this function.
+        (WTF::appendByteAsHex): Use auto.
+        (WTF::placeByteAsHexCompressIfPossible): Ditto.
+        (WTF::placeByteAsHex): Ditto.
+        (WTF::appendUnsignedAsHex): Ditto.
+        (WTF::appendUnsigned64AsHex): Ditto.
+        (WTF::appendUnsignedAsHexFixedSize): Ditto.
+        (WTF::isHexDigit): Deleted.
+        (WTF::uncheckedHexDigit): Deleted.
+        (WTF::hexDigitValue): Deleted.
+        (WTF::uncheckedHexDigitValue): Deleted.
+
+        * wtf/SixCharacterHash.cpp:
+        (WTF::sixCharacterHashStringToInteger): Use isASCIIUpper, isASCIILower, and
+        isASCIIDigit. Also added some FIXMEs; for some reason this function uses
+        RELEASE_ASSERT to abort if the passed-in string is not six characters long,
+        and it's not clear to me why this is so critical to assert.
+        (WTF::integerToSixCharacterHashString): Moved the table inside this function,
+        obviating the need for a macro named TABLE.
+
+        * wtf/dtoa/bignum.cc:
+        (WTF::double_conversion::HexCharValue): Deleted.
+        (WTF::double_conversion::Bignum::AssignHexString): Use toASCIIHexValue.
+        * wtf/dtoa/double-conversion.cc:
+        (WTF::double_conversion::StringToDoubleConverter::StringToDouble): Use isASCIIDigit.
+
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternal): Use upperNibbleToASCIIHexDigit and
+        lowerNibbleToASCIIHexDigit.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::convertToUppercaseWithoutLocale): Use toASCIIUpper.
+        Removed the workaround for a bug that was fixed in Visual Studio 2013.
+
+2016-12-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r208985): SafariForWebKitDevelopment Symbol Not Found looking for method with WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=165351
+
+        Reviewed by Yusuke Suzuki.
+
+        Include a slimmed down version of WTF::Optional which older versions
+        of Safari still depend on for a JavaScriptCore exported symbol.
+        To prevent misuse name it WTF::DeprecatedOptional and use it only in
+        the one instance it is needed.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/DeprecatedOptional.h: Added.
+        (WTF::Optional::operator bool):
+        (WTF::Optional::value):
+        (WTF::Optional::asPtr):
+
+2016-12-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Add __STDC_FORMAT_MACROS before inttypes.h is included
+        https://bugs.webkit.org/show_bug.cgi?id=165374
+
+        We need formatting macros like PRIu64 to be available in all places where
+        inttypes.h header is used. All these usages get inttypes.h definitions
+        via wtf/Assertions.h header, except SQLiteFileSystem.cpp where formatting
+        macros are not used anymore since r185129.
+
+        This patch fixes multiple build errors with MinGW and reduces number of
+        independent __STDC_FORMAT_MACROS uses in the code base.
+
+        Reviewed by Darin Adler.
+
+        * wtf/Assertions.h: Define __STDC_FORMAT_MACROS.
+        * wtf/StdLibExtras.h: Remove definition of PRId64 for Windows, as we
+        have __STDC_FORMAT_MACROS defined now.
+
+2016-12-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Refactor SymbolImpl layout
+        https://bugs.webkit.org/show_bug.cgi?id=165247
+
+        Reviewed by Darin Adler.
+
+        This patch moves SymbolImpl initialization from StringImpl to SymbolImpl.
+        In SymbolImpl, we create the appropriate fields. At that time, these fields
+        should be aligned to the BufferSubstring StringImpl.
+
+        And we newly create the `m_flags` in SymbolImpl. Instead of using special
+        StringImpl::null(), we store s_flagIsNullSymbol flag here. In WTF, we have
+        the invariant that StringImpl::empty() is the only atomic empty string.
+        But StringImpl::null() breaks this invariant. Using a special flag is safer
+        way to represent the null Symbol `Symbol()`.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/StdLibExtras.h:
+        (WTF::roundUpToMultipleOfImpl0):
+        (WTF::roundUpToMultipleOfImpl):
+        (WTF::roundUpToMultipleOf):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::createSymbol): Deleted.
+        (WTF::StringImpl::createNullSymbol): Deleted.
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::isAtomic):
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::requiresCopy):
+        (WTF::StringImpl::isNullSymbol): Deleted.
+        (WTF::StringImpl::symbolAwareHash): Deleted.
+        (WTF::StringImpl::existingSymbolAwareHash): Deleted.
+        (WTF::StringImpl::null): Deleted.
+        (WTF::StringImpl::extractFoldedStringInSymbol): Deleted.
+        (WTF::StringImpl::symbolRegistry): Deleted.
+        (WTF::StringImpl::hashForSymbol): Deleted.
+        * wtf/text/StringStatics.cpp:
+        (WTF::StringImpl::nextHashForSymbol): Deleted.
+        * wtf/text/SymbolImpl.cpp: Copied from Source/WTF/wtf/text/SymbolRegistry.cpp.
+        (WTF::SymbolImpl::nextHashForSymbol):
+        (WTF::SymbolImpl::create):
+        (WTF::SymbolImpl::createNullSymbol):
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::hashForSymbol):
+        (WTF::SymbolImpl::symbolRegistry):
+        (WTF::SymbolImpl::isNullSymbol):
+        (WTF::SymbolImpl::extractFoldedString):
+        (WTF::SymbolImpl::SymbolImpl):
+        (WTF::StringImpl::symbolAwareHash):
+        (WTF::StringImpl::existingSymbolAwareHash):
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::~SymbolRegistry):
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        * wtf/text/UniquedStringImpl.h:
+        (WTF::UniquedStringImpl::UniquedStringImpl):
+
 2016-12-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Introduce StringImpl::StaticStringImpl with constexpr constructor
