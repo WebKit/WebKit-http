@@ -126,20 +126,21 @@ void Connection::platformInvalidate()
         return;
     }
 
+    m_pendingOutgoingMachMessage = nullptr;
     m_isConnected = false;
 
     ASSERT(m_sendPort);
     ASSERT(m_receivePort);
 
     // Unregister our ports.
-    dispatch_source_cancel(m_deadNameSource);
-    dispatch_release(m_deadNameSource);
-    m_deadNameSource = 0;
+    dispatch_source_cancel(m_sendSource);
+    dispatch_release(m_sendSource);
+    m_sendSource = nullptr;
     m_sendPort = MACH_PORT_NULL;
 
-    dispatch_source_cancel(m_receivePortDataAvailableSource);
-    dispatch_release(m_receivePortDataAvailableSource);
-    m_receivePortDataAvailableSource = 0;
+    dispatch_source_cancel(m_receiveSource);
+    dispatch_release(m_receiveSource);
+    m_receiveSource = nullptr;
     m_receivePort = MACH_PORT_NULL;
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
@@ -173,14 +174,14 @@ void Connection::platformInitialize(Identifier identifier)
         m_sendPort = identifier.port;
     }
 
-    m_deadNameSource = nullptr;
-    m_receivePortDataAvailableSource = nullptr;
+    m_sendSource = nullptr;
+    m_receiveSource = nullptr;
 
     m_xpcConnection = identifier.xpcConnection;
 }
 
 template<typename Function>
-static dispatch_source_t createDataAvailableSource(mach_port_t receivePort, WorkQueue& workQueue, Function&& function)
+static dispatch_source_t createReceiveSource(mach_port_t receivePort, WorkQueue& workQueue, Function&& function)
 {
     dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, receivePort, 0, workQueue.dispatchQueue());
     dispatch_source_set_event_handler(source, function);
@@ -215,9 +216,9 @@ bool Connection::open()
         auto encoder = std::make_unique<Encoder>("IPC", "InitializeConnection", 0);
         encoder->encode(MachPort(m_receivePort, MACH_MSG_TYPE_MAKE_SEND));
 
-        sendMessage(WTFMove(encoder), { });
+        initializeSendSource();
 
-        initializeDeadNameSource();
+        sendMessage(WTFMove(encoder), { });
     }
 
     // Change the message queue length for the receive port.
@@ -225,13 +226,13 @@ bool Connection::open()
 
     // Register the data available handler.
     RefPtr<Connection> connection(this);
-    m_receivePortDataAvailableSource = createDataAvailableSource(m_receivePort, m_connectionQueue, [connection] {
+    m_receiveSource = createReceiveSource(m_receivePort, m_connectionQueue, [connection] {
         connection->receiveSourceEventHandler();
     });
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
-        m_exceptionPortDataAvailableSource = createDataAvailableSource(m_exceptionPort, m_connectionQueue, [connection] {
+        m_exceptionPortDataAvailableSource = createReceiveSource(m_exceptionPort, m_connectionQueue, [connection] {
             connection->exceptionSourceEventHandler();
         });
 
@@ -244,10 +245,10 @@ bool Connection::open()
 
     ref();
     dispatch_async(m_connectionQueue->dispatchQueue(), ^{
-        dispatch_resume(m_receivePortDataAvailableSource);
+        dispatch_resume(m_receiveSource);
 
-        if (m_deadNameSource)
-            dispatch_resume(m_deadNameSource);
+        if (m_sendSource)
+            dispatch_resume(m_sendSource);
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
         if (m_exceptionPortDataAvailableSource)
             dispatch_resume(m_exceptionPortDataAvailableSource);
@@ -259,13 +260,41 @@ bool Connection::open()
     return true;
 }
 
+bool Connection::sendMessage(std::unique_ptr<MachMessage> message)
+{
+    ASSERT(!m_pendingOutgoingMachMessage);
+
+    // Send the message.
+    kern_return_t kr = mach_msg(message->header(), MACH_SEND_MSG | MACH_SEND_TIMEOUT | MACH_SEND_NOTIFY, message->size(), 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
+    switch (kr) {
+    case MACH_MSG_SUCCESS:
+        // The kernel has already adopted the descriptors.
+        message->leakDescriptors();
+        return true;
+
+    case MACH_SEND_TIMED_OUT:
+        // We timed out, stash away the message for later.
+        m_pendingOutgoingMachMessage = WTFMove(message);
+        return false;
+
+    case MACH_SEND_INVALID_DEST:
+        // The other end has disappeared, we'll get a dead name notification which will cause us to be invalidated.
+        return false;
+
+    default:
+        CRASH();
+    }
+}
+
 bool Connection::platformCanSendOutgoingMessages() const
 {
-    return true;
+    return !m_pendingOutgoingMachMessage;
 }
 
 bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
 {
+    ASSERT(!m_pendingOutgoingMachMessage);
+
     Vector<Attachment> attachments = encoder->releaseAttachments();
     
     size_t numberOfPortDescriptors = 0;
@@ -347,26 +376,34 @@ bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
 
     ASSERT(m_sendPort);
 
-    // Send the message.
-    kern_return_t kr = mach_msg(header, MACH_SEND_MSG, messageSize, 0, MACH_PORT_NULL, MACH_MSG_TIMEOUT_NONE, MACH_PORT_NULL);
-    if (kr != KERN_SUCCESS) {
-        // FIXME: What should we do here?
-    }
-
-    return true;
+    return sendMessage(WTFMove(message));
 }
 
-void Connection::initializeDeadNameSource()
+void Connection::initializeSendSource()
 {
-    m_deadNameSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_SEND, m_sendPort, 0, m_connectionQueue->dispatchQueue());
+    m_sendSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_SEND, m_sendPort, DISPATCH_MACH_SEND_DEAD | DISPATCH_MACH_SEND_POSSIBLE, m_connectionQueue->dispatchQueue());
 
     RefPtr<Connection> connection(this);
-    dispatch_source_set_event_handler(m_deadNameSource, [connection] {
-        connection->connectionDidClose();
+    dispatch_source_set_event_handler(m_sendSource, [connection] {
+        if (!connection->m_sendSource)
+            return;
+
+        unsigned long data = dispatch_source_get_data(connection->m_sendSource);
+
+        if (data & DISPATCH_MACH_SEND_DEAD) {
+            connection->connectionDidClose();
+            return;
+        }
+
+        if (data & DISPATCH_MACH_SEND_POSSIBLE) {
+            connection->sendMessage(WTFMove(connection->m_pendingOutgoingMachMessage));
+            connection->sendOutgoingMessages();
+            return;
+        }
     });
 
     mach_port_t sendPort = m_sendPort;
-    dispatch_source_set_cancel_handler(m_deadNameSource, ^{
+    dispatch_source_set_cancel_handler(m_sendSource, ^{
         // Release our send right.
         mach_port_deallocate(mach_task_self(), sendPort);
     });
@@ -510,8 +547,8 @@ void Connection::receiveSourceEventHandler()
             if (previousNotificationPort != MACH_PORT_NULL)
                 mach_port_deallocate(mach_task_self(), previousNotificationPort);
 
-            initializeDeadNameSource();
-            dispatch_resume(m_deadNameSource);
+            initializeSendSource();
+            dispatch_resume(m_sendSource);
         }
 
         m_isConnected = true;

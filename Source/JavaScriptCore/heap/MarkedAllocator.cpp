@@ -104,7 +104,7 @@ void* MarkedAllocator::tryAllocateWithoutCollecting()
         if (m_allocationCursor >= m_blocks.size())
             break;
         
-        setIsCanAllocateButNotEmpty(m_allocationCursor, false);
+        setIsCanAllocateButNotEmpty(NoLockingNecessary, m_allocationCursor, false);
 
         if (void* result = tryAllocateIn(m_blocks[m_allocationCursor]))
             return result;
@@ -147,8 +147,8 @@ void* MarkedAllocator::tryAllocateIn(MarkedBlock::Handle* block)
         ASSERT(block->isFreeListed());
         block->unsweepWithNoNewlyAllocated();
         ASSERT(!block->isFreeListed());
-        ASSERT(!isEmpty(block));
-        ASSERT(!isCanAllocateButNotEmpty(block));
+        ASSERT(!isEmpty(NoLockingNecessary, block));
+        ASSERT(!isCanAllocateButNotEmpty(NoLockingNecessary, block));
         return nullptr;
     }
     
@@ -166,7 +166,7 @@ void* MarkedAllocator::tryAllocateIn(MarkedBlock::Handle* block)
         result = head;
     }
     RELEASE_ASSERT(result);
-    setIsEden(m_currentBlock, true);
+    setIsEden(NoLockingNecessary, m_currentBlock, true);
     m_markedSpace->didAllocateInBlock(m_currentBlock);
     return result;
 }
@@ -270,13 +270,16 @@ void MarkedAllocator::addBlock(MarkedBlock::Handle* block)
         m_blocks.append(block);
         if (m_blocks.capacity() != oldCapacity) {
             forEachBitVector(
+                NoLockingNecessary,
                 [&] (FastBitVector& vector) {
                     ASSERT_UNUSED(vector, vector.numBits() == oldCapacity);
                 });
             
             ASSERT(m_blocks.capacity() > oldCapacity);
             
+            LockHolder locker(m_bitvectorLock);
             forEachBitVector(
+                locker,
                 [&] (FastBitVector& vector) {
                     vector.resize(m_blocks.capacity());
                 });
@@ -288,6 +291,7 @@ void MarkedAllocator::addBlock(MarkedBlock::Handle* block)
     }
     
     forEachBitVector(
+        NoLockingNecessary,
         [&] (FastBitVector& vector) {
             ASSERT_UNUSED(vector, !vector[index]);
         });
@@ -295,8 +299,8 @@ void MarkedAllocator::addBlock(MarkedBlock::Handle* block)
     // This is the point at which the block learns of its cellSize() and attributes().
     block->didAddToAllocator(this, index);
     
-    setIsLive(index, true);
-    setIsEmpty(index, true);
+    setIsLive(NoLockingNecessary, index, true);
+    setIsEmpty(NoLockingNecessary, index, true);
 }
 
 void MarkedAllocator::removeBlock(MarkedBlock::Handle* block)
@@ -308,6 +312,7 @@ void MarkedAllocator::removeBlock(MarkedBlock::Handle* block)
     m_freeBlockIndices.append(block->index());
     
     forEachBitVector(
+        holdLock(m_bitvectorLock),
         [&] (FastBitVector& vector) {
             vector[block->index()] = false;
         });
@@ -466,12 +471,14 @@ void MarkedAllocator::dumpBits(PrintStream& out)
 {
     unsigned maxNameLength = 0;
     forEachBitVectorWithName(
+        NoLockingNecessary,
         [&] (FastBitVector&, const char* name) {
             unsigned length = strlen(name);
             maxNameLength = std::max(maxNameLength, length);
         });
     
     forEachBitVectorWithName(
+        NoLockingNecessary,
         [&] (FastBitVector& vector, const char* name) {
             out.print("    ", name, ": ");
             for (unsigned i = maxNameLength - strlen(name); i--;)

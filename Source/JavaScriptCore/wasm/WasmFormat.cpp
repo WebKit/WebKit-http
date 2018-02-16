@@ -33,7 +33,7 @@
 
 namespace JSC { namespace Wasm {
 
-ModuleInformation::~ModuleInformation() { }
+JS_EXPORT_PRIVATE ModuleInformation::~ModuleInformation() { }
 
 } } // namespace JSC::Wasm
 

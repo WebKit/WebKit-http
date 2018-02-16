@@ -1363,7 +1363,7 @@ public:
     
     void mutatorFence()
     {
-        if (isX86() || !useGCFences())
+        if (isX86())
             return;
         Jump ok = jumpIfMutatorFenceNotNeeded();
         storeFence();
@@ -1372,12 +1372,31 @@ public:
     
     void storeButterfly(GPRReg butterfly, GPRReg object)
     {
-        if (isX86() || !useGCFences()) {
+        if (isX86()) {
             storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
             return;
         }
         
         Jump ok = jumpIfMutatorFenceNotNeeded();
+        storeFence();
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        storeFence();
+        Jump done = jump();
+        ok.link(this);
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        done.link(this);
+    }
+    
+    void nukeStructureAndStoreButterfly(GPRReg butterfly, GPRReg object)
+    {
+        if (isX86()) {
+            or32(TrustedImm32(bitwise_cast<int32_t>(nukedStructureIDBit())), Address(object, JSCell::structureIDOffset()));
+            storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+            return;
+        }
+        
+        Jump ok = jumpIfMutatorFenceNotNeeded();
+        or32(TrustedImm32(bitwise_cast<int32_t>(nukedStructureIDBit())), Address(object, JSCell::structureIDOffset()));
         storeFence();
         storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
         storeFence();
@@ -1618,16 +1637,12 @@ public:
     
     void emitInitializeInlineStorage(GPRReg baseGPR, unsigned inlineCapacity)
     {
-        if (!useGCFences())
-            return;
         for (unsigned i = 0; i < inlineCapacity; ++i)
             storeTrustedValue(JSValue(), Address(baseGPR, JSObject::offsetOfInlineStorage() + i * sizeof(EncodedJSValue)));
     }
 
     void emitInitializeInlineStorage(GPRReg baseGPR, GPRReg inlineCapacity)
     {
-        if (!useGCFences())
-            return;
         Jump empty = branchTest32(Zero, inlineCapacity);
         Label loop = label();
         sub32(TrustedImm32(1), inlineCapacity);
@@ -1638,8 +1653,6 @@ public:
 
     void emitInitializeOutOfLineStorage(GPRReg butterflyGPR, unsigned outOfLineCapacity)
     {
-        if (!useGCFences())
-            return;
         for (unsigned i = 0; i < outOfLineCapacity; ++i)
             storeTrustedValue(JSValue(), Address(butterflyGPR, -sizeof(IndexingHeader) - (i + 1) * sizeof(EncodedJSValue)));
     }

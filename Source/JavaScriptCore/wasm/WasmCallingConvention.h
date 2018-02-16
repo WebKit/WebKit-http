@@ -83,7 +83,7 @@ private:
     }
 
 public:
-    void setupFrameInPrologue(FunctionCompilation* compilation, B3::Procedure& proc, B3::Origin origin, B3::BasicBlock* block) const
+    void setupFrameInPrologue(CodeLocationDataLabelPtr* calleeMoveLocation, B3::Procedure& proc, B3::Origin origin, B3::BasicBlock* block) const
     {
         static_assert(CallFrameSlot::callee * sizeof(Register) < headerSize, "We rely on this here for now.");
         static_assert(CallFrameSlot::codeBlock * sizeof(Register) < headerSize, "We rely on this here for now.");
@@ -96,7 +96,7 @@ public:
                 GPRReg result = params[0].gpr();
                 MacroAssembler::DataLabelPtr moveLocation = jit.moveWithPatch(MacroAssembler::TrustedImmPtr(nullptr), result);
                 jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                    compilation->calleeMoveLocation = linkBuffer.locationOf(moveLocation);
+                    *calleeMoveLocation = linkBuffer.locationOf(moveLocation);
                 });
             });
 
@@ -163,8 +163,8 @@ public:
         B3::PatchpointValue* patchpoint = block->appendNew<B3::PatchpointValue>(proc, returnType, origin);
         patchpoint->clobberEarly(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
-        patchpoint->appendVector(constrainedArguments);
         patchpointFunctor(patchpoint);
+        patchpoint->appendVector(constrainedArguments);
 
         switch (returnType) {
         case B3::Void:

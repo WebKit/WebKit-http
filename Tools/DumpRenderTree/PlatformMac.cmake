@@ -1,7 +1,9 @@
 find_library(QUARTZ_LIBRARY Quartz)
 find_library(CARBON_LIBRARY Carbon)
 find_library(CORESERVICES_LIBRARY CoreServices)
-add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks -iframework ${CORESERVICES_LIBRARY}/Frameworks)
+
+# FIXME: We shouldn't need to define NS_RETURNS_RETAINED.
+add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks -iframework ${CORESERVICES_LIBRARY}/Frameworks -DNS_RETURNS_RETAINED=)
 
 if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
 set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
@@ -44,7 +46,6 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy
-    ${WTF_DIR}/icu
 )
 
 # Common ${TestNetscapePlugIn_SOURCES} from CMakeLists.txt are C++ source files.
@@ -83,8 +84,6 @@ list(APPEND DumpRenderTree_Cpp_SOURCES
     cf/WebArchiveDumpSupport.cpp
 
     cg/PixelDumpSupportCG.cpp
-
-    mac/CheckedMalloc.cpp
 )
 
 list(APPEND DumpRenderTree_ObjCpp_SOURCES

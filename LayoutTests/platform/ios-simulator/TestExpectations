@@ -10,6 +10,7 @@ accessibility/ios-simulator [ Pass ]
 displaylists [ Pass ]
 http/tests/quicklook [ Pass ]
 media/controls/ipad [ Pass ]
+media/ios [ Pass ]
 
 fast/text-autosizing/ios [ Pass ]
 fast/zooming/ios [ Pass ]
@@ -123,10 +124,14 @@ http/tests/security/contentSecurityPolicy/object-src-param-src-blocked.html
 http/tests/security/contentSecurityPolicy/object-src-param-url-blocked.html
 http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-default-src-star.html
 http/tests/security/contentSecurityPolicy/object-with-no-url-allowed-by-star.html
+http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-iframe.html
+http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-plugin-in-main-frame.html
 
 # Pointer-lock not supported on iOS
 pointer-lock
 http/tests/pointer-lock
+fast/shadow-dom/pointerlockelement-in-shadow-tree.html
+fast/shadow-dom/pointerlockelement-in-slot.html
 
 # FIXME: Media tests not supported on iOS
 http/tests/media
@@ -289,6 +294,9 @@ fast/events/force-click-text-selection-behavior.html [ Skip ]
 fast/events/mouse-force-changed.html [ Skip ]
 fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
+
+# testRunner.setPageVisibility is not implemented for iOS
+webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
 
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
@@ -2745,3 +2753,5 @@ fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]
 
 # On iOS we do not visually highlight a programmatic selection
 fast/selectors/040.html
+
+webkit.org/b/165691 http/tests/security/contentSecurityPolicy/block-all-mixed-content/insecure-iframe-in-main-frame.html [ Pass Failure ]

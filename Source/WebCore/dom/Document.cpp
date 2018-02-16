@@ -40,6 +40,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "Comment.h"
+#include "CommonVM.h"
 #include "CompositionEvent.h"
 #include "ContentSecurityPolicy.h"
 #include "CookieJar.h"
@@ -430,6 +431,7 @@ HashSet<Document*>& Document::allDocuments()
 Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsigned constructionFlags)
     : ContainerNode(*this, CreateDocument)
     , TreeScope(*this)
+    , FrameDestructionObserver(frame)
 #if ENABLE(IOS_TOUCH_EVENTS)
     , m_touchEventsChangedTimer(*this, &Document::touchEventsChangedTimerFired)
 #endif
@@ -438,7 +440,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_needsNotifyRemoveAllPendingStylesheet(false)
     , m_ignorePendingStylesheets(false)
     , m_pendingSheetLayout(NoLayoutWithPendingSheets)
-    , m_frame(frame)
     , m_cachedResourceLoader(m_frame ? Ref<CachedResourceLoader>(m_frame->loader().activeDocumentLoader()->cachedResourceLoader()) : CachedResourceLoader::create(nullptr))
     , m_activeParserCount(0)
     , m_wellFormed(false)
@@ -748,19 +749,19 @@ void Document::invalidateAccessKeyMap()
     m_elementsByAccessKey.clear();
 }
 
-void Document::addImageElementByCaseFoldedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
+void Document::addImageElementByUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
 {
     return m_imagesByUsemap.add(name, element, *this);
 }
 
-void Document::removeImageElementByCaseFoldedUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
+void Document::removeImageElementByUsemap(const AtomicStringImpl& name, HTMLImageElement& element)
 {
     return m_imagesByUsemap.remove(name, element);
 }
 
-HTMLImageElement* Document::imageElementByCaseFoldedUsemap(const AtomicStringImpl& name) const
+HTMLImageElement* Document::imageElementByUsemap(const AtomicStringImpl& name) const
 {
-    return m_imagesByUsemap.getElementByCaseFoldedUsemap(name, *this);
+    return m_imagesByUsemap.getElementByUsemap(name, *this);
 }
 
 ExceptionOr<SelectorQuery&> Document::selectorQueryForString(const String& selectorString)
@@ -1420,22 +1421,19 @@ RefPtr<Range> Document::caretRangeFromPoint(const LayoutPoint& clientPoint)
     if (!node)
         return nullptr;
 
-    Node* shadowAncestorNode = ancestorInThisScope(node);
-    if (shadowAncestorNode != node) {
-        unsigned offset = shadowAncestorNode->computeNodeIndex();
-        ContainerNode* container = shadowAncestorNode->parentNode();
-        return Range::create(*this, container, offset, container, offset);
-    }
-
     RenderObject* renderer = node->renderer();
     if (!renderer)
         return nullptr;
-    VisiblePosition visiblePosition = renderer->positionForPoint(localPoint, nullptr);
-    if (visiblePosition.isNull())
+    Position rangeCompliantPosition = renderer->positionForPoint(localPoint, nullptr).deepEquivalent().parentAnchoredEquivalent();
+    if (rangeCompliantPosition.isNull())
         return nullptr;
 
-    Position rangeCompliantPosition = visiblePosition.deepEquivalent().parentAnchoredEquivalent();
-    return Range::create(*this, rangeCompliantPosition, rangeCompliantPosition);
+    unsigned offset = rangeCompliantPosition.offsetInContainerNode();
+    node = &retargetToScope(*rangeCompliantPosition.containerNode());
+    if (node != rangeCompliantPosition.containerNode())
+        offset = 0;
+
+    return Range::create(*this, node, offset, node, offset);
 }
 
 Element* Document::scrollingElement()
@@ -1624,25 +1622,20 @@ void Document::visibilityStateChanged()
         element->visibilityStateChanged();
 }
 
-PageVisibilityState Document::pageVisibilityState() const
+auto Document::visibilityState() const -> VisibilityState
 {
     // The visibility of the document is inherited from the visibility of the
     // page. If there is no page associated with the document, we will assume
     // that the page is hidden, as specified by the spec:
     // http://dvcs.w3.org/hg/webperf/raw-file/tip/specs/PageVisibility/Overview.html#dom-document-hidden
     if (!m_frame || !m_frame->page())
-        return PageVisibilityStateHidden;
+        return VisibilityState::Hidden;
     return m_frame->page()->visibilityState();
-}
-
-String Document::visibilityState() const
-{
-    return pageVisibilityStateString(pageVisibilityState());
 }
 
 bool Document::hidden() const
 {
-    return pageVisibilityState() != PageVisibilityStateVisible;
+    return visibilityState() != VisibilityState::Visible;
 }
 
 #if ENABLE(VIDEO)
@@ -2210,7 +2203,14 @@ void Document::didBecomeCurrentDocumentInFrame()
 
 void Document::disconnectFromFrame()
 {
-    m_frame = nullptr;
+    observeFrame(nullptr);
+}
+
+void Document::frameDestroyed()
+{
+    // disconnectFromFrame() must be called before destroying the Frame.
+    ASSERT_WITH_SECURITY_IMPLICATION(!m_frame);
+    FrameDestructionObserver::frameDestroyed();
 }
 
 void Document::destroyRenderTree()
@@ -2368,7 +2368,7 @@ void Document::resumeDeviceMotionAndOrientationUpdates()
 
 bool Document::shouldBypassMainWorldContentSecurityPolicy() const
 {
-    JSC::CallFrame* callFrame = JSDOMWindow::commonVM().topCallFrame;
+    JSC::CallFrame* callFrame = commonVM().topCallFrame;
     if (callFrame == JSC::CallFrame::noCaller())
         return false;
     DOMWrapperWorld& domWrapperWorld = currentWorld(callFrame);
@@ -3548,7 +3548,7 @@ void Document::removeFocusedNodeOfSubtree(Node& node, bool amongChildrenOnly)
     if (!m_focusedElement || pageCacheState() != NotInPageCache) // If the document is in the page cache, then we don't need to clear out the focused node.
         return;
 
-    Element* focusedElement = node.treeScope().focusedElement();
+    Element* focusedElement = node.treeScope().focusedElementInScope();
     if (!focusedElement)
         return;
     
@@ -4547,6 +4547,10 @@ void Document::setPageCacheState(PageCacheState state)
                 v->resetScrollbars();
         }
 
+#if ENABLE(POINTER_LOCK)
+        exitPointerLock();
+#endif
+
         styleScope().clearResolver();
         clearSelectorQueryCache();
         m_styleRecalcTimer.stop();
@@ -5160,6 +5164,8 @@ void Document::initSecurityContext()
         m_isSrcdocDocument = true;
         setBaseURLOverride(parentDocument->baseURL());
     }
+    if (parentDocument)
+        setStrictMixedContentMode(parentDocument->isStrictMixedContentMode());
 
     if (!shouldInheritSecurityOriginFromOwner(m_url))
         return;
@@ -5177,7 +5183,7 @@ void Document::initSecurityContext()
         didFailToInitializeSecurityOrigin();
         return;
     }
-    
+
     Document* openerDocument = openerFrame ? openerFrame->document() : nullptr;
 
     // Per <http://www.w3.org/TR/upgrade-insecure-requests/>, new browsing contexts must inherit from an
@@ -5204,19 +5210,19 @@ void Document::initSecurityContext()
 
 void Document::initContentSecurityPolicy()
 {
-    if (!m_frame->tree().parent())
+    Frame* parentFrame = m_frame->tree().parent();
+    if (parentFrame)
+        contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*parentFrame->document()->contentSecurityPolicy());
+
+    if (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument())
         return;
 
-    if (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument()) {
-        // Per <http://www.w3.org/TR/upgrade-insecure-requests/>, we need to retain an ongoing set of upgraded
-        // requests in new navigation contexts. Although this information is present when we construct the
-        // Document object, it is discard in the subsequent 'clear' statements below. So, we must capture it
-        ASSERT(m_frame->tree().parent()->document());
-        contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*m_frame->tree().parent()->document()->contentSecurityPolicy());
+    Frame* ownerFrame = parentFrame;
+    if (!ownerFrame)
+        ownerFrame = m_frame->loader().opener();
+    if (!ownerFrame)
         return;
-    }
-    
-    contentSecurityPolicy()->copyStateFrom(m_frame->tree().parent()->document()->contentSecurityPolicy());
+    contentSecurityPolicy()->copyStateFrom(ownerFrame->document()->contentSecurityPolicy()); // Does not copy Upgrade Insecure Requests state.
 }
 
 bool Document::isContextThread() const
@@ -5568,12 +5574,8 @@ bool Document::fullScreenIsAllowedForElement(Element* element) const
     return isAttributeOnAllOwners(allowfullscreenAttr, webkitallowfullscreenAttr, element->document().ownerElement());
 }
 
-void Document::requestFullScreenForElement(Element* element, unsigned short flags, FullScreenCheckType checkType)
+void Document::requestFullScreenForElement(Element* element, FullScreenCheckType checkType)
 {
-    // The Mozilla Full Screen API <https://wiki.mozilla.org/Gecko:FullScreenAPI> has different requirements
-    // for full screen mode, and do not have the concept of a full screen element stack.
-    bool inLegacyMozillaMode = (flags & Element::LEGACY_MOZILLA_REQUEST);
-
     do {
         if (!element)
             element = documentElement();
@@ -5592,9 +5594,8 @@ void Document::requestFullScreenForElement(Element* element, unsigned short flag
             break;
 
         // The context object's node document fullscreen element stack is not empty and its top element
-        // is not an ancestor of the context object. (NOTE: Ignore this requirement if the request was
-        // made via the legacy Mozilla-style API.)
-        if (!m_fullScreenElementStack.isEmpty() && !m_fullScreenElementStack.last()->contains(element) && !inLegacyMozillaMode)
+        // is not an ancestor of the context object.
+        if (!m_fullScreenElementStack.isEmpty() && !m_fullScreenElementStack.last()->contains(element))
             break;
 
         // A descendant browsing context's document has a non-empty fullscreen element stack.
@@ -5605,7 +5606,7 @@ void Document::requestFullScreenForElement(Element* element, unsigned short flag
                 break;
             }
         }
-        if (descendentHasNonEmptyStack && !inLegacyMozillaMode)
+        if (descendentHasNonEmptyStack)
             break;
 
         // This algorithm is not allowed to show a pop-up:
@@ -5619,14 +5620,13 @@ void Document::requestFullScreenForElement(Element* element, unsigned short flag
         if (!page() || !page()->settings().fullScreenEnabled())
             break;
 
-        if (!page()->chrome().client().supportsFullScreenForElement(element, flags & Element::ALLOW_KEYBOARD_INPUT)) {
+        bool hasKeyboardAccess = true;
+        if (!page()->chrome().client().supportsFullScreenForElement(element, hasKeyboardAccess)) {
             // The new full screen API does not accept a "flags" parameter, so fall back to disallowing
             // keyboard input if the chrome client refuses to allow keyboard input.
-            if (!inLegacyMozillaMode && flags & Element::ALLOW_KEYBOARD_INPUT) {
-                flags &= ~Element::ALLOW_KEYBOARD_INPUT;
-                if (!page()->chrome().client().supportsFullScreenForElement(element, false))
-                    break;
-            } else
+            hasKeyboardAccess = false;
+
+            if (!page()->chrome().client().supportsFullScreenForElement(element, hasKeyboardAccess))
                 break;
         }
 
@@ -5678,7 +5678,7 @@ void Document::requestFullScreenForElement(Element* element, unsigned short flag
 
         // 5. Return, and run the remaining steps asynchronously.
         // 6. Optionally, perform some animation.
-        m_areKeysEnabledInFullScreen = flags & Element::ALLOW_KEYBOARD_INPUT;
+        m_areKeysEnabledInFullScreen = hasKeyboardAccess;
         page()->chrome().client().enterFullScreenForElement(element);
 
         // 7. Optionally, display a message indicating how the user can exit displaying the context object fullscreen.
@@ -6035,17 +6035,6 @@ void Document::exitPointerLock()
             return;
     }
     page->pointerLockController().requestPointerUnlock();
-}
-
-Element* Document::pointerLockElement() const
-{
-    Page* page = this->page();
-    if (!page || page->pointerLockController().lockPending())
-        return nullptr;
-    auto* element = page->pointerLockController().element();
-    if (!element || &element->document() != this)
-        return nullptr;
-    return element;
 }
 
 #endif
@@ -6773,7 +6762,7 @@ bool Document::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t
 
 Element* Document::activeElement()
 {
-    if (Element* element = treeScope().focusedElement())
+    if (Element* element = treeScope().focusedElementInScope())
         return element;
     return bodyOrFrameset();
 }

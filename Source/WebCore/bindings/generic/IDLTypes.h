@@ -95,7 +95,13 @@ struct IDLDOMString : IDLString { };
 struct IDLByteString : IDLString { };
 struct IDLUSVString : IDLString { };
 
-struct IDLObject : IDLType<JSC::Strong<JSC::JSObject>> { };
+struct IDLObject : IDLType<JSC::Strong<JSC::JSObject>> {
+    using NullableType = JSC::Strong<JSC::JSObject>;
+
+    static inline std::nullptr_t nullValue() { return nullptr; }
+    template<typename U> static inline bool isNullValue(U&& value) { return !value; }
+    template<typename U> static inline U&& extractValueFromNullable(U&& value) { return std::forward<U>(value); }
+};
 
 template<typename T> struct IDLWrapper : IDLType<RefPtr<T>> {
     using RawType = T;
@@ -165,7 +171,6 @@ struct IDLDate : IDLType<double> {
 };
 
 template<typename T> struct IDLSerializedScriptValue : IDLWrapper<T> { };
-template<typename T> struct IDLLegacyDictionary : IDLType<T> { };
 template<typename T> struct IDLEventListener : IDLWrapper<T> { };
 template<typename T> struct IDLXPathNSResolver : IDLWrapper<T> { };
 

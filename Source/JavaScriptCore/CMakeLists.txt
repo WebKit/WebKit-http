@@ -3,7 +3,6 @@ include(WebKitCommon)
 set_property(DIRECTORY . PROPERTY FOLDER "JavaScriptCore")
 
 set(JavaScriptCore_INCLUDE_DIRECTORIES
-    "${CMAKE_BINARY_DIR}"
     "${JAVASCRIPTCORE_DIR}"
     "${JAVASCRIPTCORE_DIR}/.."
     "${JAVASCRIPTCORE_DIR}/API"
@@ -37,7 +36,6 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/wasm"
     "${JAVASCRIPTCORE_DIR}/wasm/js"
     "${JAVASCRIPTCORE_DIR}/yarr"
-    "${DERIVED_SOURCES_DIR}"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
@@ -209,6 +207,7 @@ set(JavaScriptCore_SOURCES
     bytecode/DataFormat.cpp
     bytecode/DeferredCompilationCallback.cpp
     bytecode/DeferredSourceDump.cpp
+    bytecode/DirectEvalCodeCache.cpp
     bytecode/EvalCodeBlock.cpp
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
@@ -465,6 +464,7 @@ set(JavaScriptCore_SOURCES
     ftl/FTLValueRange.cpp
 
     heap/AllocatorAttributes.cpp
+    heap/CellContainer.cpp
     heap/CodeBlockSet.cpp
     heap/CollectionScope.cpp
     heap/ConservativeRoots.cpp
@@ -497,7 +497,9 @@ set(JavaScriptCore_SOURCES
     heap/MarkedSpace.cpp
     heap/MutatorState.cpp
     heap/SlotVisitor.cpp
+    heap/SpaceTimeScheduler.cpp
     heap/StopIfNecessaryTimer.cpp
+    heap/VisitRaceKey.cpp
     heap/Weak.cpp
     heap/WeakBlock.cpp
     heap/WeakHandleOwner.cpp
@@ -896,9 +898,11 @@ set(JavaScriptCore_SOURCES
 
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp
+    wasm/WasmBinding.cpp
     wasm/WasmCallingConvention.cpp
     wasm/WasmFormat.cpp
     wasm/WasmMemory.cpp
+    wasm/WasmMemoryInformation.cpp
     wasm/WasmModuleParser.cpp
     wasm/WasmPlan.cpp
     wasm/WasmValidate.cpp
@@ -925,6 +929,7 @@ set(JavaScriptCore_SOURCES
     wasm/js/WebAssemblyRuntimeErrorPrototype.cpp
     wasm/js/WebAssemblyTableConstructor.cpp
     wasm/js/WebAssemblyTablePrototype.cpp
+    wasm/js/WebAssemblyToJSCallee.cpp
 
     yarr/RegularExpression.cpp
     yarr/YarrCanonicalizeUCS2.cpp
@@ -1471,6 +1476,7 @@ WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 WEBKIT_CREATE_FORWARDING_HEADERS(JavaScriptCore DIRECTORIES ${JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES} FILES ${JavaScriptCore_FORWARDING_HEADERS_FILES})
 
+target_include_directories(LLIntOffsetsExtractor PRIVATE ${JavaScriptCore_INCLUDE_DIRECTORIES})
 
 add_subdirectory(shell)
 

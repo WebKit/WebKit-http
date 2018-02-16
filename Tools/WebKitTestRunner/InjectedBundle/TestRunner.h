@@ -133,6 +133,8 @@ public:
     void setES6ModulesEnabled(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setSubtleCryptoEnabled(bool);
+    void setMediaStreamEnabled(bool);
+    void setPeerConnectionEnabled(bool);
 
     // Special DOM functions.
     void clearBackForwardList();

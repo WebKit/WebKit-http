@@ -272,7 +272,9 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 #if ENABLE(MEDIA_SOURCE)
 void MediaPlayerPrivateGStreamer::load(const String&, MediaSourcePrivateClient*)
 {
-    notImplemented();
+    // Properly fail so the global MediaPlayer tries to fallback to the next MediaPlayerPrivate.
+    m_networkState = MediaPlayer::FormatError;
+    m_player->networkStateChanged();
 }
 #endif
 
@@ -425,7 +427,7 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
         return { };
 
     if (m_durationAtEOS)
-        return MediaTime::createWithFloat(m_durationAtEOS);
+        return MediaTime::createWithDouble(m_durationAtEOS);
 
     // The duration query would fail on a not-prerolled pipeline.
     if (GST_STATE(m_pipeline.get()) < GST_STATE_PAUSED)

@@ -1,3 +1,2586 @@
+2016-12-14  Gavin Barraclough  <barraclough@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Unreviewed, re-landing this with fix (revert erroneous change to Options).
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/CellContainer.cpp: Added.
+        (JSC::CellContainer::isNewlyAllocated):
+        * heap/CellContainer.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::addBlock):
+        (JSC::MarkedAllocator::removeBlock):
+        (JSC::MarkedAllocator::dumpBits):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::forEachBitVector):
+        (JSC::MarkedAllocator::forEachBitVectorWithName):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::tryCreate):
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::MarkedBlock):
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::sweepHelperSelectMarksMode):
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::aboutToMarkSlow):
+        (JSC::MarkedBlock::Handle::didConsumeFreeList):
+        (JSC::MarkedBlock::Handle::dumpState):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::markingVersion):
+        (JSC::MarkedBlock::isMarkedRaw):
+        (JSC::MarkedBlock::isMarked):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::marksConveyLivenessDuringMarking):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::size):
+        (JSC::StructureIDTable::get):
+
+2016-12-14  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209766.
+
+        Regressed Dromaeo JSLib by ~50%
+
+        Reverted changeset:
+
+        "Make opaque root scanning truly constraint-based"
+        https://bugs.webkit.org/show_bug.cgi?id=165760
+        http://trac.webkit.org/changeset/209766
+
+2016-12-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209795.
+        https://bugs.webkit.org/show_bug.cgi?id=165853
+
+        rolled out the wrong revision (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "MarkedBlock::marksConveyLivenessDuringMarking should take
+        into account collection scope"
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+        http://trac.webkit.org/changeset/209795
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, disable concurrent GC on ARM while we investigate a memory use regression.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use JSValue::toWTFString instead of calling toString(exec) and value(exec)
+        https://bugs.webkit.org/show_bug.cgi?id=165795
+
+        Reviewed by Saam Barati.
+
+        In old days, we frequently use the idiom like, `value.toString(exec)->value(exec)` to
+        get WTFString from the given JSValue. But now, we have better function, `toWTFString`.
+        `toWTFString` does not create intermediate JSString objects, then reduce unnecessary
+        allocations.
+
+        This patch mechanically replaces `value.toString(exec)->value(exec)` with `toWTFString(exec)`.
+
+        * API/JSValueRef.cpp:
+        (JSValueToStringCopy):
+        * bindings/ScriptValue.cpp:
+        (Deprecated::ScriptValue::toString):
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::evaluateWithScopeExtension):
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::evaluateWithScopeExtension):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::extractSourceInformationFromException):
+        * runtime/ConsoleObject.cpp:
+        (JSC::valueToStringWithUndefinedOrNullCheck):
+        (JSC::valueOrDefaultLabelString):
+        * runtime/DateConstructor.cpp:
+        (JSC::dateParse):
+        * runtime/DatePrototype.cpp:
+        (JSC::formatLocaleDate):
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::sanitizedToString):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * runtime/InspectorInstrumentationObject.cpp:
+        (JSC::inspectorInstrumentationObjectLog):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncEval):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::fetch):
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeParseModule):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::regExpCreate):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncCompile):
+        (JSC::regExpProtoFuncToString):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::replaceUsingStringSearch):
+        (JSC::stringProtoFuncSlice):
+        (JSC::stringProtoFuncSplitFast):
+        (JSC::stringProtoFuncSubstr):
+        (JSC::stringProtoFuncLocaleCompare):
+        (JSC::stringProtoFuncBig):
+        (JSC::stringProtoFuncSmall):
+        (JSC::stringProtoFuncBlink):
+        (JSC::stringProtoFuncBold):
+        (JSC::stringProtoFuncFixed):
+        (JSC::stringProtoFuncItalics):
+        (JSC::stringProtoFuncStrike):
+        (JSC::stringProtoFuncSub):
+        (JSC::stringProtoFuncSup):
+        (JSC::stringProtoFuncFontcolor):
+        (JSC::stringProtoFuncFontsize):
+        (JSC::stringProtoFuncAnchor):
+        (JSC::stringProtoFuncLink):
+        (JSC::trimString):
+        (JSC::stringProtoFuncStartsWith):
+        (JSC::stringProtoFuncEndsWith):
+        (JSC::stringProtoFuncIncludes):
+        (JSC::builtinStringIncludesInternal):
+        (JSC::stringProtoFuncNormalize):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionPrint):
+        * wasm/js/JSWebAssemblyCompileError.h:
+        (JSC::JSWebAssemblyCompileError::create):
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        (JSC::JSWebAssemblyRuntimeError::create):
+
+2016-12-14  Gavin Barraclough  <barraclough@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Unreviewed rollout due to performance regression.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/CellContainer.cpp: Removed.
+        * heap/CellContainer.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::addBlock):
+        (JSC::MarkedAllocator::removeBlock):
+        (JSC::MarkedAllocator::dumpBits):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::forEachBitVector):
+        (JSC::MarkedAllocator::forEachBitVectorWithName):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::tryCreate):
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::MarkedBlock):
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::sweepHelperSelectMarksMode):
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::aboutToMarkSlow):
+        (JSC::MarkedBlock::Handle::didConsumeFreeList):
+        (JSC::MarkedBlock::Handle::dumpState): Deleted.
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::isMarked):
+        (JSC::MarkedBlock::markingVersion): Deleted.
+        (JSC::MarkedBlock::isMarkedRaw): Deleted.
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::marksConveyLivenessDuringMarking):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * runtime/Options.h:
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::get):
+        (JSC::StructureIDTable::size): Deleted.
+
+2016-12-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209792.
+        https://bugs.webkit.org/show_bug.cgi?id=165841
+
+        Cause build failures (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "Use JSValue::toWTFString instead of calling toString(exec)
+        and value(exec)"
+        https://bugs.webkit.org/show_bug.cgi?id=165795
+        http://trac.webkit.org/changeset/209792
+
+2016-12-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use JSValue::toWTFString instead of calling toString(exec) and value(exec)
+        https://bugs.webkit.org/show_bug.cgi?id=165795
+
+        Reviewed by Saam Barati.
+
+        In old days, we frequently use the idiom like, `value.toString(exec)->value(exec)` to
+        get WTFString from the given JSValue. But now, we have better function, `toWTFString`.
+        `toWTFString` does not create intermediate JSString objects, then reduce unnecessary
+        allocations.
+
+        This patch mechanically replaces `value.toString(exec)->value(exec)` with `toWTFString(exec)`.
+
+        * API/JSValueRef.cpp:
+        (JSValueToStringCopy):
+        * bindings/ScriptValue.cpp:
+        (Deprecated::ScriptValue::toString):
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::evaluateWithScopeExtension):
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::evaluateWithScopeExtension):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::extractSourceInformationFromException):
+        * runtime/ConsoleObject.cpp:
+        (JSC::valueToStringWithUndefinedOrNullCheck):
+        (JSC::valueOrDefaultLabelString):
+        * runtime/DateConstructor.cpp:
+        (JSC::dateParse):
+        * runtime/DatePrototype.cpp:
+        (JSC::formatLocaleDate):
+        * runtime/ErrorInstance.cpp:
+        (JSC::ErrorInstance::sanitizedToString):
+        * runtime/ErrorPrototype.cpp:
+        (JSC::errorProtoFuncToString):
+        * runtime/InspectorInstrumentationObject.cpp:
+        (JSC::inspectorInstrumentationObjectLog):
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::toWTFStringSlowCase):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncEval):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::fetch):
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeParseModule):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::regExpCreate):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncCompile):
+        (JSC::regExpProtoFuncToString):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::replaceUsingStringSearch):
+        (JSC::stringProtoFuncSlice):
+        (JSC::stringProtoFuncSplitFast):
+        (JSC::stringProtoFuncSubstr):
+        (JSC::stringProtoFuncLocaleCompare):
+        (JSC::stringProtoFuncBig):
+        (JSC::stringProtoFuncSmall):
+        (JSC::stringProtoFuncBlink):
+        (JSC::stringProtoFuncBold):
+        (JSC::stringProtoFuncFixed):
+        (JSC::stringProtoFuncItalics):
+        (JSC::stringProtoFuncStrike):
+        (JSC::stringProtoFuncSub):
+        (JSC::stringProtoFuncSup):
+        (JSC::stringProtoFuncFontcolor):
+        (JSC::stringProtoFuncFontsize):
+        (JSC::stringProtoFuncAnchor):
+        (JSC::stringProtoFuncLink):
+        (JSC::trimString):
+        (JSC::stringProtoFuncStartsWith):
+        (JSC::stringProtoFuncEndsWith):
+        (JSC::stringProtoFuncIncludes):
+        (JSC::builtinStringIncludesInternal):
+        (JSC::stringProtoFuncNormalize):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::functionPrint):
+        * wasm/js/JSWebAssemblyCompileError.h:
+        (JSC::JSWebAssemblyCompileError::create):
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        (JSC::JSWebAssemblyRuntimeError::create):
+
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the elements section
+        https://bugs.webkit.org/show_bug.cgi?id=165715
+
+        Reviewed by Keith Miller.
+
+        This is a straight forward implementation of the Element
+        section in the Wasm spec:
+        https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md#element-section
+        
+        There are a few ambiguities I encountered when implementing this, so I've
+        filed bugs against the Wasm design repo, and corresponding bugzilla bugs
+        for us to address after they've been discussed by the various Wasm folks:
+        - https://bugs.webkit.org/show_bug.cgi?id=165827
+        - https://bugs.webkit.org/show_bug.cgi?id=165826
+        - https://bugs.webkit.org/show_bug.cgi?id=165825
+
+        * wasm/WasmFormat.h:
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseElement):
+        (JSC::Wasm::ModuleParser::parseInitExpr):
+        (JSC::Wasm::ModuleParser::parseData):
+        * wasm/WasmModuleParser.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2016-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209544.
+
+        Looks like r209489 did not cause the performance regression
+        after all
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r209489."
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209544
+
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the table section and table import
+        https://bugs.webkit.org/show_bug.cgi?id=165716
+
+        Reviewed by Keith Miller.
+
+        This patch implements the Table space for wasm:
+        https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md#table-section
+
+        It only implements defining and importing a table. The bulk
+        of this patch is implementing the various wasm Table prototype
+        methods and the underlying Table object:
+        https://github.com/WebAssembly/design/blob/master/JS.md#webassemblytable-constructor
+
+        This patch also fixes a bug in our implementation with call_indirect.
+        We initially implemented call_indirect as a way to call functions that
+        are imported or defined in the module. This was the wrong
+        interpretation of the spec. Instead, call_indirect can only index into
+        the table index space.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::TableInformation::TableInformation):
+        (JSC::Wasm::TableInformation::operator bool):
+        (JSC::Wasm::TableInformation::isImport):
+        (JSC::Wasm::TableInformation::initial):
+        (JSC::Wasm::TableInformation::maximum):
+        (JSC::Wasm::CallableFunction::CallableFunction):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseResizableLimits):
+        (JSC::Wasm::ModuleParser::parseTableHelper):
+        (JSC::Wasm::ModuleParser::parseTable):
+        (JSC::Wasm::ModuleParser::parseMemoryHelper):
+        (JSC::Wasm::ModuleParser::parseExport):
+        * wasm/WasmModuleParser.h:
+        * wasm/js/JSWebAssemblyHelpers.h: Added.
+        (JSC::toNonWrappingUint32):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::table):
+        (JSC::JSWebAssemblyInstance::setTable):
+        (JSC::JSWebAssemblyInstance::offsetOfTable):
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::create):
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::visitChildren):
+        (JSC::JSWebAssemblyTable::grow):
+        (JSC::JSWebAssemblyTable::clearFunction):
+        (JSC::JSWebAssemblyTable::setFunction):
+        * wasm/js/JSWebAssemblyTable.h:
+        (JSC::JSWebAssemblyTable::maximum):
+        (JSC::JSWebAssemblyTable::size):
+        (JSC::JSWebAssemblyTable::getFunction):
+        (JSC::JSWebAssemblyTable::offsetOfSize):
+        (JSC::JSWebAssemblyTable::offsetOfFunctions):
+        (JSC::JSWebAssemblyTable::isValidSize):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::call):
+        (JSC::WebAssemblyFunction::create):
+        (JSC::WebAssemblyFunction::visitChildren):
+        (JSC::WebAssemblyFunction::finishCreation):
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::signature):
+        (JSC::WebAssemblyFunction::wasmEntrypoint):
+        (JSC::WebAssemblyFunction::webAssemblyCallee): Deleted.
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::finishCreation):
+        (JSC::WebAssemblyModuleRecord::link):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::getTable):
+        (JSC::webAssemblyTableProtoFuncLength):
+        (JSC::webAssemblyTableProtoFuncGrow):
+        (JSC::webAssemblyTableProtoFuncGet):
+        (JSC::webAssemblyTableProtoFuncSet):
+        (JSC::WebAssemblyTablePrototype::create):
+        (JSC::WebAssemblyTablePrototype::finishCreation):
+        * wasm/js/WebAssemblyTablePrototype.h:
+
+2016-12-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Add null checks to opaque root APIs.
+
+        Rubber stamped by Saam Barati. 
+
+        If we got a crash report about null in the opaque root HashSet, we would probably not
+        celebrate how great it is that we found out about a new race - instead we would probably
+        be annoyed that null wasn't just silently ignored.
+
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::addOpaqueRoot):
+        (JSC::SlotVisitor::containsOpaqueRoot):
+        (JSC::SlotVisitor::containsOpaqueRootTriState):
+
+2016-12-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Make opaque root scanning truly constraint-based
+        https://bugs.webkit.org/show_bug.cgi?id=165760
+
+        Reviewed by Saam Barati.
+        
+        We have bugs when visitChildren() changes its mind about what opaque root to add, since
+        we don't have barriers on opaque roots. This supposedly once worked for generational GC,
+        and I started adding more barriers to support concurrent GC. But I think that the real
+        bug here is that we want the JSObject->OpaqueRoot to be evaluated as a constraint that
+        participates in the fixpoint. A constraint is different from the normal visiting in that
+        the GC will not wait for a barrier to rescan the object.
+        
+        So, it's now possible for any visitChildren() method to become a constraint by calling
+        slotVisitor.rescanAsConstraint(). Because opaque roots are constraints, addOpaqueRoot()
+        does rescanAsConstraint() for you.
+        
+        The constraint set is simply a HashSet<JSCell*> that accumulates with every
+        rescanAsConstraint() call and is only cleared at the start of full GC. This trivially
+        resolves most classes of GC bugs that would have arisen from opaque roots being changed
+        in a way that the GC did not anticipate.
+        
+        Looks like this is perf-neutral.
+        
+        * heap/Heap.cpp:
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::setMutatorShouldBeFenced):
+        (JSC::Heap::writeBarrierOpaqueRootSlow): Deleted.
+        (JSC::Heap::addMutatorShouldBeFencedCache): Deleted.
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::writeBarrierOpaqueRoot): Deleted.
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::visitWeakSets):
+        * heap/MarkedSpace.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::visitChildren):
+        (JSC::SlotVisitor::visitSubsequently):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::addOpaqueRoot):
+        (JSC::SlotVisitor::rescanAsConstraint):
+        (JSC::SlotVisitor::mergeIfNecessary):
+        (JSC::SlotVisitor::mergeOpaqueRootsAndConstraints):
+        (JSC::SlotVisitor::mergeOpaqueRootsIfNecessary): Deleted.
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::reportExtraMemoryVisited):
+        (JSC::SlotVisitor::reportExternalMemoryVisited):
+        (JSC::SlotVisitor::didNotRace):
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::specializedVisit):
+        (JSC::WeakBlock::visit):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.h:
+        (JSC::WeakSet::visit):
+
+2016-12-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209725.
+        https://bugs.webkit.org/show_bug.cgi?id=165811
+
+        "Broke ARMv7 builds" (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r209653): speedometer crashes making virtual slow
+        path tailcalls"
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+        http://trac.webkit.org/changeset/209725
+
+2016-12-13  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, revert the collectorPermittedIdleRatio back to 0 because of 100MB
+        regression on membuster. Also, it didn't seem to help perf.
+
+        * runtime/Options.h:
+
+2016-12-13  JF Bastien  <jfbastien@apple.com>
+
+        [WTF] Turn tryMakeString(), makeString() into variadic templates
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+
+        Reviewed by Mark Lam.
+
+        * runtime/JSStringBuilder.h:
+        (JSC::jsMakeNontrivialString): remove WTF:: prefix, it isn't needed anymore
+        * runtime/Lookup.cpp:
+        (JSC::reifyStaticAccessor): remove WTF:: prefix, it isn't needed anymore
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString): remove WTF:: prefix, it isn't needed anymore
+
+2016-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Rename BytecodeGenerator's ControlFlowContext to ControlFlowScope.
+        https://bugs.webkit.org/show_bug.cgi?id=165777
+
+        Reviewed by Keith Miller.
+
+        The existing code sometimes refer to ControlFlowContext (and associated references)
+        as context, and sometimes as scope.  Let's be consistent and always call it a scope.
+
+        Also renamed push/popScopedControlFlowContext() to push/popLocalControlFlowScope()
+        because these are only used when we inc/dec the m_localScopeDepth.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::initializeVarLexicalEnvironment):
+        (JSC::BytecodeGenerator::pushLexicalScopeInternal):
+        (JSC::BytecodeGenerator::popLexicalScopeInternal):
+        (JSC::BytecodeGenerator::emitPushWithScope):
+        (JSC::BytecodeGenerator::emitPopWithScope):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::pushIteratorCloseControlFlowScope):
+        (JSC::BytecodeGenerator::popFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::popIteratorCloseControlFlowScope):
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        (JSC::BytecodeGenerator::emitPopScopes):
+        (JSC::BytecodeGenerator::pushLocalControlFlowScope):
+        (JSC::BytecodeGenerator::popLocalControlFlowScope):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::pushFinallyContext): Deleted.
+        (JSC::BytecodeGenerator::pushIteratorCloseContext): Deleted.
+        (JSC::BytecodeGenerator::popFinallyContext): Deleted.
+        (JSC::BytecodeGenerator::popIteratorCloseContext): Deleted.
+        (JSC::BytecodeGenerator::pushScopedControlFlowContext): Deleted.
+        (JSC::BytecodeGenerator::popScopedControlFlowContext): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TryNode::emitBytecode):
+
+2016-12-12  Filip Pizlo  <fpizlo@apple.com>
+
+        GC scheduler should avoid consecutive pauses
+        https://bugs.webkit.org/show_bug.cgi?id=165758
+
+        Reviewed by Michael Saboff.
+        
+        This factors out the scheduler from lambdas in Heap::markToFixpoint to an actual class.
+        It's called the SpaceTimeScheduler because it is a linear controller that ties the
+        amount of time you spend on things to the amount of space you are using.
+        
+        This patch uses this refactoring to fix a bug where the GC would pause even though we
+        still had time during a mutator timeslice. This is a 15% improvement on
+        JetStream/splay-latency. Seems neutral on everything else. However, it's not at all
+        clear if this is the right policy or not since retreating wavefront can sometimes be so
+        sensitive to scheduling decisions. For this reason, there is a tunable option that lets
+        you decide how long the GC will sit idle before the start of its timeslice.
+        
+        So, we can revert this policy change in this patch without reverting the patch.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/Heap.cpp:
+        (JSC::Heap::markToFixpoint):
+        * heap/Heap.h:
+        * heap/SpaceTimeScheduler.cpp: Added.
+        (JSC::SpaceTimeScheduler::Decision::targetMutatorUtilization):
+        (JSC::SpaceTimeScheduler::Decision::targetCollectorUtilization):
+        (JSC::SpaceTimeScheduler::Decision::elapsedInPeriod):
+        (JSC::SpaceTimeScheduler::Decision::phase):
+        (JSC::SpaceTimeScheduler::Decision::shouldBeResumed):
+        (JSC::SpaceTimeScheduler::Decision::timeToResume):
+        (JSC::SpaceTimeScheduler::Decision::timeToStop):
+        (JSC::SpaceTimeScheduler::SpaceTimeScheduler):
+        (JSC::SpaceTimeScheduler::snapPhase):
+        (JSC::SpaceTimeScheduler::currentDecision):
+        * heap/SpaceTimeScheduler.h: Added.
+        (JSC::SpaceTimeScheduler::Decision::Decision):
+        (JSC::SpaceTimeScheduler::Decision::operator bool):
+        * runtime/Options.h:
+
+2016-12-12  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653): speedometer crashes making virtual slow path tailcalls
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+
+        Reviewed by Filip Pizlo.
+
+        The virtual slow path for tailcalls always passes arguments on the stack.
+        The fix here is to link to the stack argument entrypoint instead of a register
+        argument entrypoint.
+
+        While fixing this bug, I found that we weren't clearing the code origin when
+        shuffling the call frame for a register argument tailcall.
+
+        Also rolling back in r209653, r209654, r209663, and r209673.
+
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/ThunkGenerators.cpp:
+        (JSC::virtualThunkFor):
+
+2016-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Rename BytecodeGenerator's m_symbolTableStack to m_lexicalScopeStack.
+        https://bugs.webkit.org/show_bug.cgi?id=165768
+
+        Reviewed by Saam Barati.
+
+        The lexical scope in "m_lexicalScopeStack" here refers to a pair of { } in the
+        source code that bounds the scope of variables.
+
+        There are 4 places in the code where we call m_symbolTableStack.append() to
+        append a new stack entry.  In only 3 of the 4 cases, a symbol table is provided
+        in the new stack entry.  In all 4 cases, a scope register is provided in the new
+        stack entry.
+
+        Also, 3 of the 4 functions that appends an entry to this stack are named:
+        1. initializeVarLexicalEnvironment()
+        2. pushLexicalScopeInternal()
+        3. emitPushWithScope()
+
+        The 4th function is the BytecodeGenerator constructor where it pushes the scope
+        for a module environment.
+
+        Based on these details, m_lexicalScopeStack is a better name for this stack than
+        m_symbolTableStack.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeArrowFunctionContextScopeIfNeeded):
+        (JSC::BytecodeGenerator::initializeVarLexicalEnvironment):
+        (JSC::BytecodeGenerator::pushLexicalScopeInternal):
+        (JSC::BytecodeGenerator::initializeBlockScopedFunctions):
+        (JSC::BytecodeGenerator::hoistSloppyModeFunctionIfNecessary):
+        (JSC::BytecodeGenerator::popLexicalScopeInternal):
+        (JSC::BytecodeGenerator::prepareLexicalScopeForNextForLoopIteration):
+        (JSC::BytecodeGenerator::variable):
+        (JSC::BytecodeGenerator::resolveType):
+        (JSC::BytecodeGenerator::emitResolveScope):
+        (JSC::BytecodeGenerator::emitPushWithScope):
+        (JSC::BytecodeGenerator::emitPopWithScope):
+        (JSC::BytecodeGenerator::pushFinallyContext):
+        (JSC::BytecodeGenerator::pushIteratorCloseContext):
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        (JSC::BytecodeGenerator::popTryAndEmitCatch):
+        (JSC::BytecodeGenerator::emitPushFunctionNameScope):
+        * bytecompiler/BytecodeGenerator.h:
+
+2016-12-12  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Try to fix the cloop build.
+
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::Frame::calleeSaveRegisters):
+        * interpreter/StackVisitor.h:
+
+2016-12-12  Michael Saboff  <msaboff@apple.com>
+
+        FTL: Dumping disassembly requires that code origin is set when making polymorphic tail calls.
+        https://bugs.webkit.org/show_bug.cgi?id=165747
+
+        Reviewed by Filip Pizlo.
+
+        Setting the code origin needs to be done for both the fast and slow path as we might need
+        it when linking a polymorphic or virtual call stub.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+
+2016-12-11  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Try to fix the linux build.
+
+        * runtime/StackFrame.h:
+
+2016-12-11  Saam Barati  <sbarati@apple.com>
+
+        We should be able to throw exceptions from Wasm code and when Wasm frames are on the stack
+        https://bugs.webkit.org/show_bug.cgi?id=165429
+
+        Reviewed by Keith Miller.
+
+        This patch teaches the stack walking runtime about wasm.
+        To do this, I taught StackVisitor that a callee is not
+        always an object.
+
+        To be able to unwind callee save registers properly, I've given
+        JSWebAssemblyCallee a list of RegisterAtOffsetList for the callee
+        saves that B3 saved in the prologue. Also, because we have two
+        B3Compilations per wasm function, one for wasm entrypoint, and
+        one for the JS entrypoint, I needed to create a callee for each
+        because they each might spill callee save registers.
+
+        I also fixed a bug inside the Wasm::Memory constructor where we
+        were trying to mmap the same number of bytes even after the first
+        mmap failed. We should start by trying to mmap the maximum bytes,
+        and if that fails, fall back to the specified initial bytes. However,
+        the code was just mmapping the maximum twice. I've fixed that and
+        also added a RELEASE_ASSERT_NOT_REACHED() for when the second mmap
+        fails along with a FIXME to throw an OOM error.
+
+        There was a second bug I fixed where JSModuleRecord was calling
+        visitWeak on its CallLinkInfos inside ::visitChldren(). It needs
+        to do this after marking. I changed JSModuleRecord to do what
+        CodeBlock does and call visitWeak on its CallLinkInfos inside
+        an UnconditionalFinalizer.
+
+        * API/JSContextRef.cpp:
+        (BacktraceFunctor::operator()):
+        * inspector/ScriptCallStackFactory.cpp:
+        (Inspector::createScriptCallStackFromException):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::vmEntryGlobalObject):
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::callee):
+        * interpreter/Interpreter.cpp:
+        (JSC::GetStackTraceFunctor::operator()):
+        (JSC::UnwindFunctor::operator()):
+        (JSC::UnwindFunctor::copyCalleeSavesToVMEntryFrameCalleeSavesBuffer):
+        * interpreter/Interpreter.h:
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::update):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::StackVisitor):
+        (JSC::StackVisitor::readFrame):
+        (JSC::StackVisitor::readNonInlinedFrame):
+        (JSC::StackVisitor::readInlinedFrame):
+        (JSC::StackVisitor::Frame::isWasmFrame):
+        (JSC::StackVisitor::Frame::codeType):
+        (JSC::StackVisitor::Frame::calleeSaveRegisters):
+        (JSC::StackVisitor::Frame::functionName):
+        (JSC::StackVisitor::Frame::sourceURL):
+        (JSC::StackVisitor::Frame::toString):
+        (JSC::StackVisitor::Frame::hasLineAndColumnInfo):
+        (JSC::StackVisitor::Frame::setToEnd):
+        * interpreter/StackVisitor.h:
+        (JSC::StackVisitor::Frame::callee):
+        (JSC::StackVisitor::Frame::isNativeFrame):
+        (JSC::StackVisitor::Frame::isJSFrame): Deleted.
+        * jsc.cpp:
+        (callWasmFunction):
+        (functionTestWasmModuleFunctions):
+        * runtime/Error.cpp:
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::isAnyWasmCallee):
+        * runtime/JSCell.h:
+        * runtime/JSFunction.cpp:
+        (JSC::RetrieveArgumentsFunctor::operator()):
+        (JSC::RetrieveCallerFunctionFunctor::operator()):
+        * runtime/StackFrame.cpp:
+        (JSC::StackFrame::sourceID):
+        (JSC::StackFrame::sourceURL):
+        (JSC::StackFrame::functionName):
+        (JSC::StackFrame::computeLineAndColumn):
+        (JSC::StackFrame::toString):
+        * runtime/StackFrame.h:
+        (JSC::StackFrame::StackFrame):
+        (JSC::StackFrame::hasLineAndColumnInfo):
+        (JSC::StackFrame::hasBytecodeOffset):
+        (JSC::StackFrame::bytecodeOffset):
+        (JSC::StackFrame::isNative): Deleted.
+        * runtime/VM.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::setupFrameInPrologue):
+        * wasm/WasmFormat.h:
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::Memory):
+        * wasm/WasmMemory.h:
+        (JSC::Wasm::Memory::isValid):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::run):
+        (JSC::Wasm::Plan::initializeCallees):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::jsToWasmEntryPointForFunction): Deleted.
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::finishCreation):
+        * wasm/js/JSWebAssemblyCallee.h:
+        (JSC::JSWebAssemblyCallee::create):
+        (JSC::JSWebAssemblyCallee::entrypoint):
+        (JSC::JSWebAssemblyCallee::calleeSaveRegisters):
+        (JSC::JSWebAssemblyCallee::jsToWasmEntryPoint): Deleted.
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        (JSC::JSWebAssemblyModule::visitChildren):
+        (JSC::JSWebAssemblyModule::UnconditionalFinalizer::finalizeUnconditionally):
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::jsEntrypointCalleeFromFunctionIndexSpace):
+        (JSC::JSWebAssemblyModule::wasmEntrypointCalleeFromFunctionIndexSpace):
+        (JSC::JSWebAssemblyModule::setJSEntrypointCallee):
+        (JSC::JSWebAssemblyModule::setWasmEntrypointCallee):
+        (JSC::JSWebAssemblyModule::allocationSize):
+        (JSC::JSWebAssemblyModule::calleeFromFunctionIndexSpace): Deleted.
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::call):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Re-enable concurrent GC.
+
+        Rubber stampted by Saam Barati.
+        
+        This change actually landed in r209692 by accident.
+
+        * runtime/Options.h:
+
+2016-12-10  Filip Pizlo  <fpizlo@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Reviewed by Saam Barati.
+        
+        MarkedBlock::marksConveyLivenessDuringMarking thought that the off-by-one marking
+        version indicated liveness during any collection when it's just during full collection.
+        One of its users - MarkedBlock::sweep - knew this and had a special case, but the other
+        one - MarkedBlock::isLive - didn't. So, I moved the special case into
+        marksConveyLivenessDuringMarking.
+        
+        Also, this cleans up some remaining bitvector races.
+        
+        To find this bug, I significantly strengthened our assertions.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/CellContainer.cpp: Added.
+        (JSC::CellContainer::isNewlyAllocated):
+        * heap/CellContainer.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::addBlock):
+        (JSC::MarkedAllocator::removeBlock):
+        (JSC::MarkedAllocator::dumpBits):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::forEachBitVector):
+        (JSC::MarkedAllocator::forEachBitVectorWithName):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::tryCreate):
+        (JSC::MarkedBlock::Handle::~Handle):
+        (JSC::MarkedBlock::MarkedBlock):
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::sweepHelperSelectMarksMode):
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::aboutToMarkSlow):
+        (JSC::MarkedBlock::Handle::didConsumeFreeList):
+        (JSC::MarkedBlock::Handle::dumpState):
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::markingVersion):
+        (JSC::MarkedBlock::isMarkedRaw):
+        (JSC::MarkedBlock::isMarked):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::marksConveyLivenessDuringMarking):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/StructureIDTable.h:
+        (JSC::StructureIDTable::size):
+        (JSC::StructureIDTable::get):
+
+2016-12-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The DOM should have an advancing wavefront opaque root barrier
+        https://bugs.webkit.org/show_bug.cgi?id=165712
+
+        Reviewed by Yusuke Suzuki.
+        
+        This exposes the ability to fire an advancing wavefront barrier on opaque roots. It also
+        gives clients the ability to maintain their own cache of whether that barrier needs to
+        be enabled.
+        
+        The DOM uses this to enable a very cheap barrier on the DOM. This is neutral on
+        Speedometer and fixes another concurrent GC crash.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::beginMarking):
+        (JSC::Heap::endMarking):
+        (JSC::Heap::writeBarrierOpaqueRootSlow):
+        (JSC::Heap::addMutatorShouldBeFencedCache):
+        (JSC::Heap::setMutatorShouldBeFenced):
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::writeBarrierOpaqueRoot):
+
+2016-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209653, r209654, r209663, and
+        r209673.
+        https://bugs.webkit.org/show_bug.cgi?id=165739
+
+        speedometer crashes (Requested by pizlo on #webkit).
+
+        Reverted changesets:
+
+        "JSVALUE64: Pass arguments in platform argument registers when
+        making JavaScript calls"
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+        http://trac.webkit.org/changeset/209653
+
+        "Unreviewed build fix for 32 bit builds."
+        http://trac.webkit.org/changeset/209654
+
+        "Unreviewed build fix for the CLOOP after r209653"
+        http://trac.webkit.org/changeset/209663
+
+        "REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()"
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+        http://trac.webkit.org/changeset/209673
+
+2016-12-10  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+
+        Reviewed by Filip Pizlo.
+
+        It can be the case that a JSValueReg's CachedRecovery is the source for mutliple
+        GPRs. We only store the CachedRecovery in one slot of m_newRegisters to simplify
+        the recovery process. This is also done for the case where the recovery source
+        and destination are the same GPR.
+
+        In light of this change, snapshot needs to be taught that one CacheRecovery is
+        the source for multiple registers.  This is done by using a two step process.
+        First find all the argument CachedRecovery's and create a vector mapping all of
+        the target GPRs and the source recovery.  Then use that vector to get the
+        recovery for each register.
+
+        * jit/CallFrameShuffler.h:
+        (JSC::CallFrameShuffler::snapshot):
+
+2016-12-10  Keith Miller  <keith_miller@apple.com>
+
+        Fix indirect_call if the result type is used.
+        https://bugs.webkit.org/show_bug.cgi?id=165727
+
+        Reviewed by Michael Saboff.
+
+        The patchpoint for indirect_call assumed that the callee would be
+        in params[0]. This is not the case, however, if the callee returns
+        a value.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * CMakeLists.txt:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformJSCOnly.cmake:
+        * PlatformMac.cmake:
+
+2016-12-10  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix for the CLOOP after r209653
+
+        * jit/GPRInfo.h:
+        Provided a definition for NUMBER_OF_JS_FUNCTION_ARGUMENT_REGISTERS when the JIT is disabled.
+        * jit/JITEntryPoints.h:
+        Removed #if ENABLE(JIT) protection around contents.
+
+2016-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Module namespace object behaves like immutable prototype exotic object
+        https://bugs.webkit.org/show_bug.cgi?id=165598
+
+        Reviewed by Mark Lam.
+
+        In the latest ECMA262 draft, the module namespace object behaves like immutable prototype exotic object.
+        https://tc39.github.io/ecma262/#sec-module-namespace-exotic-objects-setprototypeof-v
+
+        * runtime/JSModuleNamespaceObject.h:
+
+2016-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION(r208791): Assertion in testb3
+        https://bugs.webkit.org/show_bug.cgi?id=165651
+
+        Reviewed by Saam Barati.
+
+        Accidentally we always use edx/rdx for the result of UDiv/UMod.
+        But it is incorrect. We should use eax/rax for the result of UDiv.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::lowerX86UDiv):
+
+2016-12-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix for 32 bit builds.
+
+        * dfg/DFGMinifiedNode.h:
+        (JSC::DFG::MinifiedNode::argumentIndex): Added a static_cast<unsigned>().
+
+2016-12-09  Michael Saboff  <msaboff@apple.com>
+
+        JSVALUE64: Pass arguments in platform argument registers when making JavaScript calls
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements passing JavaScript function arguments in registers for 64 bit platforms.
+
+        The implemented convention follows the ABI conventions for the associated platform.
+        The first two arguments are the callee and argument count, the rest of the argument registers
+        contain "this" and following argument until all platform argument registers are exhausted.
+        Arguments beyond what fit in registers are placed on the stack in the same location as
+        before this patch.
+
+        For X86-64 non-Windows platforms, there are 6 argument registers specified in the related ABI.
+        ARM64 has had argument registers.  This allows for 4 or 6 parameter values to be placed in
+        registers on these respective platforms.  This patch doesn't implement passing arguments in
+        registers for 32 bit platform, since most platforms have at most 4 argument registers
+        specified and 32 bit platforms use two 32 bit registers/memory locations to store one JSValue.
+
+        The call frame on the stack in unchanged in format and the arguments that are passed in
+        registers use the corresponding call frame location as a spill location. Arguments can
+        also be passed on the stack. The LLInt, baseline JIT'ed code as well as the initial entry
+        from C++ code base arguments on the stack. DFG s and FTL generated code pass arguments
+        via registers. All callees can accept arguments either in registers or on the stack.
+        The callee is responsible for moving argument to its preferred location.
+
+        The multiple entry points to JavaSCript code is now handled via the JITEntryPoints class and
+        related code.  That class now has entries for StackArgsArityCheckNotRequired,
+        StackArgsMustCheckArity and for platforms that support registers arguments,
+        RegisterArgsArityCheckNotRequired, RegisterArgsMustCheckArity as well as and additional
+        RegisterArgsPossibleExtraArgs entry point when extra registers argument are passed.
+        This last case is needed to spill those extra arguments to the corresponding call frame
+        slots.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3ArgumentRegValue.h:
+        * b3/B3Validate.cpp:
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::CallLinkInfo):
+        * bytecode/CallLinkInfo.h:
+        (JSC::CallLinkInfo::setUpCall):
+        (JSC::CallLinkInfo::argumentsLocation):
+        (JSC::CallLinkInfo::argumentsInRegisters):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlock):
+        (JSC::DFG::CPSRethreadingPhase::specialCaseArguments):
+        (JSC::DFG::CPSRethreadingPhase::computeIsFlushed):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGCommon.h:
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGDriver.cpp:
+        (JSC::DFG::compileImpl):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGenerationInfo.h:
+        (JSC::DFG::GenerationInfo::initArgumentRegisterValue):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::needsFlushedThis):
+        (JSC::DFG::Graph::addImmediateShouldSpeculateInt32):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::initialize):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        (JSC::DFG::JITCompiler::compile):
+        (JSC::DFG::JITCompiler::compileFunction):
+        (JSC::DFG::JITCompiler::compileEntry): Deleted.
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addJSDirectCall):
+        (JSC::DFG::JITCompiler::JSDirectCallRecord::JSDirectCallRecord):
+        (JSC::DFG::JITCompiler::JSDirectCallRecord::hasSlowCall):
+        * dfg/DFGJITFinalizer.cpp:
+        (JSC::DFG::JITFinalizer::JITFinalizer):
+        (JSC::DFG::JITFinalizer::finalize):
+        (JSC::DFG::JITFinalizer::finalizeFunction):
+        * dfg/DFGJITFinalizer.h:
+        * dfg/DFGLiveCatchVariablePreservationPhase.cpp:
+        (JSC::DFG::LiveCatchVariablePreservationPhase::handleBlock):
+        * dfg/DFGMaximalFlushInsertionPhase.cpp:
+        (JSC::DFG::MaximalFlushInsertionPhase::treatRegularBlock):
+        (JSC::DFG::MaximalFlushInsertionPhase::treatRootBlock):
+        * dfg/DFGMayExit.cpp:
+        * dfg/DFGMinifiedNode.cpp:
+        (JSC::DFG::MinifiedNode::fromNode):
+        * dfg/DFGMinifiedNode.h:
+        (JSC::DFG::belongsInMinifiedGraph):
+        * dfg/DFGNode.cpp:
+        (JSC::DFG::Node::hasVariableAccessData):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::accessesStack):
+        (JSC::DFG::Node::setVariableAccessData):
+        (JSC::DFG::Node::hasArgumentRegisterIndex):
+        (JSC::DFG::Node::argumentRegisterIndex):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::OSREntrypointCreationPhase::run):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGPredictionInjectionPhase.cpp:
+        (JSC::DFG::PredictionInjectionPhase::run):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGRegisterBank.h:
+        (JSC::DFG::RegisterBank::iterator::unlock):
+        (JSC::DFG::RegisterBank::unlockAtIndex):
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::SpeculativeJIT):
+        (JSC::DFG::SpeculativeJIT::clearGenerationInfo):
+        (JSC::DFG::dumpRegisterInfo):
+        (JSC::DFG::SpeculativeJIT::dump):
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        (JSC::DFG::SpeculativeJIT::checkArgumentTypes):
+        (JSC::DFG::SpeculativeJIT::setupArgumentRegistersForEntry):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::allocate):
+        (JSC::DFG::SpeculativeJIT::spill):
+        (JSC::DFG::SpeculativeJIT::generationInfoFromVirtualRegister):
+        (JSC::DFG::JSValueOperand::JSValueOperand):
+        (JSC::DFG::JSValueOperand::gprUseSpecific):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillJSValue):
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * dfg/DFGThunks.cpp:
+        (JSC::DFG::osrEntryThunkGenerator):
+        * dfg/DFGVariableEventStream.cpp:
+        (JSC::DFG::VariableEventStream::reconstruct):
+        * dfg/DFGVirtualRegisterAllocationPhase.cpp:
+        (JSC::DFG::VirtualRegisterAllocationPhase::allocateRegister):
+        (JSC::DFG::VirtualRegisterAllocationPhase::run):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLJITCode.cpp:
+        (JSC::FTL::JITCode::~JITCode):
+        (JSC::FTL::JITCode::initializeEntrypointThunk):
+        (JSC::FTL::JITCode::setEntryFor):
+        (JSC::FTL::JITCode::addressForCall):
+        (JSC::FTL::JITCode::executableAddressAtOffset):
+        (JSC::FTL::JITCode::initializeAddressForCall): Deleted.
+        (JSC::FTL::JITCode::initializeArityCheckEntrypoint): Deleted.
+        * ftl/FTLJITCode.h:
+        * ftl/FTLJITFinalizer.cpp:
+        (JSC::FTL::JITFinalizer::finalizeFunction):
+        * ftl/FTLLink.cpp:
+        (JSC::FTL::link):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetArgumentRegister):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileDirectCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargsSpread):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallOrConstructVarargs):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCallEval):
+        * ftl/FTLOSREntry.cpp:
+        (JSC::FTL::prepareOSREntry):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::argumentRegister):
+        (JSC::FTL::Output::argumentRegisterInt32):
+        * ftl/FTLOutput.h:
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::update):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitDumbVirtualCall):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::spillArgumentRegistersToFrameBeforePrologue):
+        (JSC::AssemblyHelpers::spillArgumentRegistersToFrame):
+        (JSC::AssemblyHelpers::fillArgumentRegistersFromFrameBeforePrologue):
+        (JSC::AssemblyHelpers::emitPutArgumentToCallFrameBeforePrologue):
+        (JSC::AssemblyHelpers::emitPutArgumentToCallFrame):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameHeaderBeforePrologue):
+        (JSC::AssemblyHelpers::emitGetFromCallFrameArgumentBeforePrologue):
+        (JSC::AssemblyHelpers::emitGetPayloadFromCallFrameHeaderBeforePrologue):
+        (JSC::AssemblyHelpers::incrementCounter):
+        * jit/CachedRecovery.cpp:
+        (JSC::CachedRecovery::addTargetJSValueRegs):
+        * jit/CachedRecovery.h:
+        (JSC::CachedRecovery::gprTargets):
+        (JSC::CachedRecovery::setWantedFPR):
+        (JSC::CachedRecovery::wantedJSValueRegs):
+        (JSC::CachedRecovery::setWantedJSValueRegs): Deleted.
+        * jit/CallFrameShuffleData.h:
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::CallFrameShuffler):
+        (JSC::CallFrameShuffler::dump):
+        (JSC::CallFrameShuffler::tryWrites):
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/CallFrameShuffler.h:
+        (JSC::CallFrameShuffler::snapshot):
+        (JSC::CallFrameShuffler::addNew):
+        (JSC::CallFrameShuffler::initDangerFrontier):
+        (JSC::CallFrameShuffler::updateDangerFrontier):
+        (JSC::CallFrameShuffler::findDangerFrontierFrom):
+        * jit/CallFrameShuffler64.cpp:
+        (JSC::CallFrameShuffler::emitDisplace):
+        * jit/GPRInfo.h:
+        (JSC::JSValueRegs::operator==):
+        (JSC::JSValueRegs::operator!=):
+        (JSC::GPRInfo::toArgumentIndex):
+        (JSC::argumentRegisterFor):
+        (JSC::argumentRegisterForCallee):
+        (JSC::argumentRegisterForArgumentCount):
+        (JSC::argumentRegisterIndexForJSFunctionArgument):
+        (JSC::jsFunctionArgumentForArgumentRegister):
+        (JSC::argumentRegisterForFunctionArgument):
+        (JSC::numberOfRegisterArgumentsFor):
+        * jit/JIT.cpp:
+        (JSC::JIT::compileWithoutLinking):
+        (JSC::JIT::link):
+        (JSC::JIT::compileCTINativeCall): Deleted.
+        * jit/JIT.h:
+        (JSC::JIT::compileNativeCallEntryPoints):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileSetupVarargsFrame):
+        (JSC::JIT::compileCallEval):
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        * jit/JITCall32_64.cpp:
+        (JSC::JIT::compileCallEvalSlowCase):
+        (JSC::JIT::compileOpCall):
+        (JSC::JIT::compileOpCallSlowCase):
+        * jit/JITCode.cpp:
+        (JSC::JITCode::execute):
+        (JSC::DirectJITCode::DirectJITCode):
+        (JSC::DirectJITCode::initializeEntryPoints):
+        (JSC::DirectJITCode::addressForCall):
+        (JSC::NativeJITCode::addressForCall):
+        (JSC::DirectJITCode::initializeCodeRef): Deleted.
+        * jit/JITCode.h:
+        (JSC::JITCode::executableAddress): Deleted.
+        * jit/JITEntryPoints.h: Added.
+        (JSC::JITEntryPoints::JITEntryPoints):
+        (JSC::JITEntryPoints::entryFor):
+        (JSC::JITEntryPoints::setEntryFor):
+        (JSC::JITEntryPoints::offsetOfEntryFor):
+        (JSC::JITEntryPoints::registerEntryTypeForArgumentCount):
+        (JSC::JITEntryPoints::registerEntryTypeForArgumentType):
+        (JSC::JITEntryPoints::clearEntries):
+        (JSC::JITEntryPoints::operator=):
+        (JSC::JITEntryPointsWithRef::JITEntryPointsWithRef):
+        (JSC::JITEntryPointsWithRef::codeRef):
+        (JSC::argumentsLocationFor):
+        (JSC::registerEntryPointTypeFor):
+        (JSC::entryPointTypeFor):
+        (JSC::thunkEntryPointTypeFor):
+        (JSC::JITJSCallThunkEntryPointsWithRef::JITJSCallThunkEntryPointsWithRef):
+        (JSC::JITJSCallThunkEntryPointsWithRef::entryFor):
+        (JSC::JITJSCallThunkEntryPointsWithRef::setEntryFor):
+        (JSC::JITJSCallThunkEntryPointsWithRef::offsetOfEntryFor):
+        (JSC::JITJSCallThunkEntryPointsWithRef::clearEntries):
+        (JSC::JITJSCallThunkEntryPointsWithRef::codeRef):
+        (JSC::JITJSCallThunkEntryPointsWithRef::operator=):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::privateCompileJITEntryNativeCall):
+        (JSC::JIT::privateCompileCTINativeCall): Deleted.
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::privateCompileJITEntryNativeCall):
+        (JSC::JIT::privateCompileCTINativeCall): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::jitEntryNativeCall):
+        (JSC::JITThunks::jitEntryNativeConstruct):
+        (JSC::JITThunks::jitEntryStub):
+        (JSC::JITThunks::jitCallThunkEntryStub):
+        (JSC::JITThunks::hostFunctionStub):
+        (JSC::JITThunks::ctiNativeCall): Deleted.
+        (JSC::JITThunks::ctiNativeConstruct): Deleted.
+        * jit/JITThunks.h:
+        * jit/JSInterfaceJIT.h:
+        (JSC::JSInterfaceJIT::emitJumpIfNotInt32):
+        (JSC::JSInterfaceJIT::emitLoadInt32):
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::argumentRegisters):
+        * jit/RegisterSet.h:
+        * jit/Repatch.cpp:
+        (JSC::linkSlowFor):
+        (JSC::revertCall):
+        (JSC::unlinkFor):
+        (JSC::linkVirtualFor):
+        (JSC::linkPolymorphicCall):
+        * jit/SpecializedThunkJIT.h:
+        (JSC::SpecializedThunkJIT::SpecializedThunkJIT):
+        (JSC::SpecializedThunkJIT::checkJSStringArgument):
+        (JSC::SpecializedThunkJIT::linkFailureHere):
+        (JSC::SpecializedThunkJIT::finalize):
+        * jit/ThunkGenerator.h:
+        * jit/ThunkGenerators.cpp:
+        (JSC::createRegisterArgumentsSpillEntry):
+        (JSC::slowPathFor):
+        (JSC::linkCallThunkGenerator):
+        (JSC::linkDirectCallThunkGenerator):
+        (JSC::linkPolymorphicCallThunkGenerator):
+        (JSC::virtualThunkFor):
+        (JSC::nativeForGenerator):
+        (JSC::nativeCallGenerator):
+        (JSC::nativeTailCallGenerator):
+        (JSC::nativeTailCallWithoutSavedTagsGenerator):
+        (JSC::nativeConstructGenerator):
+        (JSC::stringCharLoadRegCall):
+        (JSC::charCodeAtThunkGenerator):
+        (JSC::charAtThunkGenerator):
+        (JSC::fromCharCodeThunkGenerator):
+        (JSC::clz32ThunkGenerator):
+        (JSC::sqrtThunkGenerator):
+        (JSC::floorThunkGenerator):
+        (JSC::ceilThunkGenerator):
+        (JSC::truncThunkGenerator):
+        (JSC::roundThunkGenerator):
+        (JSC::expThunkGenerator):
+        (JSC::logThunkGenerator):
+        (JSC::absThunkGenerator):
+        (JSC::imulThunkGenerator):
+        (JSC::randomThunkGenerator):
+        (JSC::boundThisNoArgsFunctionCallGenerator):
+        * jit/ThunkGenerators.h:
+        * jsc.cpp:
+        (jscmain):
+        * llint/LLIntEntrypoint.cpp:
+        (JSC::LLInt::setFunctionEntrypoint):
+        (JSC::LLInt::setEvalEntrypoint):
+        (JSC::LLInt::setProgramEntrypoint):
+        (JSC::LLInt::setModuleProgramEntrypoint):
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::entryOSR):
+        (JSC::LLInt::setUpCall):
+        * llint/LLIntThunks.cpp:
+        (JSC::LLInt::generateThunkWithJumpTo):
+        (JSC::LLInt::functionForRegisterCallEntryThunkGenerator):
+        (JSC::LLInt::functionForStackCallEntryThunkGenerator):
+        (JSC::LLInt::functionForRegisterConstructEntryThunkGenerator):
+        (JSC::LLInt::functionForStackConstructEntryThunkGenerator):
+        (JSC::LLInt::functionForRegisterCallArityCheckThunkGenerator):
+        (JSC::LLInt::functionForStackCallArityCheckThunkGenerator):
+        (JSC::LLInt::functionForRegisterConstructArityCheckThunkGenerator):
+        (JSC::LLInt::functionForStackConstructArityCheckThunkGenerator):
+        (JSC::LLInt::functionForCallEntryThunkGenerator): Deleted.
+        (JSC::LLInt::functionForConstructEntryThunkGenerator): Deleted.
+        (JSC::LLInt::functionForCallArityCheckThunkGenerator): Deleted.
+        (JSC::LLInt::functionForConstructArityCheckThunkGenerator): Deleted.
+        * llint/LLIntThunks.h:
+        * runtime/ArityCheckMode.h:
+        * runtime/ExecutableBase.cpp:
+        (JSC::ExecutableBase::clearCode):
+        * runtime/ExecutableBase.h:
+        (JSC::ExecutableBase::entrypointFor):
+        (JSC::ExecutableBase::offsetOfEntryFor):
+        (JSC::ExecutableBase::offsetOfJITCodeWithArityCheckFor): Deleted.
+        * runtime/JSBoundFunction.cpp:
+        (JSC::boundThisNoArgsFunctionCall):
+        * runtime/NativeExecutable.cpp:
+        (JSC::NativeExecutable::finishCreation):
+        * runtime/ScriptExecutable.cpp:
+        (JSC::ScriptExecutable::installCode):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::thunkGeneratorForIntrinsic):
+        (JSC::VM::clearCounters):
+        (JSC::VM::dumpCounters):
+        * runtime/VM.h:
+        (JSC::VM::getJITEntryStub):
+        (JSC::VM::getJITCallThunkEntryStub):
+        (JSC::VM::addressOfCounter):
+        (JSC::VM::counterFor):
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::importStubGenerator):
+
+2016-12-09  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should support call_indirect
+        https://bugs.webkit.org/show_bug.cgi?id=165718
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds support for call_indirect. The basic framework for
+        an indirect call is that the module holds a buffer containing a
+        stub for each function in the index space. Whenever a function
+        needs to do an indirect call it gets a index into that table. In
+        order to ensure call_indirect is calling a valid function the
+        functionIndexSpace also needs a pointer to a canonicalized
+        signature. When making an indirect call, we first check the index
+        is in range, then check the signature matches the value we were given.
+
+        This patch also differentiates between FunctionIndexSpaces and
+        ImmutableFunctionIndexSpaces. Since we don't know the size of the
+        FunctionIndexSpace when we start parsing we need to be able to
+        resize the IndexSpace. However, once we have finished parsing all
+        the sections we want to prevent an relocation of the function
+        index space pointer.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::addCall):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::setupCall):
+        * wasm/WasmFormat.h:
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser::setErrorMessage):
+        (JSC::Wasm::FunctionParser<Context>::FunctionParser):
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::takeFunctionIndexSpace):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::addCallIndirect):
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h:
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::create):
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::signatureForFunctionIndexSpace):
+        (JSC::JSWebAssemblyModule::offsetOfFunctionIndexSpace):
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: implement data section
+        https://bugs.webkit.org/show_bug.cgi?id=165696
+
+        Reviewed by Keith Miller.
+
+        As specified in https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md#data-section
+        Note that some of the interesting corner cases are ill-defined by the spec: https://github.com/WebAssembly/design/issues/897
+
+        * wasm/WasmFormat.h: segments are what represent sections of memory to initialize (similar to ELF's non-zero intializer data / rodata)
+        (JSC::Wasm::Segment::make):
+        (JSC::Wasm::Segment::destroy):
+        (JSC::Wasm::Segment::byte):
+        (JSC::Wasm::Segment::makePtr):
+        * wasm/WasmModuleParser.cpp: parse the data section, and prevent a few overflows if a user passes in UINT_MAX (the loops would overflow)
+        (JSC::Wasm::ModuleParser::parseType):
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseFunction):
+        (JSC::Wasm::ModuleParser::parseExport):
+        (JSC::Wasm::ModuleParser::parseCode):
+        (JSC::Wasm::ModuleParser::parseData):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate): the only sensible time to initialize the data section is after linking, but before calling start, I test for this but the spec isn't clear it's correct yet
+
+2016-12-09  Karim H  <karim@karhm.com>
+
+        It is okay to turn undefined into null because we are producing values for a
+        JSON representation (InspectorValue) and JSON has a `null` value and no
+        `undefined` value.
+        https://bugs.webkit.org/show_bug.cgi?id=165506
+
+        Reviewed by Darin Adler.
+
+        * bindings/ScriptValue.cpp:
+        (Inspector::jsToInspectorValue):
+
+2016-12-09  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r209554-209571): stress/poly-setter-combo crashing
+        https://bugs.webkit.org/show_bug.cgi?id=165669
+
+        Reviewed by Geoffrey Garen.
+        
+        We now rely on objects being zero-filled in a bunch of places, not just concurrent GC.
+        So, we need 32-bit to do it too.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * jit/JITOpcodes32_64.cpp:
+        (JSC::JIT::emit_op_new_object):
+
+2016-12-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Annotate MediaStream and WebRTC idl with EnabledAtRuntime flag
+        https://bugs.webkit.org/show_bug.cgi?id=165251
+
+        Reviewed by Dean Jackson.
+
+        Based on a patch by Dr Alex Gouaillard <agouaillard@gmail.com>
+
+        * runtime/CommonIdentifiers.h: Add WebRTC and MediaStream identifiers.
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement start function
+        https://bugs.webkit.org/show_bug.cgi?id=165150
+
+        Reviewed by Saam Barati.
+
+        * wasm/WasmFormat.h: pass the start function around
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseTable): mark unreachable code
+        (JSC::Wasm::ModuleParser::parseGlobal): mark unreachable code
+        (JSC::Wasm::ModuleParser::parseStart): mark unreachable code
+        (JSC::Wasm::ModuleParser::parseElement): mark unreachable code
+        (JSC::Wasm::ModuleParser::parseData): mark unreachable code
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction): NFC: call the new function below
+        (JSC::WebAssemblyFunction::call): separate this out so that the start function can use it
+        * wasm/js/WebAssemblyFunction.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::visitChildren): visit the start function
+        (JSC::WebAssemblyModuleRecord::link): handle start function
+        (JSC::WebAssemblyModuleRecord::evaluate): call the start function, if present
+        * wasm/js/WebAssemblyModuleRecord.h:
+
+2016-12-09  Filip Pizlo  <fpizlo@apple.com>
+
+        GC might be forced to look at a nuked object due to ordering of AllocatePropertyStorage, MaterializeNewObject, and PutStructure
+        https://bugs.webkit.org/show_bug.cgi?id=165672
+
+        Reviewed by Geoffrey Garen.
+        
+        We need to make sure that the shady stuff in a property put happens after the
+        PutByOffset, since the PutByOffset is the place where we materialize. More generally, we
+        should strive to not have any fenceposts between Nodes where a GC would be illegal.
+        
+        This gets us most of the way there by separating NukeStructureAndSetButterfly from
+        [Re]AllocatePropertyStorage. A transitioning put will now look something like:
+        
+            GetButterfly
+            ReallocatePropertyStorage
+            PutByOffset
+            NukeStructureAndSetButterfly
+            PutStructure
+        
+        Previously the structure would get nuked by ReallocatePropertyStorage, so if we placed
+        an object materialization just after it (before the PutByOffset) then any GC that
+        completed at that safepoint would encounter an unresolved visit race due to seeing a
+        nuked structure. We cannot have nuked structures at safepoints, and this change makes
+        sure that we don't - at least until someone tries to sink to the PutStructure. We will
+        eventually have to create a combined SetStructureAndButterfly node, but we don't need it
+        yet.
+        
+        This also fixes a goof where the DFG's AllocatePropertyStorage was nulling the structure
+        instead of nuking it. This could easily have caused many crashes in GC.
+        
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handlePutById):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGClobbersExitState.cpp:
+        (JSC::DFG::clobbersExitState):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::emitPutByOffset):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGMayExit.cpp:
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileNukeStructureAndSetButterfly):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNukeStructureAndSetButterfly):
+        (JSC::FTL::DFG::LowerDFGToB3::storageForTransition):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::reallocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorageWithSizeImpl):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h: Fix a bug - make it possible to turn on concurrent GC optionally again.
+
+2016-12-09  Chris Dumez  <cdumez@apple.com>
+
+        Inline JSCell::toObject()
+        https://bugs.webkit.org/show_bug.cgi?id=165679
+
+        Reviewed by Geoffrey Garen.
+
+        Inline JSCell::toObject() as it shows on Speedometer profiles.
+
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::toObjectSlow):
+        (JSC::JSCell::toObject): Deleted.
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::toObject):
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Deploy OrdinalNumber in JSC::SourceCode
+        https://bugs.webkit.org/show_bug.cgi?id=165687
+
+        Reviewed by Michael Saboff.
+
+        We have a lot of confusion between 1-based and 0-based counting in line
+        and column numbers. Let's use OrdinalNumber to clear up the confusion.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+        (JSC::UnlinkedFunctionExecutable::link):
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::emitExpressionInfo):
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::functionDetails):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::setCode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::Parser):
+        * parser/Parser.h:
+        (JSC::Parser<LexerType>::parse):
+        * parser/SourceCode.h:
+        (JSC::SourceCode::SourceCode):
+        (JSC::SourceCode::firstLine):
+        (JSC::SourceCode::startColumn):
+        * runtime/CodeCache.cpp:
+        (JSC::CodeCache::getUnlinkedGlobalCodeBlock):
+        * runtime/ScriptExecutable.h:
+        (JSC::ScriptExecutable::firstLine):
+        (JSC::ScriptExecutable::startColumn):
+        * tools/CodeProfile.h:
+        (JSC::CodeProfile::CodeProfile):
+
+2016-12-09  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: implement importing and defining Memory
+        https://bugs.webkit.org/show_bug.cgi?id=164134
+
+        Reviewed by Keith Miller.
+
+        This patch implements the WebAssembly.Memory object. It refactors
+        the code to now associate a Memory with the instance instead of
+        the Module.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jsc.cpp:
+        (functionTestWasmModuleFunctions):
+        * runtime/VM.h:
+        * shell/CMakeLists.txt:
+        * testWasm.cpp: Removed.
+        This has bitrotted. I'm removing it.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::sizeOfLoadOp):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmFormat.cpp:
+        (JSC::Wasm::ModuleInformation::~ModuleInformation): Deleted.
+        * wasm/WasmFormat.h:
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::Memory::Memory):
+        * wasm/WasmMemory.h:
+        (JSC::Wasm::Memory::size):
+        (JSC::Wasm::Memory::initial):
+        (JSC::Wasm::Memory::maximum):
+        (JSC::Wasm::Memory::pinnedRegisters): Deleted.
+        * wasm/WasmMemoryInformation.cpp: Added.
+        (JSC::Wasm::MemoryInformation::MemoryInformation):
+        * wasm/WasmMemoryInformation.h: Added.
+        (JSC::Wasm::MemoryInformation::MemoryInformation):
+        (JSC::Wasm::MemoryInformation::pinnedRegisters):
+        (JSC::Wasm::MemoryInformation::initial):
+        (JSC::Wasm::MemoryInformation::maximum):
+        (JSC::Wasm::MemoryInformation::isImport):
+        (JSC::Wasm::MemoryInformation::operator bool):
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseMemoryHelper):
+        (JSC::Wasm::ModuleParser::parseMemory):
+        (JSC::Wasm::ModuleParser::parseExport):
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmPageCount.h: Added. Implement a new way of describing Wasm
+        pages and then asking for how many bytes a quantity of pages is. This
+        class also makes it clear when we're talking about bytes or pages.
+
+        (JSC::Wasm::PageCount::PageCount):
+        (JSC::Wasm::PageCount::bytes):
+        (JSC::Wasm::PageCount::isValid):
+        (JSC::Wasm::PageCount::max):
+        (JSC::Wasm::PageCount::operator bool):
+        (JSC::Wasm::PageCount::operator<):
+        (JSC::Wasm::PageCount::operator>):
+        (JSC::Wasm::PageCount::operator>=):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::memory): Deleted.
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::hasMemory):
+        (JSC::Wasm::Validate::Validate):
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h:
+        * wasm/generateWasmValidateInlinesHeader.py:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::memory):
+        (JSC::JSWebAssemblyInstance::setMemory):
+        (JSC::JSWebAssemblyInstance::offsetOfImportFunctions):
+        (JSC::JSWebAssemblyInstance::allocationSize):
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::create):
+        (JSC::JSWebAssemblyMemory::JSWebAssemblyMemory):
+        (JSC::JSWebAssemblyMemory::buffer):
+        (JSC::JSWebAssemblyMemory::visitChildren):
+        * wasm/js/JSWebAssemblyMemory.h:
+        (JSC::JSWebAssemblyMemory::memory):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        Handle importing and creating of memory according
+        to the spec. This also does the needed validation
+        of making sure the memory defined in the module
+        is compatible with the imported memory.
+
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        (JSC::callJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        (JSC::webAssemblyMemoryProtoFuncBuffer):
+        (JSC::WebAssemblyMemoryPrototype::create):
+        (JSC::WebAssemblyMemoryPrototype::finishCreation):
+        * wasm/js/WebAssemblyMemoryPrototype.h:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::finishCreation):
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Some resources fetched via Fetch API do not have data
+        https://bugs.webkit.org/show_bug.cgi?id=165230
+        <rdar://problem/29449220>
+
+        Reviewed by Alex Christensen.
+
+        * inspector/protocol/Page.json:
+        Add new Fetch Page.ResourceType.
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        TextPosition and OrdinalNumber should be more like idiomatic numbers
+        https://bugs.webkit.org/show_bug.cgi?id=165678
+
+        Reviewed by Filip Pizlo.
+
+        Adopt default constructor.
+
+        * API/JSBase.cpp:
+        (JSEvaluateScript):
+        (JSCheckScriptSyntax):
+        * API/JSObjectRef.cpp:
+        (JSObjectMakeFunction):
+        * API/JSScriptRef.cpp:
+        (OpaqueJSScript::OpaqueJSScript):
+        * jsc.cpp:
+        (functionCheckModuleSyntax):
+        * parser/SourceCode.h:
+        (JSC::makeSource):
+        * parser/SourceProvider.h:
+        (JSC::StringSourceProvider::create):
+        (JSC::WebAssemblySourceProvider::WebAssemblySourceProvider):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunction):
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeParseModule):
+
+2016-12-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, disable concurrent GC for real.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, disable concurrent GC while crashes get investigated.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-09  Filip Pizlo  <fpizlo@apple.com>
+
+        JSSegmentedVariableObject should keep its state private
+
+        Rubber stamped by Michael Saboff.
+        
+        Its state fields were protected for no reason. They really should be private because
+        you have to know to obey a particular concurrency protocol when accessing them.
+
+        * runtime/JSSegmentedVariableObject.h:
+
+2016-12-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed ARM buildfix after 209570.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::or32): Added.
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: JSC::link* shouldn't need a CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=165591
+
+        Reviewed by Keith Miller.
+
+        Allow linking without a CodeBlock, which WebAssembly's wasm -> JS stubs does. This needs to work for polymorphic and virtual calls. This patch adds corresponding tests for this.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::shouldDumpDisassemblyFor): don't look at the tier option if there isn't a CodeBlock, only look at the global one. This is a WebAssembly function, so the tier information is irrelevant.
+        * jit/Repatch.cpp:
+        (JSC::isWebAssemblyToJSCallee): this is used in the link* functions below
+        (JSC::linkFor):
+        (JSC::linkVirtualFor):
+        (JSC::linkPolymorphicCall):
+        * runtime/Options.h: add an option to change the maximum number of polymorphic calls in stubs from wasm to JS, which will come in handy when we try to tune performance or try merging some of the WebAssembly stubs
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::importStubGenerator): remove the breakpoint since the code now works
+        * wasm/js/WebAssemblyToJSCallee.h:
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        MultiPutByOffset should get a barrier if it transitions
+        https://bugs.webkit.org/show_bug.cgi?id=165646
+
+        Reviewed by Keith Miller.
+        
+        Previously, if we knew that we were storing a non-cell but we needed to transition, we
+        would fail to add the barrier but the FTL's lowering expected the barrier to be there.
+        
+        Strictly, we need to "consider" the barrier on MultiPutByOffset if the value is
+        possibly a cell or if the MultiPutByOffset may transition. Then "considering" the
+        barrier implies checking if the base is possibly old.
+        
+        But because the barrier is so cheap anyway, this patch implements something safer: we
+        just consider the barrier on MultiPutByOffset unconditionally, which opts it out of any
+        barrier optimizations other than those based on the predicted state of the base. Those
+        optimizations are already sound - for example they use doesGC() to detect safepoints
+        and that function correctly predicts when MultiPutByOffset could GC.
+        
+        Because the barrier optimizations are only a very small speed-up, I think it's great to
+        fix bugs by weakening the optimizer without cleverness.
+
+        * dfg/DFGFixupPhase.cpp:
+        * dfg/DFGStoreBarrierInsertionPhase.cpp:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::assertValidCell):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable concurrent GC on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=165643
+
+        Reviewed by Saam Barati.
+
+        It looks stable enough to enable.
+
+        * assembler/CPU.h:
+        (JSC::useGCFences): Deleted.
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeNewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::reallocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateObject):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::mutatorFence):
+        (JSC::AssemblyHelpers::storeButterfly):
+        (JSC::AssemblyHelpers::nukeStructureAndStoreButterfly):
+        (JSC::AssemblyHelpers::emitInitializeInlineStorage):
+        (JSC::AssemblyHelpers::emitInitializeOutOfLineStorage):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable collectContinuously if not useConcurrentGC
+
+        Rubber stamped by Geoffrey Garen.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop build.
+
+        * runtime/JSObject.h:
+
+2016-12-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Concurrent GC should be stable enough to land enabled on X86_64
+        https://bugs.webkit.org/show_bug.cgi?id=164990
+
+        Reviewed by Geoffrey Garen.
+        
+        This fixes a ton of performance and correctness bugs revealed by getting the concurrent GC to
+        be stable enough to land enabled.
+        
+        I had to redo the JSObject::visitChildren concurrency protocol again. This time I think it's
+        even more correct than ever!
+        
+        This is an enormous win on JetStream/splay-latency and Octane/SplayLatency. It looks to be
+        mostly neutral on everything else, though Speedometer is showing statistically weak signs of a
+        slight regression.
+
+        * API/JSAPIWrapperObject.mm: Added locking.
+        (JSC::JSAPIWrapperObject::visitChildren):
+        * API/JSCallbackObject.h: Added locking.
+        (JSC::JSCallbackObjectData::visitChildren):
+        (JSC::JSCallbackObjectData::JSPrivatePropertyMap::setPrivateProperty):
+        (JSC::JSCallbackObjectData::JSPrivatePropertyMap::deletePrivateProperty):
+        (JSC::JSCallbackObjectData::JSPrivatePropertyMap::visitChildren):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::UnconditionalFinalizer::finalizeUnconditionally): This had a TOCTOU race on shouldJettisonDueToOldAge.
+        (JSC::EvalCodeCache::visitAggregate): Moved to EvalCodeCache.cpp.
+        * bytecode/DirectEvalCodeCache.cpp: Added. Outlined some functions and made them use locks.
+        (JSC::DirectEvalCodeCache::setSlow):
+        (JSC::DirectEvalCodeCache::clear):
+        (JSC::DirectEvalCodeCache::visitAggregate):
+        * bytecode/DirectEvalCodeCache.h:
+        (JSC::DirectEvalCodeCache::set):
+        (JSC::DirectEvalCodeCache::clear): Deleted.
+        * bytecode/UnlinkedCodeBlock.cpp: Added locking.
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        (JSC::UnlinkedCodeBlock::setInstructions):
+        (JSC::UnlinkedCodeBlock::shrinkToFit):
+        * bytecode/UnlinkedCodeBlock.h: Added locking.
+        (JSC::UnlinkedCodeBlock::addRegExp):
+        (JSC::UnlinkedCodeBlock::addConstant):
+        (JSC::UnlinkedCodeBlock::addFunctionDecl):
+        (JSC::UnlinkedCodeBlock::addFunctionExpr):
+        (JSC::UnlinkedCodeBlock::createRareDataIfNecessary):
+        (JSC::UnlinkedCodeBlock::shrinkToFit): Deleted.
+        * debugger/Debugger.cpp: Use the right delete API.
+        (JSC::Debugger::recompileAllJSFunctions):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects): Fix a pre-existing bug in ToFunction constant folding.
+        * dfg/DFGClobberize.h: Add support for nuking.
+        (JSC::DFG::clobberize):
+        * dfg/DFGClobbersExitState.cpp: Add support for nuking.
+        (JSC::DFG::clobbersExitState):
+        * dfg/DFGFixupPhase.cpp: Add support for nuking.
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::indexForChecks):
+        (JSC::DFG::FixupPhase::originForCheck):
+        (JSC::DFG::FixupPhase::speculateForBarrier):
+        (JSC::DFG::FixupPhase::insertCheck):
+        (JSC::DFG::FixupPhase::fixupChecksInBlock):
+        * dfg/DFGSpeculativeJIT.cpp: Add support for nuking.
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        * ftl/FTLLowerDFGToB3.cpp: Add support for nuking.
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::reallocatePropertyStorage):
+        (JSC::FTL::DFG::LowerDFGToB3::mutatorFence):
+        (JSC::FTL::DFG::LowerDFGToB3::nukeStructureAndSetButterfly):
+        (JSC::FTL::DFG::LowerDFGToB3::setButterfly): Deleted.
+        * heap/CodeBlockSet.cpp: We need to be more careful about the CodeBlockSet workflow during GC, since we will allocate CodeBlocks in eden while collecting.
+        (JSC::CodeBlockSet::clearMarksForFullCollection):
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced):
+        * heap/Heap.cpp: Added code to measure max pauses. Added a better collectContinuously mode.
+        (JSC::Heap::lastChanceToFinalize): Stop the collectContinuously thread.
+        (JSC::Heap::harvestWeakReferences): Inline SlotVisitor::harvestWeakReferences.
+        (JSC::Heap::finalizeUnconditionalFinalizers): Inline SlotVisitor::finalizeUnconditionalReferences.
+        (JSC::Heap::markToFixpoint): We need to do some MarkedSpace stuff before every conservative scan, rather than just at the start of marking, so we now call prepareForConservativeScan() before each conservative scan. Also call a less-parallel version of drainInParallel when the mutator is running.
+        (JSC::Heap::collectInThread): Inline Heap::prepareForAllocation().
+        (JSC::Heap::stopIfNecessarySlow): We need to be more careful about ensuring that we run finalization before and after stopping. Also, we should sanitize stack when stopping the world.
+        (JSC::Heap::acquireAccessSlow): Add some optional debug prints.
+        (JSC::Heap::handleNeedFinalize): Assert that we are running this when the world is not stopped.
+        (JSC::Heap::finalize): Remove the old collectContinuously code.
+        (JSC::Heap::requestCollection): We don't need to sanitize stack here anymore.
+        (JSC::Heap::notifyIsSafeToCollect): Start the collectContinuously thread. It will request collection 1 KHz.
+        (JSC::Heap::prepareForAllocation): Deleted.
+        (JSC::Heap::preventCollection): Prevent any new concurrent GCs from being initiated.
+        (JSC::Heap::allowCollection):
+        (JSC::Heap::forEachSlotVisitor): Allows us to safely iterate slot visitors.
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::writeBarrier): If the 'to' cell is not NewWhite then it could be AnthraciteOrBlack. During a full collection, objects may be AnthraciteOrBlack from a previous GC. Turns out, we don't benefit from this optimization so we can just kill it.
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::buildSnapshot): This needs to use PreventCollectionScope to ensure snapshot soundness.
+        * heap/ListableHandler.h:
+        (JSC::ListableHandler::isOnList): Useful helper.
+        * heap/LockDuringMarking.h:
+        (JSC::lockDuringMarking): It's a locker that only locks while we're marking.
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::addBlock): Hold the bitvector lock while resizing.
+        * heap/MarkedBlock.cpp: Hold the bitvector lock while accessing the bitvectors while the mutator is running.
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::prepareForConservativeScan): We used to do this in prepareForMarking, but we need to do it before each conservative scan not just before marking.
+        (JSC::MarkedSpace::prepareForMarking): Remove the logic moved to prepareForConservativeScan.
+        * heap/MarkedSpace.h:
+        * heap/PreventCollectionScope.h: Added.
+        * heap/SlotVisitor.cpp: Refactored drainFromShared so that we can write a similar function called drainInParallelPassively.
+        (JSC::SlotVisitor::updateMutatorIsStopped): Update whether we can use "fast" scanning.
+        (JSC::SlotVisitor::mutatorIsStoppedIsUpToDate):
+        (JSC::SlotVisitor::didReachTermination):
+        (JSC::SlotVisitor::hasWork):
+        (JSC::SlotVisitor::drain): This now uses the rightToRun lock to allow the main GC thread to safepoint the workers.
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively): This runs marking with one fewer threads than normal. It's useful for when we have resumed the mutator, since then the mutator has a better chance of getting on a core.
+        (JSC::SlotVisitor::addWeakReferenceHarvester):
+        (JSC::SlotVisitor::addUnconditionalFinalizer):
+        (JSC::SlotVisitor::harvestWeakReferences): Deleted.
+        (JSC::SlotVisitor::finalizeUnconditionalFinalizers): Deleted.
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h: Outline stuff.
+        (JSC::SlotVisitor::addWeakReferenceHarvester): Deleted.
+        (JSC::SlotVisitor::addUnconditionalFinalizer): Deleted.
+        * runtime/InferredType.cpp: This needed thread safety.
+        (JSC::InferredType::visitChildren): This needs to keep its structure finalizer alive until it runs.
+        (JSC::InferredType::set):
+        (JSC::InferredType::InferredStructureFinalizer::finalizeUnconditionally):
+        * runtime/InferredType.h:
+        * runtime/InferredValue.cpp: This needed thread safety.
+        (JSC::InferredValue::visitChildren):
+        (JSC::InferredValue::ValueCleanup::finalizeUnconditionally):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::unshiftCountSlowCase): Update to use new butterfly API.
+        (JSC::JSArray::unshiftCountWithArrayStorage): Update to use new butterfly API.
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::visitChildren): Thread safety.
+        * runtime/JSCell.h:
+        (JSC::JSCell::setStructureIDDirectly): This is used for nuking the structure.
+        (JSC::JSCell::InternalLocker::InternalLocker): Deleted. The cell is now the lock.
+        (JSC::JSCell::InternalLocker::~InternalLocker): Deleted. The cell is now the lock.
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::structure): Clean this up.
+        (JSC::JSCell::lock): The cell is now the lock.
+        (JSC::JSCell::tryLock):
+        (JSC::JSCell::unlock):
+        (JSC::JSCell::isLocked):
+        (JSC::JSCell::lockInternalLock): Deleted.
+        (JSC::JSCell::unlockInternalLock): Deleted.
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::visitChildren): Thread safety.
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren): Thread safety.
+        (JSC::JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory): Thread safety.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::markAuxiliaryAndVisitOutOfLineProperties): Factor out this "easy" step of butterfly visiting.
+        (JSC::JSObject::visitButterfly): Make this achieve 100% precision about structure-butterfly relationships. This relies on the mutator "nuking" the structure prior to "locked" structure-butterfly transitions.
+        (JSC::JSObject::visitChildren): Use the new, nicer API.
+        (JSC::JSFinalObject::visitChildren): Use the new, nicer API.
+        (JSC::JSObject::enterDictionaryIndexingModeWhenArrayStorageAlreadyExists): Use the new butterfly API.
+        (JSC::JSObject::createInitialUndecided): Use the new butterfly API.
+        (JSC::JSObject::createInitialInt32): Use the new butterfly API.
+        (JSC::JSObject::createInitialDouble): Use the new butterfly API.
+        (JSC::JSObject::createInitialContiguous): Use the new butterfly API.
+        (JSC::JSObject::createArrayStorage): Use the new butterfly API.
+        (JSC::JSObject::convertUndecidedToContiguous): Use the new butterfly API.
+        (JSC::JSObject::convertUndecidedToArrayStorage): Use the new butterfly API.
+        (JSC::JSObject::convertInt32ToArrayStorage): Use the new butterfly API.
+        (JSC::JSObject::convertDoubleToContiguous): Use the new butterfly API.
+        (JSC::JSObject::convertDoubleToArrayStorage): Use the new butterfly API.
+        (JSC::JSObject::convertContiguousToArrayStorage): Use the new butterfly API.
+        (JSC::JSObject::increaseVectorLength): Use the new butterfly API.
+        (JSC::JSObject::shiftButterflyAfterFlattening): Use the new butterfly API.
+        * runtime/JSObject.h:
+        (JSC::JSObject::setButterfly): This now does all of the fences. Only use this when you are not also transitioning the structure or the structure's lastOffset.
+        (JSC::JSObject::nukeStructureAndSetButterfly): Use this when doing locked structure-butterfly transitions.
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::putDirectWithoutTransition): Use the newly factored out API.
+        (JSC::JSObject::prepareToPutDirectWithoutTransition): Factor this out!
+        (JSC::JSObject::putDirectInternal): Use the newly factored out API.
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::finishCreation): Locks!
+        (JSC::JSPropertyNameEnumerator::visitChildren): Locks!
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::visitChildren): Locks!
+        * runtime/JSString.cpp:
+        (JSC::JSString::visitChildren): Thread safety.
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::visitChildren): Thread safety.
+        * runtime/Options.cpp: For now we disable concurrent GC on not-X86_64.
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h: Change the default max GC parallelism to 8. I don't know why it was still 7.
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::stackTracesAsJSON): This needs to defer GC before grabbing its lock.
+        * runtime/SparseArrayValueMap.cpp: This needed thread safety.
+        (JSC::SparseArrayValueMap::add):
+        (JSC::SparseArrayValueMap::remove):
+        (JSC::SparseArrayValueMap::visitChildren):
+        * runtime/SparseArrayValueMap.h:
+        * runtime/Structure.cpp: This had a race between addNewPropertyTransition and visitChildren.
+        (JSC::Structure::Structure):
+        (JSC::Structure::materializePropertyTable):
+        (JSC::Structure::addNewPropertyTransition):
+        (JSC::Structure::flattenDictionaryStructure):
+        (JSC::Structure::add): Help out with nuking support - the m_offset needs to play along.
+        (JSC::Structure::visitChildren):
+        * runtime/Structure.h: Make some useful things public - like the notion of a lastOffset.
+        * runtime/StructureChain.cpp:
+        (JSC::StructureChain::visitChildren): Thread safety!
+        * runtime/StructureChain.h: Thread safety!
+        * runtime/StructureIDTable.cpp:
+        (JSC::StructureIDTable::allocateID): Ensure that we don't get nuked IDs.
+        * runtime/StructureIDTable.h: Add the notion of a nuked ID! It's a bit that the runtime never sees except during specific shady actions like locked structure-butterfly transitions. "Nuking" tells the GC to steer clear and rescan once we fire the barrier.
+        (JSC::nukedStructureIDBit):
+        (JSC::nuke):
+        (JSC::isNuked):
+        (JSC::decontaminate):
+        * runtime/StructureInlines.h:
+        (JSC::Structure::hasIndexingHeader): Better API.
+        (JSC::Structure::add):
+        * runtime/VM.cpp: Better GC interaction.
+        (JSC::VM::ensureWatchdog):
+        (JSC::VM::deleteAllLinkedCode):
+        (JSC::VM::deleteAllCode):
+        * runtime/VM.h:
+        (JSC::VM::getStructure): Why wasn't this always an API!
+        * runtime/WebAssemblyExecutable.cpp:
+        (JSC::WebAssemblyExecutable::visitChildren): Thread safety.
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable SharedArrayBuffer, remove the flag
+        https://bugs.webkit.org/show_bug.cgi?id=165614
+
+        Rubber stamped by Geoffrey Garen.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/RuntimeFlags.h:
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: wire up Instance imports
+        https://bugs.webkit.org/show_bug.cgi?id=165118
+
+        Reviewed by Saam Barati.
+
+        Change a bunch of the WebAssembly object model, and pipe the
+        necessary changes to be able to call JS imports from
+        WebAssembly. This will make it easier to call_indirect, and
+        unblock many other missing features.
+
+        As a follow-up I need to teach JSC::linkFor to live without a
+        CodeBlock: wasm doesn't have one and the IC patching is sad. We'll
+        switch on the callee (or its type?) and then use that as the owner
+        (because the callee is alive if the instance is alive, ditto
+        module, and module owns the CallLinkInfo).
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::callee): give access to the callee as a JSCell
+        * jit/RegisterSet.cpp: dead code from previous WebAssembly implementation
+        * jsc.cpp:
+        (callWasmFunction):
+        (functionTestWasmModuleFunctions):
+        * runtime/JSCellInlines.h:
+        (JSC::ExecState::vm): check callee instead of jsCallee: wasm only has a JSCell and not a JSObject
+        * runtime/VM.cpp:
+        (JSC::VM::VM): store the "top" WebAssembly.Instance on entry to WebAssembly (and restore the previous one on exit)
+        * runtime/VM.h:
+        * testWasm.cpp:
+        (runWasmTests):
+        * wasm/JSWebAssembly.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator): pass unlinked calls around to shorten their lifetime: they're ony needed until the Plan is done
+        (JSC::Wasm::B3IRGenerator::addCall):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile): also pass in the function index space, so that imports can be signature-checked along with internal functions
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmBinding.cpp: Added.
+        (JSC::Wasm::importStubGenerator): stubs from wasm to JS
+        * wasm/WasmBinding.h: Copied from Source/JavaScriptCore/wasm/WasmValidate.h.
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::setupFrameInPrologue):
+        * wasm/WasmFormat.h: fix the object model
+        (JSC::Wasm::CallableFunction::CallableFunction):
+        * wasm/WasmFunctionParser.h: simplify some of the failure condition checks
+        (JSC::Wasm::FunctionParser<Context>::FunctionParser): need function index space, not just internal functions
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmModuleParser.cpp: early-create some of the structures which will be needed later
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseFunction):
+        (JSC::Wasm::ModuleParser::parseMemory):
+        (JSC::Wasm::ModuleParser::parseExport):
+        (JSC::Wasm::ModuleParser::parseCode):
+        * wasm/WasmModuleParser.h:
+        (JSC::Wasm::ModuleParser::functionIndexSpace):
+        (JSC::Wasm::ModuleParser::functionLocations):
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser::consumeUTF8String):
+        * wasm/WasmPlan.cpp: pass around the wasm objects at the right time, reducing their lifetime and making it easier to pass them around when needed
+        (JSC::Wasm::Plan::run):
+        (JSC::Wasm::Plan::initializeCallees):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::exports):
+        (JSC::Wasm::Plan::internalFunctionCount):
+        (JSC::Wasm::Plan::jsToWasmEntryPointForFunction):
+        (JSC::Wasm::Plan::takeModuleInformation):
+        (JSC::Wasm::Plan::takeCallLinkInfos):
+        (JSC::Wasm::Plan::takeWasmToJSStubs):
+        (JSC::Wasm::Plan::takeFunctionIndexSpace):
+        * wasm/WasmValidate.cpp: check function index space instead of only internal functions
+        (JSC::Wasm::Validate::addCall):
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h:
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::finishCreation):
+        * wasm/js/JSWebAssemblyCallee.h:
+        (JSC::JSWebAssemblyCallee::create):
+        (JSC::JSWebAssemblyCallee::jsToWasmEntryPoint):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        (JSC::JSWebAssemblyInstance::JSWebAssemblyInstance):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h: hold the import functions off the end of the Instance
+        (JSC::JSWebAssemblyInstance::importFunction):
+        (JSC::JSWebAssemblyInstance::importFunctions):
+        (JSC::JSWebAssemblyInstance::setImportFunction):
+        (JSC::JSWebAssemblyInstance::offsetOfImportFunctions):
+        (JSC::JSWebAssemblyInstance::offsetOfImportFunction):
+        (JSC::JSWebAssemblyInstance::allocationSize):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::create):
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        (JSC::JSWebAssemblyModule::visitChildren):
+        * wasm/js/JSWebAssemblyModule.h: hold the link call info, the import function stubs, and the function index space
+        (JSC::JSWebAssemblyModule::signatureForFunctionIndexSpace):
+        (JSC::JSWebAssemblyModule::importCount):
+        (JSC::JSWebAssemblyModule::calleeFromFunctionIndexSpace):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction): set top Instance on VM
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::instance):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance): handle function imports
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule): generate the stubs for import functions
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        * wasm/js/WebAssemblyToJSCallee.cpp: Copied from Source/JavaScriptCore/wasm/js/JSWebAssemblyCallee.cpp.
+        (JSC::WebAssemblyToJSCallee::create): dummy JSCell singleton which lives on the VM, and is put as the callee in the import stub's frame to identified it when unwinding
+        (JSC::WebAssemblyToJSCallee::createStructure):
+        (JSC::WebAssemblyToJSCallee::WebAssemblyToJSCallee):
+        (JSC::WebAssemblyToJSCallee::finishCreation):
+        (JSC::WebAssemblyToJSCallee::destroy):
+        * wasm/js/WebAssemblyToJSCallee.h: Copied from Source/JavaScriptCore/wasm/WasmB3IRGenerator.h.
+
+2016-12-08  Mark Lam  <mark.lam@apple.com>
+
+        Enable JSC restricted options by default in the jsc shell.
+        https://bugs.webkit.org/show_bug.cgi?id=165615
+
+        Reviewed by Keith Miller.
+
+        The jsc shell is only used for debugging and development testing.  We should
+        allow it to use restricted options like JSC_useDollarVM even for release builds.
+
+        * jsc.cpp:
+        (jscmain):
+        * runtime/Options.cpp:
+        (JSC::Options::enableRestrictedOptions):
+        (JSC::Options::isAvailable):
+        (JSC::allowRestrictedOptions): Deleted.
+        * runtime/Options.h:
+
+2016-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209489.
+
+        Likely caused large regressions on JetStream, Sunspider and
+        Speedometer
+
+        Reverted changeset:
+
+        "Add system trace points for JavaScript VM entry/exit"
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209489
+
+2016-12-08  Keith Miller  <keith_miller@apple.com>
+
+        Move LEB tests to API tests
+        https://bugs.webkit.org/show_bug.cgi?id=165586
+
+        Reviewed by Saam Barati.
+
+        Delete old stuff.
+
+        * testWasm.cpp:
+        (printUsageStatement):
+        (CommandLine::parseArguments):
+        (main):
+        (runLEBTests): Deleted.
+
+2016-12-07  JF Bastien  <jfbastien@apple.com>
+
+        Cleanup WebAssembly's RETURN_IF_EXCEPTION
+        https://bugs.webkit.org/show_bug.cgi?id=165595
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):
+
+2016-12-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed SourceCode members to match their accessor names
+        https://bugs.webkit.org/show_bug.cgi?id=165573
+
+        Reviewed by Keith Miller.
+
+        startChar => startOffset
+        endChar => endOffset
+
+        * parser/UnlinkedSourceCode.h:
+        (JSC::UnlinkedSourceCode::UnlinkedSourceCode):
+        (JSC::UnlinkedSourceCode::view):
+        (JSC::UnlinkedSourceCode::startOffset):
+        (JSC::UnlinkedSourceCode::endOffset):
+        (JSC::UnlinkedSourceCode::length):
+
+2016-12-07  Keith Miller  <keith_miller@apple.com>
+
+        Add more missing trivial wasm ops.
+        https://bugs.webkit.org/show_bug.cgi?id=165564
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds the nop, drop, and tee_local opcodes.
+        It also fixes an issue where we were not generating
+        the proper enums for the grow_memory and current_memory
+        opcodes.
+
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/generateWasmOpsHeader.py:
+
+2016-12-07  Geoffrey Garen  <ggaren@apple.com>
+
+        Renamed source => parentSource
+        https://bugs.webkit.org/show_bug.cgi?id=165570
+
+        Reviewed by Keith Miller.
+
+        For less confuse.
+
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::UnlinkedFunctionExecutable):
+
+2016-12-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop translate phase in module loader
+        https://bugs.webkit.org/show_bug.cgi?id=164861
+
+        Reviewed by Saam Barati.
+
+        Originally, this "translate" phase was introduced to the module loader.
+        However, recent rework discussion[1] starts dropping this phase.
+        And this "translate" phase is meaningless in the browser side module loader
+        since this phase originally mimics the node.js's translation hook (like,
+        transpiling CoffeeScript source to JavaScript).
+
+        This "translate" phase is not necessary for the exposed HTML5
+        <script type="module"> tag right now. Once the module loader pipeline is
+        redefined and specified, we need to update the current loader anyway.
+        So dropping "translate" phase right now is OK.
+
+        This a bit simplifies the current module loader pipeline.
+
+        [1]: https://github.com/whatwg/loader/issues/147
+
+        * builtins/ModuleLoaderPrototype.js:
+        (newRegistryEntry):
+        (fulfillFetch):
+        (requestFetch):
+        (requestInstantiate):
+        (provide):
+        (fulfillTranslate): Deleted.
+        (requestTranslate): Deleted.
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry):
+        * jsc.cpp:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/JSGlobalObject.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::translate): Deleted.
+        * runtime/JSModuleLoader.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeInstantiate):
+        (JSC::moduleLoaderPrototypeTranslate): Deleted.
+
+2016-12-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add ability to distinguish if a Script was parsed as a module
+        https://bugs.webkit.org/show_bug.cgi?id=164900
+        <rdar://problem/29323817>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didParseSource):
+        * inspector/protocol/Debugger.json:
+        Add an optional event parameter to distinguish if a script was a module or not.
+
+2016-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system trace points for JavaScript VM entry/exit
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+
+        Reviewed by Tim Horton.
+
+        Add trace points for entry/exit into/out of the JS VM.
+
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        (JSC::VMEntryScope::~VMEntryScope):
+
+2016-12-06  Keith Miller  <keith_miller@apple.com>
+
+        Add support for truncation operators
+        https://bugs.webkit.org/show_bug.cgi?id=165519
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds initial support for truncation operators. The current patch
+        does range based out of bounds checking, in the future we should use system
+        register flags on ARM and other tricks on X86 improve the performance of
+        these opcodes.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::branchTruncateDoubleToInt32):
+        (JSC::MacroAssemblerARM64::truncateDoubleToInt64):
+        (JSC::MacroAssemblerARM64::truncateDoubleToUint64):
+        (JSC::MacroAssemblerARM64::truncateFloatToInt32):
+        (JSC::MacroAssemblerARM64::truncateFloatToUint32):
+        (JSC::MacroAssemblerARM64::truncateFloatToInt64):
+        (JSC::MacroAssemblerARM64::truncateFloatToUint64):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::truncateFloatToInt32):
+        (JSC::MacroAssemblerX86Common::truncateDoubleToUint32): Deleted.
+        * assembler/MacroAssemblerX86_64.h:
+        (JSC::MacroAssemblerX86_64::truncateDoubleToUint32):
+        (JSC::MacroAssemblerX86_64::truncateDoubleToInt64):
+        (JSC::MacroAssemblerX86_64::truncateDoubleToUint64):
+        (JSC::MacroAssemblerX86_64::truncateFloatToUint32):
+        (JSC::MacroAssemblerX86_64::truncateFloatToInt64):
+        (JSC::MacroAssemblerX86_64::truncateFloatToUint64):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::cvttss2si_rr):
+        (JSC::X86Assembler::cvttss2siq_rr):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32TruncSF64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32TruncSF32>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32TruncUF64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I32TruncUF32>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64TruncSF64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64TruncUF64>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64TruncSF32>):
+        (JSC::Wasm::B3IRGenerator::addOp<OpType::I64TruncUF32>):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+
+2016-12-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and mostly untested Page domain commands and events
+        https://bugs.webkit.org/show_bug.cgi?id=165507
+
+        Reviewed by Brian Burg.
+
+        Remove unused and unsupported commands and events.
+
+          - Page.setDocumentContent
+          - Page.getScriptExecutionStatus
+          - Page.setScriptExecutionDisabled
+          - Page.handleJavaScriptDialog
+          - Page.javascriptDialogOpening
+          - Page.javascriptDialogClosed
+          - Page.scriptsEnabled
+
+        * inspector/protocol/Page.json:
+
 2016-12-07  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Merge PromiseReactions

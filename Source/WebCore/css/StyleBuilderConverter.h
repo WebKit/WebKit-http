@@ -347,7 +347,6 @@ inline Length StyleBuilderConverter::convertPositionComponent(StyleResolver& sty
         auto& first = *value.pairValue()->first();
         if (first.valueID() == CSSValueRight || first.valueID() == CSSValueBottom)
             relativeToTrailingEdge = true;
-
         lengthValue = value.pairValue()->second();
     }
     
@@ -819,7 +818,7 @@ inline std::unique_ptr<ScrollSnapPoints> StyleBuilderConverter::convertScrollSna
     for (auto& currentValue : downcast<CSSValueList>(value)) {
         if (is<CSSFunctionValue>(currentValue.get())) {
             auto& functionValue = downcast<CSSFunctionValue>(currentValue.get());
-            points->repeatOffset = parseSnapCoordinate(styleResolver, *functionValue.arguments()->item(0));
+            points->repeatOffset = parseSnapCoordinate(styleResolver, *functionValue.item(0));
             points->hasRepeat = true;
             break;
         }
@@ -915,14 +914,14 @@ inline GridTrackSize StyleBuilderConverter::createGridTrackSize(const CSSValue& 
         return GridTrackSize(createGridTrackBreadth(downcast<CSSPrimitiveValue>(value), styleResolver));
 
     ASSERT(is<CSSFunctionValue>(value));
-    CSSValueList& arguments = *downcast<CSSFunctionValue>(value).arguments();
+    const auto& function = downcast<CSSFunctionValue>(value);
 
-    if (arguments.length() == 1)
-        return GridTrackSize(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(0)), styleResolver), FitContentTrackSizing);
+    if (function.length() == 1)
+        return GridTrackSize(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*function.itemWithoutBoundsCheck(0)), styleResolver), FitContentTrackSizing);
 
-    ASSERT_WITH_SECURITY_IMPLICATION(arguments.length() == 2);
-    GridLength minTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(0)), styleResolver));
-    GridLength maxTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*arguments.itemWithoutBoundsCheck(1)), styleResolver));
+    ASSERT_WITH_SECURITY_IMPLICATION(function.length() == 2);
+    GridLength minTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*function.itemWithoutBoundsCheck(0)), styleResolver));
+    GridLength maxTrackBreadth(createGridTrackBreadth(downcast<CSSPrimitiveValue>(*function.itemWithoutBoundsCheck(1)), styleResolver));
     return GridTrackSize(minTrackBreadth, maxTrackBreadth);
 }
 
@@ -1326,13 +1325,7 @@ inline String StyleBuilderConverter::convertSVGURIReference(StyleResolver& style
 
 inline Color StyleBuilderConverter::convertSVGColor(StyleResolver& styleResolver, const CSSValue& value)
 {
-    // FIXME-NEWPARSER: Remove the code that assumes SVGColors.
-    // FIXME: What about visited link support?
-    if (is<CSSPrimitiveValue>(value))
-        return styleResolver.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value));
-
-    auto& svgColor = downcast<SVGColor>(value);
-    return svgColor.colorType() == SVGColor::SVG_COLORTYPE_CURRENTCOLOR ? styleResolver.style()->color() : svgColor.color();
+    return styleResolver.colorFromPrimitiveValue(downcast<CSSPrimitiveValue>(value));
 }
 
 inline StyleSelfAlignmentData StyleBuilderConverter::convertSelfOrDefaultAlignmentData(StyleResolver&, const CSSValue& value)
@@ -1357,6 +1350,8 @@ inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentD
     StyleContentAlignmentData alignmentData = RenderStyle::initialContentAlignment();
 #if ENABLE(CSS_GRID_LAYOUT)
     if (RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled()) {
+        if (!is<CSSContentDistributionValue>(value))
+            return alignmentData;
         auto& contentValue = downcast<CSSContentDistributionValue>(value);
         if (contentValue.distribution()->valueID() != CSSValueInvalid)
             alignmentData.setDistribution(contentValue.distribution().get());
@@ -1367,6 +1362,8 @@ inline StyleContentAlignmentData StyleBuilderConverter::convertContentAlignmentD
         return alignmentData;
     }
 #endif
+    if (!is<CSSPrimitiveValue>(value))
+        return alignmentData;
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     switch (primitiveValue.valueID()) {
     case CSSValueStretch:

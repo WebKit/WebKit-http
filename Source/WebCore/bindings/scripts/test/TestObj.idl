@@ -82,6 +82,8 @@ enum TestConfidence { "high", "kinda-low" };
     attribute record<ByteString, long> usvstringLongRecordAttr;
     attribute record<DOMString, TestObj> stringObjRecordAttr;
     attribute record<DOMString, TestObj?> stringNullableObjRecordAttr;
+    attribute TestDictionary dictionaryAttr;
+    attribute TestDictionary? nullableDictionaryAttr;
 
     attribute TestEnumTypeWithAlternateImplementationName implementationEnumAttr;
 
@@ -149,7 +151,6 @@ enum TestConfidence { "high", "kinda-low" };
     void methodWithByteStringArgTreatingNullAsEmptyString([TreatNullAs=EmptyString] ByteString str);
 
     void serializedValue(SerializedScriptValue serializedArg);
-    void optionsObject(Dictionary oo, optional Dictionary ooo);
 
     void methodWithRecord(record<DOMString, long> recordParameter);
 

@@ -78,6 +78,8 @@ enum class WaitForOption {
     } \
 while (0)
 
+class MachMessage;
+
 class Connection : public ThreadSafeRefCounted<Connection> {
 public:
     class Client : public MessageReceiver {
@@ -239,7 +241,11 @@ private:
     void didReceiveSyncReply(OptionSet<SendSyncOption>);
 
     Seconds timeoutRespectingIgnoreTimeoutsForTesting(Seconds) const;
-    
+
+#if PLATFORM(COCOA)
+    bool sendMessage(std::unique_ptr<MachMessage>);
+#endif
+
     Client& m_client;
     bool m_isServer;
     std::atomic<bool> m_isValid { true };
@@ -312,14 +318,15 @@ private:
 #elif OS(DARWIN)
     // Called on the connection queue.
     void receiveSourceEventHandler();
-    void initializeDeadNameSource();
+    void initializeSendSource();
 
     mach_port_t m_sendPort;
-    dispatch_source_t m_deadNameSource;
+    dispatch_source_t m_sendSource;
 
     mach_port_t m_receivePort;
-    dispatch_source_t m_receivePortDataAvailableSource;
+    dispatch_source_t m_receiveSource;
 
+    std::unique_ptr<MachMessage> m_pendingOutgoingMachMessage;
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void exceptionSourceEventHandler();
 

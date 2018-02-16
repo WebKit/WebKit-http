@@ -23,6 +23,7 @@
 #include "JSDOMBinding.h"
 
 #include "CachedScript.h"
+#include "CommonVM.h"
 #include "DOMConstructorWithDocument.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
@@ -61,7 +62,7 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorWithDocument);
 
 void addImpureProperty(const AtomicString& propertyName)
 {
-    JSDOMWindow::commonVM().addImpureProperty(propertyName);
+    commonVM().addImpureProperty(propertyName);
 }
 
 JSValue jsOwnedStringOrNull(ExecState* exec, const String& s)
@@ -418,13 +419,14 @@ void printErrorMessageForFrame(Frame* frame, const String& message)
 
 Structure* getCachedDOMStructure(JSDOMGlobalObject& globalObject, const ClassInfo* classInfo)
 {
-    JSDOMStructureMap& structures = globalObject.structures();
+    JSDOMStructureMap& structures = globalObject.structures(NoLockingNecessary);
     return structures.get(classInfo).get();
 }
 
 Structure* cacheDOMStructure(JSDOMGlobalObject& globalObject, Structure* structure, const ClassInfo* classInfo)
 {
-    JSDOMStructureMap& structures = globalObject.structures();
+    auto locker = lockDuringMarking(globalObject.vm().heap, globalObject.gcLock());
+    JSDOMStructureMap& structures = globalObject.structures(locker);
     ASSERT(!structures.contains(classInfo));
     return structures.set(classInfo, WriteBarrier<Structure>(globalObject.vm(), &globalObject, structure)).iterator->value.get();
 }
@@ -757,7 +759,11 @@ public:
             m_globalObject = codeBlock->globalObject();
         else {
             ASSERT(visitor->callee());
-            m_globalObject = visitor->callee()->globalObject();
+            // FIXME: Callee is not an object if the caller is Web Assembly.
+            // Figure out what to do here. We can probably get the global object
+            // from the top-most Wasm Instance. https://bugs.webkit.org/show_bug.cgi?id=165721
+            if (visitor->callee()->isObject())
+                m_globalObject = jsCast<JSObject*>(visitor->callee())->globalObject();
         }
         return StackVisitor::Done;
     }

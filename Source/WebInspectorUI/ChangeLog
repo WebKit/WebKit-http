@@ -1,3 +1,364 @@
+2016-12-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        [GTK] Web Inspector: Add NavigationItemCodeCoverage.svg icon
+        https://bugs.webkit.org/show_bug.cgi?id=165698
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/gtk/NavigationItemCodeCoverage.svg: Added.
+        Match in style the existing NavigationItemTypes.svg icon.
+
+2016-12-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cleanup HierarchicalPathComponent
+        https://bugs.webkit.org/show_bug.cgi?id=165745
+
+        Reviewed by Brian Burg.
+
+        Prefer toggle for style class names, remove single use CSS class name
+        constants, and back all properties by the model not the DOM.
+
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WebInspector.HierarchicalPathComponent):
+        (WebInspector.HierarchicalPathComponent.prototype.get element):
+        (WebInspector.HierarchicalPathComponent.prototype.get representedObject):
+        (WebInspector.HierarchicalPathComponent.prototype.get minimumWidth):
+        (WebInspector.HierarchicalPathComponent.prototype.get forcedWidth):
+        (WebInspector.HierarchicalPathComponent.prototype.set forcedWidth):
+        (WebInspector.HierarchicalPathComponent.prototype.get hidden):
+        (WebInspector.HierarchicalPathComponent.prototype.set hidden):
+        (WebInspector.HierarchicalPathComponent.prototype.get collapsed):
+        (WebInspector.HierarchicalPathComponent.prototype.set collapsed):
+        (WebInspector.HierarchicalPathComponent.prototype.get selectorArrows):
+        (WebInspector.HierarchicalPathComponent.prototype.set selectorArrows):
+        (WebInspector.HierarchicalPathComponent.prototype.get previousSibling):
+        (WebInspector.HierarchicalPathComponent.prototype.set previousSibling):
+        (WebInspector.HierarchicalPathComponent.prototype.get nextSibling):
+        (WebInspector.HierarchicalPathComponent.prototype.set nextSibling):
+        (WebInspector.HierarchicalPathComponent.prototype._updateElementTitleAndText):
+        (WebInspector.HierarchicalPathComponent.prototype._updateSelectElement.createOption):
+        (WebInspector.HierarchicalPathComponent.prototype._updateSelectElement):
+
+2016-12-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Allow keyboard navigation in Heap Snapshot data grids
+        https://bugs.webkit.org/show_bug.cgi?id=165752
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom:focus li.selected > span::after):
+        Use new color variable.
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        (WebInspector.HeapSnapshotInstanceDataGridNode.prototype.get selectable): Deleted.
+        Should be selectable.
+
+        * UserInterface/Views/HeapSnapshotInstancesContentView.css:
+        (.heap-snapshot > .data-grid:focus tr.selected > td .sub-retained):
+        (.heap-snapshot > .data-grid:focus tr.selected .object-id,):
+        (.heap-snapshot > .data-grid:focus tr.selected .formatted-string,):
+        (.heap-snapshot > .data-grid:focus tr.selected td .location):
+        Selected row text should just be white, except for values that are usually
+        gray (object ID, object size, and sub-retained size values). These should
+        be styled like the "= $0" marker in the DOM tree outline.
+
+        (.heap-snapshot > .data-grid:matches(:focus, .force-focus) tr.selected td .location): Deleted.
+        Removed forced-focus reference. Only used by TreeOutlineDataGridSynchronizer.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Added --selected-secondary-text-color.
+
+2016-12-12  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Breakpoint Log action should support template literals
+        https://bugs.webkit.org/show_bug.cgi?id=165116
+        <rdar://problem/29464765>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New string "${expr} = expression" for breakpoint popover.
+
+        * UserInterface/Controllers/BreakpointLogMessageLexer.js: Added.
+        To support template literal placeholders in message text, it is necessary
+        to distinguish plain text parts of the message from placeholders, since
+        plain text must be escaped.
+
+        (WebInspector.BreakpointLogMessageLexer):
+        (WebInspector.BreakpointLogMessageLexer.prototype.tokenize):
+        (WebInspector.BreakpointLogMessageLexer.prototype.reset):
+        (WebInspector.BreakpointLogMessageLexer.prototype._finishPlainText):
+        (WebInspector.BreakpointLogMessageLexer.prototype._finishExpression):
+        (WebInspector.BreakpointLogMessageLexer.prototype._appendToken):
+        (WebInspector.BreakpointLogMessageLexer.prototype._consume):
+        (WebInspector.BreakpointLogMessageLexer.prototype._peek):
+        (WebInspector.BreakpointLogMessageLexer.prototype._expression):
+        (WebInspector.BreakpointLogMessageLexer.prototype._plainText):
+        (WebInspector.BreakpointLogMessageLexer.prototype._possiblePlaceholder):
+        (WebInspector.BreakpointLogMessageLexer.prototype._regExpOrStringLiteral):
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._debuggerBreakpointOptions):
+        Build breakpoint "options" object for DebuggerAgent. If a Log action
+        contains template literal placeholders it is changed to an Evaluate
+        action, which calls console.log with a template literal.
+
+        (WebInspector.DebuggerManager.prototype._setBreakpoint):
+        Use converted breakpoint options.
+
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+        New file.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (.breakpoint-action-block-body > .description):
+        Styles for breakpoint Log action hint text.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.prototype._updateBody):
+        Add Log action hint text element.
+
+2016-12-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: ThreadTreeElement should have a "Resume" status button when paused
+        https://bugs.webkit.org/show_bug.cgi?id=165581
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Resume.svg:
+        Fill/stroke should be unspecified so that both can be styled in CSS.
+
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.dashboard.debugger .navigation-bar .item.debugger-dashboard-pause.activated):
+        * UserInterface/Views/DebuggerSidebarPanel.css:
+        (.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume):
+        (.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume.activated):
+        Recreate original style which relied on 'fill="none"' being specified in the SVG.
+
+        * UserInterface/Views/ThreadTreeElement.css:
+        (.tree-outline > .item.thread .icon):
+        (.tree-outline > .item.thread .status-button.resume):
+        (.tree-outline > .item.thread .status-button.resume:active):
+        (.tree-outline:matches(:focus, .force-focus) > .item.thread.selected .status-button.resume):
+        (.tree-outline > .item.thread.selected .status-button.resume,):
+        (.details-section.call-stack .thread .icon): Deleted.
+        Status button styles. Colors match those of the goto-arrow button.
+
+        * UserInterface/Views/ThreadTreeElement.js:
+        (WebInspector.ThreadTreeElement.prototype.refresh):
+        Update status icon.
+        (WebInspector.ThreadTreeElement.prototype.oncontextmenu):
+        (WebInspector.ThreadTreeElement.prototype._updateStatus):
+        Add/remove status button based on paused state.
+        Stop propagation of "mousedown" events on the status button, to
+        prevent button press from selecting the tree element.
+        (WebInspector.ThreadTreeElement):
+
+2016-12-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Move MainTarget and WorkerTarget to their own files
+        https://bugs.webkit.org/show_bug.cgi?id=165701
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        * UserInterface/Main.html:
+        * UserInterface/Protocol/MainTarget.js: Added.
+        (WebInspector.MainTarget):
+        (WebInspector.MainTarget.prototype.get displayName):
+        (WebInspector.MainTarget.prototype.get mainResource):
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.Target):
+        (WebInspector.MainTarget): Deleted.
+        (WebInspector.MainTarget.prototype.get displayName): Deleted.
+        (WebInspector.MainTarget.prototype.get mainResource): Deleted.
+        (WebInspector.MainTarget.prototype.initialize): Deleted.
+        (WebInspector.WorkerTarget): Deleted.
+        (WebInspector.WorkerTarget.prototype.get displayName): Deleted.
+        (WebInspector.WorkerTarget.prototype.initialize): Deleted.
+        * UserInterface/Protocol/WorkerTarget.js: Added.
+        (WebInspector.WorkerTarget):
+        (WebInspector.WorkerTarget.prototype.get displayName):
+        * UserInterface/Test.html:
+
+2016-12-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Frontend should not be resetting TypeProfiler state when switching between ContentViews
+        https://bugs.webkit.org/show_bug.cgi?id=165648
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Update all backends when the state changes.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._setTypeTokenAnnotatorEnabledState):
+        (WebInspector.SourceCodeTextEditor.prototype.set _basicBlockAnnotatorEnabled):
+        Moved this code to when the global Setting (which affects all editors) changes.
+
+2016-12-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Some resources fetched via Fetch API do not have data
+        https://bugs.webkit.org/show_bug.cgi?id=165230
+        <rdar://problem/29449220>
+
+        Reviewed by Alex Christensen.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Fetch" and "Fetches" localized strings.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.displayNameForType):
+        * UserInterface/Models/ResourceCollection.js:
+        (WebInspector.ResourceCollection.verifierForType):
+        * UserInterface/Views/CollectionContentView.js:
+        (WebInspector.CollectionContentView):
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get responseContentView):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.compareResourceTreeElements):
+        New ResourceType.Fetch. Behave like XHR in most places.
+
+2016-12-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unable to delete breakpoint from worker script
+        https://bugs.webkit.org/show_bug.cgi?id=165578
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype._removeBreakpoint):
+        Match setting breakpoints. If this is a "URL breakpoint", affect
+        all targets. If this is a "Script breakpoint", affect just the
+        single target containing that Script.
+
+2016-12-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        REGRESSION(r203912): Web Inspector: Navigation sidebar widths are not saved
+        https://bugs.webkit.org/show_bug.cgi?id=165496
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype._sidebarWidthDidChange):
+        (WebInspector.TabBrowser.prototype._showNavigationSidebarPanelForTabContentView):
+        (WebInspector.TabBrowser.prototype._sidebarWidthDidChange): Renamed from _detailsSidebarWidthDidChange.
+        Add event listener for when the navigation sidebar's width is changed.
+
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.get navigationSidebarPanel):
+        (WebInspector.TabContentView.prototype.get navigationSidebarCollapsedSetting):
+        (WebInspector.TabContentView.prototype.get navigationSidebarWidthSetting):
+        (WebInspector.TabContentView.prototype.get detailsSidebarPanels):
+        (WebInspector.TabContentView.prototype.get detailsSidebarCollapsedSetting):
+        (WebInspector.TabContentView.prototype.get detailsSidebarSelectedPanelSetting):
+        (WebInspector.TabContentView.prototype.get detailsSidebarWidthSetting):
+        Add WebInspector.Setting object for the navigation sidebar's width.
+
+2016-12-07  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Control Flow Profiler's event handlers aren't getting removed when ContentView closes
+        https://bugs.webkit.org/show_bug.cgi?id=165556
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ScriptContentView.js:
+        (WebInspector.ScriptContentView.prototype.closed):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype.closed):
+
+2016-12-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add ability to distinguish if a Script was parsed as a module
+        https://bugs.webkit.org/show_bug.cgi?id=164900
+        <rdar://problem/29323817>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Models/Script.js:
+        (WebInspector.Script.prototype.get sourceType):
+        New property of Scripts. SourceType is either Program or Module.
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WebInspector.DebuggerManager.prototype.scriptDidParse):
+        * UserInterface/Protocol/DebuggerObserver.js:
+        (WebInspector.DebuggerObserver.prototype.scriptParsed):
+        Convert incoming module boolean into SourceType when creating new Scripts.
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree):
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        Update the generic AST for new module specific Esprima types.
+
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype.textEditorScriptSourceType):
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype._startWorkerPrettyPrint):
+        For pretty printing correctly state if this is a module or not for Esprima.
+
+2016-12-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Update Esprima to support new features / syntax (**, async/await, trailing comma)
+        https://bugs.webkit.org/show_bug.cgi?id=164830
+        <rdar://problem/29293814>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/External/Esprima/LICENSE:
+        * UserInterface/External/Esprima/esprima.js:
+        Updated to Esprima@7219731 (4.0.0-dev).
+
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        (WebInspector.ScriptSyntaxTree.prototype._recurse):
+        (WebInspector.ScriptSyntaxTree.prototype._createInternalSyntaxTree):
+        * UserInterface/Workers/Formatter/ESTreeWalker.js:
+        (ESTreeWalker.prototype._walkChildren):
+        Add new nodes (AwaitExpression).
+        Add new states (async boolean property on Functions).
+        Remove stale properties (defaults is no longer needed, as parameters
+        with default values are now AssignmentPatterns).
+        Update MetaProperty where meta/property are now Identifiers not strings.
+
+        * UserInterface/Workers/Formatter/EsprimaFormatter.js:
+        (EsprimaFormatter.prototype._handleTokenAtNode):
+        Handle pretty printing of new nodes and identifiers.
+
+        * Controllers/FrameResourceManager.js
+        Address a console.assert warning for stripping assertions in Production.
+
+2016-12-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and mostly untested Page domain commands and events
+        https://bugs.webkit.org/show_bug.cgi?id=165507
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Protocol/PageObserver.js:
+        (WebInspector.PageObserver.prototype.javascriptDialogOpening):
+        (WebInspector.PageObserver.prototype.javascriptDialogClosed):
+        (WebInspector.PageObserver.prototype.scriptsEnabled):
+        Keep stub in case legacy backends dispatch the event to the frontend.
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-10.0.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+        * Versions/Inspector-iOS-9.3.json:
+        Remove handleJavaScriptDialog command from legacy backends because it
+        doesn't appear as if the iOS backend handled it at all.
+
 2016-12-06  Alexey Proskuryakov  <ap@apple.com>
 
         Correct SDKROOT values in xcconfig files

@@ -29,6 +29,8 @@
 
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
+#include "JSWebAssemblyMemory.h"
+#include "JSWebAssemblyTable.h"
 
 namespace JSC {
 
@@ -40,7 +42,7 @@ public:
     typedef JSDestructibleObject Base;
 
 
-    static JSWebAssemblyInstance* create(VM&, Structure*, JSWebAssemblyModule*, JSModuleNamespaceObject*);
+    static JSWebAssemblyInstance* create(VM&, Structure*, JSWebAssemblyModule*, JSModuleNamespaceObject*, unsigned);
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     DECLARE_INFO;
@@ -51,15 +53,57 @@ public:
         return m_module.get();
     }
 
+    WriteBarrier<JSCell>* importFunction(unsigned idx)
+    {
+        RELEASE_ASSERT(idx < m_numImportFunctions);
+        return &importFunctions()[idx];
+    }
+
+    WriteBarrier<JSCell>* importFunctions()
+    {
+        return bitwise_cast<WriteBarrier<JSCell>*>(bitwise_cast<char*>(this) + offsetOfImportFunctions());
+    }
+
+    void setImportFunction(VM& vm, JSCell* value, unsigned idx)
+    {
+        importFunction(idx)->set(vm, this, value);
+    }
+
+    JSWebAssemblyMemory* memory() { return m_memory.get(); }
+    void setMemory(VM& vm, JSWebAssemblyMemory* memory) { m_memory.set(vm, this, memory); }
+
+    JSWebAssemblyTable* table() { return m_table.get(); }
+    void setTable(VM& vm, JSWebAssemblyTable* table) { m_table.set(vm, this, table); }
+
+    static size_t offsetOfImportFunction(unsigned idx)
+    {
+        return offsetOfImportFunctions() + sizeof(WriteBarrier<JSCell>) * idx;
+    }
+
+    static ptrdiff_t offsetOfTable() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_table); }
+
 protected:
-    JSWebAssemblyInstance(VM&, Structure*);
+    JSWebAssemblyInstance(VM&, Structure*, unsigned);
     void finishCreation(VM&, JSWebAssemblyModule*, JSModuleNamespaceObject*);
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
+    static size_t offsetOfImportFunctions()
+    {
+        return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<JSCell>)>(sizeof(JSWebAssemblyInstance));
+    }
+
+    static size_t allocationSize(unsigned numImportFunctions)
+    {
+        return offsetOfImportFunctions() + sizeof(WriteBarrier<JSCell>) * numImportFunctions;
+    }
+
 private:
     WriteBarrier<JSWebAssemblyModule> m_module;
     WriteBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
+    WriteBarrier<JSWebAssemblyMemory> m_memory;
+    WriteBarrier<JSWebAssemblyTable> m_table;
+    unsigned m_numImportFunctions;
 };
 
 } // namespace JSC

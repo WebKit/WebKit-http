@@ -30,17 +30,17 @@
 #include "CompilationResult.h"
 #include "VM.h"
 #include "WasmFormat.h"
+#include <wtf/Bag.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
 
+class CallLinkInfo;
 class JSGlobalObject;
 class JSWebAssemblyCallee;
 
 namespace Wasm {
-
-class Memory;
 
 class Plan {
 public:
@@ -50,7 +50,7 @@ public:
 
     JS_EXPORT_PRIVATE void run();
 
-    JS_EXPORT_PRIVATE void initializeCallees(JSGlobalObject*, std::function<void(unsigned, JSWebAssemblyCallee*)>);
+    JS_EXPORT_PRIVATE void initializeCallees(JSGlobalObject*, std::function<void(unsigned, JSWebAssemblyCallee*, JSWebAssemblyCallee*)>);
 
     bool WARN_UNUSED_RETURN failed() const { return m_failed; }
     const String& errorMessage() const
@@ -58,31 +58,50 @@ public:
         RELEASE_ASSERT(failed());
         return m_errorMessage;
     }
-    
-    std::unique_ptr<ModuleInformation>& getModuleInformation()
+
+    Vector<Export>& exports() const
     {
         RELEASE_ASSERT(!failed());
-        return m_moduleInformation;
+        return m_moduleInformation->exports;
     }
-    const Memory* memory() const
+
+    size_t internalFunctionCount() const
     {
         RELEASE_ASSERT(!failed());
-        return m_moduleInformation->memory.get();
+        return m_wasmInternalFunctions.size();
     }
-    size_t compiledFunctionCount() const
+
+    std::unique_ptr<ModuleInformation>&& takeModuleInformation()
     {
         RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.size();
+        return WTFMove(m_moduleInformation);
     }
-    const FunctionCompilation* compiledFunction(size_t i) const
+
+    Bag<CallLinkInfo>&& takeCallLinkInfos()
     {
         RELEASE_ASSERT(!failed());
-        return m_compiledFunctions.at(i).get();
+        return WTFMove(m_callLinkInfos);
+    }
+
+    Vector<WasmToJSStub>&& takeWasmToJSStubs()
+    {
+        RELEASE_ASSERT(!failed());
+        return WTFMove(m_wasmToJSStubs);
+    }
+
+    ImmutableFunctionIndexSpace&& takeFunctionIndexSpace()
+    {
+        RELEASE_ASSERT(!failed());
+        return WTFMove(m_functionIndexSpace);
     }
 
 private:
     std::unique_ptr<ModuleInformation> m_moduleInformation;
-    CompiledFunctions m_compiledFunctions;
+    Vector<FunctionLocationInBinary> m_functionLocationInBinary;
+    Bag<CallLinkInfo> m_callLinkInfos;
+    Vector<WasmToJSStub> m_wasmToJSStubs;
+    Vector<std::unique_ptr<WasmInternalFunction>> m_wasmInternalFunctions;
+    ImmutableFunctionIndexSpace m_functionIndexSpace;
 
     VM* m_vm;
     const uint8_t* m_source;

@@ -1777,7 +1777,13 @@ webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-she
 fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
+fast/images/image-usemap-parsing.html [ Skip ]
+fast/shadow-dom/click-on-slotted-anchor-with-hover.html [ Skip ]
 fast/shadow-dom/click-text-inside-linked-slot.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html
+fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html
+fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html
+fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html
 
 # No touch events
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
@@ -1889,8 +1895,9 @@ webkit.org/b/153809 transitions/clip-path-transitions.html [ Pass Failure ]
 webkit.org/b/153809 transitions/clip-path-path-transitions.html [ Pass Failure ]
 webkit.org/b/153029 fast/css-generated-content/details-summary-before-after.html [ Failure ]
 
+webkit.org/b/165815 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-frag-percent-encoded.html [ Pass Failure ]
+webkit.org/b/165814 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-anchor-name.html [ Pass Failure ]
 webkit.org/b/161359 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-top.html [ Pass Failure ]
-
 webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-id-top.html [ Pass Failure ]
 
 # rdar://problem/26477855

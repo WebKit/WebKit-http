@@ -134,7 +134,7 @@ inline void Heap::writeBarrier(const JSCell* from, JSCell* to)
         return;
     if (!isWithinThreshold(from->cellState(), barrierThreshold()))
         return;
-    if (LIKELY(!to || to->cellState() != CellState::NewWhite))
+    if (LIKELY(!to))
         return;
     writeBarrierSlowPath(from);
 }
@@ -368,6 +368,12 @@ inline void Heap::stopIfNecessary()
     if (m_worldState.loadRelaxed() == hasAccessBit)
         return;
     stopIfNecessarySlow();
+}
+
+inline void Heap::writeBarrierOpaqueRoot(void* root)
+{
+    if (mutatorShouldBeFenced())
+        writeBarrierOpaqueRootSlow(root);
 }
 
 } // namespace JSC

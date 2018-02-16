@@ -158,7 +158,7 @@ JSInternalPromise* JSModuleLoader::fetch(ExecState* exec, JSValue key, JSValue i
     if (globalObject->globalObjectMethodTable()->moduleLoaderFetch)
         return globalObject->globalObjectMethodTable()->moduleLoaderFetch(globalObject, exec, this, key, initiator);
     JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
-    String moduleKey = key.toString(exec)->value(exec);
+    String moduleKey = key.toWTFString(exec);
     if (UNLIKELY(scope.exception())) {
         JSValue exception = scope.exception()->value();
         scope.clearException();
@@ -166,19 +166,6 @@ JSInternalPromise* JSModuleLoader::fetch(ExecState* exec, JSValue key, JSValue i
         return deferred->promise();
     }
     deferred->reject(exec, createError(exec, makeString("Could not open the module '", moduleKey, "'.")));
-    return deferred->promise();
-}
-
-JSInternalPromise* JSModuleLoader::translate(ExecState* exec, JSValue key, JSValue payload, JSValue initiator)
-{
-    if (Options::dumpModuleLoadingState())
-        dataLog("Loader [translate] ", printableModuleKey(exec, key), "\n");
-
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-    if (globalObject->globalObjectMethodTable()->moduleLoaderTranslate)
-        return globalObject->globalObjectMethodTable()->moduleLoaderTranslate(globalObject, exec, this, key, payload, initiator);
-    JSInternalPromiseDeferred* deferred = JSInternalPromiseDeferred::create(exec, globalObject);
-    deferred->resolve(exec, payload);
     return deferred->promise();
 }
 

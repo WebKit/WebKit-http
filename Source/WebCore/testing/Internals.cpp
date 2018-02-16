@@ -184,7 +184,6 @@
 #if ENABLE(WEB_RTC)
 #include "MockMediaEndpoint.h"
 #include "RTCPeerConnection.h"
-#include "RTCPeerConnectionHandlerMock.h"
 #endif
 
 #if ENABLE(MEDIA_SOURCE)
@@ -210,6 +209,10 @@
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "MediaPlaybackTargetContext.h"
+#endif
+
+#if ENABLE(POINTER_LOCK)
+#include "PointerLockController.h"
 #endif
 
 using JSC::CallData;
@@ -429,7 +432,6 @@ Internals::Internals(Document& document)
 
 #if ENABLE(WEB_RTC)
     enableMockMediaEndpoint();
-    enableMockRTCPeerConnectionHandler();
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -974,11 +976,6 @@ void Internals::enableMockSpeechSynthesizer()
 void Internals::enableMockMediaEndpoint()
 {
     MediaEndpoint::create = MockMediaEndpoint::create;
-}
-
-void Internals::enableMockRTCPeerConnectionHandler()
-{
-    RTCPeerConnectionHandler::create = RTCPeerConnectionHandlerMock::create;
 }
 
 void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
@@ -2696,6 +2693,9 @@ void Internals::initializeMockMediaSource()
 #if USE(AVFOUNDATION)
     WebCore::Settings::setAVFoundationEnabled(false);
 #endif
+#if USE(GSTREAMER)
+    WebCore::Settings::setGStreamerEnabled(false);
+#endif
     MediaPlayerFactorySupport::callRegisterMediaEngine(MockMediaPlayerMediaSource::registerMediaEngine);
 }
 
@@ -3404,5 +3404,35 @@ void Internals::reportBacktrace()
 {
     WTFReportBacktrace();
 }
+
+#if ENABLE(POINTER_LOCK)
+bool Internals::pageHasPendingPointerLock() const
+{
+    Document* document = contextDocument();
+    if (!document)
+        return false;
+
+    Page* page = document->page();
+    if (!page)
+        return false;
+
+    return page->pointerLockController().lockPending();
+}
+
+bool Internals::pageHasPointerLock() const
+{
+    Document* document = contextDocument();
+    if (!document)
+        return false;
+
+    Page* page = document->page();
+    if (!page)
+        return false;
+
+    auto& controller = page->pointerLockController();
+    return controller.element() && !controller.lockPending();
+}
+#endif
+
 
 } // namespace WebCore

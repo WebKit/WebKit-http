@@ -130,9 +130,9 @@ static uint64_t nameHashForShader(const char* name, size_t length)
     return result;
 }
 
-PassRefPtr<GraphicsContext3D> GraphicsContext3D::createForCurrentGLContext()
+RefPtr<GraphicsContext3D> GraphicsContext3D::createForCurrentGLContext()
 {
-    auto context = adoptRef(*new GraphicsContext3D(Attributes(), 0, GraphicsContext3D::RenderToCurrentGLContext));
+    auto context = adoptRef(*new GraphicsContext3D({ }, 0, GraphicsContext3D::RenderToCurrentGLContext));
     if (!context->m_private)
         return nullptr;
     return WTFMove(context);
@@ -195,12 +195,12 @@ bool GraphicsContext3D::paintCompositedResultsToCanvas(ImageBuffer*)
     return false;
 }
 
-PassRefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData()
+RefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData()
 {
     // Reading premultiplied alpha would involve unpremultiplying, which is
     // lossy.
     if (m_attrs.premultipliedAlpha)
-        return 0;
+        return nullptr;
 
     auto imageData = ImageData::create(IntSize(m_currentWidth, m_currentHeight));
     unsigned char* pixels = imageData->data()->data();
@@ -212,7 +212,7 @@ PassRefPtr<ImageData> GraphicsContext3D::paintRenderingResultsToImageData()
     for (int i = 0; i < totalBytes; i += 4)
         std::swap(pixels[i], pixels[i + 2]);
 
-    return WTFMove(imageData);
+    return imageData;
 }
 
 void GraphicsContext3D::prepareTexture()
@@ -1007,7 +1007,7 @@ int GraphicsContext3D::getAttribLocation(Platform3DObject program, const String&
     return ::glGetAttribLocation(program, mappedName.utf8().data());
 }
 
-GraphicsContext3D::Attributes GraphicsContext3D::getContextAttributes()
+GraphicsContext3DAttributes GraphicsContext3D::getContextAttributes()
 {
     return m_attrs;
 }

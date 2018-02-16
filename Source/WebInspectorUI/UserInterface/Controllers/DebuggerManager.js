@@ -671,7 +671,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         InspectorFrontendHost.beep();
     }
 
-    scriptDidParse(target, scriptIdentifier, url, startLine, startColumn, endLine, endColumn, isContentScript, sourceURL, sourceMapURL)
+    scriptDidParse(target, scriptIdentifier, url, startLine, startColumn, endLine, endColumn, isModule, isContentScript, sourceURL, sourceMapURL)
     {
         // Called from WebInspector.DebuggerObserver.
 
@@ -690,14 +690,16 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         if (!WebInspector.isDebugUIEnabled() && isWebKitInternalScript(sourceURL))
             return;
 
-        let script = new WebInspector.Script(target, scriptIdentifier, new WebInspector.TextRange(startLine, startColumn, endLine, endColumn), url, isContentScript, sourceURL, sourceMapURL);
+        let range = new WebInspector.TextRange(startLine, startColumn, endLine, endColumn);
+        let sourceType = isModule ? WebInspector.Script.SourceType.Module : WebInspector.Script.SourceType.Program;
+        let script = new WebInspector.Script(target, scriptIdentifier, range, url, sourceType, isContentScript, sourceURL, sourceMapURL);
 
         targetData.addScript(script);
 
         if (target !== WebInspector.mainTarget && !target.mainResource) {
             // FIXME: <https://webkit.org/b/164427> Web Inspector: WorkerTarget's mainResource should be a Resource not a Script
             // We make the main resource of a WorkerTarget the Script instead of the Resource
-            // because the frontend may not be informed of the Resource. We should gaurantee
+            // because the frontend may not be informed of the Resource. We should guarantee
             // the frontend is informed of the Resource.
             if (script.url === target.name) {
                 target.mainResource = script;
@@ -821,6 +823,46 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         }
     }
 
+    _debuggerBreakpointOptions(breakpoint)
+    {
+        const templatePlaceholderRegex = /\$\{.*?\}/;
+
+        let options = breakpoint.options;
+        let invalidActions = [];
+
+        for (let action of options.actions) {
+            if (action.type !== WebInspector.BreakpointAction.Type.Log)
+                continue;
+
+            if (!templatePlaceholderRegex.test(action.data))
+                continue;
+
+            let lexer = new WebInspector.BreakpointLogMessageLexer;
+            let tokens = lexer.tokenize(action.data);
+            if (!tokens) {
+                invalidActions.push(action);
+                continue;
+            }
+
+            let templateLiteral = tokens.reduce((text, token) => {
+                if (token.type === WebInspector.BreakpointLogMessageLexer.TokenType.PlainText)
+                    return text + token.data.escapeCharacters("`\\");
+                if (token.type === WebInspector.BreakpointLogMessageLexer.TokenType.Expression)
+                    return text + "${" + token.data + "}";
+                return text;
+            }, "");
+
+            action.data = "console.log(`" + templateLiteral + "`)";
+            action.type = WebInspector.BreakpointAction.Type.Evaluate;
+        }
+
+        const onlyFirst = true;
+        for (let invalidAction of invalidActions)
+            options.actions.remove(invalidAction, onlyFirst);
+
+        return options;
+    }
+
     _setBreakpoint(breakpoint, specificTarget, callback)
     {
         console.assert(!breakpoint.disabled);
@@ -865,7 +907,7 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
         // COMPATIBILITY (iOS 7): Debugger.BreakpointActionType did not exist yet.
         let options;
         if (DebuggerAgent.BreakpointActionType) {
-            options = breakpoint.options;
+            options = this._debuggerBreakpointOptions(breakpoint);
             if (options.actions.length) {
                 for (let action of options.actions)
                     action.type = this._debuggerBreakpointActionType(action.type);
@@ -917,11 +959,12 @@ WebInspector.DebuggerManager = class DebuggerManager extends WebInspector.Object
                 callback();
         }
 
-        if (breakpoint.target)
-            breakpoint.target.DebuggerAgent.removeBreakpoint(breakpoint.identifier, didRemoveBreakpoint.bind(this));
-        else {
+        if (breakpoint.contentIdentifier) {
             for (let target of WebInspector.targets)
                 target.DebuggerAgent.removeBreakpoint(breakpoint.identifier, didRemoveBreakpoint.bind(this));
+        } else if (breakpoint.scriptIdentifier) {
+            let target = breakpoint.target;
+            target.DebuggerAgent.removeBreakpoint(breakpoint.identifier, didRemoveBreakpoint.bind(this));
         }
     }
 

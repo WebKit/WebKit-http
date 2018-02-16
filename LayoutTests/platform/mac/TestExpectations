@@ -278,9 +278,20 @@ fast/events/platform-wheelevent-paging-y-in-non-scrolling-page.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-div.html
 fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 
-# Pointer Lock is not implemented.
-pointer-lock/
+# Pointer Lock can only check some of the API at the moment.
+pointer-lock/bug90391-move-then-window-open-crash.html
+pointer-lock/lock-already-locked.html
+pointer-lock/lock-element-not-in-dom.html
+pointer-lock/locked-element-iframe-removed-from-dom.html
+pointer-lock/locked-element-removed-from-dom.html
+pointer-lock/mouse-event-delivery.html
+pointer-lock/pointerlockchange-event-on-lock-lost.html
+pointer-lock/pointerlockchange-pointerlockerror-events.html
+pointer-lock/pointerlockelement-null-when-pending.html
+pointer-lock/lock-lost-on-navigation.html [ Pass ]
 http/tests/pointer-lock/
+
+pointer-lock/lock-lost-on-alert.html [ Pass ]
 
 webkit.org/b/82763 fast/forms/textarea-placeholder-set-attribute.html
 
@@ -619,8 +630,6 @@ webkit.org/b/105777 editing/mac/spelling/autocorrection-in-textarea.html [ Failu
 
 # Enable when support drag-and-drop autoscrolling
 webkit.org/b/39725 fast/events/drag-and-drop-autoscroll.html [ Skip ]
-
-webkit.org/b/110186 inspector/page/javascriptDialogEvents.html [ Skip ]
 
 # Need support for ResourceHandle::didChangePriority and DRT support
 webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Failure ]
@@ -1177,6 +1186,7 @@ webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node
 webkit.org/b/148636 inspector/css/pseudo-element-matches.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
+webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
@@ -1452,3 +1462,6 @@ webkit.org/b/164033 http/tests/inspector/network/xhr-request-data-encoded-correc
 webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry.htm [ Pass Failure ]
 webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-rename-abort.html [ Pass Failure ]
 webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-rename-errors.html [ Pass Failure ]
+
+webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
+webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]

@@ -43,7 +43,6 @@
 #include "StyleColor.h"
 #include "StylePropertyShorthand.h"
 #include "StyleSheetContents.h"
-#include "WebKitCSSTransformValue.h"
 
 namespace WebCore {
 
@@ -101,14 +100,14 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
 }
 
 template <typename CharacterType>
-static inline bool parseSimpleLength(const CharacterType* characters, unsigned length, CSSPrimitiveValue::UnitTypes& unit, double& number)
+static inline bool parseSimpleLength(const CharacterType* characters, unsigned length, CSSPrimitiveValue::UnitType& unit, double& number)
 {
     if (length > 2 && (characters[length - 2] | 0x20) == 'p' && (characters[length - 1] | 0x20) == 'x') {
         length -= 2;
-        unit = CSSPrimitiveValue::UnitTypes::CSS_PX;
+        unit = CSSPrimitiveValue::UnitType::CSS_PX;
     } else if (length > 1 && characters[length - 1] == '%') {
         length -= 1;
-        unit = CSSPrimitiveValue::UnitTypes::CSS_PERCENTAGE;
+        unit = CSSPrimitiveValue::UnitType::CSS_PERCENTAGE;
     }
 
     // We rely on charactersToDouble for validation as well. The function
@@ -132,7 +131,7 @@ static RefPtr<CSSValue> parseSimpleLengthValue(CSSPropertyID propertyId, const S
 
     unsigned length = string.length();
     double number;
-    CSSPrimitiveValue::UnitTypes unit = CSSPrimitiveValue::UnitTypes::CSS_NUMBER;
+    CSSPrimitiveValue::UnitType unit = CSSPrimitiveValue::UnitType::CSS_NUMBER;
 
     if (string.is8Bit()) {
         if (!parseSimpleLength(string.characters8(), length, unit, number))
@@ -142,10 +141,10 @@ static RefPtr<CSSValue> parseSimpleLengthValue(CSSPropertyID propertyId, const S
             return nullptr;
     }
 
-    if (unit == CSSPrimitiveValue::UnitTypes::CSS_NUMBER) {
+    if (unit == CSSPrimitiveValue::UnitType::CSS_NUMBER) {
         if (number && cssParserMode != SVGAttributeMode)
             return nullptr;
-        unit = CSSPrimitiveValue::UnitTypes::CSS_PX;
+        unit = CSSPrimitiveValue::UnitType::CSS_PX;
     }
 
     if (number < 0 && !acceptsNegativeNumbers)
@@ -256,7 +255,7 @@ static int parseDouble(const CharacterType* string, const CharacterType* end, co
 }
 
 template <typename CharacterType>
-static bool parseColorIntOrPercentage(const CharacterType*& string, const CharacterType* end, const char terminator, CSSPrimitiveValue::UnitTypes& expect, int& value)
+static bool parseColorIntOrPercentage(const CharacterType*& string, const CharacterType* end, const char terminator, CSSPrimitiveValue::UnitType& expect, int& value)
 {
     const CharacterType* current = string;
     double localValue = 0;
@@ -284,7 +283,7 @@ static bool parseColorIntOrPercentage(const CharacterType*& string, const Charac
     if (current == end)
         return false;
 
-    if (expect == CSSPrimitiveValue::UnitTypes::CSS_NUMBER && (*current == '.' || *current == '%'))
+    if (expect == CSSPrimitiveValue::UnitType::CSS_NUMBER && (*current == '.' || *current == '%'))
         return false;
 
     if (*current == '.') {
@@ -300,18 +299,18 @@ static bool parseColorIntOrPercentage(const CharacterType*& string, const Charac
         localValue += percentage;
     }
 
-    if (expect == CSSPrimitiveValue::UnitTypes::CSS_PERCENTAGE && *current != '%')
+    if (expect == CSSPrimitiveValue::UnitType::CSS_PERCENTAGE && *current != '%')
         return false;
 
     if (*current == '%') {
-        expect = CSSPrimitiveValue::UnitTypes::CSS_PERCENTAGE;
+        expect = CSSPrimitiveValue::UnitType::CSS_PERCENTAGE;
         localValue = localValue / 100.0 * 256.0;
         // Clamp values at 255 for percentages over 100%
         if (localValue > 255)
             localValue = 255;
         current++;
     } else {
-        expect = CSSPrimitiveValue::UnitTypes::CSS_NUMBER;
+        expect = CSSPrimitiveValue::UnitType::CSS_NUMBER;
     }
 
     while (current != end && isHTMLSpace<CharacterType>(*current))
@@ -416,7 +415,7 @@ static inline bool mightBeRGB(const CharacterType* characters, unsigned length)
 template <typename CharacterType>
 static Color fastParseColorInternal(const CharacterType* characters, unsigned length, bool quirksMode)
 {
-    CSSPrimitiveValue::UnitTypes expect = CSSPrimitiveValue::UnitTypes::CSS_UNKNOWN;
+    CSSPrimitiveValue::UnitType expect = CSSPrimitiveValue::UnitType::CSS_UNKNOWN;
 
     if (length >= 4 && characters[0] == '#') {
         RGBA32 rgb;
@@ -692,6 +691,10 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueHorizontal || valueID == CSSValueVertical || valueID == CSSValueInlineAxis || valueID == CSSValueBlockAxis;
     case CSSPropertyWebkitBoxPack:
         return valueID == CSSValueStart || valueID == CSSValueEnd || valueID == CSSValueCenter || valueID == CSSValueJustify;
+#if ENABLE(CURSOR_VISIBILITY)
+    case CSSPropertyWebkitCursorVisibility:
+        return valueID == CSSValueAuto || valueID == CSSValueAutoHide;
+#endif
     case CSSPropertyColumnFill:
         return valueID == CSSValueAuto || valueID == CSSValueBalance;
     case CSSPropertyWebkitColumnAxis:
@@ -1060,20 +1063,22 @@ static RefPtr<CSSValue> parseKeywordValue(CSSPropertyID propertyId, const String
 }
 
 template <typename CharType>
-static bool parseTransformTranslateArguments(CharType*& pos, CharType* end, unsigned expectedCount, WebKitCSSTransformValue* transformValue)
+static bool parseTransformTranslateArguments(CharType*& pos, CharType* end, unsigned expectedCount, CSSFunctionValue* transformValue)
 {
     while (expectedCount) {
         size_t delimiter = WTF::find(pos, end - pos, expectedCount == 1 ? ')' : ',');
         if (delimiter == notFound)
             return false;
         unsigned argumentLength = static_cast<unsigned>(delimiter);
-        CSSPrimitiveValue::UnitTypes unit = CSSPrimitiveValue::UnitTypes::CSS_NUMBER;
+        CSSPrimitiveValue::UnitType unit = CSSPrimitiveValue::UnitType::CSS_NUMBER;
         double number;
         if (!parseSimpleLength(pos, argumentLength, unit, number))
             return false;
-        if (unit != CSSPrimitiveValue::UnitTypes::CSS_PX && (number || unit != CSSPrimitiveValue::UnitTypes::CSS_NUMBER))
+        if (!number && unit == CSSPrimitiveValue::CSS_NUMBER)
+            unit = CSSPrimitiveValue::UnitType::CSS_PX;
+        if (unit == CSSPrimitiveValue::UnitType::CSS_NUMBER || (unit == CSSPrimitiveValue::UnitType::CSS_PERCENTAGE && (transformValue->name() == CSSValueTranslatez || (transformValue->name() == CSSValueTranslate3d && expectedCount == 1))))
             return false;
-        transformValue->append(CSSPrimitiveValue::create(number, CSSPrimitiveValue::UnitTypes::CSS_PX));
+        transformValue->append(CSSPrimitiveValue::create(number, unit));
         pos += argumentLength + 1;
         --expectedCount;
     }
@@ -1081,7 +1086,7 @@ static bool parseTransformTranslateArguments(CharType*& pos, CharType* end, unsi
 }
 
 template <typename CharType>
-static bool parseTransformNumberArguments(CharType*& pos, CharType* end, unsigned expectedCount, WebKitCSSTransformValue* transformValue)
+static bool parseTransformNumberArguments(CharType*& pos, CharType* end, unsigned expectedCount, CSSFunctionValue* transformValue)
 {
     while (expectedCount) {
         size_t delimiter = WTF::find(pos, end - pos, expectedCount == 1 ? ')' : ',');
@@ -1092,7 +1097,7 @@ static bool parseTransformNumberArguments(CharType*& pos, CharType* end, unsigne
         double number = charactersToDouble(pos, argumentLength, &ok);
         if (!ok)
             return false;
-        transformValue->append(CSSPrimitiveValue::create(number, CSSPrimitiveValue::UnitTypes::CSS_NUMBER));
+        transformValue->append(CSSPrimitiveValue::create(number, CSSPrimitiveValue::UnitType::CSS_NUMBER));
         pos += argumentLength + 1;
         --expectedCount;
     }
@@ -1101,9 +1106,8 @@ static bool parseTransformNumberArguments(CharType*& pos, CharType* end, unsigne
 
 static const int kShortestValidTransformStringLength = 12;
 
-// FIXME-NEWPARSER: Should use CSSFunctionValue and ditch WebkitCSSTransformValue.
 template <typename CharType>
-static RefPtr<WebKitCSSTransformValue> parseSimpleTransformValue(CharType*& pos, CharType* end)
+static RefPtr<CSSFunctionValue> parseSimpleTransformValue(CharType*& pos, CharType* end)
 {
     if (end - pos < kShortestValidTransformStringLength)
         return nullptr;
@@ -1119,29 +1123,29 @@ static RefPtr<WebKitCSSTransformValue> parseSimpleTransformValue(CharType*& pos,
         && toASCIILower(pos[8]) == 'e';
 
     if (isTranslate) {
-        WebKitCSSTransformValue::TransformOperationType transformType;
+        CSSValueID transformType;
         unsigned expectedArgumentCount = 1;
         unsigned argumentStart = 11;
         CharType c9 = toASCIILower(pos[9]);
         if (c9 == 'x' && pos[10] == '(') {
-            transformType = WebKitCSSTransformValue::TranslateXTransformOperation;
+            transformType = CSSValueTranslatex;
         } else if (c9 == 'y' && pos[10] == '(') {
-            transformType = WebKitCSSTransformValue::TranslateYTransformOperation;
+            transformType = CSSValueTranslatey;
         } else if (c9 == 'z' && pos[10] == '(') {
-            transformType = WebKitCSSTransformValue::TranslateZTransformOperation;
+            transformType = CSSValueTranslatez;
         } else if (c9 == '(') {
-            transformType = WebKitCSSTransformValue::TranslateTransformOperation;
+            transformType = CSSValueTranslate;
             expectedArgumentCount = 2;
             argumentStart = 10;
         } else if (c9 == '3' && toASCIILower(pos[10]) == 'd' && pos[11] == '(') {
-            transformType = WebKitCSSTransformValue::Translate3DTransformOperation;
+            transformType = CSSValueTranslate3d;
             expectedArgumentCount = 3;
             argumentStart = 12;
         } else {
             return nullptr;
         }
         pos += argumentStart;
-        RefPtr<WebKitCSSTransformValue> transformValue = WebKitCSSTransformValue::create(transformType);
+        RefPtr<CSSFunctionValue> transformValue = CSSFunctionValue::create(transformType);
         if (!parseTransformTranslateArguments(pos, end, expectedArgumentCount, transformValue.get()))
             return nullptr;
         return transformValue;
@@ -1159,7 +1163,7 @@ static RefPtr<WebKitCSSTransformValue> parseSimpleTransformValue(CharType*& pos,
 
     if (isMatrix3d) {
         pos += 9;
-        RefPtr<WebKitCSSTransformValue> transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::Matrix3DTransformOperation);
+        RefPtr<CSSFunctionValue> transformValue = CSSFunctionValue::create(CSSValueMatrix3d);
         if (!parseTransformNumberArguments(pos, end, 16, transformValue.get()))
             return nullptr;
         return transformValue;
@@ -1176,7 +1180,7 @@ static RefPtr<WebKitCSSTransformValue> parseSimpleTransformValue(CharType*& pos,
 
     if (isScale3d) {
         pos += 8;
-        RefPtr<WebKitCSSTransformValue> transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::Scale3DTransformOperation);
+        RefPtr<CSSFunctionValue> transformValue = CSSFunctionValue::create(CSSValueScale3d);
         if (!parseTransformNumberArguments(pos, end, 3, transformValue.get()))
             return nullptr;
         return transformValue;
@@ -1245,7 +1249,7 @@ static RefPtr<CSSValueList> parseSimpleTransformList(const CharType* chars, unsi
             ++pos;
         if (pos >= end)
             break;
-        RefPtr<WebKitCSSTransformValue> transformValue = parseSimpleTransformValue(pos, end);
+        RefPtr<CSSFunctionValue> transformValue = parseSimpleTransformValue(pos, end);
         if (!transformValue)
             return nullptr;
         if (!transformList)

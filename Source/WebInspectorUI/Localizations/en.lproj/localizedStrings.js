@@ -2,6 +2,7 @@ var localizedStrings = new Object;
 
 localizedStrings[" (Prototype)"] = " (Prototype)";
 localizedStrings[" (line %s)"] = " (line %s)";
+localizedStrings["${expr} = expression"] = "${expr} = expression";
 localizedStrings["%.0f B"] = "%.0f B";
 localizedStrings["%.0fms"] = "%.0fms";
 localizedStrings["%.1f KB"] = "%.1f KB";
@@ -346,6 +347,8 @@ localizedStrings["Fade unexecuted code"] = "Fade unexecuted code";
 localizedStrings["Failed to upgrade"] = "Failed to upgrade";
 localizedStrings["Family"] = "Family";
 localizedStrings["Features"] = "Features";
+localizedStrings["Fetch"] = "Fetch";
+localizedStrings["Fetches"] = "Fetches";
 localizedStrings["File or Resource"] = "File or Resource";
 localizedStrings["Filename"] = "Filename";
 localizedStrings["Fill"] = "Fill";

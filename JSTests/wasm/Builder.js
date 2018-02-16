@@ -102,6 +102,24 @@ const _importFunctionContinuation = (builder, section, nextBuilder) => {
     };
 };
 
+const _importMemoryContinuation = (builder, section, nextBuilder) => {
+    return (module, field, {initial, maximum}) => {
+        assert.isString(module, `Import Memory module should be a string, got "${module}"`);
+        assert.isString(field, `Import Memory field should be a string, got "${field}"`);
+        section.data.push({module, field, kind: "Memory", memoryDescription: {initial, maximum}});
+        return nextBuilder;
+    };
+};
+
+const _importTableContinuation = (builder, section, nextBuilder) => {
+    return (module, field, {initial, maximum, element}) => {
+        assert.isString(module, `Import Table module should be a string, got "${module}"`);
+        assert.isString(field, `Import Table field should be a string, got "${field}"`);
+        section.data.push({module, field, kind: "Table", tableDescription: {initial, maximum, element}});
+        return nextBuilder;
+    };
+};
+
 const _exportFunctionContinuation = (builder, section, nextBuilder) => {
     return (field, index, type) => {
         assert.isString(field, `Export function field should be a string, got "${field}"`);
@@ -110,6 +128,7 @@ const _exportFunctionContinuation = (builder, section, nextBuilder) => {
             // Exports can leave the type unspecified, letting the Code builder patch them up later.
             type = _maybeRegisterType(builder, type);
         }
+
         // We can't check much about "index" here because the Code section succeeds the Export section. More work is done at Code().End() time.
         switch (typeof(index)) {
         case "string": break; // Assume it's a function name which will be revealed in the Code section.
@@ -125,6 +144,7 @@ const _exportFunctionContinuation = (builder, section, nextBuilder) => {
             break;
         default: throw new Error(`Export section's index must be a string or a number, got ${index}`);
         }
+
         const correspondingImport = builder._getFunctionFromIndexSpace(index);
         const importSection = builder._getSection("Import");
         if (typeof(index) === "object") {
@@ -225,6 +245,7 @@ const _checkImms = (op, imms, expectedImms, ret) => {
             break;
         case "target_count": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         case "target_table": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "reserved": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         default: throw new Error(`Implementation problem: unhandled immediate "${expect.name}" on "${op}"`);
         }
     }
@@ -287,12 +308,31 @@ const _createFunction = (section, builder, previousBuilder) => {
 
         if (typeof(signature) === "undefined")
             signature = { params: [] };
-        assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
-        const [params, ret] = _normalizeFunctionSignature(signature.params, signature.ret);
-        signature = { params: params, ret: ret };
+
+        let type;
+        let params;
+        if (typeof signature === "object") {
+            assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
+            let ret;
+            ([params, ret] = _normalizeFunctionSignature(signature.params, signature.ret));
+            signature = {params, ret};
+            type = _maybeRegisterType(builder, signature);
+        } else {
+            assert.truthy(typeof signature === "number");
+            const typeSection = builder._getSection("Type");
+            assert.truthy(!!typeSection);
+            // FIXME: we should allow indices that exceed this to be able to
+            // test JSCs validator is correct. https://bugs.webkit.org/show_bug.cgi?id=165786
+            assert.truthy(signature < typeSection.data.length);
+            type = signature;
+            signature = typeSection.data[signature];
+            assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
+            params = signature.params;
+        }
+
         const func = {
             name: functionName,
-            type: _maybeRegisterType(builder, signature),
+            type,
             signature: signature,
             locals: params.concat(locals), // Parameters are the first locals.
             parameterCount: params.length,
@@ -367,11 +407,11 @@ export default class Builder {
                     const s = this._addSection(section);
                     const importBuilder = {
                         End: () => this,
-                        Table: () => { throw new Error(`Unimplemented: import table`); },
-                        Memory: () => { throw new Error(`Unimplemented: import memory`); },
                         Global: () => { throw new Error(`Unimplemented: import global`); },
                     };
                     importBuilder.Function = _importFunctionContinuation(this, s, importBuilder);
+                    importBuilder.Memory = _importMemoryContinuation(this, s, importBuilder);
+                    importBuilder.Table = _importTableContinuation(this, s, importBuilder);
                     return importBuilder;
                 };
                 break;
@@ -379,30 +419,39 @@ export default class Builder {
             case "Function":
                 this[section] = function() {
                     const s = this._addSection(section);
-                    const exportBuilder = {
+                    const functionBuilder = {
                         End: () => this
                         // FIXME: add ability to add this with whatever.
                     };
-                    return exportBuilder;
+                    return functionBuilder;
                 };
                 break;
 
             case "Table":
-                // FIXME Implement table https://bugs.webkit.org/show_bug.cgi?id=164135
-                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const tableBuilder = {
+                        End: () => this,
+                        Table: ({initial, maximum, element}) => {
+                            s.data.push({tableDescription: {initial, maximum, element}});
+                            return tableBuilder;
+                        }
+                    };
+                    return tableBuilder;
+                };
                 break;
 
             case "Memory":
                 this[section] = function() {
                     const s = this._addSection(section);
-                    const exportBuilder = {
+                    const memoryBuilder = {
                         End: () => this,
                         InitialMaxPages: (initial, max) => {
                             s.data.push({ initial, max });
-                            return exportBuilder;
+                            return memoryBuilder;
                         }
                     };
-                    return exportBuilder;
+                    return memoryBuilder;
                 };
                 break;
 
@@ -426,13 +475,31 @@ export default class Builder {
                 break;
 
             case "Start":
-                // FIXME implement start https://bugs.webkit.org/show_bug.cgi?id=161709
-                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                this[section] = function(functionIndexOrName) {
+                    const s = this._addSection(section);
+                    const startBuilder = {
+                        End: () => this,
+                    };
+                    if (typeof(functionIndexOrName) !== "number" && typeof(functionIndexOrName) !== "string")
+                        throw new Error(`Start section's function index  must either be a number or a string`);
+                    s.data.push(functionIndexOrName);
+                    return startBuilder;
+                };
                 break;
 
             case "Element":
-                // FIXME implement element https://bugs.webkit.org/show_bug.cgi?id=161709
-                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const elementBuilder = {
+                        End: () => this,
+                        Element: ({tableIndex = 0, offset, functionIndices}) => {
+                            s.data.push({tableIndex, offset, functionIndices});
+                            return elementBuilder;
+                        }
+                    };
+
+                    return elementBuilder;
+                };
                 break;
 
             case "Code":
@@ -445,6 +512,7 @@ export default class Builder {
                             const typeSection = builder._getSection("Type");
                             const importSection = builder._getSection("Import");
                             const exportSection = builder._getSection("Export");
+                            const startSection = builder._getSection("Start");
                             const codeSection = s;
                             if (exportSection) {
                                 for (const e of exportSection.data) {
@@ -465,10 +533,32 @@ export default class Builder {
                                     }
                                     if (typeof(e.type) === "undefined") {
                                         // This must be a function export from the Code section (re-exports were handled earlier).
-                                        const functionIndexSpaceOffset = importSection ? importSection.data.length : 0;
+                                        let functionIndexSpaceOffset = 0;
+                                        if (importSection) {
+                                            for (const {kind} of importSection.data) {
+                                                if (kind === "Function")
+                                                    ++functionIndexSpaceOffset;
+                                            }
+                                        }
                                         const functionIndex = e.index - functionIndexSpaceOffset;
                                         e.type = codeSection.data[functionIndex].type;
                                     }
+                                }
+                            }
+                            if (startSection) {
+                                const start = startSection.data[0];
+                                let mapped = builder._getFunctionFromIndexSpace(start);
+                                if (!builder._checked) {
+                                    if (typeof(mapped) === "undefined")
+                                        mapped = start; // In unchecked mode, simply use what was provided if it's nonsensical.
+                                    assert.isA(start, "number"); // It can't be too nonsensical, otherwise we can't create a binary.
+                                    startSection.data[0] = start;
+                                } else {
+                                    if (typeof(mapped) === "undefined")
+                                        throw new Error(`Start section refers to non-existant function '${start}'`);
+                                    if (typeof(start) === "string" || typeof(start) === "object")
+                                        startSection.data[0] = mapped;
+                                    // FIXME in checked mode, test that the type is acceptable for start function. We probably want _registerFunctionToIndexSpace to also register types per index. https://bugs.webkit.org/show_bug.cgi?id=165658
                                 }
                             }
                             return builder;
@@ -481,8 +571,38 @@ export default class Builder {
                 break;
 
             case "Data":
-                // FIXME implement data https://bugs.webkit.org/show_bug.cgi?id=161709
-                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const dataBuilder = {
+                        End: () => this,
+                        Segment: data => {
+                            assert.isArray(data);
+                            for (const datum of data) {
+                                assert.isNumber(datum);
+                                assert.ge(datum, 0);
+                                assert.le(datum, 0xff);
+                            }
+                            s.data.push({ data: data, index: 0, offset: 0 });
+                            let thisSegment = s.data[s.data.length - 1];
+                            const segmentBuilder = {
+                                End: () => dataBuilder,
+                                Index: index => {
+                                    assert.eq(index, 0); // Linear memory index must be zero in MVP.
+                                    thisSegment.index = index;
+                                    return segmentBuilder;
+                                },
+                                Offset: offset => {
+                                    // FIXME allow complex init_expr here. https://bugs.webkit.org/show_bug.cgi?id=165700
+                                    assert.isNumber(offset);
+                                    thisSegment.offset = offset;
+                                    return segmentBuilder;
+                                },
+                            };
+                            return segmentBuilder;
+                        },
+                    };
+                    return dataBuilder;
+                };
                 break;
 
             default:

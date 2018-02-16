@@ -55,15 +55,19 @@
 
 namespace JSC {
 
-static bool allowRestrictedOptions()
-{
+namespace {
 #ifdef NDEBUG
-    return false;
+bool restrictedOptionsEnabled = false;
 #else
-    return true;
+bool restrictedOptionsEnabled = true;
 #endif
 }
 
+void Options::enableRestrictedOptions(bool enableOrNot)
+{
+    restrictedOptionsEnabled = enableOrNot;
+}
+    
 static bool parse(const char* string, bool& value)
 {
     if (!strcasecmp(string, "true") || !strcasecmp(string, "yes") || !strcmp(string, "1")) {
@@ -128,7 +132,7 @@ static bool parse(const char* string, GCLogging::Level& value)
 bool Options::isAvailable(Options::ID id, Options::Availability availability)
 {
     if (availability == Availability::Restricted)
-        return allowRestrictedOptions();
+        return restrictedOptionsEnabled;
     ASSERT(availability == Availability::Configurable);
     
     UNUSED_PARAM(id);
@@ -328,6 +332,10 @@ static void recomputeDependentOptions()
     Options::useFTLJIT() = false;
 #endif
     
+#if !CPU(X86_64)
+    Options::useConcurrentGC() = false;
+#endif
+    
 #if (OS(WINDOWS) || OS(HAIKU)) && CPU(X86) 
     // Disable JIT on Windows if SSE2 is not present 
     if (!MacroAssemblerX86::supportsFloatingPoint())
@@ -357,6 +365,9 @@ static void recomputeDependentOptions()
         || Options::verboseCFA()
         || Options::verboseFTLFailure())
         Options::alwaysComputeHash() = true;
+    
+    if (!Options::useConcurrentGC())
+        Options::collectContinuously() = false;
 
     if (Option(Options::jitPolicyScaleID).isOverridden())
         scaleJITPolicy();

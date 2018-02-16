@@ -114,6 +114,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/geolocation/PositionCallback.idl \
     $(WebCore)/Modules/geolocation/PositionError.idl \
     $(WebCore)/Modules/geolocation/PositionErrorCallback.idl \
+    $(WebCore)/Modules/geolocation/PositionOptions.idl \
     $(WebCore)/Modules/indexeddb/DOMWindowIndexedDatabase.idl \
     $(WebCore)/Modules/indexeddb/IDBCursor.idl \
     $(WebCore)/Modules/indexeddb/IDBCursorWithValue.idl \
@@ -269,6 +270,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/CSSKeyframeRule.idl \
     $(WebCore)/css/CSSKeyframesRule.idl \
     $(WebCore)/css/CSSMediaRule.idl \
+	$(WebCore)/css/CSSNamespaceRule.idl \
     $(WebCore)/css/CSSPageRule.idl \
     $(WebCore)/css/CSSPrimitiveValue.idl \
     $(WebCore)/css/CSSRule.idl \
@@ -294,7 +296,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/StyleSheetList.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
     $(WebCore)/css/WebKitCSSRegionRule.idl \
-    $(WebCore)/css/WebKitCSSTransformValue.idl \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
@@ -613,7 +614,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/svg/SVGAnimationElement.idl \
     $(WebCore)/svg/SVGCircleElement.idl \
     $(WebCore)/svg/SVGClipPathElement.idl \
-    $(WebCore)/svg/SVGColor.idl \
     $(WebCore)/svg/SVGComponentTransferFunctionElement.idl \
     $(WebCore)/svg/SVGCursorElement.idl \
     $(WebCore)/svg/SVGDefsElement.idl \
@@ -677,7 +677,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/svg/SVGMissingGlyphElement.idl \
     $(WebCore)/svg/SVGNumber.idl \
     $(WebCore)/svg/SVGNumberList.idl \
-    $(WebCore)/svg/SVGPaint.idl \
     $(WebCore)/svg/SVGPathElement.idl \
     $(WebCore)/svg/SVGPathSeg.idl \
     $(WebCore)/svg/SVGPathSegArcAbs.idl \
@@ -865,7 +864,6 @@ all : \
     $(JS_DOM_HEADERS) \
     $(WEB_DOM_HEADERS) \
     \
-    CSSGrammar.cpp \
     CSSPropertyNames.cpp \
     CSSPropertyNames.h \
     CSSValueKeywords.cpp \
@@ -1030,12 +1028,6 @@ BISON=$(shell xcrun -find bison)
 else
 BISON=bison
 endif
-
-# --------
-
-# CSS grammar
-CSSGrammar.cpp : css/CSSGrammar.y.in $(PLATFORM_FEATURE_DEFINES)
-	$(PERL) $(WebCore)/css/makegrammar.pl --extraDefines "$(FEATURE_DEFINES)" --outputDir . --bison "$(BISON)" --symbolsPrefix cssyy $<
 
 # --------
 

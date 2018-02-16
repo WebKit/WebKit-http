@@ -1,3 +1,520 @@
+2016-12-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209795.
+        https://bugs.webkit.org/show_bug.cgi?id=165853
+
+        rolled out the wrong revision (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "MarkedBlock::marksConveyLivenessDuringMarking should take
+        into account collection scope"
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+        http://trac.webkit.org/changeset/209795
+
+2016-12-14  Enrique Ocaña González  <eocanha@igalia.com>
+
+        REGRESSION(r207879-207891): [GStreamer] Introduced many layout test failures and crashes, bots exiting early
+        https://bugs.webkit.org/show_bug.cgi?id=164022
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * wtf/glib/GLibUtilities.h:
+        Added new macros to convert gulong to/from gpointer.
+
+2016-12-14  Gavin Barraclough  <barraclough@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Unreviewed, re-landing this with fix (revert erroneous change to Options).
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::initializeLogFile):
+        (WTF::dataFile):
+        * wtf/DataLog.h:
+        * wtf/LockedPrintStream.cpp: Added.
+        (WTF::LockedPrintStream::LockedPrintStream):
+        (WTF::LockedPrintStream::~LockedPrintStream):
+        (WTF::LockedPrintStream::vprintf):
+        (WTF::LockedPrintStream::flush):
+        (WTF::LockedPrintStream::begin):
+        (WTF::LockedPrintStream::end):
+        * wtf/LockedPrintStream.h: Added.
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+        (WTF::PrintStream::begin):
+        (WTF::PrintStream::end):
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::atomically):
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println):
+        (WTF::PrintStream::printImpl):
+        (WTF::>::unpack):
+        (WTF::FormatImpl::FormatImpl):
+        (WTF::FormatImpl::dump):
+        (WTF::format):
+        (WTF::printInternal):
+        * wtf/RecursiveLockAdapter.h: Added.
+        (WTF::RecursiveLockAdapter::RecursiveLockAdapter):
+        (WTF::RecursiveLockAdapter::lock):
+        (WTF::RecursiveLockAdapter::unlock):
+        (WTF::RecursiveLockAdapter::tryLock):
+        (WTF::RecursiveLockAdapter::isLocked):
+        * wtf/WordLock.cpp:
+        * wtf/WordLock.h:
+
+2016-12-14  Gavin Barraclough  <barraclough@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Unreviewed rollout due to performance regression.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::initializeLogFile):
+        (WTF::dataFile):
+        * wtf/DataLog.h:
+        * wtf/LockedPrintStream.cpp: Removed.
+        * wtf/LockedPrintStream.h: Removed.
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat): Deleted.
+        (WTF::PrintStream::begin): Deleted.
+        (WTF::PrintStream::end): Deleted.
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println):
+        (WTF::PrintStream::atomically): Deleted.
+        (WTF::PrintStream::printImpl): Deleted.
+        (): Deleted.
+        (WTF::>::unpack): Deleted.
+        (WTF::FormatImpl::FormatImpl): Deleted.
+        (WTF::FormatImpl::dump): Deleted.
+        (WTF::format): Deleted.
+        * wtf/RecursiveLockAdapter.h: Removed.
+        * wtf/WordLock.cpp:
+        * wtf/WordLock.h:
+
+2016-12-13  JF Bastien  <jfbastien@apple.com>
+
+        std::expected: fix rvalue forwarding issues
+        https://bugs.webkit.org/show_bug.cgi?id=165812
+
+        Reviewed by Mark Lam.
+
+        * wtf/Expected.h:
+        (WTF::UnexpectedType::UnexpectedType):
+        (WTF::ExpectedDetail::Base::Base):
+        (WTF::Expected::Expected):
+
+2016-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209544.
+
+        Looks like r209489 did not cause the performance regression
+        after all
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r209489."
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209544
+
+2016-12-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209725.
+        https://bugs.webkit.org/show_bug.cgi?id=165811
+
+        "Broke ARMv7 builds" (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r209653): speedometer crashes making virtual slow
+        path tailcalls"
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+        http://trac.webkit.org/changeset/209725
+
+2016-12-13  JF Bastien  <jfbastien@apple.com>
+
+        [WTF] Turn tryMakeString(), makeString() into variadic templates
+        https://bugs.webkit.org/show_bug.cgi?id=147142
+
+        Reviewed by Mark Lam.
+
+        I wrote this patch while improving WebAssembly's error messages,
+        and only found this bug afterwards. My implementation does the
+        bare minimum to make this code variadic without changing
+        behavior. I think it's better to go with this baby step first, and
+        improve the code later.
+
+        Notable, for my WebAssembly patch I also taught the code to handle
+        integers and other types (including WebAssembly types). A
+        follow-up could rely on ADL magic to pretty-format these other
+        types.
+
+        * wtf/text/StringConcatenate.h:
+        (WTF::sumWithOverflow): This unconditionally does the sum for all
+        inputs, which the compiler is more likely to appreciate (because
+        it's the common case) compared to testing for overflow and bailing
+        on each addition
+        (WTF::are8Bit): are: the plural of is!
+        (WTF::makeStringAccumulator): accumulate strings
+        (WTF::tryMakeStringFromAdapters): a small helper which creates the string adapters
+        (WTF::tryMakeString): expose out of WTF, since it's part of this file's used API
+        (WTF::makeString): make it variadic
+
+2016-12-13  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, silence -Wsuggest-attribute for GCC with pragmas
+
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+
+2016-12-12  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653): speedometer crashes making virtual slow path tailcalls
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+
+        Reviewed by Filip Pizlo.
+
+        Rolling back in r209653, r209654, r209663, and r209673.
+
+        * wtf/Platform.h:
+
+2016-12-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209703.
+        https://bugs.webkit.org/show_bug.cgi?id=165749
+
+        Broke Apple builds (Requested by annulen|home on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, use WTF_ATTRIBUTE_PRINTF instead of clang pragma"
+        http://trac.webkit.org/changeset/209703
+
+2016-12-12  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, use WTF_ATTRIBUTE_PRINTF instead of clang pragma
+
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+        * wtf/PrintStream.h:
+
+2016-12-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, guarded clang pragma with COMPILER(CLANG) to fix -Werror
+
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+
+2016-12-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Change to use #pragma once (requested by Darin Adler).
+
+        * wtf/RecursiveLockAdapter.h:
+
+2016-12-11  Filip Pizlo  <fpizlo@apple.com>
+
+        Change to use #pragma once (requested by Darin Adler).
+
+        * wtf/LockedPrintStream.h:
+
+2016-12-10  Filip Pizlo  <fpizlo@apple.com>
+
+        MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope
+        https://bugs.webkit.org/show_bug.cgi?id=165741
+
+        Reviewed by Saam Barati.
+        
+        To find this bug, I needed to seriously beef up our logging infrastructure.
+        
+        It's now the case that:
+        
+            dataLog(...);
+        
+        will print its output atomically. This happens with some careful magic:
+        
+        - dataFile() is now a LockedPrintStream that locks around print().
+        
+        - The lock is a recursive lock via RecursiveLockAdapter<>, so if the dump methods end
+          up calling back into dataLog() then it just works. This is important: say the dump()
+          calls a getter that itself does logging, maybe because it's encountering badness and
+          wants to report it before crashing).
+        
+        - The lock is a WordLock so that ParkingLot and Lock can keep using dataLog() for
+          debugging. We probably won't need to debug WordLock anytime soon - the algorithm is
+          so simple.
+        
+        - LockedPrintStream::print(...) causes the print callbacks of its arguments to run on
+          the underlying PrintStream, so that you don't need to do recursive lock acquisition
+          on each individual argument and whatever printing it does recursively.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::initializeLogFile):
+        (WTF::dataFile):
+        * wtf/DataLog.h:
+        * wtf/LockedPrintStream.cpp: Added.
+        (WTF::LockedPrintStream::LockedPrintStream):
+        (WTF::LockedPrintStream::~LockedPrintStream):
+        (WTF::LockedPrintStream::vprintf):
+        (WTF::LockedPrintStream::flush):
+        (WTF::LockedPrintStream::begin):
+        (WTF::LockedPrintStream::end):
+        * wtf/LockedPrintStream.h: Added.
+        * wtf/PrintStream.cpp:
+        (WTF::PrintStream::printfVariableFormat):
+        (WTF::PrintStream::begin):
+        (WTF::PrintStream::end):
+        * wtf/PrintStream.h:
+        (WTF::PrintStream::atomically):
+        (WTF::PrintStream::print):
+        (WTF::PrintStream::println):
+        (WTF::PrintStream::printImpl):
+        (WTF::>::unpack):
+        (WTF::FormatImpl::FormatImpl):
+        (WTF::FormatImpl::dump):
+        (WTF::format):
+        (WTF::printInternal):
+        * wtf/RecursiveLockAdapter.h: Added.
+        (WTF::RecursiveLockAdapter::RecursiveLockAdapter):
+        (WTF::RecursiveLockAdapter::lock):
+        (WTF::RecursiveLockAdapter::unlock):
+        (WTF::RecursiveLockAdapter::tryLock):
+        (WTF::RecursiveLockAdapter::isLocked):
+        * wtf/WordLock.cpp:
+        * wtf/WordLock.h:
+
+2016-12-11  Darin Adler  <darin@apple.com>
+
+        Use std::vsnprintf instead of vasprintf
+        https://bugs.webkit.org/show_bug.cgi?id=165740
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h: Remove HAVE_VASPRINTF.
+        * wtf/StringExtras.h: Change the vsnprintf workaround to be used only
+        in older versions of Visual Studio, since the problem it works around
+        was resolved in Visual Studio 2015.
+
+2016-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209653, r209654, r209663, and
+        r209673.
+        https://bugs.webkit.org/show_bug.cgi?id=165739
+
+        speedometer crashes (Requested by pizlo on #webkit).
+
+        Reverted changesets:
+
+        "JSVALUE64: Pass arguments in platform argument registers when
+        making JavaScript calls"
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+        http://trac.webkit.org/changeset/209653
+
+        "Unreviewed build fix for 32 bit builds."
+        http://trac.webkit.org/changeset/209654
+
+        "Unreviewed build fix for the CLOOP after r209653"
+        http://trac.webkit.org/changeset/209663
+
+        "REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()"
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+        http://trac.webkit.org/changeset/209673
+
+2016-12-10  Chris Dumez  <cdumez@apple.com>
+
+        Avoid calling shrink() in the Vector destructor
+        https://bugs.webkit.org/show_bug.cgi?id=165675
+
+        Reviewed by Daniel Bates.
+
+        Avoid calling shrink() in the Vector destructor to avoid function call
+        overhead and unnecessarily reseting m_size to 0.
+
+        * wtf/Vector.h:
+        (WTF::Vector::~Vector):
+        (WTF::Vector::asanSetBufferSizeToFullCapacity):
+        (WTF::minCapacity>::asanSetBufferSizeToFullCapacity):
+
+2016-12-09  Michael Saboff  <msaboff@apple.com>
+
+        JSVALUE64: Pass arguments in platform argument registers when making JavaScript calls
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+
+        Reviewed by Filip Pizlo.
+
+        Added a new build option ENABLE_VM_COUNTERS to enable JIT'able counters.
+        The default is for the option to be off.
+
+        * wtf/Platform.h:
+        Added ENABLE_VM_COUNTERS
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Deploy OrdinalNumber in JSC::SourceCode
+        https://bugs.webkit.org/show_bug.cgi?id=165687
+
+        Reviewed by Michael Saboff.
+
+        * wtf/text/OrdinalNumber.h:
+        (WTF::OrdinalNumber::operator>): Added a >.
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        TextPosition and OrdinalNumber should be more like idiomatic numbers
+        https://bugs.webkit.org/show_bug.cgi?id=165678
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/text/TextPosition.h:
+        (WTF::TextPosition::minimumPosition): Deleted. Just use the default
+        constructor. Other numbers use their default constructors to mean zero.
+
+        Any time you need a comment that says "used as a default value", that's
+        a pretty good indicator that it should be the default constructor.
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        Moved OrdinalNumber into its own file
+        https://bugs.webkit.org/show_bug.cgi?id=165663
+
+        Reviewed by Saam Barati.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/text/OrdinalNumber.h: Copied from Source/WTF/wtf/text/TextPosition.h.
+        (WTF::TextPosition::TextPosition): Deleted.
+        (WTF::TextPosition::operator==): Deleted.
+        (WTF::TextPosition::operator!=): Deleted.
+        (WTF::TextPosition::minimumPosition): Deleted.
+        (WTF::TextPosition::belowRangePosition): Deleted.
+        * wtf/text/TextPosition.h:
+        (WTF::OrdinalNumber::fromZeroBasedInt): Deleted.
+        (WTF::OrdinalNumber::fromOneBasedInt): Deleted.
+        (WTF::OrdinalNumber::OrdinalNumber): Deleted.
+        (WTF::OrdinalNumber::zeroBasedInt): Deleted.
+        (WTF::OrdinalNumber::oneBasedInt): Deleted.
+        (WTF::OrdinalNumber::operator==): Deleted.
+        (WTF::OrdinalNumber::operator!=): Deleted.
+        (WTF::OrdinalNumber::first): Deleted.
+        (WTF::OrdinalNumber::beforeFirst): Deleted.
+
+2016-12-08  David Kilzer  <ddkilzer@apple.com>
+
+        Always check the return value of pthread_key_create()
+        <https://webkit.org/b/165274>
+
+        Reviewed by Darin Adler.
+
+        * wtf/ThreadIdentifierDataPthreads.cpp:
+        (WTF::ThreadIdentifierData::initializeOnce): Make the code more
+        readable by assigning a variable to the result of
+        pthread_key_create().  This matches the idiom used elsewhere.
+
+2016-12-08  Keith Miller  <keith_miller@apple.com>
+
+        Add 64-bit signed LEB decode method
+        https://bugs.webkit.org/show_bug.cgi?id=165630
+
+        Reviewed by Ryosuke Niwa.
+
+        Add int64 LEB decode and fix some 64-bit specific issues
+        with the decoder. There is also a fix where we would allow
+        LEBs with canonical length + 1 size that is fixed by this
+        patch.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeInt):
+        (WTF::LEBDecoder::decodeUInt32):
+        (WTF::LEBDecoder::decodeUInt64):
+        (WTF::LEBDecoder::decodeInt32):
+        (WTF::LEBDecoder::decodeInt64):
+
+2016-12-08  Anders Carlsson  <andersca@apple.com>
+
+        Defer sending Mach messages if the queue is full
+        https://bugs.webkit.org/show_bug.cgi?id=165622
+        rdar://problem/29518036
+
+        Reviewed by Brady Eidson.
+
+        Add new SPI.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2016-12-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Concurrent GC should be stable enough to land enabled on X86_64
+        https://bugs.webkit.org/show_bug.cgi?id=164990
+
+        Reviewed by Geoffrey Garen.
+        
+        Adds the ability to say:
+        
+        auto locker = holdLock(any type of lock)
+        
+        Instead of having to say:
+        
+        Locker<LockType> locker(locks of type LockType)
+        
+        I think that we should use "auto locker = holdLock(lock)" as the default way that we acquire
+        locks unless we need to use a special locker type.
+        
+        This also adds the ability to safepoint a lock. Safepointing a lock is basically a super fast
+        way of unlocking it fairly and then immediately relocking it - i.e. letting anyone who is
+        waiting to run without losing steam of there is noone waiting.
+
+        * wtf/Lock.cpp:
+        (WTF::LockBase::safepointSlow):
+        * wtf/Lock.h:
+        (WTF::LockBase::safepoint):
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::safepointFast):
+        (WTF::LockAlgorithm::safepoint):
+        (WTF::LockAlgorithm::safepointSlow):
+        * wtf/Locker.h:
+        (WTF::AbstractLocker::AbstractLocker):
+        (WTF::Locker::tryLock):
+        (WTF::Locker::operator bool):
+        (WTF::Locker::Locker):
+        (WTF::Locker::operator=):
+        (WTF::holdLock):
+        (WTF::tryHoldLock):
+
+2016-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209489.
+
+        Likely caused large regressions on JetStream, Sunspider and
+        Speedometer
+
+        Reverted changeset:
+
+        "Add system trace points for JavaScript VM entry/exit"
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209489
+
+2016-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system trace points for JavaScript VM entry/exit
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+
+        Reviewed by Tim Horton.
+        
+        Add trace points for entry/exit into/out of the JS VM.
+
+        * wtf/SystemTracing.h:
+
 2016-12-06  Alexey Proskuryakov  <ap@apple.com>
 
         Correct SDKROOT values in xcconfig files

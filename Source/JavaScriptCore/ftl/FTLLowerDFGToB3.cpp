@@ -753,6 +753,9 @@ private:
         case ReallocatePropertyStorage:
             compileReallocatePropertyStorage();
             break;
+        case NukeStructureAndSetButterfly:
+            compileNukeStructureAndSetButterfly();
+            break;
         case ToNumber:
             compileToNumber();
             break;
@@ -4752,6 +4755,11 @@ private:
             reallocatePropertyStorage(
                 object, oldStorage, transition->previous, transition->next));
     }
+    
+    void compileNukeStructureAndSetButterfly()
+    {
+        nukeStructureAndSetButterfly(lowStorage(m_node->child2()), lowCell(m_node->child1()));
+    }
 
     void compileToNumber()
     {
@@ -6136,6 +6144,13 @@ private:
                 AllowMacroScratchRegisterUsage allowScratch(jit);
                 CallSiteIndex callSiteIndex = state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
 
+                // Yes, this is really necessary. You could throw an exception in a host call on the
+                // slow path. That'll route us to lookupExceptionHandler(), which unwinds starting
+                // with the call site index of our frame. Bad things happen if it's not set.
+                jit.store32(
+                    CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                    CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+
                 CallFrameShuffleData shuffleData;
                 shuffleData.numLocals = state->jitCode->common.frameRegisterCount;
                 shuffleData.callee = ValueRecovery::inGPR(GPRInfo::regT0, DataFormatJS);
@@ -6158,13 +6173,6 @@ private:
                 CCallHelpers::Call fastCall = jit.nearTailCall();
 
                 slowPath.link(&jit);
-
-                // Yes, this is really necessary. You could throw an exception in a host call on the
-                // slow path. That'll route us to lookupExceptionHandler(), which unwinds starting
-                // with the call site index of our frame. Bad things happen if it's not set.
-                jit.store32(
-                    CCallHelpers::TrustedImm32(callSiteIndex.bits()),
-                    CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
 
                 CallFrameShuffler slowPathShuffler(jit, shuffleData);
                 slowPathShuffler.setCalleeJSValueRegs(JSValueRegs(GPRInfo::regT0));
@@ -8603,13 +8611,11 @@ private:
                 
                 ValueFromBlock haveButterfly = m_out.anchor(fastButterflyValue);
                 
-                if (useGCFences()) {
-                    splatWords(
-                        fastButterflyValue,
-                        m_out.constInt32(-structure->outOfLineCapacity() - 1),
-                        m_out.constInt32(-1),
-                        m_out.int64Zero, m_heaps.properties.atAnyNumber());
-                }
+                splatWords(
+                    fastButterflyValue,
+                    m_out.constInt32(-structure->outOfLineCapacity() - 1),
+                    m_out.constInt32(-1),
+                    m_out.int64Zero, m_heaps.properties.atAnyNumber());
 
                 m_out.store32(vectorLength, fastButterflyValue, m_heaps.Butterfly_vectorLength);
                 
@@ -9408,6 +9414,7 @@ private:
                 previousStructure, nextStructure);
         }
         
+        nukeStructureAndSetButterfly(result, object);
         return result;
     }
 
@@ -9477,21 +9484,17 @@ private:
         if (previousStructure->couldHaveIndexingHeader()) {
             return vmCall(
                 pointerType(),
-                m_out.operation(
-                    operationReallocateButterflyToHavePropertyStorageWithInitialCapacity),
+                m_out.operation(operationAllocateComplexPropertyStorageWithInitialCapacity),
                 m_callFrame, object);
         }
         
         LValue result = allocatePropertyStorageWithSizeImpl(initialOutOfLineCapacity);
 
-        if (useGCFences()) {
-            splatWords(
-                result,
-                m_out.constInt32(-initialOutOfLineCapacity - 1), m_out.constInt32(-1),
-                m_out.int64Zero, m_heaps.properties.atAnyNumber());
-        }
+        splatWords(
+            result,
+            m_out.constInt32(-initialOutOfLineCapacity - 1), m_out.constInt32(-1),
+            m_out.int64Zero, m_heaps.properties.atAnyNumber());
         
-        setButterfly(result, object);
         return result;
     }
     
@@ -9505,7 +9508,7 @@ private:
         
         if (previous->couldHaveIndexingHeader()) {
             LValue newAllocSize = m_out.constIntPtr(newSize);                    
-            return vmCall(pointerType(), m_out.operation(operationReallocateButterflyToGrowPropertyStorage), m_callFrame, object, newAllocSize);
+            return vmCall(pointerType(), m_out.operation(operationAllocateComplexPropertyStorage), m_callFrame, object, newAllocSize);
         }
         
         LValue result = allocatePropertyStorageWithSizeImpl(newSize);
@@ -9519,14 +9522,10 @@ private:
             m_out.storePtr(loaded, m_out.address(m_heaps.properties.atAnyNumber(), result, offset));
         }
         
-        if (useGCFences()) {
-            splatWords(
-                result,
-                m_out.constInt32(-newSize - 1), m_out.constInt32(-oldSize - 1),
-                m_out.int64Zero, m_heaps.properties.atAnyNumber());
-        }
-        
-        setButterfly(result, object);
+        splatWords(
+            result,
+            m_out.constInt32(-newSize - 1), m_out.constInt32(-oldSize - 1),
+            m_out.int64Zero, m_heaps.properties.atAnyNumber());
         
         return result;
     }
@@ -9552,14 +9551,14 @@ private:
             slowButterflyValue = lazySlowPath(
                 [=] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
                     return createLazyCallGenerator(
-                        operationAllocatePropertyStorageWithInitialCapacity,
+                        operationAllocateSimplePropertyStorageWithInitialCapacity,
                         locations[0].directGPR());
                 });
         } else {
             slowButterflyValue = lazySlowPath(
                 [=] (const Vector<Location>& locations) -> RefPtr<LazySlowPath::Generator> {
                     return createLazyCallGenerator(
-                        operationAllocatePropertyStorage, locations[0].directGPR(),
+                        operationAllocateSimplePropertyStorage, locations[0].directGPR(),
                         CCallHelpers::TrustedImmPtr(sizeInValues));
                 });
         }
@@ -10401,14 +10400,12 @@ private:
         LValue allocator, Structure* structure, LValue butterfly, LBasicBlock slowPath)
     {
         LValue result = allocateCell(allocator, structure, slowPath);
-        if (useGCFences()) {
-            splatWords(
-                result,
-                m_out.constInt32(JSFinalObject::offsetOfInlineStorage() / 8),
-                m_out.constInt32(JSFinalObject::offsetOfInlineStorage() / 8 + structure->inlineCapacity()),
-                m_out.int64Zero,
-                m_heaps.properties.atAnyNumber());
-        }
+        splatWords(
+            result,
+            m_out.constInt32(JSFinalObject::offsetOfInlineStorage() / 8),
+            m_out.constInt32(JSFinalObject::offsetOfInlineStorage() / 8 + structure->inlineCapacity()),
+            m_out.int64Zero,
+            m_heaps.properties.atAnyNumber());
         m_out.storePtr(butterfly, result, m_heaps.JSObject_butterfly);
         return result;
     }
@@ -13048,7 +13045,7 @@ private:
     
     void mutatorFence()
     {
-        if (isX86() || !useGCFences()) {
+        if (isX86()) {
             m_out.fence(&m_heaps.root, nullptr);
             return;
         }
@@ -13070,9 +13067,14 @@ private:
         m_out.appendTo(continuation, lastNext);
     }
     
-    void setButterfly(LValue butterfly, LValue object)
+    void nukeStructureAndSetButterfly(LValue butterfly, LValue object)
     {
-        if (isX86() || !useGCFences()) {
+        if (isX86()) {
+            m_out.store32(
+                m_out.bitOr(
+                    m_out.load32(object, m_heaps.JSCell_structureID),
+                    m_out.constInt32(nukedStructureIDBit())),
+                object, m_heaps.JSCell_structureID);
             m_out.fence(&m_heaps.root, nullptr);
             m_out.storePtr(butterfly, object, m_heaps.JSObject_butterfly);
             m_out.fence(&m_heaps.root, nullptr);
@@ -13096,6 +13098,11 @@ private:
         
         m_out.appendTo(slowPath, continuation);
         
+        m_out.store32(
+            m_out.bitOr(
+                m_out.load32(object, m_heaps.JSCell_structureID),
+                m_out.constInt32(nukedStructureIDBit())),
+            object, m_heaps.JSCell_structureID);
         m_out.fence(&m_heaps.root, nullptr);
         m_out.storePtr(butterfly, object, m_heaps.JSObject_butterfly);
         m_out.fence(&m_heaps.root, nullptr);

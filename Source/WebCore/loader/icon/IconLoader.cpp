@@ -70,10 +70,11 @@ void IconLoader::startLoading()
     if (m_frame && !m_frame->document())
         return;
 
+
     if (m_documentLoader && !m_documentLoader->frame())
         return;
 
-    ResourceRequest resourceRequest(m_url);
+    ResourceRequest resourceRequest = m_documentLoader ? m_url :  m_frame->loader().icon().url();
     resourceRequest.setPriority(ResourceLoadPriority::Low);
 
     // ContentSecurityPolicyImposition::DoPolicyCheck is a placeholder value. It does not affect the request since Content Security Policy does not apply to raw resources.
@@ -86,7 +87,7 @@ void IconLoader::startLoading()
     if (m_resource)
         m_resource->addClient(*this);
     else
-        LOG_ERROR("Failed to start load for icon at url %s", frame->loader().icon().url().string().ascii().data());
+        LOG_ERROR("Failed to start load for icon at url %s", resourceRequest.url().string().ascii().data());
 }
 
 void IconLoader::stopLoading()

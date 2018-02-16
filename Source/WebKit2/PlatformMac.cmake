@@ -43,6 +43,7 @@ list(APPEND WebKit2_SOURCES
     NetworkProcess/mac/RemoteNetworkingContext.mm
 
     Platform/IPC/mac/ConnectionMac.mm
+    Platform/IPC/mac/MachMessage.cpp
 
     Platform/cf/ModuleCF.cpp
 
@@ -222,6 +223,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/_WKVisitedLinkStore.mm
     UIProcess/API/Cocoa/_WKWebsiteDataSize.mm
     UIProcess/API/Cocoa/_WKWebsiteDataStore.mm
+    UIProcess/API/Cocoa/_WKWebsitePolicies.mm
 
     UIProcess/API/mac/WKView.mm
 
@@ -370,20 +372,6 @@ list(APPEND WebKit2_SOURCES
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/icu"
-    "${WEBCORE_DIR}/editing/cocoa"
-    "${WEBCORE_DIR}/editing/mac"
-    "${WEBCORE_DIR}/platform/cf"
-    "${WEBCORE_DIR}/platform/cocoa"
-    "${WEBCORE_DIR}/platform/graphics/cocoa"
-    "${WEBCORE_DIR}/platform/mac"
-    "${WEBCORE_DIR}/platform/network/cf"
-    "${WEBCORE_DIR}/platform/network/cocoa"
-    "${WEBCORE_DIR}/platform/spi/cocoa"
-    "${WEBCORE_DIR}/platform/spi/mac"
-    "${WEBCORE_DIR}/platform/graphics/ca"
-    "${WEBCORE_DIR}/platform/graphics/cg"
-    "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBKIT2_DIR}/NetworkProcess/cocoa"
     "${WEBKIT2_DIR}/NetworkProcess/mac"
     "${WEBKIT2_DIR}/PluginProcess/mac"
@@ -421,17 +409,8 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/WebPage/Cocoa"
     "${WEBKIT2_DIR}/WebProcess/WebPage/mac"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport/mac"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore"
-)
-
-# This is needed because of a naming conflict with DiagnosticLoggingClient.h.
-# FIXME: Rename one of the DiagnosticLoggingClient headers.
-list(REMOVE_ITEM WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/page"
-)
-list(APPEND WebKit2_INCLUDE_DIRECTORIES
-    "${WEBCORE_DIR}/page"
+    "${DERIVED_SOURCES_WEBCORE_DIR}"
 )
 
 set(XPCService_SOURCES

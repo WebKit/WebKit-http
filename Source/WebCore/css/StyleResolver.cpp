@@ -41,6 +41,7 @@
 #include "CSSFontSelector.h"
 #include "CSSFontValue.h"
 #include "CSSFunctionValue.h"
+#include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
 #include "CSSInheritedValue.h"
 #include "CSSInitialValue.h"
@@ -61,7 +62,6 @@
 #include "CSSTimingFunctionValue.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
-#include "CSSVariableDependentValue.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "CachedSVGDocument.h"
@@ -134,7 +134,6 @@
 #include "ViewportStyleResolver.h"
 #include "VisitedLinkState.h"
 #include "WebKitCSSRegionRule.h"
-#include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
 #include "XMLNames.h"
 #include <bitset>
@@ -393,7 +392,7 @@ ElementStyle StyleResolver::styleForElement(const Element& element, const Render
 
     if (state.parentStyle()) {
         state.setStyle(RenderStyle::createPtr());
-        state.style()->inheritFrom(state.parentStyle(), isAtShadowBoundary(element) ? RenderStyle::AtShadowBoundary : RenderStyle::NotAtShadowBoundary);
+        state.style()->inheritFrom(*state.parentStyle());
     } else {
         state.setStyle(defaultStyleForElement());
         state.setParentStyle(RenderStyle::clonePtr(*state.style()));
@@ -605,7 +604,7 @@ std::unique_ptr<RenderStyle> StyleResolver::pseudoStyleForElement(const Element&
 
     if (m_state.parentStyle()) {
         state.setStyle(RenderStyle::createPtr());
-        state.style()->inheritFrom(m_state.parentStyle());
+        state.style()->inheritFrom(*m_state.parentStyle());
     } else {
         state.setStyle(defaultStyleForElement());
         state.setParentStyle(RenderStyle::clonePtr(*state.style()));
@@ -655,7 +654,7 @@ std::unique_ptr<RenderStyle> StyleResolver::styleForPage(int pageIndex)
     m_state = State(*documentElement, m_document.renderStyle());
 
     m_state.setStyle(RenderStyle::createPtr());
-    m_state.style()->inheritFrom(m_state.rootElementStyle());
+    m_state.style()->inheritFrom(*m_state.rootElementStyle());
 
     PageRuleCollector collector(m_state, m_ruleSets);
     collector.matchAllPageRules(pageIndex);
@@ -701,7 +700,7 @@ std::unique_ptr<RenderStyle> StyleResolver::defaultStyleForElement()
 static void addIntrinsicMargins(RenderStyle& style)
 {
     // Intrinsic margin value.
-    const int intrinsicMargin = 2 * style.effectiveZoom();
+    const int intrinsicMargin = clampToInteger(2 * style.effectiveZoom());
 
     // FIXME: Using width/height alone and not also dealing with min-width/max-width is flawed.
     // FIXME: Using "hasQuirk" to decide the margin wasn't set is kind of lame.
@@ -1338,7 +1337,7 @@ void StyleResolver::applyMatchedProperties(const MatchResult& matchResult, const
             EInsideLink linkStatus = state.style()->insideLink();
             // If the cache item parent style has identical inherited properties to the current parent style then the
             // resulting style will be identical too. We copy the inherited properties over from the cache and are done.
-            state.style()->inheritFrom(cacheItem->renderStyle.get());
+            state.style()->inheritFrom(*cacheItem->renderStyle);
 
             // Unfortunately the link status is treated like an inherited property. We need to explicitly restore it.
             state.style()->setInsideLink(linkStatus);
@@ -1609,13 +1608,8 @@ void StyleResolver::applyProperty(CSSPropertyID id, CSSValue* value, SelectorChe
     CSSValueID customPropertyValueID = CSSValueInvalid;
     
     if (id == CSSPropertyCustom) {
-        // FIXME-NEWPARSER: Can clean this up once old parser is gone and remove
-        // the deprecatedValue call and the valueToCheckForInheritInitial variable.
         customPropertyValue = &downcast<CSSCustomPropertyValue>(*valueToApply);
-        valueToCheckForInheritInitial = customPropertyValue->deprecatedValue().get();
         customPropertyValueID = customPropertyValue->valueID();
-        if (customPropertyValueID != CSSValueInvalid)
-            valueToCheckForInheritInitial = valueToApply.get();
     }
 
     bool isInherit = state.parentStyle() ? valueToCheckForInheritInitial->isInheritedValue() || customPropertyValueID == CSSValueInherit : false;
@@ -1929,23 +1923,22 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
 
         auto& filterValue = downcast<CSSFunctionValue>(currentValue.get());
         FilterOperation::OperationType operationType = filterOperationForType(filterValue.name());
-        auto args = filterValue.arguments();
 
         // Check that all parameters are primitive values, with the
         // exception of drop shadow which has a CSSShadowValue parameter.
         const CSSPrimitiveValue* firstValue = nullptr;
-        if (args && operationType != FilterOperation::DROP_SHADOW) {
+        if (operationType != FilterOperation::DROP_SHADOW) {
             bool haveNonPrimitiveValue = false;
-            for (unsigned j = 0; j < args->length(); ++j) {
-                if (!is<CSSPrimitiveValue>(*args->itemWithoutBoundsCheck(j))) {
+            for (unsigned j = 0; j < filterValue.length(); ++j) {
+                if (!is<CSSPrimitiveValue>(*filterValue.itemWithoutBoundsCheck(j))) {
                     haveNonPrimitiveValue = true;
                     break;
                 }
             }
             if (haveNonPrimitiveValue)
                 continue;
-            if (args->length())
-                firstValue = downcast<CSSPrimitiveValue>(args->itemWithoutBoundsCheck(0));
+            if (filterValue.length())
+                firstValue = downcast<CSSPrimitiveValue>(filterValue.itemWithoutBoundsCheck(0));
         }
 
         switch (operationType) {
@@ -1953,7 +1946,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         case FilterOperation::SEPIA:
         case FilterOperation::SATURATE: {
             double amount = 1;
-            if (args && args->length() == 1) {
+            if (filterValue.length() == 1) {
                 amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
@@ -1964,7 +1957,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         }
         case FilterOperation::HUE_ROTATE: {
             double angle = 0;
-            if (args && args->length() == 1)
+            if (filterValue.length() == 1)
                 angle = firstValue->computeDegrees();
 
             operations.operations().append(BasicColorMatrixFilterOperation::create(angle, operationType));
@@ -1975,7 +1968,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         case FilterOperation::CONTRAST:
         case FilterOperation::OPACITY: {
             double amount = (operationType == FilterOperation::BRIGHTNESS) ? 0 : 1;
-            if (args && args->length() == 1) {
+            if (filterValue.length() == 1) {
                 amount = firstValue->doubleValue();
                 if (firstValue->isPercentage())
                     amount /= 100;
@@ -1986,7 +1979,7 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
         }
         case FilterOperation::BLUR: {
             Length stdDeviation = Length(0, Fixed);
-            if (args && args->length() >= 1)
+            if (filterValue.length() >= 1)
                 stdDeviation = convertToFloatLength(firstValue, state.cssToLengthConversionData());
             if (stdDeviation.isUndefined())
                 return false;
@@ -1995,14 +1988,14 @@ bool StyleResolver::createFilterOperations(const CSSValue& inValue, FilterOperat
             break;
         }
         case FilterOperation::DROP_SHADOW: {
-            if (args && args->length() != 1)
+            if (filterValue.length() != 1)
                 return false;
 
-            auto& cssValue = *args->itemWithoutBoundsCheck(0);
+            const auto* cssValue = filterValue.itemWithoutBoundsCheck(0);
             if (!is<CSSShadowValue>(cssValue))
                 continue;
 
-            auto& item = downcast<CSSShadowValue>(cssValue);
+            const auto& item = downcast<CSSShadowValue>(*cssValue);
             int x = item.x->computeLength<int>(state.cssToLengthConversionData());
             int y = item.y->computeLength<int>(state.cssToLengthConversionData());
             IntPoint location(x, y);

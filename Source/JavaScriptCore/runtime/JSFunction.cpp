@@ -208,8 +208,7 @@ void JSFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     Base::visitChildren(thisObject, visitor);
 
     visitor.append(&thisObject->m_executable);
-    if (thisObject->m_rareData)
-        visitor.append(&thisObject->m_rareData);
+    visitor.append(&thisObject->m_rareData);
 }
 
 CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
@@ -236,7 +235,7 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSObject* callee = visitor->callee();
+        JSCell* callee = visitor->callee();
         if (callee != m_targetCallee)
             return StackVisitor::Continue;
 
@@ -278,7 +277,7 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSObject* callee = visitor->callee();
+        JSCell* callee = visitor->callee();
 
         if (callee && callee->inherits(JSBoundFunction::info()))
             return StackVisitor::Continue;

@@ -40,7 +40,6 @@
 #include "CachedScript.h"
 #include "Cookie.h"
 #include "CookieJar.h"
-#include "DOMPatchSupport.h"
 #include "DOMWrapperWorld.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -115,26 +114,15 @@ static bool prepareCachedResourceBuffer(CachedResource* cachedResource, bool* ha
 
 static bool hasTextContent(CachedResource* cachedResource)
 {
+    // FIXME: <https://webkit.org/b/165495> Web Inspector: XHR / Fetch for non-text content should not show garbled text
+    // We should not assume XHR / Fetch have text content.
+
     InspectorPageAgent::ResourceType type = InspectorPageAgent::cachedResourceType(*cachedResource);
     return type == InspectorPageAgent::DocumentResource
         || type == InspectorPageAgent::StylesheetResource
         || type == InspectorPageAgent::ScriptResource
-        || type == InspectorPageAgent::XHRResource;
-}
-
-static RefPtr<TextResourceDecoder> createXHRTextDecoder(const String& mimeType, const String& textEncodingName)
-{
-    RefPtr<TextResourceDecoder> decoder;
-    if (!textEncodingName.isEmpty())
-        decoder = TextResourceDecoder::create("text/plain", textEncodingName);
-    else if (MIMETypeRegistry::isXMLMIMEType(mimeType)) {
-        decoder = TextResourceDecoder::create("application/xml");
-        decoder->useLenientXMLDecoding();
-    } else if (equalLettersIgnoringASCIICase(mimeType, "text/html"))
-        decoder = TextResourceDecoder::create("text/html", "UTF-8");
-    else
-        decoder = TextResourceDecoder::create("text/plain", "UTF-8");
-    return decoder;
+        || type == InspectorPageAgent::XHRResource
+        || type == InspectorPageAgent::FetchResource;
 }
 
 bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, String* result, bool* base64Encoded)
@@ -177,7 +165,7 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
             auto* buffer = cachedResource->resourceBuffer();
             if (!buffer)
                 return false;
-            RefPtr<TextResourceDecoder> decoder = createXHRTextDecoder(cachedResource->response().mimeType(), cachedResource->response().textEncodingName());
+            RefPtr<TextResourceDecoder> decoder = InspectorPageAgent::createTextDecoder(cachedResource->response().mimeType(), cachedResource->response().textEncodingName());
             // We show content for raw resources only for certain mime types (text, html and xml). Otherwise decoder will be null.
             if (!decoder)
                 return false;
@@ -200,7 +188,6 @@ bool InspectorPageAgent::mainResourceContent(Frame* frame, bool withBase64Encode
     return InspectorPageAgent::dataContent(buffer->data(), buffer->size(), frame->document()->encoding(), withBase64Encode, result);
 }
 
-// static
 bool InspectorPageAgent::sharedBufferContent(RefPtr<SharedBuffer>&& buffer, const String& textEncodingName, bool withBase64Encode, String* result)
 {
     return dataContent(buffer ? buffer->data() : nullptr, buffer ? buffer->size() : 0, textEncodingName, withBase64Encode, result);
@@ -216,7 +203,6 @@ bool InspectorPageAgent::dataContent(const char* data, unsigned size, const Stri
     return decodeBuffer(data, size, textEncodingName, result);
 }
 
-// static
 void InspectorPageAgent::resourceContent(ErrorString& errorString, Frame* frame, const URL& url, String* result, bool* base64Encoded)
 {
     DocumentLoader* loader = assertDocumentLoader(errorString, frame);
@@ -298,6 +284,8 @@ Inspector::Protocol::Page::ResourceType InspectorPageAgent::resourceTypeJson(Ins
         return Inspector::Protocol::Page::ResourceType::Script;
     case XHRResource:
         return Inspector::Protocol::Page::ResourceType::XHR;
+    case FetchResource:
+        return Inspector::Protocol::Page::ResourceType::Fetch;
     case WebSocketResource:
         return Inspector::Protocol::Page::ResourceType::WebSocket;
     case OtherResource:
@@ -316,19 +304,26 @@ InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const Ca
 #endif
     case CachedResource::FontResource:
         return InspectorPageAgent::FontResource;
-    case CachedResource::CSSStyleSheet:
-        // Fall through.
 #if ENABLE(XSLT)
     case CachedResource::XSLStyleSheet:
 #endif
+    case CachedResource::CSSStyleSheet:
         return InspectorPageAgent::StylesheetResource;
     case CachedResource::Script:
         return InspectorPageAgent::ScriptResource;
-    case CachedResource::MediaResource:
-    case CachedResource::RawResource:
-        return InspectorPageAgent::XHRResource;
     case CachedResource::MainResource:
         return InspectorPageAgent::DocumentResource;
+    case CachedResource::MediaResource:
+    case CachedResource::RawResource: {
+        switch (cachedResource.resourceRequest().requester()) {
+        case ResourceRequest::Requester::Fetch:
+            return InspectorPageAgent::FetchResource;
+        case ResourceRequest::Requester::Main:
+            return InspectorPageAgent::DocumentResource;
+        default:
+            return InspectorPageAgent::XHRResource;
+        }
+    }
     default:
         break;
     }
@@ -338,6 +333,23 @@ InspectorPageAgent::ResourceType InspectorPageAgent::cachedResourceType(const Ca
 Inspector::Protocol::Page::ResourceType InspectorPageAgent::cachedResourceTypeJson(const CachedResource& cachedResource)
 {
     return resourceTypeJson(cachedResourceType(cachedResource));
+}
+
+RefPtr<TextResourceDecoder> InspectorPageAgent::createTextDecoder(const String& mimeType, const String& textEncodingName)
+{
+    if (!textEncodingName.isEmpty())
+        return TextResourceDecoder::create(ASCIILiteral("text/plain"), textEncodingName);
+
+    if (MIMETypeRegistry::isTextMIMEType(mimeType))
+        return TextResourceDecoder::create(mimeType, "UTF-8");
+
+    if (MIMETypeRegistry::isXMLMIMEType(mimeType)) {
+        RefPtr<TextResourceDecoder> decoder = TextResourceDecoder::create(ASCIILiteral("application/xml"));
+        decoder->useLenientXMLDecoding();
+        return decoder;
+    }
+
+    return TextResourceDecoder::create(ASCIILiteral("text/plain"), "UTF-8");
 }
 
 InspectorPageAgent::InspectorPageAgent(PageAgentContext& context, InspectorClient* client, InspectorOverlay* overlay)
@@ -373,8 +385,6 @@ void InspectorPageAgent::enable(ErrorString&)
     auto stopwatch = m_environment.executionStopwatch();
     stopwatch->reset();
     stopwatch->start();
-
-    m_originalScriptExecutionDisabled = !mainFrame().settings().isScriptEnabled();
 }
 
 void InspectorPageAgent::disable(ErrorString&)
@@ -384,7 +394,6 @@ void InspectorPageAgent::disable(ErrorString&)
     m_instrumentingAgents.setInspectorPageAgent(nullptr);
 
     ErrorString unused;
-    setScriptExecutionDisabled(unused, m_originalScriptExecutionDisabled);
     setShowPaintRects(unused, false);
     setEmulatedMedia(unused, emptyString());
 }
@@ -566,7 +575,6 @@ void InspectorPageAgent::getResourceContent(ErrorString& errorString, const Stri
 static bool textContentForCachedResource(CachedResource* cachedResource, String* result)
 {
     if (hasTextContent(cachedResource)) {
-        String content;
         bool base64Encoded;
         if (InspectorPageAgent::cachedResourceContent(cachedResource, result, &base64Encoded)) {
             ASSERT(!base64Encoded);
@@ -656,20 +664,6 @@ void InspectorPageAgent::searchInResources(ErrorString&, const String& text, con
         networkAgent->searchOtherRequests(regex, result);
 }
 
-void InspectorPageAgent::setDocumentContent(ErrorString& errorString, const String& frameId, const String& html)
-{
-    Frame* frame = assertFrame(errorString, frameId);
-    if (!frame)
-        return;
-
-    Document* document = frame->document();
-    if (!document) {
-        errorString = ASCIILiteral("No Document instance to set HTML for");
-        return;
-    }
-    DOMPatchSupport::patchDocument(*document, html);
-}
-
 void InspectorPageAgent::setShowPaintRects(ErrorString&, bool show)
 {
     m_showPaintRects = show;
@@ -679,31 +673,6 @@ void InspectorPageAgent::setShowPaintRects(ErrorString&, bool show)
         return;
 
     m_overlay->setShowingPaintRects(show);
-}
-
-void InspectorPageAgent::getScriptExecutionStatus(ErrorString&, Inspector::PageBackendDispatcherHandler::Result* status)
-{
-    bool disabledByScriptController = false;
-    bool disabledInSettings = false;
-    disabledByScriptController = mainFrame().script().canExecuteScripts(NotAboutToExecuteScript);
-    disabledInSettings = !mainFrame().settings().isScriptEnabled();
-
-    if (!disabledByScriptController) {
-        *status = Inspector::PageBackendDispatcherHandler::Result::Allowed;
-        return;
-    }
-
-    if (disabledInSettings)
-        *status = Inspector::PageBackendDispatcherHandler::Result::Disabled;
-    else
-        *status = Inspector::PageBackendDispatcherHandler::Result::Forbidden;
-}
-
-void InspectorPageAgent::setScriptExecutionDisabled(ErrorString&, bool value)
-{
-    m_ignoreScriptsEnabledNotification = true;
-    mainFrame().settings().setScriptEnabled(!value);
-    m_ignoreScriptsEnabledNotification = false;
 }
 
 void InspectorPageAgent::didClearWindowObjectInWorld(Frame* frame, DOMWrapperWorld& world)
@@ -811,7 +780,6 @@ Frame* InspectorPageAgent::assertFrame(ErrorString& errorString, const String& f
     return frame;
 }
 
-// static
 DocumentLoader* InspectorPageAgent::assertDocumentLoader(ErrorString& errorString, Frame* frame)
 {
     FrameLoader& frameLoader = frame->loader();
@@ -844,16 +812,6 @@ void InspectorPageAgent::frameScheduledNavigation(Frame& frame, double delay)
 void InspectorPageAgent::frameClearedScheduledNavigation(Frame& frame)
 {
     m_frontendDispatcher->frameClearedScheduledNavigation(frameId(&frame));
-}
-
-void InspectorPageAgent::willRunJavaScriptDialog(const String& message)
-{
-    m_frontendDispatcher->javascriptDialogOpening(message);
-}
-
-void InspectorPageAgent::didRunJavaScriptDialog()
-{
-    m_frontendDispatcher->javascriptDialogClosed();
 }
 
 void InspectorPageAgent::didPaint(RenderObject& renderer, const LayoutRect& rect)
@@ -900,14 +858,6 @@ void InspectorPageAgent::didRecalculateStyle()
 {
     if (m_enabled)
         m_overlay->update();
-}
-
-void InspectorPageAgent::scriptsEnabled(bool isEnabled)
-{
-    if (m_ignoreScriptsEnabledNotification)
-        return;
-
-    m_frontendDispatcher->scriptsEnabled(isEnabled);
 }
 
 Ref<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForFrame(Frame* frame)
@@ -1040,12 +990,6 @@ void InspectorPageAgent::snapshotRect(ErrorString& errorString, int x, int y, in
     }
 
     *outDataURL = snapshot->toDataURL(ASCIILiteral("image/png"));
-}
-
-void InspectorPageAgent::handleJavaScriptDialog(ErrorString& errorString, bool accept, const String* promptText)
-{
-    if (!m_client->handleJavaScriptDialog(accept, promptText))
-        errorString = ASCIILiteral("Could not handle JavaScript dialog");
 }
 
 void InspectorPageAgent::archive(ErrorString& errorString, String* data)

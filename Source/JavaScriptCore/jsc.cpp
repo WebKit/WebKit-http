@@ -69,6 +69,7 @@
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
 #include "WasmPlan.h"
+#include "WasmMemory.h"
 #include <locale.h>
 #include <math.h>
 #include <stdio.h>
@@ -1279,8 +1280,18 @@ protected:
 };
 
 const ClassInfo GlobalObject::s_info = { "global", &JSGlobalObject::s_info, nullptr, CREATE_METHOD_TABLE(GlobalObject) };
-const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = { &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, 0, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, nullptr, nullptr };
-
+const GlobalObjectMethodTable GlobalObject::s_globalObjectMethodTable = {
+    &supportsRichSourceInfo,
+    &shouldInterruptScript,
+    &javaScriptRuntimeFlags,
+    nullptr,
+    &shouldInterruptScriptBeforeTimeout,
+    &moduleLoaderResolve,
+    &moduleLoaderFetch,
+    nullptr,
+    nullptr,
+    nullptr
+};
 
 GlobalObject::GlobalObject(VM& vm, Structure* structure)
     : JSGlobalObject(vm, structure, &s_globalObjectMethodTable)
@@ -2419,7 +2430,7 @@ EncodedJSValue JSC_HOST_CALL functionCheckModuleSyntax(ExecState* exec)
     stopWatch.start();
 
     ParserError error;
-    bool validSyntax = checkModuleSyntax(exec, makeSource(source, String(), TextPosition::minimumPosition(), SourceProviderSourceType::Module), error);
+    bool validSyntax = checkModuleSyntax(exec, makeSource(source, String(), TextPosition(), SourceProviderSourceType::Module), error);
     stopWatch.stop();
 
     if (!validSyntax)
@@ -2582,7 +2593,7 @@ static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, JSWebAssem
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(nullptr, globalObject->globalExec()->jsCallee(), firstArgument, argCount, remainingArgs);
 
-    return JSValue::decode(vmEntryToWasm(wasmCallee->jsEntryPoint(), vm, &protoCallFrame));
+    return JSValue::decode(vmEntryToWasm(wasmCallee->entrypoint(), vm, &protoCallFrame));
 }
 
 // testWasmModule(JSArrayBufferView source, number functionCount, ...[[WasmValue, [WasmValue]]]) where the ith copy of [[result, [args]]] is a list
@@ -2608,19 +2619,35 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
         CRASH();
     }
 
-    if (plan.compiledFunctionCount() != functionCount)
+    if (plan.internalFunctionCount() != functionCount)
         CRASH();
 
     MarkedArgumentBuffer callees;
+    MarkedArgumentBuffer keepAlive;
     {
         unsigned lastIndex = UINT_MAX;
         plan.initializeCallees(exec->lexicalGlobalObject(),
-            [&] (unsigned calleeIndex, JSWebAssemblyCallee* callee) {
+            [&] (unsigned calleeIndex, JSWebAssemblyCallee* jsEntrypointCallee, JSWebAssemblyCallee* wasmEntrypointCallee) {
                 RELEASE_ASSERT(!calleeIndex || (calleeIndex - 1 == lastIndex));
-                callees.append(callee);
+                callees.append(jsEntrypointCallee);
+                keepAlive.append(wasmEntrypointCallee);
                 lastIndex = calleeIndex;
             });
     }
+
+    void* memoryBytes = nullptr;
+    uint32_t memorySize = 0;
+    std::unique_ptr<Wasm::Memory> memory;
+    std::unique_ptr<Wasm::ModuleInformation> moduleInformation = plan.takeModuleInformation();
+
+    if (!!moduleInformation->memory) {
+        memory = std::make_unique<Wasm::Memory>(moduleInformation->memory.initial(), moduleInformation->memory.maximum());
+        RELEASE_ASSERT(memory->isValid());
+        memoryBytes = memory->memory();
+        memorySize = memory->size();
+    }
+    vm.topWasmMemoryPointer = memoryBytes;
+    vm.topWasmMemorySize = memorySize;
 
     for (uint32_t i = 0; i < functionCount; ++i) {
         JSArray* testCases = jsCast<JSArray*>(exec->argument(i + 2));
@@ -2633,7 +2660,12 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
             for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
                 boxedArgs.append(box(exec, vm, arguments->getIndexQuickly(argIndex)));
 
-            JSValue callResult = callWasmFunction(&vm, exec->lexicalGlobalObject(), jsCast<JSWebAssemblyCallee*>(callees.at(i)), boxedArgs);
+            JSValue callResult;
+            {
+                auto scope = DECLARE_THROW_SCOPE(vm);
+                callResult = callWasmFunction(&vm, exec->lexicalGlobalObject(), jsCast<JSWebAssemblyCallee*>(callees.at(i)), boxedArgs);
+                RETURN_IF_EXCEPTION(scope, { });
+            }
             JSValue expected = box(exec, vm, result);
             if (callResult != expected) {
                 dataLog("Arguments: ");
@@ -3211,6 +3243,9 @@ static int NEVER_INLINE runJSC(VM* vm, CommandLine options)
 
 int jscmain(int argc, char** argv)
 {
+    // Need to override and enable restricted options before we start parsing options below.
+    Options::enableRestrictedOptions(true);
+
     // Note that the options parsing can affect VM creation, and thus
     // comes first.
     CommandLine options(argc, argv);

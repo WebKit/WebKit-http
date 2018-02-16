@@ -34,8 +34,10 @@
 #include "JSModuleEnvironment.h"
 #include "JSWebAssemblyInstance.h"
 #include "JSWebAssemblyModule.h"
+#include "ProtoCallFrame.h"
 #include "WasmFormat.h"
 #include "WebAssemblyFunction.h"
+#include <limits>
 
 namespace JSC {
 
@@ -75,11 +77,11 @@ void WebAssemblyModuleRecord::finishCreation(ExecState* exec, VM& vm, const Wasm
             break;
         }
         case Wasm::External::Table: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164135
+            // FIXME https://bugs.webkit.org/show_bug.cgi?id=165782
             break;
         }
         case Wasm::External::Memory: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164134
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=165671
             break;
         }
         case Wasm::External::Global: {
@@ -96,6 +98,7 @@ void WebAssemblyModuleRecord::visitChildren(JSCell* cell, SlotVisitor& visitor)
     WebAssemblyModuleRecord* thisObject = jsCast<WebAssemblyModuleRecord*>(cell);
     Base::visitChildren(thisObject, visitor);
     visitor.append(&thisObject->m_instance);
+    visitor.append(&thisObject->m_startFunction);
 }
 
 void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* instance)
@@ -105,8 +108,14 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
     UNUSED_PARAM(scope);
     auto* globalObject = state->lexicalGlobalObject();
 
-    const Wasm::ModuleInformation& moduleInformation = instance->module()->moduleInformation();
-    SymbolTable* exportSymbolTable = instance->module()->exportSymbolTable();
+    JSWebAssemblyModule* module = instance->module();
+    const Wasm::ModuleInformation& moduleInformation = module->moduleInformation();
+
+    bool hasStart = !!moduleInformation.startFunctionIndexSpace;
+    auto startFunctionIndexSpace = moduleInformation.startFunctionIndexSpace.value_or(0);
+
+    SymbolTable* exportSymbolTable = module->exportSymbolTable();
+    unsigned importCount = module->importCount();
 
     // FIXME wire up the imports. https://bugs.webkit.org/show_bug.cgi?id=165118
 
@@ -119,22 +128,29 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
             // 1. If e is a closure c:
             //   i. If there is an Exported Function Exotic Object func in funcs whose func.[[Closure]] equals c, then return func.
             //   ii. (Note: At most one wrapper is created for any closure, so func is unique, even if there are multiple occurrances in the list. Moreover, if the item was an import that is already an Exported Function Exotic Object, then the original function object will be found. For imports that are regular JS functions, a new wrapper will be created.)
+            if (exp.functionIndex < importCount) {
+                // FIXME Implement re-exporting an import. https://bugs.webkit.org/show_bug.cgi?id=165510
+                RELEASE_ASSERT_NOT_REACHED();
+            }
             //   iii. Otherwise:
             //     a. Let func be an Exported Function Exotic Object created from c.
             //     b. Append func to funcs.
             //     c. Return func.
-            JSWebAssemblyCallee* wasmCallee = instance->module()->callee(exp.functionIndex);
-            Wasm::Signature* signature = moduleInformation.functions.at(exp.functionIndex).signature;
-            WebAssemblyFunction* function = WebAssemblyFunction::create(vm, globalObject, signature->arguments.size(), exp.field.string(), instance, wasmCallee, signature);
+            JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(exp.functionIndex);
+            JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(exp.functionIndex);
+            Wasm::Signature* signature = module->signatureForFunctionIndexSpace(exp.functionIndex);
+            WebAssemblyFunction* function = WebAssemblyFunction::create(vm, globalObject, signature->arguments.size(), exp.field.string(), instance, jsEntrypointCallee, wasmEntrypointCallee, signature);
             exportedValue = function;
+            if (hasStart && startFunctionIndexSpace == exp.functionIndex)
+                m_startFunction.set(vm, this, function);
             break;
         }
         case Wasm::External::Table: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164135
+            // FIXME https://bugs.webkit.org/show_bug.cgi?id=165782
             break;
         }
         case Wasm::External::Memory: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164134
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=165671
             break;
         }
         case Wasm::External::Global: {
@@ -151,6 +167,21 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
         RELEASE_ASSERT(putResult);
     }
 
+    if (hasStart) {
+        Wasm::Signature* signature = module->signatureForFunctionIndexSpace(startFunctionIndexSpace);
+        // The start function must not take any arguments or return anything. This is enforced by the parser.
+        ASSERT(!signature->arguments.size());
+        ASSERT(signature->returnType == Wasm::Void);
+        // FIXME can start call imports / tables? This assumes not. https://github.com/WebAssembly/design/issues/896
+        if (!m_startFunction.get()) {
+            // The start function wasn't added above. It must be a purely internal function.
+            JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(startFunctionIndexSpace);
+            JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(startFunctionIndexSpace);
+            WebAssemblyFunction* function = WebAssemblyFunction::create(vm, globalObject, signature->arguments.size(), "start", instance, jsEntrypointCallee, wasmEntrypointCallee, signature);
+            m_startFunction.set(vm, this, function);
+        }
+    }
+
     RELEASE_ASSERT(!m_instance);
     m_instance.set(vm, this, instance);
     m_moduleEnvironment.set(vm, this, moduleEnvironment);
@@ -158,10 +189,77 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
 
 JSValue WebAssemblyModuleRecord::evaluate(ExecState* state)
 {
-    // FIXME this should call the module's `start` function, if any. https://bugs.webkit.org/show_bug.cgi?id=165150
-    // https://github.com/WebAssembly/design/blob/master/Modules.md#module-start-function
-    // The start function must not take any arguments or return anything
-    UNUSED_PARAM(state);
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (JSWebAssemblyMemory* jsMemory = m_instance->memory()) {
+        uint8_t* memory = reinterpret_cast<uint8_t*>(jsMemory->memory()->memory());
+        auto sizeInBytes = jsMemory->memory()->size();
+        if (memory) {
+            const Vector<Wasm::Segment::Ptr>& data = m_instance->module()->moduleInformation().data;
+            for (auto& segment : data) {
+                if (segment->sizeInBytes) {
+                    if (sizeInBytes < segment->sizeInBytes
+                        || segment->offset > sizeInBytes
+                        || segment->offset > sizeInBytes - segment->sizeInBytes)
+                        return throwException(state, scope, createRangeError(state, ASCIILiteral("Data segment initializes memory out of range")));
+                    memcpy(memory + segment->offset, &segment->byte(0), segment->sizeInBytes);
+                }
+            }
+        }
+    }
+
+    {
+        JSWebAssemblyModule* module = m_instance->module();
+        const Wasm::ModuleInformation& moduleInformation = module->moduleInformation();
+        JSWebAssemblyTable* table = m_instance->table();
+        for (const Wasm::Element& element : moduleInformation.elements) {
+            // It should be a validation error to have any elements without a table.
+            // Also, it could be that a table wasn't imported, or that the table
+            // imported wasn't compatible. However, those should error out before
+            // getting here.
+            ASSERT(!!table);
+            if (!element.functionIndices.size())
+                continue;
+
+            uint32_t tableIndex = element.offset;
+            uint64_t lastWrittenIndex = static_cast<uint64_t>(tableIndex) + static_cast<uint64_t>(element.functionIndices.size()) - 1;
+            if (lastWrittenIndex >= table->size())
+                return JSValue::decode(throwVMRangeError(state, scope, ASCIILiteral("Element is trying to set an out of bounds table index")));
+
+            for (uint32_t i = 0; i < element.functionIndices.size(); ++i) {
+                // FIXME: This essentially means we're exporting an import.
+                // We need a story here. We need to create a WebAssemblyFunction
+                // for the import.
+                // https://bugs.webkit.org/show_bug.cgi?id=165510
+                uint32_t functionIndex = element.functionIndices[i];
+                if (functionIndex < module->importCount()) {
+                    return JSValue::decode(
+                        throwVMRangeError(state, scope, ASCIILiteral("Element is setting the table value with an import. This is not yet implemented. FIXME.")));
+                }
+
+                JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(functionIndex);
+                JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(functionIndex);
+                Wasm::Signature* signature = module->signatureForFunctionIndexSpace(functionIndex);
+                // FIXME: Say we export local function "foo" at funciton index 0.
+                // What if we also set it to the table an Element w/ index 0.
+                // Does (new Instance(...)).exports.foo === table.get(0)?
+                // https://bugs.webkit.org/show_bug.cgi?id=165825
+                WebAssemblyFunction* function = WebAssemblyFunction::create(
+                    vm, m_instance->globalObject(), signature->arguments.size(), String(), m_instance.get(), jsEntrypointCallee, wasmEntrypointCallee, signature);
+
+                table->setFunction(vm, tableIndex, function);
+                ++tableIndex;
+            }
+        }
+    }
+
+    if (WebAssemblyFunction* startFunction = m_startFunction.get()) {
+        ProtoCallFrame protoCallFrame;
+        protoCallFrame.init(nullptr, startFunction, JSValue(), 1, nullptr);
+        startFunction->call(vm, &protoCallFrame);
+        RETURN_IF_EXCEPTION(scope, { });
+    }
     return jsUndefined();
 }
 

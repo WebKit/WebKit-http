@@ -102,7 +102,7 @@ JSValue JSInjectedScriptHost::evaluateWithScopeExtension(ExecState* exec)
     if (!scriptValue.isString())
         return throwTypeError(exec, scope, ASCIILiteral("InjectedScriptHost.evaluateWithScopeExtension first argument must be a string."));
 
-    String program = scriptValue.toString(exec)->value(exec);
+    String program = scriptValue.toWTFString(exec);
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     NakedPtr<Exception> exception;
@@ -215,10 +215,10 @@ JSValue JSInjectedScriptHost::functionDetails(ExecState* exec)
         return jsUndefined();
 
     // In the inspector protocol all positions are 0-based while in SourceCode they are 1-based
-    int lineNumber = sourceCode->firstLine();
+    int lineNumber = sourceCode->firstLine().oneBasedInt();
     if (lineNumber)
         lineNumber -= 1;
-    int columnNumber = sourceCode->startColumn();
+    int columnNumber = sourceCode->startColumn().oneBasedInt();
     if (columnNumber)
         columnNumber -= 1;
 

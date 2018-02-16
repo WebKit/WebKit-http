@@ -1,3 +1,378 @@
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the elements section
+        https://bugs.webkit.org/show_bug.cgi?id=165715
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (export.default.Builder.prototype._registerSectionBuilders.switch):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Element):
+        * wasm/function-tests/basic-element.js: Added.
+        * wasm/js-api/element.js: Added.
+        (assertBadBinary):
+        (assertBadBinary.badInstantiation):
+
+2016-12-13  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement the table section and table import
+        https://bugs.webkit.org/show_bug.cgi?id=165716
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (const._importMemoryContinuation):
+        (const._importTableContinuation):
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (const._importMemoryContinuation.section): Deleted.
+        (const): Deleted.
+        (const._importMemoryContinuation.assert): Deleted.
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.putResizableLimits):
+        (const.putTable):
+        (const.emitters.Import):
+        (const.emitters.Table):
+        * wasm/function-tests/call-indirect-params.js:
+        * wasm/function-tests/call-indirect.js:
+        * wasm/function-tests/table-basic-2.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        (func):
+        * wasm/function-tests/table-basic.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        * wasm/js-api/call-indirect-results.js:
+        (const.wasmModuleWhichImportJS): Deleted.
+        (MonomorphicImport): Deleted.
+        * wasm/js-api/call-indirect.js:
+        (const.wasmModuleWhichImportJS):
+        (const.makeTable):
+        (Polyphic2Import):
+        (VirtualImport):
+        (MonomorphicImport): Deleted.
+        * wasm/js-api/table.js: Added.
+        (assertBadBinary):
+        (assert.truthy):
+        (assertBadTable):
+        (assertBadTableImport):
+        (assertBadBinary.assertBadTableInstance):
+        (assertBadTableInstance):
+        (new.WebAssembly.Table):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2016-12-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209725.
+        https://bugs.webkit.org/show_bug.cgi?id=165811
+
+        "Broke ARMv7 builds" (Requested by msaboff on #webkit).
+
+        Reverted changeset:
+
+        "REGRESSION(r209653): speedometer crashes making virtual slow
+        path tailcalls"
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+        http://trac.webkit.org/changeset/209725
+
+2016-12-12  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653): speedometer crashes making virtual slow path tailcalls
+        https://bugs.webkit.org/show_bug.cgi?id=165748
+
+        Reviewed by Filip Pizlo.
+
+        New regression test.
+
+        * stress/regress-165748.js: Added.
+        (sum1):
+        (sum2):
+        (sum3):
+        (sum4):
+        (sum5):
+        (sum6):
+        (tailCaller):
+        (test):
+
+2016-12-12  Mark Lam  <mark.lam@apple.com>
+
+        Debug JSC test timeout: stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js.ftl-no-cjit.
+        https://bugs.webkit.org/show_bug.cgi?id=164630
+
+        Reviewed by Keith Miller.
+
+        Speculative fix for timeout issue.  It looks like this test just runs a bit
+        slower on debug builds.  So, we'll give it a little more time to run.
+
+        * stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js:
+
+2016-12-11  Saam Barati  <sbarati@apple.com>
+
+        We should be able to throw exceptions from Wasm code and when Wasm frames are on the stack
+        https://bugs.webkit.org/show_bug.cgi?id=165429
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/trap-load.js: Added.
+        (assert):
+        (wasmFrameCountFromError):
+        (i.catch):
+        (assert.continuation):
+        * wasm/function-tests/trap-store.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (i.catch):
+        (assert.continuation):
+        (assert):
+        * wasm/js-api/test_memory_constructor.js:
+        (assert):
+
+2016-12-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r209653, r209654, r209663, and
+        r209673.
+        https://bugs.webkit.org/show_bug.cgi?id=165739
+
+        speedometer crashes (Requested by pizlo on #webkit).
+
+        Reverted changesets:
+
+        "JSVALUE64: Pass arguments in platform argument registers when
+        making JavaScript calls"
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+        http://trac.webkit.org/changeset/209653
+
+        "Unreviewed build fix for 32 bit builds."
+        http://trac.webkit.org/changeset/209654
+
+        "Unreviewed build fix for the CLOOP after r209653"
+        http://trac.webkit.org/changeset/209663
+
+        "REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()"
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+        http://trac.webkit.org/changeset/209673
+
+2016-12-10  Michael Saboff  <msaboff@apple.com>
+
+        REGRESSION(r209653) Crash in CallFrameShuffler::snapshot()
+        https://bugs.webkit.org/show_bug.cgi?id=165728
+
+        Reviewed by Filip Pizlo.
+
+        New regression test.
+
+        * stress/regress-165728.js: Added.
+        (sum1):
+        (sum2):
+        (tailCaller):
+        (test):
+
+2016-12-10  Keith Miller  <keith_miller@apple.com>
+
+        Fix indirect_call if the result type is used.
+        https://bugs.webkit.org/show_bug.cgi?id=165727
+
+        Reviewed by Michael Saboff.
+
+        * wasm/js-api/call-indirect-results.js: Added.
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+
+2016-12-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Module namespace object behaves like immutable prototype exotic object
+        https://bugs.webkit.org/show_bug.cgi?id=165598
+
+        Reviewed by Mark Lam.
+
+        * modules/namespace-prototype-assignment.js: Added.
+        (else):
+        (reportError):
+        (shouldEqual):
+        (shouldThrow):
+        (stringify):
+        (makeTestID):
+        (doInternalSetPrototypeOf):
+        (ordinarySetPrototypeOf):
+        (setImmutablePrototype):
+        (windowProxySetPrototypeOf):
+        (initSetterExpectation):
+        (throwIfNoExceptionPending):
+        (objectSetPrototypeOf):
+        (setUnderscoreProto):
+        (reflectSetPrototypeOf):
+        (setPrototypeOf):
+        (newObjectProto.toString):
+        (Symbol):
+        (test):
+        (runTests):
+        * modules/namespace-set-prototype-of.js: Added.
+        (shouldThrow):
+        (TypeError.Cannot.set prototype):
+
+2016-12-09  Michael Saboff  <msaboff@apple.com>
+
+        JSVALUE64: Pass arguments in platform argument registers when making JavaScript calls
+        https://bugs.webkit.org/show_bug.cgi?id=160355
+
+        Reviewed by Filip Pizlo.
+
+        New microbenchmarks to measure call type performance.
+
+        * microbenchmarks/calling-computed-args.js: Added.
+        * microbenchmarks/calling-many-callees.js: Added.
+        * microbenchmarks/calling-one-callee-fixed.js: Added.
+        * microbenchmarks/calling-one-callee.js: Added.
+        * microbenchmarks/calling-poly-callees.js: Added.
+        * microbenchmarks/calling-poly-extra-arity-callees.js: Added.
+        * microbenchmarks/calling-tailcall.js: Added.
+        * microbenchmarks/calling-virtual-arity-fixup-callees.js: Added.
+        * microbenchmarks/calling-virtual-arity-fixup-stackargs.js: Added.
+        * microbenchmarks/calling-virtual-callees.js: Added.
+        * microbenchmarks/calling-virtual-extra-arity-callees.js: Added.
+
+2016-12-09  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should support call_indirect
+        https://bugs.webkit.org/show_bug.cgi?id=165718
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/Builder.js:
+        * wasm/function-tests/call-indirect-params.js: Added.
+        * wasm/function-tests/call-indirect.js: Added.
+        * wasm/js-api/call-indirect.js: Added.
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+        (Polyphic2Import):
+        (VirtualImport):
+        * wasm/wasm.json:
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: implement data section
+        https://bugs.webkit.org/show_bug.cgi?id=165696
+
+        Reviewed by Keith Miller.
+
+        As specified in https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md#data-section
+        Note that some of the interesting corner cases are ill-defined by the spec: https://github.com/WebAssembly/design/issues/897
+
+        * wasm/Builder.js: create a data section from JavaScript
+        * wasm/Builder_WebAssemblyBinary.js: assemble the data section into the proper binary encoding
+        (const.emitters.Data):
+        * wasm/js-api/test_Data.js: Added.
+        (DataSection):
+        (DataSectionOffTheEnd):
+        (DataSectionPartlyOffTheEnd):
+        (DataSectionEmptyOffTheEnd):
+        (DataSectionSeenByStart):
+        * wasm/self-test/test_BuilderJSON.js: make sure the JSON structure is fine (this sanity checks before going to binary)
+
+2016-12-09  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement start function
+        https://bugs.webkit.org/show_bug.cgi?id=165150
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js: allow building a .Start()
+        * wasm/Builder_WebAssemblyBinary.js:
+        * wasm/js-api/test_Start.js: Added.
+        (const.emitters.Start): serialize a start section
+        * wasm/self-test/test_BuilderJSON.js: validate the start section's content
+
+2016-12-09  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: implement importing and defining Memory
+        https://bugs.webkit.org/show_bug.cgi?id=164134
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (const._importMemoryContinuation.section):
+        (const._importMemoryContinuation.assert):
+        (const._importMemoryContinuation):
+        (const._exportFunctionContinuation.const): Deleted.
+        (const._exportFunctionContinuation): Deleted.
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Import):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/test_memory.js: Added.
+        (assert):
+        (binaryShouldNotParse):
+        (test):
+        (test.testMemImportError):
+        * wasm/js-api/test_memory_constructor.js: Added.
+        (assert):
+        (throw.new.Error):
+        (testInvalidSize):
+        (assert.testInvalidInitial):
+        (testInvalidInitial.testInvalidMaximum):
+        (testInvalidInitial):
+        (testInvalidMaximum):
+        * wasm/self-test/test_BuilderJSON.js:
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: JSC::link* shouldn't need a CodeBlock
+        https://bugs.webkit.org/show_bug.cgi?id=165591
+
+        Reviewed by Keith Miller.
+
+        test that wasm -> JS works, including the IC
+
+        * wasm/js-api/test_Instance.js:
+        (const.wasmModuleWhichImportJS):
+        (MonomorphicImport):
+        (Polyphic2Import):
+        (Polyphic3Import):
+        (VirtualImport):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Green the cloop bot by raising this threshold.
+
+        * mozilla/js1_5/Array/regress-101964.js:
+
+2016-12-08  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: wire up Instance imports
+        https://bugs.webkit.org/show_bug.cgi?id=165118
+
+        Reviewed by Saam Barati.
+
+        * wasm/js-api/test_Instance.js: add the test, disabled for now
+
+2016-12-07  Keith Miller  <keith_miller@apple.com>
+
+        Add more missing trivial wasm ops.
+        https://bugs.webkit.org/show_bug.cgi?id=165564
+
+        Add tests for drop and tee_local.
+
+        Reviewed by Geoffrey Garen.
+
+        * wasm/function-tests/drop.js: Added.
+        * wasm/function-tests/nop.js: Added.
+        * wasm/function-tests/tee-local.js: Added.
+
+2016-12-06  Keith Miller  <keith_miller@apple.com>
+
+        Add support for truncation operators
+        https://bugs.webkit.org/show_bug.cgi?id=165519
+
+        Reviewed by Geoffrey Garen.
+
+        * wasm/function-tests/i32-trunc-s-f32.js: Added.
+        * wasm/function-tests/i32-trunc-s-f64.js: Added.
+        * wasm/function-tests/i32-trunc-u-f32.js: Added.
+        * wasm/function-tests/i32-trunc-u-f64.js: Added.
+        * wasm/function-tests/i64-trunc-s-f32.js: Added.
+        * wasm/function-tests/i64-trunc-s-f64.js: Added.
+        * wasm/function-tests/i64-trunc-u-f32.js: Added.
+        * wasm/function-tests/i64-trunc-u-f64.js: Added.
+
 2016-12-06  Mark Lam  <mark.lam@apple.com>
 
         Introduce the concept of Immutable Prototype Exotic Objects to comply with the spec.

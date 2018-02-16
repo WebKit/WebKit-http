@@ -35,6 +35,7 @@
 #include "ExceptionOr.h"
 #include "FocusDirection.h"
 #include "FontSelectorClient.h"
+#include "FrameDestructionObserver.h"
 #include "MediaProducer.h"
 #include "MutationObserver.h"
 #include "PageVisibilityState.h"
@@ -286,6 +287,7 @@ class Document
     , public TreeScope
     , public ScriptExecutionContext
     , public FontSelectorClient
+    , public FrameDestructionObserver
     , public Supplementable<Document> {
 public:
     static Ref<Document> create(Frame* frame, const URL& url)
@@ -341,9 +343,9 @@ public:
     Element* getElementByAccessKey(const String& key);
     void invalidateAccessKeyMap();
 
-    void addImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    void removeImageElementByCaseFoldedUsemap(const AtomicStringImpl&, HTMLImageElement&);
-    HTMLImageElement* imageElementByCaseFoldedUsemap(const AtomicStringImpl&) const;
+    void addImageElementByUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    void removeImageElementByUsemap(const AtomicStringImpl&, HTMLImageElement&);
+    HTMLImageElement* imageElementByUsemap(const AtomicStringImpl&) const;
 
     ExceptionOr<SelectorQuery&> selectorQueryForString(const String&);
     void clearSelectorQueryCache();
@@ -444,8 +446,9 @@ public:
     void setInputCursor(Ref<JSC::InputCursor>&&);
 #endif
 
+    using VisibilityState = PageVisibilityState;
+    WEBCORE_EXPORT VisibilityState visibilityState() const;
     void visibilityStateChanged();
-    WEBCORE_EXPORT String visibilityState() const;
     WEBCORE_EXPORT bool hidden() const;
 
     void setTimerThrottlingEnabled(bool);
@@ -511,7 +514,6 @@ public:
     void setStateForNewFormElements(const Vector<String>&);
 
     WEBCORE_EXPORT FrameView* view() const; // can be NULL
-    Frame* frame() const { return m_frame; } // can be NULL
     WEBCORE_EXPORT Page* page() const; // can be NULL
     WEBCORE_EXPORT Settings* settings() const; // can be NULL
 
@@ -1088,13 +1090,14 @@ public:
     bool webkitIsFullScreen() const { return m_fullScreenElement.get(); }
     bool webkitFullScreenKeyboardInputAllowed() const { return m_fullScreenElement.get() && m_areKeysEnabledInFullScreen; }
     Element* webkitCurrentFullScreenElement() const { return m_fullScreenElement.get(); }
-    
+    Element* webkitCurrentFullScreenElementForBindings() const { return ancestorElementInThisScope(webkitCurrentFullScreenElement()); }
+
     enum FullScreenCheckType {
         EnforceIFrameAllowFullScreenRequirement,
         ExemptIFrameAllowFullScreenRequirement,
     };
 
-    void requestFullScreenForElement(Element*, unsigned short flags, FullScreenCheckType);
+    void requestFullScreenForElement(Element*, FullScreenCheckType);
     WEBCORE_EXPORT void webkitCancelFullScreen();
     
     WEBCORE_EXPORT void webkitWillEnterFullScreenForElement(Element*);
@@ -1115,12 +1118,12 @@ public:
 
     WEBCORE_EXPORT bool webkitFullscreenEnabled() const;
     Element* webkitFullscreenElement() const { return !m_fullScreenElementStack.isEmpty() ? m_fullScreenElementStack.last().get() : nullptr; }
+    Element* webkitFullscreenElementForBindings() const { return ancestorElementInThisScope(webkitFullscreenElement()); }
     WEBCORE_EXPORT void webkitExitFullscreen();
 #endif
 
 #if ENABLE(POINTER_LOCK)
     WEBCORE_EXPORT void exitPointerLock();
-    WEBCORE_EXPORT Element* pointerLockElement() const;
 #endif
 
     // Used to allow element that loads data without going through a FrameLoader to delay the 'load' event.
@@ -1310,6 +1313,7 @@ private:
     friend class IgnoreOpensDuringUnloadCountIncrementer;
 
     void updateTitleElement(Element* newTitleElement);
+    void frameDestroyed() final;
 
     void commonTeardown();
 
@@ -1354,8 +1358,6 @@ private:
 
     template <typename CharacterType>
     void displayBufferModifiedByEncodingInternal(CharacterType*, unsigned) const;
-
-    PageVisibilityState pageVisibilityState() const;
 
     template <CollectionType collectionType>
     Ref<HTMLCollection> ensureCachedCollection();
@@ -1410,7 +1412,6 @@ private:
     // do eventually load.
     PendingSheetLayout m_pendingSheetLayout;
 
-    Frame* m_frame;
     RefPtr<DOMWindow> m_domWindow;
     WeakPtr<Document> m_contextDocument;
 

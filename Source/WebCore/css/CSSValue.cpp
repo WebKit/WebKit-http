@@ -60,12 +60,7 @@
 #include "CSSUnicodeRangeValue.h"
 #include "CSSUnsetValue.h"
 #include "CSSValueList.h"
-#include "CSSVariableDependentValue.h"
 #include "CSSVariableReferenceValue.h"
-#include "CSSVariableValue.h"
-#include "SVGColor.h"
-#include "SVGPaint.h"
-#include "WebKitCSSTransformValue.h"
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSGridAutoRepeatValue.h"
@@ -222,18 +217,12 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSUnicodeRangeValue>(*this, other);
         case ValueListClass:
             return compareCSSValues<CSSValueList>(*this, other);
-        case WebKitCSSTransformClass:
-            return compareCSSValues<WebKitCSSTransformValue>(*this, other);
         case LineBoxContainClass:
             return compareCSSValues<CSSLineBoxContainValue>(*this, other);
         case CalculationClass:
             return compareCSSValues<CSSCalcValue>(*this, other);
         case ImageSetClass:
             return compareCSSValues<CSSImageSetValue>(*this, other);
-        case SVGColorClass:
-            return compareCSSValues<SVGColor>(*this, other);
-        case SVGPaintClass:
-            return compareCSSValues<SVGPaint>(*this, other);
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
         case AnimationTriggerScrollClass:
             return compareCSSValues<CSSAnimationTriggerScrollValue>(*this, other);
@@ -246,10 +235,6 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSVariableReferenceValue>(*this, other);
         case PendingSubstitutionValueClass:
             return compareCSSValues<CSSPendingSubstitutionValue>(*this, other);
-        case VariableDependentClass:
-            return compareCSSValues<CSSVariableDependentValue>(*this, other);
-        case VariableClass:
-            return compareCSSValues<CSSVariableValue>(*this, other);
         default:
             ASSERT_NOT_REACHED();
             return false;
@@ -334,18 +319,12 @@ String CSSValue::cssText() const
         return downcast<CSSUnicodeRangeValue>(*this).customCSSText();
     case ValueListClass:
         return downcast<CSSValueList>(*this).customCSSText();
-    case WebKitCSSTransformClass:
-        return downcast<WebKitCSSTransformValue>(*this).customCSSText();
     case LineBoxContainClass:
         return downcast<CSSLineBoxContainValue>(*this).customCSSText();
     case CalculationClass:
         return downcast<CSSCalcValue>(*this).customCSSText();
     case ImageSetClass:
         return downcast<CSSImageSetValue>(*this).customCSSText();
-    case SVGColorClass:
-        return downcast<SVGColor>(*this).customCSSText();
-    case SVGPaintClass:
-        return downcast<SVGPaint>(*this).customCSSText();
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     case AnimationTriggerScrollClass:
         return downcast<CSSAnimationTriggerScrollValue>(*this).customCSSText();
@@ -354,10 +333,6 @@ String CSSValue::cssText() const
         return downcast<CSSContentDistributionValue>(*this).customCSSText();
     case CustomPropertyClass:
         return downcast<CSSCustomPropertyValue>(*this).customCSSText();
-    case VariableDependentClass:
-        return downcast<CSSVariableDependentValue>(*this).customCSSText();
-    case VariableClass:
-        return downcast<CSSVariableValue>(*this).customCSSText();
     case CustomIdentClass:
         return downcast<CSSCustomIdentValue>(*this).customCSSText();
     case VariableReferenceClass:
@@ -471,9 +446,6 @@ void CSSValue::destroy()
     case ValueListClass:
         delete downcast<CSSValueList>(this);
         return;
-    case WebKitCSSTransformClass:
-        delete downcast<WebKitCSSTransformValue>(this);
-        return;
     case LineBoxContainClass:
         delete downcast<CSSLineBoxContainValue>(this);
         return;
@@ -486,12 +458,6 @@ void CSSValue::destroy()
     case FilterImageClass:
         delete downcast<CSSFilterImageValue>(this);
         return;
-    case SVGColorClass:
-        delete downcast<SVGColor>(this);
-        return;
-    case SVGPaintClass:
-        delete downcast<SVGPaint>(this);
-        return;
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
     case AnimationTriggerScrollClass:
         delete downcast<CSSAnimationTriggerScrollValue>(this);
@@ -502,12 +468,6 @@ void CSSValue::destroy()
         return;
     case CustomPropertyClass:
         delete downcast<CSSCustomPropertyValue>(this);
-        return;
-    case VariableDependentClass:
-        delete downcast<CSSVariableDependentValue>(this);
-        return;
-    case VariableClass:
-        delete downcast<CSSVariableValue>(this);
         return;
     case CustomIdentClass:
         delete downcast<CSSCustomIdentValue>(this);
@@ -532,14 +492,8 @@ RefPtr<CSSValue> CSSValue::cloneForCSSOM() const
     case ImageClass:
     case CursorImageClass:
         return downcast<CSSImageValue>(*this).cloneForCSSOM();
-    case WebKitCSSTransformClass:
-        return downcast<WebKitCSSTransformValue>(*this).cloneForCSSOM();
     case ImageSetClass:
         return downcast<CSSImageSetValue>(*this).cloneForCSSOM();
-    case SVGColorClass:
-        return downcast<SVGColor>(*this).cloneForCSSOM();
-    case SVGPaintClass:
-        return downcast<SVGPaint>(*this).cloneForCSSOM();
     default:
         ASSERT(!isSubtypeExposedToCSSOM());
         return TextCloneCSSValue::create(classType(), cssText());

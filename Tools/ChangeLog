@@ -1,3 +1,687 @@
+2016-12-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][EFL] Update the JHBuild version.
+        https://bugs.webkit.org/show_bug.cgi?id=165838
+
+        Reviewed by Michael Catanzaro.
+
+        * jhbuild/jhbuild-wrapper: This new version fixes a bug with the
+        usage of the JHBUILD_MIRROR feature with git repositories.
+
+2016-12-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Yasm is needed for building the JHBuild after r208940
+        https://bugs.webkit.org/show_bug.cgi?id=165837
+
+        Reviewed by Alejandro G. Castro.
+
+        * gtk/install-dependencies: Yasm is needed for building libvpx.
+
+2016-12-14  Youenn Fablet  <youenn@apple.com>
+
+        Test infrastructure should allow to filter out text output before doing a comparison with the baseline
+        https://bugs.webkit.org/show_bug.cgi?id=161310
+
+        Reviewed by Ryosuke Niwa.
+
+        Adding --dump-jsconsolelog-in-stderr test option for DRT and WTR.
+        When set, WTR and DRT output JS console log in the stderr and not the test output.
+        This allows removing potentially flaky information while still being able to read it for investigation.
+
+        Updated webkitpy infrastructure to use this test option in case of DumpJSConsoleLogInStdErr modifier.
+
+        Changes are covered by updating a fetch test to output console log and set its option to --dump-jsconsolelog-in-stderr in TestExpectations.
+        This test should have this option when fetch API will start logging resource loader errors.
+
+        * DumpRenderTree/DumpRenderTree.h:
+        (TestCommand::TestCommand): Deleted.
+        * DumpRenderTree/DumpRenderTreeCommon.cpp:
+        (parseInputLine):
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::setDumpJSConsoleLogInStdErr):
+        (TestRunner::dumpJSConsoleLogInStdErr):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (runTest):
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate webView:addMessageToConsole:withSource:]):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (runTest):
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::webViewAddMessageToConsole):
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser._tokenize_line):
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._command_from_driver_input):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        (WTR::InjectedBundle::dumpToStdErr):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.h:
+        (WTR::InjectedBundle::dumpJSConsoleLogInStdErr):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::willAddMessageToConsole):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        (WTR::TestCommand::TestCommand): Deleted.
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::invoke):
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle):
+        * WebKitTestRunner/TestInvocation.h:
+        (WTR::TestInvocation::setDumpJSConsoleLogInStdErr):
+
+
+2016-12-14  Enrique Ocaña González  <eocanha@igalia.com>
+
+        REGRESSION(r207879-207891): [GStreamer] Introduced many layout test failures and crashes, bots exiting early
+        https://bugs.webkit.org/show_bug.cgi?id=164022
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Scripts/webkitperl/FeatureList.pm:
+          Re-enable MEDIA_SOURCE for the GTK+ port.
+
+2016-12-13  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * DumpRenderTree/PlatformMac.cmake:
+        Define NS_RETURNS_RETAINED as nothing for now.
+
+2016-12-13  Jer Noble  <jer.noble@apple.com>
+
+        Fullscreen in WebKit2 does not restore topContentInset upon exiting; leaves top of page not visible
+        https://bugs.webkit.org/show_bug.cgi?id=165697
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/FullscreenTopContentInset.mm:
+        (TestWebKitAPI::TEST):
+
+2016-12-13  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Implement -shouldInsertText: on WKWebProcessPlugInEditingDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=165785
+        <rdar://problem/26929398>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegate.mm:
+        (-[BundleEditingDelegateRemoteObject shouldInsertText:replacingRange:givenAction:]): Added
+        expectations for the text, range, and action.
+        (TEST): Set the "EditingDelegateShouldInsertText" bundle parameter to NO so that the plug-in
+        will return NO in -_webProcessPlugInBrowserContextController:willInsertText:. Added a
+        plain-text string to the pasteboard, executed a paste action, and verified that the selected
+        text in the web view did not change.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegatePlugIn.mm:
+        (-[BundleEditingDelegatePlugIn webProcessPlugIn:didCreateBrowserContextController:]): Set
+        _editingDelegateShouldInsertText according to the "EditingDelegateShouldInsertText" bundle
+        parameter.
+        (-[BundleEditingDelegatePlugIn _webProcessPlugInBrowserContextController:shouldInsertText:replacingRange:givenAction:]):
+        Added. Called -shouldInsertText:replacingRange:givenAction: on the remote object proxy
+        and returned the value of _editingDelegateShouldInsertText.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegateProtocol.h: Declared
+        -shouldInsertText:replacingRange:givenAction:.
+
+2016-12-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209544.
+
+        Looks like r209489 did not cause the performance regression
+        after all
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r209489."
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209544
+
+2016-12-12  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove use of Dictionary in ApplePaySession
+        https://bugs.webkit.org/show_bug.cgi?id=165787
+
+        Reviewed by Anders Carlsson.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+        (WTR::TestController::platformCreateWebView):
+        Enable ApplePay for the tests (where supported).
+
+2016-12-13  Eric Carlson  <eric.carlson@apple.com>
+
+        Annotate MediaStream and WebRTC idl with EnabledAtRuntime flag
+        https://bugs.webkit.org/show_bug.cgi?id=165251
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebKit2/EnumerateMediaDevices.cpp:
+        (TestWebKitAPI::TEST): Enable MediaStream, create web view from the page group upon which
+        the preferences have been set.
+
+2016-12-08  Antti Koivisto  <antti@apple.com>
+
+        Enable network cache speculative revalidation in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=165616
+
+        Reviewed by Darin Adler.
+
+        Match Safari. Also add a menu item to disable it.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (defaultConfiguration):
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController networkCacheSpeculativeRevalidationDisabled]):
+        (-[SettingsController toggleNetworkCacheSpeculativeRevalidationDisabled:]):
+
+2016-12-12  Alexey Proskuryakov  <ap@apple.com>
+
+        ChangeLogs become readonly after resolving a conflict
+        https://bugs.webkit.org/show_bug.cgi?id=165440
+        rdar://problem/29491002
+
+        Reviewed by Darin Adler.
+
+        * Scripts/resolve-ChangeLogs: (resolveChangeLog): Set correct permissions when
+        moving the file.
+
+2016-12-12  Filip Pizlo  <fpizlo@apple.com>
+
+        Re-enable collectContinuously since it doesn't crash anymore
+
+        Rubber stamped by Michael Saboff.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-12-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed attempt to fix EFL and Mac/cmake builds after r209665.
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        * DumpRenderTree/CMakeLists.txt: WebKit2 should precede other target
+        so that right config.h comes first in include path.
+
+2016-12-11  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Make sure content extensions initialize AtomicString
+        https://bugs.webkit.org/show_bug.cgi?id=165737
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::makeBackend):
+
+2016-12-08  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Remove the old CSS Parser
+        https://bugs.webkit.org/show_bug.cgi?id=165645
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/Tests/WebCore/CSSParser.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-12-10  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Include WTF, JSC, and WebCore headers automatically to targers using them
+        https://bugs.webkit.org/show_bug.cgi?id=165686
+
+        Reviewed by Michael Catanzaro.
+
+        This change reduces duplication of include path lists between modules,
+        and reduces future need for fixes like r209605 (broken build because of
+        WebCore header suddenly becoming used in WebKit2).
+
+        * DumpRenderTree/CMakeLists.txt:
+        * DumpRenderTree/PlatformMac.cmake:
+        * ImageDiff/CMakeLists.txt:
+        * MiniBrowser/gtk/CMakeLists.txt:
+        * MiniBrowser/mac/CMakeLists.txt:
+        * MiniBrowser/win/CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformJSCOnly.cmake:
+        * TestWebKitAPI/PlatformMac.cmake:
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * WebKitTestRunner/CMakeLists.txt:
+        * WebKitTestRunner/PlatformGTK.cmake:
+        * WebKitTestRunner/PlatformMac.cmake:
+
+2016-12-09  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed buildfix after r209630.
+
+        * Scripts/build-jsc: Remove building the non-existing testWASM.
+
+2016-12-09  Eric Carlson  <eric.carlson@apple.com>
+
+        Annotate MediaStream and WebRTC idl with EnabledAtRuntime flag
+        https://bugs.webkit.org/show_bug.cgi?id=165251
+
+        Reviewed by Dean Jackson.
+
+        Based on a patch by Dr Alex Gouaillard <agouaillard@gmail.com>
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues): Enable MediaStream and PeerConnection.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting): Ditto.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setMediaStreamEnabled): New.
+        (WTR::TestRunner::setPeerConnectionEnabled): New.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2016-12-09  Brady Eidson  <beidson@apple.com> 
+ 
+        Re-landing:
+        Add _WKIconLoadingDelegate SPI. 
+        https://bugs.webkit.org/show_bug.cgi?id=164894 
+ 
+        Reviewed by Alex Christensen. 
+        
+        Add MiniBrowser support for this new SPI, configurable with a setting. 
+ 
+        * MiniBrowser/mac/SettingsController.h: 
+        * MiniBrowser/mac/SettingsController.m: 
+        (-[SettingsController _populateMenu]): 
+        (-[SettingsController validateMenuItem:]): 
+        (-[SettingsController loadsAllSiteIcons]): 
+        (-[SettingsController toggleLoadsAllSiteIcons:]): 
+        * MiniBrowser/mac/WK2BrowserWindowController.m: 
+        (-[WK2BrowserWindowController awakeFromNib]): 
+        (-[WK2BrowserWindowController webView:shouldLoadIconWithParameters:completionHandler:]): 
+
+2016-12-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix the 32-bit build.
+
+        Unreviewed build fix.
+
+        * MiniBrowser/mac/SettingsController.h:
+
+2016-12-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        Fedora also needs a PHP7 config file alternative
+        https://bugs.webkit.org/show_bug.cgi?id=165606
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._is_fedora_php_version_7): check for the php7 library.
+        (Port._fedora_php_version): get the appropriate filename for Fedora.
+        (Port._apache_config_file_name_for_platform):
+
+2016-12-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Complete the revert of r208865.
+        https://bugs.webkit.org/show_bug.cgi?id=164894
+
+        Unreviewed build fix.
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController loadsAllSiteIcons]): Deleted.
+        (-[SettingsController toggleLoadsAllSiteIcons:]): Deleted.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController webView:shouldLoadIconWithParameters:completionHandler:]): Deleted.
+
+2016-12-09  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GTK] Force GDK backend to x11 when running with XvfbDriver
+        https://bugs.webkit.org/show_bug.cgi?id=165612
+
+        Reviewed by Michael Catanzaro.
+
+        When the developer is running a Wayland session, GDK may get confused
+        and try to use its Wayland backend (which is higher priority) instead.
+        This ensures it will use the appropriate backend when running under
+        Xvfb.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.setup_environ_for_server): when running with XvfbDriver,
+        force GDK_BACKEND to x11.
+
+2016-12-08  Keith Miller  <keith_miller@apple.com>
+
+        Add 64-bit signed LEB decode method
+        https://bugs.webkit.org/show_bug.cgi?id=165630
+
+        Reviewed by Ryosuke Niwa.
+
+        Add tests for LEB int64 and uint64 decode since I guess
+        I forgot to add tests before.
+
+        * TestWebKitAPI/Tests/WTF/LEBDecoder.cpp:
+        (TestWebKitAPI::testUInt32LEBDecode):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::testUInt64LEBDecode):
+        (TestWebKitAPI::testInt32LEBDecode):
+        (TestWebKitAPI::testInt64LEBDecode):
+        (TestWebKitAPI::testUnsignedLEBDecode): Deleted.
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Make it easy to enable --force-collectContinuously
+        https://bugs.webkit.org/show_bug.cgi?id=165638
+
+        Reviewed by Keith Miller.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Disable the collectContinuously mode until I investigate failures.
+
+        Rubber stamped by Keith Miller.
+        
+        I'm seeing collectContinuously crashes on some platforms. Disabling that testing mode
+        while I investigate.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (URL parser): Relative URLs aren’t resolved correctly when the base URL is an applewebdata: URL
+        https://bugs.webkit.org/show_bug.cgi?id=165621
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2016-12-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Concurrent GC should be stable enough to land enabled
+        https://bugs.webkit.org/show_bug.cgi?id=164990
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a new mode that runs GC continuously. Also made eager modes run GC continuously.
+        
+        It's clear that this works just fine in release, but I'm still trying to figure out if it's
+        safe for debug. It might be too slow for debug.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for sending WebsiteSettings to WebProcess during navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165517
+        <rdar://29341068>
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/contentBlockerCheck.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm: Added.
+        (-[WebsitePoliciesDelegate webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[WebsitePoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[WebsitePoliciesDelegate webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (TEST):
+
+2016-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r209489.
+
+        Likely caused large regressions on JetStream, Sunspider and
+        Speedometer
+
+        Reverted changeset:
+
+        "Add system trace points for JavaScript VM entry/exit"
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+        http://trac.webkit.org/changeset/209489
+
+2016-12-08  Keith Miller  <keith_miller@apple.com>
+
+        Move LEB tests to API tests
+        https://bugs.webkit.org/show_bug.cgi?id=165586
+
+        Reviewed by Saam Barati.
+
+        Move the tests from testWasm.cpp and make them functions
+        rather than macros.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/LEBDecoder.cpp: Added.
+        (TestWebKitAPI::testUnsignedLEBDecode):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::testInt32LEBDecode):
+
+2016-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Support running the layout tests offline
+        https://bugs.webkit.org/show_bug.cgi?id=165534
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller._download_to_stream):
+        getcode() returns None for file URLs so handle this.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (WebPlatformTestServer._install_modules):
+        Deal with local path in the json file and resolve them into file URLs
+        before using AutoInstall.
+
+2016-12-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * DumpRenderTree/PlatformMac.cmake:
+        Remove CheckedMalloc.cpp after r209516.
+
+2016-12-07  Mark Lam  <mark.lam@apple.com>
+
+        DumpRenderTree should stop using CheckedMalloc.
+        https://bugs.webkit.org/show_bug.cgi?id=165563
+        <rdar://problem/28945820>
+
+        Reviewed by Geoffrey Garen.
+
+        1. WebKitTestRunner does not have equivalent behavior to that which is implemented
+           in CheckedMalloc.
+        2. bmalloc does not honor the settings of CheckedMalloc.
+
+        The only time CheckedMalloc comes into play is when DRT uses gmalloc or system
+        malloc.  As a result, DRT exhibits different behavior from the normal way we run
+        our tests.  We should obsolete CheckedMalloc and make DRT behave consistently
+        with WKTR.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/mac/CheckedMalloc.cpp: Removed.
+        * DumpRenderTree/mac/CheckedMalloc.h: Removed.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (prepareConsistentTestingEnvironment):
+
+2016-12-07  Dean Jackson  <dino@apple.com>
+
+        Remove runtime toggle for pointer-lock
+        https://bugs.webkit.org/show_bug.cgi?id=165577
+        <rdar://problems/29566996>
+
+        Reviewed by Jon Lee.
+
+        Remove any runtime calls to check if pointer-lock is enabled. It's
+        either compiled in or out.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2016-12-07  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream][Mac] Revoke sandbox extensions when capture ends
+        https://bugs.webkit.org/show_bug.cgi?id=165476
+
+        Reviewed by Brady Eidson.
+        
+        Add a test which loads a page that calls navigator.mediaDevices.enumerateDevices, kills the
+        page, and loads the same page again to ensure that the WK2 UserMediaPermissionRequestManagerProxy
+        is reset and recreated when a web page exits and is reloaded.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/EnumerateMediaDevices.cpp: Added.
+        (TestWebKitAPI::checkUserMediaPermissionCallback):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/enumerateMediaDevices.html: Added.
+
+2016-12-07  Jeremy Jones  <jeremyj@apple.com>
+
+        One esc to exit fullscreen and pointer lock
+        https://bugs.webkit.org/show_bug.cgi?id=165416
+        rdar://problem/29430711
+
+        Reviewed by Jer Noble.
+
+        Implement WKPageUIClientV8 for pointer lock support.
+        Add "escape" key support in EventSenderProxy.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::requestPointerLock):
+        (WTR::TestController::createOtherPage):
+        (WTR::TestController::createWebViewWithOptions):
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::keyDown):
+
+2016-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system trace points for JavaScript VM entry/exit
+        https://bugs.webkit.org/show_bug.cgi?id=165550
+
+        Reviewed by Tim Horton.
+
+        Add trace points for entry/exit into/out of the JS VM.
+
+        * Tracing/SystemTracePoints.plist:
+
+2016-12-07  ChangSeok Oh  <changseok@webkit.org>
+
+        [GTK] Cannot build GTK+ with CUPS 2.* versions
+        https://bugs.webkit.org/show_bug.cgi?id=163591
+
+        Reviewed by Michael Catanzaro.
+
+        GTK+ build has failed on the system which CUPS 2.x is installed in. GTK+ 3.16.4
+        does not assume to use the recent CUPS thus it fails to detect the CUPS in configuration.
+        GTK+ upstream fixed this issue but it is not easy to apply the original patch to our
+        old gtk+ since it requires not only bumping up glib accordingly and its consequence
+        causes many printing test failures. So, I propose to fix the configuration issue by
+        applying the change to the configure file directly. By doing this, we don't need to
+        upgrade glib and worry about any test failures as a consequence of the upgraded glib.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gtk+-configure-fix-detecting-CUPS-2.x.patch: Added.
+
+2016-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix use of enum in a WK2 C SPI header.
+        rdar://problem/28725583
+
+        Followup to correctly prefix the enum values.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::prepare):
+
+2016-12-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix use of enum in a WK2 C SPI header.
+        rdar://problem/28725583
+
+        Reviewed by Dan Bernstein.
+
+        Use correct enum style for a C SPI header and fix the callers.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::prepare):
+
+2016-12-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a new project for recording and playing back editing commands in editable web content
+        https://bugs.webkit.org/show_bug.cgi?id=165114
+        <rdar://problem/29408135>
+
+        Reviewed by Beth Dakin.
+
+        Adds a new Xcode project containing work towards rewinding and playing back editing commands. This work is
+        wrapped in an Xcode project to take advantage of the XCTest framework. To manually test recording, open the
+        capture test harness, edit the contenteditable body, and then hit cmd-S. This downloads a .json file which may
+        then be dragged into the playback test harness.
+
+        Also adds 3 new unit tests in EditingHistoryTests/RewindAndPlaybackTests.m. These tests carry out the following
+        steps:
+
+        1. Load the capture harness and perform test-specific editing on the web view.
+        2. Let originalState be a dump of the DOM at this point in time.
+        3. Extract the JSON-serialized editing history data and load the playback harness with this data.
+        4. Rewind all editing to the beginning.
+        5. Playback all editing to the end.
+        6. Dump the state of the DOM. This should be identical to originalState.
+
+        * EditingHistory/EditingHistory.xcodeproj/project.pbxproj: Added.
+        * EditingHistory/EditingHistory/Info.plist: Added.
+        * EditingHistory/EditingHistory/Resources/CaptureHarness.html: Added.
+        * EditingHistory/EditingHistory/Resources/DOMTestingUtil.js: Added.
+        * EditingHistory/EditingHistory/Resources/PlaybackHarness.html: Added.
+        * EditingHistory/EditingHistory/TestRunner.h: Added.
+        * EditingHistory/EditingHistory/TestRunner.m: Added.
+        (injectedMessageEventHandlerScript):
+        (-[TestRunner init]):
+        (-[TestRunner deleteBackwards:]):
+        (-[TestRunner typeString:]):
+        (-[TestRunner bodyElementSubtree]):
+        (-[TestRunner bodyTextContent]):
+        (-[TestRunner editingHistoryJSON]):
+        (-[TestRunner loadPlaybackTestHarnessWithJSON:]):
+        (-[TestRunner numberOfUpdates]):
+        (-[TestRunner jumpToUpdateIndex:]):
+        (-[TestRunner expectEvents:afterPerforming:]):
+        (-[TestRunner loadCaptureTestHarness]):
+        (-[TestRunner setTextObfuscationEnabled:]):
+        (-[TestRunner isDoneWaitingForPendingEvents]):
+        (-[TestRunner userContentController:didReceiveScriptMessage:]):
+
+        The TestRunner provides utilities that a unit test should use to drive the test forward (e.g. loading harnesses)
+        or inspect the state of the loaded page (e.g. extracting JSON editing history data from the capture harness).
+
+        * EditingHistory/EditingHistory/TestUtil.h: Added.
+        * EditingHistory/EditingHistory/TestUtil.m: Added.
+        (waitUntilWithTimeout):
+        (waitUntil):
+
+        Provides utilities for running tests. For now, this is just spinning the runloop on a given condition.
+
+        * EditingHistory/EditingHistory/WKWebViewAdditions.h: Added.
+        * EditingHistory/EditingHistory/WKWebViewAdditions.m: Added.
+        (-[WKWebView loadPageFromBundleNamed:]):
+        (-[WKWebView typeCharacter:]):
+        (-[WKWebView keyPressWithCharacters:keyCode:]):
+        (-[WKWebView stringByEvaluatingJavaScriptFromString:]):
+
+        Provides utilities for simulating interaction in a web view.
+
+        * EditingHistory/EditingHistory/main.m: Added.
+        (main):
+        * EditingHistory/EditingHistoryTests/Info.plist: Added.
+        * EditingHistory/EditingHistoryTests/RewindAndPlaybackTests.m: Added.
+        (-[RewindAndPlaybackTests setUp]):
+        (-[RewindAndPlaybackTests tearDown]):
+        (-[RewindAndPlaybackTests testTypingSingleLineOfText]):
+        (-[RewindAndPlaybackTests testTypingMultipleLinesOfText]):
+        (-[RewindAndPlaybackTests testTypingAndDeletingText]):
+        (-[RewindAndPlaybackTests rewindAndPlaybackEditingInPlaybackTestHarness]):
+        (-[RewindAndPlaybackTests originalBodySubtree:isEqualToFinalSubtree:]):
+
 2016-12-07  Philippe Normand  <pnormand@igalia.com>
 
         [GTK][jhbuild] missing dependency on libvpx in gst-plugins-good

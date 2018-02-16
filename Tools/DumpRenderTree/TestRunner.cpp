@@ -42,7 +42,8 @@
 #include <JavaScriptCore/JSObjectRef.h>
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/TypedArrayInlines.h>
-#include <WebCore/platform/LogInitialization.h>
+#include <JavaScriptCore/VMInlines.h>
+#include <WebCore/LogInitialization.h>
 #include <cstring>
 #include <locale.h>
 #include <stdio.h>

@@ -38,12 +38,11 @@ JSWebAssemblyCallee::JSWebAssemblyCallee(VM& vm)
     : Base(vm, vm.webAssemblyCalleeStructure.get())
 { }
 
-void JSWebAssemblyCallee::finishCreation(VM& vm, std::unique_ptr<Wasm::FunctionCompilation>&& compilation)
+void JSWebAssemblyCallee::finishCreation(VM& vm, Wasm::Entrypoint&& entrypoint)
 {
     Base::finishCreation(vm);
 
-    m_code = WTFMove(compilation->code);
-    m_jsEntryPoint = WTFMove(compilation->jsEntryPoint);
+    m_entrypoint = WTFMove(entrypoint);
 }
 
 void JSWebAssemblyCallee::destroy(JSCell* cell)

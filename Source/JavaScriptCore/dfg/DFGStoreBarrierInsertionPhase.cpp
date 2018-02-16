@@ -272,9 +272,13 @@ private:
 
             case PutClosureVar:
             case PutToArguments:
-            case SetRegExpObjectLastIndex:
-            case MultiPutByOffset: {
+            case SetRegExpObjectLastIndex: {
                 considerBarrier(m_node->child1(), m_node->child2());
+                break;
+            }
+                
+            case MultiPutByOffset: {
+                considerBarrier(m_node->child1());
                 break;
             }
                 
@@ -290,6 +294,11 @@ private:
                 
             case SetFunctionName: {
                 considerBarrier(m_node->child1(), m_node->child2());
+                break;
+            }
+                
+            case NukeStructureAndSetButterfly: {
+                considerBarrier(m_node->child1());
                 break;
             }
 
@@ -318,16 +327,11 @@ private:
             case NewFunction:
             case NewGeneratorFunction:
             case NewAsyncFunction:
+            case AllocatePropertyStorage:
+            case ReallocatePropertyStorage:
                 // Nodes that allocate get to set their epoch because for those nodes we know
                 // that they will be the newest object in the heap.
                 m_node->setEpoch(m_currentEpoch);
-                break;
-                
-            case AllocatePropertyStorage:
-            case ReallocatePropertyStorage:
-                // These allocate but then run their own barrier.
-                insertBarrier(m_nodeIndex + 1, m_node->child1());
-                m_node->setEpoch(Epoch());
                 break;
                 
             case Upsilon:

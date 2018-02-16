@@ -105,14 +105,14 @@ inline IndexingType JSCell::indexingType() const
     return indexingTypeAndMisc() & AllArrayTypes;
 }
 
-inline Structure* JSCell::structure() const
+ALWAYS_INLINE Structure* JSCell::structure() const
 {
-    return Heap::heap(this)->structureIDTable().get(m_structureID);
+    return structure(*vm());
 }
 
-inline Structure* JSCell::structure(VM& vm) const
+ALWAYS_INLINE Structure* JSCell::structure(VM& vm) const
 {
-    return vm.heap.structureIDTable().get(m_structureID);
+    return vm.getStructure(m_structureID);
 }
 
 inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -123,11 +123,11 @@ inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 ALWAYS_INLINE VM& ExecState::vm() const
 {
-    ASSERT(jsCallee());
-    ASSERT(jsCallee()->vm());
-    ASSERT(!jsCallee()->isLargeAllocation());
+    ASSERT(callee());
+    ASSERT(callee()->vm());
+    ASSERT(!callee()->isLargeAllocation());
     // This is an important optimization since we access this so often.
-    return *calleeAsValue().asCell()->markedBlock().vm();
+    return *callee()->markedBlock().vm();
 }
 
 template<typename T>
@@ -312,16 +312,35 @@ inline void JSCell::callDestructor(VM& vm)
     zap();
 }
 
-inline void JSCell::lockInternalLock()
+inline void JSCell::lock()
 {
     Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
     IndexingTypeLockAlgorithm::lock(*lock);
 }
 
-inline void JSCell::unlockInternalLock()
+inline bool JSCell::tryLock()
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    return IndexingTypeLockAlgorithm::tryLock(*lock);
+}
+
+inline void JSCell::unlock()
 {
     Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
     IndexingTypeLockAlgorithm::unlock(*lock);
+}
+
+inline bool JSCell::isLocked() const
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    return IndexingTypeLockAlgorithm::isLocked(*lock);
+}
+
+inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const
+{
+    if (isObject())
+        return jsCast<JSObject*>(const_cast<JSCell*>(this));
+    return toObjectSlow(exec, globalObject);
 }
 
 } // namespace JSC

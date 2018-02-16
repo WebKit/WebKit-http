@@ -26,7 +26,7 @@ crypto.subtle.generateKey(algorithmKeyGen, extractable, ["decrypt", "encrypt", "
     publicKey = result.publicKey;
     privateKey = result.privateKey;
 
-    // Currently not support format.
+    // Wrong key and format.
     return shouldReject('crypto.subtle.exportKey("pkcs8", publicKey)');
 }).then(function() {
     // Not support format.

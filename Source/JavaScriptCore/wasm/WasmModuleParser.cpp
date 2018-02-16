@@ -29,8 +29,9 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "IdentifierInlines.h"
+#include "JSWebAssemblyTable.h"
 #include "WasmFormat.h"
-#include "WasmMemory.h"
+#include "WasmMemoryInformation.h"
 #include "WasmOps.h"
 #include "WasmSections.h"
 
@@ -157,12 +158,12 @@ bool ModuleParser::parse()
 bool ModuleParser::parseType()
 {
     uint32_t count;
-    if (!parseVarUInt32(count))
+    if (!parseVarUInt32(count)
+        || count == std::numeric_limits<uint32_t>::max()
+        || !m_module->signatures.tryReserveCapacity(count))
         return false;
     if (verbose)
-        dataLogLn("count: ", count);
-    if (!m_module->signatures.tryReserveCapacity(count))
-        return false;
+        dataLogLn("  count: ", count);
 
     for (uint32_t i = 0; i < count; ++i) {
         int8_t type;
@@ -175,17 +176,15 @@ bool ModuleParser::parseType()
             dataLogLn("Got function type.");
 
         uint32_t argumentCount;
-        if (!parseVarUInt32(argumentCount))
-            return false;
-
-        if (verbose)
-            dataLogLn("argumentCount: ", argumentCount);
-
         Vector<Type> argumentTypes;
-        if (!argumentTypes.tryReserveCapacity(argumentCount))
+        if (!parseVarUInt32(argumentCount)
+            || argumentCount == std::numeric_limits<uint32_t>::max()
+            || !argumentTypes.tryReserveCapacity(argumentCount))
             return false;
+        if (verbose)
+            dataLogLn("  argument count: ", argumentCount);
 
-        for (unsigned i = 0; i != argumentCount; ++i) {
+        for (unsigned i = 0; i < argumentCount; ++i) {
             Type argumentType;
             if (!parseResultType(argumentType))
                 return false;
@@ -216,25 +215,25 @@ bool ModuleParser::parseType()
 bool ModuleParser::parseImport()
 {
     uint32_t importCount;
-    if (!parseVarUInt32(importCount))
-        return false;
-    if (!m_module->imports.tryReserveCapacity(importCount))
+    if (!parseVarUInt32(importCount)
+        || importCount == std::numeric_limits<uint32_t>::max()
+        || !m_module->imports.tryReserveCapacity(importCount) // FIXME this over-allocates when we fix the FIXMEs below.
+        || !m_module->importFunctions.tryReserveCapacity(importCount) // FIXME this over-allocates when we fix the FIXMEs below.
+        || !m_functionIndexSpace.tryReserveCapacity(importCount)) // FIXME this over-allocates when we fix the FIXMEs below. We'll allocate some more here when we know how many functions to expect.
         return false;
 
-    for (uint32_t importNumber = 0; importNumber != importCount; ++importNumber) {
+    for (uint32_t importNumber = 0; importNumber < importCount; ++importNumber) {
         Import imp;
         uint32_t moduleLen;
         uint32_t fieldLen;
-        if (!parseVarUInt32(moduleLen))
-            return false;
         String moduleString;
-        if (!consumeUTF8String(moduleString, moduleLen))
+        String fieldString;
+        if (!parseVarUInt32(moduleLen)
+            || !consumeUTF8String(moduleString, moduleLen))
             return false;
         imp.module = Identifier::fromString(m_vm, moduleString);
-        if (!parseVarUInt32(fieldLen))
-            return false;
-        String fieldString;
-        if (!consumeUTF8String(fieldString, fieldLen))
+        if (!parseVarUInt32(fieldLen)
+            || !consumeUTF8String(fieldString, fieldLen))
             return false;
         imp.field = Identifier::fromString(m_vm, fieldString);
         if (!parseExternalKind(imp.kind))
@@ -242,19 +241,25 @@ bool ModuleParser::parseImport()
         switch (imp.kind) {
         case External::Function: {
             uint32_t functionSignatureIndex;
-            if (!parseVarUInt32(functionSignatureIndex))
+            if (!parseVarUInt32(functionSignatureIndex)
+                || functionSignatureIndex >= m_module->signatures.size())
                 return false;
-            if (functionSignatureIndex >= m_module->signatures.size())
-                return false;
-            imp.functionSignature = &m_module->signatures[functionSignatureIndex];
+            imp.kindIndex = m_module->importFunctions.size();
+            Signature* signature = &m_module->signatures[functionSignatureIndex];
+            m_module->importFunctions.uncheckedAppend(signature);
+            m_functionIndexSpace.uncheckedAppend(signature);
             break;
         }
         case External::Table: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164135
+            bool isImport = true;
+            if (!parseTableHelper(isImport))
+                return false;
             break;
         }
         case External::Memory: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164134
+            bool isImport = true;
+            if (!parseMemoryHelper(isImport))
+                return false;
             break;
         }
         case External::Global: {
@@ -273,31 +278,129 @@ bool ModuleParser::parseImport()
 bool ModuleParser::parseFunction()
 {
     uint32_t count;
-    if (!parseVarUInt32(count))
-        return false;
-    if (!m_module->functions.tryReserveCapacity(count))
+    if (!parseVarUInt32(count)
+        || count == std::numeric_limits<uint32_t>::max()
+        || !m_module->internalFunctionSignatures.tryReserveCapacity(count)
+        || !m_functionLocationInBinary.tryReserveCapacity(count)
+        || !m_functionIndexSpace.tryReserveCapacity(m_functionIndexSpace.size() + count))
         return false;
 
-    for (uint32_t i = 0; i != count; ++i) {
+    for (uint32_t i = 0; i < count; ++i) {
         uint32_t typeNumber;
-        if (!parseVarUInt32(typeNumber))
+        if (!parseVarUInt32(typeNumber)
+            || typeNumber >= m_module->signatures.size())
             return false;
 
-        if (typeNumber >= m_module->signatures.size())
-            return false;
-
+        Signature* signature = &m_module->signatures[typeNumber];
         // The Code section fixes up start and end.
         size_t start = 0;
         size_t end = 0;
-        m_module->functions.uncheckedAppend({ &m_module->signatures[typeNumber], start, end });
+        m_module->internalFunctionSignatures.uncheckedAppend(signature);
+        m_functionLocationInBinary.uncheckedAppend({ start, end });
+        m_functionIndexSpace.uncheckedAppend(signature);
     }
+
+    return true;
+}
+
+bool ModuleParser::parseResizableLimits(uint32_t& initial, std::optional<uint32_t>& maximum)
+{
+    ASSERT(!maximum);
+
+    uint8_t flags;
+    if (!parseVarUInt1(flags))
+        return false;
+
+    if (!parseVarUInt32(initial))
+        return false;
+
+    if (flags) {
+        uint32_t maximumInt;
+        if (!parseVarUInt32(maximumInt))
+            return false;
+
+        if (initial > maximumInt)
+            return false;
+
+        maximum = maximumInt;
+    }
+
+    return true;
+}
+
+bool ModuleParser::parseTableHelper(bool isImport)
+{
+    // We're only allowed a total of one Table import or definition.
+    if (m_hasTable)
+        return false;
+
+    m_hasTable = true;
+
+    int8_t type;
+    if (!parseInt7(type))
+        return false;
+    if (type != Wasm::Anyfunc)
+        return false;
+
+    uint32_t initial;
+    std::optional<uint32_t> maximum;
+    if (!parseResizableLimits(initial, maximum))
+        return false;
+
+    if (!JSWebAssemblyTable::isValidSize(initial))
+        return false;
+
+    ASSERT(!maximum || *maximum >= initial);
+
+    m_module->tableInformation = TableInformation(initial, maximum, isImport);
 
     return true;
 }
 
 bool ModuleParser::parseTable()
 {
-    // FIXME
+    uint32_t count;
+    if (!parseVarUInt32(count))
+        return false;
+
+    // We only allow one table for now.
+    if (count != 1)
+        return false;
+
+    bool isImport = false;
+    return parseTableHelper(isImport);
+}
+
+bool ModuleParser::parseMemoryHelper(bool isImport)
+{
+    // We don't allow redeclaring memory. Either via import or definition.
+    if (m_module->memory)
+        return false;
+
+    PageCount initialPageCount;
+    PageCount maximumPageCount;
+    {
+        uint32_t initial;
+        std::optional<uint32_t> maximum;
+        if (!parseResizableLimits(initial, maximum))
+            return false;
+        ASSERT(!maximum || *maximum >= initial);
+        if (!PageCount::isValid(initial))
+            return false;
+
+        initialPageCount = PageCount(initial);
+
+        if (maximum) {
+            if (!PageCount::isValid(*maximum))
+                return false;
+            maximumPageCount = PageCount(*maximum);
+        }
+    }
+    ASSERT(initialPageCount);
+    ASSERT(!maximumPageCount || maximumPageCount >= initialPageCount);
+
+    Vector<unsigned> pinnedSizes = { 0 };
+    m_module->memory = MemoryInformation(initialPageCount, maximumPageCount, pinnedSizes, isImport);
     return true;
 }
 
@@ -310,71 +413,54 @@ bool ModuleParser::parseMemory()
     if (!count)
         return true;
 
-    uint8_t flags;
-    if (!parseVarUInt1(flags))
+    // We only allow one memory for now.
+    if (count != 1)
         return false;
 
-    uint32_t size;
-    if (!parseVarUInt32(size))
-        return false;
-    if (size > maxPageCount)
-        return false;
-
-    uint32_t capacity = maxPageCount;
-    if (flags) {
-        if (!parseVarUInt32(capacity))
-            return false;
-        if (size > capacity || capacity > maxPageCount)
-            return false;
-    }
-
-    capacity *= pageSize;
-    size *= pageSize;
-
-    Vector<unsigned> pinnedSizes = { 0 };
-    m_module->memory = std::make_unique<Memory>(size, capacity, pinnedSizes);
-    return m_module->memory->memory();
+    bool isImport = false;
+    return parseMemoryHelper(isImport);
 }
 
 bool ModuleParser::parseGlobal()
 {
     // FIXME https://bugs.webkit.org/show_bug.cgi?id=164133
+    RELEASE_ASSERT_NOT_REACHED();
     return true;
 }
 
 bool ModuleParser::parseExport()
 {
     uint32_t exportCount;
-    if (!parseVarUInt32(exportCount))
-        return false;
-    if (!m_module->exports.tryReserveCapacity(exportCount))
+    if (!parseVarUInt32(exportCount)
+        || exportCount == std::numeric_limits<uint32_t>::max()
+        || !m_module->exports.tryReserveCapacity(exportCount))
         return false;
 
-    for (uint32_t exportNumber = 0; exportNumber != exportCount; ++exportNumber) {
+    for (uint32_t exportNumber = 0; exportNumber < exportCount; ++exportNumber) {
         Export exp;
         uint32_t fieldLen;
-        if (!parseVarUInt32(fieldLen))
-            return false;
         String fieldString;
-        if (!consumeUTF8String(fieldString, fieldLen))
+        if (!parseVarUInt32(fieldLen)
+            || !consumeUTF8String(fieldString, fieldLen))
             return false;
         exp.field = Identifier::fromString(m_vm, fieldString);
+
         if (!parseExternalKind(exp.kind))
             return false;
+
         switch (exp.kind) {
         case External::Function: {
-            if (!parseVarUInt32(exp.functionIndex))
-                return false;
-            if (exp.functionIndex >= m_module->functions.size())
+            if (!parseVarUInt32(exp.functionIndex)
+                || exp.functionIndex >= m_functionIndexSpace.size())
                 return false;
             break;
         }
         case External::Table: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164135
+            // FIXME https://bugs.webkit.org/show_bug.cgi?id=165782
             break;
         }
         case External::Memory: {
-            // FIXME https://bugs.webkit.org/show_bug.cgi?id=164134
+            // FIXME: https://bugs.webkit.org/show_bug.cgi?id=165671
             break;
         }
         case External::Global: {
@@ -392,44 +478,165 @@ bool ModuleParser::parseExport()
 
 bool ModuleParser::parseStart()
 {
-    // FIXME https://bugs.webkit.org/show_bug.cgi?id=161709
+    uint32_t startFunctionIndex;
+    if (!parseVarUInt32(startFunctionIndex)
+        || startFunctionIndex >= m_functionIndexSpace.size())
+        return false;
+    Signature* signature = m_functionIndexSpace[startFunctionIndex].signature;
+    if (signature->arguments.size() != 0
+        || signature->returnType != Void)
+        return false;
+    m_module->startFunctionIndexSpace = startFunctionIndex;
     return true;
 }
 
 bool ModuleParser::parseElement()
 {
-    // FIXME https://bugs.webkit.org/show_bug.cgi?id=161709
+    if (!m_hasTable)
+        return false;
+
+    uint32_t elementCount;
+    if (!parseVarUInt32(elementCount))
+        return false;
+    if (!m_module->elements.tryReserveCapacity(elementCount))
+        return false;
+
+    for (unsigned i = 0; i < elementCount; ++i) {
+        uint32_t tableIndex;
+        if (!parseVarUInt32(tableIndex))
+            return false;
+        // We only support one table for now.
+        if (tableIndex != 0)
+            return false;
+
+        uint32_t offset;
+        if (!parseInitExpr(offset))
+            return false;
+
+        uint32_t indexCount;
+        if (!parseVarUInt32(indexCount))
+            return false;
+
+        ASSERT(!!m_module->tableInformation);
+        if (std::optional<uint32_t> maximum = m_module->tableInformation.maximum()) {
+            // FIXME: should indexCount being zero be a validation error?
+            // https://bugs.webkit.org/show_bug.cgi?id=165826
+            if (indexCount) {
+                // FIXME: right now, provably out of bounds writes are validation errors.
+                // Should they be though?
+                // https://bugs.webkit.org/show_bug.cgi?id=165827
+                uint64_t lastWrittenIndex = static_cast<uint64_t>(indexCount) + static_cast<uint64_t>(offset) - 1;
+                if (lastWrittenIndex >= static_cast<uint64_t>(*maximum))
+                    return false;
+            }
+        }
+
+        Element element;
+        if (!element.functionIndices.tryReserveCapacity(indexCount))
+            return false;
+
+        element.offset = offset;
+
+        for (unsigned i = 0; i < indexCount; ++i) {
+            uint32_t functionIndex;
+            if (!parseVarUInt32(functionIndex))
+                return false;
+
+            if (functionIndex >= m_functionIndexSpace.size())
+                return false;
+
+            element.functionIndices.uncheckedAppend(functionIndex);
+        }
+
+        m_module->elements.uncheckedAppend(WTFMove(element));
+    }
+
     return true;
 }
 
 bool ModuleParser::parseCode()
 {
     uint32_t count;
-    if (!parseVarUInt32(count))
+    if (!parseVarUInt32(count)
+        || count == std::numeric_limits<uint32_t>::max()
+        || count != m_functionLocationInBinary.size())
         return false;
 
-    if (count != m_module->functions.size())
-        return false;
-
-    for (uint32_t i = 0; i != count; ++i) {
+    for (uint32_t i = 0; i < count; ++i) {
         uint32_t functionSize;
-        if (!parseVarUInt32(functionSize))
-            return false;
-        if (functionSize > length() || functionSize > length() - m_offset)
+        if (!parseVarUInt32(functionSize)
+            || functionSize > length()
+            || functionSize > length() - m_offset)
             return false;
 
-        FunctionInformation& info = m_module->functions[i];
-        info.start = m_offset;
-        info.end = m_offset + functionSize;
-        m_offset = info.end;
+        m_functionLocationInBinary[i].start = m_offset;
+        m_functionLocationInBinary[i].end = m_offset + functionSize;
+        m_offset = m_functionLocationInBinary[i].end;
     }
 
     return true;
 }
 
+bool ModuleParser::parseInitExpr(uint32_t& value)
+{
+    // FIXME allow complex init_expr here. https://bugs.webkit.org/show_bug.cgi?id=165700
+    // For now we only handle i32.const as offset.
+
+    uint8_t opcode;
+    uint8_t endOpcode;
+    if (!parseUInt8(opcode)
+        || opcode != Wasm::I32Const
+        || !parseVarUInt32(value)
+        || !parseUInt8(endOpcode)
+        || endOpcode != Wasm::End)
+        return false;
+    return true;
+}
+
 bool ModuleParser::parseData()
 {
-    // FIXME https://bugs.webkit.org/show_bug.cgi?id=161709
+    uint32_t segmentCount;
+    if (!parseVarUInt32(segmentCount)
+        || segmentCount == std::numeric_limits<uint32_t>::max()
+        || !m_module->data.tryReserveCapacity(segmentCount))
+        return false;
+    if (verbose)
+        dataLogLn("  segments: ", segmentCount);
+
+    for (uint32_t segmentNumber = 0; segmentNumber < segmentCount; ++segmentNumber) {
+        if (verbose)
+            dataLogLn("  segment #", segmentNumber);
+        uint32_t index;
+        uint32_t offset;
+        uint32_t dataByteLength;
+        if (!parseVarUInt32(index)
+            || index)
+            return false;
+
+        if (!parseInitExpr(offset))
+            return false;
+        if (verbose)
+            dataLogLn("    offset: ", offset);
+
+        if (!parseVarUInt32(dataByteLength)
+            || dataByteLength == std::numeric_limits<uint32_t>::max())
+            return false;
+        if (verbose)
+            dataLogLn("    data bytes: ", dataByteLength);
+
+        Segment* segment = Segment::make(offset, dataByteLength);
+        if (!segment)
+            return false;
+        m_module->data.uncheckedAppend(Segment::makePtr(segment));
+        for (uint32_t dataByte = 0; dataByte < dataByteLength; ++dataByte) {
+            uint8_t byte;
+            if (!parseUInt8(byte))
+                return false;
+            segment->byte(dataByte) = byte;
+            if (verbose)
+                dataLogLn("    [", dataByte, "] = ", segment->byte(dataByte));
+        }
+    }
     return true;
 }
 

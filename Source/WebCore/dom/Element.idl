@@ -113,8 +113,7 @@
 
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
-    const unsigned short ALLOW_KEYBOARD_INPUT = 1;
-    void webkitRequestFullScreen(optional unsigned short flags = 0);
+    [ImplementedAs=webkitRequestFullscreen] void webkitRequestFullScreen();
 
     // W3C version
     void webkitRequestFullscreen();
@@ -128,7 +127,7 @@
     [CEReactions, MayThrowException] void insertAdjacentHTML(DOMString where, DOMString html);
     [MayThrowException] void insertAdjacentText(DOMString where, DOMString text);
 
-    [Conditional=POINTER_LOCK, EnabledAtRuntime=PointerLock] void requestPointerLock();
+    [Conditional=POINTER_LOCK] void requestPointerLock();
 
     // CSS Regions API
     [Conditional=CSS_REGIONS] readonly attribute DOMString webkitRegionOverset;

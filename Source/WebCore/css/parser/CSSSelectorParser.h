@@ -29,8 +29,8 @@
 
 #pragma once
 
+#include "CSSParserSelector.h"
 #include "CSSParserTokenRange.h"
-#include "CSSParserValues.h" // FIXME-NEWPARSER Change when CSSParserSelector moves into its own file.
 #include <memory>
 
 namespace WebCore {
@@ -76,7 +76,7 @@ private:
     const AtomicString& determineNamespace(const AtomicString& prefix);
     void prependTypeSelectorIfNeeded(const AtomicString& namespacePrefix, const AtomicString& elementName, CSSParserSelector*);
     static std::unique_ptr<CSSParserSelector> addSimpleSelectorToCompound(std::unique_ptr<CSSParserSelector> compoundSelector, std::unique_ptr<CSSParserSelector> simpleSelector);
-    static std::unique_ptr<CSSParserSelector> splitCompoundAtImplicitShadowCrossingCombinator(std::unique_ptr<CSSParserSelector> compoundSelector);
+    static std::unique_ptr<CSSParserSelector> splitCompoundAtImplicitShadowCrossingCombinator(std::unique_ptr<CSSParserSelector> compoundSelector, const CSSParserContext&);
 
     const CSSParserContext& m_context;
     RefPtr<StyleSheetContents> m_styleSheet; // FIXME: Should be const

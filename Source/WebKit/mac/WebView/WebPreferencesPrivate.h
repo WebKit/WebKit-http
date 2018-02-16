@@ -53,8 +53,7 @@ typedef enum {
 } WebStorageBlockingPolicy;
 
 typedef enum {
-    WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1u << 0,
-    WebKitJavaScriptRuntimeFlagsAllEnabled = WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled
+    WebKitJavaScriptRuntimeFlagsAllEnabled = 0
 } WebKitJavaScriptRuntimeFlags;
 
 extern NSString *WebPreferencesChangedNotification;
@@ -162,6 +161,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setSubtleCryptoEnabled:(BOOL)flag;
 - (BOOL)subtleCryptoEnabled;
+
+- (void)setMediaStreamEnabled:(BOOL)flag;
+- (BOOL)mediaStreamEnabled;
+
+- (void)setPeerConnectionEnabled:(BOOL)flag;
+- (BOOL)peerConnectionEnabled;
 
 #if !TARGET_OS_IPHONE
 // zero means do AutoScale
@@ -283,9 +288,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setAllowsPictureInPictureMediaPlayback:(BOOL)flag;
 - (BOOL)allowsPictureInPictureMediaPlayback;
-
-- (void)setPointerLockEnabled:(BOOL)flag;
-- (BOOL)pointerLockEnabled;
 
 - (NSString *)pictographFontFamily;
 - (void)setPictographFontFamily:(NSString *)family;

@@ -101,6 +101,24 @@ function runTest()
     testRunner.evaluateInWebInspector(testFunctionCodeString);
 }
 
+function runTestHTTPS()
+{
+    if (window.testRunner) {
+        testRunner.dumpAsText();
+        testRunner.waitUntilDone();
+    }
+
+    let url = new URL(document.URL);
+    if (url.protocol !== "https:") {
+        url.protocol = "https:";
+        url.port = "8443";
+        window.location.href = url.toString();
+        return;
+    }
+
+    runTest();
+}
+
 TestPage.completeTest = function()
 {
     // Don't try to use testRunner if running through the browser.
@@ -138,6 +156,8 @@ TestPage.addResult = function(text)
 
     this._resultElement.append(text, document.createElement("br"));
 }
+
+TestPage.log = TestPage.addResult;
 
 TestPage.dispatchEventToFrontend = function(eventName, data)
 {

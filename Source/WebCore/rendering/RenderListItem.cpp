@@ -34,6 +34,7 @@
 #include "RenderInline.h"
 #include "RenderListMarker.h"
 #include "RenderMultiColumnFlowThread.h"
+#include "RenderRuby.h"
 #include "RenderTable.h"
 #include "RenderView.h"
 #include "StyleInheritedData.h"
@@ -78,7 +79,7 @@ void RenderListItem::styleDidChange(StyleDifference diff, const RenderStyle* old
     auto newStyle = RenderStyle::create();
     // The marker always inherits from the list item, regardless of where it might end
     // up (e.g., in some deeply nested line box). See CSS3 spec.
-    newStyle.inheritFrom(&style());
+    newStyle.inheritFrom(style());
     if (!m_marker) {
         m_marker = createRenderer<RenderListMarker>(*this, WTFMove(newStyle)).leakPtr();
         m_marker->initializeStyle();
@@ -232,7 +233,10 @@ static RenderBlock* getParentOfFirstLineBox(RenderBlock& current, RenderObject& 
         if (child.isFloating() || child.isOutOfFlowPositioned())
             continue;
 
-        if (is<RenderTable>(child) || !is<RenderBlock>(child) || (is<RenderBox>(child) && downcast<RenderBox>(child).isWritingModeRoot()))
+        if (!is<RenderBlock>(child) || is<RenderTable>(child) || is<RenderRubyAsBlock>(child))
+            break;
+
+        if (is<RenderBox>(child) && downcast<RenderBox>(child).isWritingModeRoot())
             break;
 
         if (is<RenderListItem>(current) && inQuirksMode && child.node() && isHTMLListElement(*child.node()))

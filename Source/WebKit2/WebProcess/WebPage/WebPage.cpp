@@ -116,6 +116,7 @@
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/ArchiveResource.h>
 #include <WebCore/Chrome.h>
+#include <WebCore/CommonVM.h>
 #include <WebCore/ContextMenuController.h>
 #include <WebCore/DataTransfer.h>
 #include <WebCore/DatabaseManager.h>
@@ -2711,7 +2712,7 @@ void WebPage::runJavaScriptInMainFrame(const String& script, uint64_t callbackID
     // disappear during script execution.
 
     RefPtr<SerializedScriptValue> serializedResultValue;
-    JSLockHolder lock(JSDOMWindow::commonVM());
+    JSLockHolder lock(commonVM());
     bool hadException = true;
     ExceptionDetails details;
     if (JSValue resultValue = m_mainFrame->coreFrame()->script().executeScript(script, true, &details)) {
@@ -3019,6 +3020,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAVFoundationNSURLSessionEnabled(store.getBoolValueForKey(WebPreferencesKey::isAVFoundationNSURLSessionEnabledKey()));
 #endif
 
+#if USE(GSTREAMER)
+    settings.setGStreamerEnabled(store.getBoolValueForKey(WebPreferencesKey::isGStreamerEnabledKey()));
+#endif
+
 #if PLATFORM(COCOA)
     settings.setQTKitEnabled(store.getBoolValueForKey(WebPreferencesKey::isQTKitEnabledKey()));
 #endif
@@ -3032,7 +3037,11 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
 #if ENABLE(MEDIA_STREAM)
-    settings.setMediaStreamEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaStreamEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaStreamEnabledKey()));
+#endif
+
+#if ENABLE(WEB_RTC)
+    RuntimeEnabledFeatures::sharedFeatures().setPeerConnectionEnabled(store.getBoolValueForKey(WebPreferencesKey::peerConnectionEnabledKey()));
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)
@@ -3183,10 +3192,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
-#endif
-
-#if ENABLE(POINTER_LOCK)
-    RuntimeEnabledFeatures::sharedFeatures().setPointerLockEnabled(store.getBoolValueForKey(WebPreferencesKey::pointerLockEnabledKey()));
 #endif
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
@@ -3700,9 +3705,14 @@ void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vect
     m_userMediaPermissionRequestManager.didCompleteMediaDeviceEnumeration(userMediaID, devices, deviceIdentifierHashSalt, originHasPersistentAccess);
 }
 
-void WebPage::grantUserMediaDevicesSandboxExtension(const SandboxExtension::HandleArray& handles)
+void WebPage::grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions& extensions)
 {
-    m_userMediaPermissionRequestManager.grantUserMediaDevicesSandboxExtension(handles);
+    m_userMediaPermissionRequestManager.grantUserMediaDeviceSandboxExtensions(extensions);
+}
+
+void WebPage::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
+{
+    m_userMediaPermissionRequestManager.revokeUserMediaDeviceSandboxExtensions(extensionIDs);
 }
 #endif
 
@@ -4824,7 +4834,7 @@ static bool needsHiddenContentEditableQuirk(bool needsQuirks, const URL& url)
 
     String host = url.host();
     String path = url.path();
-    return equalLettersIgnoringASCIICase(host, "docs.google.com") || (equalLettersIgnoringASCIICase(host, "www.icloud.com") && path.contains("/pages/"));
+    return equalLettersIgnoringASCIICase(host, "docs.google.com");
 }
 
 static bool needsPlainTextQuirk(bool needsQuirks, const URL& url)
@@ -4841,7 +4851,7 @@ static bool needsPlainTextQuirk(bool needsQuirks, const URL& url)
         return true;
 
     String path = url.path();
-    if (equalLettersIgnoringASCIICase(host, "www.icloud.com") && (path.contains("notes") || url.fragmentIdentifier().contains("notes") || path.contains("/keynote/")))
+    if (equalLettersIgnoringASCIICase(host, "www.icloud.com") && (path.contains("notes") || url.fragmentIdentifier().contains("notes")))
         return true;
 
     if (equalLettersIgnoringASCIICase(host, "trix-editor.org"))
@@ -5457,12 +5467,12 @@ void WebPage::updateCachedDocumentLoader(WebDocumentLoader& documentLoader, Fram
 
 void WebPage::getBytecodeProfile(uint64_t callbackID)
 {
-    if (!JSDOMWindow::commonVM().m_perBytecodeProfiler) {
+    if (!commonVM().m_perBytecodeProfiler) {
         send(Messages::WebPageProxy::StringCallback(String(), callbackID));
         return;
     }
 
-    String result = JSDOMWindow::commonVM().m_perBytecodeProfiler->toJSON();
+    String result = commonVM().m_perBytecodeProfiler->toJSON();
     ASSERT(result.length());
     send(Messages::WebPageProxy::StringCallback(result, callbackID));
 }
@@ -5470,7 +5480,7 @@ void WebPage::getBytecodeProfile(uint64_t callbackID)
 void WebPage::getSamplingProfilerOutput(uint64_t callbackID)
 {
 #if ENABLE(SAMPLING_PROFILER)
-    SamplingProfiler* samplingProfiler = JSDOMWindow::commonVM().samplingProfiler();
+    SamplingProfiler* samplingProfiler = commonVM().samplingProfiler();
     if (!samplingProfiler) {
         send(Messages::WebPageProxy::InvalidateStringCallback(callbackID));
         return;

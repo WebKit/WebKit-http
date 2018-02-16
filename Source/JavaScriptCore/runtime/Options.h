@@ -184,9 +184,12 @@ typedef const char* optionString;
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
     v(bool, useConcurrentBarriers, true, Normal, nullptr) \
-    v(bool, useConcurrentGC, false, Normal, nullptr) \
+    v(bool, useConcurrentGC, true, Normal, nullptr) \
     v(bool, collectContinuously, false, Normal, nullptr) \
+    v(double, collectContinuouslyPeriodMS, 1, Normal, nullptr) \
     v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(bool, verboseVisitRace, false, Normal, nullptr) \
+    v(bool, optimizeParallelSlotVisitorsForStoppedMutator, false, Normal, nullptr) \
     v(unsigned, largeHeapSize, 32 * 1024 * 1024, Normal, nullptr) \
     v(unsigned, smallHeapSize, 1 * 1024 * 1024, Normal, nullptr) \
     v(double, smallHeapRAMFraction, 0.25, Normal, nullptr) \
@@ -199,9 +202,8 @@ typedef const char* optionString;
     v(double, maximumMutatorUtilization, 0.7, Normal, nullptr) \
     v(double, concurrentGCMaxHeadroom, 1.5, Normal, nullptr) \
     v(double, concurrentGCPeriodMS, 2, Normal, nullptr) \
-    v(double, initialExtraPauseRatio, 0, Normal, nullptr) \
-    v(double, extraPauseRatioIterationGrowthRate, 1.1, Normal, nullptr) \
     v(bool, collectorShouldResumeFirst, false, Normal, nullptr) \
+    v(double, collectorPermittedIdleRatio, 0, Normal, nullptr) \
     v(bool, scribbleFreeCells, false, Normal, nullptr) \
     v(double, sizeClassProgression, 1.4, Normal, nullptr) \
     v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
@@ -229,6 +231,7 @@ typedef const char* optionString;
     v(bool, usePolymorphicCallInliningForNonStubStatus, false, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSize, 15, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSizeForTopTier, 5, Normal, nullptr) \
+    v(unsigned, maxPolymorphicCallVariantListSizeForWebAssemblyToJS, 5, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantsForInlining, 5, Normal, nullptr) \
     v(unsigned, frequentCallThreshold, 2, Normal, nullptr) \
     v(double, minimumCallToKnownRate, 0.51, Normal, nullptr) \
@@ -322,7 +325,7 @@ typedef const char* optionString;
     v(unsigned, maximumDirectCallStackSize, 200, Normal, nullptr) \
     \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
-    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
+    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(8), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
@@ -505,6 +508,8 @@ public:
     JS_EXPORT_PRIVATE static void dumpAllOptionsInALine(StringBuilder&);
 
     JS_EXPORT_PRIVATE static void ensureOptionsAreCoherent();
+
+    JS_EXPORT_PRIVATE static void enableRestrictedOptions(bool enableOrNot);
 
     // Declare accessors for each option:
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \

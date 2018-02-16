@@ -68,9 +68,6 @@ endif ()
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
-    "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
-    "${JAVASCRIPTCORE_DIR}/replay"
     "${THIRDPARTY_DIR}/ANGLE"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/accessibility/mac"
@@ -126,7 +123,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/spi/ios"
     "${WEBCORE_DIR}/platform/spi/mac"
     "${WEBCORE_DIR}/plugins/mac"
-    "${WTF_DIR}"
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -261,10 +257,11 @@ list(APPEND WebCore_SOURCES
     page/PageDebuggable.cpp
 
     page/cocoa/MemoryReleaseCocoa.mm
-    page/cocoa/UserAgent.mm
+    page/cocoa/PerformanceLoggingCocoa.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
     page/cocoa/ResourceUsageThreadCocoa.mm
     page/cocoa/SettingsCocoa.mm
+    page/cocoa/UserAgent.mm
 
     page/mac/ChromeMac.mm
     page/mac/DragControllerMac.mm
@@ -611,6 +608,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     editing/cocoa
     editing/mac
 
+    html/canvas
     html/forms
     html/parser
     html/shadow

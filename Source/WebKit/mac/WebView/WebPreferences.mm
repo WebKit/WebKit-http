@@ -639,6 +639,15 @@ public:
 #if ENABLE(SUBTLE_CRYPTO)
         [NSNumber numberWithBool:YES], WebKitSubtleCryptoEnabledPreferenceKey,
 #endif
+
+#if ENABLE(MEDIA_STREAM)
+        [NSNumber numberWithBool:NO], WebKitMediaStreamEnabledPreferenceKey,
+#endif
+
+#if ENABLE(WEB_RTC)
+        [NSNumber numberWithBool:NO], WebKitPeerConnectionEnabledPreferenceKey,
+#endif
+
         nil];
 
 #if !PLATFORM(IOS)
@@ -2380,16 +2389,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitAllowsPictureInPictureMediaPlaybackPreferenceKey];
 }
 
-- (BOOL)pointerLockEnabled
-{
-    return [self _boolValueForKey:WebKitPointerLockEnabledPreferenceKey];
-}
-
-- (void)setPointerLockEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitPointerLockEnabledPreferenceKey];
-}
-
 - (BOOL)mockScrollbarsEnabled
 {
     return [self _boolValueForKey:WebKitMockScrollbarsEnabledPreferenceKey];
@@ -2699,6 +2698,25 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitSubtleCryptoEnabledPreferenceKey];
 }
 
+- (BOOL)mediaStreamEnabled
+{
+    return [self _boolValueForKey:WebKitMediaStreamEnabledPreferenceKey];
+}
+
+- (void)setMediaStreamEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaStreamEnabledPreferenceKey];
+}
+
+- (BOOL)peerConnectionEnabled
+{
+    return [self _boolValueForKey:WebKitPeerConnectionEnabledPreferenceKey];
+}
+
+- (void)setPeerConnectionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
+}
 
 - (void)setMetaRefreshEnabled:(BOOL)enabled
 {

@@ -309,7 +309,7 @@ sub AddToIncludesForIDLType
         return;
     }
     
-    if ($type->name eq "SerializedScriptValue" || $type->name eq "Dictionary") {
+    if ($type->name eq "SerializedScriptValue") {
         AddToIncludes($type->name . ".h", $includesRef, $conditional);
         return;
     }
@@ -1353,8 +1353,8 @@ sub GenerateDictionaryImplementationContent
                     # 2. Let value be the result of converting idlValue to an ECMAScript value.
                     # 3. Perform ! CreateDataProperty(O, key, value).
                 if (!$member->isRequired && not defined $member->default) {
-                    $result .= "    if (dictionary.${key}) {\n";
-                    $result .= "        auto ${key}Value = toJS<$IDLType>(state, globalObject, dictionary.${key});\n";
+                    $result .= "    if (!${IDLType}::isNullValue(dictionary.${key})) {\n";
+                    $result .= "        auto ${key}Value = toJS<$IDLType>(state, globalObject, ${IDLType}::extractValueFromNullable(dictionary.${key}));\n";
                     $result .= "        result->putDirect(vm, JSC::Identifier::fromString(&vm, \"${key}\"), ${key}Value);\n";
                     $result .= "    }\n";
                 } else {
@@ -1907,9 +1907,9 @@ sub GenerateHeader
 
             push(@headerContent, "JSC::DOMJIT::GetterSetter* domJITGetterSetterFor$className(void);\n");
 
-            push(@headerContent, "class $domJITClassName : public JSC::DOMJIT::GetterSetter {\n");
+            push(@headerContent, "class ${domJITClassName} : public JSC::DOMJIT::GetterSetter {\n");
             push(@headerContent, "public:\n");
-            push(@headerContent, "    $domJITClassName();\n");
+            push(@headerContent, "    ${domJITClassName}();\n");
             push(@headerContent, "#if ENABLE(JIT)\n");
             push(@headerContent, "    Ref<JSC::DOMJIT::Patchpoint> checkDOM() override;\n");
             push(@headerContent, "    Ref<JSC::DOMJIT::CallDOMGetterPatchpoint> callDOMGetter() override;\n");
@@ -2151,7 +2151,7 @@ sub AreTypesDistinguishableForOverloadResolution
 
     my $isDictionary = sub {
         my $type = shift;
-        return $type->name eq "Dictionary" || $codeGenerator->IsDictionaryType($type);
+        return $codeGenerator->IsDictionaryType($type);
     };
     my $isCallbackFunctionOrDictionary = sub {
         my $type = shift;
@@ -2281,7 +2281,7 @@ sub GenerateOverloadedFunctionOrConstructor
     };
     my $isDictionaryOrRecordParameter = sub {
         my ($type, $optionality) = @_;
-        return $type->name eq "Dictionary" || $codeGenerator->IsDictionaryType($type) || $codeGenerator->IsRecordType($type);
+        return $codeGenerator->IsDictionaryType($type) || $codeGenerator->IsRecordType($type);
     };
     my $isNullableOrDictionaryOrRecordOrUnionContainingOne = sub {
         my ($type, $optionality) = @_;
@@ -3441,14 +3441,14 @@ sub GenerateImplementation
                 my $getter = GetAttributeGetterName($interface, $generatorName, $attribute);
                 my $setter = IsReadonly($attribute) ? "nullptr" : GetAttributeSetterName($interface, $generatorName, $attribute);
                 my $resultType = GetResultTypeFilter($interface, $attribute->type);
-                push(@implContent, "$domJITClassName::$domJITClassName()\n");
+                push(@implContent, "${domJITClassName}::${domJITClassName}()\n");
                 push(@implContent, "    : JSC::DOMJIT::GetterSetter($getter, $setter, ${className}::info(), $resultType)\n");
                 push(@implContent, "{\n");
                 push(@implContent, "}\n\n");
 
                 push(@implContent, "JSC::DOMJIT::GetterSetter* domJITGetterSetterFor" . $generatorName . "()\n");
                 push(@implContent, "{\n");
-                push(@implContent, "    static NeverDestroyed<$domJITClassName> compiler;\n");
+                push(@implContent, "    static NeverDestroyed<${domJITClassName}> compiler;\n");
                 push(@implContent, "    return &compiler.get();\n");
                 push(@implContent, "}\n\n");
             }
@@ -4328,9 +4328,6 @@ my %automaticallyGeneratedDefaultValues = (
     "DOMString" => "\"undefined\"",
     "USVString" => "\"undefined\"",
 
-    # Dictionary(state, undefined) will construct an empty Dictionary.
-    "Dictionary" => "[]",
-
     # JSValue::toBoolean() will convert undefined to false.
     "boolean" => "false",
 
@@ -4418,7 +4415,7 @@ sub GenerateParametersCheck
 
         if ($argument->isOptional && !defined($argument->default)) {
             # As per Web IDL, optional dictionary arguments are always considered to have a default value of an empty dictionary, unless otherwise specified.
-            $argument->default("[]") if $type->name eq "Dictionary" or $codeGenerator->IsDictionaryType($type);
+            $argument->default("[]") if $codeGenerator->IsDictionaryType($type);
 
             # Treat undefined the same as an empty sequence Or frozen array.
             $argument->default("[]") if $codeGenerator->IsSequenceOrFrozenArrayType($type);
@@ -5015,7 +5012,6 @@ my %nativeType = (
     "DOMString" => "String",
     "USVString" => "String",
     "Date" => "double",
-    "Dictionary" => "Dictionary",
     "EventListener" => "RefPtr<EventListener>",
     "SerializedScriptValue" => "RefPtr<SerializedScriptValue>",
     "XPathNSResolver" => "RefPtr<XPathNSResolver>",
@@ -5114,7 +5110,6 @@ sub GetBaseIDLType
         # Non-WebIDL extensions
         "Date" => "IDLDate",
         "SerializedScriptValue" => "IDLSerializedScriptValue<SerializedScriptValue>",
-        "Dictionary" => "IDLLegacyDictionary<Dictionary>",
         "EventListener" => "IDLEventListener<JSEventListener>",
         "XPathNSResolver" => "IDLXPathNSResolver<XPathNSResolver>",
 
@@ -5335,6 +5330,7 @@ sub NativeToJSValueDOMConvertNeedsState
     return 1 if $codeGenerator->IsRecordType($type);
     return 1 if $codeGenerator->IsStringType($type);
     return 1 if $codeGenerator->IsEnumType($type);
+    return 1 if $codeGenerator->IsDictionaryType($type);
     return 1 if $codeGenerator->IsInterfaceType($type);
     return 1 if $codeGenerator->IsTypedArrayType($type);
     return 1 if $type->name eq "Date";
@@ -5352,6 +5348,7 @@ sub NativeToJSValueDOMConvertNeedsGlobalObject
     return 1 if $type->isUnion;
     return 1 if $codeGenerator->IsSequenceOrFrozenArrayType($type);
     return 1 if $codeGenerator->IsRecordType($type);
+    return 1 if $codeGenerator->IsDictionaryType($type);
     return 1 if $codeGenerator->IsInterfaceType($type);
     return 1 if $codeGenerator->IsTypedArrayType($type);
     return 1 if $type->name eq "SerializedScriptValue";

@@ -88,6 +88,7 @@ namespace JSC  {
 
         JSValue calleeAsValue() const { return this[CallFrameSlot::callee].jsValue(); }
         JSObject* jsCallee() const { return this[CallFrameSlot::callee].object(); }
+        JSCell* callee() const { return this[CallFrameSlot::callee].unboxedCell(); }
         SUPPRESS_ASAN JSValue unsafeCallee() const { return this[CallFrameSlot::callee].asanUnsafeJSValue(); }
         CodeBlock* codeBlock() const { return this[CallFrameSlot::codeBlock].Register::codeBlock(); }
         CodeBlock** addressOfCodeBlock() const { return bitwise_cast<CodeBlock**>(this + CallFrameSlot::codeBlock); }

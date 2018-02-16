@@ -23,10 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GraphicsContext3D_h
-#define GraphicsContext3D_h
+#pragma once
 
 #include "ANGLEWebKitBridge.h"
+#include "GraphicsContext3DAttributes.h"
 #include "GraphicsTypes3D.h"
 #include "Image.h"
 #include "IntRect.h"
@@ -722,23 +722,6 @@ public:
         MAP_READ_BIT = 0x0001
     };
 
-    // Context creation attributes.
-    struct Attributes {
-        bool alpha { true };
-        bool depth { true };
-        bool stencil { false };
-        bool antialias { true };
-        bool premultipliedAlpha { true };
-        bool preserveDrawingBuffer { false };
-        bool noExtensions { false };
-        bool shareResources { true };
-        bool preferLowPowerToHighPerformance { false };
-        bool forceSoftwareRenderer { false };
-        bool failIfMajorPerformanceCaveat { false };
-        bool useGLES3 { false };
-        float devicePixelRatio { 1 };
-    };
-
     enum RenderStyle {
         RenderOffscreen,
         RenderDirectlyToHostWindow,
@@ -760,8 +743,8 @@ public:
     void setContextLostCallback(std::unique_ptr<ContextLostCallback>);
     void setErrorMessageCallback(std::unique_ptr<ErrorMessageCallback>);
 
-    static RefPtr<GraphicsContext3D> create(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
-    static PassRefPtr<GraphicsContext3D> createForCurrentGLContext();
+    static RefPtr<GraphicsContext3D> create(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
+    static RefPtr<GraphicsContext3D> createForCurrentGLContext();
     ~GraphicsContext3D();
 
 #if PLATFORM(COCOA)
@@ -1030,7 +1013,7 @@ public:
     GC3Dint getAttribLocation(Platform3DObject, const String& name);
     void getBooleanv(GC3Denum pname, GC3Dboolean* value);
     void getBufferParameteriv(GC3Denum target, GC3Denum pname, GC3Dint* value);
-    Attributes getContextAttributes();
+    GraphicsContext3DAttributes getContextAttributes();
     GC3Denum getError();
     void getFloatv(GC3Denum pname, GC3Dfloat* value);
     void getFramebufferAttachmentParameteriv(GC3Denum target, GC3Denum attachment, GC3Denum pname, GC3Dint* value);
@@ -1156,7 +1139,7 @@ public:
     void recycleContext();
 
     void paintRenderingResultsToCanvas(ImageBuffer*);
-    PassRefPtr<ImageData> paintRenderingResultsToImageData();
+    RefPtr<ImageData> paintRenderingResultsToImageData();
     bool paintCompositedResultsToCanvas(ImageBuffer*);
 
 #if PLATFORM(IOS)
@@ -1280,7 +1263,7 @@ public:
     };
 
 private:
-    GraphicsContext3D(Attributes, HostWindow*, RenderStyle = RenderOffscreen);
+    GraphicsContext3D(GraphicsContext3DAttributes, HostWindow*, RenderStyle = RenderOffscreen);
     static int GPUCheckCounter;
 
     // Helper for packImageData/extractImageData/extractTextureData which implement packing of pixel
@@ -1398,7 +1381,7 @@ private:
 #endif
     friend class Extensions3DOpenGLCommon;
 
-    Attributes m_attrs;
+    GraphicsContext3DAttributes m_attrs;
     RenderStyle m_renderStyle;
     Vector<Vector<float>> m_vertexArray;
 
@@ -1452,5 +1435,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // GraphicsContext3D_h

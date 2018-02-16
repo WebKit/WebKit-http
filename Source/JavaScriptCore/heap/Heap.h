@@ -24,6 +24,7 @@
 #include "ArrayBuffer.h"
 #include "CellState.h"
 #include "CollectionScope.h"
+#include "DeleteAllCodeEffort.h"
 #include "GCIncomingRefCountedSet.h"
 #include "HandleSet.h"
 #include "HandleStack.h"
@@ -39,6 +40,7 @@
 #include "StructureIDTable.h"
 #include "TinyBloomFilter.h"
 #include "UnconditionalFinalizer.h"
+#include "VisitRaceKey.h"
 #include "WeakHandleOwner.h"
 #include "WeakReferenceHarvester.h"
 #include "WriteBarrierBuffer.h"
@@ -73,6 +75,7 @@ class LLIntOffsetsExtractor;
 class MarkStackArray;
 class MarkedArgumentBuffer;
 class SlotVisitor;
+class SpaceTimeScheduler;
 class StopIfNecessaryTimer;
 class VM;
 
@@ -123,6 +126,8 @@ public:
 
     WriteBarrierBuffer& writeBarrierBuffer() { return m_writeBarrierBuffer; }
     void flushWriteBarrierBuffer(JSCell*);
+    
+    void writeBarrierOpaqueRoot(void*);
 
     Heap(VM*, HeapType);
     ~Heap();
@@ -254,8 +259,8 @@ public:
     size_t sizeBeforeLastFullCollection() const { return m_sizeBeforeLastFullCollect; }
     size_t sizeAfterLastFullCollection() const { return m_sizeAfterLastFullCollect; }
 
-    void deleteAllCodeBlocks();
-    void deleteAllUnlinkedCodeBlocks();
+    void deleteAllCodeBlocks(DeleteAllCodeEffort);
+    void deleteAllUnlinkedCodeBlocks(DeleteAllCodeEffort);
 
     void didAllocate(size_t);
     bool isPagedOut(double deadline);
@@ -337,6 +342,18 @@ public:
     // already be called for you at the right times.
     void stopIfNecessary();
     
+    // This is a much stronger kind of stopping of the collector, and it may require waiting for a
+    // while. This is meant to be a legacy API for clients of collectAllGarbage that expect that there
+    // is no GC before or after that function call. After calling this, you are free to start GCs
+    // yourself but you can be sure that none are running.
+    //
+    // This both prevents new collections from being started asynchronously and waits for any
+    // outstanding collections to complete.
+    void preventCollection();
+    void allowCollection();
+    
+    JS_EXPORT_PRIVATE void addMutatorShouldBeFencedCache(bool&);
+    
 #if USE(CF)
     CFRunLoopRef runLoop() const { return m_runLoop.get(); }
     JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
@@ -360,6 +377,7 @@ private:
     friend class MarkedAllocator;
     friend class MarkedBlock;
     friend class SlotVisitor;
+    friend class SpaceTimeScheduler;
     friend class IncrementalSweeper;
     friend class HeapStatistics;
     friend class VM;
@@ -451,7 +469,6 @@ private:
     void snapshotUnswept();
     void deleteSourceProviderCaches();
     void notifyIncrementalSweeper();
-    void prepareForAllocation();
     void harvestWeakReferences();
     void finalizeUnconditionalFinalizers();
     void clearUnmarkedExecutables();
@@ -479,6 +496,10 @@ private:
     size_t threadBytesVisited();
     
     void forEachCodeBlockImpl(const ScopedLambda<bool(CodeBlock*)>&);
+    
+    JS_EXPORT_PRIVATE void writeBarrierOpaqueRootSlow(void*);
+    
+    void setMutatorShouldBeFenced(bool value);
 
     const HeapType m_heapType;
     const size_t m_ramSize;
@@ -523,6 +544,9 @@ private:
     Vector<std::unique_ptr<SlotVisitor>> m_parallelSlotVisitors;
     Vector<SlotVisitor*> m_availableParallelSlotVisitors;
     Lock m_parallelSlotVisitorLock;
+    
+    template<typename Func>
+    void forEachSlotVisitor(const Func&);
 
     HandleSet m_handleSet;
     HandleStack m_handleStack;
@@ -535,6 +559,7 @@ private:
     WriteBarrierBuffer m_writeBarrierBuffer;
     bool m_mutatorShouldBeFenced { Options::forceFencedBarrier() };
     unsigned m_barrierThreshold { Options::forceFencedBarrier() ? tautologicalThreshold : blackThreshold };
+    Vector<bool*> m_mutatorShouldBeFencedCaches;
 
     VM* m_vm;
     double m_lastFullGCLength;
@@ -565,6 +590,9 @@ private:
 #endif
 
     HashMap<void*, std::function<void()>> m_weakGCMaps;
+    
+    HashSet<VisitRaceKey> m_visitRaces;
+    Lock m_visitRaceLock;
 
     Lock m_markingMutex;
     Condition m_markingConditionVariable;
@@ -607,6 +635,11 @@ private:
     Box<Lock> m_threadLock;
     RefPtr<AutomaticThreadCondition> m_threadCondition; // The mutator must not wait on this. It would cause a deadlock.
     RefPtr<AutomaticThread> m_thread;
+    
+    Lock m_collectContinuouslyLock;
+    Condition m_collectContinuouslyCondition;
+    bool m_shouldStopCollectingContinuously { false };
+    ThreadIdentifier m_collectContinuouslyThread { 0 };
     
     MonotonicTime m_lastGCStartTime;
     MonotonicTime m_lastGCEndTime;

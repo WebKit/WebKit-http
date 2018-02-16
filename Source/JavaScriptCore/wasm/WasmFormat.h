@@ -31,7 +31,14 @@
 #include "B3Type.h"
 #include "CodeLocation.h"
 #include "Identifier.h"
+#include "MacroAssemblerCodeRef.h"
+#include "RegisterAtOffsetList.h"
+#include "WasmMemoryInformation.h"
 #include "WasmOps.h"
+#include "WasmPageCount.h"
+#include <memory>
+#include <wtf/FastMalloc.h>
+#include <wtf/Optional.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -91,56 +98,147 @@ struct Import {
     Identifier module;
     Identifier field;
     External::Kind kind;
-    union {
-        Signature* functionSignature;
-        // FIXME implement Table https://bugs.webkit.org/show_bug.cgi?id=164135
-        // FIXME implement Memory https://bugs.webkit.org/show_bug.cgi?id=164134
-        // FIXME implement Global https://bugs.webkit.org/show_bug.cgi?id=164133
-    };
+    unsigned kindIndex; // Index in the vector of the corresponding kind.
 };
-
-struct FunctionInformation {
-    Signature* signature;
-    size_t start;
-    size_t end;
-};
-
-class Memory;
 
 struct Export {
     Identifier field;
     External::Kind kind;
     union {
         uint32_t functionIndex;
-        // FIXME implement Table https://bugs.webkit.org/show_bug.cgi?id=164135
-        // FIXME implement Memory https://bugs.webkit.org/show_bug.cgi?id=164134
+        // FIXME implement Table https://bugs.webkit.org/show_bug.cgi?id=165782
+        // FIXME implement Memory https://bugs.webkit.org/show_bug.cgi?id=165671
         // FIXME implement Global https://bugs.webkit.org/show_bug.cgi?id=164133
     };
+};
+
+struct FunctionLocationInBinary {
+    size_t start;
+    size_t end;
+};
+
+struct Segment {
+    uint32_t offset;
+    uint32_t sizeInBytes;
+    // Bytes are allocated at the end.
+    static Segment* make(uint32_t offset, uint32_t sizeInBytes)
+    {
+        auto allocated = tryFastCalloc(sizeof(Segment) + sizeInBytes, 1);
+        Segment* segment;
+        if (!allocated.getValue(segment))
+            return nullptr;
+        segment->offset = offset;
+        segment->sizeInBytes = sizeInBytes;
+        return segment;
+    }
+    static void destroy(Segment *segment)
+    {
+        fastFree(segment);
+    }
+    uint8_t& byte(uint32_t pos)
+    {
+        ASSERT(pos < sizeInBytes);
+        return *reinterpret_cast<uint8_t*>(reinterpret_cast<char*>(this) + sizeof(offset) + sizeof(sizeInBytes) + pos);
+    }
+    typedef std::unique_ptr<Segment, decltype(&Segment::destroy)> Ptr;
+    static Ptr makePtr(Segment* segment)
+    {
+        return Ptr(segment, &Segment::destroy);
+    }
+};
+
+struct Element {
+    uint32_t offset;
+    Vector<uint32_t> functionIndices;
+};
+
+class TableInformation {
+public:
+    TableInformation()
+    {
+        ASSERT(!*this);
+    }
+
+    TableInformation(uint32_t initial, std::optional<uint32_t> maximum, bool isImport)
+        : m_initial(initial)
+        , m_maximum(maximum)
+        , m_isImport(isImport)
+        , m_isValid(true)
+    {
+        ASSERT(*this);
+    }
+
+    explicit operator bool() const { return m_isValid; }
+    bool isImport() const { return m_isImport; }
+    uint32_t initial() const { return m_initial; }
+    std::optional<uint32_t> maximum() const { return m_maximum; }
+
+private:
+    uint32_t m_initial;
+    std::optional<uint32_t> m_maximum;
+    bool m_isImport { false };
+    bool m_isValid { false };
 };
 
 struct ModuleInformation {
     Vector<Signature> signatures;
     Vector<Import> imports;
-    Vector<FunctionInformation> functions;
-    std::unique_ptr<Memory> memory;
+    Vector<Signature*> importFunctions;
+    // FIXME implement import Global https://bugs.webkit.org/show_bug.cgi?id=164133
+    Vector<Signature*> internalFunctionSignatures;
+    MemoryInformation memory;
     Vector<Export> exports;
+    std::optional<uint32_t> startFunctionIndexSpace;
+    Vector<Segment::Ptr> data;
+    Vector<Element> elements;
+    TableInformation tableInformation;
 
     ~ModuleInformation();
 };
 
-struct UnlinkedCall {
+struct UnlinkedWasmToWasmCall {
     CodeLocationCall callLocation;
     size_t functionIndex;
 };
 
-struct FunctionCompilation {
-    Vector<UnlinkedCall> unlinkedCalls;
-    CodeLocationDataLabelPtr calleeMoveLocation;
-    std::unique_ptr<B3::Compilation> code;
-    std::unique_ptr<B3::Compilation> jsEntryPoint;
+struct Entrypoint {
+    std::unique_ptr<B3::Compilation> compilation;
+    RegisterAtOffsetList calleeSaveRegisters;
 };
 
-typedef Vector<std::unique_ptr<FunctionCompilation>> CompiledFunctions;
+struct WasmInternalFunction {
+    CodeLocationDataLabelPtr wasmCalleeMoveLocation;
+    CodeLocationDataLabelPtr jsToWasmCalleeMoveLocation;
+
+    Entrypoint wasmEntrypoint;
+    Entrypoint jsToWasmEntrypoint;
+};
+
+typedef MacroAssemblerCodeRef WasmToJSStub;
+
+// WebAssembly direct calls and call_indirect use indices into "function index space". This space starts with all imports, and then all internal functions.
+// CallableFunction and FunctionIndexSpace are only meant as fast lookup tables for these opcodes, and do not own code.
+struct CallableFunction {
+    CallableFunction() = default;
+
+    CallableFunction(Signature* signature, void* code = nullptr)
+        : signature(signature)
+        , code(code)
+    {
+    }
+
+    // FIXME pack this inside a (uniqued) integer (for correctness the parser should unique Signatures),
+    // and then pack that integer into the code pointer. https://bugs.webkit.org/show_bug.cgi?id=165511
+    Signature* signature { nullptr }; 
+    void* code { nullptr };
+};
+typedef Vector<CallableFunction> FunctionIndexSpace;
+
+
+struct ImmutableFunctionIndexSpace {
+    MallocPtr<CallableFunction> buffer;
+    size_t size;
+};
 
 } } // namespace JSC::Wasm
 

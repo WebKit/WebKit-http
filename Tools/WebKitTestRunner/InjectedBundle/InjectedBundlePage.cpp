@@ -416,7 +416,7 @@ void InjectedBundlePage::prepare()
     WKBundlePageSetTracksRepaints(m_page, false);
     
     // Force consistent "responsive" behavior for WebPage::eventThrottlingDelay() for testing. Tests can override via internals.
-    EventThrottlingBehavior behavior = EventThrottlingBehaviorResponsive;
+    WKEventThrottlingBehavior behavior = kWKEventThrottlingBehaviorResponsive;
     WKBundlePageSetEventThrottlingBehaviorOverride(m_page, &behavior);
 }
 
@@ -1461,7 +1461,11 @@ void InjectedBundlePage::willAddMessageToConsole(WKStringRef message, uint32_t l
     }
     stringBuilder.append(messageString);
     stringBuilder.append('\n');
-    injectedBundle.outputText(stringBuilder.toString());
+
+    if (injectedBundle.dumpJSConsoleLogInStdErr())
+        injectedBundle.dumpToStdErr(stringBuilder.toString());
+    else
+        injectedBundle.outputText(stringBuilder.toString());
 }
 
 void InjectedBundlePage::willSetStatusbarText(WKStringRef statusbarText)
