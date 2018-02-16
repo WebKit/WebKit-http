@@ -111,23 +111,22 @@ static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* messag
 // Auxiliary class to compute the sample duration when GStreamer provides an invalid one.
 class BufferMetadataCompleter {
 public:
-    BufferMetadataCompleter(GstCaps* demuxerSrcPadCaps)
+    BufferMetadataCompleter()
         : m_sampleDuration(MediaTime::invalidTime())
         , m_lastPts(MediaTime::invalidTime())
         , m_lastDts(MediaTime::invalidTime())
         , m_ptsOffset(MediaTime::invalidTime())
     {
-        if (demuxerSrcPadCaps) {
-            GstStructure* structure = gst_caps_get_structure(demuxerSrcPadCaps, 0);
-            gint framerateNumerator, framerateDenominator;
-            if (gst_structure_get_fraction(structure, "framerate", &framerateNumerator, &framerateDenominator) && framerateNumerator)
-                m_sampleDuration = MediaTime(framerateDenominator, framerateNumerator);
-        }
     }
 
     void completeMissingMetadata(GstBuffer* buffer)
     {
         if (buffer) {
+	    GST_TRACE("Before: PTS=%" GST_TIME_FORMAT "  DTS=%" GST_TIME_FORMAT "  DUR=%" GST_TIME_FORMAT "\n", 
+			    GST_TIME_ARGS(GST_BUFFER_PTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DURATION(buffer)));
+
             if (!GST_BUFFER_DURATION_IS_VALID(buffer)) {
                 if (m_sampleDuration.isValid()) {
                     // Some containers like webm and audio/x-opus don't supply a duration. Let's use the one supplied by the caps.
@@ -148,6 +147,7 @@ public:
                     GST_BUFFER_DTS(buffer) = toGstClockTime(m_lastDts + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND));
                 else
                     GST_BUFFER_DTS(buffer) = toGstClockTime(MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND) + MediaTime(GST_BUFFER_DURATION(buffer), GST_SECOND));
+		GST_TRACE("DTS FILLED: %" GST_TIME_FORMAT "\n", GST_TIME_ARGS(GST_BUFFER_DTS(buffer)));
             }
 
             // If the first sample (DTS=0) doesn't start with PTS=0, compute a negative offset.
@@ -162,6 +162,11 @@ public:
 
             m_lastPts = MediaTime(GST_BUFFER_PTS(buffer), GST_SECOND);
             m_lastDts = MediaTime(GST_BUFFER_DTS(buffer), GST_SECOND);
+
+	    GST_TRACE("After: PTS=%" GST_TIME_FORMAT "  DTS=%" GST_TIME_FORMAT "  DUR=%" GST_TIME_FORMAT "\n", 
+			    GST_TIME_ARGS(GST_BUFFER_PTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DTS(buffer)),
+			    GST_TIME_ARGS(GST_BUFFER_DURATION(buffer)));
         }
     }
 
@@ -1171,6 +1176,20 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         }
 #endif
 
+        gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER,
+            [] (GstPad*, GstPadProbeInfo* info, void* userData) -> GstPadProbeReturn {
+                ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
+                BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
+                GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
+                completer->completeMissingMetadata(buffer);
+                return GST_PAD_PROBE_OK;
+            },
+            new BufferMetadataCompleter(),
+            [] (gpointer userData) {
+                BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
+                delete completer;
+            });
+
         gst_pad_link(currentSrcPad.get(), appsinkSinkPad.get());
 
         gst_element_sync_state_with_parent(m_appsink.get());
@@ -1233,20 +1252,6 @@ void AppendPipeline::connectDemuxerSrcPadToAppsink(GstPad* demuxerSrcPad)
         m_mediaSourceClient->durationChanged(m_initialDuration);
 
     parseDemuxerSrcPadCaps(gst_caps_ref(caps.get()));
-
-    gst_pad_add_probe(demuxerSrcPad, GST_PAD_PROBE_TYPE_BUFFER,
-        [] (GstPad*, GstPadProbeInfo* info, void* userData) -> GstPadProbeReturn {
-            ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_BUFFER);
-            BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
-            GstBuffer* buffer = GST_PAD_PROBE_INFO_BUFFER(info);
-            completer->completeMissingMetadata(buffer);
-            return GST_PAD_PROBE_OK;
-        },
-        new BufferMetadataCompleter(caps.get()),
-        [] (gpointer userData) {
-            BufferMetadataCompleter* completer = static_cast<BufferMetadataCompleter*>(userData);
-            delete completer;
-        });
 
     switch (m_streamType) {
     case WebCore::MediaSourceStreamTypeGStreamer::Audio:
