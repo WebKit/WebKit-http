@@ -24,6 +24,7 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${WEBCORE_DIR}/css/parser
     ${WEBCORE_DIR}/platform/graphics/haiku
     ${WEBCORE_DIR}/platform/network/haiku
+    ${WEBCORE_DIR}/platform/text
     ${WEBCORE_DIR}/style
     ${TOOLS_DIR}/DumpRenderTree/haiku
 )

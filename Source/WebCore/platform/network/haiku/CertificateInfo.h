@@ -26,6 +26,7 @@
 #ifndef CertificateInfo_h
 #define CertificateInfo_h
 
+#include <support/Locker.h>
 #include <Certificate.h>
 
 namespace WebCore {

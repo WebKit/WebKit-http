@@ -38,7 +38,8 @@ typedef struct CGImage* CGImageRef;
 #elif USE(WINGDI)
 #include "SharedBitmap.h"
 #elif USE(HAIKU)
-#include <Bitmap.h>
+#include <interface/Rect.h>
+#include <interface/Bitmap.h>
 #include <Referenceable.h>
 #include <wtf/RefPtr.h>
 #endif

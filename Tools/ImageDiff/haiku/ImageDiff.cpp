@@ -33,7 +33,7 @@
 #include "config.h"
 
 #include <Application.h>
-#include <Bitmap.h>
+#include <interface/Bitmap.h>
 #include <BitmapStream.h>
 #include <File.h>
 #include <FindDirectory.h>

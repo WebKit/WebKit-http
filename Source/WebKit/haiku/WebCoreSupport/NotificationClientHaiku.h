@@ -31,7 +31,8 @@
 #include "NotificationClient.h"
 #include "Notification.h"
 #include "NotificationPermissionCallback.h"
-#include <Notification.h>
+#include <support/Locker.h>
+#include <app/Notification.h>
 
 #include <Bitmap.h>
 #include <TranslationUtils.h>

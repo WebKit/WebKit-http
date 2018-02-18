@@ -75,6 +75,7 @@
 #include <Alert.h>
 #include <Bitmap.h>
 #include <Entry.h>
+#include <locale/Collator.h>
 #include <Locale.h>
 #include <Message.h>
 #include <MimeType.h>

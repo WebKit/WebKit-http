@@ -37,6 +37,7 @@
 #include "NetworkingContext.h"
 #include "SessionID.h"
 
+#include <support/Locker.h>
 #include <Socket.h>
 #include <set>
 #include <wtf/PassRefPtr.h>

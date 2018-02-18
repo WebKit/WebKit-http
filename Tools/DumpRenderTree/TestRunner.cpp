@@ -43,7 +43,7 @@
 #include <JavaScriptCore/JSRetainPtr.h>
 #include <JavaScriptCore/TypedArrayInlines.h>
 #include <JavaScriptCore/VMInlines.h>
-#include <WebCore/LogInitialization.h>
+#include <WebCore/platform/LogInitialization.h>
 #include <cstring>
 #include <locale.h>
 #include <stdio.h>

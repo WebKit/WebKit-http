@@ -27,6 +27,7 @@
 #include "wtf/text/CString.h"
 #include "wtf/NeverDestroyed.h"
 
+#include <support/Locker.h>
 #include <Bitmap.h>
 #include <DataIO.h>
 #include <HttpRequest.h>

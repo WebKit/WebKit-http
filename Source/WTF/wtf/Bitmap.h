@@ -24,6 +24,7 @@
 #include <wtf/StdLibExtras.h>
 #include <stdint.h>
 #include <string.h>
+#include "HashFunctions.h"
 
 namespace WTF {
 

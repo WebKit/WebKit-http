@@ -27,6 +27,7 @@
 #include "config.h"
 #include "NetworkStorageSession.h"
 
+#include <support/Locker.h>
 #include <UrlContext.h>
 
 #include "NetworkingContext.h"

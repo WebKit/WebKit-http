@@ -23,6 +23,7 @@
 #include "CookieJar.h"
 #include "NetworkingContext.h"
 
+#include <support/Locker.h>
 #include <UrlProtocolRoster.h>
 #include <UrlRequest.h>
 #include <HttpRequest.h>

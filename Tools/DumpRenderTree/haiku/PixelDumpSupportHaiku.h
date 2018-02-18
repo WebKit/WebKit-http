@@ -26,7 +26,7 @@
 #ifndef PixelDumpSupportHaiku_h
 #define PixelDumpSupportHaiku_h
 
-#include <Bitmap.h>
+#include <interface/Bitmap.h>
 #include <Size.h>
 
 #include <stdio.h>

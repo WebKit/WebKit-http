@@ -34,8 +34,8 @@
 #include <PopUpMenu.h>
 #include <String.h>
 #include <Window.h>
-#include <support/Autolock.h>
 #include <support/Locker.h>
+#include <support/Autolock.h>
 
 namespace WebCore {
 

@@ -39,7 +39,7 @@
 #include <File.h>
 #include <FindDirectory.h>
 #include <Path.h>
-#include <Screen.h>
+#include <interface/Screen.h>
 #include <stdio.h>
 #include <WebSettings.h>
 

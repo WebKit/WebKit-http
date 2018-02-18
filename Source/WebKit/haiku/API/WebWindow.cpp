@@ -37,7 +37,7 @@
 
 #include <Alert.h>
 #include <Application.h>
-#include <Bitmap.h>
+#include <interface/Bitmap.h>
 #include <Button.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayout.h>

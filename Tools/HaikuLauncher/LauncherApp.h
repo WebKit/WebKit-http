@@ -29,6 +29,7 @@
 #ifndef LauncherApp_h
 #define LauncherApp_h
 
+#include <support/Locker.h>
 #include <Application.h>
 #include <Rect.h>
 

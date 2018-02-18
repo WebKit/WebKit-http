@@ -38,6 +38,7 @@
 #include "WebView.h"
 #include "WebViewConstants.h"
 
+#include <interface/StringView.h>
 #include <Button.h>
 #include <Entry.h>
 #include <FilePanel.h>

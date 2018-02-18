@@ -27,7 +27,6 @@
 #include "config.h"
 #include "DragController.h"
 
-#include "Clipboard.h"
 #include "DragData.h"
 #include "NotImplemented.h"
 #include "Pasteboard.h"

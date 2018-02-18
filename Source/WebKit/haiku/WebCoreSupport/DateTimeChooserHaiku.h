@@ -29,6 +29,8 @@
 #include "DateTimeChooserClient.h"
 #include "InputTypeNames.h"
 
+#include <support/Locker.h>
+#include <locale/Collator.h>
 #include <private/shared/CalendarView.h>
 #include <LocaleRoster.h>
 #include <MenuField.h>

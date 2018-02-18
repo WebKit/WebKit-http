@@ -22,6 +22,7 @@
 #include "FormData.h"
 #include "ResourceRequest.h"
 
+#include <support/Locker.h>
 #include <DataIO.h>
 #include <Messenger.h>
 #include <HttpRequest.h>

@@ -102,7 +102,7 @@
 #include <Font.h>
 #include <MenuItem.h>
 #include <Message.h>
-#include <MessageQueue.h>
+#include <app/MessageQueue.h>
 #include <Messenger.h>
 #include <PopUpMenu.h>
 #include <Region.h>
