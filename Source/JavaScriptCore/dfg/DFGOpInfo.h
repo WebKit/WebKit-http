@@ -39,8 +39,8 @@ struct OpInfo {
     explicit OpInfo(int32_t value) : m_value(static_cast<uint64_t>(value)) { }
     explicit OpInfo(uint32_t value) : m_value(static_cast<uint64_t>(value)) { }
     explicit OpInfo(uint64_t value) : m_value(static_cast<uint64_t>(value)) { }
-#if OS(DARWIN) || OS(HAIKU)
-    explicit OpInfo(uintptr_t value) : m_value(static_cast<uint64_t>(value)) { }
+#if OS(DARWIN) || (OS(HAIKU) && !defined(__x86_64__))
+    explicit OpInfo(uintptr_t value) : m_value(static_cast<uintptr_t>(value)) { }
 #endif
     explicit OpInfo(void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
     explicit OpInfo(const void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
