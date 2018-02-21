@@ -1369,6 +1369,9 @@ void WebProcessPool::updateAutomationCapabilities() const
 
 void WebProcessPool::setAutomationSession(RefPtr<WebAutomationSession>&& automationSession)
 {
+    if (m_automationSession)
+        m_automationSession->setProcessPool(nullptr);
+    
     m_automationSession = WTFMove(automationSession);
 
     if (m_automationSession) {
