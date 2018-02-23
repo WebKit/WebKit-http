@@ -103,6 +103,7 @@ struct _WebKitWebSrcPrivate {
     bool didPassAccessControlCheck;
 
     guint64 offset;
+    bool haveSize;
     guint64 size;
     gboolean seekable;
     bool paused;
@@ -224,6 +225,9 @@ static void webkit_web_src_init(WebKitWebSrc* src)
 
     priv->notifier = MainThreadNotifier<MainThreadSourceNotification>::create();
 
+    priv->haveSize = FALSE;
+    priv->size = 0;
+
     priv->appsrc = GST_APP_SRC(gst_element_factory_make("appsrc", nullptr));
     if (!priv->appsrc) {
         GST_ERROR_OBJECT(src, "Failed to create appsrc");
@@ -266,7 +270,6 @@ static void webkit_web_src_init(WebKitWebSrc* src)
     gst_base_src_set_automatic_eos(GST_BASE_SRC(priv->appsrc), FALSE);
 
     gst_app_src_set_caps(priv->appsrc, nullptr);
-    gst_app_src_set_size(priv->appsrc, -1);
 }
 
 static void webKitWebSrcDispose(GObject* object)
@@ -380,7 +383,6 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
     priv->offset = 0;
 
     if (!wasSeeking) {
-        priv->size = 0;
         priv->requestedOffset = 0;
         priv->player = nullptr;
         priv->seekable = FALSE;
@@ -465,8 +467,6 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
     ResourceRequest request(url);
     request.setAllowCookies(true);
     request.setFirstPartyForCookies(url);
-
-    priv->size = 0;
 
     request.setHTTPReferrer(priv->player->referrer());
 
@@ -589,18 +589,6 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
     gboolean result = FALSE;
 
     switch (GST_QUERY_TYPE(query)) {
-    case GST_QUERY_DURATION: {
-        GstFormat format;
-
-        gst_query_parse_duration(query, &format, nullptr);
-
-        GST_DEBUG_OBJECT(src, "duration query in format %s", gst_format_get_name(format));
-        if (format == GST_FORMAT_BYTES && priv->size > 0) {
-            gst_query_set_duration(query, format, priv->size);
-            result = TRUE;
-        }
-        break;
-    }
     case GST_QUERY_URI: {
         gst_query_set_uri(query, priv->originalURI.data());
         if (!priv->redirectedURI.isNull())
@@ -871,12 +859,21 @@ void CachedResourceStreamingClient::responseReceived(PlatformMediaResource&, con
     if (length > 0 && priv->requestedOffset && response.httpStatusCode() == 206)
         length += priv->requestedOffset;
 
-    priv->size = length >= 0 ? length : 0;
     priv->seekable = length > 0 && g_ascii_strcasecmp("none", response.httpHeaderField(HTTPHeaderName::AcceptRanges).utf8().data());
 
+    GST_DEBUG_OBJECT(src, "Size: %lld, seekable: %s", length, priv->seekable ? "yes" : "no");
     // notify size/duration
-    if (length <= 0)
+    if (length > 0) {
+        if (!priv->haveSize || (static_cast<long long>(priv->size) != length)) {
+            priv->haveSize = TRUE;
+            priv->size = length;
+            gst_app_src_set_size(priv->appsrc, length);
+        }
+    } else {
         gst_app_src_set_size(priv->appsrc, -1);
+        if (!priv->seekable)
+            gst_app_src_set_stream_type(priv->appsrc, GST_APP_STREAM_TYPE_STREAM);
+    }
 
     // Signal to downstream if this is an Icecast stream.
     GRefPtr<GstCaps> caps;
