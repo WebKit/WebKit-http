@@ -1048,46 +1048,21 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
             it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
     }
 #if USE(OPENCDM)
-    else if (is<CDMInstanceOpenCDM>(instance)) {
-        // REVIEW: The class design seems a bit wrong here. This function seems like it should be polymorphic on
-        //  the CDM instance. If you do that though, you'd need the CDM instance to have a handle back to the
-        //  player private, which opens up other issues.
-        //  Also, it's unpleasant that we have duplicated the structure creation code here and in
-        //  MediaPlayerPrivateGStreamerBase::attemptToDecryptWithLocalInstance, which incidently doesn't support
-        //  ClearKey for some reason.
-
-        LockHolder lock(m_protectionMutex);
-
-        auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(instance);
-        GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
-
-        for (const auto& it : m_appendPipelinesMap) {
-            unsigned protectionEvent = it.value->keySystemProtectionEventMap().get(GStreamerEMEUtilities::keySystemToUuid(cdmInstanceOpenCDM.keySystem()));
-            String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(it.value->initData(), (m_initDataToProtectionEventsMap.size() == 1));
-            if (!sessionId.isEmpty()) {
-                GST_TRACE("using %s", sessionId.utf8().data());
-                if (m_reportedProtectionEvents.contains(protectionEvent)) {
-                    // m_protectionEventToSessionCache.add(protectionEvent, sessionId);
-                    it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
-                } else {
-                    GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, protectionEvent, nullptr));
-                    it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
-                }
-            } else
-                GST_WARNING("found no session id to dispatch");
-        }
-    }
+    else if (is<CDMInstanceOpenCDM>(instance))
+        MediaPlayerPrivateGStreamer::attemptToDecryptWithInstance(instance);
 #endif // USE(OPENCDM)
 }
 
 #if USE(OPENCDM)
-void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
+bool MediaPlayerPrivateGStreamerMSE::dispatchDecryptionSessionToPipeline(const String& sessionId, GstEventSeqNum eventId)
 {
-    for (const auto& it : m_appendPipelinesMap) {
+    if (!m_appendPipelinesMap.isEmpty()) {
         GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr));
-        it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
+        for (const auto& it : m_appendPipelinesMap)
+            if (it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get()))))
+                return true;
     }
-    // m_protectionEventToSessionCache.remove(eventId);
+    return false;
 }
 #endif
 

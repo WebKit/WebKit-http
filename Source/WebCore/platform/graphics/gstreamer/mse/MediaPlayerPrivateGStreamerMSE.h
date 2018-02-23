@@ -93,7 +93,7 @@ public:
     void attemptToDecryptWithInstance(const CDMInstance&) final;
 
 #if USE(OPENCDM)
-    void dispatchDecryptionSession(const String&, GstEventSeqNum) override;
+    bool dispatchDecryptionSessionToPipeline(const String& sessionId, GstEventSeqNum eventId) final;
 #endif
 #endif
 

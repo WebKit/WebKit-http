@@ -1411,10 +1411,15 @@ void MediaPlayerPrivateGStreamerBase::unmapProtectionEventFromInitData(GstEventS
     m_protectionEventToInitDataMap.remove(eventId);
 }
 
+bool MediaPlayerPrivateGStreamerBase::dispatchDecryptionSessionToPipeline(const String& sessionId, GstEventSeqNum eventId)
+{
+    return gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr)));
+}
+
 void MediaPlayerPrivateGStreamerBase::dispatchDecryptionSession(const String& sessionId, GstEventSeqNum eventId)
 {
-    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr)));
+    bool eventHandled = dispatchDecryptionSessionToPipeline(sessionId, eventId);
     if (eventHandled)
         unmapProtectionEventFromInitData(eventId);
     GST_TRACE("emitted decryption session %s on pipeline for event %u, event handled %s", sessionId.utf8().data(), eventId, boolForPrinting(eventHandled));
