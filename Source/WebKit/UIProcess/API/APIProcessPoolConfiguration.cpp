@@ -136,6 +136,7 @@ Ref<ProcessPoolConfiguration> ProcessPoolConfiguration::copy()
     copy->m_ctDataConnectionServiceType = this->m_ctDataConnectionServiceType;
 #endif
     copy->m_presentingApplicationPID = this->m_presentingApplicationPID;
+    copy->m_localStorageQuota = this->m_localStorageQuota;
     
     return copy;
 }

@@ -167,3 +167,13 @@ void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextConfigurati
 {
     toImpl(configuration)->setShouldCaptureAudioInUIProcess(should);
 }
+
+uint32_t WKContextConfigurationLocalStorageQuota(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->localStorageQuota();
+}
+
+void WKContextConfigurationSetLocalStorageQuota(WKContextConfigurationRef configuration, uint32_t quota)
+{
+    toImpl(configuration)->setLocalStorageQuota(quota);
+}

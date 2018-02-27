@@ -78,6 +78,7 @@ public:
         String indexedDBDatabaseDirectory;
         String webSQLDatabaseDirectory;
         String localStorageDirectory;
+        uint32_t localStorageQuota;
         String mediaKeysStorageDirectory;
         String resourceLoadStatisticsDirectory;
         String javaScriptConfigurationDirectory;
@@ -131,6 +132,8 @@ public:
     void removePendingCookie(const WebCore::Cookie&);
 
     void enableResourceLoadStatisticsAndSetTestingCallback(Function<void (const String&)>&& callback);
+
+    uint32_t localStorageQuota() { return m_configuration.localStorageQuota; }
 
 private:
     explicit WebsiteDataStore(PAL::SessionID);

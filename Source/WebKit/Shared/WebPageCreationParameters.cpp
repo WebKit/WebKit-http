@@ -106,6 +106,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
 #if ENABLE(CONTENT_EXTENSIONS)
     encoder << contentRuleLists;
 #endif
+    encoder << localStorageQuota;
 }
 
 std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::Decoder& decoder)
@@ -289,6 +290,10 @@ std::optional<WebPageCreationParameters> WebPageCreationParameters::decode(IPC::
         return std::nullopt;
     parameters.contentRuleLists = WTFMove(*contentRuleLists);
 #endif
+
+    if (!decoder.decode(parameters.localStorageQuota))
+        return std::nullopt;
+
     return WTFMove(parameters);
 }
 

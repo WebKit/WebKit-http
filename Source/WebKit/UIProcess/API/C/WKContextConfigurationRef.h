@@ -71,6 +71,8 @@ WK_EXPORT void WKContextConfigurationSetOverrideLanguages(WKContextConfiguration
 WK_EXPORT bool WKContextConfigurationShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration);
 WK_EXPORT void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration, bool allowed);
 
+WK_EXPORT uint32_t WKContextConfigurationLocalStorageQuota(WKContextConfigurationRef configuration);
+WK_EXPORT void WKContextConfigurationSetLocalStorageQuota(WKContextConfigurationRef configuration, uint32_t quota);
 #ifdef __cplusplus
 }
 #endif

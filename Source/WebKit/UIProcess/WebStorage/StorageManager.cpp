@@ -85,7 +85,7 @@ private:
 
 class StorageManager::LocalStorageNamespace : public ThreadSafeRefCounted<LocalStorageNamespace> {
 public:
-    static Ref<LocalStorageNamespace> create(StorageManager*, uint64_t storageManagerID);
+    static Ref<LocalStorageNamespace> create(StorageManager*, uint64_t storageManagerID, uint32_t quota);
     ~LocalStorageNamespace();
 
     StorageManager* storageManager() const { return m_storageManager; }
@@ -97,7 +97,7 @@ public:
     void clearAllStorageAreas();
 
 private:
-    explicit LocalStorageNamespace(StorageManager*, uint64_t storageManagerID);
+    explicit LocalStorageNamespace(StorageManager*, uint64_t storageManagerID, uint32_t quota);
 
     StorageManager* m_storageManager;
     uint64_t m_storageNamespaceID;
@@ -109,9 +109,9 @@ private:
 
 class StorageManager::TransientLocalStorageNamespace : public ThreadSafeRefCounted<TransientLocalStorageNamespace> {
 public:
-    static Ref<TransientLocalStorageNamespace> create()
+    static Ref<TransientLocalStorageNamespace> create(uint32_t quota)
     {
-        return adoptRef(*new TransientLocalStorageNamespace());
+        return adoptRef(*new TransientLocalStorageNamespace(quota));
     }
 
     ~TransientLocalStorageNamespace()
@@ -152,11 +152,12 @@ public:
     }
 
 private:
-    explicit TransientLocalStorageNamespace()
+    explicit TransientLocalStorageNamespace(uint32_t quota)
+        : m_quotaInBytes(quota)
     {
     }
 
-    const unsigned m_quotaInBytes = 5 * 1024 * 1024;
+    unsigned m_quotaInBytes;
 
     HashMap<SecurityOriginData, RefPtr<StorageArea>> m_storageAreaMap;
 };
@@ -304,17 +305,17 @@ void StorageManager::StorageArea::dispatchEvents(IPC::Connection* sourceConnecti
     }
 }
 
-Ref<StorageManager::LocalStorageNamespace> StorageManager::LocalStorageNamespace::create(StorageManager* storageManager, uint64_t storageNamespaceID)
+Ref<StorageManager::LocalStorageNamespace> StorageManager::LocalStorageNamespace::create(StorageManager* storageManager, uint64_t storageNamespaceID, uint32_t quota)
 {
-    return adoptRef(*new LocalStorageNamespace(storageManager, storageNamespaceID));
+    return adoptRef(*new LocalStorageNamespace(storageManager, storageNamespaceID, quota));
 }
 
 // FIXME: The quota value is copied from GroupSettings.cpp.
 // We should investigate a way to share it with WebCore.
-StorageManager::LocalStorageNamespace::LocalStorageNamespace(StorageManager* storageManager, uint64_t storageNamespaceID)
+StorageManager::LocalStorageNamespace::LocalStorageNamespace(StorageManager* storageManager, uint64_t storageNamespaceID, uint32_t quota)
     : m_storageManager(storageManager)
     , m_storageNamespaceID(storageNamespaceID)
-    , m_quotaInBytes(5 * 1024 * 1024)
+    , m_quotaInBytes(quota)
 {
 }
 
@@ -446,17 +447,23 @@ void StorageManager::SessionStorageNamespace::cloneTo(SessionStorageNamespace& n
         newSessionStorageNamespace.m_storageAreaMap.add(pair.key, pair.value->clone());
 }
 
-Ref<StorageManager> StorageManager::create(const String& localStorageDirectory)
+Ref<StorageManager> StorageManager::create(const String& localStorageDirectory, const uint32_t localStorageQuota)
 {
-    return adoptRef(*new StorageManager(localStorageDirectory));
+    return adoptRef(*new StorageManager(localStorageDirectory, localStorageQuota));
 }
 
-StorageManager::StorageManager(const String& localStorageDirectory)
+StorageManager::StorageManager(const String& localStorageDirectory, const uint32_t localStorageQuota)
     : m_queue(WorkQueue::create("com.apple.WebKit.StorageManager"))
     , m_localStorageDatabaseTracker(LocalStorageDatabaseTracker::create(m_queue.copyRef(), localStorageDirectory))
 {
     // Make sure the encoding is initialized before we start dispatching things to the queue.
     UTF8Encoding();
+
+    // If the localStorageQuota value hasn't been set in the WebsiteDataStore configuration (because we are using a
+    // default configuration and not the legacey one, for example), keep the initial value of 5*1024*1024 instead
+    // of setting it to 0.
+    if (localStorageQuota)
+        m_localStorageQuota = localStorageQuota;
 }
 
 StorageManager::~StorageManager()
@@ -851,7 +858,7 @@ StorageManager::LocalStorageNamespace* StorageManager::getOrCreateLocalStorageNa
 
     auto& slot = m_localStorageNamespaces.add(storageNamespaceID, nullptr).iterator->value;
     if (!slot)
-        slot = LocalStorageNamespace::create(this, storageNamespaceID);
+        slot = LocalStorageNamespace::create(this, storageNamespaceID, m_localStorageQuota);
 
     return slot.get();
 }
@@ -863,7 +870,7 @@ StorageManager::TransientLocalStorageNamespace* StorageManager::getOrCreateTrans
 
     auto& slot = m_transientLocalStorageNamespaces.add({ storageNamespaceID, WTFMove(topLevelOrigin) }, nullptr).iterator->value;
     if (!slot)
-        slot = TransientLocalStorageNamespace::create();
+        slot = TransientLocalStorageNamespace::create(m_localStorageQuota);
 
     return slot.get();
 }

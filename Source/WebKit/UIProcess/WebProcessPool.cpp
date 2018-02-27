@@ -191,6 +191,7 @@ static WebsiteDataStore::Configuration legacyWebsiteDataStoreConfiguration(API::
     WebsiteDataStore::Configuration configuration;
 
     configuration.localStorageDirectory = processPoolConfiguration.localStorageDirectory();
+    configuration.localStorageQuota = processPoolConfiguration.localStorageQuota();
     configuration.webSQLDatabaseDirectory = processPoolConfiguration.webSQLDatabaseDirectory();
     configuration.applicationCacheDirectory = processPoolConfiguration.applicationCacheDirectory();
     configuration.applicationCacheFlatFileSubdirectoryName = processPoolConfiguration.applicationCacheFlatFileSubdirectoryName();

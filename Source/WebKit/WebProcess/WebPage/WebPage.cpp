@@ -566,6 +566,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(CONTENT_EXTENSIONS)
     m_userContentController->addContentRuleLists(parameters.contentRuleLists);
 #endif
+
+    m_page->settings().setLocalStorageQuota(parameters.localStorageQuota);
 }
 
 #if ENABLE(WEB_RTC)

@@ -307,3 +307,5 @@ storageAccessAPIEnabled initial=false
 scrollToFocusedElementEnabled initial=true
 
 nonCompositedWebGLEnabled initial=false
+
+localStorageQuota type=unsigned, initial=5*1024*1024

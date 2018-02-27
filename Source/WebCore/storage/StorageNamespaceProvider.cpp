@@ -29,6 +29,7 @@
 #include "Document.h"
 #include "Page.h"
 #include "SecurityOriginData.h"
+#include "Settings.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 
@@ -72,28 +73,28 @@ RefPtr<StorageArea> StorageNamespaceProvider::localStorageArea(Document& documen
     RefPtr<StorageNamespace> storageNamespace;
 
     if (transient)
-        storageNamespace = &transientLocalStorageNamespace(document.topOrigin());
+        storageNamespace = &transientLocalStorageNamespace(document.topOrigin(), document.page()->settings().localStorageQuota());
     else if (ephemeral)
         storageNamespace = document.page()->ephemeralLocalStorage();
     else
-        storageNamespace = &localStorageNamespace();
+        storageNamespace = &localStorageNamespace(document.page()->settings().localStorageQuota());
 
     return storageNamespace->storageArea(SecurityOriginData::fromSecurityOrigin(document.securityOrigin()));
 }
 
-StorageNamespace& StorageNamespaceProvider::localStorageNamespace()
+StorageNamespace& StorageNamespaceProvider::localStorageNamespace(unsigned quota)
 {
     if (!m_localStorageNamespace)
-        m_localStorageNamespace = createLocalStorageNamespace(localStorageDatabaseQuotaInBytes);
+        m_localStorageNamespace = createLocalStorageNamespace(quota);
 
     return *m_localStorageNamespace;
 }
 
-StorageNamespace& StorageNamespaceProvider::transientLocalStorageNamespace(SecurityOrigin& securityOrigin)
+    StorageNamespace& StorageNamespaceProvider::transientLocalStorageNamespace(SecurityOrigin& securityOrigin, unsigned quota)
 {
     auto& slot = m_transientLocalStorageMap.add(&securityOrigin, nullptr).iterator->value;
     if (!slot)
-        slot = createTransientLocalStorageNamespace(securityOrigin, localStorageDatabaseQuotaInBytes);
+        slot = createTransientLocalStorageNamespace(securityOrigin, quota);
 
     return *slot;
 }

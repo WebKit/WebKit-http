@@ -67,7 +67,7 @@ Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, PAL:
 WebsiteDataStore::WebsiteDataStore(Configuration configuration, PAL::SessionID sessionID)
     : m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
-    , m_storageManager(StorageManager::create(m_configuration.localStorageDirectory))
+    , m_storageManager(StorageManager::create(m_configuration.localStorageDirectory, m_configuration.localStorageQuota))
     , m_queue(WorkQueue::create("com.apple.WebKit.WebsiteDataStore"))
 {
     platformInitialize();

@@ -5737,6 +5737,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.enumeratingAllNetworkInterfacesEnabled = m_preferences->enumeratingAllNetworkInterfacesEnabled();
 #endif
 #endif
+    parameters.localStorageQuota = m_websiteDataStore->localStorageQuota();
 
     m_process->addWebUserContentControllerProxy(m_userContentController, parameters);
 

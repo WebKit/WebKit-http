@@ -141,6 +141,9 @@ public:
     ProcessID presentingApplicationPID() const { return m_presentingApplicationPID; }
     void setPresentingApplicationPID(ProcessID pid) { m_presentingApplicationPID = pid; }
 
+    uint32_t localStorageQuota() const { return m_localStorageQuota; }
+    void setLocalStorageQuota(uint32_t quota) { m_localStorageQuota = quota; }
+
 private:
     bool m_shouldHaveLegacyDataStore { false };
 
@@ -177,6 +180,7 @@ private:
 #if PLATFORM(IOS)
     WTF::String m_ctDataConnectionServiceType;
 #endif
+    uint32_t m_localStorageQuota { 5 * 1024 * 1024 };
 };
 
 } // namespace API
