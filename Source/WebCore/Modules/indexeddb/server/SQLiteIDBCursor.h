@@ -27,12 +27,14 @@
 
 #if ENABLE(INDEXED_DATABASE)
 
+#include "IDBCursorRecord.h"
 #include "IDBIndexInfo.h"
 #include "IDBKeyData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBResourceIdentifier.h"
 #include "IDBValue.h"
 #include "SQLiteStatement.h"
+#include <wtf/Deque.h>
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
@@ -59,16 +61,18 @@ public:
     SQLiteIDBTransaction* transaction() const { return m_transaction; }
 
     int64_t objectStoreID() const { return m_objectStoreID; }
+    int64_t currentRecordRowID() const;
 
-    const IDBKeyData& currentKey() const { return m_currentKey; }
-    const IDBKeyData& currentPrimaryKey() const { return m_currentPrimaryKey; }
-    IDBValue* currentValue() const { return m_currentValue.get(); }
+    const IDBKeyData& currentKey() const;
+    const IDBKeyData& currentPrimaryKey() const;
+    IDBValue* currentValue() const;
 
     bool advance(uint64_t count);
     bool iterate(const IDBKeyData& targetKey, const IDBKeyData& targetPrimaryKey);
+    bool prefetch();
 
-    bool didComplete() const { return m_completed; }
-    bool didError() const { return m_errored; }
+    bool didComplete() const;
+    bool didError() const;
 
     void objectStoreRecordsChanged();
 
@@ -81,15 +85,25 @@ private:
 
     void resetAndRebindStatement();
 
-    enum class AdvanceResult {
+    enum class FetchResult {
         Success,
         Failure,
-        ShouldAdvanceAgain
+        ShouldFetchAgain
     };
 
-    AdvanceResult internalAdvanceOnce();
-    bool advanceOnce();
-    bool advanceUnique();
+    bool fetch();
+
+    struct SQLiteCursorRecord {
+        IDBCursorRecord record;
+        bool completed { false };
+        bool errored { false };
+        int64_t rowID { 0 };
+        bool isTerminalRecord() const { return completed || errored; }
+    };
+    bool fetchNextRecord(SQLiteCursorRecord&);
+    FetchResult internalFetchNextRecord(SQLiteCursorRecord&);
+
+    void markAsErrored(SQLiteCursorRecord&);
 
     SQLiteIDBTransaction* m_transaction;
     IDBResourceIdentifier m_cursorIdentifier;
@@ -102,16 +116,12 @@ private:
     IDBKeyData m_currentLowerKey;
     IDBKeyData m_currentUpperKey;
 
-    IDBKeyData m_currentKey;
-    IDBKeyData m_currentPrimaryKey;
-    std::unique_ptr<IDBValue> m_currentValue;
+    Deque<SQLiteCursorRecord> m_fetchedRecords;
+    IDBKeyData m_currentKeyForUniqueness;
 
     std::unique_ptr<SQLiteStatement> m_statement;
-    bool m_statementNeedsReset { false };
+    bool m_statementNeedsReset { true };
     int64_t m_boundID { 0 };
-
-    bool m_completed { false };
-    bool m_errored { false };
 
     bool m_backingStoreCursor { false };
 };

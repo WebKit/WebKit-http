@@ -275,6 +275,7 @@ namespace WebCore {
 using namespace HTMLNames;
 
 static const unsigned cMaxWriteRecursionDepth = 21;
+bool Document::hasEverCreatedAnAXObjectCache = false;
 
 // DOM Level 2 says (letters added):
 //
@@ -2416,13 +2417,9 @@ void Document::clearAXObjectCache()
     m_axObjectCache = nullptr;
 }
 
-static bool hasEverCreatedAnAXObjectCache = false;
-
-AXObjectCache* Document::existingAXObjectCache() const
+AXObjectCache* Document::existingAXObjectCacheSlow() const
 {
-    if (!hasEverCreatedAnAXObjectCache)
-        return nullptr;
-
+    ASSERT(hasEverCreatedAnAXObjectCache);
     Document& topDocument = this->topDocument();
     if (!topDocument.hasLivingRenderTree())
         return nullptr;
@@ -4543,8 +4540,7 @@ void Document::setPageCacheState(PageCacheState state)
                 v->resetScrollbarsAndClearContentsSize();
                 if (ScrollingCoordinator* scrollingCoordinator = page->scrollingCoordinator())
                     scrollingCoordinator->clearStateTree();
-            } else
-                v->resetScrollbars();
+            }
         }
 
 #if ENABLE(POINTER_LOCK)
@@ -4596,8 +4592,7 @@ void Document::suspend(ActiveDOMObject::ReasonForSuspension reason)
             view->compositor().cancelCompositingLayerUpdate();
     }
 
-    suspendScriptedAnimationControllerCallbacks();
-    suspendActiveDOMObjects(reason);
+    suspendScheduledTasks(reason);
 
     ASSERT(m_frame);
     m_frame->clearTimers();
@@ -4628,8 +4623,7 @@ void Document::resume(ActiveDOMObject::ReasonForSuspension reason)
     m_frame->loader().client().dispatchDidBecomeFrameset(isFrameSet());
     m_frame->animation().resumeAnimationsForDocument(this);
 
-    resumeActiveDOMObjects(reason);
-    resumeScriptedAnimationControllerCallbacks();
+    resumeScheduledTasks(reason);
 
     m_visualUpdatesAllowed = true;
 

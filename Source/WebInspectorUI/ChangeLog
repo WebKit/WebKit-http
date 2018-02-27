@@ -1,3 +1,195 @@
+2016-12-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Address some assertions and uncaught exceptions seen using Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166048
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Controllers/CodeMirrorEditingController.js:
+        (WebInspector.CodeMirrorEditingController.prototype.presentHoverMenu):
+        (WebInspector.CodeMirrorEditingController.prototype.dismissHoverMenu):
+        classList throws an exception when given an empty string. Avoid those cases.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._startTracking):
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._stopTracking):
+        Seen this assert frequently for a while, existing code handles it gracefully.
+
+        * UserInterface/Workers/Formatter/EsprimaFormatter.js:
+        (EsprimaFormatter.prototype._handleTokenAtNode):
+        We correctly handle these tokens but they were not in the list of expected tokens.
+
+2016-12-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Avoid some possible exceptions inspecting a JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=165986
+        <rdar://problem/29551379>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        There will not be a main frame if we are debugging a JSContext.
+        In those cases do not change the title.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasAdded):
+        There may not be a parent folder in JavaScript inspection. In that case
+        ScriptTreeElements are added to the Top Level, not folders.
+
+2016-12-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: REGRESSION (r209882): Opening find banner in editor causes UI to hang
+        https://bugs.webkit.org/show_bug.cgi?id=165967
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._findBannerDidShow):
+        Showing the find banner should cause search results to be refreshed only
+        if it contains query text.
+
+2016-12-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Modernize find banner UI
+        https://bugs.webkit.org/show_bug.cgi?id=165939
+
+        Reviewed by Timothy Hatcher.
+
+        The find banner should have a modern appearance, matching Xcode.
+
+        * UserInterface/Views/FindBanner.css:
+        (.find-banner > input[type="search"]):
+        (.find-banner > button):
+        Use standard border colors.
+        (.find-banner > button:disabled > .glyph):
+        Disabled previous / next glyphs should be lighter.
+        (.find-banner > button:active:not(:disabled)):
+        Update depressed button style: flat colors, no text color change.
+        (.find-banner > button.segmented):
+        (.find-banner > button.segmented.left):
+        (.find-banner > button:not(:active).segmented.right:before):
+        (.find-banner > button.segmented.left:active + button.segmented.right,):
+        (.find-banner > button.segmented.left:active + button.segmented.right:before):
+        (.find-banner > button.segmented.right):
+        (.find-banner.console-find-banner > input[type="search"]):
+        (.find-banner.console-find-banner > :matches(input[type="search"], button)):
+        (.find-banner > button:disabled): Deleted.
+        (.find-banner > button.segmented:active): Deleted.
+        Overlapping button borders are no longer an issue.
+
+        * UserInterface/Views/FindBanner.js:
+        (WebInspector.FindBanner):
+        Insert previous / next buttons after the input field in the DOM.
+        (WebInspector.FindBanner.prototype.get delegate):
+        (WebInspector.FindBanner.prototype.set delegate):
+        (WebInspector.FindBanner.prototype.get inputField):
+        (WebInspector.FindBanner.prototype.get searchQuery):
+        (WebInspector.FindBanner.prototype.set searchQuery):
+        (WebInspector.FindBanner.prototype.get numberOfResults):
+        Inline simple getters and setters.
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add button colors.
+
+2016-12-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: console search bar jumps, behaves poorly at narrow widths
+        https://bugs.webkit.org/show_bug.cgi?id=164047
+        <rdar://problem/29055582>
+
+        Reviewed by Timothy Hatcher.
+
+        At narrow widths the find banner behaves poorly in the split console
+        toolbar. It should work like the main content browser, appearing below
+        the toolbar when Command-F is pressed and either the split console or
+        quick console prompt has the focus.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Enable split content browser find banner.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype.showFindBanner):
+        Check for custom find banner support at runtime.
+        (WebInspector.ContentBrowser.prototype._findBannerDidShow):
+        (WebInspector.ContentBrowser.prototype._findBannerDidHide):
+        Refresh search results when banner is shown/hidden, instead of relying
+        on toggling the "showing-find-banner" class name for everything.
+
+        (WebInspector.ContentBrowser.prototype.handleFindEvent): Deleted.
+        Renamed `showFindBanner`.
+
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.prototype.get supportsCustomFindBanner):
+        (WebInspector.ContentView.prototype.showCustomFindBanner):
+        Custom find banner support (used by LogContentView).
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype.get supportsSearch):
+        (WebInspector.LogContentView.prototype.get numberOfSearchResults):
+        (WebInspector.LogContentView.prototype.get hasPerformedSearch):
+        Cleanup.
+        (WebInspector.LogContentView.prototype.get supportsCustomFindBanner):
+        Use toolbar item find banner when showing Console tab.
+        (WebInspector.LogContentView.prototype.findBannerRevealPreviousResult):
+        (WebInspector.LogContentView.prototype.findBannerRevealNextResult):
+        (WebInspector.LogContentView.prototype._isMessageVisible):
+        (WebInspector.LogContentView.prototype._visibleMessageElements):
+        (WebInspector.LogContentView.prototype._logCleared):
+        (WebInspector.LogContentView.prototype._filterMessageElements):
+        (WebInspector.LogContentView.prototype.findBannerPerformSearch):
+        (WebInspector.LogContentView.prototype.findBannerSearchCleared):
+        (WebInspector.LogContentView.prototype.performSearch):
+        Support both the standard and custom (toolbar item) find banners.
+        (WebInspector.LogContentView.prototype.searchCleared):
+        Refresh search results.
+        (WebInspector.LogContentView.prototype._highlightRanges):
+        Correct spelling: _selectedSearchMathIsValid -> _selectedSearchMatchIsValid.
+        (WebInspector.LogContentView.prototype.get searchInProgress): Deleted.
+        Override ContentView.prototype.hasPerformedSearch instead.
+        (WebInspector.LogContentView.prototype.handleFindEvent): Deleted.
+        Replaced by `showCustomFindBanner`.
+        (WebInspector.LogContentView.prototype.highlightPreviousSearchMatch): Deleted.
+        Absorbed by findBannerRevealPreviousResult.
+        (WebInspector.LogContentView.prototype.highlightNextSearchMatch): Deleted.
+        Absorbed by findBannerRevealNextResult.
+        (WebInspector.LogContentView.prototype._performSearch): Deleted.
+        Override ContentView.prototype.performSearch instead.
+
+        * UserInterface/Views/Main.css:
+        (#split-content-browser > .navigation-bar :matches(.find-banner, .find-banner + .divider)):
+        Hide the toolbar banner and divider.
+
+2016-12-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Web Inspector: Jumping to the definition of a custom elements is broken
+        https://bugs.webkit.org/show_bug.cgi?id=165890
+
+        Reviewed by Joseph Pecoraro.
+
+        Fix the regression from https://trac.webkit.org/changeset/208304.
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._showCustomElementDefinition): Use the main target
+        since a custom element definition can never come from a worker.
+
+2016-12-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Zooming in on the Timeline should always zoom right where the cursor is
+        https://bugs.webkit.org/show_bug.cgi?id=151118
+        <rdar://problem/23487912>
+
+        Reviewed by Timothy Hatcher.
+
+        Use correct left edge for timeline overview graph elements.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._handleWheelEvent):
+        (WebInspector.TimelineOverview._handleGestureStart):
+        (WebInspector.TimelineOverview.prototype._handleGestureChange):
+
 2016-12-12  Nikita Vasilyev  <nvasilyev@apple.com>
 
         [GTK] Web Inspector: Add NavigationItemCodeCoverage.svg icon

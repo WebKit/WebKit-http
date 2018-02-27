@@ -50,7 +50,6 @@ my @implContent = ();
 my %implIncludes = ();
 my @depsContent = ();
 my $numCachedAttributes = 0;
-my $currentCachedAttribute = 0;
 
 my $beginAppleCopyrightForHeaderFiles = <<END;
 // ------- Begin Apple Copyright -------
@@ -143,11 +142,11 @@ sub GenerateEnumeration
 
 sub GenerateDictionary
 {
-    my ($object, $dictionary, $enumerations) = @_;
+    my ($object, $dictionary, $enumerations, $otherDictionaries) = @_;
 
     my $className = GetDictionaryClassName($dictionary->type);
-    $object->GenerateDictionaryHeader($dictionary, $className, $enumerations);
-    $object->GenerateDictionaryImplementation($dictionary, $className, $enumerations);
+    $object->GenerateDictionaryHeader($dictionary, $className, $enumerations, $otherDictionaries);
+    $object->GenerateDictionaryImplementation($dictionary, $className, $enumerations, $otherDictionaries);
 }
 
 sub GenerateCallbackFunction
@@ -1105,10 +1104,13 @@ sub GenerateEnumerationHeaderContent
 
     my $result = "";
     $result .= "#if ${conditionalString}\n\n" if $conditionalString;
-    $result .= "template<> JSC::JSString* convertEnumerationToJS(JSC::ExecState&, $className);\n\n";
-    $result .= "template<> std::optional<$className> parseEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
-    $result .= "template<> $className convertEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
-    $result .= "template<> const char* expectedEnumerationValues<$className>();\n\n";
+
+    my $exportMacro = GetExportMacroForJSClass($enumeration);
+
+    $result .= "template<> ${exportMacro}JSC::JSString* convertEnumerationToJS(JSC::ExecState&, $className);\n\n";
+    $result .= "template<> ${exportMacro}std::optional<$className> parseEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
+    $result .= "template<> ${exportMacro}$className convertEnumeration<$className>(JSC::ExecState&, JSC::JSValue);\n";
+    $result .= "template<> ${exportMacro}const char* expectedEnumerationValues<$className>();\n\n";
     $result .= "#endif\n\n" if $conditionalString;
     
     return $result;
@@ -1150,7 +1152,7 @@ sub GetDictionaryClassName
 
 sub GenerateDefaultValue
 {
-    my ($interface, $context, $type, $defaultValue) = @_;
+    my ($typeScope, $context, $type, $defaultValue) = @_;
 
     if ($codeGenerator->IsStringType($type)) {
         my $useAtomicString = $context->extendedAttributes->{AtomicString};
@@ -1166,7 +1168,7 @@ sub GenerateDefaultValue
     if ($codeGenerator->IsEnumType($type)) {
         # FIXME: Would be nice to report an error if the value does not have quote marks around it.
         # FIXME: Would be nice to report an error if the value is not one of the enumeration values.
-        my $className = GetEnumerationClassName($type, $interface);
+        my $className = GetEnumerationClassName($type, $typeScope);
         my $enumerationValueName = GetEnumerationValueName(substr($defaultValue, 1, -1));
         return $className . "::" . $enumerationValueName;
     }
@@ -1174,7 +1176,7 @@ sub GenerateDefaultValue
         if ($type->isUnion) {
             return "std::nullopt" if $type->isNullable;
 
-            my $IDLType = GetIDLType($interface, $type);
+            my $IDLType = GetIDLType($typeScope, $type);
             return "convert<${IDLType}>(state, jsNull());";
         }
 
@@ -1185,10 +1187,10 @@ sub GenerateDefaultValue
     }
 
     if ($defaultValue eq "[]") {
-        my $IDLType = GetIDLType($interface, $type);
+        my $IDLType = GetIDLType($typeScope, $type);
         return "Converter<${IDLType}>::ReturnType{ }" if $codeGenerator->IsSequenceOrFrozenArrayType($type);
 
-        my $nativeType = GetNativeType($interface, $type);
+        my $nativeType = GetNativeType($typeScope, $type);
         return "$nativeType()"
     }
 
@@ -1216,7 +1218,7 @@ sub GenerateDictionaryHeaderContent
 
 sub GenerateDictionariesHeaderContent
 {
-    my ($interface, $allDictionaries) = @_;
+    my ($typeScope, $allDictionaries) = @_;
 
     return "" unless @$allDictionaries;
 
@@ -1224,8 +1226,8 @@ sub GenerateDictionariesHeaderContent
 
     my $result = "";
     foreach my $dictionary (@$allDictionaries) {
-        $headerIncludes{$interface->type->name . ".h"} = 1;
-        my $className = GetDictionaryClassName($dictionary->type, $interface);
+        $headerIncludes{$typeScope->type->name . ".h"} = 1 if $typeScope;
+        my $className = GetDictionaryClassName($dictionary->type, $typeScope);
         my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
         $result .= GenerateDictionaryHeaderContent($dictionary, $className, $conditionalString);
     }
@@ -1239,6 +1241,7 @@ sub GenerateDictionaryImplementationContent
     my $result = "";
 
     my $name = $dictionary->type->name;
+    my $typeScope = $interface || $dictionary;
 
     $result .= "#if ${conditionalString}\n\n" if $conditionalString;
 
@@ -1300,7 +1303,7 @@ sub GenerateDictionaryImplementationContent
             # 5.2. Let value be an ECMAScript value, depending on Type(V):
             $result .= "    JSValue ${key}Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, \"${key}\"));\n";
 
-            my $IDLType = GetIDLType($interface, $type);
+            my $IDLType = GetIDLType($typeScope, $type);
 
             # 5.3. If value is not undefined, then:
             $result .= "    if (!${key}Value.isUndefined()) {\n";
@@ -1311,7 +1314,7 @@ sub GenerateDictionaryImplementationContent
             # 5.4. Otherwise, if value is undefined but the dictionary member has a default value, then:
             if (!$member->isRequired && defined $member->default) {
                 $result .= "    } else\n";
-                $result .= "        result.$key = " . GenerateDefaultValue($interface, $member, $member->type, $member->default) . ";\n";
+                $result .= "        result.$key = " . GenerateDefaultValue($typeScope, $member, $member->type, $member->default) . ";\n";
             } elsif ($member->isRequired) {
                 # 5.5. Otherwise, if value is undefined and the dictionary member is a required dictionary member, then throw a TypeError.
                 $result .= "    } else {\n";
@@ -1345,7 +1348,7 @@ sub GenerateDictionaryImplementationContent
             my @sortedMembers = sort { $a->name cmp $b->name } @{$dictionary->members};
             foreach my $member (@sortedMembers) {
                 my $key = $member->name;
-                my $IDLType = GetIDLType($interface, $member->type);
+                my $IDLType = GetIDLType($typeScope, $member->type);
 
                 # 1. Let key be the identifier of member.
                 # 2. If the dictionary member named key is present in V, then:
@@ -1375,13 +1378,13 @@ sub GenerateDictionaryImplementationContent
 
 sub GenerateDictionariesImplementationContent
 {
-    my ($interface, $allDictionaries) = @_;
+    my ($typeScope, $allDictionaries) = @_;
 
     my $result = "";
     foreach my $dictionary (@$allDictionaries) {
-        my $className = GetDictionaryClassName($dictionary->type, $interface);
+        my $className = GetDictionaryClassName($dictionary->type, $typeScope);
         my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
-        $result .= GenerateDictionaryImplementationContent($dictionary, $className, $interface, $conditionalString);
+        $result .= GenerateDictionaryImplementationContent($dictionary, $className, $typeScope, $conditionalString);
     }
     return $result;
 }
@@ -3398,10 +3401,7 @@ sub GenerateImplementation
                     push(@implContent, "    return JS" . $constructorType . "::getConstructor(state.vm(), thisObject.globalObject());\n");
                 }
             } else {
-                my $cacheIndex = 0;
                 if ($attribute->extendedAttributes->{CachedAttribute}) {
-                    $cacheIndex = $currentCachedAttribute;
-                    $currentCachedAttribute++;
                     push(@implContent, "    if (JSValue cachedValue = thisObject.m_" . $attribute->name . ".get())\n");
                     push(@implContent, "        return cachedValue;\n");
                 }
@@ -3981,7 +3981,7 @@ END
             foreach (@{$interface->attributes}) {
                 my $attribute = $_;
                 if ($attribute->extendedAttributes->{CachedAttribute}) {
-                    push(@implContent, "    visitor.append(&thisObject->m_" . $attribute->name . ");\n");
+                    push(@implContent, "    visitor.append(thisObject->m_" . $attribute->name . ");\n");
                 }
             }
         }
@@ -4537,7 +4537,7 @@ sub GenerateParametersCheck
 
 sub GenerateDictionaryHeader
 {
-    my ($object, $dictionary, $className, $enumerations) = @_;
+    my ($object, $dictionary, $className, $enumerations, $otherDictionaries) = @_;
 
     # - Add default header template and header protection.
     push(@headerContentHeader, GenerateHeaderContentHeader($dictionary));
@@ -4548,6 +4548,7 @@ sub GenerateDictionaryHeader
     push(@headerContent, "\nnamespace WebCore {\n\n");
     push(@headerContent, GenerateDictionaryHeaderContent($dictionary, $className));
     push(@headerContent, GenerateEnumerationsHeaderContent($dictionary, $enumerations));
+    push(@headerContent, GenerateDictionariesHeaderContent($dictionary, $otherDictionaries)) if $otherDictionaries;
     push(@headerContent, "} // namespace WebCore\n");
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
@@ -4570,15 +4571,16 @@ sub GenerateDictionaryHeader
 
 sub GenerateDictionaryImplementation
 {
-    my ($object, $dictionary, $className, $enumerations) = @_;
+    my ($object, $dictionary, $className, $enumerations, $otherDictionaries) = @_;
 
     # - Add default header template
     push(@implContentHeader, GenerateImplementationContentHeader($dictionary));
 
     push(@implContent, "\nusing namespace JSC;\n\n");
     push(@implContent, "namespace WebCore {\n\n");
-    push(@implContent, GenerateEnumerationsImplementationContent($dictionary, $enumerations));
     push(@implContent, GenerateDictionaryImplementationContent($dictionary, $className));
+    push(@implContent, GenerateEnumerationsImplementationContent($dictionary, $enumerations));
+    push(@implContent, GenerateDictionariesImplementationContent($dictionary, $otherDictionaries)) if $otherDictionaries;
     push(@implContent, "} // namespace WebCore\n");
 
     my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
@@ -5112,6 +5114,7 @@ sub GetBaseIDLType
         "SerializedScriptValue" => "IDLSerializedScriptValue<SerializedScriptValue>",
         "EventListener" => "IDLEventListener<JSEventListener>",
         "XPathNSResolver" => "IDLXPathNSResolver<XPathNSResolver>",
+        "JSON" => "IDLJSON",
 
         # Convenience type aliases
         "BufferSource" => "IDLBufferSource",
@@ -5336,6 +5339,7 @@ sub NativeToJSValueDOMConvertNeedsState
     return 1 if $type->name eq "Date";
     return 1 if $type->name eq "SerializedScriptValue";
     return 1 if $type->name eq "XPathNSResolver";
+    return 1 if $type->name eq "JSON";
 
     return 0;
 }
@@ -5603,10 +5607,9 @@ sub WriteData
     my $outputDir = shift;
 
     my $name = $interface->type->name;
-    my $prefix = FileNamePrefix;
-    my $headerFileName = "$outputDir/$prefix$name.h";
-    my $implFileName = "$outputDir/$prefix$name.cpp";
-    my $depsFileName = "$outputDir/$prefix$name.dep";
+    my $headerFileName = "$outputDir/JS$name.h";
+    my $implFileName = "$outputDir/JS$name.cpp";
+    my $depsFileName = "$outputDir/JS$name.dep";
 
     # Update a .cpp file if the contents are changed.
     my $contents = join "", @implContentHeader;
@@ -5659,7 +5662,7 @@ sub WriteData
     }
     foreach my $include (sort @includes) {
         # "JSClassName.h" is already included right after config.h.
-        next if $include eq "\"$prefix$name.h\"";
+        next if $include eq "\"JS$name.h\"";
         $contents .= "#include $include\n";
     }
 

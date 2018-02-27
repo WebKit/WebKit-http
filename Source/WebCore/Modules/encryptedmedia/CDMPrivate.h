@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,25 +25,30 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA)
 
-#include <wtf/text/WTFString.h>
+#include "MediaKeySessionType.h"
+#include "MediaKeysRequirement.h"
+#include <wtf/Forward.h>
 
 namespace WebCore {
 
-class CDMSession;
-class CDMSessionClient;
+struct MediaKeySystemConfiguration;
+struct MediaKeysRestrictions;
 
-class CDMPrivateInterface {
+class CDMPrivate {
 public:
-    CDMPrivateInterface() { }
-    virtual ~CDMPrivateInterface() { }
-
-    virtual bool supportsMIMEType(const String&) = 0;
-
-    virtual std::unique_ptr<CDMSession> createSession(CDMSessionClient*) = 0;
+    virtual ~CDMPrivate() { }
+    virtual bool supportsInitDataType(const String&) = 0;
+    virtual bool supportsConfiguration(const MediaKeySystemConfiguration&) = 0;
+    virtual bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
+    virtual bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) = 0;
+    virtual bool supportsRobustness(const String&) = 0;
+    virtual MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
+    virtual MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
+    virtual bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) = 0;
 };
 
-} // namespace WebCore
+}
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif

@@ -8,6 +8,7 @@
 
 fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
+fast/visual-viewport/ios/ [ Pass ]
 scrollingcoordinator/ios [ Pass ]
 editing/selection/character-granularity-rect.html [ Pass ]
 
@@ -1774,18 +1775,21 @@ fast/dom/Window/post-message-crash.html [ Pass Failure ]
 webkit.org/b/123431 http/tests/css/link-css-disabled-value-with-slow-loading-sheet.html [ Pass Failure ]
 
 # eventSender.mouseDown is not implemented
+fast/events/focusing-element-with-tabindex-by-tap-or-click.html [ Skip ]
 fast/loader/location-hash-user-gesture.html [ Skip ]
 imported/blink/editing/selection/selectstart-event-crash.html [ Skip ]
 fast/dom/Window/post-message-user-action.html [ Skip ]
 fast/images/image-usemap-parsing.html [ Skip ]
 fast/shadow-dom/click-on-slotted-anchor-with-hover.html [ Skip ]
 fast/shadow-dom/click-text-inside-linked-slot.html [ Skip ]
-fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html
-fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html
-fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html
-fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html
+fast/shadow-dom/fullscreen-in-shadow-fullscreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-shadow-webkitCurrentFullScreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html [ Skip ]
+fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html [ Skip ]
 
 # No touch events
+fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard.html [ Skip ]
+fast/visual-viewport/ios/zoomed-focus-in-fixed.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
@@ -1807,10 +1811,6 @@ webkit.org/b/155201 storage/domstorage/events/basic-body-attribute.html [ Pass F
 
 # Forcing always allow user scalable is not supported on certain OS version.
 webkit.org/b/155056 fast/viewport/ios/force-always-user-scalable.html [ Skip ]
-
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden.html [ Pass Failure ]
-webkit.org/b/153110 fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall.html [ Pass Failure ]
 
 webkit.org/b/155501 animations/3d/transform-origin-vs-functions.html [ Pass Failure ]
 
@@ -1920,3 +1920,7 @@ webkit.org/b/164961 [ Release ] http/tests/storage/callbacks-are-called-in-corre
 webkit.org/b/165165 [ Release ] http/tests/security/contentSecurityPolicy/1.1/scriptnonce-invalidnonce.html [ Pass Timeout ]
 
 webkit.org/b/165344 [ Release ] http/tests/security/module-incorrect-mime-types.html [ Pass Timeout ]
+
+# Hover test does not apply
+fast/css/deferred-parsing/hover-test.html [ Skip ]
+

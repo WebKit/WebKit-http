@@ -44,6 +44,16 @@
 
 namespace WTR {
 
+static NSDictionary *toNSDictionary(CGRect rect)
+{
+    return @{
+        @"left": @(rect.origin.x),
+        @"top": @(rect.origin.y),
+        @"width": @(rect.size.width),
+        @"height": @(rect.size.height)
+    };
+}
+
 void UIScriptController::doAsyncTask(JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
@@ -64,6 +74,17 @@ void UIScriptController::doAfterPresentationUpdate(JSValueRef callback)
         if (!m_context)
             return;
         m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    [webView _doAfterNextStablePresentationUpdate:^() {
+        if (m_context)
+            m_context->asyncTaskComplete(callbackID);
     }];
 }
 
@@ -203,13 +224,39 @@ void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, fl
         m_context->asyncTaskComplete(callbackID);
     }];
 }
+    
+void convertCoordinates(NSMutableDictionary *event)
+{
+    if (event[HIDEventTouchesKey]) {
+        for (NSMutableDictionary *touch in event[HIDEventTouchesKey]) {
+            auto location = globalToContentCoordinates(TestController::singleton().mainWebView()->platformView(), (long)[touch[HIDEventXKey] doubleValue], (long)[touch[HIDEventYKey]doubleValue]);
+            touch[HIDEventXKey] = @(location.x);
+            touch[HIDEventYKey] = @(location.y);
+        }
+    }
+}
 
 void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
 
     String jsonString = eventsJSON->string();
-    auto eventInfo = dynamic_objc_cast<NSDictionary>([NSJSONSerialization JSONObjectWithData:[(NSString *)jsonString dataUsingEncoding:NSUTF8StringEncoding] options:0 error:nil]);
+    auto eventInfo = dynamic_objc_cast<NSDictionary>([NSJSONSerialization JSONObjectWithData:[(NSString *)jsonString dataUsingEncoding:NSUTF8StringEncoding] options:NSJSONReadingMutableContainers | NSJSONReadingMutableLeaves error:nil]);
+    
+    for (NSMutableDictionary *event in eventInfo[TopLevelEventInfoKey]) {
+        if (![event[HIDEventCoordinateSpaceKey] isEqualToString:HIDEventCoordinateSpaceTypeContent])
+            continue;
+        
+        if (event[HIDEventStartEventKey])
+            convertCoordinates(event[HIDEventStartEventKey]);
+        
+        if (event[HIDEventEndEventKey])
+            convertCoordinates(event[HIDEventEndEventKey]);
+        
+        if (event[HIDEventTouchesKey])
+            convertCoordinates(event);
+    }
+    
     if (!eventInfo || ![eventInfo isKindOfClass:[NSDictionary class]]) {
         WTFLogAlways("JSON is not convertible to a dictionary");
         return;
@@ -436,19 +483,21 @@ JSObjectRef UIScriptController::contentVisibleRect() const
 JSObjectRef UIScriptController::selectionRangeViewRects() const
 {
     NSMutableArray *selectionRects = [[NSMutableArray alloc] init];
-    for (UIView *rectView in TestController::singleton().mainWebView()->platformView()._uiTextSelectionRectViews) {
-        if (rectView.hidden)
-            continue;
+    NSArray *rects = TestController::singleton().mainWebView()->platformView()._uiTextSelectionRects;
+    for (NSValue *rect in rects)
+        [selectionRects addObject:toNSDictionary([rect CGRectValue])];
 
-        CGRect frame = rectView.frame;
-        [selectionRects addObject:@{
-            @"left": @(frame.origin.x),
-            @"top": @(frame.origin.y),
-            @"width": @(frame.size.width),
-            @"height": @(frame.size.height),
-        }];
-    }
     return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::textSelectionCaretRect() const
+{
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(TestController::singleton().mainWebView()->platformView()._uiTextCaretRect) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
+}
+
+JSObjectRef UIScriptController::inputViewBounds() const
+{
+    return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:toNSDictionary(TestController::singleton().mainWebView()->platformView()._inputViewBounds) inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
 void UIScriptController::removeAllDynamicDictionaries()

@@ -1,21 +1,6 @@
 import Builder from '../Builder.js';
 import * as assert from '../assert.js';
 
-const badTableString = "couldn't parse section Table";
-const badImportString = "couldn't parse section Import";
-function assertBadBinary(builder, str) {
-    const bin = builder.WebAssembly().get();
-    let threw = false;
-    try {
-        new WebAssembly.Module(bin);
-    } catch(e) {
-        threw = true;
-        assert.truthy(e.toString().indexOf(str) !== -1);
-        assert.truthy(e instanceof WebAssembly.CompileError);
-    }
-    assert.truthy(threw);
-}
-
 {
     const builder = new Builder()
         .Type().End()
@@ -28,7 +13,7 @@ function assertBadBinary(builder, str) {
         .End()
         .Code()
         .End();
-    assertBadBinary(builder, badTableString);
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 34 / 41: Table section cannot exist if an Import has a table (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
 }
 
 {
@@ -41,7 +26,7 @@ function assertBadBinary(builder, str) {
         .End()
         .Code()
         .End();
-    assertBadBinary(builder, badTableString);
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 17 / 28: Table count of 2 is invalid, only 1 is allowed for now (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
 }
 
 {
@@ -57,7 +42,7 @@ function assertBadBinary(builder, str) {
                 .CallIndirect(0, 0)
             .End()
         .End();
-    assertBadBinary(builder, "call_indirect is only valid when a table is defined or imported");
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 4 / 7: call_indirect is only valid when a table is defined or imported (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
 }
 
 {
@@ -76,10 +61,39 @@ function assertBadBinary(builder, str) {
                 .CallIndirect(0, 1)
             .End()
         .End();
-    assertBadBinary(builder, "call_indirect 'reserved' varuint1 must be 0x0");
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 6 / 7: call_indirect's 'reserved' varuint1 must be 0x0 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
 }
 
-function assertBadTable(tableDescription) {
+{
+    // Can't export an undefined table
+    const builder = new Builder()
+        .Type().End()
+        .Function().End()
+        .Export()
+            .Table("foo", 0)
+        .End()
+        .Code()
+        .End();
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 23 / 26: can't export a non-existent Table (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
+}
+
+{
+    // Can't export a table at index 1.
+    const builder = new Builder()
+        .Type().End()
+        .Function().End()
+        .Table()
+            .Table({initial: 20, maximum: 30, element: "anyfunc"})
+        .End()
+        .Export()
+            .Table("foo", 1)
+        .End()
+        .Code()
+        .End();
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 30 / 33: can't export Table 1 only zero-index Table is currently supported (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
+}
+
+function assertBadTable(tableDescription, message) {
     const builder = new Builder()
         .Type().End()
         .Function().End()
@@ -88,10 +102,10 @@ function assertBadTable(tableDescription) {
         .End()
         .Code()
         .End();
-    assertBadBinary(builder, badTableString);
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, message);
 }
 
-function assertBadTableImport(tableDescription) {
+function assertBadTableImport(tableDescription, message) {
     const builder = new Builder()
         .Type().End()
         .Import()
@@ -100,29 +114,53 @@ function assertBadTableImport(tableDescription) {
         .Function().End()
         .Code()
         .End();
-    assertBadBinary(builder, badImportString);
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, message);
 }
 
 {
     let badDescriptions = [
-        {initial: 10, element: "i32"},
-        {initial: 10, element: "f32"},
-        {initial: 10, element: "f64"},
-        {initial: 10, element: "i64"},
-        {initial: 10, maximum: 20, element: "i32"},
-        {initial: 10, maximum: 20, element: "f32"},
-        {initial: 10, maximum: 20, element: "f64"},
-        {initial: 10, maximum: 20, element: "i64"},
+        [{initial: 10, element: "i32"},
+         "WebAssembly.Module doesn't parse at byte 18 / 23: Table type should be anyfunc, got -1 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 34: Table type should be anyfunc, got -1 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, element: "f32"},
+         "WebAssembly.Module doesn't parse at byte 18 / 23: Table type should be anyfunc, got -3 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 34: Table type should be anyfunc, got -3 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, element: "f64"},
+         "WebAssembly.Module doesn't parse at byte 18 / 23: Table type should be anyfunc, got -4 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 34: Table type should be anyfunc, got -4 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, element: "i64"},
+         "WebAssembly.Module doesn't parse at byte 18 / 23: Table type should be anyfunc, got -2 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 34: Table type should be anyfunc, got -2 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, maximum: 20, element: "i32"},
+         "WebAssembly.Module doesn't parse at byte 18 / 24: Table type should be anyfunc, got -1 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 35: Table type should be anyfunc, got -1 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, maximum: 20, element: "f32"},
+         "WebAssembly.Module doesn't parse at byte 18 / 24: Table type should be anyfunc, got -3 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 35: Table type should be anyfunc, got -3 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, maximum: 20, element: "f64"},
+         "WebAssembly.Module doesn't parse at byte 18 / 24: Table type should be anyfunc, got -4 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 35: Table type should be anyfunc, got -4 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 10, maximum: 20, element: "i64"},
+         "WebAssembly.Module doesn't parse at byte 18 / 24: Table type should be anyfunc, got -2 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 26 / 35: Table type should be anyfunc, got -2 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
 
-        {initial: 10, maximum: 9, element: "anyfunc"},
-        {initial: 1, maximum: 0, element: "anyfunc"},
-        {initial: 2**32 - 1, maximum: 2**32 - 2, element: "anyfunc"},
-        {initial: 2**31, element: "anyfunc"},
+        [{initial: 10, maximum: 9, element: "anyfunc"},
+         "WebAssembly.Module doesn't parse at byte 21 / 24: resizable limits has a initial page count of 10 which is greater than its maximum 9 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 29 / 35: resizable limits has a initial page count of 10 which is greater than its maximum 9 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 1, maximum: 0, element: "anyfunc"},
+         "WebAssembly.Module doesn't parse at byte 21 / 24: resizable limits has a initial page count of 1 which is greater than its maximum 0 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 29 / 35: resizable limits has a initial page count of 1 which is greater than its maximum 0 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 2**32 - 1, maximum: 2**32 - 2, element: "anyfunc"},
+         "WebAssembly.Module doesn't parse at byte 29 / 32: resizable limits has a initial page count of 4294967295 which is greater than its maximum 4294967294 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 37 / 43: resizable limits has a initial page count of 4294967295 which is greater than its maximum 4294967294 (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
+        [{initial: 2**31, element: "anyfunc"},
+         "WebAssembly.Module doesn't parse at byte 24 / 27: Table's initial page count of 2147483648 is invalid (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')",
+         "WebAssembly.Module doesn't parse at byte 32 / 38: Table's initial page count of 2147483648 is invalid (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')"],
     ];
 
     for (const d of badDescriptions) {
-        assertBadTable(d);
-        assertBadTableImport(d);
+        assertBadTable(d[0], d[1]);
+        assertBadTableImport(d[0], d[2]);
     }
 }
 
@@ -136,7 +174,7 @@ function assertBadTableImport(tableDescription) {
         .Function().End()
         .Code()
         .End();
-    assertBadBinary(builder, badImportString);
+    assert.throws(() => new WebAssembly.Module(builder.WebAssembly().get()), WebAssembly.CompileError, "WebAssembly.Module doesn't parse at byte 39 / 48: Table section cannot exist if an Import has a table (evaluating 'new WebAssembly.Module(builder.WebAssembly().get())')");
 }
 
 
@@ -150,23 +188,15 @@ function assertBadTableImport(tableDescription) {
             .Function().End()
             .Code()
             .End();
-
-        let threw = false;
         const module = new WebAssembly.Module(builder.WebAssembly().get());
-        try {
-            new WebAssembly.Instance(module, {imp: {table}});
-        } catch (e) {
-            assert.eq(e.toString(), message);
-            threw = true;
-        }
-        assert.truthy(threw);
+        assert.throws(() => new WebAssembly.Instance(module, {imp: {table}}), TypeError, message);
     }
 
     const badTables = [
-        [{initial: 100, maximum:100, element:"anyfunc"}, new WebAssembly.Table({initial:100, element: "anyfunc"}), "TypeError: Table import does not have a 'maximum' but the module requires that it does"],
-        [{initial: 100, maximum:100, element:"anyfunc"}, new WebAssembly.Table({initial:100, maximum:101, element: "anyfunc"}), "TypeError: Imported Table's 'maximum' is larger than the module's expected 'maximum'"],
-        [{initial: 100, element:"anyfunc"}, new WebAssembly.Table({initial:10, element: "anyfunc"}), "TypeError: Table import provided an 'initial' that is too small"],
-        [{initial: 10, element:"anyfunc"}, new WebAssembly.Table({initial:9, element: "anyfunc"}), "TypeError: Table import provided an 'initial' that is too small"],
+        [{initial: 100, maximum:100, element:"anyfunc"}, new WebAssembly.Table({initial:100, element: "anyfunc"}), "Table import does not have a 'maximum' but the module requires that it does"],
+        [{initial: 100, maximum:100, element:"anyfunc"}, new WebAssembly.Table({initial:100, maximum:101, element: "anyfunc"}), "Imported Table's 'maximum' is larger than the module's expected 'maximum'"],
+        [{initial: 100, element:"anyfunc"}, new WebAssembly.Table({initial:10, element: "anyfunc"}), "Table import provided an 'initial' that is too small"],
+        [{initial: 10, element:"anyfunc"}, new WebAssembly.Table({initial:9, element: "anyfunc"}), "Table import provided an 'initial' that is too small"],
     ];
     for (const [d, t, m] of badTables) {
         assertBadTableInstance(d, t, m);
@@ -227,4 +257,44 @@ function assertBadTableImport(tableDescription) {
     assertBadTable(new Object);
     assertBadTable([]);
     assertBadTable(new WebAssembly.Memory({initial:1}));
+}
+
+{
+    const builder = new Builder()
+        .Type().End()
+        .Import()
+            .Table("imp", "table", {initial: 25, element: "anyfunc"})
+        .End()
+        .Function().End()
+        .Export()
+            .Table("table", 0)
+            .Table("table2", 0)
+        .End()
+        .Code().End();
+
+    const module = new WebAssembly.Module(builder.WebAssembly().get());
+    const table = new WebAssembly.Table({element: "anyfunc", initial: 25});
+    const instance = new WebAssembly.Instance(module, {imp: {table}});
+    assert.truthy(table === instance.exports.table);
+    assert.truthy(table === instance.exports.table2);
+}
+
+{
+    const builder = new Builder()
+        .Type().End()
+        .Function().End()
+        .Table()
+            .Table({initial: 20, maximum: 30, element: "anyfunc"})
+        .End()
+        .Export()
+            .Table("table", 0)
+            .Table("table2", 0)
+        .End()
+        .Code().End();
+
+    const module = new WebAssembly.Module(builder.WebAssembly().get());
+    const instance = new WebAssembly.Instance(module);
+    assert.eq(instance.exports.table, instance.exports.table2);
+    assert.eq(instance.exports.table.length, 20);
+    assert.truthy(instance.exports.table instanceof WebAssembly.Table);
 }

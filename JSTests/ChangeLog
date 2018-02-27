@@ -1,3 +1,274 @@
+2016-12-19  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 2: Rollout r209952.
+        https://bugs.webkit.org/show_bug.cgi?id=166049
+
+        Not reviewed.
+
+        * stress/deeply-nested-finallys.js: Removed.
+        * stress/test-finally.js: Removed.
+
+2016-12-19  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Make running Wasm tests take less time by reducing some tests' iteration count and by splitting some tests into different files
+        https://bugs.webkit.org/show_bug.cgi?id=166017
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/trap-load-2.js: Added.
+        (assert):
+        (wasmFrameCountFromError):
+        (continuation):
+        (i.catch):
+        * wasm/function-tests/trap-load.js:
+        (assert.continuation): Deleted.
+        * wasm/function-tests/trap-store-2.js: Added.
+        (import.Builder.from.string_appeared_here.assert):
+        (continuation):
+        (i.catch):
+        * wasm/function-tests/trap-store.js:
+        (assert.continuation): Deleted.
+        (assert): Deleted.
+        * wasm/js-api/test_memory.js:
+        (test):
+
+2016-12-18  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement the WebAssembly.compile and WebAssembly.validate
+        https://bugs.webkit.org/show_bug.cgi?id=165936
+
+        Reviewed by Mark Lam.
+
+        * wasm/js-api/Module-compile.js: Added.
+        (async.testPromiseAPI):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+        * wasm/js-api/validate.js: Added.
+        (assert.truthy.WebAssembly.validate.builder.WebAssembly):
+
+2016-12-16  Mark Lam  <mark.lam@apple.com>
+
+        De-duplicate finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=160168
+
+        Reviewed by Keith Miller.
+
+        * stress/deeply-nested-finallys.js: Added.
+        - Tests many levels of finally nesting.  This causes the old code to hang (and
+          crashes eventually) while trying to generate bytecode for the exponentially
+          duplicated finally blocks.  The new code completes this test almost instantly.
+
+        * stress/test-finally.js: Added.
+        - Tests control flow through various permutations of finally blocks.
+
+2016-12-16  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: WasmB3IRGenerator should throw exceptions instead of crash
+        https://bugs.webkit.org/show_bug.cgi?id=165834
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/exceptions.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        * wasm/function-tests/table-basic.js:
+        (i.i.42.throw.new.Error):
+
+2016-12-16  Keith Miller  <keith_miller@apple.com>
+
+        i64.eqz should use an Int64 zero
+        https://bugs.webkit.org/show_bug.cgi?id=165942
+
+        Reviewed by Mark Lam.
+
+        * wasm/wasm.json:
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix validation of non-void if blocks with no else
+        https://bugs.webkit.org/show_bug.cgi?id=165938
+
+        Reviewed by Saam Barati.
+
+        Add a new failing test and a fix an existing one.
+
+        * wasm/function-tests/dead-call.js:
+        * wasm/function-tests/if-no-else-non-void.js: Added.
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should not create empty unlinked callsites
+        https://bugs.webkit.org/show_bug.cgi?id=165933
+
+        Reviewed by Mark Lam.
+
+        * wasm/function-tests/dead-call.js: Added.
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: improve compilation error messages
+        https://bugs.webkit.org/show_bug.cgi?id=163919
+
+        Reviewed by Saam Barati.
+
+        Update error messages in these tests.
+        Use the assert.throws facility in many of them which weren't already.
+
+        * wasm/js-api/element.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        (assert.throws):
+        * wasm/js-api/global-error.js:
+        (assert.throws.new.WebAssembly.Module.bin):
+        (assert.throws):
+        (new.Number):
+        * wasm/js-api/table.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        (assert.throws):
+        (assertBadTableImport):
+        * wasm/js-api/test_Data.js:
+        (DataSectionWithoutMemory):
+        * wasm/js-api/test_Start.js:
+        (InvalidStartFunctionIndex):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: improve data section errors
+        https://bugs.webkit.org/show_bug.cgi?id=165733
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/element-data.js: Added.
+        (ElementBeforeData.set const):
+        (ElementBeforeData): check the order of initialization, which is observable on failure
+        * wasm/js-api/test_Data.js:
+        (DataSectionWithoutMemory):
+        (DataSectionOffTheEnd): Deleted.
+        (DataSectionPartlyOffTheEnd): Deleted.
+        (DataSectionEmptyOffTheEnd): Deleted.
+        (DataSectionSeenByStart): Deleted.
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix 64-bit shift family Wasm opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=165902
+
+        Reviewed by Geoffrey Garen.
+
+        Add tests for shift family of instructions. Since
+        we can't generate i64 values to pass to wasm we only compile
+        the code for those functions. Attempting to generate any i64
+        code using these instructions would have been enough to cause
+        the B3 Validation error anyway.
+
+        * wasm/assert.js:
+        * wasm/function-tests/rotl.js: Added.
+        * wasm/function-tests/rotr.js: Added.
+        * wasm/function-tests/shl.js: Added.
+        * wasm/function-tests/shr-s.js: Added.
+        * wasm/function-tests/shr-u.js: Added.
+        * wasm/wasm.json:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: test_BuilderJSON.js is broken
+        https://bugs.webkit.org/show_bug.cgi?id=165893
+
+        Reviewed by Michael Saboff.
+
+        * wasm/Builder.js:
+        (const._isValidValue):
+        * wasm/self-test/test_BuilderJSON.js:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix test.
+
+        * wasm/function-tests/i32-const.js:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should decode constants correctly
+        https://bugs.webkit.org/show_bug.cgi?id=165886
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js:
+        (const._isValidValue):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.putOp):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.float):
+        (export.default.LowLevelBinary.prototype.double):
+        * wasm/function-tests/f32-const.js: Added.
+        * wasm/function-tests/f64-const.js: Added.
+        * wasm/function-tests/i32-const.js: Added.
+        * wasm/wasm.json:
+
+2016-12-14  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Add various low hanging fruit that will allow us to run the LLVM torture tests in Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=165883
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Export):
+        * wasm/js-api/table.js:
+        (assertBadBinary):
+        (assertBadTable):
+        (assert.truthy):
+        * wasm/js-api/test_memory.js:
+        (binaryShouldNotParse):
+        (test):
+        (test.testMemImportError):
+        (assert.truthy):
+        (assert): Deleted.
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        DirectTailCall implementation needs to tell the shuffler what to put into the ArgumentCount explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=165882
+
+        Reviewed by Mark Lam.
+
+        * stress/direct-tail-call-arity-mismatch-count-args.js: Added.
+        (foo):
+        (bar):
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly JS API: implement Global
+        https://bugs.webkit.org/show_bug.cgi?id=164133
+
+        Reviewed by Saam Barati.
+
+        * wasm/Builder.js:
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.valueType.WASM.description.type.i32.type.const.putGlobalType):
+        (const.putOp):
+        (const.putInitExpr):
+        (const.emitters.Import):
+        (const.emitters.Global):
+        (const.emitters.Export):
+        (const.emitters.Code):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.varuint32):
+        (export.default.LowLevelBinary.prototype.varint32):
+        * wasm/js-api/global-error.js: Added.
+        (catch):
+        (assert.truthy):
+        * wasm/js-api/global-external-init-from-import.js: Added.
+        * wasm/js-api/global-internal-init-from-import.js: Added.
+        * wasm/js-api/global-mutate.js: Added.
+        (createInternalGlobalModule):
+        * wasm/js-api/globals-export.js: Added.
+        * wasm/js-api/globals-import.js: Added.
+        * wasm/wasm.json:
+
 2016-12-13  Saam Barati  <sbarati@apple.com>
 
         WebAssembly: implement the elements section

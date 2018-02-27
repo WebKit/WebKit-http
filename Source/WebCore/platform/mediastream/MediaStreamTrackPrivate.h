@@ -24,21 +24,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaStreamTrackPrivate_h
-#define MediaStreamTrackPrivate_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "RealtimeMediaSource.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
 class AudioSourceProvider;
 class GraphicsContext;
 class MediaSample;
-class MediaSourceSettings;
 class RealtimeMediaSourceCapabilities;
 
 class MediaStreamTrackPrivate : public RefCounted<MediaStreamTrackPrivate>, public RealtimeMediaSource::Observer {
@@ -90,7 +86,6 @@ public:
     const RealtimeMediaSourceSettings& settings() const;
     RefPtr<RealtimeMediaSourceCapabilities> capabilities() const;
 
-    RefPtr<MediaConstraints> constraints() const;
     void applyConstraints(const MediaConstraints&, RealtimeMediaSource::SuccessHandler, RealtimeMediaSource::FailureHandler);
 
     AudioSourceProvider* audioSourceProvider();
@@ -110,7 +105,6 @@ private:
 
     Vector<Observer*> m_observers;
     Ref<RealtimeMediaSource> m_source;
-    RefPtr<MediaConstraints> m_constraints;
     RefPtr<RealtimeMediaSourcePreview> m_preview;
 
     String m_id;
@@ -123,5 +117,3 @@ typedef Vector<RefPtr<MediaStreamTrackPrivate>> MediaStreamTrackPrivateVector;
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaStreamTrackPrivate_h

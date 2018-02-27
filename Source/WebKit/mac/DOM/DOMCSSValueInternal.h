@@ -26,8 +26,8 @@
 #import <WebKitLegacy/DOMCSSValue.h>
 
 namespace WebCore {
-class CSSValue;
+class DeprecatedCSSOMValue;
 }
 
-DOMCSSValue *kit(WebCore::CSSValue*);
-Class kitClass(WebCore::CSSValue*);
+DOMCSSValue *kit(WebCore::DeprecatedCSSOMValue*);
+Class kitClass(WebCore::DeprecatedCSSOMValue*);

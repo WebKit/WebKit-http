@@ -219,13 +219,16 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediasource/VideoPlaybackQuality.idl
 
     Modules/mediastream/DOMURLMediaStream.idl
+    Modules/mediastream/DoubleRange.idl
     Modules/mediastream/HTMLMediaElementMediaStream.idl
+    Modules/mediastream/LongRange.idl
     Modules/mediastream/MediaDeviceInfo.idl
     Modules/mediastream/MediaDevices.idl
     Modules/mediastream/MediaStream.idl
     Modules/mediastream/MediaStreamEvent.idl
     Modules/mediastream/MediaStreamTrack.idl
     Modules/mediastream/MediaStreamTrackEvent.idl
+    Modules/mediastream/MediaTrackConstraints.idl
     Modules/mediastream/MediaTrackSupportedConstraints.idl
     Modules/mediastream/NavigatorMediaDevices.idl
     Modules/mediastream/NavigatorUserMedia.idl
@@ -354,7 +357,6 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSMediaRule.idl
     css/CSSNamespaceRule.idl
     css/CSSPageRule.idl
-    css/CSSPrimitiveValue.idl
     css/CSSRule.idl
     css/CSSRuleList.idl
     css/CSSStyleDeclaration.idl
@@ -362,17 +364,18 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSStyleSheet.idl
     css/CSSSupportsRule.idl
     css/CSSUnknownRule.idl
-    css/CSSValue.idl
-    css/CSSValueList.idl
-    css/Counter.idl
+    css/DeprecatedCSSOMCounter.idl
+    css/DeprecatedCSSOMPrimitiveValue.idl
+    css/DeprecatedCSSOMRGBColor.idl
+    css/DeprecatedCSSOMRect.idl
+    css/DeprecatedCSSOMValue.idl
+    css/DeprecatedCSSOMValueList.idl
     css/DOMCSSNamespace.idl
     css/FontFace.idl
     css/FontFaceSet.idl
     css/MediaList.idl
     css/MediaQueryList.idl
     css/MediaQueryListListener.idl
-    css/RGBColor.idl
-    css/Rect.idl
     css/StyleMedia.idl
     css/StyleSheet.idl
     css/StyleSheetList.idl
@@ -795,8 +798,10 @@ set(WebCore_SVG_IDL_FILES
 
 if (WIN32 AND INTERNAL_BUILD)
     set(JavaScriptCore_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore/Scripts")
+    set(ANGLE_FORWARDING_HEADERS_DIR "${CMAKE_BINARY_DIR}/../include/private/ANGLE")
 else ()
     set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
+    set(ANGLE_FORWARDING_HEADERS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE")
 endif ()
 
 set(WebCore_SOURCES
@@ -906,12 +911,12 @@ set(WebCore_SOURCES
     Modules/mediastream/MediaDevicesRequest.cpp
     Modules/mediastream/MediaEndpointPeerConnection.cpp
     Modules/mediastream/MediaEndpointSessionDescription.cpp
-    Modules/mediastream/MediaSourceSettings.cpp
     Modules/mediastream/MediaStream.cpp
     Modules/mediastream/MediaStreamEvent.cpp
     Modules/mediastream/MediaStreamRegistry.cpp
     Modules/mediastream/MediaStreamTrack.cpp
     Modules/mediastream/MediaStreamTrackEvent.cpp
+    Modules/mediastream/MediaTrackConstraints.cpp
     Modules/mediastream/NavigatorMediaDevices.cpp
     Modules/mediastream/PeerConnectionBackend.cpp
     Modules/mediastream/RTCDTMFSender.cpp
@@ -1074,13 +1079,11 @@ set(WebCore_SOURCES
     bindings/generic/ActiveDOMCallback.cpp
     bindings/generic/RuntimeEnabledFeatures.cpp
 
-    bindings/js/ArrayValue.cpp
     bindings/js/CachedModuleScript.cpp
     bindings/js/CachedModuleScriptLoader.cpp
     bindings/js/CallbackFunction.cpp
     bindings/js/CommonVM.cpp
     bindings/js/DOMWrapperWorld.cpp
-    bindings/js/Dictionary.cpp
     bindings/js/GCController.cpp
     bindings/js/IDBBindingUtilities.cpp
     bindings/js/JSAnimationTimelineCustom.cpp
@@ -1124,7 +1127,6 @@ set(WebCore_SOURCES
     bindings/js/JSDOMWindowShell.cpp
     bindings/js/JSDOMWrapper.cpp
     bindings/js/JSDataCueCustom.cpp
-    bindings/js/JSDataTransferCustom.cpp
     bindings/js/JSDeviceMotionEventCustom.cpp
     bindings/js/JSDeviceOrientationEventCustom.cpp
     bindings/js/JSDocumentCustom.cpp
@@ -1161,17 +1163,12 @@ set(WebCore_SOURCES
     bindings/js/JSIDBObjectStoreCustom.cpp
     bindings/js/JSIDBRequestCustom.cpp
     bindings/js/JSIDBTransactionCustom.cpp
-    bindings/js/JSImageConstructor.cpp
     bindings/js/JSImageDataCustom.cpp
     bindings/js/JSInspectorFrontendHostCustom.cpp
     bindings/js/JSLazyEventListener.cpp
     bindings/js/JSLocationCustom.cpp
     bindings/js/JSMainThreadExecState.cpp
-    bindings/js/JSMediaDevicesCustom.cpp
     bindings/js/JSMediaKeySessionCustom.cpp
-    bindings/js/JSMediaKeySystemAccessCustom.cpp
-    bindings/js/JSMediaStreamTrackCustom.cpp
-    bindings/js/JSMediaTrackSupportedConstraintsCustom.cpp
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp
@@ -1200,7 +1197,6 @@ set(WebCore_SOURCES
     bindings/js/JSTextTrackCustom.cpp
     bindings/js/JSTextTrackListCustom.cpp
     bindings/js/JSTrackCustom.cpp
-    bindings/js/JSTrackEventCustom.cpp
     bindings/js/JSTreeWalkerCustom.cpp
     bindings/js/JSVideoTrackCustom.cpp
     bindings/js/JSVideoTrackListCustom.cpp
@@ -1337,6 +1333,9 @@ set(WebCore_SOURCES
     css/CSSVariableData.cpp
     css/CSSVariableReferenceValue.cpp
     css/DOMCSSNamespace.cpp
+    css/DeprecatedCSSOMPrimitiveValue.cpp
+    css/DeprecatedCSSOMValue.cpp
+    css/DeprecatedCSSOMValueList.cpp
     css/DocumentRuleSets.cpp
     css/ElementRuleCollector.cpp
     css/FontVariantBuilder.cpp
@@ -1375,6 +1374,7 @@ set(WebCore_SOURCES
     css/WebKitCSSViewportRule.cpp
 
     css/parser/CSSAtRuleID.cpp
+    css/parser/CSSDeferredParser.cpp
     css/parser/CSSParser.cpp
     css/parser/CSSParserFastPaths.cpp
     css/parser/CSSParserIdioms.cpp
@@ -2876,6 +2876,7 @@ set(WebCore_SOURCES
     xml/XPathExpression.cpp
     xml/XPathExpressionNode.cpp
     xml/XPathFunctions.cpp
+    xml/XPathGrammar.cpp
     xml/XPathNSResolver.cpp
     xml/XPathNodeSet.cpp
     xml/XPathParser.cpp
@@ -3021,10 +3022,10 @@ set(WebCore_LIBRARIES
 
 if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
-        Modules/encryptedmedia/CDM.cpp
-        Modules/encryptedmedia/CDMPrivateClearKey.cpp
-        Modules/encryptedmedia/CDMPrivateMediaPlayer.cpp
-        Modules/encryptedmedia/CDMSessionClearKey.cpp
+        Modules/encryptedmedia/legacy/LegacyCDM.cpp
+        Modules/encryptedmedia/legacy/LegacyCDMPrivateClearKey.cpp
+        Modules/encryptedmedia/legacy/LegacyCDMPrivateMediaPlayer.cpp
+        Modules/encryptedmedia/legacy/LegacyCDMSessionClearKey.cpp
 
         Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.cpp
         Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.cpp
@@ -3032,7 +3033,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/legacy/WebKitMediaKeys.cpp
     )
     list(APPEND WebCoreTestSupport_SOURCES
-        testing/MockCDM.cpp
+        testing/LegacyMockCDM.cpp
     )
     list(APPEND WebCore_IDL_FILES
         Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl
@@ -3046,6 +3047,7 @@ endif ()
 
 if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
+        Modules/encryptedmedia/CDM.cpp
         Modules/encryptedmedia/MediaKeyMessageEvent.cpp
         Modules/encryptedmedia/MediaKeySession.cpp
         Modules/encryptedmedia/MediaKeyStatusMap.cpp
@@ -3060,11 +3062,13 @@ if (ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_IDL_FILES
         Modules/encryptedmedia/MediaKeyMessageEvent.idl
         Modules/encryptedmedia/MediaKeySession.idl
+        Modules/encryptedmedia/MediaKeySessionType.idl
         Modules/encryptedmedia/MediaKeyStatusMap.idl
         Modules/encryptedmedia/MediaKeySystemAccess.idl
         Modules/encryptedmedia/MediaKeySystemConfiguration.idl
         Modules/encryptedmedia/MediaKeySystemMediaCapability.idl
         Modules/encryptedmedia/MediaKeys.idl
+        Modules/encryptedmedia/MediaKeysRequirement.idl
         Modules/encryptedmedia/NavigatorEME.idl
 
         html/MediaEncryptedEvent.idl
@@ -3275,6 +3279,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     endif ()
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES
+        "${ANGLE_FORWARDING_HEADERS_DIR}"
         "${WEBCORE_DIR}/platform/graphics/gpu"
     )
 
@@ -3457,6 +3462,7 @@ set(WebCoreTestSupport_IDL_FILES
     testing/Internals.idl
     testing/MallocStatistics.idl
     testing/MemoryInfo.idl
+    testing/MockCDMFactory.idl
     testing/MockContentFilterSettings.idl
     testing/MockPageOverlay.idl
     testing/TypeConversions.idl
@@ -3473,6 +3479,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/GCObservation.cpp
     testing/InternalSettings.cpp
     testing/Internals.cpp
+    testing/MockCDMFactory.cpp
     testing/MockGamepad.cpp
     testing/MockGamepadProvider.cpp
     testing/MockPageOverlay.cpp
@@ -3676,9 +3683,6 @@ add_custom_command(
     VERBATIM)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/PlugInsResourcesData.cpp)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/css/StyleResolver.cpp PlugInsResourcesData.cpp PlugInsResources.h)
-
-GENERATE_GRAMMAR(xpathyy ${WEBCORE_DIR}/xml/XPathGrammar.y ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.h ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp "")
-list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/XPathGrammar.cpp)
 
 set(FEATURE_DEFINES_JAVASCRIPT "LANGUAGE_JAVASCRIPT ${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}")
 list(APPEND WebCoreTestSupport_IDL_FILES ${DERIVED_SOURCES_WEBCORE_DIR}/InternalSettingsGenerated.idl)
@@ -3929,6 +3933,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
         ANGLE_ENABLE_GLSL)
 
     target_include_directories(ANGLESupport PRIVATE
+        "${THIRDPARTY_DIR}/ANGLE"
         "${THIRDPARTY_DIR}/ANGLE/include"
         "${THIRDPARTY_DIR}/ANGLE/include/KHR"
         "${THIRDPARTY_DIR}/ANGLE/src"

@@ -1,3 +1,604 @@
+2016-12-19  Keith Rollin  <krollin@apple.com>
+
+        Fix unwanted deletion of record/replay files
+        https://bugs.webkit.org/show_bug.cgi?id=166040
+
+        Reviewed by Alex Christensen.
+
+        As part of some refactoring, the objects that create the meta files
+        that are part of the record/replay cache would get deleted. They were
+        always getting opened in "write" mode", which would truncate the
+        files. Fix this so that the files are opened in the right modes for
+        record, replay, and neither.
+
+        * NetworkProcess/capture/NetworkCaptureManager.cpp:
+        (WebKit::NetworkCapture::Manager::initialize):
+
+2016-12-19  Gavin Barraclough  <barraclough@apple.com>
+
+        [CSS Parser] Enable CSS Deferred Parsing
+        https://bugs.webkit.org/show_bug.cgi?id=165869
+
+        Unreviewed rollout – looks like this regressed performance.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-12-19  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION: Crash in com.apple.WebKit:IPC::Connection::platformCanSendOutgoingMessages() const + 0
+        https://bugs.webkit.org/show_bug.cgi?id=165817
+        rdar://problem/29626731
+
+        Reviewed by Dan Bernstein.
+
+        If the receive right is invalidated before we send the message, the kernel won't be able to create a send right,
+        and we'll crash due to mach_msg returning MACH_SEND_INVALID_RIGHT.
+        
+        Fix this by immediately creating a send right, and passing MACH_MSG_TYPE_MOVE_SEND to the attachment constructor.
+
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openFrontendConnection):
+
+2016-12-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Expose a way for MiniBrowser to simulate header and footer banners
+        https://bugs.webkit.org/show_bug.cgi?id=166005
+
+        Reviewed by Wenson Hsieh.
+        
+        Expose testing SPI that allows a client to simulate the presence of header
+        and footer banners. These are simply plumbed through to set FrameView's
+        m_headerHeight and m_footerHeight.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setHeaderBannerHeightForTesting:]):
+        (-[WKWebView _setFooterBannerHeightForTesting:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setHeaderBannerHeightForTesting):
+        (WebKit::WebPageProxy::setFooterBannerHeightForTesting):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setHeaderBannerHeightForTesting):
+        (WebKit::WebPage::setFooterBannerHeightForTesting):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2016-12-16  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Values] Make separate wrapper classes for the deprecated CSS Values OM
+        https://bugs.webkit.org/show_bug.cgi?id=165968
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSValue.cpp:
+        (WebKit::kit):
+        (WebKit::core):
+        (WebKit::wrapCSSValue):
+        (webkit_dom_css_value_constructor):
+        (webkit_dom_css_value_get_css_text):
+        (webkit_dom_css_value_set_css_text):
+        (webkit_dom_css_value_get_css_value_type):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMCSSValuePrivate.h:
+
+2016-12-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: bottom fixed elements disappear behind the keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=165983
+        <rdar://problem/29409852>
+
+        Reviewed by Simon Fraser.
+
+        Accounts for input view bounds in WebPageProxy::computeCustomFixedPositionRect. To do this, we introduce and
+        pass unobscuredContentRectRespectingInputViewBounds along with the regular unobscuredContentRect (which does not
+        respect the obscuring keyboard rect). This unobscuredContentRectRespectingInputViewBounds is then used when
+        computing the origin of the updated layout viewport rect (and also, when we are _not_ below minimum scale),
+        
+        Additionally, the size is computed using the (unconstrained) unobscured rect. This is because we previously
+        would use the document-constrained version of the unobscured rect, which caused the layout viewport to shrink
+        when approaching the max scroll extents of the document while the keyboard is up, since the unobscured rect
+        would spill out of the document rect. However, using this unconstrained rect's size also means that if the user
+        rubber-bands out of the document rect, we would end up pushing the layout viewport rect out of the document,
+        with no way of adjusting it back in without the user scrolling to push the layout viewport into back document
+        bounds. To address this, we move the layout rect to be within document bounds after computing its size and
+        location.
+
+        Added a new layout test: fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard.html, and also tweaked
+        fixed-caret-position-after-scroll.html to cover these changes.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::operator<<):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::unobscuredContentRectRespectingInputViewBounds):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _updateContentRectsWithState:]):
+        (-[WKWebView _inputViewBounds]):
+
+        Returns the current bounds of the input view. For testing purposes.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::unobscuredContentRectRespectingInputViewBounds):
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::customFixedPositionRect):
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _computeUnobscuredContentRectRespectingInputViewBounds:unobscuredContentRect:inputViewBounds:scale:]):
+
+        Helper to compute the unobscured rect, accounting for the bounds of the current input view.
+
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        (-[WKContentView _didCommitLayerTree:]):
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computeCustomFixedPositionRect):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::commitLayerTree):
+
+2016-12-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Deleting a character converted from pinyin after an image causes a Safari crash
+        https://bugs.webkit.org/show_bug.cgi?id=165839
+
+        Reviewed by Darin Adler.
+
+        The crash was caused by the payload of the IPC not being decoded correctly when the encoded attributed string
+        contains a NSTextAttachment but send<> would still gladly send it to the UIProcess.
+
+        Fixed it by omitting the image as done in r176412 since encoding NSFileWrapper, etc... would require
+        quite a bit of work, and IME doesn't really need to see the image in its attributed string.
+
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::attributedSubstringForCharacterRangeAsync): Fixed the bug.
+
+2016-12-16  Andy Estes  <aestes@apple.com>
+
+        Add a setting to suppress keyboard input during provisional navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165830
+
+        Reviewed by Brent Fulgham.
+
+        * Shared/WebPreferencesDefinitions.h: Defined
+        shouldSuppressKeyboardDOMEventsDuringProvisionalNavigation.
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetShouldSuppressKeyboardInputDuringProvisionalNavigation): Added.
+        (WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation): Added.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h: Declared a getter and setter for the new
+        preference.
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _shouldSuppressKeyboardInputDuringProvisionalNavigation]): Added.
+        (-[WKPreferences _setShouldSuppressKeyboardInputDuringProvisionalNavigation:]): Added.
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h: Declared a property for the new preference.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences): Mapped the new preference to its corresponding
+        WebCore::Setting.
+
+2016-12-16  Chris Dumez  <cdumez@apple.com>
+
+        HTML form validation bubble should be dismissed on navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165960
+        <rdar://problem/29668086>
+
+        Reviewed by Simon Fraser.
+
+        Dismiss HTML form validation bubble on top-level navigation on WK2.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didStartProvisionalLoadForFrame):
+
+2016-12-16  Jer Noble  <jer.noble@apple.com>
+
+        Small refactor: Use HashCountedSet rather than HashMap<..., int> to store client counts in WebPlaybackSessionManager{,Proxy}.
+        https://bugs.webkit.org/show_bug.cgi?id=165807
+
+        Reviewed by Eric Carlson.
+
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.h:
+        * UIProcess/Cocoa/WebPlaybackSessionManagerProxy.mm:
+        (WebKit::WebPlaybackSessionManagerProxy::addClientForContext):
+        (WebKit::WebPlaybackSessionManagerProxy::removeClientForContext):
+        * WebProcess/cocoa/WebPlaybackSessionManager.h:
+        * WebProcess/cocoa/WebPlaybackSessionManager.mm:
+        (WebKit::WebPlaybackSessionManager::addClientForContext):
+        (WebKit::WebPlaybackSessionManager::removeClientForContext):
+
+2016-12-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: carets and selection UI are incorrectly positioned when editing fixed elements
+        https://bugs.webkit.org/show_bug.cgi?id=165767
+        <rdar://problem/29602382>
+
+        Reviewed by Simon Fraser.
+
+        When focusing an input, the position of the caret on iOS is determined by the overridden layout viewport rect in
+        the web process. However, this rect is not updated until the end the scroll gesture. Whereas this is fine for
+        non-fixed inputs since their document location does not change, fixed inputs effectively change their position
+        in the document as the user scrolls. This causes the caret to be 'left behind' in the document position it was
+        in at the start of the scroll. To fix this, we deactivate the selection when exiting stable state if the
+        assisted node is in a fixed position container, and reenable it upon receiving the next stable state EditorState
+        update (as indicated by postLayoutData().isStableStateUpdate). Additionally, we apply similar treatment to the
+        web selection assistant -- this time, we need to force the selection view to hide (analagous to deactivating
+        the text selection assistant) and show it again upon receiving the next selection change update when the WebPage
+        (in the web process) is stable.
+
+        Furthermore, adds test support for querying text caret and selection rects, as well as perform a callback after
+        the WebPage has indicated that it is stable, both as SPI on the WKWebView.
+
+        Covered by 4 new layout tests in fast/editing/caret/ios and fast/editing/selection/ios.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * Shared/EditorState.cpp:
+        (WebKit::EditorState::PostLayoutData::encode):
+        (WebKit::EditorState::PostLayoutData::decode):
+        * Shared/EditorState.h:
+
+        Introduce isStableStateUpdate, which is true when the WebPage is known to be in stable state, as well as
+        insideFixedPosition, which is true when the current selection is inside a fixed position container.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::isInStableState):
+        (WebKit::RemoteLayerTreeTransaction::setIsInStableState):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        (WebKit::RemoteLayerTreeTransaction::description):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _uiTextCaretRect]):
+
+        Introduced a new SPI method for fetching the current rect of the text assistant's caret view, at keyPath
+        "selectionView.selection.caretRect".
+
+        (-[WKWebView _uiTextSelectionRects]):
+
+        Renamed (and refactored) from _uiTextSelectionRectViews, which was previously fetching an array of UIViews. I
+        found this to cause character-granularity-rect.html to fail due to the array of UIViews here being empty, so I
+        refactored this to simply return an array of rects from the keyPath "selectionView.selection.selectionRects" for
+        the text selection assistant and @"selectionView.selectionRects" for the web selection assistant.
+
+        (-[WKWebView _doAfterNextStablePresentationUpdate:]):
+
+        Runs the given block after both the UI process and web processes agree that the visible content rect state is 
+        stable. To do this, we fire presentation updates until the UI process (via RemoteLayerTreeTransactions)
+        discovers that the web page is in stable state. This is used solely for testing purposes.
+
+        (-[WKWebView _firePresentationUpdateForPendingStableStatePresentationCallbacks]):
+        (-[WKWebView _uiTextSelectionRectViews]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::inStableState):
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _didExitStableState]):
+
+        Deactivate the text selection if the assisted node is inside a fixed container.
+
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView shouldHideSelectionWhenScrolling]):
+        (-[WKContentView _uiTextSelectionRects]):
+        (-[WKContentView _didEndScrollingOrZooming]):
+        (-[WKContentView _updateChangedSelection:]):
+
+        If the EditorState was created after a stable state update, reactivate the text selection assistant if it exists.
+        Additionally, if we are deferring the end scrolling selection update until after the first stable editor state
+        update arrives from the web process, we need to also call [_textSelectionAssistant didEndScrollingOverflow]
+        and [_webSelectionAssistant didEndScrollingOrZoomingPage] here instead of doing so immediately after scrolling
+        finishes. This ensures that selection UI (the callout and selection highlights) do not flicker from their old
+        position to the new position when scrolling finishes.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::willCommitLayerTree):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::platformEditorState):
+        (WebKit::WebPage::updateVisibleContentRects):
+
+        When updating the layout viewport override rect, also recompute the caret if needed and send an updated
+        EditorState over to the UI process.
+
+2016-12-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WK2] SharedMemory: include cleanups
+        https://bugs.webkit.org/show_bug.cgi?id=165950
+
+        Reviewed by Žan Doberšek.
+
+        The WTFString include is not needed in the header, so move to the
+        Unix file. Use the existing UNIX_DOMAIN_SOCKETS define. Also
+        include the WTFOptional header where needed.
+
+        * Platform/SharedMemory.h:
+        * Platform/unix/SharedMemoryUnix.cpp:
+
+2016-12-16  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] Fix build break since r209907. Unreviewed.
+        https://bugs.webkit.org/show_bug.cgi?id=165954
+
+        * UIProcess/efl/TextCheckerEfl.cpp: Change the remaining TextBreakIterator to UBreakIterator
+        (WebKit::nextWordOffset):
+        (WebKit::TextChecker::checkTextOfParagraph):
+
+2016-12-15  Darin Adler  <darin@apple.com>
+
+        Use asString instead of toWTFString, toString, or getString when we already checked isString
+        https://bugs.webkit.org/show_bug.cgi?id=165895
+
+        Reviewed by Yusuke Suzuki.
+
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::convertJSValueToNPVariant): Use asString/value instead of toWTFString.
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble's state is updated after layout
+        https://bugs.webkit.org/show_bug.cgi?id=165922
+        <rdar://problem/29694730>
+
+        Reviewed by Simon Fraser.
+
+        Make sure HTML validation bubble's state is updated after layout.
+        In particular, if the validation bubble's associated element has
+        moved or is no longer visible, we now hide the bubble.
+
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.cpp:
+        (WebKit::WebValidationMessageClient::showValidationMessage):
+        (WebKit::WebValidationMessageClient::hideValidationMessage):
+        (WebKit::WebValidationMessageClient::updateValidationBubbleStateIfNeeded):
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.h:
+
+2016-12-15  Alex Christensen  <achristensen@webkit.org>
+
+        Improve NetworkSession logging
+        https://bugs.webkit.org/show_bug.cgi?id=165941
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (-[WKNetworkSessionDelegate URLSession:task:didReceiveChallenge:completionHandler:]):
+        (-[WKNetworkSessionDelegate URLSession:task:didCompleteWithError:]):
+        (-[WKNetworkSessionDelegate URLSession:dataTask:didReceiveResponse:completionHandler:]):
+        One of the "didReceiveResponse completionHandler (cancel)" messages was wrong,
+        and other messages could have more useful information without being overwhelming.
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2016-12-15  Anders Carlsson  <andersca@apple.com>
+
+        Add more mach_msg logging instrumentation
+        https://bugs.webkit.org/show_bug.cgi?id=165914
+
+        Reviewed by Darin Adler.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::sendMessage):
+        (IPC::Connection::sendOutgoingMessage):
+        * Platform/IPC/mac/MachMessage.h:
+        (IPC::MachMessage::messageName):
+        (IPC::MachMessage::setMessageName):
+
+2016-12-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added missing override and final specifiers
+        https://bugs.webkit.org/show_bug.cgi?id=165903
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/gtk/WebKitGeolocationProvider.h:
+        * UIProcess/WebFormSubmissionListenerProxy.h:
+        * UIProcess/WebFramePolicyListenerProxy.h:
+        * WebProcess/Automation/WebAutomationSessionProxy.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/GObjectXPathNSResolver.h:
+        * WebProcess/MediaCache/WebMediaKeyStorageManager.h:
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.h:
+        * WebProcess/WebCoreSupport/WebPlugInClient.h:
+        * WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.h:
+        * WebProcess/WebPage/FindController.h:
+
+2016-12-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Don't disable position:fixed when a form element has focus
+        https://bugs.webkit.org/show_bug.cgi?id=165891
+        rdar://problem/29271694
+
+        Reviewed by Wenson Hsieh.
+
+        Before visual viewports, we had to lay out position:fixed relative to the document rect (effectively
+        disabling position:fixed) when a form element was focused, to ensure that we could scroll to inputs
+        inside position:Fixed.
+
+        When visual viewports are enabled, we can do a better job of this, and keep position:fixed active.
+        
+        Test: fast/visual-viewport/ios/zoomed-focus-in-fixed.html
+
+        * UIProcess/API/Cocoa/WKWebView.mm: 
+        (-[WKWebView _zoomToFocusRect:selectionRect:insideFixed:fontSize:minimumScale:maximumScale:allowScaling:forceScroll:]): Soon this will use
+        insideFixed to have better scroll-into-view behavior.
+        (-[WKWebView _zoomToFocusRect:selectionRect:fontSize:minimumScale:maximumScale:allowScaling:forceScroll:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _zoomToFocusRect:selectionRect:insideFixed:fontSize:minimumScale:maximumScale:allowScaling:forceScroll:]):
+        (-[WKContentView _zoomToFocusRect:selectionRect:fontSize:minimumScale:maximumScale:allowScaling:forceScroll:]): Deleted.
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _displayFormNodeInputView]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computeCustomFixedPositionRect): Don't fall back to using the documentRect as the fixed
+        position rect if visual viewports are enabled.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getAssistedNodeInformation): Don't reset the customtFixedPositionRect around computing element
+        coordinates if visual viewports are enabled.
+
+2016-12-15  Andreas Kling  <akling@apple.com>
+
+        Always clear RenderLayer backing stores when going into page cache.
+        <https://webkit.org/b/165901>
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::WebProcess):
+
+2016-12-15  Darin Adler  <darin@apple.com>
+
+        Remove custom binding for MediaDevices
+        https://bugs.webkit.org/show_bug.cgi?id=165894
+
+        Reviewed by Eric Carlson.
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        Added include of MediaConstraintsImpl.h, now needed because we
+        removed some unneeded includes from the WebCore headers.
+
+2016-12-15  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Enable CSS Deferred Parsing
+        https://bugs.webkit.org/show_bug.cgi?id=165869
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2016-12-14  Andreas Kling  <akling@apple.com>
+
+        Only send Messages::WebPageProxy::DidSaveToPageCache once when entering page cache.
+        <https://webkit.org/b/165887>
+
+        Reviewed by Brady Eidson.
+
+        We were sending one of these IPC messages per frame when a page enters the page cache,
+        and we really only need one, so only do it for the main frame.
+
+        (This message is used to adopt the page cache on the UI process side, in case another
+        web process currently owns the cache. That happens in WebProcessPool::processDidCachePage().)
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::didSaveToPageCache):
+
+2016-12-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix cause of viewport-related flakiness in iOS tests
+        https://bugs.webkit.org/show_bug.cgi?id=165878
+
+        Reviewed by Tim Horton.
+
+        When TestController::platformConfigureViewForTest() changes the view size for a flexible
+        viewport test, the page would not have updated with the new scale by the time the load event
+        fired, causing flakiness depending on test order.
+
+        This was caused by code added in r170325 that delayed visible content rect updates until
+        after the UI process has received the transaction after didCommitLoad. So fix by overriding
+        this mechanism if the view has been resized.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::VisibleContentRectUpdateInfo::encode):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        (WebKit::operator<<):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::isFirstUpdateForNewViewSize):
+        (WebKit::operator==):
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _frameOrBoundsChanged]):
+        (-[WKWebView _updateContentRectsWithState:]):
+        * UIProcess/DrawingAreaProxy.cpp:
+        (WebKit::DrawingAreaProxy::setSize):
+        * UIProcess/DrawingAreaProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInset:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::updateVisibleContentRects):
+
+2016-12-04  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add support for converting dictionaries to JS
+        https://bugs.webkit.org/show_bug.cgi?id=165367
+
+        Reviewed by Chris Dumez.
+
+        * CMakeLists.txt:
+        Add missing directories to look in for headers.
+
+2016-12-14  Anders Carlsson  <andersca@apple.com>
+
+        Add WKContextRefreshPlugIns
+        https://bugs.webkit.org/show_bug.cgi?id=165879
+        rdar://problem/29602414
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextRefreshPlugIns):
+        * UIProcess/API/C/WKContext.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::refreshPlugins):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/Plugins/WebPluginInfoProvider.h:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::refreshPlugins):
+        * WebProcess/WebProcess.h:
+        * WebProcess/WebProcess.messages.in:
+
+2016-12-14  Tim Horton  <timothy_horton@apple.com>
+
+        API Test Fullscreen.TopContentInset is asserting on Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=165877
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setTopContentInset):
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        We don't use fences on Yosemite, but this codepath still tried to.
+        Instead of guarding with PLATFORM(COCOA), make use of the more accurate
+        HAVE(COREANIMATION_FENCES) guard.
+
+2016-12-14  Anders Carlsson  <andersca@apple.com>
+
+        Add some instrumentation to try to detect a crash on the bots
+        https://bugs.webkit.org/show_bug.cgi?id=165866
+
+        Reviewed by Sam Weinig.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::sendMessage):
+
+2016-12-14  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Implement deferred parsing of properties, @media, @supports and @keyframes
+        https://bugs.webkit.org/show_bug.cgi?id=165743
+
+        Reviewed by Dean Jackson.
+
+        Repurpose the newCSSParserEnabled preference for deferred parsing. Just change the name
+        from "new" to "deferred."
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetDeferredCSSParserEnabled):
+        (WKPreferencesGetDeferredCSSParserEnabled):
+        (WKPreferencesSetNewCSSParserEnabled): Deleted.
+        (WKPreferencesGetNewCSSParserEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
 2016-12-14  Brent Fulgham  <bfulgham@apple.com>
 
         Unreviewed test fix after r209806.

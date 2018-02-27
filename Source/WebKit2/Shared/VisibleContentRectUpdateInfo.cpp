@@ -47,6 +47,7 @@ void VisibleContentRectUpdateInfo::encode(IPC::Encoder& encoder) const
     encoder << m_verticalVelocity;
     encoder << m_scaleChangeRate;
     encoder << m_inStableState;
+    encoder << m_isFirstUpdateForNewViewSize;
     encoder << m_isChangingObscuredInsetsInteractively;
     encoder << m_allowShrinkToFit;
     encoder << m_enclosedInScrollableAncestorView;
@@ -78,6 +79,8 @@ bool VisibleContentRectUpdateInfo::decode(IPC::Decoder& decoder, VisibleContentR
         return false;
     if (!decoder.decode(result.m_inStableState))
         return false;
+    if (!decoder.decode(result.m_isFirstUpdateForNewViewSize))
+        return false;
     if (!decoder.decode(result.m_isChangingObscuredInsetsInteractively))
         return false;
     if (!decoder.decode(result.m_allowShrinkToFit))
@@ -106,11 +109,13 @@ TextStream& operator<<(TextStream& ts, const VisibleContentRectUpdateInfo& info)
     ts.dumpProperty("exposedContentRect", info.exposedContentRect());
     ts.dumpProperty("unobscuredContentRect", info.unobscuredContentRect());
     ts.dumpProperty("unobscuredRectInScrollViewCoordinates", info.unobscuredRectInScrollViewCoordinates());
+    ts.dumpProperty("unobscuredContentRectRespectingInputViewBounds", info.unobscuredContentRectRespectingInputViewBounds());
     ts.dumpProperty("customFixedPositionRect", info.customFixedPositionRect());
     ts.dumpProperty("obscuredInset", info.obscuredInset());
 
     ts.dumpProperty("scale", info.scale());
     ts.dumpProperty("inStableState", info.inStableState());
+    ts.dumpProperty("isFirstUpdateForNewViewSize", info.isFirstUpdateForNewViewSize());
     if (info.isChangingObscuredInsetsInteractively())
         ts.dumpProperty("isChangingObscuredInsetsInteractively", info.isChangingObscuredInsetsInteractively());
     if (info.enclosedInScrollableAncestorView())

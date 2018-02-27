@@ -150,8 +150,8 @@ inline B3::Type toB3Type(Type type)
 }
 #undef CREATE_CASE
 
-#define CREATE_CASE(name, id, b3type, inc) case name: return "name";
-inline const char* toString(Type type)
+#define CREATE_CASE(name, id, b3type, inc) case name: return #name;
+inline const char* makeString(Type type)
 {
     switch (type) {
     FOR_EACH_WASM_TYPE(CREATE_CASE)
@@ -263,6 +263,17 @@ inline bool isSimple(BinaryOpType op)
     }
     return false;
 }
+
+#define CREATE_CASE(name, id, b3type, inc) case name: return #name;
+inline const char* makeString(OpType op)
+{
+    switch (op) {
+    FOR_EACH_WASM_OP(CREATE_CASE)
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return nullptr;
+}
+#undef CREATE_CASE
 
 } } // namespace JSC::Wasm
 

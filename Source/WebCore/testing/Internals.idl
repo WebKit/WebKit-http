@@ -70,6 +70,12 @@ enum UserInterfaceLayoutDirection {
     "RTL"
 };
 
+enum BaseWritingDirection {
+    "Natural",
+    "Ltr",
+    "Rtl"
+};
+
 enum EventThrottlingBehavior {
     "responsive",
     "unresponsive"
@@ -107,6 +113,11 @@ enum EventThrottlingBehavior {
 
     Node ensureUserAgentShadowRoot(Element host);
     Node shadowRoot(Element host);
+
+    // CSS Deferred Parsing Testing.
+    long deferredStyleRulesCount(StyleSheet sheet);
+    long deferredGroupRulesCount(StyleSheet sheet);
+    long deferredKeyframesRulesCount(StyleSheet sheet);
 
     [MayThrowException] DOMString shadowRootType(Node root);
     DOMString shadowPseudoId(Element element);
@@ -373,6 +384,7 @@ enum EventThrottlingBehavior {
     [Conditional=VIDEO, MayThrowException] boolean mediaElementHasCharacteristic(HTMLMediaElement element, DOMString characteristic);
 
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void initializeMockCDM();
+    [Conditional=ENCRYPTED_MEDIA] MockCDMFactory registerMockCDM();
 
     [Conditional=SPEECH_SYNTHESIS] void enableMockSpeechSynthesizer();
 
@@ -479,6 +491,7 @@ enum EventThrottlingBehavior {
     GCObservation observeGC(any observed);
 
     void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection);
+    void setBaseWritingDirection(BaseWritingDirection direction);
 
     boolean userPrefersReducedMotion();
     
@@ -486,4 +499,6 @@ enum EventThrottlingBehavior {
 
     [Conditional=POINTER_LOCK] boolean pageHasPendingPointerLock();
     [Conditional=POINTER_LOCK] boolean pageHasPointerLock();
+
+    sequence<DOMString> accessKeyModifiers();
 };

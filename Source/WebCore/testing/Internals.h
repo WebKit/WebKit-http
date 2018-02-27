@@ -58,6 +58,7 @@ class InternalSettings;
 class MallocStatistics;
 class MediaSession;
 class MemoryInfo;
+class MockCDMFactory;
 class MockContentFilterSettings;
 class MockPageOverlay;
 class NodeList;
@@ -67,6 +68,7 @@ class RenderedDocumentMarker;
 class RTCPeerConnection;
 class SerializedScriptValue;
 class SourceBuffer;
+class StyleSheet;
 class TimeRanges;
 class TypeConversions;
 class XMLHttpRequest;
@@ -116,6 +118,11 @@ public:
     ExceptionOr<String> shadowRootType(const Node&) const;
     String shadowPseudoId(Element&);
     void setShadowPseudoId(Element&, const String&);
+
+    // CSS Deferred Parsing Testing
+    unsigned deferredStyleRulesCount(StyleSheet&);
+    unsigned deferredGroupRulesCount(StyleSheet&);
+    unsigned deferredKeyframesRulesCount(StyleSheet&);
 
     // DOMTimers throttling testing.
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
@@ -366,6 +373,10 @@ public:
     void initializeMockCDM();
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    Ref<MockCDMFactory> registerMockCDM();
+#endif
+
 #if ENABLE(SPEECH_SYNTHESIS)
     void enableMockSpeechSynthesizer();
 #endif
@@ -508,10 +519,15 @@ public:
     
     void reportBacktrace();
 
+    enum class BaseWritingDirection { Natural, Ltr, Rtl };
+    void setBaseWritingDirection(BaseWritingDirection);
+
 #if ENABLE(POINTER_LOCK)
     bool pageHasPendingPointerLock() const;
     bool pageHasPointerLock() const;
 #endif
+
+    Vector<String> accessKeyModifiers() const;
 
 private:
     explicit Internals(Document&);

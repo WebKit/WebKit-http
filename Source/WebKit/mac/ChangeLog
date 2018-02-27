@@ -1,3 +1,101 @@
+2016-12-16  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Values] Make separate wrapper classes for the deprecated CSS Values OM
+        https://bugs.webkit.org/show_bug.cgi?id=165968
+
+        Reviewed by Andreas Kling.
+
+        * DOM/DOMCSS.mm:
+        (kitClass):
+        * DOM/DOMCSSPrimitiveValue.mm:
+        (-[DOMCSSPrimitiveValue getCounterValue]):
+        (-[DOMCSSPrimitiveValue getRectValue]):
+        (kit):
+        * DOM/DOMCSSPrimitiveValueInternal.h:
+        * DOM/DOMCSSStyleDeclaration.mm:
+        * DOM/DOMCSSValue.mm:
+        (kit):
+        * DOM/DOMCSSValueInternal.h:
+        * DOM/DOMCSSValueList.mm:
+        * DOM/DOMCounter.mm:
+        (kit):
+        * DOM/DOMCounterInternal.h:
+        * DOM/DOMRGBColor.mm:
+        (kit):
+        * DOM/DOMRGBColorInternal.h:
+        * DOM/DOMRect.mm:
+        (kit):
+        * DOM/DOMRectInternal.h:
+        * DOM/DOMUtility.mm:
+        (createDOMWrapper):
+
+2016-12-16  Chris Dumez  <cdumez@apple.com>
+
+        HTML form validation bubble should be dismissed on navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165960
+        <rdar://problem/29668086>
+
+        Reviewed by Simon Fraser.
+
+        Dismiss HTML form validation bubble on top-level navigation on Mac WK1.
+
+        * WebView/WebView.mm:
+        (-[WebView _didStartProvisionalLoadForFrame:]):
+
+2016-12-15  Darin Adler  <darin@apple.com>
+
+        Use asString instead of toWTFString, toString, or getString when we already checked isString
+        https://bugs.webkit.org/show_bug.cgi?id=165895
+
+        Reviewed by Yusuke Suzuki.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::addValueToArray): Use asString/value instead of
+        toWTFString.
+        * WebView/WebView.mm:
+        (aeDescFromJSValue): Use asString/value instead of getString.
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble's state is updated after layout
+        https://bugs.webkit.org/show_bug.cgi?id=165922
+        <rdar://problem/29694730>
+
+        Reviewed by Simon Fraser.
+
+        Make sure HTML validation bubble's state is updated after layout.
+        In particular, if the validation bubble's associated element has
+        moved or is no longer visible, we now hide the bubble.
+
+        * WebCoreSupport/WebValidationMessageClient.h:
+        * WebCoreSupport/WebValidationMessageClient.mm:
+        (WebValidationMessageClient::showValidationMessage):
+        (WebValidationMessageClient::hideValidationMessage):
+        (WebValidationMessageClient::updateValidationBubbleStateIfNeeded):
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Move charCode / keyCode / which attributes from UIEvent to KeyboardEvent
+        https://bugs.webkit.org/show_bug.cgi?id=165904
+
+        Reviewed by Sam Weinig.
+
+        Update ObjC bindings so they keep building.
+
+        * DOM/DOMUIEvent.mm:
+        (-[DOMUIEvent keyCode]):
+        (-[DOMUIEvent charCode]):
+
+2016-12-15  Andreas Kling  <akling@apple.com>
+
+        Always clear RenderLayer backing stores when going into page cache.
+        <https://webkit.org/b/165901>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (+[WebView _setCacheModel:]):
+
 2016-12-12  Alex Christensen  <achristensen@webkit.org>
 
         Remove unused workaround for Silverlight

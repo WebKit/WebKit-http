@@ -58,25 +58,48 @@ Plan::Plan(VM* vm, const uint8_t* source, size_t sourceLength)
 {
 }
 
-void Plan::run()
+bool Plan::parseAndValidateModule()
 {
-    if (verbose)
-        dataLogLn("Starting plan.");
     {
         ModuleParser moduleParser(m_vm, m_source, m_sourceLength);
-        if (!moduleParser.parse()) {
-            if (verbose)
-                dataLogLn("Parsing module failed: ", moduleParser.errorMessage());
-            m_errorMessage = moduleParser.errorMessage();
-            return;
+        auto parseResult = moduleParser.parse();
+        if (!parseResult) {
+            m_errorMessage = parseResult.error();
+            return false;
         }
-        m_moduleInformation = WTFMove(moduleParser.moduleInformation());
-        m_functionLocationInBinary = WTFMove(moduleParser.functionLocationInBinary());
-        m_functionIndexSpace.size = moduleParser.functionIndexSpace().size();
-        m_functionIndexSpace.buffer = moduleParser.functionIndexSpace().releaseBuffer();
+        m_moduleInformation = WTFMove(parseResult->module);
+        m_functionLocationInBinary = WTFMove(parseResult->functionLocationInBinary);
+        m_functionIndexSpace.size = parseResult->functionIndexSpace.size();
+        m_functionIndexSpace.buffer = parseResult->functionIndexSpace.releaseBuffer();
     }
-    if (verbose)
-        dataLogLn("Parsed module.");
+
+    for (unsigned functionIndex = 0; functionIndex < m_functionLocationInBinary.size(); ++functionIndex) {
+        if (verbose)
+            dataLogLn("Processing function starting at: ", m_functionLocationInBinary[functionIndex].start, " and ending at: ", m_functionLocationInBinary[functionIndex].end);
+        const uint8_t* functionStart = m_source + m_functionLocationInBinary[functionIndex].start;
+        size_t functionLength = m_functionLocationInBinary[functionIndex].end - m_functionLocationInBinary[functionIndex].start;
+        ASSERT(Checked<uintptr_t>(bitwise_cast<uintptr_t>(functionStart)) + functionLength <= Checked<uintptr_t>(bitwise_cast<uintptr_t>(m_source)) + m_sourceLength);
+        Signature* signature = m_moduleInformation->internalFunctionSignatures[functionIndex];
+
+        auto validationResult = validateFunction(functionStart, functionLength, signature, m_functionIndexSpace, *m_moduleInformation);
+        if (!validationResult) {
+            if (verbose) {
+                for (unsigned i = 0; i < functionLength; ++i)
+                    dataLog(RawPointer(reinterpret_cast<void*>(functionStart[i])), ", ");
+                dataLogLn();
+            }
+            m_errorMessage = validationResult.error(); // FIXME make this an Expected.
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void Plan::run()
+{
+    if (!parseAndValidateModule())
+        return;
 
     auto tryReserveCapacity = [this] (auto& vector, size_t size, const char* what) {
         if (UNLIKELY(!vector.tryReserveCapacity(size))) {
@@ -89,6 +112,7 @@ void Plan::run()
         }
         return true;
     };
+
     Vector<Vector<UnlinkedWasmToWasmCall>> unlinkedWasmToWasmCalls;
     if (!tryReserveCapacity(m_wasmToJSStubs, m_moduleInformation->importFunctions.size(), " WebAssembly to JavaScript stubs")
         || !tryReserveCapacity(unlinkedWasmToWasmCalls, m_functionLocationInBinary.size(), " unlinked WebAssembly to WebAssembly calls")
@@ -97,7 +121,7 @@ void Plan::run()
 
     for (unsigned importIndex = 0; importIndex < m_moduleInformation->imports.size(); ++importIndex) {
         Import* import = &m_moduleInformation->imports[importIndex];
-        if (import->kind != External::Function)
+        if (import->kind != ExternalKind::Function)
             continue;
         unsigned importFunctionIndex = m_wasmToJSStubs.size();
         if (verbose)
@@ -117,19 +141,15 @@ void Plan::run()
         unsigned functionIndexSpace = m_wasmToJSStubs.size() + functionIndex;
         ASSERT(m_functionIndexSpace.buffer.get()[functionIndexSpace].signature == signature);
 
-        String error = validateFunction(functionStart, functionLength, signature, m_functionIndexSpace, *m_moduleInformation);
-        if (!error.isNull()) {
-            if (verbose) {
-                for (unsigned i = 0; i < functionLength; ++i)
-                    dataLog(RawPointer(reinterpret_cast<void*>(functionStart[i])), ", ");
-                dataLogLn();
-            }
-            m_errorMessage = error;
-            return;
-        }
+        ASSERT(validateFunction(functionStart, functionLength, signature, m_functionIndexSpace, *m_moduleInformation));
 
         unlinkedWasmToWasmCalls.uncheckedAppend(Vector<UnlinkedWasmToWasmCall>());
-        m_wasmInternalFunctions.uncheckedAppend(parseAndCompile(*m_vm, functionStart, functionLength, signature, unlinkedWasmToWasmCalls.at(functionIndex), m_functionIndexSpace, *m_moduleInformation));
+        auto parseAndCompileResult = parseAndCompile(*m_vm, functionStart, functionLength, signature, unlinkedWasmToWasmCalls.at(functionIndex), m_functionIndexSpace, *m_moduleInformation);
+        if (UNLIKELY(!parseAndCompileResult)) {
+            m_errorMessage = parseAndCompileResult.error();
+            return; // FIXME make this an Expected.
+        }
+        m_wasmInternalFunctions.uncheckedAppend(WTFMove(*parseAndCompileResult));
         m_functionIndexSpace.buffer.get()[functionIndexSpace].code = m_wasmInternalFunctions[functionIndex]->wasmEntrypoint.compilation->code().executableAddress();
     }
 

@@ -27,6 +27,7 @@ interface UIScriptController {
 
     void doAsyncTask(object callback); // Used to test the harness.
     void doAfterPresentationUpdate(object callback); // Call the callback after sending a message to the WebProcess and receiving a subsequent update.
+    void doAfterNextStablePresentationUpdate(object callback);
 
     void simulateAccessibilitySettingsChangeNotification(object callback);
 
@@ -59,6 +60,7 @@ interface UIScriptController {
     //          {
     //              "inputType" : "hand",
     //              "timeOffset" : 0,
+    //              "coordinateSpace" : "content",
     //              "touches" : [
     //                  {
     //                      "inputType" : "finger",
@@ -69,9 +71,11 @@ interface UIScriptController {
     //                  }
     //              ]
     //          },
+    //          // This is a basic force press
     //          {
     //              "interpolate" : "linear",
     //              "timestep" : 0.025,
+    //              "coordinateSpace" : "global",
     //              "startEvent" : {
     //                  "inputType" : "hand",
     //                  "timeOffset" : 0.025,
@@ -94,23 +98,59 @@ interface UIScriptController {
     //                          "inputType" : "finger",
     //                          "phase" : "stationary",
     //                          "id" : 1,
-    //                          "x" : 20,
-    //                          "y" : 40,
+    //                          "x" : 100,
+    //                          "y" : 120,
     //                          "pressure" : 500
     //                      }
     //                  ]
     //              }
     //          },
+    //          //This is a basic drag
+    //          {
+    //              "interpolate" : "linear",
+    //              "timestep" : 0.025,
+    //              "coordinateSpace" : "content",
+    //              "startEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 3.025,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 100,
+    //                          "y" : 120,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              },
+    //              "endEvent" : {
+    //                  "inputType" : "hand",
+    //                  "timeOffset" : 4.0,
+    //                  "touches" : [
+    //                      {
+    //                          "inputType" : "finger",
+    //                          "phase" : "moved",
+    //                          "id" : 1,
+    //                          "x" : 20,
+    //                          "y" : 40,
+    //                          "pressure" : 0
+    //                      }
+    //                  ]
+    //              }
+    //          },
+    //          //ending lift
     //          {
     //              "inputType" : "hand",
-    //              "timeOffset" : 0.002, // seconds relative to the first event
+    //              "timeOffset" : 4.025, // seconds relative to the first event
+    //              "coordinateSpace" : "content",
     //              "touches" : [
     //                  {
     //                      "inputType" : "finger",
     //                      "phase" : "ended",
     //                      "id" : 1,
-    //                      "x" : 100,
-    //                      "y" : 120
+    //                      "x" : 20,
+    //                      "y" : 40
     //                  }
     //              ]
     //          },
@@ -165,6 +205,8 @@ interface UIScriptController {
     readonly attribute object contentVisibleRect; // Returned object has 'left', 'top', 'width', 'height' properties.
 
     readonly attribute object selectionRangeViewRects; // An array of objects with 'left', 'top', 'width', and 'height' properties.
+    readonly attribute object textSelectionCaretRect; // An object with 'left', 'top', 'width', 'height' properties.
+    readonly attribute object inputViewBounds;
 
     void insertText(DOMString text, long location, long length);
     void removeAllDynamicDictionaries();

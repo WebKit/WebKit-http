@@ -1,3 +1,317 @@
+2016-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Repurpose bots and clean up dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=166045
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.mac-os-x-yosemite img.logo): Deleted.
+
+2016-12-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] TestWebKitAPIBase links to itself
+        https://bugs.webkit.org/show_bug.cgi?id=165985
+
+        Reviewed by Alex Christensen.
+
+        Fix CMake warning about a target linking to itself, which makes no sense.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2016-12-19  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] GtkDoc build should be quieter
+        https://bugs.webkit.org/show_bug.cgi?id=165994
+
+        Reviewed by Carlos Garcia Campos.
+
+        Make it not print by default.
+
+        * gtk/generate-gtkdoc:
+        (get_generator_for_config):
+        (generate_doc):
+        * gtk/gtkdoc.py:
+        (GTKDoc._run_command):
+        (GTKDoc._copy_doc_files_to_output_dir):
+
+2016-12-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Expose a way for MiniBrowser to simulate header and footer banners
+        https://bugs.webkit.org/show_bug.cgi?id=166005
+
+        Reviewed by Wenson Hsieh.
+        
+        Add a MiniBrowser menu item and setting to toggle adding space for header and footer
+        banners. This only works in WebKit2.
+        
+        We need to reset these on each navigation, since newly created FrameViews
+        don't re-fetch the header and footer height stored on Page.
+        
+        Also fix the signature of webView:didFinishNavigation: to follow API changes,
+        as well as fixing webViewWebContentProcessDidTerminate:
+
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController toggleReserveSpaceForBanners:]):
+        (-[SettingsController isSpaceReservedForBanners]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController didChangeSettings]):
+        (-[WK2BrowserWindowController webView:didFinishNavigation:]):
+        (-[WK2BrowserWindowController webViewWebContentProcessDidTerminate:]):
+        (-[WK2BrowserWindowController webView:didFinishLoadingNavigation:]): Deleted.
+        (-[WK2BrowserWindowController _webViewWebProcessDidCrash:]): Deleted.
+
+2016-12-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix iOS test results after r209967.
+        
+        Subtracting out the status bar height was erroneously happening for all tests,
+        not just for flexible viewport tests.
+        
+        Fix by plumbing WebViewSizingMode through resizeTo() and setWindowFrame().
+
+        * WebKitTestRunner/PlatformWebView.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetStateToConsistentValues):
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp:
+        (WTR::PlatformWebView::resizeTo):
+        (WTR::PlatformWebView::setWindowFrame):
+        * WebKitTestRunner/gtk/PlatformWebViewGtk.cpp:
+        (WTR::PlatformWebView::resizeTo):
+        (WTR::PlatformWebView::setWindowFrame):
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::resizeTo):
+        (WTR::PlatformWebView::setWindowFrame):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformConfigureViewForTest):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::resizeTo):
+        (WTR::PlatformWebView::setWindowFrame):
+
+2016-12-17  Joonghun Park  <jh718.park@samsung.com>
+
+        [EFL] bump EFL version to 1.18.4
+        https://bugs.webkit.org/show_bug.cgi?id=166004
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules: Use efl-1.18.4 instead of 1.18.1.
+
+2016-12-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: bottom fixed elements disappear behind the keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=165983
+        <rdar://problem/29409852>
+
+        Reviewed by Simon Fraser.
+
+        Add support for UIScriptController.inputViewBounds, which UI-side scripts may use to fetch the bounding rect of
+        the keyboard when it is up.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::inputViewBounds):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::inputViewBounds):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::viewRectForWindowRect):
+
+        Previously, we accounted for the status bar height by translating the entire web view down by the height of the
+        status bar. However, we did not shrink the height of the web view itself, which means that for tests which
+        involve scrolling past the end of the document, the bottom strip of the web view is out of bounds of the window.
+
+        (WTR::PlatformWebView::PlatformWebView):
+        (WTR::PlatformWebView::setWindowFrame):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::inputViewBounds):
+
+2016-12-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Deleting a character converted from pinyin after an image causes a Safari crash
+        https://bugs.webkit.org/show_bug.cgi?id=165839
+        <rdar://problem/27951933>
+
+        Reviewed by Wenson Hsieh.
+
+        Add a WebKit API test to call attributedSubstringForProposedRange on a WKWebView
+        while the proposed range contains an image. This should not cause a WebProcess to crash
+        or send an invalid message to the UIProcess.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/chinese-character-with-image.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/mac/AttributedSubstringForProposedRangeWithImage.mm: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::processDidCrash):
+        (TestWebKitAPI::invalidMessageFunction):
+        (TestWebKitAPI::WebKit2.AttributedSubstringForProposedRangeWithImage):
+
+2016-12-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: carets and selection UI are incorrectly positioned when editing fixed elements
+        https://bugs.webkit.org/show_bug.cgi?id=165767
+        <rdar://problem/29602382>
+
+        Reviewed by Simon Fraser.
+
+        Introduces two new UIScriptController methods: doAfterWebPageIsInStableState and textSelectionCaretRect. See
+        WebKit2 ChangeLog for more details.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::doAfterNextStablePresentationUpdate):
+        (WTR::UIScriptController::textSelectionCaretRect):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAfterNextStablePresentationUpdate):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::doAfterNextStablePresentationUpdate):
+        (WTR::UIScriptController::textSelectionCaretRect):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView _setStableStateOverride:]):
+
+        Force the WKWebView to update its visible content rects when changing the stable state override.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::toNSDictionary):
+        (WTR::UIScriptController::doAfterNextStablePresentationUpdate):
+        (WTR::UIScriptController::selectionRangeViewRects):
+        (WTR::UIScriptController::textSelectionCaretRect):
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAfterNextStablePresentationUpdate):
+
+2016-12-15  Brent Fulgham  <bfulgham@apple.com>
+
+        Arguments called in wrong order
+        https://bugs.webkit.org/show_bug.cgi?id=165923
+
+        Reviewed by Simon Fraser.
+
+        The 'audioDeviceUIDs' array is being passed to the argument that expects video devices,
+        and the 'videoDeviceUIDs' array is being passed to the audo device argument. Fix this.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack): The
+        order of arguments to WKUserMediaPermissionRequestAllow are flipped.
+
+2016-12-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        [EFL] Disable non-srcdir builds for failing libraries
+        https://bugs.webkit.org/show_bug.cgi?id=165896
+
+        Reviewed by Gyuyoung Kim.
+
+        * efl/jhbuild.modules: Set non srcdir builds to no
+
+2016-12-15  Daniel Bates  <dabates@apple.com>
+
+        check-style should not complain about code in icu directories
+        https://bugs.webkit.org/show_bug.cgi?id=53929
+
+        Reviewed by Darin Adler.
+
+        Skip style checking of imported ICU headers to avoid a deluge of style issues
+        as they do not conform to the WebKit Code Style guideline. We want to preserve
+        the formatting of these headers so as to make it straightforward to merge
+        changes to them, if necessary.
+
+        * Scripts/webkitpy/style/checker.py:
+
+2016-12-15  Alexey Proskuryakov  <ap@apple.com>
+
+        Move JSC testers from Yosemite to Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=165925
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2016-12-15  Megan Gardner  <megan_gardner@apple.com>
+
+        Add coordinate space to event streams and streamline tests
+        https://bugs.webkit.org/show_bug.cgi?id=165119
+
+        Reviewed by Simon Fraser.
+
+        Update event streams to allow for both content and global coordinate space.
+        Update example script to more accurately show all the available options.
+
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * WebKitTestRunner/ios/HIDEventGenerator.h:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::convertCoordinates):
+        (WTR::UIScriptController::sendEventStream):
+
+2016-12-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Ensure gst* docs are not built with update-webkitgtk-libs
+        https://bugs.webkit.org/show_bug.cgi?id=165855
+
+        Reviewed by Philippe Normand.
+
+        GStreamer's autogen.sh enables gtk-doc always so we end up building
+        docs even if we disable them. Use the configure script instead, since
+        we build from packages and these include it already.
+
+        * gtk/jhbuild.modules: Use shipped configure instead of autogen.sh for
+        upstream gstreamer packages.
+
+2016-12-15  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r208902) Null pointer dereference in wkIsPublicSuffix
+        https://bugs.webkit.org/show_bug.cgi?id=165885
+        <rdar://problem/29476917>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::utf16String): Deleted.
+        * TestWebKitAPI/Tests/mac/PublicSuffix.mm:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/WTFStringUtilities.h:
+        (utf16String):
+        Moved from URLParser to share with other tests.
+
+2016-12-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: An element with tabindex is not focusable unless there is no mouse event handler
+        https://bugs.webkit.org/show_bug.cgi?id=165843
+
+        Reviewed by Antti Koivisto.
+
+        Add testRunner.isWebKit2 which is always true in WebKitTestRunner.
+        Without this, it's really hard to reliably differentiate DumpRenderTree and WebKitTestRunner,
+        and DumpRenderTree's runUIScript would hit an assertion :(
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        (WTR::TestRunner::isWebKit2):
+
+2016-12-14  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Massively speedup IDBIndex.get().
+        https://bugs.webkit.org/show_bug.cgi?id=165802
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBIndexUpgradeToV2.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBIndexUpgradeToV2.mm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexUpgrade.blob: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexUpgrade.sqlite3: Added.
+
 2016-12-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
 
         [GTK][EFL] Update the JHBuild version.

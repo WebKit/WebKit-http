@@ -475,6 +475,8 @@ public:
     void hidePageBanners();
     void showPageBanners();
     
+    void setHeaderBannerHeightForTesting(int);
+    void setFooterBannerHeightForTesting(int);
 #endif // !PLATFORM(IOS)
 
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
@@ -1082,7 +1084,7 @@ private:
 
     void setDrawsBackground(bool);
 
-#if PLATFORM(COCOA)
+#if HAVE(COREANIMATION_FENCES)
     void setTopContentInsetFenced(float, IPC::Attachment);
 #endif
     void setTopContentInset(float);

@@ -81,14 +81,13 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
     Structure* instanceStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->WebAssemblyInstanceStructure());
     RETURN_IF_EXCEPTION(throwScope, { });
 
-    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, instanceStructure, jsModule, moduleRecord->getModuleNamespace(exec), moduleInformation.imports.size());
+    JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, instanceStructure, jsModule, moduleRecord->getModuleNamespace(exec));
     RETURN_IF_EXCEPTION(throwScope, { });
 
     // Let funcs, memories and tables be initially-empty lists of callable JavaScript objects, WebAssembly.Memory objects and WebAssembly.Table objects, respectively.
     // Let imports be an initially-empty list of external values.
     unsigned numImportFunctions = 0;
-
-    // FIXME implement Global https://bugs.webkit.org/show_bug.cgi?id=164133
+    unsigned numImportGlobals = 0;
 
     bool hasMemoryImport = false;
     bool hasTableImport = false;
@@ -107,7 +106,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
         RETURN_IF_EXCEPTION(throwScope, { });
 
         switch (import.kind) {
-        case Wasm::External::Function: {
+        case Wasm::ExternalKind::Function: {
             // 4. If i is a function import:
             // i. If IsCallable(v) is false, throw a TypeError.
             if (!value.isFunction())
@@ -130,7 +129,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
             // v. Append closure to imports.
             break;
         }
-        case Wasm::External::Table: {
+        case Wasm::ExternalKind::Table: {
             RELEASE_ASSERT(!hasTableImport); // This should be guaranteed by a validation failure.
             // 7. Otherwise (i is a table import):
             hasTableImport = true;
@@ -161,7 +160,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
             instance->setTable(vm, table);
             break;
         }
-        case Wasm::External::Memory: {
+        case Wasm::ExternalKind::Memory: {
             // 6. If i is a memory import:
             RELEASE_ASSERT(!hasMemoryImport); // This should be guaranteed by a validation failure.
             RELEASE_ASSERT(moduleInformation.memory);
@@ -193,13 +192,28 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
             instance->setMemory(vm, memory);
             break;
         }
-        case Wasm::External::Global: {
+        case Wasm::ExternalKind::Global: {
             // 5. If i is a global import:
-            // FIXME implement Global https://bugs.webkit.org/show_bug.cgi?id=164133
             // i. If i is not an immutable global, throw a TypeError.
+            ASSERT(moduleInformation.globals[import.kindIndex].mutability == Wasm::Global::Immutable);
             // ii. If Type(v) is not Number, throw a TypeError.
+            if (!value.isNumber())
+                return JSValue::encode(throwException(exec, throwScope, createTypeError(exec, ASCIILiteral("imported global must be a number"), defaultSourceAppender, runtimeTypeForValue(value))));
             // iii. Append ToWebAssemblyValue(v) to imports.
-            RELEASE_ASSERT_NOT_REACHED();
+            switch (moduleInformation.globals[import.kindIndex].type) {
+            case Wasm::I32:
+                instance->setGlobal(numImportGlobals++, value.toInt32(exec));
+                break;
+            case Wasm::F32:
+                instance->setGlobal(numImportGlobals++, bitwise_cast<uint32_t>(value.toFloat(exec)));
+                break;
+            case Wasm::F64:
+                instance->setGlobal(numImportGlobals++, bitwise_cast<uint64_t>(value.asNumber()));
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+            }
+            ASSERT(!throwScope.exception());
             break;
         }
         }
@@ -231,7 +245,7 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
         if (!!moduleInformation.tableInformation && !hasTableImport) {
             RELEASE_ASSERT(!moduleInformation.tableInformation.isImport());
             // We create a Table when it's a Table definition.
-            JSWebAssemblyTable* table = JSWebAssemblyTable::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyMemoryStructure(),
+            JSWebAssemblyTable* table = JSWebAssemblyTable::create(exec, vm, exec->lexicalGlobalObject()->WebAssemblyTableStructure(),
                 moduleInformation.tableInformation.initial(), moduleInformation.tableInformation.maximum());
             // We should always be able to allocate a JSWebAssemblyTable we've defined.
             // If it's defined to be too large, we should have thrown a validation error.
@@ -241,8 +255,23 @@ static EncodedJSValue JSC_HOST_CALL constructJSWebAssemblyInstance(ExecState* ex
         }
     }
 
+    // Globals
+    {
+        ASSERT(numImportGlobals == moduleInformation.firstInternalGlobal);
+        for (size_t globalIndex = numImportGlobals; globalIndex < moduleInformation.globals.size(); ++globalIndex) {
+            const auto& global = moduleInformation.globals[globalIndex];
+            ASSERT(global.initializationType != Wasm::Global::IsImport);
+            if (global.initializationType == Wasm::Global::FromGlobalImport) {
+                ASSERT(global.initialBitsOrImportNumber < numImportGlobals);
+                instance->setGlobal(globalIndex, instance->loadI64Global(global.initialBitsOrImportNumber));
+            } else
+                instance->setGlobal(globalIndex, global.initialBitsOrImportNumber);
+        }
+    }
+
     moduleRecord->link(exec, instance);
     RETURN_IF_EXCEPTION(throwScope, { });
+
     if (verbose)
         moduleRecord->dump();
     JSValue startResult = moduleRecord->evaluate(exec);

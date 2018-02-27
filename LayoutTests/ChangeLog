@@ -1,3 +1,689 @@
+2016-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/fetch/fetching-same-resource-with-diffferent-options.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=166025
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/inspector/network/fetch-network-data.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=166038
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/text/emoji.html for macOS.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/fast/text/emoji-expected.txt: Copied from LayoutTests/platform/mac/fast/text/emoji-expected.txt.
+        * platform/mac/fast/text/emoji-expected.txt:
+
+2016-12-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, mark fixed-element-on-bottom-with-keyboard.html as skip for OpenSource iOS WK2
+        https://bugs.webkit.org/show_bug.cgi?id=166027
+
+        This test should have been disabled on OpenSource bots due to the lack of touch handling.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-12-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add a few Worker loading tests that don't seem to be explicitly handled
+        https://bugs.webkit.org/show_bug.cgi?id=165870
+
+        Reviewed by Daniel Bates.
+
+        The tests already pass as expected, but adding specific tests
+        for specific expected behavior with Worker script loads.
+
+        * http/tests/security/contentSecurityPolicy/worker-redirect-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/worker-redirect-allowed.html: Added.
+        * http/tests/security/resources/worker-message-pass.js: Added.
+        * http/tests/security/worker-cross-origin-expected.txt: Added.
+        * http/tests/security/worker-cross-origin.html: Added.
+        * http/tests/security/worker-same-origin-expected.txt: Added.
+        * http/tests/security/worker-same-origin.html: Added.
+
+2016-12-18  Brent Fulgham  <bfulgham@apple.com>
+
+        Side effects while restting form elements
+        https://bugs.webkit.org/show_bug.cgi?id=165959
+        <rdar://problem/29705967>
+
+        Reviewed by Anders Carlsson.
+
+        * fast/html/form-mutate-expected.txt: Added.
+        * fast/html/form-mutate.html: Added.
+
+2016-12-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Changing text direction fires input events with null inputTypes and no data
+        https://bugs.webkit.org/show_bug.cgi?id=166007
+        <rdar://problem/29557205>
+
+        Reviewed by Sam Weinig.
+
+        Verifies that changing text direction causes beforeinput and input events with appropriate inputType and data to
+        be dispatched, and that preventing this beforeinput event causes no change in text direction.
+
+        * fast/events/before-input-events-prevent-text-direction-expected.txt: Added.
+        * fast/events/before-input-events-prevent-text-direction.html: Added.
+
+2016-12-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Rebaseline these tests after r209967, since they are now affected by status bar height.
+
+        * fast/viewport/ios/ipad/width-is-device-width-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing-body-overflow-hidden-tall-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing-expected.txt:
+        * fast/viewport/ios/width-is-device-width-overflowing-no-shrink-to-fit-expected.txt:
+
+2016-12-17  Philippe Normand  <pnormand@igalia.com>
+
+        Unreviewed, rollout r209860 OWR player shouldn't be selected for normal video playback
+
+        * platform/gtk/TestExpectations:
+
+2016-12-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: bottom fixed elements disappear behind the keyboard
+        https://bugs.webkit.org/show_bug.cgi?id=165983
+        <rdar://problem/29409852>
+
+        Reviewed by Simon Fraser.
+
+        Tweaked fixed-caret-position-after-scroll.html to account for the keyboard height, and also added a new layout
+        test, fixed-element-on-bottom-with-keyboard.html, which checks that the layout viewport does not change before
+        and after showing the keyboard, and that scrolling past the end of the document does not bump the layout
+        viewport past document bounds.
+
+        The rest of the changes here involve rebaselining existing tests to account for the height of the web view no
+        longer being equal to the height of the window.
+
+        * editing/caret/ios/absolute-caret-position-after-scroll-expected.txt:
+        * editing/caret/ios/absolute-caret-position-after-scroll.html:
+        * editing/caret/ios/fixed-caret-position-after-scroll-expected.txt:
+        * editing/caret/ios/fixed-caret-position-after-scroll.html:
+        * editing/selection/ios/absolute-selection-after-scroll.html:
+        * editing/selection/ios/fixed-selection-after-scroll.html:
+        * fast/events/ios/keyboard-scrolling-distance-expected.txt:
+        * fast/events/ios/keyboard-should-not-trigger-resize-expected.txt:
+        * fast/events/ios/viewport-zooms-from-element-to-initial-scale-expected.txt:
+        * fast/forms/ios/accessory-bar-navigation-expected.txt:
+        * fast/forms/ios/focus-input-in-fixed-expected.txt:
+        * fast/forms/ios/focus-input-in-iframe-expected.txt:
+        * fast/forms/ios/focus-input-via-button-expected.txt:
+        * fast/forms/ios/focus-input-via-button-no-scaling-expected.txt:
+        * fast/forms/ios/focus-long-textarea-expected.txt:
+        * fast/forms/ios/zoom-after-input-tap-expected.txt:
+        * fast/forms/ios/zoom-after-input-tap-wide-input-expected.txt:
+        * fast/scrolling/ios/subpixel-overflow-scrolling-with-ancestor-expected.txt:
+        * fast/viewport/ios/width-is-device-width-expected.txt:
+        * fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard-expected.txt: Added.
+        * fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard.html: Added.
+        * fast/visual-viewport/ios/zoomed-focus-in-fixed-expected.txt:
+        * platform/ios-simulator/fast/scrolling/ios/clipping-ancestor-with-accelerated-scrolling-ancestor-expected.txt:
+        * platform/ios-simulator/fast/scrolling/ios/overflow-scrolling-ancestor-clip-expected.txt:
+        * platform/ios-simulator/fast/scrolling/ios/overflow-scrolling-ancestor-clip-size-expected.txt:
+        * platform/ios-simulator/fast/scrolling/ios/scrolling-content-clip-to-viewport-expected.txt:
+        * platform/ios-simulator/fast/scrolling/ios/touch-stacking-expected.txt:
+        * scrollingcoordinator/ios/non-stable-viewport-scroll-expected.txt:
+        * scrollingcoordinator/ios/ui-scrolling-tree-expected.txt:
+
+2016-12-17  Jer Noble  <jer.noble@apple.com>
+
+        Add implementation for navigator.requestMediaKeySystemAccess()
+        https://bugs.webkit.org/show_bug.cgi?id=165850
+
+        Reviewed by Eric Carlson.
+
+        * media/encrypted-media/mock-navigator-requestMediaKeySystemAccess-expected.txt: Added.
+        * media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2016-12-17  Youenn Fablet  <youenn@apple.com>
+
+        Cloned CachedResource should not have an empty response
+        https://bugs.webkit.org/show_bug.cgi?id=165947
+
+        Reviewed by Sam Weinig.
+
+        This new test is working as follow:
+        - A first frame is loaded. As part of it, it will load an absolute URL CSS stylesheet that contains a relative URL to import a CSS stylesheet.
+        This second stylesheet will make the background as green.
+        - Once done, a second frame is loaded (same HTML but from a different domain) with the same absolute URL CSS stylesheet.
+        The relative URL stylesheet should use the absolute URL of the CSS stylesheet as base.
+        If it is using the frame as base, the loaded CSS will change background to red.
+
+        * http/tests/loading/resources/cached-stylesheet-from-different-domain-frame.css.php: Added.
+        * http/tests/loading/resources/cached-stylesheet-from-different-domain-frame.html: Added.
+        * http/tests/loading/resources/imported-stylesheet-varying-according-domain.css.php: Added.
+        * http/tests/loading/reusing-cached-stylesheet-from-different-domain-expected.html: Added.
+        * http/tests/loading/reusing-cached-stylesheet-from-different-domain.html: Added.
+
+2016-12-16  Darin Adler  <darin@apple.com>
+
+        Remove all custom bindings from media streams, using dictionaries instead
+        https://bugs.webkit.org/show_bug.cgi?id=165943
+
+        Reviewed by Sam Weinig.
+
+        * fast/mediastream/MediaDevices-getSupportedConstraints-expected.txt: Updated since the
+        properties in the dictionaries are now in alphabetical order and because of the test change.
+        * fast/mediastream/MediaDevices-getSupportedConstraints.html: Updated to expect some true
+        and some false rather than some true and some missing.
+
+        * fast/mediastream/MediaStreamTrack-getCapabilities-expected.txt: Updated since the
+        properties in the dictionaries are now in alphabetical order.
+        * fast/mediastream/MediaStreamTrack-getSettings-expected.txt: Ditto.
+
+2016-12-16  Sam Weinig  <sam@webkit.org>
+
+        Fix failing test.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+        Update results to match latest IDL.
+
+2016-12-16  Andy Estes  <aestes@apple.com>
+
+        Add a setting to suppress keyboard input during provisional navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165830
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/navigation/keyboard-events-during-provisional-navigation-expected.txt: Added.
+        * http/tests/navigation/keyboard-events-during-provisional-navigation.html: Added.
+        * http/tests/navigation/resources/keyboard-events-after-navigation.html: Added.
+        * http/tests/navigation/resources/keyboard-events-test.js: Added.
+        (runTest.eventHandler):
+        (runTest):
+        * http/tests/navigation/resources/never-respond.php: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-16  Chris Dumez  <cdumez@apple.com>
+
+        HTML form validation bubble should be dismissed on navigation
+        https://bugs.webkit.org/show_bug.cgi?id=165960
+        <rdar://problem/29668086>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * http/tests/navigation/navigation-dismisses-validation-bubbles-expected.txt: Added.
+        * http/tests/navigation/navigation-dismisses-validation-bubbles.html: Added.
+        * http/tests/navigation/resources/check-validation-bubble-not-visible.html: Added.
+
+2016-12-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move the skip expectation for fast/visual-viewport/ios/zoomed-focus-in-fixed.html to ios-simulator-wk2.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-16  Andreas Kling  <akling@apple.com>
+
+        Subframes going into page cache don't need to resetScrollbars().
+        <https://webkit.org/b/163750>
+        <rdar://problem/29273020>
+
+        Reviewed by Antti Koivisto.
+
+        Unskip compositing/iframes/page-cache-layer-tree.html on mac-wk1 and fix up the
+        result now that WK2 behaves correctly as well.
+
+        Both DRT and WTR run with scrollbars in "always on" mode, so the correct dimensions
+        for the 300x150 iframe layers here are 285x135.
+
+        * compositing/iframes/page-cache-layer-tree-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+
+2016-12-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Visual viewports: carets and selection UI are incorrectly positioned when editing fixed elements
+        https://bugs.webkit.org/show_bug.cgi?id=165767
+        <rdar://problem/29602382>
+
+        Reviewed by Simon Fraser.
+
+        Adds new layout tests verifying that scrolling selected text (non-editable) and a text caret (in editable
+        content) results in the selection/caret rects having the correct location relative to the document, in both
+        cases where the selected/focused element has fixed position or absolute position. For fixed position elements,
+        this means that the rects must "move" down in the document as the document is scrolled, but for absolute
+        elements, these rects must remain in place.
+
+        * TestExpectations:
+        * editing/caret/ios/absolute-caret-position-after-scroll-expected.txt: Added.
+        * editing/caret/ios/absolute-caret-position-after-scroll.html: Added.
+        * editing/caret/ios/fixed-caret-position-after-scroll-expected.txt: Added.
+        * editing/caret/ios/fixed-caret-position-after-scroll.html: Added.
+        * editing/selection/ios/absolute-selection-after-scroll-expected.txt: Added.
+        * editing/selection/ios/absolute-selection-after-scroll.html: Added.
+        * editing/selection/ios/fixed-selection-after-scroll-expected.txt: Added.
+        * editing/selection/ios/fixed-selection-after-scroll.html: Added.
+
+2016-12-16  Zalan Bujtas  <zalan@apple.com>
+
+        Defer certain accessibility callbacks until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=165861
+        rdar://problem/29646301
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/accessibility-crash-with-dynamic-inline-content-expected.txt: Added.
+        * accessibility/accessibility-crash-with-dynamic-inline-content.html: Added.
+
+2016-12-16  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Improve resource loading console logging
+        https://bugs.webkit.org/show_bug.cgi?id=160546
+
+        Reviewed by Alex Christensen.
+
+        Rebasing since error logging is happening for fetch API.
+        Some tests are flaky due to always changing console logs, in which case DumpJSConsoleLogInStdErr is used.
+
+        * TestExpectations:
+        * http/tests/fetch/fetching-same-resource-with-diffferent-options-expected.txt:
+        * http/tests/inspector/network/fetch-network-data-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * platform/mac-wk2/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin-expected.txt:
+
+2016-12-16  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableByteStreamController cancel internal method
+        https://bugs.webkit.org/show_bug.cgi?id=165798
+
+        Reviewed by Youenn Fablet.
+
+        Added one test to check cancel behaviour. More tests may be added as the API is implemented.
+        Also replaced async_test by promise_test where applicable.
+
+        * streams/readable-byte-stream-controller-expected.txt: Updated expectations.
+        * streams/readable-byte-stream-controller.js: Added one test.
+
+2016-12-16  Youenn Fablet  <youennf@gmail.com>
+
+        svg/as-image/svg-image-with-data-uri-use-data-uri.svg is flaky after r207754
+        https://bugs.webkit.org/show_bug.cgi?id=163887
+        <rdar://problem/29266436>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/security/cross-origin-cached-images-with-memory-pressure-expected.txt: Added.
+        * http/tests/security/cross-origin-cached-images-with-memory-pressure.html: Added.
+
+2016-12-15  Zalan Bujtas  <zalan@apple.com>
+
+        text-align: justify and word-spacing combine to overflow column
+        https://bugs.webkit.org/show_bug.cgi?id=165796
+        rdar://problem/29672168
+
+        Reviewed by Myles C. Maxfield.
+
+        These are progressions.
+
+        * fast/css/word-spacing-with-normal-layout-expected.html: Added.
+        * fast/css/word-spacing-with-normal-layout.html: Added.
+        * platform/mac/css1/text_properties/word_spacing-expected.txt:
+        * platform/mac/fast/css/word-space-extra-expected.txt:
+        * platform/mac/fast/text/whitespace/span-in-word-space-causes-overflow-expected.txt:
+        * platform/mac/fast/text/word-space-expected.txt:
+        * platform/mac/svg/custom/svg-fonts-in-html-expected.txt:
+        * platform/mac/svg/custom/svg-fonts-word-spacing-expected.txt:
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble's state is updated after layout
+        https://bugs.webkit.org/show_bug.cgi?id=165922
+        <rdar://problem/29694730>
+
+        Reviewed by Simon Fraser.
+
+        Add several layout tests to cover this.
+
+        * fast/forms/validation-bubble-disappears-when-input-detached-expected.txt: Added.
+        * fast/forms/validation-bubble-disappears-when-input-detached.html: Added.
+        * fast/forms/validation-bubble-disappears-when-input-moved-expected.txt: Added.
+        * fast/forms/validation-bubble-disappears-when-input-moved.html: Added.
+        * fast/forms/validation-bubble-disappears-when-input-no-longer-visible-expected.txt: Added.
+        * fast/forms/validation-bubble-disappears-when-input-no-longer-visible.html: Added.
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Move charCode / keyCode / which attributes from UIEvent to KeyboardEvent
+        https://bugs.webkit.org/show_bug.cgi?id=165904
+
+        Reviewed by Sam Weinig.
+
+        Extend existing testing.
+
+        * fast/events/arrow-keys-on-body-expected.txt:
+        * fast/events/arrow-keys-on-body.html:
+        * fast/events/key-events-in-input-button-expected.txt:
+        * fast/events/key-events-in-input-button.html:
+        * fast/events/key-events-in-input-text-expected.txt:
+        * fast/events/key-events-in-input-text.html:
+
+2016-12-15  Megan Gardner  <megan_gardner@apple.com>
+
+        Add coordinate space to event streams and streamline tests
+        https://bugs.webkit.org/show_bug.cgi?id=165119
+
+        Reviewed by Simon Fraser.
+
+        Streamline tests. Make them more readable and only use one function for drags.
+        Update for new content coordinate space.
+
+        * fast/events/touch/ios/long-press-then-drag-down-to-change-selected-text.html:
+        * fast/events/touch/ios/long-press-then-drag-up-to-change-selected-text.html:
+
+2016-12-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/dom/global-constructors-attributes.html as failing on ElCapitan WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=165934
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-12-15  Simon Fraser  <simon.fraser@apple.com>
+
+        fast/visual-viewport/ios/zoomed-focus-in-fixed.html always times out
+
+        Skip this test, which relies on touch events.
+
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix flakiness of fast/visual-viewport/ios/zoomed-focus-in-fixed.html
+        https://bugs.webkit.org/show_bug.cgi?id=165930
+
+        Reviewed by Tim Horton.
+
+        The test zooms when focussing the input, which completes after the keyboard shows,
+        so we need to wait for zooming to finish using the uiController.didEndZoomingCallback.
+
+        * fast/visual-viewport/ios/zoomed-focus-in-fixed-expected.txt:
+        * fast/visual-viewport/ios/zoomed-focus-in-fixed.html:
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Implement font-synthesis: small-caps
+        https://bugs.webkit.org/show_bug.cgi?id=165892
+
+        Reviewed by David Hyatt.
+
+        * fast/text/font-synthesis-parsing-expected.txt: Added.
+        * fast/text/font-synthesis-parsing.html: Added.
+        * css3/font-synthesis-small-caps-expected.html: Added.
+        * css3/font-synthesis-small-caps.html: Added.
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/css3-text/font-synthesis-parse-expected.txt:
+        * fast/css3-text/font-synthesis-parse.html:
+        * svg/css/getComputedStyle-basic-expected.txt:
+
+2016-12-15  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Don't disable position:fixed when a form element has focus
+        https://bugs.webkit.org/show_bug.cgi?id=165891
+        rdar://problem/29271694
+
+        Reviewed by Wenson Hsieh.
+
+        * TestExpectations:
+        * fast/visual-viewport/ios/zoomed-focus-in-fixed-expected.txt: Added.
+        * fast/visual-viewport/ios/zoomed-focus-in-fixed.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-12-15  Darin Adler  <darin@apple.com>
+
+        Remove custom binding for MediaDevices
+        https://bugs.webkit.org/show_bug.cgi?id=165894
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt: Expect the exception the
+        generated bindings code throws, rather than the different one the hand-written binding
+        was throwing before.
+
+2016-12-15  Youenn Fablet  <youennf@gmail.com>
+
+        Sync web-platform-tests up to revision a4c2b37
+        https://bugs.webkit.org/show_bug.cgi?id=165041
+
+        Reviewed by Alex Christensen.
+
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt: Added.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/dom/reflection-forms-expected.txt: Added.
+        * tests-options.json:
+
+2016-12-15  Alejandro G. Castro  <alex@igalia.com>
+
+        [OWR] Unskip fast/mediastream/MediaStream-video-element-track-stop.html
+        https://bugs.webkit.org/show_bug.cgi?id=165316
+
+        Reviewed by Philippe Normand.
+
+        * platform/gtk/TestExpectations: Unskipped the test and moved the
+        stop one, now it does not timeout because we correctly handle the
+        ended value but still fails, we need more features in the mock
+        classes for owr.
+
+2016-12-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK] Support latest SubtleCrypto HMAC APIs
+        https://bugs.webkit.org/show_bug.cgi?id=165863
+
+        Reviewed by Sam Weinig.
+
+        Enable HMAC tests.
+
+        * platform/gtk/TestExpectations:
+
+2016-12-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix cause of viewport-related flakiness in iOS tests
+        https://bugs.webkit.org/show_bug.cgi?id=165878
+
+        Reviewed by Tim Horton.
+
+        Try un-flaking some viewport tests.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2016-12-12  Jon Lee  <jonlee@apple.com>
+
+        Full Pass CSS Variables Test Suite
+        https://bugs.webkit.org/show_bug.cgi?id=150183
+
+        Reviewed by Simon Fraser.
+
+        The new CSS parser progresses these tests. Move them out of the failures/ sub-directory.
+        One of the tests needs the Ahem font, which was not available when put in the sub-directory.
+
+        * fast/css/variables/test-suite/024-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/024-expected.html.
+        * fast/css/variables/test-suite/024.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/024.html.
+        * fast/css/variables/test-suite/025-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/025-expected.html.
+        * fast/css/variables/test-suite/025.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/025.html.
+        * fast/css/variables/test-suite/026-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/026-expected.html.
+        * fast/css/variables/test-suite/026.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/026.html.
+        * fast/css/variables/test-suite/028-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/028-expected.html.
+        * fast/css/variables/test-suite/028.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/028.html.
+        * fast/css/variables/test-suite/030-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/030-expected.html.
+        * fast/css/variables/test-suite/030.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/030.html.
+        * fast/css/variables/test-suite/054-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/054-expected.html.
+        * fast/css/variables/test-suite/054.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/054.html.
+        * fast/css/variables/test-suite/055-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/055-expected.html.
+        * fast/css/variables/test-suite/055.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/055.html.
+        * fast/css/variables/test-suite/056-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/056-expected.html.
+        * fast/css/variables/test-suite/056.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/056.html.
+        * fast/css/variables/test-suite/058-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/058-expected.html.
+        * fast/css/variables/test-suite/058.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/058.html.
+        * fast/css/variables/test-suite/071-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/071-expected.html.
+        * fast/css/variables/test-suite/071.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/071.html.
+        * fast/css/variables/test-suite/081-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/081-expected.html.
+        * fast/css/variables/test-suite/081.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/081.html.
+        * fast/css/variables/test-suite/082-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/082-expected.html.
+        * fast/css/variables/test-suite/082.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/082.html.
+        * fast/css/variables/test-suite/085-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/085-expected.html.
+        * fast/css/variables/test-suite/085.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/085.html.
+        * fast/css/variables/test-suite/086-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/086-expected.html.
+        * fast/css/variables/test-suite/086.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/086.html.
+        * fast/css/variables/test-suite/087-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/087-expected.html.
+        * fast/css/variables/test-suite/087.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/087.html.
+        * fast/css/variables/test-suite/091-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/091-expected.html.
+        * fast/css/variables/test-suite/091.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/091.html.
+        * fast/css/variables/test-suite/103-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/103-expected.html.
+        * fast/css/variables/test-suite/103.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/103.html.
+        * fast/css/variables/test-suite/111-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/111-expected.html.
+        * fast/css/variables/test-suite/111.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/111.html.
+        * fast/css/variables/test-suite/115-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/115-expected.html.
+        * fast/css/variables/test-suite/115.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/115.html.
+        * fast/css/variables/test-suite/126-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/126-expected.html.
+        * fast/css/variables/test-suite/126.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/126.html.
+        * fast/css/variables/test-suite/152-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/152-expected.html.
+        * fast/css/variables/test-suite/152.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/152.html.
+        * fast/css/variables/test-suite/159-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/159-expected.html.
+        * fast/css/variables/test-suite/159.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/159.html.
+        * fast/css/variables/test-suite/161-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/161-expected.html.
+        * fast/css/variables/test-suite/161.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/161.html.
+        * fast/css/variables/test-suite/163-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/163-expected.html.
+        * fast/css/variables/test-suite/163.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/163.html.
+        * fast/css/variables/test-suite/169-expected.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/169-expected.html.
+        * fast/css/variables/test-suite/169.html: Renamed from LayoutTests/fast/css/variables/test-suite/failures/169.html.
+
+2016-12-14  Dean Jackson  <dino@apple.com>
+
+        Update prefers-reduced-motion syntax
+        https://bugs.webkit.org/show_bug.cgi?id=165880
+        <rdar://problems/29671807>
+
+        Reviewed by Sam Weinig.
+
+        * fast/media/mq-prefers-reduced-motion-forced-value.html:
+        * fast/media/mq-prefers-reduced-motion.html:
+
+2016-12-14  Sam Weinig  <sam@webkit.org>
+
+        REGRESSION (204679): Google notifications never load (expecting DOMStringList rather than JS array for Location.ancestorOrigins)
+        <rdar://problem/29573563>
+        https://bugs.webkit.org/show_bug.cgi?id=165872
+
+        Reviewed by Chris Dumez.
+
+        * fast/dom/Window/Location/ancestor-origins-expected.txt:
+        * fast/dom/Window/Location/ancestor-origins.html:
+        Change back to test that Location.ancestorOrigins returns a DOMStringList.
+
+2016-12-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking streams/pipe-to.html as flaky on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=165874
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2016-12-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Removing Release annotation from three tests that are also flaky on Debug.
+        https://bugs.webkit.org/show_bug.cgi?id=163361
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2016-12-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        iOS: An element with tabindex is not focusable unless there is no mouse event handler
+        https://bugs.webkit.org/show_bug.cgi?id=165843
+
+        Reviewed by Antti Koivisto.
+
+        Added a regression test for focusing an element with just tabindex using UIHelper.
+
+        Also fixed UIHelper to work in iOS DumpRenderTree which was hitting an assertion
+        by explicitly checking testRunner.isWebKit2. Prior to fixing this, it was hitting
+        an assertion in RunLoop::main() which was asserting that there is a runloop,
+        which doesn't exist in DumpRenderTree.
+
+        * fast/events/focusing-element-with-tabindex-by-tap-or-click-expected.txt: Added.
+        * fast/events/focusing-element-with-tabindex-by-tap-or-click.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+        * resources/ui-helper.js:
+        (window.UIHelper.isWebKit2):
+        (window.UIHelper.wait): Added the support for js-test.js / js-test-pre.js style tests.
+
+2016-12-14  Dave Hyatt  <hyatt@apple.com>
+
+        [CSS Parser] Implement deferred parsing of properties, @media, @supports and @keyframes
+        https://bugs.webkit.org/show_bug.cgi?id=165743
+
+        Reviewed by Dean Jackson.
+
+        * fast/css/deferred-parsing: Added.
+        * fast/css/deferred-parsing/dynamic-external-style-expected.txt: Added.
+        * fast/css/deferred-parsing/dynamic-external-style.html: Added.
+        * fast/css/deferred-parsing/dynamic-style-in-document-expected.txt: Added.
+        * fast/css/deferred-parsing/dynamic-style-in-document.html: Added.
+        * fast/css/deferred-parsing/hover-test-expected.txt: Added.
+        * fast/css/deferred-parsing/hover-test.html: Added.
+        * fast/css/deferred-parsing/keyframes-rule-expected.txt: Added.
+        * fast/css/deferred-parsing/keyframes-rule.html: Added.
+        * fast/css/deferred-parsing/media-print-expected.txt: Added.
+        * fast/css/deferred-parsing/media-print.html: Added.
+        * fast/css/deferred-parsing/nth-of-type-expected.txt: Added.
+        * fast/css/deferred-parsing/nth-of-type.html: Added.
+        * fast/css/deferred-parsing/resources: Added.
+        * fast/css/deferred-parsing/resources/basic-sheet.css: Added.
+        * fast/css/deferred-parsing/simple-external-style-expected.txt: Added.
+        * fast/css/deferred-parsing/simple-external-style.html: Added.
+        * fast/css/deferred-parsing/simple-style-in-document-expected.txt: Added.
+        * fast/css/deferred-parsing/simple-style-in-document.html: Added.
+        * fast/css/deferred-parsing/supports-rule-expected.txt: Added.
+        * fast/css/deferred-parsing/supports-rule.html: Added.
+
+2016-12-14  Daniel Bates  <dabates@apple.com>
+
+        CSP: Allow HTTPS URL to match HTTP source expression
+        https://bugs.webkit.org/show_bug.cgi?id=159520
+        <rdar://problem/27287177>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/contentSecurityPolicy/script-src-parsing-implicit-and-explicit-port-number-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/script-src-parsing-implicit-and-explicit-port-number.html: Added.
+        * platform/wk2/TestExpectations: Skip the test on WebKit2 because it makes use of Internals.registerDefaultPortForProtocol(),
+        which does not work with NetworkProcess.
+
+2016-12-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add mac-elcapitan baseline for js/dom/global-constructors-attributes.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt: Added.
+
 2016-12-14  Chris Dumez  <cdumez@apple.com>
 
         Remove Unicode case-insensitive matching for usemap=""

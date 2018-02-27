@@ -27,7 +27,7 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
-#include "CDM.h"
+#include "LegacyCDM.h"
 #include "ExceptionOr.h"
 #include <runtime/Uint8Array.h>
 #include <wtf/Vector.h>

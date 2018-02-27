@@ -1457,6 +1457,7 @@ webkit.org/b/164277 fast/preloader/image-srcset.html [ Pass Failure ]
 
 webkit.org/b/161650 http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html [ Pass Failure ]
 
+webkit.org/b/166038 http/tests/inspector/network/fetch-network-data.html [ Pass Timeout ]
 webkit.org/b/164033 http/tests/inspector/network/xhr-request-data-encoded-correctly.html [ Pass Timeout ]
 
 webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry.htm [ Pass Failure ]
@@ -1465,3 +1466,10 @@ webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex
 
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
+
+webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
+
+# New Encrypted Media API not enabled on Mac
+media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
+
+webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]

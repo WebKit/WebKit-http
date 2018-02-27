@@ -1,3 +1,1423 @@
+2016-12-19  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 2: Rollout r209952.
+        https://bugs.webkit.org/show_bug.cgi?id=166049
+
+        Not reviewed.
+
+        * bytecode/HandlerInfo.h:
+        (JSC::HandlerInfoBase::typeName):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitReturn):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::pushIteratorCloseControlFlowScope):
+        (JSC::BytecodeGenerator::popFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::popIteratorCloseControlFlowScope):
+        (JSC::BytecodeGenerator::emitComplexPopScopes):
+        (JSC::BytecodeGenerator::emitPopScopes):
+        (JSC::BytecodeGenerator::pushTry):
+        (JSC::BytecodeGenerator::popTryAndEmitCatch):
+        (JSC::BytecodeGenerator::labelScopeDepth):
+        (JSC::BytecodeGenerator::pushLocalControlFlowScope):
+        (JSC::BytecodeGenerator::popLocalControlFlowScope):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitYield):
+        (JSC::BytecodeGenerator::emitDelegateYield):
+        (JSC::BytecodeGenerator::popTry): Deleted.
+        (JSC::BytecodeGenerator::emitCatch): Deleted.
+        (JSC::BytecodeGenerator::restoreScopeRegister): Deleted.
+        (JSC::BytecodeGenerator::labelScopeDepthToLexicalScopeIndex): Deleted.
+        (JSC::BytecodeGenerator::emitIsNumber): Deleted.
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded): Deleted.
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded): Deleted.
+        (JSC::BytecodeGenerator::emitFinallyCompletion): Deleted.
+        (JSC::BytecodeGenerator::allocateFinallyRegisters): Deleted.
+        (JSC::BytecodeGenerator::releaseFinallyRegisters): Deleted.
+        (JSC::BytecodeGenerator::emitCompareFinallyActionAndJumpIf): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::isInFinallyBlock):
+        (JSC::FinallyJump::FinallyJump): Deleted.
+        (JSC::FinallyContext::FinallyContext): Deleted.
+        (JSC::FinallyContext::outerContext): Deleted.
+        (JSC::FinallyContext::finallyLabel): Deleted.
+        (JSC::FinallyContext::depth): Deleted.
+        (JSC::FinallyContext::numberOfBreaksOrContinues): Deleted.
+        (JSC::FinallyContext::incNumberOfBreaksOrContinues): Deleted.
+        (JSC::FinallyContext::handlesReturns): Deleted.
+        (JSC::FinallyContext::setHandlesReturns): Deleted.
+        (JSC::FinallyContext::registerJump): Deleted.
+        (JSC::FinallyContext::numberOfJumps): Deleted.
+        (JSC::FinallyContext::jumps): Deleted.
+        (JSC::ControlFlowScope::ControlFlowScope): Deleted.
+        (JSC::ControlFlowScope::isLabelScope): Deleted.
+        (JSC::ControlFlowScope::isFinallyScope): Deleted.
+        (JSC::BytecodeGenerator::currentLexicalScopeIndex): Deleted.
+        (JSC::BytecodeGenerator::FinallyRegistersScope::FinallyRegistersScope): Deleted.
+        (JSC::BytecodeGenerator::FinallyRegistersScope::~FinallyRegistersScope): Deleted.
+        (JSC::BytecodeGenerator::finallyActionRegister): Deleted.
+        (JSC::BytecodeGenerator::finallyReturnValueRegister): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToNormalCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToJumpID): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyReturnValueRegister): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNormalCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotJump): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotThrowCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfCompletionTypeIsThrow): Deleted.
+        (JSC::BytecodeGenerator::bytecodeOffsetToJumpID): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+
+2016-12-19  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 1: Rollout r209974.
+        https://bugs.webkit.org/show_bug.cgi?id=166049
+
+        Not reviewed.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitFinallyCompletion):
+        (JSC::BytecodeGenerator::allocateFinallyRegisters):
+        (JSC::BytecodeGenerator::releaseFinallyRegisters):
+        (JSC::BytecodeGenerator::emitCompareFinallyActionAndJumpIf):
+        (JSC::BytecodeGenerator::allocateCompletionRecordRegisters): Deleted.
+        (JSC::BytecodeGenerator::releaseCompletionRecordRegisters): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfCompletionType): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::FinallyJump::FinallyJump):
+        (JSC::FinallyContext::registerJump):
+        (JSC::BytecodeGenerator::FinallyRegistersScope::FinallyRegistersScope):
+        (JSC::BytecodeGenerator::FinallyRegistersScope::~FinallyRegistersScope):
+        (JSC::BytecodeGenerator::finallyActionRegister):
+        (JSC::BytecodeGenerator::finallyReturnValueRegister):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToNormalCompletion):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToReturnCompletion):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToJumpID):
+        (JSC::BytecodeGenerator::emitSetFinallyReturnValueRegister):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNormalCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotJump):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsReturnCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotReturnCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotThrowCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfCompletionTypeIsThrow):
+        (JSC::BytecodeGenerator::bytecodeOffsetToJumpID):
+        (JSC::bytecodeOffsetToJumpID): Deleted.
+        (JSC::BytecodeGenerator::CompletionRecordScope::CompletionRecordScope): Deleted.
+        (JSC::BytecodeGenerator::CompletionRecordScope::~CompletionRecordScope): Deleted.
+        (JSC::BytecodeGenerator::completionTypeRegister): Deleted.
+        (JSC::BytecodeGenerator::completionValueRegister): Deleted.
+        (JSC::BytecodeGenerator::emitSetCompletionType): Deleted.
+        (JSC::BytecodeGenerator::emitSetCompletionValue): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TryNode::emitBytecode):
+
+2016-12-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Assertion seen in InspectorDebuggerAgent::refAsyncCallData with Inspector open
+        https://bugs.webkit.org/show_bug.cgi?id=166034
+        <rdar://problem/29554366>
+
+        Reviewed by Brian Burg.
+
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::refAsyncCallData):
+        Remove assertion. This assert can happen if the currently executing callback
+        was just explicitly cancelled by script. Existing code already handles if
+        no async data was found for the given identifier.
+
+2016-12-18  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement the WebAssembly.compile and WebAssembly.validate
+        https://bugs.webkit.org/show_bug.cgi?id=165936
+
+        Reviewed by Mark Lam.
+
+        The APIs are documented here:
+        - https://github.com/WebAssembly/design/blob/master/JS.md#webassemblycompile
+        - https://github.com/WebAssembly/design/blob/master/JS.md#webassemblyvalidate
+
+        * wasm/JSWebAssembly.cpp:
+        (JSC::webAssemblyCompileFunc):
+        (JSC::webAssemblyValidateFunc):
+        (JSC::JSWebAssembly::finishCreation):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::parseAndValidateModule):
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmPlan.h:
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::getWasmBufferFromValue):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        (JSC::callJSWebAssemblyModule):
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleConstructor.h:
+
+2016-12-18  Mark Lam  <mark.lam@apple.com>
+
+        Rename finallyActionRegister to completionTypeRegister and only store int JSValues in it.
+        https://bugs.webkit.org/show_bug.cgi?id=165979
+
+        Reviewed by Saam Barati.
+
+        This patch makes it so that we only store int JSValues in the finallyActionRegister
+        thereby making type prediction on this register more successful for JITs.  In so
+        doing, we are able to get some additional benefits:
+
+        1. Renamed the following:
+           FinallyRegistersScope => CompletionRecordScope
+           finallyActionRegister => completionTypeRegister
+           finallyReturnValueRegister => completionValueRegister
+
+           These new names are more in line with the ES spec, which describes these
+           values as the completion record and its type and value properties.
+           https://tc39.github.io/ecma262/#sec-completion-record-specification-type
+
+        2. We now think of the Break and Continue jumpIDs as encodings of CompletionType
+           (in our implementation of completion type).  As a result, we only need one of
+           each of the emitter methods for getting, setting, and compare-and-jump on the
+           completion type.  The code using these methods also reads much clearer now.  
+
+        3. Finally blocks' op_catch should now always pop the caught Exception object into
+           the completionValueRegister instead of the completionTypeRegister (formerly
+           finallyActionRegister). 
+
+        Also removed the restoreScopeRegister() call in the IteratorClose catch block
+        because that is an implementation specific synthesized catch block, and we
+        can guarantee that it never needs to resolve any symbols from the scope.  Hence,
+        there is no need to restore the scope register.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitFinallyCompletion):
+        (JSC::BytecodeGenerator::allocateCompletionRecordRegisters):
+        (JSC::BytecodeGenerator::releaseCompletionRecordRegisters):
+        (JSC::BytecodeGenerator::emitJumpIfCompletionType):
+        (JSC::BytecodeGenerator::allocateFinallyRegisters): Deleted.
+        (JSC::BytecodeGenerator::releaseFinallyRegisters): Deleted.
+        (JSC::BytecodeGenerator::emitCompareFinallyActionAndJumpIf): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::bytecodeOffsetToJumpID):
+        (JSC::FinallyJump::FinallyJump):
+        (JSC::FinallyContext::registerJump):
+        (JSC::BytecodeGenerator::CompletionRecordScope::CompletionRecordScope):
+        (JSC::BytecodeGenerator::CompletionRecordScope::~CompletionRecordScope):
+        (JSC::BytecodeGenerator::completionTypeRegister):
+        (JSC::BytecodeGenerator::completionValueRegister):
+        (JSC::BytecodeGenerator::emitSetCompletionType):
+        (JSC::BytecodeGenerator::emitSetCompletionValue):
+        (JSC::BytecodeGenerator::FinallyRegistersScope::FinallyRegistersScope): Deleted.
+        (JSC::BytecodeGenerator::FinallyRegistersScope::~FinallyRegistersScope): Deleted.
+        (JSC::BytecodeGenerator::finallyActionRegister): Deleted.
+        (JSC::BytecodeGenerator::finallyReturnValueRegister): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToNormalCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyActionToJumpID): Deleted.
+        (JSC::BytecodeGenerator::emitSetFinallyReturnValueRegister): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNormalCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotJump): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotReturnCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotThrowCompletion): Deleted.
+        (JSC::BytecodeGenerator::emitJumpIfCompletionTypeIsThrow): Deleted.
+        (JSC::BytecodeGenerator::bytecodeOffsetToJumpID): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TryNode::emitBytecode):
+
+2016-12-17  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: WasmB3IRGenerator uses WarmAny as a ValueRep but expects the incoming value to be a register
+        https://bugs.webkit.org/show_bug.cgi?id=165989
+
+        Reviewed by Mark Lam.
+
+        The input should be constrained to a register to match what
+        the patchpoint code expects.
+
+        * wasm/WasmB3IRGenerator.cpp:
+
+2016-12-17  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Change a RELEASE_ASSERT_NOT_REACHED to a jit.breakpoint() for now to allow us to run some wasm benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=165990
+
+        Reviewed by Mark Lam.
+
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::importStubGenerator):
+
+2016-12-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Avoid some possible exceptions inspecting a JSContext
+        https://bugs.webkit.org/show_bug.cgi?id=165986
+        <rdar://problem/29551379>
+
+        Reviewed by Matt Baker.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype.processProperties):
+        Prefer String.prototype.endsWith now that it is available.
+
+        (InjectedScript.prototype._describe):
+        Prefer Function.prototype.toString for converting functions to String.
+        Previously we were doing String(f) which would to Symbol.toPrimitive
+        conversion which seems unnecessary here.
+
+2016-12-16  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix GCC 6 build failure after r209952
+
+        Return false, not nullptr, in function returning bool.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+
+2016-12-16  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: We still have some incorrect parsing productions inside unreachable code
+        https://bugs.webkit.org/show_bug.cgi?id=165981
+
+        Reviewed by Keith Miller.
+
+        This hardens our parsing for CallIndirect and Loop/Block/If to be exactly like their reachable variant.
+        
+        It also fixes a more nefarious bug in which we were decoding an extra varuint32
+        for Br/BrIf inside unreachable code.
+
+        * wasm/WasmFunctionParser.h:
+
+2016-12-16  Filip Pizlo  <fpizlo@apple.com>
+
+        CellState should have members with accurate names
+        https://bugs.webkit.org/show_bug.cgi?id=165969
+
+        Reviewed by Mark Lam.
+        
+        This once again renames the members in CellState. I wanted to convey the following
+        pieces of information in the names:
+        
+        - What does the state mean for Generational GC?
+        - What does the state mean for Concurrent GC?
+        - Does the state guarantee what it means, or is there some contingency?
+        
+        The names I came up with are:
+        
+        PossiblyOldOrBlack: An object in this state may be old, or may be black, depending on
+            other things. If the mark bit is set then the object is either black or being
+            blackened as we speak. It's going to survive the GC, so it will be old, but may be
+            new now. In between GCs, objects in this state are definitely old. If the mark bit
+            is not set, then the object is actually old and white.
+        
+        DefinitelyNewAndWhite: The object was just allocated so it is white (not marked) and
+            new.
+        
+        DefinitelyGrey: The object is definitely grey - it will be rescanned in the future. It
+            may be new or old depending on other things.
+
+        * heap/CellState.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::writeBarrierSlowPath):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        (JSC::SlotVisitor::setMarkedAndAppendToMarkStack):
+        (JSC::SlotVisitor::appendToMarkStack):
+        (JSC::SlotVisitor::visitChildren):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::JSCell):
+        * runtime/StructureIDBlob.h:
+        (JSC::StructureIDBlob::StructureIDBlob):
+
+2016-12-16  Saam Barati  <sbarati@apple.com>
+
+        B3::DoubleToFloatReduction will accidentally convince itself it converted a Phi from Double to Float and then convert uses of that Phi into a use of FloatToDouble(@Phi)
+        https://bugs.webkit.org/show_bug.cgi?id=165946
+
+        Reviewed by Keith Miller.
+
+        This was happening because the phase will convert some Phi nodes
+        from Double to Float. However, one place that did this conversion
+        forgot to first check if the Phi was already a Float. If it's already
+        a Float, a later part of the phase will be buggy if the phase claims that it has
+        converted it from Double->Float. The reason is that at the end of the
+        phase, we'll look for all uses of former Double Phi nodes and make them
+        be a use of ConvertFloatToDouble on the Phi, instead of a use of the Phi itself.
+        This is clearly wrong if the Phi were Float to begin with (and
+        therefore, the uses were Float uses to begin with).
+
+        * b3/B3ReduceDoubleToFloat.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::testReduceFloatToDoubleValidates):
+        (JSC::B3::run):
+
+2016-12-16  Mark Lam  <mark.lam@apple.com>
+
+        De-duplicate finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=160168
+
+        Reviewed by Keith Miller.
+
+        JS execution can arrive at a finally block when there are abrupt completions from
+        its try or catch block.  The abrupt completion types include Break,
+        Continue, Return, and Throw.  The non-abrupt completion type is called Normal
+        (i.e. the case of a try block falling through to the finally block).
+
+        Previously, we enable each of these paths for abrupt completion (except for Throw)
+        to run the finally block code by duplicating the finally block code at each of
+        the sites that trigger those completions.  This patch fixes the implementation so
+        that each of these abrupt completions will set a finallyActionRegister (plus a
+        finallyReturnValueRegister for CompletionType::Return) and then jump to the
+        relevant finally blocks, and continue to thread through subsequent outer finally
+        blocks until execution reaches the outermost finally block that the completion
+        type dictates.  We no longer duplicate the finally block code.
+
+        The implementation details:
+        1. We allocate a pair of finallyActionRegister and finallyReturnValueRegister
+           just before entering the outermost try-catch-finally scope.
+
+           On allocating the registers, we set them to the empty JSValue.  This serves
+           to set the completion type to CompletionType::Normal (see (2) below).
+
+        2. The finallyActionRegister serves 2 purpose:
+           a. indicates the CompletionType that triggered entry into the finally block.
+
+              This is how we encode the completion type in the finallyActionRegister:
+              1. CompletionType::Normal
+                 - finallyActionRegister is set to the empty JSValue.
+              2. CompletionType::Break
+                 - finallyActionRegister is set to the int jumpID for the site of the break statement.
+              3. CompletionType::Continue
+                 - finallyActionRegister is set to the int jumpID for the site of the continue statement.
+              4. CompletionType::Return
+                 - finallyActionRegister is set to CompletionType::Return as an int JSValue.
+                 - finallyReturnValueRegister is set to the value to be returned. 
+              5. CompletionType::Throw
+                 - finallyActionRegister is set to the exception object that was caught by the finally block.
+
+              Hence, if the finallyActionRegister can either be:
+              1. empty i.e. we're handling CompletionType::Normal.
+              2. an int JSValue i.e. we're handling CompletionType::Break, Continue, or Return.
+              3. an object i.e. we're handling CompletionType::Throw.
+
+           b. stores the exception caught in the finally block if we're handing
+              CompletionType::Throw.
+
+        3. Each finally block will have 2 entries:
+           a. the entry via throw.
+           b. the normal entry.
+
+           The entry via throw is recorded in the codeBlock's exception table, and can
+           only be jumped to by the VM's exception handling mechanism.
+
+           The normal entry is recorded in a FinallyContext (at bytecode generation time
+           only) and is jumped to when we want enter the finally block due any of the
+           other CompletionTypes.
+
+        4. CompletionType::Normal
+           ======================
+           We encounter this when falling through from a try or catch block to the finally block.  
+           
+           For the try block case, since finallyActionRegister is set to Normal by default,
+           there's nothing more that needs to be done.
+
+           For the catch block case, since we entered the catch block with an exception,
+           finallyActionRegister may be set to Throw.  We'll need to set it to Normal
+           before jumping to the finally block's normal entry.
+
+           CompletionType::Break
+           =====================
+           When we emit bytecode for the BreakNode, we check if we have any FinallyContexts
+           that we need to service before jumping to the breakTarget.  If we do, then:
+           a. we'll register a jumpID along with the breakTarget with the outermost FinallyContext.
+           b. we'll also increment the numberOfBreaksOrContinues count in each FinallyContext
+              from the innermost to the outermost.
+           c. instead of emitting bytecode to jump to the breakTarget, we:
+              1. emit bytecode to set finallyActionRegister to the jumpID.
+              b. emit bytecode to jump to the normal entry of the innermost finally block.
+
+           Each finally block will take care of cascading to the next outer finally block
+           as needed (see (5) below).
+
+           CompletionType::Continue
+           ========================
+           Since continues and breaks work the same way (i.e. with a jump), we handle this
+           exactly the same way as CompletionType::Break, except that we use the
+           continueTarget instead of the breakTarget.
+
+           CompletionType::Return
+           ======================
+           When we emit bytecode for the ReturnNode, we check if we have any FinallyContexts
+           at all on the m_controlFlowScopeStack.
+
+           If so, then instead of emitting op_ret, we:
+              1. emit bytecode to set finallyActionRegister to the CompletionType::Return.
+              1. emit bytecode to move the return value into finallyReturnValueRegister.
+              2. emit bytecode to jump to the normal entry of the innermost finally block.
+
+           Each finally block will take care of cascading to the next outer finally block
+           as needed (see (5) below).
+
+           CompletionType::Throw
+           ======================
+           The op_catch of a finally block will always store the caught exception object
+           in the finallyActionRegister.  This means we're handling CompletionType::Throw
+           (see (2) above).
+
+        5. What happens in each finally block?
+           ==================================
+           Only the finally block's entry via throw will have an op_catch that catches the
+           pending exception (and stores it in the finallyActionRegister).  This throw
+           entry then falls through to the normal entry.
+
+           The finally block's normal entry will restore the scope of the finally block
+           and proceed to execute its code.
+
+           At the end of the finally block (see emitFinallyCompletion()), the finally
+           block will check the finallyActionRegister for each completion type in the
+           following order:
+           
+           a. CompletionType::Normal: jump to the code after the finally block as
+              designated by a normalCompletion label.
+
+           b. CompletionType::Break and Continue:
+              If the FinallyContext for this block has registered FinallyJumps, we'll
+              check for the jumpIDs against the finallyActionRegister.  If the jumpID
+              matches, jump to the corresponding jumpTarget.
+
+              If no jumpIDs match but the FinallyContext's numberOfBreaksOrContinues is
+              greater than the number of registered FinallyJumps, then this means that
+              we have a Break or Continue that needs to be handled by an outer finally
+              block.  In that case, jump to the outer finally block's normal entry.
+              
+           c. CompletionType::Return:
+              If this finally block is not the outermost and finallyActionRegister contains
+              CompletionType::Return, then jump to the outer finally block's normal entry.
+
+              Otherwise, if this finally block is the outermost and finallyActionRegister
+              contains CompletionType::Return, then execute op_ret and return the value
+              in finallyReturnValueRegister.
+
+           d. CompletionType::Throw:
+              If we're not handling any of the above cases, then just throw the
+              finallyActionRegister which contains the exception to re-throw.
+
+        6. restoreScopeRegister()
+        
+           Since the needed scope objects are always stored in a local, we can restore
+           the scope register by simply moving from that local instead of going through
+           op_get_parent_scope.
+
+        7. m_controlFlowScopeStack needs to be a SegmentedVector instead of a Vector.
+           This makes it easier to keep a pointer to the FinallyContext on that stack,
+           and not have to worry about the vector being realloc'ed due to resizing. 
+
+        Performance appears to be neutral both on ES6SampleBench (run via cli) and the
+        JSC benchmarks.
+
+        Relevant spec references:
+        https://tc39.github.io/ecma262/#sec-completion-record-specification-type
+        https://tc39.github.io/ecma262/#sec-try-statement-runtime-semantics-evaluation
+
+        * bytecode/HandlerInfo.h:
+        (JSC::HandlerInfoBase::typeName):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitReturn):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::popFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::allocateAndEmitScope):
+        (JSC::BytecodeGenerator::pushTry):
+        (JSC::BytecodeGenerator::popTry):
+        (JSC::BytecodeGenerator::emitCatch):
+        (JSC::BytecodeGenerator::restoreScopeRegister):
+        (JSC::BytecodeGenerator::labelScopeDepthToLexicalScopeIndex):
+        (JSC::BytecodeGenerator::labelScopeDepth):
+        (JSC::BytecodeGenerator::pushLocalControlFlowScope):
+        (JSC::BytecodeGenerator::popLocalControlFlowScope):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitIsNumber):
+        (JSC::BytecodeGenerator::emitYield):
+        (JSC::BytecodeGenerator::emitDelegateYield):
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitFinallyCompletion):
+        (JSC::BytecodeGenerator::allocateFinallyRegisters):
+        (JSC::BytecodeGenerator::releaseFinallyRegisters):
+        (JSC::BytecodeGenerator::emitCompareFinallyActionAndJumpIf):
+        (JSC::BytecodeGenerator::pushIteratorCloseControlFlowScope): Deleted.
+        (JSC::BytecodeGenerator::popIteratorCloseControlFlowScope): Deleted.
+        (JSC::BytecodeGenerator::emitComplexPopScopes): Deleted.
+        (JSC::BytecodeGenerator::emitPopScopes): Deleted.
+        (JSC::BytecodeGenerator::popTryAndEmitCatch): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::FinallyJump::FinallyJump):
+        (JSC::FinallyContext::FinallyContext):
+        (JSC::FinallyContext::outerContext):
+        (JSC::FinallyContext::finallyLabel):
+        (JSC::FinallyContext::depth):
+        (JSC::FinallyContext::numberOfBreaksOrContinues):
+        (JSC::FinallyContext::incNumberOfBreaksOrContinues):
+        (JSC::FinallyContext::handlesReturns):
+        (JSC::FinallyContext::setHandlesReturns):
+        (JSC::FinallyContext::registerJump):
+        (JSC::FinallyContext::numberOfJumps):
+        (JSC::FinallyContext::jumps):
+        (JSC::ControlFlowScope::ControlFlowScope):
+        (JSC::ControlFlowScope::isLabelScope):
+        (JSC::ControlFlowScope::isFinallyScope):
+        (JSC::BytecodeGenerator::currentLexicalScopeIndex):
+        (JSC::BytecodeGenerator::FinallyRegistersScope::FinallyRegistersScope):
+        (JSC::BytecodeGenerator::FinallyRegistersScope::~FinallyRegistersScope):
+        (JSC::BytecodeGenerator::finallyActionRegister):
+        (JSC::BytecodeGenerator::finallyReturnValueRegister):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToNormalCompletion):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToReturnCompletion):
+        (JSC::BytecodeGenerator::emitSetFinallyActionToJumpID):
+        (JSC::BytecodeGenerator::emitSetFinallyReturnValueRegister):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNormalCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotJump):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsReturnCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotReturnCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfFinallyActionIsNotThrowCompletion):
+        (JSC::BytecodeGenerator::emitJumpIfCompletionTypeIsThrow):
+        (JSC::BytecodeGenerator::bytecodeOffsetToJumpID):
+        (JSC::BytecodeGenerator::isInFinallyBlock): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::ReturnNode::emitBytecode):
+        (JSC::TryNode::emitBytecode):
+
+2016-12-16  Keith Miller  <keith_miller@apple.com>
+
+        Add missing cases to parseUnreachableExpression and cleanup FunctionParser
+        https://bugs.webkit.org/show_bug.cgi?id=165966
+
+        Reviewed by Saam Barati.
+
+        This patch adds a number of missing cases to the Wasm FunctionParser's unreachable
+        code decoder. It also, removes unneeded OpType namespaces where they were not
+        needed and has the unary / binary macros cover all the cases rather than
+        just the simple cases.
+
+        * wasm/WasmFunctionParser.h:
+
+2016-12-16  Mark Lam  <mark.lam@apple.com>
+
+        Add predecessor info to dumps from JSC_dumpBytecodeLivenessResults=true.
+        https://bugs.webkit.org/show_bug.cgi?id=165958
+
+        Reviewed by Saam Barati.
+
+        Also:
+        1. refactored the code to use a common lambda function to dump FastBitVectors.
+        2. list successors by their block index instead of pointers.
+
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        (JSC::BytecodeLivenessAnalysis::dumpResults):
+
+2016-12-16  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: WasmB3IRGenerator should throw exceptions instead of crash
+        https://bugs.webkit.org/show_bug.cgi?id=165834
+
+        Reviewed by Keith Miller.
+
+        This patch generalizes how we throw exceptions in the Wasm::B3IRGenerator.
+        There are still places where we need to throw exceptions and we don't, but
+        this patch removes most of those places inside the IR generator. There are
+        still a few places we need to throw exceptions inside the IR generator, like
+        div/mod by 0. Those will be done in a separate patch. Also, there are
+        still some stubs we need to throw exceptions from; those will also be
+        done in a separate patch.
+
+        All exceptions thrown from Wasm share a common stub. The ABI for the stub
+        is to move the Wasm::ExceptionType into argGPR1 and jump to the stub.
+        The stub will then throw an exception with an error message tailored
+        to the particular Wasm::ExceptionType failure.
+
+        This patch also refactors B3::Compilation. Before, B3::Compilation(VM, Procedure)
+        constructor would compile a B3 function. This patch makes B3::Compilation a simple 
+        tuple that keeps the necessary bits of B3 function alive in order to be runnable.
+        There is a new function that actually does the compilation for you. It is:
+        Compilation B3::compile(VM&, Procedure&)
+        The reason for this change is that I'm now using B3::Compilation(CodeRef, OpaqueByproducts)
+        constructor in Wasm code. It is weird to have a class both have a
+        constructor that instantiates the tuple, and another that performs the
+        compilation and then instantiates the tuple. It's more straight
+        forward if Compilation's job wasn't to actually do the compilation
+        but just to hold the necessary bits to keep a compiled B3 alive.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Compilation.cpp:
+        (JSC::B3::Compilation::Compilation):
+        * b3/B3Compilation.h:
+        * b3/B3Compile.cpp: Added.
+        (JSC::B3::compile):
+        * b3/B3Compile.h: Added.
+        * b3/testb3.cpp:
+        (JSC::B3::compile):
+        * jit/ThunkGenerators.cpp:
+        (JSC::throwExceptionFromWasmThunkGenerator):
+        * jit/ThunkGenerators.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitExceptionCheck):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmExceptionType.h: Added.
+        (JSC::Wasm::errorMessageForExceptionType):
+
+2016-12-16  Keith Miller  <keith_miller@apple.com>
+
+        i64.eqz should use an Int64 zero
+        https://bugs.webkit.org/show_bug.cgi?id=165942
+
+        Reviewed by Mark Lam.
+
+        This patch fixes i64.eqz, which was using an Int32 zero
+        for the comparison previously. This patch also, adds
+        printing opcodes names in verbose mode.
+
+        * wasm/WasmFunctionParser.h:
+        * wasm/generateWasmOpsHeader.py:
+        * wasm/wasm.json:
+
+2016-12-15  Darin Adler  <darin@apple.com>
+
+        Use asString instead of toWTFString, toString, or getString when we already checked isString
+        https://bugs.webkit.org/show_bug.cgi?id=165895
+
+        Reviewed by Yusuke Suzuki.
+
+        Once we have called isString, we should always use asString and value rather than using
+        functions that have to deal with non-JSString objects. This leads to slightly fewer branches,
+        slightly less reference count churn, since the string is stored right inside the JSString,
+        and obviates the need for exception handling.
+
+        * bindings/ScriptValue.cpp:
+        (Inspector::jsToInspectorValue): Use asString/value instead of getString.
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::operationMapHash): Call jsMapHash with its new arguments.
+        * inspector/JSInjectedScriptHost.cpp:
+        (Inspector::JSInjectedScriptHost::evaluateWithScopeExtension): Use asString/value instead
+        of toWTFString.
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::evaluateWithScopeExtension): Ditto.
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::InspectorHeapAgent::getPreview): Use asString/tryGetValue, instead of the
+        peculiar getString(nullptr) that was here before.
+        * jsc.cpp:
+        (functionGetGetterSetter): Use asString/toIdentifier instead of the much less efficient
+        toWTFString/Identifier::fromString.
+        (functionIsRope): Use asString instead of jsCast<JSString*>; same thing, but we should
+        prefer the asString function, since it exists.
+        (functionFindTypeForExpression): Use asString/value instead of getString.
+        (functionHasBasicBlockExecuted): Ditto.
+        (functionBasicBlockExecutionCount): Ditto.
+        (functionCreateBuiltin): Use asString/value instead of toWTFString and removed
+        unneeded RETURN_IF_EXCEPTION.
+        (valueWithTypeOfWasmValue): Use asString instead of jsCast<String*>.
+        (box): Ditto.
+        * runtime/DateConstructor.cpp:
+        (JSC::constructDate): Use asString/values instead of getString.
+        * runtime/ExceptionHelpers.cpp:
+        (JSC::errorDescriptionForValue): Tweaked formatting.
+
+        * runtime/HashMapImpl.h:
+        (JSC::jsMapHash): Changed this function to use asString/value.
+
+        * runtime/JSCJSValue.cpp:
+        (JSC::JSValue::dumpInContextAssumingStructure): Use asString instead of
+        jsCast<JSString*>.
+        (JSC::JSValue::dumpForBacktrace): Ditto.
+        * runtime/JSCJSValueInlines.h:
+        (JSC::toPreferredPrimitiveType): Ditto.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncEval): Use asString/value instead of toWTFString.
+
+        * runtime/JSString.cpp:
+        (JSC::JSString::destroy): Streamlined by removing local variable.
+        (JSC::JSString::estimatedSize): Use asString instead of jsCast<JSString*>.
+        (JSC::JSString::visitChildren): Ditto.
+        (JSC::JSString::toThis): Ditto.
+        * runtime/JSString.h:
+        (JSC::JSValue::toString): Ditto.
+        (JSC::JSValue::toStringOrNull): Ditto.
+        * runtime/NumberPrototype.cpp:
+        (JSC::numberProtoFuncValueOf): Ditto.
+        * runtime/ObjectPrototype.cpp:
+        (JSC::objectProtoFuncToString): Ditto.
+        * runtime/StringPrototype.cpp:
+        (JSC::stringProtoFuncRepeatCharacter): Ditto.
+        (JSC::stringProtoFuncSubstr): Ditto.
+        (JSC::builtinStringSubstrInternal): Simplified assertion by removing local variable.
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix validation of non-void if blocks with no else
+        https://bugs.webkit.org/show_bug.cgi?id=165938
+
+        Reviewed by Saam Barati.
+
+        We should not have been allowing non-void if-blocks that don't
+        have an else. Since this causes a value to be placed on the
+        stack that only appears under some control flow and not another.
+
+        * wasm/WasmValidate.cpp:
+
+2016-12-15  Filip Pizlo  <fpizlo@apple.com>
+
+        Get rid of HeapRootVisitor and make SlotVisitor less painful to use
+        https://bugs.webkit.org/show_bug.cgi?id=165911
+
+        Reviewed by Geoffrey Garen.
+        
+        Previously we had two ways of adding a raw pointer to the GC's mark stack:
+        
+        - SlotVisitor::appendUnbarrieredXYZ() methods
+        - HeapRootVisitor::visit() methods
+        
+        HeapRootVisitor existed only to prevent you from calling its non-WriteBarrier<> methods
+        unless you had permission. But SlotVisitor would let you do it anyway, because that was
+        a lot more practical.
+        
+        I think that we should just have one way to do it. This removes HeapRootVisitor. It
+        also renames appendUnbarrieredXYZ to appendUnbarriered, and it removes the use of extra
+        indirection (so you now pass const WriteBarrier<>& instead of WriteBarrier<>*).
+
+        * API/JSCallbackObject.h:
+        (JSC::JSCallbackObjectData::JSPrivatePropertyMap::visitChildren):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/builtins/builtins_templates.py:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::visitWeakly):
+        (JSC::CodeBlock::visitChildren):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::determineLiveness):
+        (JSC::CodeBlock::visitOSRExitTargets):
+        (JSC::CodeBlock::stronglyVisitStrongReferences):
+        (JSC::CodeBlock::stronglyVisitWeakReferences):
+        * bytecode/DirectEvalCodeCache.cpp:
+        (JSC::DirectEvalCodeCache::visitAggregate):
+        * bytecode/InternalFunctionAllocationProfile.h:
+        (JSC::InternalFunctionAllocationProfile::visitAggregate):
+        * bytecode/ObjectAllocationProfile.h:
+        (JSC::ObjectAllocationProfile::visitAggregate):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::propagateTransitions):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::visitChildren):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::visitChildren):
+        * debugger/DebuggerScope.cpp:
+        (JSC::DebuggerScope::visitChildren):
+        * dfg/DFGDesiredTransitions.cpp:
+        (JSC::DFG::DesiredTransition::visitChildren):
+        * dfg/DFGDesiredWeakReferences.cpp:
+        (JSC::DFG::DesiredWeakReferences::visitChildren):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::visitChildren):
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::markCodeBlocks):
+        (JSC::DFG::Plan::checkLivenessAndVisitChildren):
+        * heap/HandleSet.cpp:
+        (JSC::HandleSet::visitStrongHandles):
+        * heap/HandleSet.h:
+        * heap/HandleStack.cpp:
+        (JSC::HandleStack::visit):
+        * heap/HandleStack.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::markToFixpoint):
+        * heap/Heap.h:
+        * heap/HeapRootVisitor.h: Removed.
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::visitWeakSet):
+        * heap/LargeAllocation.h:
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::visitWeakSet):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::visitWeakSets):
+        * heap/MarkedSpace.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendUnbarriered):
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::appendUnbarriered):
+        (JSC::SlotVisitor::append):
+        (JSC::SlotVisitor::appendHidden):
+        (JSC::SlotVisitor::appendValues):
+        (JSC::SlotVisitor::appendValuesHidden):
+        (JSC::SlotVisitor::appendUnbarrieredPointer): Deleted.
+        (JSC::SlotVisitor::appendUnbarrieredReadOnlyPointer): Deleted.
+        (JSC::SlotVisitor::appendUnbarrieredValue): Deleted.
+        (JSC::SlotVisitor::appendUnbarrieredReadOnlyValue): Deleted.
+        (JSC::SlotVisitor::appendUnbarrieredWeak): Deleted.
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::specializedVisit):
+        (JSC::WeakBlock::visit):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.h:
+        (JSC::WeakSet::visit):
+        * interpreter/ShadowChicken.cpp:
+        (JSC::ShadowChicken::visitChildren):
+        * jit/GCAwareJITStubRoutine.cpp:
+        (JSC::MarkingGCAwareJITStubRoutine::markRequiredObjectsInternal):
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallStubRoutine::markRequiredObjectsInternal):
+        * jsc.cpp:
+        (WTF::Element::visitChildren):
+        (WTF::ImpureGetter::visitChildren):
+        (WTF::SimpleObject::visitChildren):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::visitChildren):
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::markLists):
+        * runtime/ArgList.h:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::visitChildren):
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::visitChildren):
+        * runtime/EvalExecutable.cpp:
+        (JSC::EvalExecutable::visitChildren):
+        * runtime/Exception.cpp:
+        (JSC::Exception::visitChildren):
+        * runtime/FunctionExecutable.cpp:
+        (JSC::FunctionExecutable::visitChildren):
+        * runtime/FunctionRareData.cpp:
+        (JSC::FunctionRareData::visitChildren):
+        * runtime/GetterSetter.cpp:
+        (JSC::GetterSetter::visitChildren):
+        * runtime/HashMapImpl.cpp:
+        (JSC::HashMapBucket<Data>::visitChildren):
+        (JSC::HashMapImpl<HashMapBucket>::visitChildren):
+        * runtime/InferredTypeTable.cpp:
+        (JSC::InferredTypeTable::visitChildren):
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::visitChildren):
+        * runtime/IntlCollator.cpp:
+        (JSC::IntlCollator::visitChildren):
+        * runtime/IntlCollatorConstructor.cpp:
+        (JSC::IntlCollatorConstructor::visitChildren):
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::visitChildren):
+        * runtime/IntlDateTimeFormatConstructor.cpp:
+        (JSC::IntlDateTimeFormatConstructor::visitChildren):
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::IntlNumberFormat::visitChildren):
+        * runtime/IntlNumberFormatConstructor.cpp:
+        (JSC::IntlNumberFormatConstructor::visitChildren):
+        * runtime/JSBoundFunction.cpp:
+        (JSC::JSBoundFunction::visitChildren):
+        * runtime/JSCallee.cpp:
+        (JSC::JSCallee::visitChildren):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::visitChildren):
+        * runtime/JSCustomGetterSetterFunction.cpp:
+        (JSC::JSCustomGetterSetterFunction::visitChildren):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::visitChildren):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSMapIterator.cpp:
+        (JSC::JSMapIterator::visitChildren):
+        * runtime/JSModuleEnvironment.cpp:
+        (JSC::JSModuleEnvironment::visitChildren):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::visitChildren):
+        * runtime/JSNativeStdFunction.cpp:
+        (JSC::JSNativeStdFunction::visitChildren):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterflyImpl):
+        * runtime/JSPromiseDeferred.cpp:
+        (JSC::JSPromiseDeferred::visitChildren):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::visitChildren):
+        * runtime/JSPropertyNameIterator.cpp:
+        (JSC::JSPropertyNameIterator::visitChildren):
+        * runtime/JSProxy.cpp:
+        (JSC::JSProxy::visitChildren):
+        * runtime/JSScope.cpp:
+        (JSC::JSScope::visitChildren):
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::visitChildren):
+        * runtime/JSSetIterator.cpp:
+        (JSC::JSSetIterator::visitChildren):
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::visitFibers):
+        * runtime/JSSymbolTableObject.cpp:
+        (JSC::JSSymbolTableObject::visitChildren):
+        * runtime/JSWeakMap.cpp:
+        (JSC::JSWeakMap::visitChildren):
+        * runtime/JSWeakSet.cpp:
+        (JSC::JSWeakSet::visitChildren):
+        * runtime/JSWithScope.cpp:
+        (JSC::JSWithScope::visitChildren):
+        * runtime/JSWrapperObject.cpp:
+        (JSC::JSWrapperObject::visitChildren):
+        * runtime/LazyClassStructure.cpp:
+        (JSC::LazyClassStructure::visit):
+        * runtime/LazyPropertyInlines.h:
+        (JSC::ElementType>::visit):
+        * runtime/MapBase.cpp:
+        (JSC::MapBase<HashMapBucketType>::visitChildren):
+        * runtime/ModuleProgramExecutable.cpp:
+        (JSC::ModuleProgramExecutable::visitChildren):
+        * runtime/NativeErrorConstructor.cpp:
+        (JSC::NativeErrorConstructor::visitChildren):
+        * runtime/ProgramExecutable.cpp:
+        (JSC::ProgramExecutable::visitChildren):
+        * runtime/ProxyObject.cpp:
+        (JSC::ProxyObject::visitChildren):
+        * runtime/ProxyRevoke.cpp:
+        (JSC::ProxyRevoke::visitChildren):
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::visitChildren):
+        * runtime/RegExpObject.cpp:
+        (JSC::RegExpObject::visitChildren):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::visitChildren):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::visit):
+        * runtime/ScopedArguments.cpp:
+        (JSC::ScopedArguments::visitChildren):
+        * runtime/SmallStrings.cpp:
+        (JSC::SmallStrings::visitStrongReferences):
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::visitChildren):
+        * runtime/Structure.cpp:
+        (JSC::Structure::visitChildren):
+        (JSC::Structure::markIfCheap):
+        * runtime/StructureChain.cpp:
+        (JSC::StructureChain::visitChildren):
+        * runtime/StructureRareData.cpp:
+        (JSC::StructureRareData::visitChildren):
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::visitChildren):
+        * runtime/TypeProfilerLog.cpp:
+        (JSC::TypeProfilerLog::visit):
+        * runtime/WeakMapData.cpp:
+        (JSC::WeakMapData::DeadKeyCleaner::visitWeakReferences):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::visitChildren):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::visitChildren):
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::visitChildren):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::visitChildren):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::visitChildren):
+
+2016-12-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Sort Xcode project files
+        https://bugs.webkit.org/show_bug.cgi?id=165937
+
+        Reviewed by Simon Fraser.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should not create empty unlinked callsites
+        https://bugs.webkit.org/show_bug.cgi?id=165933
+
+        Reviewed by Mark Lam.
+
+        Wasm would create holes in the unlinked callsite vector if B3 was able to
+        eliminate the callsite.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addCall):
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: improve compilation error messages
+        https://bugs.webkit.org/show_bug.cgi?id=163919
+
+        Reviewed by Saam Barati.
+
+        The error handling messages were underwhelming because most
+        locations merely returned `false` on failure. This patch uses
+        std::expected to denote that failure isn't expected. Doing this
+        makes it almost impossible to mess up the code: either a function
+        returns a result (or a partial result for internal helpers) or an
+        error. We're not synchronizing the error string with the m_failed
+        bool anymore, and the caller will abort if they try to get a
+        result but the outcome was an error.
+
+        This also shortens the code significantly using macros, while also
+        judiciously preventing inlining of error handling code and biasing
+        towards success using UNLIKELY. This means that the generated code
+        should be more efficient (no string formatting on success, and
+        regalloc can avoid these unlikely paths).
+
+        The patch adds a few missing checks as well, especially related to
+        count limits and memory allocation failure.
+
+        As a follow-up I'd like to improve WTF::makeString further, so it
+        does coercions to string and understands ADL as I did in this
+        patch.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::fail):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::isValidExternalKind):
+        (JSC::Wasm::makeString):
+        * wasm/WasmFunctionParser.h:
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmParser.h:
+        (JSC::Wasm::FailureHelper::makeString):
+        (JSC::Wasm::Parser::fail):
+        (JSC::Wasm::Parser<SuccessType>::Parser):
+        (JSC::Wasm::Parser<SuccessType>::consumeCharacter):
+        (JSC::Wasm::Parser<SuccessType>::consumeString):
+        (JSC::Wasm::Parser<SuccessType>::consumeUTF8String):
+        (JSC::Wasm::Parser<SuccessType>::parseVarUInt32):
+        (JSC::Wasm::Parser<SuccessType>::parseVarUInt64):
+        (JSC::Wasm::Parser<SuccessType>::parseVarInt32):
+        (JSC::Wasm::Parser<SuccessType>::parseVarInt64):
+        (JSC::Wasm::Parser<SuccessType>::parseUInt32):
+        (JSC::Wasm::Parser<SuccessType>::parseUInt64):
+        (JSC::Wasm::Parser<SuccessType>::parseUInt8):
+        (JSC::Wasm::Parser<SuccessType>::parseInt7):
+        (JSC::Wasm::Parser<SuccessType>::parseUInt7):
+        (JSC::Wasm::Parser<SuccessType>::parseVarUInt1):
+        (JSC::Wasm::Parser<SuccessType>::parseResultType):
+        (JSC::Wasm::Parser<SuccessType>::parseValueType):
+        (JSC::Wasm::Parser<SuccessType>::parseExternalKind):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmSections.h:
+        (JSC::Wasm::isValidSection):
+        (JSC::Wasm::validateOrder):
+        (JSC::Wasm::makeString):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::fail):
+        (JSC::Wasm::Validate::addUnreachable):
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h:
+        * wasm/generateWasmB3IRGeneratorInlinesHeader.py:
+        * wasm/generateWasmOpsHeader.py:
+        * wasm/generateWasmValidateInlinesHeader.py:
+        (loadMacro):
+        (storeMacro):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-15  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: improve data section errors, initialize after Element
+        https://bugs.webkit.org/show_bug.cgi?id=165733
+
+        Reviewed by Keith Miller.
+
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseData): Data section without Memory section or import is a validation error
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::dataSegmentFail):
+        (JSC::WebAssemblyModuleRecord::evaluate): tighten checks (though the spec isn't fully baked), and move after Element initialization
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Turn on WebAssembly by default
+        https://bugs.webkit.org/show_bug.cgi?id=165918
+
+        Reviewed by Saam Barati.
+
+        * runtime/Options.h:
+
+2016-12-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Added missing override and final specifiers
+        https://bugs.webkit.org/show_bug.cgi?id=165903
+
+        Reviewed by Darin Adler.
+
+        * bytecompiler/BytecodeGenerator.h:
+        * jsc.cpp:
+        * parser/Nodes.h:
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Harden JSObject::getOwnPropertyDescriptor()
+        https://bugs.webkit.org/show_bug.cgi?id=165908
+
+        Reviewed by Geoffrey Garen.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getOwnPropertyDescriptor):
+
+2016-12-15  Keith Miller  <keith_miller@apple.com>
+
+        Fix 64-bit shift family Wasm opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=165902
+
+        Reviewed by Geoffrey Garen.
+
+        The Int64 versions of the shift family B3 opcodes take an Int32
+        for the shift value. Wasm, however, takes an i64, so we need to
+        Trunc the shift value. Also, this fixes a bug where shr_u mapped
+        to signed shift and shr_s mapped to the unsigned shift.
+
+        * wasm/wasm.json:
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should decode constants correctly
+        https://bugs.webkit.org/show_bug.cgi?id=165886
+
+        Reviewed by Saam Barati.
+
+        This patch fixes how we decode the constant part of i32, i64, f32,
+        and f64.const opcodes.
+
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/wasm.json:
+
+2016-12-14  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Add various low hanging fruit that will allow us to run the LLVM torture tests in Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=165883
+
+        Reviewed by Keith Miller.
+
+        This patch implements some low hanging fruit:
+        - Exporting Table
+        - Exporting Memory
+        - Load16 with zero extension to both 32 and 64 bit values.
+        - Fixes Unreachable to emit code that will prevent B3 from having a validation error.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::addUnreachable):
+        (JSC::Wasm::sizeOfLoadOp):
+        (JSC::Wasm::B3IRGenerator::emitLoadOp):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseExport):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::addUnreachable):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::finishCreation):
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Update ModuleLoader code by using the latest builtin primitives
+        https://bugs.webkit.org/show_bug.cgi?id=165851
+
+        Reviewed by Sam Weinig.
+
+        Update the module loader code,
+
+        1. Use @globalPrivate for the utilities, instead of setting them as the member of ModuleLoader.
+        2. Use @putByValDirect instead of @push. @push is user-observable since it uses Set() operation
+           and it can be observed by defining indexed setters in Array.prototype.
+
+        * builtins/ModuleLoaderPrototype.js:
+        (ensureRegistered):
+        (fulfillFetch):
+        (commitInstantiated):
+        (requestFetch):
+        (requestSatisfy):
+        (setStateToMax): Deleted.
+        (newRegistryEntry): Deleted.
+        * runtime/ModuleLoaderPrototype.cpp:
+
+2016-12-14  Michael Saboff  <msaboff@apple.com>
+
+        The stress GC bot crashes in JavaScriptCore beneath ShadowChicken::update and Inspector::jsToInspectorValue
+        https://bugs.webkit.org/show_bug.cgi?id=165871
+
+        Reviewed by Mark Lam.
+
+        This fixes two issues with the VM watch dog timer firing in a worker.
+
+        The first issue has to do with bytecode ordering.  Prior to this change, the first few opcodes
+        generated when the watch dog is enabled are:
+                op_enter
+                op_watchdog
+                op_get_scope
+        When the watchdog fires, the function will get an exception at op_watchdog.  In processing that exception,
+        we'll try to update the ShadowChicken shadow stack.  That update assumes that if there is a scope 
+        VirtualRegister allocated, then the slot contains a valid JSScope.  With the current bytecode ordering,
+        this is not true at op_watchdog as op_enter will put JSUndefined in the scope slot.  It isn't until the
+        op_get_scope gets processed that we'll have a valid scope in the slot.  The fix for this issue is to 
+        ensure that op_get_scope happens before the op_watchdog.
+
+        The second issue is that ScriptFunctionCall::call() will not tell its caller that a terminated
+        execution exception happened.  Instead call() returns an empty JSValue.  InjectedScript::wrapCallFrames()
+        wasn't checking for an empty JSValue, but was passing it to another function.  Added a short circuit
+        return when call returns an empty JSValue.
+
+        Added <https://bugs.webkit.org/show_bug.cgi?id=165875> to fix other callers of ScriptFunctionCall::call()
+        to check for an empty JSValue return value.
+        Also tracked with <rdar://problem/29671015>.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitEnter):
+        * inspector/InjectedScript.cpp:
+        (Inspector::InjectedScript::wrapCallFrames):
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        DirectTailCall implementation needs to tell the shuffler what to put into the ArgumentCount explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=165882
+
+        Reviewed by Mark Lam.
+        
+        The CallFrameShuffler was assuming that the ArgumentCount that it should store into the
+        callee frame is simply the size of the args vector.
+        
+        That's not true for DirectTailCall, which will pad the args vector with undefined if we
+        are optimizing an arity mismatch. We need to pass the ArgumentCount explicitly in this
+        case.
+
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::emitCall):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileDirectCallOrConstruct):
+        (JSC::FTL::DFG::LowerDFGToB3::compileTailCall):
+        * jit/CallFrameShuffleData.h:
+        * jit/CallFrameShuffler.cpp:
+        (JSC::CallFrameShuffler::CallFrameShuffler):
+        (JSC::CallFrameShuffler::prepareAny):
+        * jit/CallFrameShuffler.h:
+        (JSC::CallFrameShuffler::snapshot):
+        * jit/JITCall.cpp:
+        (JSC::JIT::compileOpCall):
+
+2016-12-14  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly JS API: implement Global
+        https://bugs.webkit.org/show_bug.cgi?id=164133
+
+        Reviewed by Saam Barati.
+
+        This patch adds support for globals. It handles imports, exports
+        and internal globals. In the MVP only internal globals are allowed
+        to be mutable. This means we can store a C-array of 64-bit slots
+        off the instance holding them. When globals are exported to JS
+        they are done so as numbers. This means that i64 globals cannot be
+        imported or exported.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::getGlobal):
+        (JSC::Wasm::B3IRGenerator::setGlobal):
+        (JSC::Wasm::B3IRGenerator::addCallIndirect):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmFormat.h:
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::parseExpression):
+        * wasm/WasmModuleParser.cpp:
+        (JSC::Wasm::ModuleParser::parseImport):
+        (JSC::Wasm::ModuleParser::parseGlobal):
+        (JSC::Wasm::ModuleParser::parseExport):
+        (JSC::Wasm::ModuleParser::parseElement):
+        (JSC::Wasm::ModuleParser::parseInitExpr):
+        (JSC::Wasm::ModuleParser::parseGlobalType):
+        (JSC::Wasm::ModuleParser::parseData):
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser::parseVarInt32):
+        (JSC::Wasm::Parser::parseVarInt64):
+        (JSC::Wasm::Parser::parseUInt64):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::hasMemory):
+        (JSC::Wasm::Validate::Validate):
+        (JSC::Wasm::Validate::getGlobal):
+        (JSC::Wasm::Validate::setGlobal):
+        (JSC::Wasm::validateFunction):
+        * wasm/generateWasmOpsHeader.py:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        (JSC::JSWebAssemblyInstance::finishCreation):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::loadI32Global):
+        (JSC::JSWebAssemblyInstance::loadI64Global):
+        (JSC::JSWebAssemblyInstance::loadF32Global):
+        (JSC::JSWebAssemblyInstance::loadF64Global):
+        (JSC::JSWebAssemblyInstance::setGlobal):
+        (JSC::JSWebAssemblyInstance::offsetOfGlobals):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::finishCreation):
+        (JSC::WebAssemblyModuleRecord::link):
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, re-enable concurrent GC on ARM64 now that the most likely culprit of the memory
+        regressions is fixed. Lets see what the bots think!
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2016-12-14  Filip Pizlo  <fpizlo@apple.com>
+
+        Devices with fewer cores should use a more aggressive GC schedule by default
+        https://bugs.webkit.org/show_bug.cgi?id=165859
+
+        Reviewed by Mark Lam.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::markToFixpoint): Log when we have an unexpected delay in wake-up.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::drainInParallelPassively): Don't drain passively if there aren't many cores.
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults): Change the heuristics if we have fewer cores.
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+
+2016-12-14  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeBasicBlock::computeImpl() should not keep iterating blocks if all jump targets have already been found.
+        https://bugs.webkit.org/show_bug.cgi?id=165820
+
+        Reviewed by Saam Barati.
+
+        Currently, if an opcode is a branch type opcode, BytecodeBasicBlock::computeImpl()
+        will iterate over all basic blocks looking for the block containing the jump
+        target, and it will continue to do this even when all the jump targets have been
+        found.  This is wasted work, and all the more so given that most branch type
+        opcodes only have a single jump target.
+
+        * bytecode/BytecodeBasicBlock.cpp:
+        (JSC::BytecodeBasicBlock::computeImpl):
+
 2016-12-14  Gavin Barraclough  <barraclough@apple.com>
 
         MarkedBlock::marksConveyLivenessDuringMarking should take into account collection scope

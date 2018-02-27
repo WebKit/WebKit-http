@@ -26,6 +26,7 @@
 #include "ConservativeRoots.h"
 #include "DFGWorklist.h"
 #include "EdenGCActivityCallback.h"
+#include "Exception.h"
 #include "FullGCActivityCallback.h"
 #include "GCActivityCallback.h"
 #include "GCIncomingRefCountedSetInlines.h"
@@ -35,7 +36,6 @@
 #include "HeapHelperPool.h"
 #include "HeapIterationScope.h"
 #include "HeapProfiler.h"
-#include "HeapRootVisitor.h"
 #include "HeapSnapshot.h"
 #include "HeapStatistics.h"
 #include "HeapVerifier.h"
@@ -515,8 +515,6 @@ void Heap::markToFixpoint(double gcStartTime)
 {
     TimingScope markToFixpointTimingScope(*this, "Heap::markToFixpoint");
     
-    HeapRootVisitor heapRootVisitor(*m_collectorSlotVisitor);
-    
     if (m_collectionScope == CollectionScope::Full) {
         m_opaqueRoots.clear();
         m_collectorSlotVisitor->clearMarkStacks();
@@ -559,7 +557,8 @@ void Heap::markToFixpoint(double gcStartTime)
             }
         });
 
-    m_collectorSlotVisitor->didStartMarking();
+    SlotVisitor& slotVisitor = *m_collectorSlotVisitor;
+    slotVisitor.didStartMarking();
 
     SpaceTimeScheduler scheduler(*this);
     
@@ -580,55 +579,53 @@ void Heap::markToFixpoint(double gcStartTime)
         // Now we visit roots that don't get barriered, so each fixpoint iteration just revisits
         // all of them.
 #if JSC_OBJC_API_ENABLED
-        scanExternalRememberedSet(*m_vm, *m_collectorSlotVisitor);
+        scanExternalRememberedSet(*m_vm, slotVisitor);
 #endif
             
         if (m_vm->smallStrings.needsToBeVisited(*m_collectionScope))
-            m_vm->smallStrings.visitStrongReferences(*m_collectorSlotVisitor);
+            m_vm->smallStrings.visitStrongReferences(slotVisitor);
             
         for (auto& pair : m_protectedValues)
-            heapRootVisitor.visit(&pair.key);
+            slotVisitor.appendUnbarriered(pair.key);
             
         if (m_markListSet && m_markListSet->size())
-            MarkedArgumentBuffer::markLists(heapRootVisitor, *m_markListSet);
+            MarkedArgumentBuffer::markLists(slotVisitor, *m_markListSet);
             
-        if (m_vm->exception())
-            heapRootVisitor.visit(m_vm->addressOfException());
-        if (m_vm->lastException())
-            heapRootVisitor.visit(m_vm->addressOfLastException());
+        slotVisitor.appendUnbarriered(m_vm->exception());
+        slotVisitor.appendUnbarriered(m_vm->lastException());
             
-        m_handleSet.visitStrongHandles(heapRootVisitor);
-        m_handleStack.visit(heapRootVisitor);
+        m_handleSet.visitStrongHandles(slotVisitor);
+        m_handleStack.visit(slotVisitor);
 
 #if ENABLE(SAMPLING_PROFILER)
         if (SamplingProfiler* samplingProfiler = m_vm->samplingProfiler()) {
             LockHolder locker(samplingProfiler->getLock());
             samplingProfiler->processUnverifiedStackTraces();
-            samplingProfiler->visit(*m_collectorSlotVisitor);
+            samplingProfiler->visit(slotVisitor);
             if (Options::logGC() == GCLogging::Verbose)
-                dataLog("Sampling Profiler data:\n", *m_collectorSlotVisitor);
+                dataLog("Sampling Profiler data:\n", slotVisitor);
         }
 #endif // ENABLE(SAMPLING_PROFILER)
         
         if (m_vm->typeProfiler())
-            m_vm->typeProfilerLog()->visit(*m_collectorSlotVisitor);
+            m_vm->typeProfilerLog()->visit(slotVisitor);
                 
-        m_vm->shadowChicken().visitChildren(*m_collectorSlotVisitor);
+        m_vm->shadowChicken().visitChildren(slotVisitor);
                 
-        m_jitStubRoutines->traceMarkedStubRoutines(*m_collectorSlotVisitor);
+        m_jitStubRoutines->traceMarkedStubRoutines(slotVisitor);
 
-        m_collectorSlotVisitor->mergeOpaqueRootsIfNecessary();
+        slotVisitor.mergeOpaqueRootsIfNecessary();
         for (auto& parallelVisitor : m_parallelSlotVisitors)
             parallelVisitor->mergeOpaqueRootsIfNecessary();
 
-        m_objectSpace.visitWeakSets(heapRootVisitor);
+        m_objectSpace.visitWeakSets(slotVisitor);
         harvestWeakReferences();
         visitCompilerWorklistWeakReferences();
-        DFG::markCodeBlocks(*m_vm, *m_collectorSlotVisitor);
-        bool shouldTerminate = m_collectorSlotVisitor->isEmpty() && m_mutatorMarkStack->isEmpty();
+        DFG::markCodeBlocks(*m_vm, slotVisitor);
+        bool shouldTerminate = slotVisitor.isEmpty() && m_mutatorMarkStack->isEmpty();
         
         if (Options::logGC()) {
-            dataLog(m_collectorSlotVisitor->collectorMarkStack().size(), "+", m_mutatorMarkStack->size() + m_collectorSlotVisitor->mutatorMarkStack().size(), ", a=", m_bytesAllocatedThisCycle / 1024, " kb, b=", m_barriersExecuted, ", mu=", scheduler.currentDecision().targetMutatorUtilization(), " ");
+            dataLog(slotVisitor.collectorMarkStack().size(), "+", m_mutatorMarkStack->size() + slotVisitor.mutatorMarkStack().size(), ", a=", m_bytesAllocatedThisCycle / 1024, " kb, b=", m_barriersExecuted, ", mu=", scheduler.currentDecision().targetMutatorUtilization(), " ");
         }
         
         // We want to do this to conservatively ensure that we rescan any code blocks that are
@@ -645,14 +642,14 @@ void Heap::markToFixpoint(double gcStartTime)
         
         // The SlotVisitor's mark stacks are accessed by the collector thread (i.e. this thread)
         // without locks. That's why we double-buffer.
-        m_mutatorMarkStack->transferTo(m_collectorSlotVisitor->mutatorMarkStack());
+        m_mutatorMarkStack->transferTo(slotVisitor.mutatorMarkStack());
         
         if (Options::logGC() == GCLogging::Verbose)
-            dataLog("Live Weak Handles:\n", *m_collectorSlotVisitor);
+            dataLog("Live Weak Handles:\n", slotVisitor);
         
         {
             TimingScope traceTimingScope(*this, "Heap::markToFixpoint tracing");
-            ParallelModeEnabler enabler(*m_collectorSlotVisitor);
+            ParallelModeEnabler enabler(slotVisitor);
             
             if (Options::useCollectorTimeslicing()) {
                 scheduler.snapPhase();
@@ -661,25 +658,32 @@ void Heap::markToFixpoint(double gcStartTime)
                 do {
                     auto decision = scheduler.currentDecision();
                     if (decision.shouldBeResumed()) {
-                        ResumeTheWorldScope resumeTheWorldScope(*this);
-                        drainResult = m_collectorSlotVisitor->drainInParallelPassively(decision.timeToStop());
-                        if (drainResult == SlotVisitor::SharedDrainResult::Done) {
-                            // At this point we will stop. But maybe the scheduler does not want
-                            // that.
-                            Seconds scheduledIdle = decision.timeToStop() - MonotonicTime::now();
-                            // It's totally unclear what the value of collectPermittedIdleRatio
-                            // should be, other than it should be greater than 0. You could even
-                            // argue for it being greater than 1. We should tune it.
-                            sleep(scheduledIdle * Options::collectorPermittedIdleRatio());
+                        {
+                            ResumeTheWorldScope resumeTheWorldScope(*this);
+                            drainResult = slotVisitor.drainInParallelPassively(decision.timeToStop());
+                            if (drainResult == SlotVisitor::SharedDrainResult::Done) {
+                                // At this point we will stop. But maybe the scheduler does not want
+                                // that.
+                                Seconds scheduledIdle = decision.timeToStop() - MonotonicTime::now();
+                                // It's totally unclear what the value of collectPermittedIdleRatio
+                                // should be, other than it should be greater than 0. You could even
+                                // argue for it being greater than 1. We should tune it.
+                                sleep(scheduledIdle * Options::collectorPermittedIdleRatio());
+                            }
+                        }
+                        if (Options::logGC()) {
+                            Seconds wakeUpLatency = MonotonicTime::now() - decision.timeToStop();
+                            if (wakeUpLatency >= 1_ms)
+                                dataLog("wul!=", wakeUpLatency.milliseconds(), " ms ");
                         }
                     } else
-                        drainResult = m_collectorSlotVisitor->drainInParallel(decision.timeToResume());
+                        drainResult = slotVisitor.drainInParallel(decision.timeToResume());
                 } while (drainResult != SlotVisitor::SharedDrainResult::Done);
             } else {
                 // Disabling collector timeslicing is meant to be used together with
                 // --collectContinuously=true to maximize the opportunity for harmful races.
                 ResumeTheWorldScope resumeTheWorldScope(*this);
-                m_collectorSlotVisitor->drainInParallel();
+                slotVisitor.drainInParallel();
             }
         }
     }
@@ -1007,11 +1011,11 @@ void Heap::addToRememberedSet(const JSCell* cell)
         return;
     }
     // It could be that the object was *just* marked. This means that the collector may set the
-    // state to Grey and then to AnthraciteOrBlack at any time. It's OK for us to race with the
-    // collector here. If we win then this is accurate because the object _will_ get scanned again.
-    // If we lose then someone else will barrier the object again. That would be unfortunate but not
-    // the end of the world.
-    cell->setCellState(CellState::Grey);
+    // state to DefinitelyGrey and then to PossiblyOldOrBlack at any time. It's OK for us to
+    // race with the collector here. If we win then this is accurate because the object _will_
+    // get scanned again. If we lose then someone else will barrier the object again. That would
+    // be unfortunate but not the end of the world.
+    cell->setCellState(CellState::DefinitelyGrey);
     m_mutatorMarkStack->append(cell);
 }
 
@@ -2012,7 +2016,7 @@ void Heap::writeBarrierSlowPath(const JSCell* from)
         // In this case, the barrierThreshold is the tautological threshold, so from could still be
         // not black. But we can't know for sure until we fire off a fence.
         WTF::storeLoadFence();
-        if (from->cellState() != CellState::AnthraciteOrBlack)
+        if (from->cellState() != CellState::PossiblyOldOrBlack)
             return;
     }
     

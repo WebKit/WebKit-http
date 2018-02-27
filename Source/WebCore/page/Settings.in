@@ -249,7 +249,7 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
-newCSSParserEnabled initial=true
+deferredCSSParserEnabled initial=false
 
 httpEquivEnabled initial=true
 
@@ -292,3 +292,5 @@ largeImageAsyncDecodingEnabled initial=true
 animatedImageAsyncDecodingEnabled initial=true
 
 es6ModulesEnabled initial=false
+
+shouldSuppressKeyboardInputDuringProvisionalNavigation initial=false

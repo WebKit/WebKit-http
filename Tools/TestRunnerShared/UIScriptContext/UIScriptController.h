@@ -52,6 +52,7 @@ public:
     
     void doAsyncTask(JSValueRef callback);
     void doAfterPresentationUpdate(JSValueRef callback);
+    void doAfterNextStablePresentationUpdate(JSValueRef callback);
 
     void zoomToScale(double scale, JSValueRef callback);
 
@@ -128,6 +129,8 @@ public:
     JSObjectRef contentVisibleRect() const;
     
     JSObjectRef selectionRangeViewRects() const;
+    JSObjectRef textSelectionCaretRect() const;
+    JSObjectRef inputViewBounds() const;
 
     void insertText(JSStringRef, int location, int length);
     void removeAllDynamicDictionaries();

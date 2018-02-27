@@ -362,10 +362,28 @@ private:
     [_fixedClippingView setBounds:clippingBounds];
 }
 
+- (void)_didExitStableState
+{
+    _needsDeferredEndScrollingSelectionUpdate = self.shouldHideSelectionWhenScrolling;
+    if (!_needsDeferredEndScrollingSelectionUpdate)
+        return;
+
+    [_textSelectionAssistant deactivateSelection];
+    [[_webSelectionAssistant selectionView] setHidden:YES];
+}
+
+- (CGRect)_computeUnobscuredContentRectRespectingInputViewBounds:(CGRect)visibleContentRect unobscuredContentRect:(CGRect)unobscuredContentRect inputViewBounds:(CGRect)inputViewBounds scale:(CGFloat)scale
+{
+    if (inputViewBounds.size.height)
+        unobscuredContentRect.size.height = std::min<float>(unobscuredContentRect.size.height, visibleContentRect.origin.y + (inputViewBounds.origin.y / scale) - unobscuredContentRect.origin.y);
+    return unobscuredContentRect;
+}
+
 - (void)didUpdateVisibleRect:(CGRect)visibleContentRect
     unobscuredRect:(CGRect)unobscuredContentRect
     unobscuredRectInScrollViewCoordinates:(CGRect)unobscuredRectInScrollViewCoordinates
     obscuredInset:(CGSize)obscuredInset
+    inputViewBounds:(CGRect)inputViewBounds
     scale:(CGFloat)zoomScale minimumScale:(CGFloat)minimumScale
     inStableState:(BOOL)isStableState
     isChangingObscuredInsetsInteractively:(BOOL)isChangingObscuredInsetsInteractively
@@ -383,16 +401,20 @@ private:
         _historicalKinematicData.clear();
 
     RemoteScrollingCoordinatorProxy* scrollingCoordinator = _page->scrollingCoordinatorProxy();
-    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
+
+    CGRect unobscuredContentRectRespectingInputViewBounds = [self _computeUnobscuredContentRectRespectingInputViewBounds:visibleContentRect unobscuredContentRect:unobscuredContentRect inputViewBounds:inputViewBounds scale:zoomScale];
+    FloatRect fixedPositionRectForLayout = _page->computeCustomFixedPositionRect(unobscuredContentRect, unobscuredContentRectRespectingInputViewBounds, _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::ConstrainedToDocumentRect, scrollingCoordinator->visualViewportEnabled());
 
     VisibleContentRectUpdateInfo visibleContentRectUpdateInfo(
         visibleContentRect,
         unobscuredContentRect,
         unobscuredRectInScrollViewCoordinates,
+        unobscuredContentRectRespectingInputViewBounds,
         fixedPositionRectForLayout,
         WebCore::FloatSize(obscuredInset),
         zoomScale,
         isStableState,
+        _sizeChangedSinceLastVisibleContentRectUpdate,
         isChangingObscuredInsetsInteractively,
         _webView._allowsViewportShrinkToFit,
         enclosedInScrollableAncestorView,
@@ -404,14 +426,20 @@ private:
 
     LOG_WITH_STREAM(VisibleRects, stream << "-[WKContentView didUpdateVisibleRect]" << visibleContentRectUpdateInfo.dump());
 
+    bool wasStableState = _page->inStableState();
     _page->updateVisibleContentRects(visibleContentRectUpdateInfo);
 
-    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::Unconstrained, scrollingCoordinator->visualViewportEnabled());
+    _sizeChangedSinceLastVisibleContentRectUpdate = NO;
+
+    FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), zoomScale, WebPageProxy::UnobscuredRectConstraint::Unconstrained, scrollingCoordinator->visualViewportEnabled());
     scrollingCoordinator->viewportChangedViaDelegatedScrolling(scrollingCoordinator->rootScrollingNodeID(), fixedPositionRect, zoomScale);
 
     drawingArea->updateDebugIndicator();
     
     [self updateFixedClippingView:fixedPositionRect];
+
+    if (wasStableState && !isStableState)
+        [self _didExitStableState];
 }
 
 - (void)didFinishScrolling
@@ -542,7 +570,7 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     
     if (boundsChanged) {
         // FIXME: factor computeCustomFixedPositionRect() into something that gives us this rect.
-        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->customFixedPositionRect(), [[_webView scrollView] zoomScale]);
+        FloatRect fixedPositionRect = _page->computeCustomFixedPositionRect(_page->unobscuredContentRect(), _page->unobscuredContentRectRespectingInputViewBounds(), _page->customFixedPositionRect(), [[_webView scrollView] zoomScale]);
         [self updateFixedClippingView:fixedPositionRect];
 
         // We need to push the new content bounds to the webview to update fixed position rects.
@@ -574,10 +602,11 @@ static void storeAccessibilityRemoteConnectionInformation(id element, pid_t pid,
     return [_webView _scrollToRect:targetRect origin:origin minimumScrollDistance:minimumScrollDistance];
 }
 
-- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
+- (void)_zoomToFocusRect:(CGRect)rectToFocus selectionRect:(CGRect)selectionRect insideFixed:(BOOL)insideFixed fontSize:(float)fontSize minimumScale:(double)minimumScale maximumScale:(double)maximumScale allowScaling:(BOOL)allowScaling forceScroll:(BOOL)forceScroll
 {
     [_webView _zoomToFocusRect:rectToFocus
                  selectionRect:selectionRect
+                   insideFixed:insideFixed
                       fontSize:fontSize
                   minimumScale:minimumScale
                   maximumScale:maximumScale
