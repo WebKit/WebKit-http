@@ -10,7 +10,6 @@
 #include <ControlLook.h>
 #include <GridLayoutBuilder.h>
 #include <GroupLayoutBuilder.h>
-#include <Locale.h>
 #include <Message.h>
 #include <Screen.h>
 #include <SeparatorView.h>
