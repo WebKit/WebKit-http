@@ -1436,23 +1436,21 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 {
     LockHolder lock(m_protectionMutex);
 
-#if USE(OPENCDM)
-    GST_DEBUG("waiting for a CDM instance");
-    m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
-        return this->m_cdmInstance;
-    });
-    if (!m_cdmInstance) {
-        GST_ERROR("we should have a CDM instance at this point");
-        return;
-    }
-#endif
-
     // Check whether the protection event was already reported or not to JavaScript. If it was, we resend the decryption information to the decryptor.
     size_t eventPosition = m_reportedProtectionEvents.find(GST_EVENT_SEQNUM(event));
     if (eventPosition != notFound) {
         GST_DEBUG("event %u already reported to JS", GST_EVENT_SEQNUM(event));
         m_reportedProtectionEvents.remove(eventPosition);
 #if USE(OPENCDM)
+        GST_DEBUG("waiting for a CDM instance");
+        m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
+            return this->m_cdmInstance;
+            });
+        if (!m_cdmInstance) {
+            GST_ERROR("we should have a CDM instance at this point");
+            return;
+        }
+
         if (is<CDMInstanceOpenCDM>(*m_cdmInstance)) {
             auto mappedInitData = m_protectionEventToInitDataMap.find(GST_EVENT_SEQNUM(event));
             if (mappedInitData != m_protectionEventToInitDataMap.end()) {
@@ -1480,10 +1478,33 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         return;
     }
 
-    const gchar* eventKeySystemId = nullptr;
-    gst_event_parse_protection(event, &eventKeySystemId, nullptr, nullptr);
-    GST_WARNING("FIXME: unhandled protection event for %s", eventKeySystemId);
-    ASSERT_NOT_REACHED();
+    const char* eventKeySystemId = nullptr;
+    GstBuffer* data = nullptr;
+    gst_event_parse_protection(event, &eventKeySystemId, &data, nullptr);
+    GST_TRACE("reporting event %u to JS for %s", GST_EVENT_SEQNUM(event), eventKeySystemId);
+
+    GstMapInfo mapInfo;
+    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+        GST_WARNING("cannot map %s protection data", eventKeySystemId);
+        return;
+    }
+
+    String eventKeySystemIdString = eventKeySystemId;
+    InitData initData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
+    gst_buffer_unmap(data, &mapInfo);
+    m_reportedProtectionEvents.append(GST_EVENT_SEQNUM(event));
+#if USE(OPENCDM)
+    mapProtectionEventToInitData(initData, GST_EVENT_SEQNUM(event));
+#endif
+
+    RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), eventKeySystemIdString, initData] {
+        if (!weakThis)
+            return;
+
+        GST_DEBUG("scheduling initializationDataEncountered event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.sizeInBytes());
+        GST_MEMDUMP("init datas", reinterpret_cast<const uint8_t*>(initData.latin1().data()), initData.sizeInBytes());
+        weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.latin1().data()), initData.sizeInBytes()));
+    });
 }
 #endif
 
