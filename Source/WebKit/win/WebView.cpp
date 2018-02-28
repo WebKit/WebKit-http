@@ -5255,11 +5255,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(!!enabled);
 
-    hr = prefsPrivate->es6ModulesEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setEs6ModulesEnabled(!!enabled);
-
     hr = prefsPrivate->modernMediaControlsEnabled(&enabled);
     if (FAILED(hr))
         return hr;

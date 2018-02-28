@@ -1,3 +1,687 @@
+2016-12-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] MediaPlayerPrivateMediaStreamAVFObjC::ensureLayer can be called before it has a media stream
+        https://bugs.webkit.org/show_bug.cgi?id=166344
+        <rdar://problem/29763143>
+
+        Reviewed by Jer Noble.
+
+        There is a very narrow window during which a MediaStream player can be asked for its layer 
+        before it has a steam, resulting in a NULL dereference and crash. Don't do that.
+
+        Unable to reproduce.
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::ensureLayer):
+
+2016-12-21  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        [Readable Streams API] Fix test in readableByteStreamCallPullIfNeeded
+        https://bugs.webkit.org/show_bug.cgi?id=166312
+
+        Reviewed by Youenn Fablet.
+
+        Add a new function to evaluate if calling a pull function is
+        required as per specification.
+
+        No new test required.
+
+        * Modules/streams/ReadableByteStreamInternals.js:
+        (readableByteStreamControllerShouldCallPull): Added.
+        (readableByteStreamControllerCallPullIfNeeded):
+
+2016-12-21  Simon Fraser  <simon.fraser@apple.com>
+
+        Fixed bars are positioned incorrectly when there are header and footer banners
+        https://bugs.webkit.org/show_bug.cgi?id=166302
+        rdar://problem/29727145
+
+        Reviewed by Tim Horton.
+        
+        The computation of the visual viewport was wrong in the presence of header and footer
+        banners. It needs to take into account the fact that "visibleContentRect" applies to the
+        scroll view contents, which includes header and footer (unscaled), and the potentially scaled
+        document, and we need to return a rectangle in unscaled document coordinates.
+        
+        Make a static method in FrameView to do this computation, and call it from FrameView::visualViewportRect()
+        and ScrollingTreeFrameScrollingNode::layoutViewportForScrollPosition().
+        
+        layoutViewportForScrollPosition() is only called on Mac, so remove the #ifdeffing related to scaling, 
+        and pass in an unscaled scroll position.
+
+        Test: fast/visual-viewport/zoomed-fixed-header-and-footer.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::updateLayoutViewport):
+        (WebCore::FrameView::maxStableLayoutViewportOrigin):
+        (WebCore::FrameView::visibleDocumentRect):
+        (WebCore::FrameView::visualViewportRect):
+        * page/FrameView.h:
+        * page/scrolling/ScrollingTreeFrameScrollingNode.cpp:
+        (WebCore::ScrollingTreeFrameScrollingNode::layoutViewportForScrollPosition):
+        * page/scrolling/mac/ScrollingTreeFrameScrollingNodeMac.mm:
+        (WebCore::ScrollingTreeFrameScrollingNodeMac::setScrollPositionWithoutContentEdgeConstraints):
+
+2016-12-21  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] Remove remaining INDIE_UI related entries.
+        https://bugs.webkit.org/show_bug.cgi?id=165881
+
+        Unreviewed.
+
+        * CMakeLists.txt:
+
+2016-12-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Cairo] Conditional jump or move depends on uninitialised value(s)
+        https://bugs.webkit.org/show_bug.cgi?id=166058
+
+        Reviewed by Michael Catanzaro.
+
+        Initialize x and y members of cairo_glyph_t struct before passing it to cairo_glyph_path.
+
+        * platform/graphics/cairo/FontCairo.cpp:
+        (WebCore::CairoGlyphToPathTranslator::path):
+
+2016-12-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Skia lighter wght variation looks bolder than regular
+        https://bugs.webkit.org/show_bug.cgi?id=165948
+
+        Reviewed by Antti Koivisto.
+
+        Test: fast/text/variations/default-value.html
+
+        This patch inspects the font's information regarding variations. It uses this information
+        to work around a bug in CoreText where default variation values were not getting applied.
+        This workaround is placed behind a version check and the macro name
+        "WORKAROUND_CORETEXT_VARIATIONS_DEFAULT_VALUE_BUG" so we know to delete it whenever
+        possible. It also uses the minimum and maximum supported values for the axis to clamp our
+        variation values to the closest supported point, which is in line with a recent edit to
+        the fonts spec:
+        https://github.com/w3c/csswg-drafts/commit/52b802ac38619286a30662dceb71b8a29fa72f42
+        This clamping behavior also revealed another bug in CoreText, which was worked around
+        behind another version check and macro name WORKAROUND_CORETEXT_VARIATIONS_EXTENTS_BUG so
+        we know to delete it whenever possible.
+
+        * platform/graphics/cocoa/FontCacheCoreText.cpp:
+        (WebCore::defaultVariationValues):
+        (WebCore::preparePlatformFont):
+
+2016-12-20  Tim Horton  <timothy_horton@apple.com>
+
+        Remove a duplicate reference to ScrollingMomentumCalculatorMac.h in the Xcode project
+
+        Rubber-stamped by Sam Weinig.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2016-12-20  Tim Horton  <timothy_horton@apple.com>
+
+        Remove a duplicate reference to ScrollingMomentumCalculatorMac.mm in the Xcode project
+
+        Rubber-stamped by Sam Weinig.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2016-12-20  Alex Christensen  <achristensen@webkit.org>
+
+        Remove initEvent quirk
+        https://bugs.webkit.org/show_bug.cgi?id=166284
+
+        Reviewed by Dan Bernstein.
+
+        We added this quirk in r207908 and expanded it in r209946 and r210034.
+        Many web compatibility issues have been found, which leads us to believe that many more exist.
+        This reverts the behavior to match how it was before r203848.
+        This change was proposed to the spec in https://github.com/whatwg/dom/issues/387
+
+        * dom/Event.cpp:
+        (WebCore::Event::initEventForBindings): Deleted.
+        * dom/Event.h:
+        * dom/Event.idl:
+        * platform/RuntimeApplicationChecks.h:
+        * platform/RuntimeApplicationChecks.mm:
+        (WebCore::IOSApplication::isBaiduNuomi): Deleted.
+        (WebCore::IOSApplication::isAutoNaviAMap): Deleted.
+        (WebCore::IOSApplication::isFlipboard): Deleted.
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        INDIE_UI: fix cmake build
+        https://bugs.webkit.org/show_bug.cgi?id=166288
+
+        Reviewed by Mark Lam.
+
+        Bug #165881 didn't remove a file from cmake.
+
+        * PlatformMac.cmake:
+
+2016-12-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix clean Windows build after r210029
+        https://bugs.webkit.org/show_bug.cgi?id=165881
+
+        * DerivedSources.cpp:
+
+2016-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Address some style problems found by static analysis
+        https://bugs.webkit.org/show_bug.cgi?id=165975
+
+        Reviewed by Alex Christensen.
+
+        Correct the const-correctness of functions that are implemented using stricter
+        const declarations.
+
+        Avoid passing large ANGLE data structures through the ANGLEWebKitBridge methods.
+
+        * inspector/InspectorCSSAgent.h: Declare the method overrides properly to match
+        the stricter const declarations in the implementation files.
+        * inspector/InspectorDOMAgent.h: Ditto.
+        * inspector/InspectorPageAgent.h: Ditto.
+        * inspector/InspectorTimelineAgent.h: Ditto.
+        * inspector/PageDebuggerAgent.h: Ditto.
+        * platform/graphics/ANGLEWebKitBridge.cpp:
+        (WebCore::ANGLEWebKitBridge::setResources): Pass by const reference.
+        * platform/graphics/ANGLEWebKitBridge.h:
+        (WebCore::ANGLEWebKitBridge::getResources): Return a const reference.
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::selectSettings): Use a lambda that takes
+        a const reference, rather than copying the maps while searching.
+
+2016-12-20  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom binding for WorkerGlobalScope::importScripts
+        https://bugs.webkit.org/show_bug.cgi?id=166243
+
+        Reviewed by Alex Christensen.
+
+        * bindings/js/JSWorkerGlobalScopeCustom.cpp:
+        (WebCore::JSWorkerGlobalScope::importScripts): Deleted.
+        * workers/WorkerGlobalScope.idl:
+        Import scripts can now be trivially generated.
+
+2016-12-20  Zalan Bujtas  <zalan@apple.com>
+
+        SVG elements should inherit the root's flow thread state.
+        https://bugs.webkit.org/show_bug.cgi?id=166173
+        rdar://problem/29704862
+
+        Reviewed by Simon Fraser.
+
+        When the <svg> is not part of the multicolumn context (out of flow positioning), its descendants should not be in the flow either.
+
+        Test: fast/multicol/svg-inside-multicolumn.html
+
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::computedFlowThreadState):
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::isProgress):
+        (WebCore::RenderObject::isRenderSVGBlock):
+        * rendering/svg/RenderSVGBlock.h:
+
+2016-12-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix yet another app that uses initEvent with fewer than 3 parameters
+        https://bugs.webkit.org/show_bug.cgi?id=166257
+        <rdar://problem/29420268>
+
+        Reviewed by Sam Weinig.
+
+        * dom/Event.cpp:
+        (WebCore::Event::initEventForBindings):
+        * platform/RuntimeApplicationChecks.h:
+        * platform/RuntimeApplicationChecks.mm:
+        (WebCore::IOSApplication::isAutoNaviAMap):
+        AutoNavi amap has content that uses initEvent with one parameter. This quirk is needed here, too.
+
+2016-12-20  Dean Jackson  <dino@apple.com>
+
+        Remove INDIE_UI
+        https://bugs.webkit.org/show_bug.cgi?id=165881
+        <rdar://problem/29672532>
+
+        Reviewed by Simon Fraser.
+
+        The Indie UI work has been discontinued.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * Modules/indieui/UIRequestEvent.cpp: Removed.
+        * Modules/indieui/UIRequestEvent.h: Removed.
+        * Modules/indieui/UIRequestEvent.idl: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+        * dom/Element.cpp:
+        (WebCore::Element::setUIActions): Deleted.
+        (WebCore::Element::UIActions): Deleted.
+        * dom/Element.h:
+        * dom/Element.idl:
+        * dom/EventNames.in:
+        * dom/Node.cpp:
+        (WebCore::Node::dispatchUIRequestEvent): Deleted.
+        * dom/Node.h:
+
+2016-12-20  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement readableByteStreamControllerCallPullIfNeeded()
+        https://bugs.webkit.org/show_bug.cgi?id=166022
+
+        Reviewed by Youenn Fablet.
+
+        Implemented readableByteStreamControllerCallPullIfNeeded(). This function is
+        in particular called when a new ReadableByteStreamController is created; hence,
+        ReadableByteStreamController constructor has been updated.
+
+        Added 3 tests to check behaviour in case of success/failure of the start and pull functions
+        associated to the underlyingByteSource.
+
+        * Modules/streams/ReadableByteStreamInternals.js:
+        (privateInitializeReadableByteStreamController): Updated handling of underlyingByteSource
+        start function (especially with call to readableByteStreamControllerCallPullIfNeeded).
+        (isReadableStreamBYOBReader): Added.
+        (readableStreamHasBYOBReader): Added.
+        (readableStreamHasDefaultReader): Added.
+        (readableByteStreamControllerCallPullIfNeeded): Added.
+        * Modules/streams/ReadableStreamInternals.js:
+        (privateInitializeReadableStreamDefaultController): Added missing asserts.
+        * bindings/js/WebCoreBuiltinNames.h: Added readIntoRequests.
+
+2016-12-20  Sam Weinig  <sam@webkit.org>
+
+        [DataCue] Un-prefix DataCue and remove custom bindings
+        https://bugs.webkit.org/show_bug.cgi?id=166087
+
+        Reviewed by Eric Carlson.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSBindingsAllInOne.cpp:
+        * bindings/js/JSDataCueCustom.cpp: Removed.
+        Remove JSDataCueCustom.cpp
+
+        * bindings/js/JSTextTrackCueCustom.cpp:
+        (WebCore::toJSNewlyCreated):
+        Remove out of date comment.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateConstructorDefinition):
+        Update constructor generation code to use JSDOMConvert.
+
+        * html/track/DataCue.cpp:
+        (WebCore::DataCue::DataCue):
+        (WebCore::DataCue::~DataCue):
+        (WebCore::DataCue::data):
+        (WebCore::DataCue::setData):
+        (WebCore::DataCue::cueContentsMatch):
+        (WebCore::DataCue::value):
+        (WebCore::DataCue::setValue):
+        (WebCore::DataCue::valueOrNull):
+        * html/track/DataCue.h:
+        * html/track/DataCue.idl:
+        * platform/SerializedPlatformRepresentation.h:
+        Remove DATACUE_VALUE define from web exposed classes, so the interface can
+        be the same on all platforms. Platforms that don't support DATACUE_VALUE will
+        just never have any value. Also remove custom annotations.
+
+2016-12-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement the updated port/area-based Scroll Snap Module Level 1 Spec
+        https://bugs.webkit.org/show_bug.cgi?id=165317
+        <rdar://problem/29490956>
+
+        Reviewed by Dean Jackson.
+
+        Implements the changes drafted in the latest iteration of the Scroll Snap Module Level 1 spec, which uses a
+        snap-area and snap-port-based method for determining snap positions in a scroll snapping container.
+        Additionally, removes the now-obsolete and prefixed implementation of the scroll snap spec and refactors all
+        affected layout tests to use the new CSS properties. Also adds new layout tests covering some behaviors detailed
+        in the new version of the spec, such as scroll snapping with transformed child elements.
+
+        See below for more detailed descriptions of the changes.
+
+        Tests: css3/scroll-snap/scroll-snap-2d-change-axis-type.html
+               css3/scroll-snap/scroll-snap-2d-offsets-computed-independently.html
+               css3/scroll-snap/scroll-snap-children-with-scroll-snap-margin.html
+               css3/scroll-snap/scroll-snap-children-with-transforms.html
+               css3/scroll-snap/scroll-snap-positions-mainframe.html
+               css3/scroll-snap/scroll-snap-positions-overflow-resize.html
+               css3/scroll-snap/scroll-snap-positions.html
+               css3/scroll-snap/scroll-snap-style-changed-align.html
+               css3/scroll-snap/scroll-snap-with-scroll-padding.html
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSCalculationValue.cpp:
+        (WebCore::hasDoubleValue):
+
+        Removed use of length repeat.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::valueForScrollSnapType):
+        (WebCore::valueForScrollSnapAlignment):
+        (WebCore::ComputedStyleExtractor::propertyValue):
+        (WebCore::scrollSnapDestination): Deleted.
+        (WebCore::scrollSnapPoints): Deleted.
+        (WebCore::scrollSnapCoordinates): Deleted.
+
+        Removed helper functions used to create CSS values for scroll snap coordinates and destination, and added
+        helpers for computed scroll snap type (a combination of axis and strictness values) as well as scroll snap align
+        (an alignment value per axis).
+
+        * css/CSSPrimitiveValue.cpp:
+        (WebCore::isValidCSSUnitTypeForDoubleConversion):
+        (WebCore::isStringType):
+        (WebCore::CSSPrimitiveValue::cleanup):
+        (WebCore::CSSPrimitiveValue::formatNumberForCustomCSSText):
+        (WebCore::CSSPrimitiveValue::cloneForCSSOM):
+        (WebCore::CSSPrimitiveValue::equals):
+
+        Removed usages of the length repeat type, since repeat(*) is no longer being used anywhere.
+
+        * css/CSSPrimitiveValue.h:
+        * css/CSSPrimitiveValueMappings.h:
+        (WebCore::CSSPrimitiveValue::CSSPrimitiveValue):
+        (WebCore::CSSPrimitiveValue::operator ScrollSnapStrictness):
+        (WebCore::CSSPrimitiveValue::operator ScrollSnapAxis):
+        (WebCore::CSSPrimitiveValue::operator ScrollSnapAxisAlignType):
+        (WebCore::CSSPrimitiveValue::operator ScrollSnapType): Deleted.
+
+        Added CSSPrimitiveValue mappings to ScrollSnapAxisAlignType, ScrollSnapStrictness, and ScrollSnapAxis. Removed
+        the old ScrollSnapType mapping.
+
+        * css/CSSProperties.json:
+
+        Replaced the old scroll snap CSS properties with the new ones. Note that scroll-snap-margin and scroll-padding
+        have 4 shorthands each, for the individual top/bottom/left/right values.
+
+        * css/CSSValueKeywords.in:
+
+        Added CSS keywords {x, y}, which are necessary to support the new scroll snapping properties.
+
+        * css/LengthRepeat.h: Removed.
+
+        Removed LengthRepeat entirely. This represented the `repeat(<length>)` CSS value, which was only used for the
+        scroll-snap-points-x and scroll-snap-points-y values.
+
+        * css/StyleBuilderConverter.h:
+        (WebCore::StyleBuilderConverter::convertScrollSnapType):
+        (WebCore::StyleBuilderConverter::convertScrollSnapAlign):
+        (WebCore::StyleBuilderConverter::parseSnapCoordinate): Deleted.
+        (WebCore::StyleBuilderConverter::convertScrollSnapPoints): Deleted.
+        (WebCore::StyleBuilderConverter::convertSnapCoordinatePair): Deleted.
+        (WebCore::StyleBuilderConverter::convertScrollSnapCoordinates): Deleted.
+
+        Added helper functions to convert scroll snap type and scroll snap alignment from parsed CSS values to their
+        primary representation in WebCore as ScrollSnapType and ScrollSnapAlign. These methods assume that the given
+        CSS values have successfully cleared the parsing step and are represented as CSSValueLists or length 1 or 2.
+
+        * css/StyleBuilderCustom.h:
+        (WebCore::StyleBuilderCustom::applyInitialWebkitScrollSnapPointsX): Deleted.
+        (WebCore::StyleBuilderCustom::applyInheritWebkitScrollSnapPointsX): Deleted.
+        (WebCore::StyleBuilderCustom::applyInitialWebkitScrollSnapPointsY): Deleted.
+        (WebCore::StyleBuilderCustom::applyInheritWebkitScrollSnapPointsY): Deleted.
+        * css/StyleProperties.cpp:
+        (WebCore::StyleProperties::getPropertyValue):
+        (WebCore::StyleProperties::asText):
+
+        Adds support for the scroll-snap-margin and scroll-padding.
+
+        * css/parser/CSSParser.cpp:
+        (WebCore::isValidKeywordPropertyAndValue):
+        (WebCore::CSSParser::parseValue):
+        (WebCore::isScrollSnapAxisAlign):
+        (WebCore::isScrollSnapStrictness):
+        (WebCore::CSSParser::parseScrollSnapAlign):
+        (WebCore::CSSParser::parseScrollSnapType):
+        (WebCore::CSSParser::parseNonElementSnapPoints): Deleted.
+        (WebCore::CSSParser::parseScrollSnapPositions): Deleted.
+        (WebCore::CSSParser::parseScrollSnapDestination): Deleted.
+        (WebCore::CSSParser::parseScrollSnapCoordinate): Deleted.
+        * css/parser/CSSParser.h:
+
+        Removed references to LengthRepeat, and added support for parsing new scroll snapping properties. Scroll snap
+        margin and scroll padding, along with their shorthands, are parsed using the same helper functions as normal
+        margin and padding. For type and align, I added new helper functions that build up lists of 1 or 2
+        CSSPrimitiveValues for each of the properties.
+
+        Parsing scroll-snap-align is straightforward -- we either have one or two values in the set {none, start,
+        center, end}. For scroll-snap-type, we allow a single axis value {x, y, inline, block, both}, or a single
+        strictness value {none, proximity, mandatory}, or an axis value followed by a non-'none' strictness (i.e. either
+        proximity or mandatory).
+
+        * css/parser/CSSParserFastPaths.cpp:
+        (WebCore::CSSParserFastPaths::isValidKeywordPropertyAndValue):
+        (WebCore::CSSParserFastPaths::isKeywordPropertyID):
+        * css/parser/CSSParserValues.cpp:
+        (WebCore::CSSParserValue::createCSSValue):
+
+        Removed references to LengthRepeat.
+
+        * css/parser/CSSPropertyParser.cpp:
+        (WebCore::CSSPropertyParser::parseSingleValue):
+        (WebCore::CSSPropertyParser::parseShorthand):
+        (WebCore::consumeSnapPointCoordinateList): Deleted.
+        (WebCore::consumeScrollSnapCoordinate): Deleted.
+        (WebCore::consumeScrollSnapDestination): Deleted.
+        (WebCore::consumeScrollSnapPoints): Deleted.
+        (WebCore::consumeScrollSnapAlign):
+        (WebCore::consumeScrollSnapType):
+        (WebCore::CSSPropertyParser::parseSingleValue):
+
+        Added parsing for the longhand properties of scroll-snap-margin and scroll-padding, which use the existing
+        consumeLength and consumeLengthOrPercent helpers, respectively. Removed code for parsing scroll snap
+        coordinates, destinations and points. Added parsing logic for align and type.
+
+        * page/scrolling/AxisScrollSnapOffsets.cpp:
+        (WebCore::computeScrollSnapPortOrAreaRect):
+        (WebCore::computeScrollSnapAlignOffset):
+        (WebCore::snapOffsetsToString):
+        (WebCore::snapPortOrAreaToString):
+        (WebCore::updateSnapOffsetsForScrollableArea):
+        (WebCore::appendChildSnapOffsets): Deleted.
+        (WebCore::destinationOffsetForViewSize): Deleted.
+        (WebCore::updateFromStyle): Deleted.
+        (WebCore::styleUsesElements): Deleted.
+
+        Overhauled updateSnapOffsetsForScrollableArea to work with the new scroll snapping model. In the new way of
+        computing scroll snap offsets, we:
+
+        Compute the scroll container's scroll snap port, which is the padding box inset by the scroll padding
+        For each child with snap positions (i.e. scroll-snap-align is not none on both axes)
+          Compute the child's scroll snap area, which is the bounding box of the transformed border box
+            If the container snaps along the horizontal axis and the snap area contributes a horizontal snap offset:
+              Emit the distance from the alignment offset in the horizontal of the snap port to the corresponding offset
+              in the snap area as a snap position.
+            If the container snaps along the vertical axis and the snap area contributes a vertical snap offset:
+              Emit the distance from the alignment offset in the vertical of the snap port to the corresponding offset
+              in the snap area as a snap position.
+        For the snap offsets in each axis, if there is at least one snap offset:
+          Clamp the offsets to the min and max scroll offsets
+          Ensure that the offsets are sorted and do not contain duplicated offsets
+
+        * platform/cocoa/ScrollController.mm:
+        (WebCore::ScrollController::updateScrollSnapState):
+
+        Clear out the ScrollController's snap offsets and state along an axis when its ScrollableArea no longer has snap
+        offsets in that axis.
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::styleWillChange):
+        (WebCore::RenderBox::willBeRemovedFromTree):
+        * rendering/RenderLayerModelObject.cpp:
+        (WebCore::scrollSnapContainerRequiresUpdateForStyleUpdate):
+        (WebCore::RenderLayerModelObject::styleDidChange):
+        * rendering/RenderView.cpp:
+        (WebCore::RenderView::registerBoxWithScrollSnapPositions):
+        (WebCore::RenderView::unregisterBoxWithScrollSnapPositions):
+        (WebCore::RenderView::registerBoxWithScrollSnapCoordinates): Deleted.
+        (WebCore::RenderView::unregisterBoxWithScrollSnapCoordinates): Deleted.
+        * rendering/RenderView.h:
+
+        Tweaked the scroll snap child registration logic. registerBoxWithScrollSnapCoordinates is renamed to
+        unregisterBoxWithScrollSnapPositions, since the notion of scroll snap coordinates no longer exists, and instead
+        of checking if the list of scroll snap coordinates is empty for the absence of scroll positions, we instead
+        check for a computed scroll snap align that is not none on both axes.
+
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::initialScrollSnapType):
+        (WebCore::RenderStyle::initialScrollSnapAlign):
+        (WebCore::RenderStyle::scrollSnapArea):
+        (WebCore::RenderStyle::scrollSnapPort):
+        (WebCore::RenderStyle::scrollSnapType):
+        (WebCore::RenderStyle::scrollPadding):
+        (WebCore::RenderStyle::scrollPaddingTop):
+        (WebCore::RenderStyle::scrollPaddingBottom):
+        (WebCore::RenderStyle::scrollPaddingLeft):
+        (WebCore::RenderStyle::scrollPaddingRight):
+        (WebCore::RenderStyle::scrollSnapAlign):
+        (WebCore::RenderStyle::scrollSnapMargin):
+        (WebCore::RenderStyle::scrollSnapMarginTop):
+        (WebCore::RenderStyle::scrollSnapMarginBottom):
+        (WebCore::RenderStyle::scrollSnapMarginLeft):
+        (WebCore::RenderStyle::scrollSnapMarginRight):
+        (WebCore::RenderStyle::setScrollSnapType):
+        (WebCore::RenderStyle::setScrollPaddingTop):
+        (WebCore::RenderStyle::setScrollPaddingBottom):
+        (WebCore::RenderStyle::setScrollPaddingLeft):
+        (WebCore::RenderStyle::setScrollPaddingRight):
+        (WebCore::RenderStyle::setScrollSnapAlign):
+        (WebCore::RenderStyle::setScrollSnapMarginTop):
+        (WebCore::RenderStyle::setScrollSnapMarginBottom):
+        (WebCore::RenderStyle::setScrollSnapMarginLeft):
+        (WebCore::RenderStyle::setScrollSnapMarginRight):
+        (WebCore::RenderStyle::initialScrollSnapDestination): Deleted.
+        (WebCore::RenderStyle::initialScrollSnapCoordinates): Deleted.
+        (WebCore::RenderStyle::scrollSnapPointsX): Deleted.
+        (WebCore::RenderStyle::scrollSnapPointsY): Deleted.
+        (WebCore::RenderStyle::scrollSnapDestination): Deleted.
+        (WebCore::RenderStyle::scrollSnapCoordinates): Deleted.
+        (WebCore::RenderStyle::setScrollSnapPointsX): Deleted.
+        (WebCore::RenderStyle::setScrollSnapPointsY): Deleted.
+        (WebCore::RenderStyle::setScrollSnapDestination): Deleted.
+        (WebCore::RenderStyle::setScrollSnapCoordinates): Deleted.
+        * rendering/style/RenderStyle.h:
+        (WebCore::RenderStyle::initialScrollSnapMargin):
+        (WebCore::RenderStyle::initialScrollPadding):
+        (WebCore::RenderStyle::scrollSnapType): Deleted.
+        (WebCore::RenderStyle::setScrollSnapType): Deleted.
+        (WebCore::RenderStyle::initialScrollSnapType): Deleted.
+        (WebCore::RenderStyle::initialScrollSnapPointsX): Deleted.
+        (WebCore::RenderStyle::initialScrollSnapPointsY): Deleted.
+
+        Added boilerplate code for returning various new scroll snap style properties, and removed similar code for
+        handling the old scroll snap properties.
+
+        * rendering/style/RenderStyleConstants.h:
+
+        Added three new enum classes:
+        - ScrollSnapStrictness represents the strictness of scroll snapping along one or both axes
+        - ScrollSnapAxis designates the axes along which scroll snapping should occur
+        - ScrollSnapAxisAlignType indicates which offsets along the x or y axes of the snap port and snap area should be
+          used to compute the snap position emitted by a snap area.
+
+        * rendering/style/StyleRareNonInheritedData.cpp:
+        (WebCore::StyleRareNonInheritedData::StyleRareNonInheritedData):
+        (WebCore::StyleRareNonInheritedData::operator==):
+        * rendering/style/StyleRareNonInheritedData.h:
+
+        Replaces the StyleScrollSnapPoints object (which, confusingly, was in charge of storing both the scroll
+        container's and child elements' scroll snap styles) with StyleScrollSnapPort and StyleScrollSnapArea objects,
+        which keep track of the style properties on the scroll container and the child element, respectively.
+
+        * rendering/style/StyleScrollSnapPoints.h:
+        (WebCore::operator==):
+        (WebCore::StyleScrollSnapPort::copy):
+        (WebCore::StyleScrollSnapPort::StyleScrollSnapPort):
+        (WebCore::StyleScrollSnapArea::copy):
+        (WebCore::StyleScrollSnapArea::StyleScrollSnapArea):
+        * rendering/style/StyleScrollSnapping.h: Added.
+        (WebCore::operator!=):
+        (WebCore::StyleScrollSnapPort::create):
+        (WebCore::StyleScrollSnapArea::create):
+        (WebCore::StyleScrollSnapArea::hasSnapPosition):
+
+        Overhauled StyleScrollSnapPoints, breaking the logic here into two classes: StyleScrollSnapPort for the scroll
+        container, handling the properties `scroll-snap-type` and `scroll-padding` and StyleScrollSnapArea for child
+        elements, handling the properties `scroll-snap-align` and `scroll-snap-margin`. The ScrollSnapType itself is
+        composed of an axis value and a strictness, while a ScrollSnapAlign keeps track of the alignment modes in each
+        axis. By default, these are initialized to {Both, None} and {None, None}, respectively. The rest of the logic is
+        boilerplate code for comparing these style objects to one another and copying style representations.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::scrollSnapOffsets):
+
+        Perform a layout on the document if needed before returning the list of computed snap offsets. The absence of
+        this layout pass was causing some layout tests in css3/scroll-snap/ to flake when testing that programmatic
+        changes to the scroll snap style properties change the computed snap offsets.
+
+2016-12-19  Dean Jackson  <dino@apple.com>
+
+        Use ENABLE() in place of ENABLE_CSS_SELECTORS_LEVEL4
+        https://bugs.webkit.org/show_bug.cgi?id=166043
+        <rdar://problems/29743655>
+
+        Reviewed by Alex Christensen.
+
+        This doesn't compile unless the ENABLE_CSS_SELECTORS_LEVEL4 is defined.
+
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::matchRecursively):
+        * css/SelectorFilter.cpp:
+        (WebCore::SelectorFilter::collectIdentifierHashes):
+        * css/parser/CSSSelectorParser.cpp:
+        (WebCore::isOnlyPseudoClassFunction):
+        (WebCore::CSSSelectorParser::consumePseudo):
+        (WebCore::CSSSelectorParser::consumeCombinator):
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::fragmentRelationForSelectorRelation):
+
+2016-12-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix Windows Debug build part 2
+        https://bugs.webkit.org/show_bug.cgi?id=166035
+
+        Ensured that this patch passes the build on the GTK port.
+
+        * rendering/RenderElement.cpp:
+        * rendering/RenderElement.h:
+
+2016-12-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix Windows Debug build
+        https://bugs.webkit.org/show_bug.cgi?id=166035
+
+        The size of SameSizeAsRenderElement should be in sync with sizeof(RenderElement).
+
+        * rendering/RenderElement.cpp:
+
+2016-12-20  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        WebRTC: RTCPeerConnection constructor argument should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=164057
+
+        Reviewed by Youenn Fablet.
+
+        Modify RTCPeerConnection JSBuiltin constructor to allow RTCPeerConfiguration
+        argument to be optional.
+
+        Update existing tests.
+
+        * Modules/mediastream/RTCPeerConnection.js:
+        (initializeRTCPeerConnection):
+
+2016-12-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable ES6 Modules
+        https://bugs.webkit.org/show_bug.cgi?id=165849
+
+        Reviewed by Geoffrey Garen.
+
+        * dom/ScriptElement.cpp:
+        (WebCore::ScriptElement::determineScriptType):
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttribute):
+        * page/Settings.in:
+
 2016-12-17  Sam Weinig  <sam@webkit.org>
 
         Remove a few trivial custom bindings

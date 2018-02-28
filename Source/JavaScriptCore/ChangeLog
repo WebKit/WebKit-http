@@ -1,3 +1,399 @@
+2016-12-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Fix modules document in features.json
+        https://bugs.webkit.org/show_bug.cgi?id=166313
+
+        Reviewed by Saam Barati.
+
+        * features.json:
+
+2016-12-20  Taras Tsugrii  <ttsugrii@fb.com>
+
+        Fix undefined behavior caused by macro expansion producing 'defined'
+        https://bugs.webkit.org/show_bug.cgi?id=166047
+
+        Reviewed by Darin Adler.
+
+        * API/JSBase.h:
+
+2016-12-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for global
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds spport for the global property on the global object.
+        The global property spec is in stage three and is quite simple.
+        For reference: http://tc39.github.io/proposal-global/
+
+        * runtime/JSGlobalObject.cpp:
+
+2016-12-20  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: We should compile wasm functions in parallel
+        https://bugs.webkit.org/show_bug.cgi?id=165993
+
+        Reviewed by Keith Miller.
+
+        This patch adds a very simple parallel compiler for Wasm code.
+        This patch speeds up compiling the Unity headless benchmark by
+        slightly more than 4x on my MBP. To make this safe, I perform
+        all linking on the main thread. I also had to change some code
+        inside Wasmb3IRGenerator to be thread safe.
+
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::WasmBoundsCheckCustom::generate):
+        * b3/air/AirGenerationContext.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitExceptionCheck):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::setupFrameInPrologue):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::parseAndValidateModule):
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmPlan.h:
+
+2016-12-20  Brent Fulgham  <bfulgham@apple.com>
+
+        Address some style problems found by static analysis
+        https://bugs.webkit.org/show_bug.cgi?id=165975
+
+        Reviewed by Alex Christensen.
+
+        Correct the const-correctness of functions that are implemented using stricter
+        const declarations.
+
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/agents/InspectorHeapAgent.cpp:
+        * inspector/agents/InspectorHeapAgent.h:
+        * inspector/agents/InspectorRuntimeAgent.h:
+        * inspector/agents/InspectorScriptProfilerAgent.cpp:
+        * inspector/agents/InspectorScriptProfilerAgent.h:
+        * inspector/scripts/codegen/cpp_generator.py:
+        (cpp_type_for_unchecked_formal_in_parameter): Update to match const declarations of
+        implementation files.
+        * inspector/scripts/tests/expected/commands-with-optional-call-return-parameters.json-result:
+        Rebaselined results for "const Ptr* const" syntax.
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: construct 32-bit encodedJSValue properly
+        https://bugs.webkit.org/show_bug.cgi?id=166199
+
+        Reviewed by Mark Lam.
+
+        Constructing an encodedJSValue using `{ }` yields the wrong value
+        on 32-bit platforms. WebAssembly doesn't currently target 32-bit
+        platforms, but we may as well get it right.
+
+        * wasm/JSWebAssembly.cpp:
+        (JSC::webAssemblyCompileFunc):
+        (JSC::webAssemblyValidateFunc):
+        * wasm/js/JSWebAssemblyHelpers.h:
+        (JSC::toNonWrappingUint32):
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::constructJSWebAssemblyTable):
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::webAssemblyTableProtoFuncLength):
+        (JSC::webAssemblyTableProtoFuncGrow):
+        (JSC::webAssemblyTableProtoFuncGet):
+        (JSC::webAssemblyTableProtoFuncSet):
+
+2016-12-20  Dean Jackson  <dino@apple.com>
+
+        Remove INDIE_UI
+        https://bugs.webkit.org/show_bug.cgi?id=165881
+        <rdar://problem/29672532>
+
+        Reviewed by Simon Fraser.
+
+        The Indie UI work has been discontinued.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement WebAssembly.LinkError
+        https://bugs.webkit.org/show_bug.cgi?id=165805
+        <rdar://problem/29747874>
+
+        Reviewed by Mark Lam.
+
+        As described here: https://github.com/WebAssembly/design/pull/901
+        Some TypeError and RangeError are now converted to WebAssembly.LinkError.
+
+        * CMakeLists.txt: add files
+        * DerivedSources.make: add autoget .lut.h files
+        * JavaScriptCore.xcodeproj/project.pbxproj: add files
+        * builtins/BuiltinNames.h: new name LinkError
+        * runtime/JSGlobalObject.h: auto-register LinkError using existing macro magic
+        * wasm/JSWebAssembly.h: make the new includes available
+        * wasm/js/JSWebAssemblyLinkError.cpp: Copied from Source/JavaScriptCore/wasm/JSWebAssemblyCompileError.cpp.
+        (JSC::JSWebAssemblyLinkError::create):
+        (JSC::JSWebAssemblyLinkError::JSWebAssemblyLinkError):
+        (JSC::createWebAssemblyLinkError):
+        * wasm/js/JSWebAssemblyLinkError.h: Copied from Source/JavaScriptCore/wasm/JSWebAssemblyCompileError.h.
+        (JSC::JSWebAssemblyLinkError::create):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp: update as per spec change
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyCompileErrorConstructor.cpp.
+        (JSC::constructJSWebAssemblyLinkError):
+        (JSC::callJSWebAssemblyLinkError):
+        (JSC::WebAssemblyLinkErrorConstructor::create):
+        (JSC::WebAssemblyLinkErrorConstructor::createStructure):
+        (JSC::WebAssemblyLinkErrorConstructor::finishCreation):
+        (JSC::WebAssemblyLinkErrorConstructor::WebAssemblyLinkErrorConstructor):
+        (JSC::WebAssemblyLinkErrorConstructor::getConstructData):
+        (JSC::WebAssemblyLinkErrorConstructor::getCallData):
+        * wasm/js/WebAssemblyLinkErrorConstructor.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyCompileErrorConstructor.h.
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp: Copied from Source/JavaScriptCore/wasm/WebAssemblyCompileErrorPrototypr.cpp.
+        (JSC::WebAssemblyLinkErrorPrototype::create):
+        (JSC::WebAssemblyLinkErrorPrototype::createStructure):
+        (JSC::WebAssemblyLinkErrorPrototype::finishCreation):
+        (JSC::WebAssemblyLinkErrorPrototype::WebAssemblyLinkErrorPrototype):
+        * wasm/js/WebAssemblyLinkErrorPrototype.h: Copied from Source/JavaScriptCore/wasm/WebAssemblyCompileErrorPrototypr.h.
+        * wasm/js/WebAssemblyModuleRecord.cpp: update as per spec change
+        (JSC::dataSegmentFail):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2016-12-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: unique function signatures
+        https://bugs.webkit.org/show_bug.cgi?id=165957
+        <rdar://problem/29735737>
+
+        Reviewed by Saam Barati.
+
+        Signatures in a Module's Type section can be duplicated, we
+        therefore need to unique them so that call_indirect only needs to
+        do a single integer compare to check that a callee's Signature is
+        the same as the Signature declared at the call site. Without
+        uniquing we'd either trap when duplicate Signatures are used, or
+        we'd need to do multiple comparisons. This patch makes that narrow
+        usecase function correctly.
+
+        There's further complication when calling from wasm to
+        wasm, in which case the Signatures must also match. Such
+        cross-instance calls will be improved in bug #165282, but this
+        patch sets the groundwork for it:
+
+        - Signatures are now owned by SignatureInformation which lives on
+          VM, and is shared by all Modules.
+        - When parsing a Module, a Signature is created for every Type
+          entry, and then uniqued by SignatureInformation's adopt
+          method. Duplicate Signatures are dropped and the previous
+          SignatureIndex is returned, new Signatures are adopted and a new
+          SignatureIndex is created.
+        - The SignatureIndex values are monotonic. 0 is used to represent
+          invalid indices, which trap. This can only occur through Table.
+        - SignatureInformation is used while generating code to map a
+          SignatureIndex back to the Signature* when return / argument
+          information is needed. This is a simple lookup into a Vector. It
+          isn't used at runtime.
+        - These Signatures live forever on VM because the bookkeeping
+          likely isn't worth it. We may want to empty things out if all
+          Modules die, this is tracked in bug #166037.
+        - We can further improve things by bit-packing SignatureIndex with
+          Code*, which is tracked by bug #165511.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/VM.h: wasm signatures are uniqued here, but aren't accessed frequently (only during parsing) so indirection is fine
+        * wasm/WasmB3IRGenerator.cpp: use SignatureIndex instead of Signature* when appropriate, and when still using Signature* do so with its new API
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::importStubGenerator): use SignatureIndex
+        * wasm/WasmBinding.h:
+        * wasm/WasmCallingConvention.h:
+        (JSC::Wasm::CallingConvention::loadArguments):
+        * wasm/WasmFormat.cpp: drive-by move of alloc/free functions to the implementation file, allows the .h file to drop an FastMalloc.h
+        (JSC::Wasm::Segment::create):
+        (JSC::Wasm::Segment::destroy):
+        (JSC::Wasm::Segment::createPtr):
+        * wasm/WasmFormat.h: move Signature to its own file
+        (JSC::Wasm::CallableFunction::CallableFunction):
+        * wasm/WasmFunctionParser.h:
+        (JSC::Wasm::FunctionParser<Context>::FunctionParser):
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmModuleParser.h:
+        (JSC::Wasm::ModuleParser::ModuleParser):
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser<SuccessType>::Parser):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::parseAndValidateModule):
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmSignature.cpp: Added.
+        (JSC::Wasm::Signature::dump):
+        (JSC::Wasm::Signature::hash):
+        (JSC::Wasm::Signature::create):
+        (JSC::Wasm::Signature::createInvalid):
+        (JSC::Wasm::Signature::destroy):
+        (JSC::Wasm::SignatureInformation::~SignatureInformation):
+        (JSC::Wasm::SignatureInformation::adopt):
+        (JSC::Wasm::SignatureInformation::get):
+        * wasm/WasmSignature.h: Added.
+        (JSC::Wasm::Signature::Signature):
+        (JSC::Wasm::Signature::storage):
+        (JSC::Wasm::Signature::allocatedSize):
+        (JSC::Wasm::Signature::returnType):
+        (JSC::Wasm::Signature::returnCount):
+        (JSC::Wasm::Signature::argumentCount):
+        (JSC::Wasm::Signature::argument):
+        (JSC::Wasm::Signature::operator==):
+        (JSC::Wasm::SignatureHash::empty):
+        (JSC::Wasm::SignatureHash::deleted):
+        (JSC::Wasm::SignatureHash::SignatureHash):
+        (JSC::Wasm::SignatureHash::operator==):
+        (JSC::Wasm::SignatureHash::equal):
+        (JSC::Wasm::SignatureHash::hash):
+        (JSC::Wasm::SignatureHash::isHashTableDeletedValue):
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::validateFunction):
+        * wasm/WasmValidate.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::signatureForFunctionIndexSpace):
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::JSWebAssemblyTable):
+        (JSC::JSWebAssemblyTable::clearFunction):
+        (JSC::JSWebAssemblyTable::setFunction):
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        (JSC::WebAssemblyFunction::call):
+        (JSC::WebAssemblyFunction::create):
+        (JSC::WebAssemblyFunction::WebAssemblyFunction):
+        (JSC::WebAssemblyFunction::finishCreation):
+        * wasm/js/WebAssemblyFunction.h:
+        (JSC::WebAssemblyFunction::signatureIndex):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2016-12-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Modernize for loops in JSC
+        https://bugs.webkit.org/show_bug.cgi?id=166060
+
+        Reviewed by Yusuke Suzuki.
+
+        * API/JSCallbackObject.h:
+        (JSC::JSCallbackObjectData::JSPrivatePropertyMap::visitChildren):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::stronglyVisitStrongReferences):
+        (JSC::CodeBlock::stronglyVisitWeakReferences):
+        (JSC::CodeBlock::jettison):
+        (JSC::CodeBlock::getArrayProfile):
+        (JSC::CodeBlock::tallyFrequentExitSites):
+        (JSC::CodeBlock::nameForRegister):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ObjectPatternNode::bindValue):
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::applyBreakpoints):
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::canonicalizeLocalsInBlock):
+        * dfg/DFGClobberSet.cpp:
+        (JSC::DFG::ClobberSet::setOf):
+        * dfg/DFGDesiredIdentifiers.cpp:
+        (JSC::DFG::DesiredIdentifiers::reallyAdd):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::visitChildren):
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::handleBlock):
+        * dfg/DFGIntegerRangeOptimizationPhase.cpp:
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGLICMPhase.cpp:
+        (JSC::DFG::LICMPhase::run):
+        * dfg/DFGMaximalFlushInsertionPhase.cpp:
+        (JSC::DFG::MaximalFlushInsertionPhase::treatRootBlock):
+        * dfg/DFGPutStackSinkingPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCurrentBlock):
+        (JSC::DFG::SpeculativeJIT::linkBranches):
+        * dfg/DFGStructureRegistrationPhase.cpp:
+        (JSC::DFG::StructureRegistrationPhase::run):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantStructureChecks):
+        (JSC::DFG::TypeCheckHoistingPhase::identifyRedundantArrayChecks):
+        * dfg/DFGValidate.cpp:
+        * dfg/DFGVirtualRegisterAllocationPhase.cpp:
+        (JSC::DFG::VirtualRegisterAllocationPhase::run):
+        * heap/HeapVerifier.cpp:
+        (JSC::trimDeadObjectsFromList):
+        (JSC::HeapVerifier::trimDeadObjects):
+        * heap/LiveObjectList.cpp:
+        (JSC::LiveObjectList::findObject):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::isPagedOut):
+        * inspector/ScriptCallStack.cpp:
+        (Inspector::ScriptCallStack::firstNonNativeCallFrame):
+        * jit/JIT.cpp:
+        (JSC::JIT::link):
+        * parser/VariableEnvironment.cpp:
+        (JSC::VariableEnvironment::markAllVariablesAsCaptured):
+        (JSC::VariableEnvironment::hasCapturedVariables):
+        * runtime/FunctionHasExecutedCache.cpp:
+        (JSC::FunctionHasExecutedCache::hasExecutedAtOffset):
+        (JSC::FunctionHasExecutedCache::getFunctionRanges):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::visitChildren):
+        * runtime/TypeProfiler.cpp:
+        (JSC::TypeProfiler::findLocation):
+        * runtime/TypeSet.cpp:
+        (JSC::TypeSet::addTypeInformation):
+        (JSC::TypeSet::dumpTypes):
+        * runtime/VM.cpp:
+        (JSC::VM::gatherConservativeRoots):
+        * runtime/WeakMapData.cpp:
+        (JSC::WeakMapData::DeadKeyCleaner::visitWeakReferences):
+        (JSC::WeakMapData::DeadKeyCleaner::finalizeUnconditionally):
+        * tools/ProfileTreeNode.h:
+        (JSC::ProfileTreeNode::dumpInternal):
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::ByteCompiler::emitDisjunction):
+
+2016-12-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        __cpuid() requires <intrin.h> to be included
+        https://bugs.webkit.org/show_bug.cgi?id=166051
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssemblerX86Common.h:
+
+2016-12-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable ES6 Modules
+        https://bugs.webkit.org/show_bug.cgi?id=165849
+
+        Reviewed by Geoffrey Garen.
+
+        * features.json:
+
 2016-12-19  Mark Lam  <mark.lam@apple.com>
 
         Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 2: Rollout r209952.

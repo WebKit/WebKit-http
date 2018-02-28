@@ -89,6 +89,9 @@ struct SameSizeAsRenderElement : public RenderObject {
     void* firstChild;
     void* lastChild;
     RenderStyle style;
+#if !ASSERT_DISABLED
+    bool reparentingChild;
+#endif
 };
 
 static_assert(sizeof(RenderElement) == sizeof(SameSizeAsRenderElement), "RenderElement should stay small");

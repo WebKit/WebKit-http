@@ -368,6 +368,11 @@ PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').hasOwnProperty('get
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'DOMTokenList').configurable is true
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').value is DataCue
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').hasOwnProperty('get') is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').hasOwnProperty('set') is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').enumerable is false
+PASS Object.getOwnPropertyDescriptor(global, 'DataCue').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'DataTransfer').value is DataTransfer
 PASS Object.getOwnPropertyDescriptor(global, 'DataTransfer').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'DataTransfer').hasOwnProperty('set') is false
@@ -2198,11 +2203,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').hasOwnProperty('get') is
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'UIEvent').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'UIRequestEvent').value is UIRequestEvent
-PASS Object.getOwnPropertyDescriptor(global, 'UIRequestEvent').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'UIRequestEvent').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'UIRequestEvent').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'UIRequestEvent').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'URIError').value is URIError
 PASS Object.getOwnPropertyDescriptor(global, 'URIError').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'URIError').hasOwnProperty('set') is false
@@ -2388,11 +2388,6 @@ PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSRegionRule').hasOwnProper
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSRegionRule').hasOwnProperty('set') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSRegionRule').enumerable is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitCSSRegionRule').configurable is true
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitDataCue').value is WebKitDataCue
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitDataCue').hasOwnProperty('get') is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitDataCue').hasOwnProperty('set') is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitDataCue').enumerable is false
-PASS Object.getOwnPropertyDescriptor(global, 'WebKitDataCue').configurable is true
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitMediaKeyError').value is WebKitMediaKeyError
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitMediaKeyError').hasOwnProperty('get') is false
 PASS Object.getOwnPropertyDescriptor(global, 'WebKitMediaKeyError').hasOwnProperty('set') is false

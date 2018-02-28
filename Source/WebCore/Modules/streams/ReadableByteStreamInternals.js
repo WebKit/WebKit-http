@@ -66,9 +66,10 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
         controller.@started = true;
         @assert(!controller.@pulling);
         @assert(!controller.@pullAgain);
-        // FIXME: Implement readableByteStreamControllerCallPullIfNeed.
+        @readableByteStreamControllerCallPullIfNeeded(controller);
     }, (error) => {
-        // FIXME: Implement readableByteStreamControllerError.
+        if (stream.@state === @streamReadable)
+            @readableByteStreamControllerError(controller, error);
     });
 
     this.@cancel = @readableByteStreamControllerCancel;
@@ -84,6 +85,16 @@ function isReadableByteStreamController(controller)
     // Same test mechanism as in isReadableStreamDefaultController (ReadableStreamInternals.js).
     // See corresponding function for explanations.
     return @isObject(controller) && !!controller.@underlyingByteSource;
+}
+
+function isReadableStreamBYOBReader(reader)
+{
+    "use strict";
+
+    // FIXME: Since BYOBReader is not yet implemented, always return false.
+    // To be implemented at the same time as BYOBReader (see isReadableStreamDefaultReader
+    // to apply same model).
+    return false;
 }
 
 function readableByteStreamControllerCancel(controller, reason)
@@ -142,4 +153,65 @@ function readableByteStreamControllerGetDesiredSize(controller)
    "use strict";
 
    return controller.@strategyHWM - controller.@totalQueuedBytes;
+}
+
+function readableStreamHasBYOBReader(stream)
+{
+    "use strict";
+
+    return stream.@reader !== @undefined && @isReadableStreamBYOBReader(stream.@reader);
+}
+
+function readableStreamHasDefaultReader(stream)
+{
+    "use strict";
+
+    return stream.@reader !== @undefined && @isReadableStreamDefaultReader(stream.@reader);
+}
+
+function readableByteStreamControllerShouldCallPull(controller)
+{
+    "use strict";
+
+    const stream = controller.@controlledReadableStream;
+
+    if (stream.@state !== @streamReadable)
+        return false;
+    if (controller.@closeRequested)
+        return false;
+    if (!controller.@started)
+        return false;
+    if (@readableStreamHasDefaultReader(stream) && stream.@reader.@readRequests > 0)
+        return true;
+    if (@readableStreamHasBYOBReader(stream) && stream.@reader.@readIntoRequests > 0)
+        return true;
+    if (@readableByteStreamControllerGetDesiredSize(controller) > 0)
+        return true;
+    return false;
+}
+
+function readableByteStreamControllerCallPullIfNeeded(controller)
+{
+    "use strict";
+
+    if (!@readableByteStreamControllerShouldCallPull(controller))
+        return;
+
+    if (controller.@pulling) {
+        controller.@pullAgain = true;
+        return;
+    }
+
+    @assert(!controller.@pullAgain);
+    controller.@pulling = true;
+    @promiseInvokeOrNoop(controller.@underlyingByteSource, "pull", [controller]).@then(() => {
+        controller.@pulling = false;
+        if (controller.@pullAgain) {
+            controller.@pullAgain = false;
+            @readableByteStreamControllerCallPullIfNeeded(controller);
+        }
+    }, (error) => {
+        if (controller.@controlledReadableStream.@state === @streamReadable)
+            @readableByteStreamControllerError(controller, error);
+    });
 }

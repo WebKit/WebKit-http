@@ -154,7 +154,7 @@ public:
 
     B3IRGenerator(VM&, const ModuleInformation&, Procedure&, WasmInternalFunction*, Vector<UnlinkedWasmToWasmCall>&, const ImmutableFunctionIndexSpace&);
 
-    PartialResult WARN_UNUSED_RETURN addArguments(const Vector<Type>&);
+    PartialResult WARN_UNUSED_RETURN addArguments(const Signature*);
     PartialResult WARN_UNUSED_RETURN addLocal(Type, uint32_t);
     ExpressionType addConstant(Type, uint64_t);
 
@@ -192,7 +192,7 @@ public:
 
     // Calls
     PartialResult WARN_UNUSED_RETURN addCall(uint32_t calleeIndex, const Signature*, Vector<ExpressionType>& args, ExpressionType& result);
-    PartialResult WARN_UNUSED_RETURN addCallIndirect(const Signature*, Vector<ExpressionType>& args, ExpressionType& result);
+    PartialResult WARN_UNUSED_RETURN addCallIndirect(const Signature*, SignatureIndex, Vector<ExpressionType>& args, ExpressionType& result);
     PartialResult WARN_UNUSED_RETURN addUnreachable();
 
     void dump(const Vector<ControlEntry>& controlStack, const ExpressionList& expressionStack);
@@ -257,12 +257,6 @@ B3IRGenerator::B3IRGenerator(VM& vm, const ModuleInformation& info, Procedure& p
             ASSERT_UNUSED(pinnedGPR, m_memorySizeGPR == pinnedGPR);
             this->emitExceptionCheck(jit, ExceptionType::OutOfBoundsMemoryAccess);
         });
-
-        B3::PatchpointValue* foo = m_currentBlock->appendNew<B3::PatchpointValue>(m_proc, B3::Void, Origin());
-        foo->setGenerator(
-            [=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
-                AllowMacroScratchRegisterUsage allowScratch(jit);
-            });
     }
 
     wasmCallingConvention().setupFrameInPrologue(&compilation->wasmCalleeMoveLocation, m_proc, Origin(), m_currentBlock);
@@ -277,7 +271,7 @@ void B3IRGenerator::emitExceptionCheck(CCallHelpers& jit, ExceptionType type)
     auto jumpToExceptionStub = jit.jump();
 
     VM* vm = &m_vm;
-    jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+    jit.addLinkTask([vm, jumpToExceptionStub] (LinkBuffer& linkBuffer) {
         linkBuffer.link(jumpToExceptionStub, CodeLocationLabel(vm->getCTIStub(throwExceptionFromWasmThunkGenerator).code()));
     });
 }
@@ -302,13 +296,13 @@ auto B3IRGenerator::addLocal(Type type, uint32_t count) -> PartialResult
     return { };
 }
 
-auto B3IRGenerator::addArguments(const Vector<Type>& types) -> PartialResult
+auto B3IRGenerator::addArguments(const Signature* signature) -> PartialResult
 {
     ASSERT(!m_locals.size());
-    WASM_COMPILE_FAIL_IF(!m_locals.tryReserveCapacity(types.size()), "can't allocate memory for ", types.size(), " arguments");
+    WASM_COMPILE_FAIL_IF(!m_locals.tryReserveCapacity(signature->argumentCount()), "can't allocate memory for ", signature->argumentCount(), " arguments");
 
-    m_locals.grow(types.size());
-    wasmCallingConvention().loadArguments(types, m_proc, m_currentBlock, Origin(),
+    m_locals.grow(signature->argumentCount());
+    wasmCallingConvention().loadArguments(signature, m_proc, m_currentBlock, Origin(),
         [&] (ExpressionType argument, unsigned i) {
             Variable* argumentVariable = m_proc.addVariable(argument->type());
             m_locals[i] = argumentVariable;
@@ -682,32 +676,34 @@ auto B3IRGenerator::addEndToUnreachable(ControlEntry& entry) -> PartialResult
 
 auto B3IRGenerator::addCall(uint32_t functionIndex, const Signature* signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
 {
-    ASSERT(signature->arguments.size() == args.size());
+    ASSERT(signature->argumentCount() == args.size());
 
-    Type returnType = signature->returnType;
+    Type returnType = signature->returnType();
 
     result = wasmCallingConvention().setupCall(m_proc, m_currentBlock, Origin(), args, toB3Type(returnType),
         [&] (PatchpointValue* patchpoint) {
             patchpoint->effects.writesPinned = true;
             patchpoint->effects.readsPinned = true;
 
-            patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+            Vector<UnlinkedWasmToWasmCall>* unlinkedWasmToWasmCalls = &m_unlinkedWasmToWasmCalls;
+            patchpoint->setGenerator([unlinkedWasmToWasmCalls, functionIndex] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
                 AllowMacroScratchRegisterUsage allowScratch(jit);
 
                 CCallHelpers::Call call = jit.call();
 
-                jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                    m_unlinkedWasmToWasmCalls.append({ linkBuffer.locationOf(call), functionIndex });
+                jit.addLinkTask([unlinkedWasmToWasmCalls, call, functionIndex] (LinkBuffer& linkBuffer) {
+                    unlinkedWasmToWasmCalls->append({ linkBuffer.locationOf(call), functionIndex });
                 });
             });
         });
     return { };
 }
 
-auto B3IRGenerator::addCallIndirect(const Signature* signature, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
+auto B3IRGenerator::addCallIndirect(const Signature* signature, SignatureIndex signatureIndex, Vector<ExpressionType>& args, ExpressionType& result) -> PartialResult
 {
+    ASSERT(signatureIndex != Signature::invalidIndex);
     ExpressionType calleeIndex = args.takeLast();
-    ASSERT(signature->arguments.size() == args.size());
+    ASSERT(signature->argumentCount() == args.size());
 
     ExpressionType callableFunctionBuffer;
     ExpressionType callableFunctionBufferSize;
@@ -736,13 +732,14 @@ auto B3IRGenerator::addCallIndirect(const Signature* signature, Vector<Expressio
         m_currentBlock->appendIntConstant(m_proc, Origin(), pointerType(), sizeof(CallableFunction)));
     ExpressionType callableFunction = m_currentBlock->appendNew<Value>(m_proc, Add, Origin(), callableFunctionBuffer, offset);
 
-    // Check that the CallableFunction is initialized. We trap if it isn't. A null Signature* indicates it's not initialized.
-    ExpressionType calleeSignature = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), Origin(), callableFunction, OBJECT_OFFSETOF(CallableFunction, signature));
+    // Check that the CallableFunction is initialized. We trap if it isn't. An "invalid" SignatureIndex indicates it's not initialized.
+    static_assert(sizeof(CallableFunction::signatureIndex) == sizeof(uint32_t), "Load codegen assumes i32");
+    ExpressionType calleeSignatureIndex = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, Int32, Origin(), callableFunction, OBJECT_OFFSETOF(CallableFunction, signatureIndex));
     {
         CheckValue* check = m_currentBlock->appendNew<CheckValue>(m_proc, Check, Origin(),
-            m_currentBlock->appendNew<Value>(m_proc, Equal, Origin(), 
-                calleeSignature, 
-                m_currentBlock->appendNew<ConstPtrValue>(m_proc, Origin(), 0)));
+            m_currentBlock->appendNew<Value>(m_proc, Equal, Origin(),
+                calleeSignatureIndex,
+                m_currentBlock->appendNew<Const32Value>(m_proc, Origin(), Signature::invalidIndex)));
 
         check->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
             this->emitExceptionCheck(jit, ExceptionType::NullTableEntry);
@@ -751,9 +748,9 @@ auto B3IRGenerator::addCallIndirect(const Signature* signature, Vector<Expressio
 
     // Check the signature matches the value we expect.
     {
-        ExpressionType expectedSignature = m_currentBlock->appendNew<ConstPtrValue>(m_proc, Origin(), signature);
+        ExpressionType expectedSignatureIndex = m_currentBlock->appendNew<Const32Value>(m_proc, Origin(), signatureIndex);
         CheckValue* check = m_currentBlock->appendNew<CheckValue>(m_proc, Check, Origin(),
-            m_currentBlock->appendNew<Value>(m_proc, NotEqual, Origin(), calleeSignature, expectedSignature));
+            m_currentBlock->appendNew<Value>(m_proc, NotEqual, Origin(), calleeSignatureIndex, expectedSignatureIndex));
 
         check->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
             this->emitExceptionCheck(jit, ExceptionType::BadSignature);
@@ -762,7 +759,7 @@ auto B3IRGenerator::addCallIndirect(const Signature* signature, Vector<Expressio
 
     ExpressionType calleeCode = m_currentBlock->appendNew<MemoryValue>(m_proc, Load, pointerType(), Origin(), callableFunction, OBJECT_OFFSETOF(CallableFunction, code));
 
-    Type returnType = signature->returnType;
+    Type returnType = signature->returnType();
     result = wasmCallingConvention().setupCall(m_proc, m_currentBlock, Origin(), args, toB3Type(returnType),
         [&] (PatchpointValue* patchpoint) {
             patchpoint->effects.writesPinned = true;
@@ -817,7 +814,7 @@ void B3IRGenerator::dump(const Vector<ControlEntry>& controlStack, const Express
     dataLogLn("\n");
 }
 
-static std::unique_ptr<B3::Compilation> createJSToWasmWrapper(VM& vm, WasmInternalFunction& function, const Signature* signature, MacroAssemblerCodePtr mainFunction, const MemoryInformation& memory)
+static void createJSToWasmWrapper(VM& vm, CompilationContext& compilationContext, WasmInternalFunction& function, const Signature* signature, const MemoryInformation& memory)
 {
     Procedure proc;
     BasicBlock* block = proc.addBlock();
@@ -834,7 +831,7 @@ static std::unique_ptr<B3::Compilation> createJSToWasmWrapper(VM& vm, WasmIntern
         Value* argumentCount = block->appendNew<MemoryValue>(proc, Load, Int32, origin,
             block->appendNew<Value>(proc, Add, origin, framePointer, offSetOfArgumentCount));
 
-        Value* expectedArgumentCount = block->appendNew<Const32Value>(proc, origin, signature->arguments.size());
+        Value* expectedArgumentCount = block->appendNew<Const32Value>(proc, origin, signature->argumentCount());
 
         CheckValue* argumentCountCheck = block->appendNew<CheckValue>(proc, Check, origin,
             block->appendNew<Value>(proc, Above, origin, expectedArgumentCount, argumentCount));
@@ -861,12 +858,12 @@ static std::unique_ptr<B3::Compilation> createJSToWasmWrapper(VM& vm, WasmIntern
 
     // Get our arguments.
     Vector<Value*> arguments;
-    jscCallingConvention().loadArguments(signature->arguments, proc, block, origin, [&] (Value* argument, unsigned) {
+    jscCallingConvention().loadArguments(signature, proc, block, origin, [&] (Value* argument, unsigned) {
         arguments.append(argument);
     });
 
     // Move the arguments into place.
-    Value* result = wasmCallingConvention().setupCall(proc, block, origin, arguments, toB3Type(signature->returnType), [&] (PatchpointValue* patchpoint) {
+    Value* result = wasmCallingConvention().setupCall(proc, block, origin, arguments, toB3Type(signature->returnType()), [&] (PatchpointValue* patchpoint) {
         if (!!memory) {
             ASSERT(sizes.size() == memory.pinnedRegisters().sizeRegisters.size());
             patchpoint->append(ConstrainedValue(baseMemory, ValueRep::reg(memory.pinnedRegisters().baseMemoryPointer)));
@@ -874,18 +871,17 @@ static std::unique_ptr<B3::Compilation> createJSToWasmWrapper(VM& vm, WasmIntern
                 patchpoint->append(ConstrainedValue(sizes[i], ValueRep::reg(memory.pinnedRegisters().sizeRegisters[i].sizeRegister)));
         }
 
-        patchpoint->setGenerator([=] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
+        CompilationContext* context = &compilationContext;
+        patchpoint->setGenerator([context] (CCallHelpers& jit, const B3::StackmapGenerationParams&) {
             AllowMacroScratchRegisterUsage allowScratch(jit);
 
             CCallHelpers::Call call = jit.call();
-            jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
-                linkBuffer.link(call, FunctionPtr(mainFunction.executableAddress()));
-            });
+            context->jsEntrypointToWasmEntrypointCall = call;
         });
     });
 
     // Return the result, if needed.
-    switch (signature->returnType) {
+    switch (signature->returnType()) {
     case Wasm::Void:
         block->appendNewControlValue(proc, B3::Return, origin);
         break;
@@ -902,18 +898,22 @@ static std::unique_ptr<B3::Compilation> createJSToWasmWrapper(VM& vm, WasmIntern
         RELEASE_ASSERT_NOT_REACHED();
     }
 
-    auto jsEntrypoint = std::make_unique<Compilation>(B3::compile(vm, proc));
+    B3::prepareForGeneration(proc);
+    B3::generate(proc, *compilationContext.jsEntrypointJIT);
+    compilationContext.jsEntrypointByproducts = proc.releaseByproducts();
     function.jsToWasmEntrypoint.calleeSaveRegisters = proc.calleeSaveRegisters();
-    return jsEntrypoint;
 }
 
-Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(VM& vm, const uint8_t* functionStart, size_t functionLength, const Signature* signature, Vector<UnlinkedWasmToWasmCall>& unlinkedWasmToWasmCalls, const ImmutableFunctionIndexSpace& functionIndexSpace, const ModuleInformation& info, unsigned optLevel)
+Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(VM& vm, CompilationContext& compilationContext, const uint8_t* functionStart, size_t functionLength, const Signature* signature, Vector<UnlinkedWasmToWasmCall>& unlinkedWasmToWasmCalls, const ImmutableFunctionIndexSpace& functionIndexSpace, const ModuleInformation& info, unsigned optLevel)
 {
     auto result = std::make_unique<WasmInternalFunction>();
 
+    compilationContext.jsEntrypointJIT = std::make_unique<CCallHelpers>(&vm);
+    compilationContext.wasmEntrypointJIT = std::make_unique<CCallHelpers>(&vm);
+
     Procedure procedure;
     B3IRGenerator context(vm, info, procedure, result.get(), unlinkedWasmToWasmCalls, functionIndexSpace);
-    FunctionParser<B3IRGenerator> parser(context, functionStart, functionLength, signature, functionIndexSpace, info);
+    FunctionParser<B3IRGenerator> parser(&vm, context, functionStart, functionLength, signature, functionIndexSpace, info);
     WASM_FAIL_IF_HELPER_FAILS(parser.parse());
 
     procedure.resetReachability();
@@ -925,10 +925,14 @@ Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(VM& vm, 
     if (verbose)
         dataLog("Post SSA: ", procedure);
 
-    result->wasmEntrypoint.compilation = std::make_unique<B3::Compilation>(B3::compile(vm, procedure, optLevel));
-    result->wasmEntrypoint.calleeSaveRegisters = procedure.calleeSaveRegisters();
+    {
+        B3::prepareForGeneration(procedure, optLevel);
+        B3::generate(procedure, *compilationContext.wasmEntrypointJIT);
+        compilationContext.wasmEntrypointByproducts = procedure.releaseByproducts();
+        result->wasmEntrypoint.calleeSaveRegisters = procedure.calleeSaveRegisters();
+    }
 
-    result->jsToWasmEntrypoint.compilation = createJSToWasmWrapper(vm, *result, signature, result->wasmEntrypoint.compilation->code(), info.memory);
+    createJSToWasmWrapper(vm, compilationContext, *result, signature, info.memory);
     return WTFMove(result);
 }
 

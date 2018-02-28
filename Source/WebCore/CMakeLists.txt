@@ -14,7 +14,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/indexeddb/client"
     "${WEBCORE_DIR}/Modules/indexeddb/server"
     "${WEBCORE_DIR}/Modules/indexeddb/shared"
-    "${WEBCORE_DIR}/Modules/indieui"
     "${WEBCORE_DIR}/Modules/mediacontrols/"
     "${WEBCORE_DIR}/Modules/mediasession"
     "${WEBCORE_DIR}/Modules/mediasource"
@@ -147,7 +146,6 @@ set(WebCore_IDL_INCLUDES
     Modules/fetch
     Modules/geolocation
     Modules/indexeddb
-    Modules/indieui
     Modules/mediasession
     Modules/mediastream
     Modules/notifications
@@ -203,8 +201,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/indexeddb/IDBTransactionMode.idl
     Modules/indexeddb/IDBVersionChangeEvent.idl
     Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl
-
-    Modules/indieui/UIRequestEvent.idl
 
     Modules/mediacontrols/MediaControlsHost.idl
 
@@ -1126,7 +1122,6 @@ set(WebCore_SOURCES
     bindings/js/JSDOMWindowProperties.cpp
     bindings/js/JSDOMWindowShell.cpp
     bindings/js/JSDOMWrapper.cpp
-    bindings/js/JSDataCueCustom.cpp
     bindings/js/JSDeviceMotionEventCustom.cpp
     bindings/js/JSDeviceOrientationEventCustom.cpp
     bindings/js/JSDocumentCustom.cpp
