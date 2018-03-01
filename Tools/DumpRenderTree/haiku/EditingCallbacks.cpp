@@ -65,11 +65,11 @@ static WTF::String dumpRange(WebCore::Range* range)
 static const char* insertActionString(WebCore::EditorInsertAction action)
 {
     switch (action) {
-    case WebCore::EditorInsertActionTyped:
+    case WebCore::EditorInsertAction::Typed:
         return "WebViewInsertActionTyped";
-    case WebCore::EditorInsertActionPasted:
+    case WebCore::EditorInsertAction::Pasted:
         return "WebViewInsertActionPasted";
-    case WebCore::EditorInsertActionDropped:
+    case WebCore::EditorInsertAction::Dropped:
         return "WebViewInsertActionDropped";
     }
     ASSERT_NOT_REACHED();

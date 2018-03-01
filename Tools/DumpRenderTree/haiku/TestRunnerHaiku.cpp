@@ -626,6 +626,11 @@ unsigned TestRunner::imageCountInGeneralPasteboard() const
     return 0;
 }
 
+void TestRunner::setSpellCheckerLoggingEnabled(bool enabled)
+{
+    printf("ERROR: TestRunner::setSpellCheckerLoggingEnabled() not implemented\n");
+}
+
 void TestRunner::resetPageVisibility()
 {
     notImplemented();

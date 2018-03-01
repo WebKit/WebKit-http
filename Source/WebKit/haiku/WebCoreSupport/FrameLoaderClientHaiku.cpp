@@ -373,11 +373,11 @@ void FrameLoaderClientHaiku::dispatchDidReceiveTitle(const StringWithDirection& 
         return;
     }
 
-    m_webFrame->SetTitle(title.string());
+    m_webFrame->SetTitle(title.string);
 
     BMessage message(TITLE_CHANGED);
-    message.AddString("title", title.string());
-    message.AddBool("ltr", isLeftToRightDirection(title.direction()));
+    message.AddString("title", title.string);
+    message.AddBool("ltr", isLeftToRightDirection(title.direction));
     dispatchMessage(message);
 }
 

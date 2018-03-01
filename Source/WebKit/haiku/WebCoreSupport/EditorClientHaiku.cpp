@@ -126,7 +126,7 @@ bool EditorClientHaiku::shouldInsertNode(Node* node, Range* range, EditorInsertA
     BMessage message(EDITOR_INSERT_NODE);
     message.AddPointer("node", node);
     message.AddPointer("range", range);
-    message.AddInt32("action", action);
+    message.AddInt32("action", (int32)action);
     dispatchMessage(message);
     return true;
 }
@@ -136,7 +136,7 @@ bool EditorClientHaiku::shouldInsertText(const String& text, Range* range, Edito
     BMessage message(EDITOR_INSERT_TEXT);
     message.AddString("text", text);
     message.AddPointer("range", range);
-    message.AddInt32("action", action);
+    message.AddInt32("action", (int32)action);
     dispatchMessage(message);
     return true;
 }
