@@ -39,6 +39,7 @@
 #include "HTMLNames.h"
 #include "HTMLParagraphElement.h"
 #include "HTMLProgressElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HTMLTextFormControlElement.h"
 #include "InlineTextBox.h"
@@ -340,23 +341,6 @@ void TextIteratorCopyableText::appendToStringBuilder(StringBuilder& builder) con
 
 TextIterator::TextIterator(const Range* range, TextIteratorBehavior behavior)
     : m_behavior(behavior)
-    , m_handledNode(false)
-    , m_handledChildren(false)
-    , m_startContainer(nullptr)
-    , m_startOffset(0)
-    , m_endContainer(nullptr)
-    , m_endOffset(0)
-    , m_positionNode(nullptr)
-    , m_needsAnotherNewline(false)
-    , m_textBox(nullptr)
-    , m_remainingTextBox(nullptr)
-    , m_firstLetterText(nullptr)
-    , m_lastTextNode(nullptr)
-    , m_lastTextNodeEndedWithCollapsedSpace(false)
-    , m_lastCharacter(0)
-    , m_sortedTextBoxesPosition(0)
-    , m_hasEmitted(false)
-    , m_handledFirstLetter(false)
 {
     // FIXME: Only m_positionNode above needs to be initialized if range is null.
     if (!range)
@@ -407,16 +391,15 @@ void TextIterator::advance()
     m_text = StringView();
 
     // handle remembered node that needed a newline after the text node's newline
-    if (m_needsAnotherNewline) {
+    if (m_nodeForAdditionalNewline) {
         // Emit the extra newline, and position it *inside* m_node, after m_node's 
         // contents, in case it's a block, in the same way that we position the first 
         // newline. The range for the emitted newline should start where the line
         // break begins.
         // FIXME: It would be cleaner if we emitted two newlines during the last 
         // iteration, instead of using m_needsAnotherNewline.
-        Node& baseNode = m_node->lastChild() ? *m_node->lastChild() : *m_node;
-        emitCharacter('\n', *baseNode.parentNode(), &baseNode, 1, 1);
-        m_needsAnotherNewline = false;
+        emitCharacter('\n', *m_nodeForAdditionalNewline->parentNode(), m_nodeForAdditionalNewline, 1, 1);
+        m_nodeForAdditionalNewline = nullptr;
         return;
     }
 
@@ -475,11 +458,12 @@ void TextIterator::advance()
                     if ((pastEnd && parentNode == m_endContainer) || m_endContainer->isDescendantOf(*parentNode))
                         return;
                     bool haveRenderer = m_node->renderer();
+                    Node* exitedNode = m_node;
                     m_node = parentNode;
                     m_fullyClippedStack.pop();
                     parentNode = m_node->parentOrShadowHostNode();
                     if (haveRenderer)
-                        exitNode();
+                        exitNode(exitedNode);
                     if (m_positionNode) {
                         m_handledNode = true;
                         m_handledChildren = true;
@@ -1096,7 +1080,7 @@ bool TextIterator::handleNonTextNode()
     return true;
 }
 
-void TextIterator::exitNode()
+void TextIterator::exitNode(Node* exitedNode)
 {
     // prevent emitting a newline when exiting a collapsed block at beginning of the range
     // FIXME: !m_hasEmitted does not necessarily mean there was a collapsed block... it could
@@ -1108,7 +1092,7 @@ void TextIterator::exitNode()
     // Emit with a position *inside* m_node, after m_node's contents, in 
     // case it is a block, because the run should start where the 
     // emitted character is positioned visually.
-    Node* baseNode = m_node->lastChild() ? m_node->lastChild() : m_node;
+    Node* baseNode = exitedNode;
     // FIXME: This shouldn't require the m_lastTextNode to be true, but we can't change that without making
     // the logic in _web_attributedStringFromRange match. We'll get that for free when we switch to use
     // TextIterator in _web_attributedStringFromRange.
@@ -1123,8 +1107,9 @@ void TextIterator::exitNode()
             // insert a newline with a position following this block's contents.
             emitCharacter('\n', *baseNode->parentNode(), baseNode, 1, 1);
             // remember whether to later add a newline for the current node
-            ASSERT(!m_needsAnotherNewline);
-            m_needsAnotherNewline = addNewline;
+            ASSERT(!m_nodeForAdditionalNewline);
+            if (addNewline)
+                m_nodeForAdditionalNewline = baseNode;
         } else if (addNewline)
             // insert a newline with a position following this block's contents.
             emitCharacter('\n', *baseNode->parentNode(), baseNode, 1, 1);
@@ -2608,11 +2593,39 @@ static Ref<Range> collapsedToBoundary(const Range& range, bool forward)
     return result;
 }
 
-static size_t findPlainText(const Range& range, const String& target, FindOptions options, size_t& matchStart)
+static std::optional<std::pair<size_t, size_t>> findPlainTextOffset(SearchBuffer& buffer, CharacterIterator& findIterator, bool searchForward)
 {
-    matchStart = 0;
+    size_t matchStart = 0;
     size_t matchLength = 0;
+    while (!findIterator.atEnd()) {
+        findIterator.advance(buffer.append(findIterator.text()));
+        while (1) {
+            size_t matchStartOffset;
+            size_t newMatchLength = buffer.search(matchStartOffset);
+            if (!newMatchLength) {
+                if (findIterator.atBreak() && !buffer.atBreak()) {
+                    buffer.reachedBreak();
+                    continue;
+                }
+                break;
+            }
+            size_t lastCharacterInBufferOffset = findIterator.characterOffset();
+            ASSERT(lastCharacterInBufferOffset >= matchStartOffset);
+            matchStart = lastCharacterInBufferOffset - matchStartOffset;
+            matchLength = newMatchLength;
+            if (searchForward) // Look for the last match when searching backwards instead.
+                return std::pair<size_t, size_t> { matchStart, matchLength };
+        }
+    }
 
+    if (!matchLength)
+        return std::nullopt;
+
+    return std::pair<size_t, size_t> { matchStart, matchLength };
+}
+
+Ref<Range> findPlainText(const Range& range, const String& target, FindOptions options)
+{
     SearchBuffer buffer(target, options);
 
     if (buffer.needsMoreContext()) {
@@ -2625,47 +2638,16 @@ static size_t findPlainText(const Range& range, const String& target, FindOption
         }
     }
 
-    CharacterIterator findIterator(range, TextIteratorEntersTextControls | TextIteratorClipsToFrameAncestors);
+    bool searchForward = !(options & Backwards);
+    TextIteratorBehavior iteratorOptions = TextIteratorEntersTextControls | TextIteratorClipsToFrameAncestors;
 
-    while (!findIterator.atEnd()) {
-        findIterator.advance(buffer.append(findIterator.text()));
-tryAgain:
-        size_t matchStartOffset;
-        if (size_t newMatchLength = buffer.search(matchStartOffset)) {
-            // Note that we found a match, and where we found it.
-            size_t lastCharacterInBufferOffset = findIterator.characterOffset();
-            ASSERT(lastCharacterInBufferOffset >= matchStartOffset);
-            matchStart = lastCharacterInBufferOffset - matchStartOffset;
-            matchLength = newMatchLength;
-            // If searching forward, stop on the first match.
-            // If searching backward, don't stop, so we end up with the last match.
-            if (!(options & Backwards))
-                break;
-            goto tryAgain;
-        }
-        if (findIterator.atBreak() && !buffer.atBreak()) {
-            buffer.reachedBreak();
-            goto tryAgain;
-        }
-    }
+    CharacterIterator findIterator(range, iteratorOptions);
+    auto result = findPlainTextOffset(buffer, findIterator, searchForward);
+    if (!result)
+        return collapsedToBoundary(range, searchForward);
 
-    return matchLength;
-}
-
-Ref<Range> findPlainText(const Range& range, const String& target, FindOptions options)
-{
-    // First, find the text.
-    size_t matchStart;
-    size_t matchLength;
-    {
-        matchLength = findPlainText(range, target, options, matchStart);
-        if (!matchLength)
-            return collapsedToBoundary(range, !(options & Backwards));
-    }
-
-    // Then, find the document position of the start and the end of the text.
-    CharacterIterator computeRangeIterator(range, TextIteratorEntersTextControls | TextIteratorClipsToFrameAncestors);
-    return characterSubrange(range.ownerDocument(), computeRangeIterator, matchStart, matchLength);
+    CharacterIterator rangeComputeIterator(range, iteratorOptions);
+    return characterSubrange(range.ownerDocument(), rangeComputeIterator, result->first, result->second);
 }
 
 }

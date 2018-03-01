@@ -1,3 +1,361 @@
+2017-01-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed cmake buildfix after r210266.
+
+        * DumpRenderTree/PlatformMac.cmake:
+
+2017-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Provide a setting for clients to always prefer low-power WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=166675
+        <rdar://problem/29834093>
+
+        Reviewed by Dan Bernstein.
+
+        * MiniBrowser/mac/Info.plist:
+        Have MiniBrowser claim to be a modern app that supports
+        automatic graphics switching. WebKit needs to support automatic
+        graphics switching, so our test app might as well. Without this
+        Info.plist parameter, this change has no effect, and bringing up
+        a WebGL context still brings up the discrete GPU (also true of the
+        existing web-exposed preferLowPowerToHighPerformance API).
+
+2017-01-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WorkQueueGeneric's platformInvalidate() can deadlock when called on the RunLoop's thread
+        https://bugs.webkit.org/show_bug.cgi?id=166645
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-01-03  Andy Estes  <aestes@apple.com>
+
+        Place all the Cocoa WebCore API tests in the same directory
+        https://bugs.webkit.org/show_bug.cgi?id=166673
+
+        Reviewed by Michael Catanzaro.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/cocoa/SerializedCryptoKeyWrap.mm: Renamed from Tools/TestWebKitAPI/Tests/WebCore/SerializedCryptoKeyWrap.mm.
+        * TestWebKitAPI/Tests/WebCore/cocoa/URLExtras.mm: Renamed from Tools/TestWebKitAPI/Tests/Cocoa/URLExtras.mm.
+        * TestWebKitAPI/Tests/WebCore/cocoa/WebCoreNSURLSession.mm: Renamed from Tools/TestWebKitAPI/Tests/WebCore/WebCoreNSURLSession.mm.
+
+2017-01-03  Tim Horton  <timothy_horton@apple.com>
+
+        NSSpellChecker's recordResponse isn't called for unseen automatic corrections
+        https://bugs.webkit.org/show_bug.cgi?id=166450
+        <rdar://problem/29447824>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::staticFunctions):
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (setSpellCheckerLoggingEnabledCallback):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (setSpellCheckerLoggingEnabledCallback):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/mac/DumpRenderTreeSpellChecker.h: Added.
+        * DumpRenderTree/mac/DumpRenderTreeSpellChecker.mm: Added.
+        (stringForCorrectionResponse):
+        (drt_NSSpellChecker_recordResponseToCorrection):
+        (swizzleNSSpellCheckerMethodsIfNeeded):
+        (setSpellCheckerLoggingEnabled):
+        Add a new testRunner method, setSpellCheckerLoggingEnabled, which, when
+        set to true, logs to stdout (which ends up in the test result) whenever
+        NSSpellChecker recordResponse:toCorrection:forWord:language:inSpellDocumentWithTag:
+        is called, and then calls the original method. It is reset to false between tests.
+
+2017-01-03  Sam Weinig  <sam@webkit.org>
+
+        Make WTF::Expected support Ref template parameters
+        https://bugs.webkit.org/show_bug.cgi?id=166662
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WTF/Expected.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for using Ref with Expected.
+
+2017-01-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Expose WebKitSecurityOrigin API
+        https://bugs.webkit.org/show_bug.cgi?id=166632
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSecurityOrigin.cpp: Added.
+        (testSecurityOriginBasicConstructor):
+        (testSecurityOriginURIConstructor):
+        (testSecurityOriginDefaultPort):
+        (testSecurityOriginFileURI):
+        (testSecurityOriginDataURI):
+        (beforeAll):
+        (afterAll):
+
+2017-01-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] HTTP auth layout tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=158919
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/jhbuild.modules: Update libsoup to version 2.57.1.
+        * gtk/jhbuildrc: Stop passing --enable-introspection unconditionally to all modules. We don't really need
+        introspection for the dependencies in the internal build, and it makes newer libsoup build fail because of
+        missing valac in the bots.
+
+2017-01-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r173753): [GTK] Source/WebKit is distributed in tarballs
+        https://bugs.webkit.org/show_bug.cgi?id=165797
+
+        Reviewed by Michael Catanzaro.
+
+        Move directory ruleset after all exclude rules of Source rulset.
+
+        * gtk/manifest.txt.in:
+
+2017-01-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Leverage Substring to create new AtomicStringImpl for StaticStringImpl and SymbolImpl
+        https://bugs.webkit.org/show_bug.cgi?id=166636
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-01-02  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] WebCore/CSSParser unit test is not being built
+        https://bugs.webkit.org/show_bug.cgi?id=166492
+
+        Reviewed by Michael Catanzaro.
+
+        This test was introduced in r175930, but we were not building
+        it on GTK+ port since r176015.
+        This patch marks the test to be built again on GTK+.
+        JFTR, the test is passing right now.
+
+        * TestWebKitAPI/PlatformGTK.cmake: Add CSSParser.cpp test file and use
+        ADD_WHOLE_ARCHIVE_TO_LIBRARIES to avoid linking errors.
+
+2017-01-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Expose block quote level to iOS API
+        https://bugs.webkit.org/show_bug.cgi?id=166629
+        <rdar://problem/29834793>
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::numberAttributeValue):
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::numberAttributeValue):
+
+2016-12-31  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        SecurityOrigin::create triplet constructor does not canonicalize port
+        https://bugs.webkit.org/show_bug.cgi?id=166624
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp: Added.
+        (TestWebKitAPI::SecurityOriginTest::SetUp):
+        (TestWebKitAPI::TEST_F):
+
+2016-12-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Improve user agent construction
+        https://bugs.webkit.org/show_bug.cgi?id=142074
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::assertUserAgentForURLHasChromeBrowserQuirk):
+        (TestWebKitAPI::assertUserAgentForURLHasFirefoxBrowserQuirk):
+        (TestWebKitAPI::assertUserAgentForURLHasLinuxPlatformQuirk):
+        (TestWebKitAPI::assertUserAgentForURLHasMacPlatformQuirk):
+        (TestWebKitAPI::TEST):
+
+2016-12-27  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Improve user agent construction
+        https://bugs.webkit.org/show_bug.cgi?id=142074
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2016-12-23  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r209299): Selection is broken when you zoom in webpage using trackpad
+        https://bugs.webkit.org/show_bug.cgi?id=166472
+        rdar://problem/29675551
+
+        Reviewed by Tim Horton.
+
+        These changes are necessary to allow the mouse to leave the WTR window while
+        drag-scrolling, to test autoscroll. Previously, we were never calling -mouseDragged
+        (which DRT does); we'd always go through mouseMoved, which hits an early return
+        in WebViewImpl::mouseMoved() when the point is outside the view.
+
+        * WebKitTestRunner/mac/EventSenderProxy.mm:
+        (WTR::EventSenderProxy::mouseMoveTo):
+
+2016-12-23  Andy Estes  <aestes@apple.com>
+
+        [iOS] Fix some crashing webarchive tests
+        https://bugs.webkit.org/show_bug.cgi?id=166470
+
+        Reviewed by Andreas Kling.
+
+        Tests that use TestRunner.dumpDOMAsWebArchive() crashed on iOS due to a stub implementation
+        of WebArchiveDumpSupport in WebKitTestRunner. The Mac implementation works fine on iOS too,
+        so this change uses that on both platforms.
+
+        * WebKitTestRunner/Configurations/InjectedBundle.xcconfig: Removed
+        WebArchiveDumpSupportMac.mm from EXCLUDED_SOURCE_FILE_NAMES.
+        * WebKitTestRunner/InjectedBundle/cocoa/WebArchiveDumpSupportCocoa.mm: Renamed from
+        Tools/WebKitTestRunner/mac/WebArchiveDumpSupportMac.mm.
+        * WebKitTestRunner/PlatformMac.cmake:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/ios/WebArchiveDumpSupportIOS.mm: Removed.
+
+2016-12-22  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Silence the output of the spec-tests
+        https://bugs.webkit.org/show_bug.cgi?id=166417
+
+        Reviewed by Mark Lam.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-12-22  Zhuo Li  <zachli@apple.com>
+
+        [Cocoa] SPI for setloadsImagesAutomatically.
+        https://bugs.webkit.org/show_bug.cgi?id=166401.
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Preferences.mm:
+        (TEST): Test the _setLoadsImagesAutomatically SPI. By default,
+        _loadsImagesAutomatically returns YES.
+
+2016-12-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        fast/events/ios/viewport-shrink-to-fit-allows-double-tap.html is flaky/order dependent
+        https://bugs.webkit.org/show_bug.cgi?id=161328
+        <rdar://problem/28475977>
+
+        Reviewed by Darin Adler.
+
+        Running a test that scales the viewport and listens to a didEndZooming callback (such as
+        viewport-shrink-to-fit-allows-double-tap.html) immediately after a test that may begin to trigger viewport
+        scaling as the test completes (such as viewport-device-width-at-initial-scale-fast-clicks.html) may result in
+        the didEndZooming callback of the latter test being fired early due to the previous test triggering a zoom
+        animation. Ideally, -[WKScrollView _stopScrollingAndZoomingAnimations], which is called when committing the page
+        load, should prevent this from happening, but from reading documentation and code inspection, this is not
+        intended to fire any associated delegate methods or notifications of the UIScrollView, instead deferring them
+        for later. Instead, what we need in this case is to clear out any started but not yet completed animations after
+        we finish running a test and before we load the next test.
+
+        One way to do this is to remove all animations from the WKScrollView's layer, and the layers of its children,
+        recursively. Doing so causes scrollViewDidEndZooming:withView:atScale: to fire at the end of the runloop if the
+        previous test started zooming and then finished before zooming completed. Since this happens before the next
+        test has a chance to run UI-side scripts, we won't end up firing this callback prematurely during the next test.
+
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+
+2016-12-22  Jer Noble  <jer.noble@apple.com>
+
+        Muted media element playback should not interrupt other audio playback
+        https://bugs.webkit.org/show_bug.cgi?id=166347
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit/ios/AudioSessionCategoryIOS.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit/ios/video-with-muted-audio.html: Added.
+
+2016-12-22  Alejandro G. Castro  <alex@igalia.com>
+
+        [WebRTC] Add support for runtime PeeConnection setting, required after r209757
+        https://bugs.webkit.org/show_bug.cgi?id=166346
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enable WebRTC by default to simplify testing.
+
+        * MiniBrowser/gtk/main.c:
+        (main):
+
+2016-12-21  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: API test failure: WKWebView.LocalStorageClear
+        https://bugs.webkit.org/show_bug.cgi?id=166032
+        <rdar://problem/29758423>
+
+        Reviewed by Simon Fraser.
+
+        Add an @autoreleasepool around the code that allocates then clears the WKWebView, 
+        to ensure that the view is destroyed before the callback fires.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageClear.mm:
+        (TEST):
+
+2016-12-21  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Import spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=166395
+
+        Rubber stamped by Keith Miller.
+
+        * Scripts/run-jsc-stress-tests:
+
+2016-12-21  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: API test failure: _WKDownload.OriginatingWebView
+        https://bugs.webkit.org/show_bug.cgi?id=166033
+        <rdar://problem/29758428>
+
+        Reviewed by Simon Fraser.
+
+        Add an @autoreleasepool around the code that allocates the WKWebView, 
+        so that it can be destroyed by removing the last reference in _downloadDidStart.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Download.mm:
+        (TEST):
+
+2016-12-21  Daniel Bates  <dabates@apple.com>
+
+        WebKitTestRunner: Add comment to TestRunner::setCanOpenWindows()
+        https://bugs.webkit.org/show_bug.cgi?id=166356
+
+        Add comment in TestRunner::setCanOpenWindows() to elaborate further on its purpose
+        as a means to allow a test to explicit allow an embedding client to open a new windows
+        such that the default behavior is for the embedding client to forbid such an action.
+        The test plugins/get-url-with-blank-target.html assumes this default behavior though
+        it is currently skipped on WebKit2 because questions were raised in the patch for
+        <https://bugs.webkit.org/show_bug.cgi?id=43389> about its correctness and usefulness.
+        We will need to implement TestRunner::setCanOpenWindows() should we decide to unskip
+        this test.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCanOpenWindows):
+
 2016-12-20  Simon Fraser  <simon.fraser@apple.com>
 
         REGRESSION: API test failure: WKWebView.EvaluateJavaScriptBlockCrash

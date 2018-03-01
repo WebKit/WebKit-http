@@ -84,7 +84,7 @@ JSValue WebAssemblyModuleConstructor::createModule(ExecState* state, Structure* 
     // On failure, a new WebAssembly.CompileError is thrown.
     plan.run();
     if (plan.failed())
-        return throwException(state, scope, createWebAssemblyCompileError(state, plan.errorMessage()));
+        return throwException(state, scope, createJSWebAssemblyCompileError(state, vm, plan.errorMessage()));
 
     // On success, a new WebAssembly.Module object is returned with [[Module]] set to the validated Ast.module.
 
@@ -97,7 +97,7 @@ JSValue WebAssemblyModuleConstructor::createModule(ExecState* state, Structure* 
 
     // Only wasm-internal functions have a callee, stubs to JS do not.
     unsigned calleeCount = plan.internalFunctionCount();
-    JSWebAssemblyModule* result = JSWebAssemblyModule::create(vm, structure, plan.takeModuleInformation(), plan.takeCallLinkInfos(), plan.takeWasmToJSStubs(), plan.takeFunctionIndexSpace(), exportSymbolTable, calleeCount);
+    JSWebAssemblyModule* result = JSWebAssemblyModule::create(vm, structure, plan.takeModuleInformation(), plan.takeCallLinkInfos(), plan.takeWasmExitStubs(), exportSymbolTable, calleeCount);
     plan.initializeCallees(state->jsCallee()->globalObject(), 
         [&] (unsigned calleeIndex, JSWebAssemblyCallee* jsEntrypointCallee, JSWebAssemblyCallee* wasmEntrypointCallee) {
             result->setJSEntrypointCallee(vm, calleeIndex, jsEntrypointCallee);

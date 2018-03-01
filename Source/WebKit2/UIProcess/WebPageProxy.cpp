@@ -4434,7 +4434,12 @@ void WebPageProxy::didCountStringMatches(const String& string, uint32_t matchCou
 
 void WebPageProxy::didGetImageForFindMatch(const ShareableBitmap::Handle& contentImageHandle, uint32_t matchIndex)
 {
-    m_findMatchesClient->didGetImageForMatchResult(this, WebImage::create(ShareableBitmap::create(contentImageHandle)).get(), matchIndex);
+    auto bitmap = ShareableBitmap::create(contentImageHandle);
+    if (!bitmap) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+    m_findMatchesClient->didGetImageForMatchResult(this, WebImage::create(bitmap.releaseNonNull()).ptr(), matchIndex);
 }
 
 void WebPageProxy::setTextIndicator(const TextIndicatorData& indicatorData, uint64_t lifetime)
@@ -5443,6 +5448,10 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 
     m_activePopupMenu = nullptr;
     m_mediaState = MediaProducer::IsNotPlaying;
+
+#if ENABLE(POINTER_LOCK)
+    requestPointerUnlock();
+#endif
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -5488,10 +5497,6 @@ void WebPageProxy::resetStateAfterProcessExited()
 
 #if PLATFORM(MAC)
     m_pageClient.dismissContentRelativeChildWindows();
-#endif
-
-#if ENABLE(POINTER_LOCK)
-    requestPointerUnlock();
 #endif
 
     PageLoadState::Transaction transaction = m_pageLoadState.transaction();
@@ -6101,9 +6106,9 @@ void WebPageProxy::dismissCorrectionPanelSoon(int32_t reason, String& result)
     result = m_pageClient.dismissCorrectionPanelSoon((ReasonForDismissingAlternativeText)reason);
 }
 
-void WebPageProxy::recordAutocorrectionResponse(int32_t responseType, const String& replacedString, const String& replacementString)
+void WebPageProxy::recordAutocorrectionResponse(int32_t response, const String& replacedString, const String& replacementString)
 {
-    m_pageClient.recordAutocorrectionResponse((AutocorrectionResponseType)responseType, replacedString, replacementString);
+    m_pageClient.recordAutocorrectionResponse(static_cast<AutocorrectionResponse>(response), replacedString, replacementString);
 }
 
 void WebPageProxy::handleAlternativeTextUIResult(const String& result)

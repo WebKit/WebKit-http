@@ -1,3 +1,473 @@
+2017-01-04  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit on redfin.com: ASSERTION FAILED: collection->length() > 1
+        https://bugs.webkit.org/show_bug.cgi?id=166687
+        <rdar://problem/29865854>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage.
+
+        * fast/shadow-dom/document-named-property-expected.txt: Added.
+        * fast/shadow-dom/document-named-property.html: Added.
+        * fast/shadow-dom/window-named-property-expected.txt: Added.
+        * fast/shadow-dom/window-named-property.html: Added.
+
+2017-01-04  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Two editing tests are passing but marked as failure
+
+        Unreviewed GTK gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-01-04  John Wilander  <wilander@apple.com>
+
+        Validate the BCP47-ness of the language string passed to TrackBase::setLanguage()
+        https://bugs.webkit.org/show_bug.cgi?id=123926
+
+        Reviewed by Jer Noble.
+
+        * media/media-source/only-bcp47-language-tags-accepted-as-valid-expected.txt: Added.
+        * media/media-source/only-bcp47-language-tags-accepted-as-valid.html: Added.
+        * media/track/w3c/interfaces/HTMLTrackElement/srclang-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+        * media/track/w3c/interfaces/TextTrack/language-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+        * platform/ios-simulator/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+
+2017-01-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cross Origin importScripts() scripts lack source URL, causes issues with Inspector showing Resource
+        https://bugs.webkit.org/show_bug.cgi?id=165569
+        <rdar://problem/29607569>
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts-expected.txt: Added.
+        * http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html: Added.
+        * http/tests/inspector/worker/resources/worker-blob-import-script.js: Added.
+        * http/tests/inspector/worker/resources/worker-blob-script.js: Added.
+        Ensure cross origin scripts imported by workers still get the correct Script URL.
+        Also this provides a test for worker started with a blob URL.
+
+2017-01-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        label element with tabindex >= 0 is not focusable
+        https://bugs.webkit.org/show_bug.cgi?id=102780
+        <rdar://problem/29796608>
+
+        Reviewed by Darin Adler.
+
+        Added a regression test for traversing label and legend elements by tabbing.
+        A native merge of the blink fix would have regressed this for the label element
+        while the bug in the legend element had always existed.
+
+        Also added a regression test for focusing label and legend elements with tabindex.
+        We should be able to focus either element. New behavior matches that of Chrome.
+        Firefox moves the focus to the label element like we used to before this patch.
+
+        Also merge the test fix from https://chromium.googlesource.com/chromium/src/+/085ad8697b1be50c4f93e296797a25a43a79bcfb
+
+        * fast/events/focus-label-legend-elements-expected.txt: Added.
+        * fast/events/focus-label-legend-elements-with-tab-expected.txt: Added.
+        * fast/events/focus-label-legend-elements-with-tab.html: Added.
+        * fast/events/focus-label-legend-elements.html: Added.
+        * fast/events/resources/tabindex-focus-blur-all-frame1.html:
+        * fast/events/resources/tabindex-focus-blur-all-frame2.html:
+        * fast/events/resources/tabindex-focus-blur-all.js:
+        * fast/events/tabindex-focus-blur-all-expected.txt:
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-01-03  Tim Horton  <timothy_horton@apple.com>
+
+        NSSpellChecker's recordResponse isn't called for unseen automatic corrections
+        https://bugs.webkit.org/show_bug.cgi?id=166450
+        <rdar://problem/29447824>
+
+        Reviewed by Darin Adler.
+
+        * editing/editing.js:
+        (runEditingTest):
+        (runEditingTestWithCallbackLogging):
+        Add a way to run an editing test without enabling noisy editing callback logging.
+
+        * editing/mac/spelling/accept-unseen-candidate-records-acceptance-expected.txt: Added.
+        * editing/mac/spelling/accept-unseen-candidate-records-acceptance.html: Added.
+        Add a test that ensures that we correctly inform NSSpellChecker of an
+        accepted unseen correction.
+
+        * platform/mac-wk2/TestExpectations:
+        Disable the test because spelling tests don't work in WebKit2 at all.
+
+2017-01-03  Nan Wang  <n_wang@apple.com>
+
+        AX: Focus should jump into modal dialogs when one appears
+        https://bugs.webkit.org/show_bug.cgi?id=166670
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/aria-modal-auto-focus-expected.txt: Added.
+        * accessibility/mac/aria-modal-auto-focus.html: Added.
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: WrappedPromise constructor should behave like the Promise constructor
+        https://bugs.webkit.org/show_bug.cgi?id=166523
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/wrapped-promise-expected.txt: Added.
+        * inspector/unit-tests/wrapped-promise.html: Added.
+
+2017-01-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Address failures under LayoutTests/inspector/debugger/stepping
+        https://bugs.webkit.org/show_bug.cgi?id=166300
+
+        Reviewed by Brian Burg.
+
+        * inspector/debugger/stepping/stepping-classes-expected.txt:
+        Rebaseline these results to new column values.
+
+2017-01-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Content Flow Container Regions Computed Style section
+        https://bugs.webkit.org/show_bug.cgi?id=166294
+
+        Reviewed by Brian Burg.
+
+        * inspector/dom/content-flow-list.html:
+        Update the domTree across navigations. Also dynamically add the flows to
+        ensure we get the events.
+
+2017-01-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        A floating element within <li> overlaps with the marker
+        https://bugs.webkit.org/show_bug.cgi?id=166528
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/lists/list-marker-before-float-expected.html: Added.
+        * fast/lists/list-marker-before-float-nested-expected.html: Added.
+        * fast/lists/list-marker-before-float-nested-rtl-expected.html: Added.
+        * fast/lists/list-marker-before-float-nested-rtl.html: Added.
+        * fast/lists/list-marker-before-float-nested.html: Added.
+        * fast/lists/list-marker-before-float-rtl-expected.html: Added.
+        * fast/lists/list-marker-before-float-rtl.html: Added.
+        * fast/lists/list-marker-before-float.html: Added.
+
+2017-01-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] HTTP auth layout tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=158919
+
+        Reviewed by Michael Catanzaro.
+
+        Unskip tests that should pass now.
+
+        * platform/gtk/TestExpectations:
+
+2017-01-02  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Expose block quote level to iOS API
+        https://bugs.webkit.org/show_bug.cgi?id=166629
+        <rdar://problem/29834793>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/ios-simulator/blockquote-level-expected.txt: Added.
+        * accessibility/ios-simulator/blockquote-level.html: Added.
+
+2016-12-31  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "dom" directory, related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=166569
+
+        Reviewed by Alex Christensen.
+
+        * fast/dom/title-text-property-2-expected.txt:
+        * http/tests/globalhistory/history-delegate-basic-title-expected.txt:
+        Updated expected results for progression where we no longer send duplicate updates
+        of the title when setting the title property on a document.
+
+        * fast/regions/cssom/webkit-named-flow-collection-expected.txt:
+        * fast/regions/cssom/webkit-named-flow-collection.html:
+        Added test cases cover property names in the named flow collection.
+        Specifically, check both Object.keys for just the indices, and also
+        Object.getOwnPropertyNames for including the names of the flows.
+
+2016-12-28  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Isolate instrinsic size computation from layout
+        https://bugs.webkit.org/show_bug.cgi?id=166530
+
+        Reviewed by Darin Adler.
+
+        * fast/css-grid-layout/grid-auto-repeat-intrinsic-expected.txt: Added.
+        * fast/css-grid-layout/grid-auto-repeat-intrinsic.html: Added.
+        * fast/css-grid-layout/grid-change-intrinsic-size-with-auto-repeat-tracks-expected.txt: Added.
+        * fast/css-grid-layout/grid-change-intrinsic-size-with-auto-repeat-tracks.html: Added.
+
+2016-12-28  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Gardening] Remove INDIE_UI related entries from TestExpectation files.
+        https://bugs.webkit.org/show_bug.cgi?id=165881
+
+        Unreviewed.
+
+        * platform/efl/TestExpectations:
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+
+2016-12-28  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Gardening on 28th Dec.
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Mark failing tests to Failure or ImageOnlyFailure.
+
+2016-12-27  Gyuyoung Kim  <gyuyoung.kim@navercorp.com>
+
+        [EFL] Gardening on 27th Dec.
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Mark failing tests to Timeout or Skip.
+
+2016-12-26  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !rect.isEmpty() in WebCore::GraphicsContext::drawRect
+        https://bugs.webkit.org/show_bug.cgi?id=163461
+
+        Reviewed by Darin Adler.
+
+        * fast/lists/assert-on-empty-list-marker-expected.txt: Added.
+        * fast/lists/assert-on-empty-list-marker.html: Added.
+
+2016-12-25  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Headers of table not read by VoiceOver
+        https://bugs.webkit.org/show_bug.cgi?id=158693
+        <rdar://problem/26771065>
+
+        Reviewed by Darin Adler.
+
+        * accessibility/hidden-th-still-column-header-expected.txt: Added.
+        * accessibility/hidden-th-still-column-header.html: Added.
+
+2016-12-25  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove (most) custom bindings for the IndexedDB code
+        https://bugs.webkit.org/show_bug.cgi?id=166451
+
+        Reviewed by Darin Adler.
+
+        * storage/indexeddb/exceptions-expected.txt:
+        * storage/indexeddb/exceptions-private-expected.txt:
+        * storage/indexeddb/index-basics-expected.txt:
+        * storage/indexeddb/index-basics-private-expected.txt:
+        * storage/indexeddb/index-basics-workers-expected.txt:
+        * storage/indexeddb/objectstore-cursor-expected.txt:
+        * storage/indexeddb/objectstore-cursor-private-expected.txt:
+        Update results for improved exception messages.
+
+2016-12-23  Simon Fraser  <simon.fraser@apple.com>
+
+        REGRESSION (r209299): Selection is broken when you zoom in webpage using trackpad
+        https://bugs.webkit.org/show_bug.cgi?id=166472
+        rdar://problem/29675551
+
+        Reviewed by Tim Horton.
+
+        Add some test coverage for autoscroll of the main document. I could only get this
+        working in WebKitTestRunner, not DumpRenderTree.
+
+        * TestExpectations:
+        * fast/events/autoscroll-main-document-expected.txt: Added.
+        * fast/events/autoscroll-main-document.html: Added.
+        * fast/events/autoscroll-when-zoomed-expected.txt: Added.
+        * fast/events/autoscroll-when-zoomed.html: Added.
+        * fast/events/drag-select-when-zoomed-expected.txt: Added.
+        * fast/events/drag-select-when-zoomed-with-header-expected.txt: Added.
+        * fast/events/drag-select-when-zoomed-with-header.html: Added.
+        * fast/events/drag-select-when-zoomed.html: Added.
+        * fast/scrolling/scroll-to-anchor-zoomed-header-expected.txt: Added.
+        * fast/scrolling/scroll-to-anchor-zoomed-header.html: Added.
+        * fast/transforms/selection-bounds-in-transformed-view.html: Revert the target scroll position to what it was
+        before r209299, and improve the failure output.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
+2016-12-23  Andy Estes  <aestes@apple.com>
+
+        [iOS] Fix some crashing webarchive tests
+        https://bugs.webkit.org/show_bug.cgi?id=166470
+
+        Reviewed by Andreas Kling.
+
+        Removed entries for previously crashing/failing tests.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2016-12-23  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r209865): Crash when navigating back to some pages with compositing layers.
+        <https://webkit.org/b/166469>
+        <rdar://problem/29109053>
+
+        Reviewed by Darin Adler.
+
+        Add a smoke test for the crashes we were seeing. Thanks to Zalán for the reduction.
+
+        * compositing/page-cache-back-crash-expected.txt: Added.
+        * compositing/page-cache-back-crash.html: Added.
+
+2016-12-22  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for WebSQL code
+        https://bugs.webkit.org/show_bug.cgi?id=166441
+
+        Reviewed by Darin Adler.
+
+        * storage/websql/execute-sql-args-expected.txt:
+        * storage/websql/execute-sql-args.js:
+        Update test and result to be slightly more strict about functions taking sequences.
+
+2016-12-22  Brent Fulgham  <bfulgham@apple.com>
+
+        Nested calls to setDocument can omit firing 'unload' events
+        https://bugs.webkit.org/show_bug.cgi?id=166422
+        <rdar://problem/29763012>
+
+        Reviewed by Alex Christensen.
+
+        * fast/loader/nested-document-handling-expected.txt: Added.
+        * fast/loader/nested-document-handling.html: Added.
+        * fast/loader/resources/subframe-success.html: Added.
+
+2016-12-22  Zalan Bujtas  <zalan@apple.com>
+
+        Do not destroy the RenderNamedFlowFragment as leftover anonymous block.
+        https://bugs.webkit.org/show_bug.cgi?id=166436
+        rdar://problem/29772233
+
+        Reviewed by Simon Fraser.
+
+        * fast/regions/flow-fragment-as-anonymous-block-crash-expected.txt: Added.
+        * fast/regions/flow-fragment-as-anonymous-block-crash.html: Added.
+
+2016-12-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        CSS Scroll Snap does not work if scrollbar is hidden
+        https://bugs.webkit.org/show_bug.cgi?id=160442
+        <rdar://problem/23317034>
+
+        Reviewed by Simon Fraser.
+
+        Adds a new layout test verifying that scroll snapping still works when scrollbars are hidden via CSS.
+
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-hidden-scrollbars-expected.txt: Added.
+        * tiled-drawing/scrolling/scroll-snap/scroll-snap-mandatory-hidden-scrollbars.html: Added.
+
+2016-12-22  Daniel Bates  <dabates@apple.com>
+
+        Make http/tests/security/popup-blocked-from-{fake-event, window-open}.html actually test popup
+        blocker; run on WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=166403
+
+        Reviewed by Darin Adler.
+
+        The tests http/tests/security/popup-blocked-from-{fake-event, window-open}.html inadvertently
+        depended on the default behavior of DumpRenderTree to ignore the ChromeClient::createWindow()
+        callback when asked to create a new window instead of testing that the popup blocker blocked
+        opening windows. We should call testRunner.setCanOpenWindows() and testRunner.setPopupBlockingEnabled(true)
+        from both of these tests so that DumpRenderTree respects requests to open windows and enable
+        the popup blocker (it is disabled by default), respectively.
+
+        The default behavior of DumpRenderTree to disallow opening windows falls out from the purpose
+        and implementation of testRunner.setCanOpenWindows() to support writing tests where the embedding
+        client ignores requests to create a new window. We do not implement such a concept in WebKitTestRunner
+        (see <https://bugs.webkit.org/show_bug.cgi?id=166402>).
+
+        * http/tests/security/popup-blocked-from-fake-event.html:
+        * http/tests/security/popup-blocked-from-window-open.html:
+        * platform/wk2/TestExpectations: Unskip the above tests as they now pass.
+
+2016-12-22  Daniel Bates  <dabates@apple.com>
+
+        Bypass pop-up blocker from cross-origin or sandboxed frame
+        https://bugs.webkit.org/show_bug.cgi?id=166290
+        <rdar://problem/29742039>
+
+        Reviewed by Darin Adler.
+
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame-expected.txt: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame.html: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame2-expected.txt: Added.
+        * fast/events/popup-blocked-from-sandboxed-frame-via-window-open-named-sibling-frame2.html: Added.
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame-expected.txt: Added.
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame.html: Added.
+
+2016-12-21  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Update media-stream-event-constructor test
+        https://bugs.webkit.org/show_bug.cgi?id=166398
+
+        Reviewed by Jer Noble.
+
+        Update and rebaseline test to reflect behavior changes that happened while the test was
+        skipped. Un-skip it on macOS.
+
+        * fast/events/constructors/media-stream-event-constructor-expected.txt:
+        * fast/events/constructors/media-stream-event-constructor.html:
+        * platform/mac/TestExpectations:
+
+2016-12-21  John Wilander  <wilander@apple.com>
+
+        Switch to a blacklist model for restricted Accept headers in simple CORS requests
+        https://bugs.webkit.org/show_bug.cgi?id=166363
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/xmlhttprequest/cors-non-standard-safelisted-headers-should-trigger-preflight-expected.txt:
+        * http/tests/xmlhttprequest/cors-non-standard-safelisted-headers-should-trigger-preflight.html:
+
+2016-12-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a layout test for scroll snapping with padding in the container
+        https://bugs.webkit.org/show_bug.cgi?id=144927
+        <rdar://problem/20923772>
+
+        Reviewed by Brent Fulgham.
+
+        The issue was actually addressed by changes to snap offset computation in AxisScrollSnapOffsets.cpp with
+        <https://trac.webkit.org/changeset/210024>, but there was no test for this. This patch adds a new layout test
+        verifying that the padding on child elements is accounted for when computing the scroll snap offsets of a scroll
+        snapping container.
+
+        * css3/scroll-snap/scroll-snap-children-with-padding-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-children-with-padding.html: Added.
+
+2016-12-21  Daniel Bates  <dabates@apple.com>
+
+        WebKitTestRunner: Add comment to TestRunner::setCanOpenWindows()
+        https://bugs.webkit.org/show_bug.cgi?id=166356
+
+        Add a remark that the test plugins/get-url-with-blank-target.html depends on
+        the assumption that WebKitTestRunner forbids opening windows by default.
+
+        * platform/wk2/TestExpectations:
+
 2016-12-21  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Fix some typos and style in LayoutTests/inspector

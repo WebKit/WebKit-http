@@ -47,7 +47,7 @@ struct CompilationContext {
     CCallHelpers::Call jsEntrypointToWasmEntrypointCall;
 };
 
-Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(VM&, CompilationContext&, const uint8_t*, size_t, const Signature*, Vector<UnlinkedWasmToWasmCall>&, const ImmutableFunctionIndexSpace&, const ModuleInformation&, unsigned optLevel = 1);
+Expected<std::unique_ptr<WasmInternalFunction>, String> parseAndCompile(VM&, CompilationContext&, const uint8_t*, size_t, const Signature*, Vector<UnlinkedWasmToWasmCall>&, const ModuleInformation&, const Vector<SignatureIndex>&, unsigned optLevel = 1);
 
 } } // namespace JSC::Wasm
 

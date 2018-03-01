@@ -1,3 +1,153 @@
+2017-01-04  Sam Weinig  <sam@webkit.org>
+
+        REGRESSION (r210257): com.apple.WebKit.WebContent.Development crashed in com.apple.WebCore: WebCore::ExceptionOr<WTF::Ref<WebCore::Database> >::operator= + 14
+        <rdar://problem/29866398> 
+
+        * wtf/Expected.h:
+        (WTF::Expected::swap):
+        Add missing calls to destroy() when moving things over each other in a union.
+
+2017-01-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use prctl to name thread on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=166663
+
+        Reviewed by Michael Catanzaro.
+
+        It is quite useful if we can name threads. This name will be shown in GDB.
+        While macOS uses pthread_setname_np, we can use prctl on Linux.
+
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeCurrentThreadInternal):
+
+2017-01-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WorkQueueGeneric's platformInvalidate() can deadlock when called on the RunLoop's thread
+        https://bugs.webkit.org/show_bug.cgi?id=166645
+
+        Reviewed by Carlos Garcia Campos.
+
+        WorkQueue can be destroyed on its invoking thread itself.
+        The scenario is the following.
+
+            1. Create WorkQueue (in thread A).
+            2. Dispatch a task (in thread A, dispatching a task to thread B).
+            3. Deref in thread A.
+            4. The task is executed in thread B.
+            5. Deref in thread B.
+            6. The WorkQueue is destroyed, calling platformInvalidate in thread B.
+
+        In that case, if platformInvalidate waits thread B's termination, it causes deadlock.
+        We do not need to wait the thread termination.
+
+        * wtf/WorkQueue.h:
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::platformInitialize):
+        (WorkQueue::platformInvalidate):
+
+2017-01-03  Sam Weinig  <sam@webkit.org>
+
+        Make WTF::Expected support Ref template parameters
+        https://bugs.webkit.org/show_bug.cgi?id=166662
+
+        Reviewed by Alex Christensen.
+
+        Tests: Added to TestWebKitAPI/Expected.cpp
+
+        * wtf/Expected.h:
+        (WTF::UnexpectedType::value):
+        Add overloads based on this value type to allow getting at the value
+        as an rvalue for moving the error into the Expected.
+
+        (WTF::Expected::Expected):
+        Add overload that takes an ErrorType/UnexpectedType<ErrorType> as an rvalue.
+
+        (WTF::Expected::swap):
+        Move the temporary value/error rather than copying.
+
+2017-01-02  Julien Brianceau  <jbriance@cisco.com>
+
+        Remove sh4 specific code from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=166640
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/Platform.h:
+
+2017-01-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Leverage Substring to create new AtomicStringImpl for StaticStringImpl and SymbolImpl
+        https://bugs.webkit.org/show_bug.cgi?id=166636
+
+        Reviewed by Darin Adler.
+
+        Previously we always create the full atomic string if we need to create the same string
+        based on the given value. For example, when generating AtomicStringImpl from the SymbolImpl,
+        we need to create a new AtomicStringImpl since SymbolImpl never becomes `isAtomic() == true`.
+        But it is costly.
+
+        This patch leverages the substring system of StringImpl. Instead of allocating the completely
+        duplicate string, we create a substring StringImpl that shares the same content with the
+        base string.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::stringTable):
+        (WTF::addToStringTable):
+        (WTF::addSubstring):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::remove):
+        (WTF::AtomicStringImpl::lookUpSlowCase):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::StaticStringImpl::operator StringImpl&):
+
+2017-01-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use StaticStringImpl instead of StaticASCIILiteral
+        https://bugs.webkit.org/show_bug.cgi?id=166586
+
+        Reviewed by Darin Adler.
+
+        It is more handy way to define static StringImpl. It calculates the length
+        and hash value by using the constexpr constructor and function. So we do
+        not need to calculate these things in Perl script.
+        And it allows us to use StaticStringImpl in the hand written C++ code.
+        Previously, we need to calculate the length and hash value by hand if we
+        would like to use StaticASCIILiteral in the hand written C++ code, and it
+        meant that we cannot use it at all in the hand written C++ code.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::lookUpSlowCase):
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.h:
+        * wtf/text/UniquedStringImpl.h:
+
+2017-01-02  Andreas Kling  <akling@apple.com>
+
+        Discard media controls JS/CSS caches under memory pressure.
+        <https://webkit.org/b/166639>
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::clearImplIfNotShared): Add a helper for clearing a String if the underlying
+        StringImpl is not referenced by anyone else.
+
+2016-12-22  Mark Lam  <mark.lam@apple.com>
+
+        De-duplicate finally blocks.
+        https://bugs.webkit.org/show_bug.cgi?id=160168
+
+        Reviewed by Saam Barati.
+
+        Added some methods to bring SegmentedVector closer to parity with Vector.
+
+        * wtf/SegmentedVector.h:
+        (WTF::SegmentedVector::first):
+        (WTF::SegmentedVector::last):
+        (WTF::SegmentedVector::takeLast):
+
 2016-12-19  Mark Lam  <mark.lam@apple.com>
 
         Rolling out r209974 and r209952. They break some websites in mysterious ways. Step 2: Rollout r209952.

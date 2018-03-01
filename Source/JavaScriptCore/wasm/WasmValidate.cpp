@@ -52,15 +52,19 @@ public:
         {
             switch (type()) {
             case BlockType::If:
-                out.print("If:    ");
+                out.print("If:       ");
                 break;
             case BlockType::Block:
-                out.print("Block: ");
+                out.print("Block:    ");
                 break;
             case BlockType::Loop:
-                out.print("Loop:  ");
+                out.print("Loop:     ");
+                break;
+            case BlockType::TopLevel:
+                out.print("TopLevel: ");
                 break;
             }
+            out.print(makeString(signature()));
         }
 
         bool hasNonVoidSignature() const { return m_signature != Void; }
@@ -116,17 +120,20 @@ public:
     Result WARN_UNUSED_RETURN addSelect(ExpressionType condition, ExpressionType nonZero, ExpressionType zero, ExpressionType& result);
 
     // Control flow
+    ControlData WARN_UNUSED_RETURN addTopLevel(Type signature);
     ControlData WARN_UNUSED_RETURN addBlock(Type signature);
     ControlData WARN_UNUSED_RETURN addLoop(Type signature);
     Result WARN_UNUSED_RETURN addIf(ExpressionType condition, Type signature, ControlData& result);
     Result WARN_UNUSED_RETURN addElse(ControlData&, const ExpressionList&);
     Result WARN_UNUSED_RETURN addElseToUnreachable(ControlData&);
 
-    Result WARN_UNUSED_RETURN addReturn(const ExpressionList& returnValues);
+    Result WARN_UNUSED_RETURN addReturn(ControlData& topLevel, const ExpressionList& returnValues);
     Result WARN_UNUSED_RETURN addBranch(ControlData&, ExpressionType condition, const ExpressionList& expressionStack);
     Result WARN_UNUSED_RETURN addSwitch(ExpressionType condition, const Vector<ControlData*>& targets, ControlData& defaultTarget, const ExpressionList& expressionStack);
     Result WARN_UNUSED_RETURN endBlock(ControlEntry&, ExpressionList& expressionStack);
     Result WARN_UNUSED_RETURN addEndToUnreachable(ControlEntry&);
+    Result WARN_UNUSED_RETURN addGrowMemory(ExpressionType delta, ExpressionType& result);
+    Result WARN_UNUSED_RETURN addCurrentMemory(ExpressionType& result);
 
     Result WARN_UNUSED_RETURN addUnreachable() { return { }; }
 
@@ -136,21 +143,18 @@ public:
 
     bool hasMemory() const { return !!m_module.memory; }
 
-    Validate(ExpressionType returnType, const ModuleInformation& module)
-        : m_returnType(returnType)
-        , m_module(module)
+    Validate(const ModuleInformation& module)
+        : m_module(module)
     {
     }
 
-    void dump(const Vector<ControlEntry>&, const ExpressionList&);
+    void dump(const Vector<ControlEntry>&, const ExpressionList*);
 
 private:
-    Result unify(Type, Type);
-    Result unify(const ExpressionList&, const ControlData&);
+    Result WARN_UNUSED_RETURN unify(const ExpressionList&, const ControlData&);
 
-    Result checkBranchTarget(ControlData& target, const ExpressionList& expressionStack);
+    Result WARN_UNUSED_RETURN checkBranchTarget(ControlData& target, const ExpressionList& expressionStack);
 
-    ExpressionType m_returnType;
     Vector<Type> m_locals;
     const ModuleInformation& m_module;
 };
@@ -206,6 +210,11 @@ auto Validate::setGlobal(uint32_t index, ExpressionType value) -> Result
     return { };
 }
 
+Validate::ControlType Validate::addTopLevel(Type signature)
+{
+    return ControlData(BlockType::TopLevel, signature);
+}
+
 Validate::ControlType Validate::addBlock(Type signature)
 {
     return ControlData(BlockType::Block, signature);
@@ -244,12 +253,13 @@ auto Validate::addElseToUnreachable(ControlType& current) -> Result
     return { };
 }
 
-auto Validate::addReturn(const ExpressionList& returnValues) -> Result
+auto Validate::addReturn(ControlType& topLevel, const ExpressionList& returnValues) -> Result
 {
-    if (m_returnType == Void)
+    ASSERT(topLevel.type() == BlockType::TopLevel);
+    if (topLevel.signature() == Void)
         return { };
     ASSERT(returnValues.size() == 1);
-    WASM_VALIDATOR_FAIL_IF(m_returnType != returnValues[0], "return type ", returnValues[0], " doesn't match function's return type ", m_returnType);
+    WASM_VALIDATOR_FAIL_IF(topLevel.signature() != returnValues[0], "return type ", returnValues[0], " doesn't match function's return type ", topLevel.signature());
     return { };
 }
 
@@ -284,18 +294,23 @@ auto Validate::addSwitch(ExpressionType condition, const Vector<ControlData*>& t
     return checkBranchTarget(defaultTarget, expressionStack);
 }
 
+auto Validate::addGrowMemory(ExpressionType delta, ExpressionType& result) -> Result
+{
+    WASM_VALIDATOR_FAIL_IF(delta != I32, "grow_memory with non-i32 delta");
+    result = I32;
+    return { };
+}
+
+auto Validate::addCurrentMemory(ExpressionType& result) -> Result
+{
+    result = I32;
+    return { };
+}
+
 auto Validate::endBlock(ControlEntry& entry, ExpressionList& stack) -> Result
 {
-    ControlData& block = entry.controlData;
-    if (block.signature() == Void)
-        return { };
-
-    WASM_VALIDATOR_FAIL_IF(block.type() == BlockType::If, "If-block had a non-void result type: ", block.signature(), " but had no else-block");
-    WASM_VALIDATOR_FAIL_IF(stack.isEmpty(), "typed block falls through on empty stack");
-    WASM_VALIDATOR_FAIL_IF(block.signature() != stack.last(), "block fallthrough doesn't match its declared type");
-
-    entry.enclosedExpressionStack.append(block.signature());
-    return { };
+    WASM_FAIL_IF_HELPER_FAILS(unify(stack, entry.controlData));
+    return addEndToUnreachable(entry);
 }
 
 auto Validate::addEndToUnreachable(ControlEntry& entry) -> Result
@@ -337,26 +352,39 @@ auto Validate::addCallIndirect(const Signature* signature, SignatureIndex signat
 
 auto Validate::unify(const ExpressionList& values, const ControlType& block) -> Result
 {
-    ASSERT(values.size() <= 1);
-    if (block.signature() == Void)
+    if (block.signature() == Void) {
+        WASM_VALIDATOR_FAIL_IF(!values.isEmpty(), "void block should end with an empty stack");
         return { };
+    }
 
-    WASM_VALIDATOR_FAIL_IF(values.isEmpty(), "non-void block ends with an empty stack");
+    WASM_VALIDATOR_FAIL_IF(values.size() != 1, "block with type: ", block.signature(), " ends with a stack containing more than one value");
     WASM_VALIDATOR_FAIL_IF(values[0] != block.signature(), "control flow returns with unexpected type");
-
     return { };
 }
 
-void Validate::dump(const Vector<ControlEntry>&, const ExpressionList&)
+static void dumpExpressionStack(const CommaPrinter& comma, const Validate::ExpressionList& expressionStack)
 {
-    // If you need this then you should fix the validator's error messages instead...
-    // Think of this as penance for the sin of bad error messages.
+    dataLog(comma, " ExpressionStack:");
+    for (const auto& expression : expressionStack)
+        dataLog(comma, makeString(expression));
 }
 
-Expected<void, String> validateFunction(VM* vm, const uint8_t* source, size_t length, const Signature* signature, const ImmutableFunctionIndexSpace& functionIndexSpace, const ModuleInformation& module)
+void Validate::dump(const Vector<ControlEntry>& controlStack, const ExpressionList* expressionStack)
 {
-    Validate context(signature->returnType(), module);
-    FunctionParser<Validate> validator(vm, context, source, length, signature, functionIndexSpace, module);
+    for (size_t i = controlStack.size(); i--;) {
+        dataLog("  ", controlStack[i].controlData);
+        CommaPrinter comma(", ", "");
+        dumpExpressionStack(comma, *expressionStack);
+        expressionStack = &controlStack[i].enclosedExpressionStack;
+        dataLogLn();
+    }
+    dataLogLn();
+}
+
+Expected<void, String> validateFunction(VM* vm, const uint8_t* source, size_t length, const Signature* signature, const ModuleInformation& module, const Vector<SignatureIndex>& moduleSignatureIndicesToUniquedSignatureIndices)
+{
+    Validate context(module);
+    FunctionParser<Validate> validator(vm, context, source, length, signature, module, moduleSignatureIndicesToUniquedSignatureIndices);
     WASM_FAIL_IF_HELPER_FAILS(validator.parse());
     return { };
 }

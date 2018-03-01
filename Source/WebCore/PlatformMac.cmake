@@ -107,6 +107,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cocoa"
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/graphics/cv"
+    "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/opengl"
     "${WEBCORE_DIR}/platform/graphics/mac"
@@ -326,6 +327,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/ScrollController.mm
     platform/cocoa/ScrollSnapAnimatorState.mm
     platform/cocoa/SearchPopupMenuCocoa.mm
+    platform/cocoa/SharedBufferCocoa.mm
     platform/cocoa/SystemVersion.mm
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.mm
@@ -482,7 +484,6 @@ list(APPEND WebCore_SOURCES
     platform/mac/ScrollViewMac.mm
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformRepresentationMac.mm
-    platform/mac/SharedBufferMac.mm
     platform/mac/SoundMac.mm
     platform/mac/SuddenTermination.mm
     platform/mac/SystemSleepListenerMac.mm

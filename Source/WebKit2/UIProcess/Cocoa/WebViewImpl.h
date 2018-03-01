@@ -493,7 +493,6 @@ public:
 
     void forceRequestCandidatesForTesting();
     bool shouldRequestCandidates() const;
-    void showCandidates(NSArray *candidates, NSString *, NSRect rectOfTypedString, NSRange selectedRange, NSView *, void (^completionHandler)(NSTextCheckingResult *acceptedCandidate));
 
     bool windowIsFrontWindowUnderMouse(NSEvent *);
 
@@ -583,6 +582,7 @@ private:
 
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
+    void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle&, SandboxExtension::HandleArray& handles);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);

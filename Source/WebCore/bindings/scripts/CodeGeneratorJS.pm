@@ -4254,17 +4254,13 @@ sub GenerateCallWithUsingPointers
 
 sub GenerateCallWith
 {
-    my $callWith = shift;
+    my ($callWith, $outputArray, $returnValue, $function, $statePointer, $stateReference, $globalObject) = @_;
+
     return () unless $callWith;
-    my $outputArray = shift;
-    my $returnValue = shift;
-    my $function = shift;
-    my $statePointer = shift;
-    my $stateReference = shift;
-    my $globalObject = shift;
 
     my @callWithArgs;
     push(@callWithArgs, $stateReference) if $codeGenerator->ExtendedAttributeContains($callWith, "ScriptState");
+    push(@callWithArgs, "*${globalObject}") if $codeGenerator->ExtendedAttributeContains($callWith, "GlobalObject");
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ScriptExecutionContext")) {
         push(@$outputArray, "    auto* context = $globalObject->scriptExecutionContext();\n");
         push(@$outputArray, "    if (!context)\n");
@@ -5111,10 +5107,11 @@ sub GetBaseIDLType
         
         # Non-WebIDL extensions
         "Date" => "IDLDate",
-        "SerializedScriptValue" => "IDLSerializedScriptValue<SerializedScriptValue>",
         "EventListener" => "IDLEventListener<JSEventListener>",
-        "XPathNSResolver" => "IDLXPathNSResolver<XPathNSResolver>",
+        "IDBKey" => "IDLIDBKey<IDBKey>",
         "JSON" => "IDLJSON",
+        "SerializedScriptValue" => "IDLSerializedScriptValue<SerializedScriptValue>",
+        "XPathNSResolver" => "IDLXPathNSResolver<XPathNSResolver>",
 
         # Convenience type aliases
         "BufferSource" => "IDLBufferSource",
@@ -5337,9 +5334,10 @@ sub NativeToJSValueDOMConvertNeedsState
     return 1 if $codeGenerator->IsInterfaceType($type);
     return 1 if $codeGenerator->IsTypedArrayType($type);
     return 1 if $type->name eq "Date";
+    return 1 if $type->name eq "IDBKey";
+    return 1 if $type->name eq "JSON";
     return 1 if $type->name eq "SerializedScriptValue";
     return 1 if $type->name eq "XPathNSResolver";
-    return 1 if $type->name eq "JSON";
 
     return 0;
 }
@@ -5355,6 +5353,7 @@ sub NativeToJSValueDOMConvertNeedsGlobalObject
     return 1 if $codeGenerator->IsDictionaryType($type);
     return 1 if $codeGenerator->IsInterfaceType($type);
     return 1 if $codeGenerator->IsTypedArrayType($type);
+    return 1 if $type->name eq "IDBKey";
     return 1 if $type->name eq "SerializedScriptValue";
     return 1 if $type->name eq "XPathNSResolver";
 
@@ -5404,14 +5403,6 @@ sub NativeToJSValue
     if ($context->extendedAttributes->{Reflect} and ($type->name eq "unsigned long" or $type->name eq "unsigned short")) {
         $value =~ s/getUnsignedIntegralAttribute/getIntegralAttribute/g;
         $value = "std::max(0, $value)";
-    }
-
-    if ($type->name eq "any") {
-        my $returnType = $context->extendedAttributes->{ImplementationReturnType};
-        if (defined $returnType and ($returnType eq "IDBKeyPath" or $returnType eq "IDBKey")) {
-            AddToImplIncludes("IDBBindingUtilities.h", $conditional);
-            return "toJS($stateReference, $globalObjectReference, $value)";
-        }
     }
 
     AddToImplIncludesForIDLType($type, $conditional);

@@ -1003,7 +1003,6 @@ scrollingcoordinator/non-fast-scrollable-region-transformed-iframe.html [ Failur
 userscripts/user-script-plugin-document.html [ Failure ]
 
 # Webarchive tests that fail:
-webarchive/loading/video-in-webarchive.html [ Failure ]
 webarchive/test-css-url-resources-in-stylesheets.html [ Failure ]
 webarchive/test-css-url-resources-inline-styles.html [ Failure ]
 webarchive/test-link-rel-icon.html [ Failure ]
@@ -1292,6 +1291,12 @@ fast/events/shadow-event-path.html [ Failure ]
 fast/events/show-modal-dialog-onblur-onfocus.html [ Failure ]
 fast/events/tab-focus-link-in-canvas.html [ Failure ]
 fast/events/tabindex-focus-blur-all.html [ Failure ]
+
+# Tests that depend on mouse input
+fast/events/autoscroll-main-document.html [ Skip ]
+fast/events/autoscroll-when-zoomed.html [ Skip ]
+fast/events/drag-select-when-zoomed-with-header.html [ Skip ]
+fast/events/drag-select-when-zoomed.html [ Skip ]
 
 # Ref-test imported from W3C that is failing because type=image input elements have rounded corners on iOS.
 imported/w3c/web-platform-tests/html/semantics/forms/the-input-element/image01.html [ ImageOnlyFailure ]
@@ -2748,6 +2753,7 @@ webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
 fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-into-view-fixed.html [ Skip ]
+fast/scrolling/scroll-to-anchor-zoomed-header.html [ Skip ]
 
 # This test relies on Arial being used to draw Arabic. However, on iOS,
 # we explicitly disallow this because this font is too slow.

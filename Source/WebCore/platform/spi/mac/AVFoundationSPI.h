@@ -180,6 +180,10 @@ NS_ASSUME_NONNULL_BEGIN
 
 NS_ASSUME_NONNULL_END
 
+#if __has_include(<AVFoundation/AVSampleBufferAudioRenderer.h>)
+#import <AVFoundation/AVSampleBufferAudioRenderer.h>
+#else
+
 NS_ASSUME_NONNULL_BEGIN
 
 @interface AVSampleBufferAudioRenderer : NSObject
@@ -196,3 +200,5 @@ NS_ASSUME_NONNULL_BEGIN
 @end
 
 NS_ASSUME_NONNULL_END
+
+#endif // __has_include(<AVFoundation/AVSampleBufferAudioRenderer.h>)

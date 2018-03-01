@@ -94,11 +94,8 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
     JSWebAssemblyModule* module = instance->module();
     const Wasm::ModuleInformation& moduleInformation = module->moduleInformation();
 
-    bool hasStart = !!moduleInformation.startFunctionIndexSpace;
-    auto startFunctionIndexSpace = moduleInformation.startFunctionIndexSpace.value_or(0);
-
     SymbolTable* exportSymbolTable = module->exportSymbolTable();
-    unsigned importCount = module->importCount();
+    unsigned functionImportCount = module->functionImportCount();
 
     // FIXME wire up the imports. https://bugs.webkit.org/show_bug.cgi?id=165118
 
@@ -111,7 +108,7 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
             // 1. If e is a closure c:
             //   i. If there is an Exported Function Exotic Object func in funcs whose func.[[Closure]] equals c, then return func.
             //   ii. (Note: At most one wrapper is created for any closure, so func is unique, even if there are multiple occurrances in the list. Moreover, if the item was an import that is already an Exported Function Exotic Object, then the original function object will be found. For imports that are regular JS functions, a new wrapper will be created.)
-            if (exp.kindIndex < importCount) {
+            if (exp.kindIndex < functionImportCount) {
                 // FIXME Implement re-exporting an import. https://bugs.webkit.org/show_bug.cgi?id=165510
                 RELEASE_ASSERT_NOT_REACHED();
             }
@@ -121,12 +118,10 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
             //     c. Return func.
             JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(exp.kindIndex);
             JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(exp.kindIndex);
-            Wasm::SignatureIndex signatureIndex = module->signatureForFunctionIndexSpace(exp.kindIndex);
+            Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(exp.kindIndex);
             const Wasm::Signature* signature = Wasm::SignatureInformation::get(&vm, signatureIndex);
             WebAssemblyFunction* function = WebAssemblyFunction::create(vm, globalObject, signature->argumentCount(), exp.field.string(), instance, jsEntrypointCallee, wasmEntrypointCallee, signatureIndex);
             exportedValue = function;
-            if (hasStart && startFunctionIndexSpace == exp.kindIndex)
-                m_startFunction.set(vm, this, function);
             break;
         }
         case Wasm::ExternalKind::Table: {
@@ -138,8 +133,6 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
             break;
         }
         case Wasm::ExternalKind::Memory: {
-            // This should be guaranteed by module verification.
-            RELEASE_ASSERT(instance->memory()); 
             ASSERT(exp.kindIndex == 0);
 
             exportedValue = instance->memory();
@@ -177,15 +170,18 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
         RELEASE_ASSERT(putResult);
     }
 
+    bool hasStart = !!moduleInformation.startFunctionIndexSpace;
     if (hasStart) {
-        Wasm::SignatureIndex signatureIndex = module->signatureForFunctionIndexSpace(startFunctionIndexSpace);
+        auto startFunctionIndexSpace = moduleInformation.startFunctionIndexSpace.value_or(0);
+        Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(startFunctionIndexSpace);
         const Wasm::Signature* signature = Wasm::SignatureInformation::get(&vm, signatureIndex);
         // The start function must not take any arguments or return anything. This is enforced by the parser.
         ASSERT(!signature->argumentCount());
         ASSERT(signature->returnType() == Wasm::Void);
-        // FIXME can start call imports / tables? This assumes not. https://github.com/WebAssembly/design/issues/896
-        if (!m_startFunction.get()) {
-            // The start function wasn't added above. It must be a purely internal function.
+        if (startFunctionIndexSpace < module->functionImportCount()) {
+            JSCell* startFunction = instance->importFunction(startFunctionIndexSpace)->get();
+            m_startFunction.set(vm, this, startFunction);
+        } else {
             JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(startFunctionIndexSpace);
             JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(startFunctionIndexSpace);
             WebAssemblyFunction* function = WebAssemblyFunction::create(vm, globalObject, signature->argumentCount(), "start", instance, jsEntrypointCallee, wasmEntrypointCallee, signatureIndex);
@@ -198,8 +194,8 @@ void WebAssemblyModuleRecord::link(ExecState* state, JSWebAssemblyInstance* inst
     m_moduleEnvironment.set(vm, this, moduleEnvironment);
 }
 
-template <typename Scope, typename N, typename ...Args>
-NEVER_INLINE static JSValue dataSegmentFail(ExecState* state, VM* vm, Scope& scope, N memorySize, N segmentSize, N offset, Args... args)
+template <typename Scope, typename M, typename N, typename ...Args>
+NEVER_INLINE static JSValue dataSegmentFail(ExecState* state, VM& vm, Scope& scope, M memorySize, N segmentSize, N offset, Args... args)
 {
     return throwException(state, scope, createJSWebAssemblyLinkError(state, vm, makeString(ASCIILiteral("Invalid data segment initialization: segment of "), String::number(segmentSize), ASCIILiteral(" bytes memory of "), String::number(memorySize), ASCIILiteral(" bytes, at offset "), String::number(offset), args...)));
 }
@@ -225,7 +221,7 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* state)
             uint32_t tableIndex = element.offset;
             uint64_t lastWrittenIndex = static_cast<uint64_t>(tableIndex) + static_cast<uint64_t>(element.functionIndices.size()) - 1;
             if (lastWrittenIndex >= table->size())
-                return throwException(state, scope, createJSWebAssemblyLinkError(state, &vm, ASCIILiteral("Element is trying to set an out of bounds table index")));
+                return throwException(state, scope, createJSWebAssemblyLinkError(state, vm, ASCIILiteral("Element is trying to set an out of bounds table index")));
 
             for (uint32_t i = 0; i < element.functionIndices.size(); ++i) {
                 // FIXME: This essentially means we're exporting an import.
@@ -233,14 +229,14 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* state)
                 // for the import.
                 // https://bugs.webkit.org/show_bug.cgi?id=165510
                 uint32_t functionIndex = element.functionIndices[i];
-                if (functionIndex < module->importCount()) {
+                if (functionIndex < module->functionImportCount()) {
                     return JSValue::decode(
                         throwVMRangeError(state, scope, ASCIILiteral("Element is setting the table value with an import. This is not yet implemented. FIXME.")));
                 }
 
                 JSWebAssemblyCallee* jsEntrypointCallee = module->jsEntrypointCalleeFromFunctionIndexSpace(functionIndex);
                 JSWebAssemblyCallee* wasmEntrypointCallee = module->wasmEntrypointCalleeFromFunctionIndexSpace(functionIndex);
-                Wasm::SignatureIndex signatureIndex = module->signatureForFunctionIndexSpace(functionIndex);
+                Wasm::SignatureIndex signatureIndex = module->signatureIndexFromFunctionIndexSpace(functionIndex);
                 const Wasm::Signature* signature = Wasm::SignatureInformation::get(&vm, signatureIndex);
                 // FIXME: Say we export local function "foo" at funciton index 0.
                 // What if we also set it to the table an Element w/ index 0.
@@ -259,26 +255,31 @@ JSValue WebAssemblyModuleRecord::evaluate(ExecState* state)
         const Vector<Wasm::Segment::Ptr>& data = m_instance->module()->moduleInformation().data;
         JSWebAssemblyMemory* jsMemory = m_instance->memory();
         if (!data.isEmpty()) {
-            RELEASE_ASSERT(jsMemory); // It is a validation error for a Data section to exist without a Memory section or import.
             uint8_t* memory = reinterpret_cast<uint8_t*>(jsMemory->memory()->memory());
-            RELEASE_ASSERT(memory);
-            auto sizeInBytes = jsMemory->memory()->size();
+            uint64_t sizeInBytes = jsMemory->memory()->size();
             for (auto& segment : data) {
                 if (segment->sizeInBytes) {
+                    uint32_t offset;
+                    if (segment->offset.isGlobalImport())
+                        offset = static_cast<uint32_t>(m_instance->loadI32Global(segment->offset.globalImportIndex()));
+                    else
+                        offset = segment->offset.constValue();
+
                     if (UNLIKELY(sizeInBytes < segment->sizeInBytes))
-                        return dataSegmentFail(state, &vm, scope, sizeInBytes, segment->sizeInBytes, segment->offset, ASCIILiteral(", segment is too big"));
-                    if (UNLIKELY(segment->offset > sizeInBytes - segment->sizeInBytes))
-                        return dataSegmentFail(state, &vm, scope, sizeInBytes, segment->sizeInBytes, segment->offset, ASCIILiteral(", segment writes outside of memory"));
-                    memcpy(memory + segment->offset, &segment->byte(0), segment->sizeInBytes);
+                        return dataSegmentFail(state, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment is too big"));
+                    if (UNLIKELY(offset > sizeInBytes - segment->sizeInBytes))
+                        return dataSegmentFail(state, vm, scope, sizeInBytes, segment->sizeInBytes, offset, ASCIILiteral(", segment writes outside of memory"));
+                    RELEASE_ASSERT(memory);
+                    memcpy(memory + offset, &segment->byte(0), segment->sizeInBytes);
                 }
             }
         }
     }
 
-    if (WebAssemblyFunction* startFunction = m_startFunction.get()) {
-        ProtoCallFrame protoCallFrame;
-        protoCallFrame.init(nullptr, startFunction, JSValue(), 1, nullptr);
-        startFunction->call(vm, &protoCallFrame);
+    if (JSCell* startFunction = m_startFunction.get()) {
+        CallData callData;
+        CallType callType = JSC::getCallData(startFunction, callData);
+        call(state, startFunction, callType, callData, jsUndefined(), state->emptyList());
         RETURN_IF_EXCEPTION(scope, { });
     }
 

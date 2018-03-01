@@ -1,3 +1,393 @@
+2017-01-04  Enrica Casucci  <enrica@apple.com>
+
+        Support File Promise during drag for macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        rdar://problem/19595567
+
+        Reviewed by Tim Horton.
+
+        Adds support for dropping a File Promise in a WKWebView.
+        The implementation uses new File Promise API available in Sierra.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<DragData>::encode):
+        (IPC::ArgumentCoder<DragData>::decode):
+        * Shared/mac/PasteboardTypes.mm:
+        (WebKit::PasteboardTypes::forURL):
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::createSandboxExtensionsIfNeeded):
+        (WebKit::WebViewImpl::performDragOperation):
+        (WebKit::maybeCreateSandboxExtensionFromPasteboard): Deleted.
+        (WebKit::createSandboxExtensionsForFileUpload): Deleted.
+
+2017-01-04  Jeremy Jones  <jeremyj@apple.com>
+
+        Release pointer lock when page state is reset for any reason, not just for process exited.
+        https://bugs.webkit.org/show_bug.cgi?id=166654
+        <rdar://problem/29849769>
+
+        Reviewed by Tim Horton.
+
+        Pointer lock was not being released when the window is closed.
+        Move the pointer lock to resetState() so it happens whenever the page is
+        reset, not just when it is reset after process exit.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState): Release here.
+        (WebKit::WebPageProxy::resetStateAfterProcessExited): Don't release here.
+
+2017-01-03  Tim Horton  <timothy_horton@apple.com>
+
+        NSSpellChecker's recordResponse isn't called for unseen automatic corrections
+        https://bugs.webkit.org/show_bug.cgi?id=166450
+        <rdar://problem/29447824>
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/mac/CorrectionPanel.h:
+        * UIProcess/mac/CorrectionPanel.mm:
+        (WebKit::CorrectionPanel::recordAutocorrectionResponse):
+        (WebKit::CorrectionPanel::handleAcceptedReplacement):
+        Funnel all calls to recordResponse:toCorrection:forWord:language:inSpellDocumentWithTag:
+        through recordAutocorrectionResponse, for debugging's sake.
+        Drop the NSView parameter because we don't need it, just the tag.
+
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::toCorrectionResponse):
+        (WebKit::PageClientImpl::recordAutocorrectionResponse):
+        Convert the new AutocorrectionResponseType value to its corresponding
+        NSCorrectionResponse value.
+
+2017-01-03  Daniel Bates  <dabates@apple.com>
+
+        Another attempt to fix the Apple Sierra Release 32-bit Build following <https://trac.webkit.org/changeset/210075>
+        (https://bugs.webkit.org/show_bug.cgi?id=166367)
+
+        Guard more code in WebViewImpl::handleRequestedCandidates() inside HAVE(TOUCH_BAR).
+        Remove unused local variable weakThis.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::handleRequestedCandidates):
+
+2017-01-03  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the Apple Sierra Release 32-bit Build following <https://trac.webkit.org/changeset/210075>
+        (https://bugs.webkit.org/show_bug.cgi?id=166367)
+
+        Add HAVE(TOUCH_BAR)-guard around code that messages candidateListTouchBarItem() as
+        candidateListTouchBarItem() is only defined when building with Touch Bar support.
+
+        Also added an inline comment to help demarcate the code when building without Touch Bar
+        support. We should look to clean up WebViewImpl.mm including extracting out the Touch
+        Bar code to another file or better demarcating it so as to improve the hackability of
+        this code and prevent breaking the build when building without Touch Bar support.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::handleRequestedCandidates):
+
+2017-01-03  Michael Catanzaro  <mcatanzaro@igalia.com> and Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Expose WebKitSecurityOrigin API
+        https://bugs.webkit.org/show_bug.cgi?id=166632
+
+        Reviewed by Carlos Garcia Campos.
+
+        This API will be useful to have for various purposes, such as setting initial notification
+        permissions.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/gtk/WebKitAutocleanups.h:
+        * UIProcess/API/gtk/WebKitSecurityOrigin.cpp: Added.
+        (_WebKitSecurityOrigin::_WebKitSecurityOrigin):
+        (webkitSecurityOriginCreate):
+        (webkit_security_origin_new):
+        (webkit_security_origin_new_for_uri):
+        (webkit_security_origin_ref):
+        (webkit_security_origin_unref):
+        (webkit_security_origin_get_protocol):
+        (webkit_security_origin_get_host):
+        (webkit_security_origin_get_port):
+        (webkit_security_origin_is_opaque):
+        (webkit_security_origin_to_string):
+        * UIProcess/API/gtk/WebKitSecurityOrigin.h: Added.
+        * UIProcess/API/gtk/WebKitSecurityOriginPrivate.h: Added.
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+        * UIProcess/API/gtk/webkit2.h:
+
+2017-01-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Load options allowStoredCredentials = DoNotAllowStoredCredentials with clientCredentialPolicy = MayAskClientForCredentials doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=164471
+
+        Reviewed by Michael Catanzaro.
+
+        When DoNotAllowStoredCredentials is used we disable the SoupAuthManager feature for the message, but that
+        disables all HTTP authentication, causing the load to always fail with Authorization required even when
+        clientCredentialPolicy allows to ask the user for credentials. The problem is that even if we don't use the
+        WebCore credentials for that request, libsoup will always use its internal cache of SoupAuth if we enable the
+        SoupAuthManager feature. Libsoup 2.57.1 has new API to disable the use of cached credentials for a particular
+        message, adding the new message flag SOUP_MESSAGE_DO_NOT_USE_AUTH_CACHE.
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::createRequest): Set SOUP_MESSAGE_DO_NOT_USE_AUTH_CACHE flag to disable cached
+        credentials for the message if libsoup >= 2.57.1 is used.
+
+2017-01-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] HTTP auth layout tests are flaky
+        https://bugs.webkit.org/show_bug.cgi?id=158919
+
+        Reviewed by Michael Catanzaro.
+
+        Implement NetworkSession::clearCredentials() for soup using the new libsoup API when available.
+
+        * NetworkProcess/soup/NetworkSessionSoup.cpp:
+        (WebKit::NetworkSessionSoup::clearCredentials):
+        * NetworkProcess/soup/NetworkSessionSoup.h:
+
+2017-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2017
+        https://bugs.webkit.org/show_bug.cgi?id=166278
+
+        Reviewed by Dan Bernstein.
+
+        * DatabaseProcess/EntryPoint/mac/XPCService/DatabaseService/Info.plist:
+        * Info.plist:
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX-10.9-10.10.plist:
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-OSX.plist:
+        * NetworkProcess/EntryPoint/mac/XPCService/NetworkService/Info-iOS.plist:
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64-10.9-10.10.Info.plist:
+        * PluginProcess/EntryPoint/mac/XPCService/PluginService.32-64.Info.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX-10.9-10.10.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-OSX.plist:
+        * WebProcess/EntryPoint/mac/XPCService/WebContentService/Info-iOS.plist:
+
+2016-12-30  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "dom" directory, related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=166569
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveTitle): Updated to use struct.
+        (WebKit::WebFrameLoaderClient::updateGlobalHistory): Ditto.
+        (WebKit::WebFrameLoaderClient::setTitle): Ditto.
+
+2016-12-27  Alex Christensen  <achristensen@webkit.org>
+
+        reduce PassRefPtr use in WebKit2
+        https://bugs.webkit.org/show_bug.cgi?id=166452
+
+        Reviewed by Yusuke Suzuki.
+
+        * Shared/API/c/cg/WKImageCG.cpp:
+        (WKImageCreateCGImage):
+        (WKImageCreateFromCGImage):
+        * Shared/ShareableBitmap.cpp:
+        (WebKit::ShareableBitmap::createHandle):
+        * Shared/ShareableBitmap.h:
+        * Shared/UserData.cpp:
+        (WebKit::UserData::encode):
+        (WebKit::UserData::decode):
+        * Shared/WebImage.cpp:
+        (WebKit::WebImage::create):
+        (WebKit::WebImage::WebImage):
+        * Shared/WebImage.h:
+        (WebKit::WebImage::bitmap):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didGetImageForFindMatch):
+        * UIProcess/mac/WKTextFinderClient.mm:
+        (-[WKTextFinderClient didGetImageForMatchResult:]):
+        * WebProcess/Automation/WebAutomationSessionProxy.cpp:
+        (WebKit::WebAutomationSessionProxy::takeScreenshot):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect):
+        (WebKit::InjectedBundleNodeHandle::renderedImage):
+        (WebKit::InjectedBundleNodeHandle::visibleRange):
+        (WebKit::InjectedBundleNodeHandle::htmlTableCellElementCellAbove):
+        (WebKit::InjectedBundleNodeHandle::documentFrame):
+        (WebKit::InjectedBundleNodeHandle::htmlFrameElementContentFrame):
+        (WebKit::InjectedBundleNodeHandle::htmlIFrameElementContentFrame):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::takeSnapshot):
+        (WebKit::WebPage::snapshotAtSize):
+        (WebKit::WebPage::snapshotNode):
+        (WebKit::WebPage::drawRectToImage):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::setTopOverhangImage):
+        (WebKit::WebPage::setBottomOverhangImage):
+
+2016-12-27  Emanuele Aina  <emanuele.aina@collabora.com>
+
+        Ensure NetworkProcess is ready before whitelisting TLS certificates
+        https://bugs.webkit.org/show_bug.cgi?id=162962
+
+        Reviewed by Alex Christensen.
+
+        If the API user tries to whitelist TLS certificates before any web
+        view has been created, the action will be ignored because the
+        NetworkProcess hasn't been fired up yet.
+
+        For example, the snippet below using the GTK+ API does not work,
+        unless the whitelisting is moved after the web view creation:
+
+          webkit_web_context_allow_tls_certificate_for_host(webkit_web_context_get_default(), crt, host);
+          webView = webkit_web_view_new();
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::allowSpecificHTTPSCertificateForHost): Ensure
+        that the NetworkProcess has been already fired up when adding
+        certificates, so they can be whitelisted before the first web view is
+        instantiated.
+
+2016-12-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Propagate the source origin as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=166348
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/Plugins/Netscape/NPRuntimeObjectMap.cpp:
+        (WebKit::NPRuntimeObjectMap::evaluate):
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Reduce QuickLook.h include overhead
+        https://bugs.webkit.org/show_bug.cgi?id=166454
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/Network/WebLoaderStrategy.cpp: Included QuickLook.h for QLPreviewProtocol().
+        * WebProcess/Network/WebResourceLoader.cpp: Included QuickLook.h for QuickLookHandle.
+        * WebProcess/Network/WebResourceLoader.h: Stopped including QuickLook.h.
+
+2016-12-22  Tim Horton  <timothy_horton@apple.com>
+
+        Null deref under WebPageProxy::applicationDidFinishSnapshottingAfterEnteringBackground
+        https://bugs.webkit.org/show_bug.cgi?id=166433
+        <rdar://problem/29732407>
+
+        Reviewed by Daniel Bates.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::applicationDidFinishSnapshottingAfterEnteringBackground):
+        m_drawingArea can be null if the process is not valid.
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Make WebCore::EditorInsertAction an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=166424
+
+        Reviewed by Brent Fulgham.
+
+        * WebProcess/InjectedBundle/API/c/WKBundleAPICast.h:
+        (WebKit::toAPI):
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (toWK):
+
+2016-12-22  Zhuo Li  <zachli@apple.com>
+
+        [Cocoa] SPI for setloadsImagesAutomatically
+        https://bugs.webkit.org/show_bug.cgi?id=166401
+
+        Reviewed by Darin Adler.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm: Call the C API under the hood.
+        (-[WKPreferences _loadsImagesAutomatically]):
+        (-[WKPreferences _setLoadsImagesAutomatically:]):
+
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+        Add `_loadsImagesAutomatically` property.
+
+2016-12-22  Eric Carlson  <eric.carlson@apple.com>
+
+        AVPlayerLayer isn't available on every system
+        https://bugs.webkit.org/show_bug.cgi?id=166399
+
+        Reviewed by Jer Noble.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm: Use SOFT_LINK_CLASS_OPTIONAL.
+
+2016-12-22  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        MediaStream: ASSERTION FAILED: m_ids.size() == m_handles.size() in MediaDeviceSandboxExtensions
+        https://bugs.webkit.org/show_bug.cgi?id=166328
+
+        Reviewed by Eric Carlson.
+
+        This assertion failure happens for ports with sandbox extensions disabled. SandboxExtension is empty and
+        HandleArray:size() always returns 0. Disable creation of MediaDevicesSandboxExtension in UserMediaProcessManager
+        when building without support of sandbox extension. Disable also WebPage::grantUserMediaDeviceSandboxExtensions
+        and WebPage::revokeUserMediaDeviceSandboxExtensions which can be avoided when sandbox extension is empty.
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willCreateMediaStream):
+        (WebKit::UserMediaProcessManager::endedCaptureSession):
+        * WebProcess/WebPage/WebPage.cpp:
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2016-12-22  Alejandro G. Castro  <alex@igalia.com>
+
+        [WebRTC] Add support for runtime PeeConnection setting, required after r209757
+        https://bugs.webkit.org/show_bug.cgi?id=166346
+
+        Reviewed by Carlos Garcia Campos.
+
+        After that commit we have to enable the peerConnection runtime
+        flag if we want webrtc to work. We are not adding a new API for
+        the moment to control the peerConnection feature.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webkit_settings_set_enable_media_stream): Use the mediaStream
+        setting to control the peerConnection
+
+2016-12-21  Brent Fulgham  <bfulgham@apple.com>
+
+        [Mac][WK2] Stop using file* rules in WebProcess sandbox profiles
+        https://bugs.webkit.org/show_bug.cgi?id=165824
+        <rdar://problem/14024823>
+
+        Reviewed by Alexey Proskuryakov
+
+        Switch from blanket 'file*' sandbox rules, to the specific 'file-read*' and 'file-write*' rules
+        we actually need.
+
+        * DatabaseProcess/mac/com.apple.WebKit.Databases.sb.in:
+        * PluginProcess/mac/com.apple.WebKit.plugin-common.sb.in:
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2016-12-21  Beth Dakin  <bdakin@apple.com>
+
+        Holding down on candidates in the TouchBar should show panel on screen
+        https://bugs.webkit.org/show_bug.cgi?id=166367
+        -and corresponding-
+        <rdar://problem/28479236>
+
+        Reviewed by Tim Horton.
+
+        The showCandidates() helper function is not needed. We can call the AppKit method 
+        directly at the one call site.
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+
+        The panel should appear under the selection, so offset the selection rect.
+        (WebKit::WebViewImpl::handleRequestedCandidates):
+
+        No more showCandidates() since we can call it directly. 
+        (WebKit::WebViewImpl::showCandidates): Deleted.
+
 2016-12-20  Taras Tsugrii  <ttsugrii@fb.com>
 
         Fix undefined behavior caused by macro expansion producing 'defined'

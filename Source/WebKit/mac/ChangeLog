@@ -1,3 +1,141 @@
+2017-01-04  Enrica Casucci  <enrica@apple.com>
+
+        Support File Promise during drag for macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        rdar://problem/19595567
+
+        Reviewed by Tim Horton.
+
+        Adds support for dropping a File Promise in a WebView.
+        The implementation uses new File Promise API available in Sierra.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (+[NSPasteboard _web_dragTypesForURL]):
+        * WebView/WebView.mm:
+        (-[WebView performDragOperation:]):
+
+2017-01-04  Tim Horton  <timothy_horton@apple.com>
+
+        Provide a setting for clients to always prefer low-power WebGL
+        https://bugs.webkit.org/show_bug.cgi?id=166675
+        <rdar://problem/29834093>
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences preferLowPowerWebGLRendering]):
+        (-[WebPreferences setPreferLowPowerWebGLRendering:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        Expose a new private preferLowPowerWebGLRendering WebKit1 preference.
+
+2017-01-03  Tim Horton  <timothy_horton@apple.com>
+
+        NSSpellChecker's recordResponse isn't called for unseen automatic corrections
+        https://bugs.webkit.org/show_bug.cgi?id=166450
+        <rdar://problem/29447824>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/CorrectionPanel.h:
+        * WebCoreSupport/CorrectionPanel.mm:
+        (CorrectionPanel::recordAutocorrectionResponse):
+        (CorrectionPanel::handleAcceptedReplacement):
+        * WebCoreSupport/WebAlternativeTextClient.mm:
+        (toCorrectionResponse):
+        (WebAlternativeTextClient::recordAutocorrectionResponse):
+        Funnel all calls to recordResponse:toCorrection:forWord:language:inSpellDocumentWithTag:
+        through recordAutocorrectionResponse, for debugging's sake.
+        Drop the NSView parameter because we don't need it, just the tag.
+        Convert the new AutocorrectionResponseType value to its corresponding
+        NSCorrectionResponse value.
+
+2017-01-01  Jeff Miller  <jeffm@apple.com>
+
+        Update user-visible copyright strings to include 2017
+        https://bugs.webkit.org/show_bug.cgi?id=166278
+
+        Reviewed by Dan Bernstein.
+
+        * Info.plist:
+
+2016-12-30  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "dom" directory, related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=166569
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDidReceiveTitle): Updated to use struct.
+        (WebFrameLoaderClient::updateGlobalHistory): Ditto.
+        (WebFrameLoaderClient::setTitle): Ditto.
+        (WebFrameLoaderClient::transitionToCommittedForNewPage): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _dispatchDidReceiveTitle:]): Use aggregate-style syntax for StringWithDirection.
+        Not needed now, but useful later if we ever can get rid of the explicit constructors.
+        (-[WebFrame loadArchive:]): Pass a reference to loadArchive.
+        * WebView/WebHTMLRepresentation.mm:
+        (-[WebHTMLRepresentation title]): Updated to use struct.
+
+2016-12-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Propagate the source origin as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=166348
+
+        Reviewed by Darin Adler.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::evaluate):
+
+2016-12-23  Andy Estes  <aestes@apple.com>
+
+        [iOS] DumpRenderTree triggers an assertion failure when calling +[WebPreferences _switchNetworkLoaderToNewTestingSession]
+        https://bugs.webkit.org/show_bug.cgi?id=166471
+
+        Reviewed by Andreas Kling.
+
+        When DumpRenderTree starts up, it calls
+        +[WebPreferences _switchNetworkLoaderToNewTestingSession] from the main thread. In Debug
+        builds, this triggers the ASSERT(isMainThread()) in
+        NetworkStorageSession::defaultNetworkStorageSession() because the Web thread has already
+        started, we are on the main thread, and we are not holding the Web thread lock. This is
+        causing all layout tests to crash in the iOS WK1 Debug configuration.
+
+        * WebView/WebPreferences.mm: (+[WebPreferences _switchNetworkLoaderToNewTestingSession]):
+        Take the Web thread lock before calling NetworkStorageSession::switchToNewTestingSession().
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Make WebCore::EditorInsertAction an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=166424
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (kit):
+
+2016-12-21  Beth Dakin  <bdakin@apple.com>
+
+        Holding down on candidates in the TouchBar should show panel on screen
+        https://bugs.webkit.org/show_bug.cgi?id=166367
+        -and corresponding-
+        <rdar://problem/28479236>
+
+        Reviewed by Tim Horton.
+
+        Stray whitespace.
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::handleRequestedCandidates):
+
+        Call the version of setCandidates: that takes a rect. We need to keep the helper 
+        function in WK1 (unlike WK2) since we also use it for testing.
+        * WebView/WebView.mm:
+        (-[WebView showCandidates:forString:inRect:forSelectedRange:view:completionHandler:]):
+
 2016-12-20  Dean Jackson  <dino@apple.com>
 
         Remove INDIE_UI

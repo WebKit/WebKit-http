@@ -102,9 +102,16 @@ using namespace HTMLNames;
 - (DOMDocumentFragment *)_documentFromRange:(NSRange)range document:(DOMDocument *)document documentAttributes:(NSDictionary *)attributes subresources:(NSArray **)subresources;
 @end
 
-static WebViewInsertAction kit(EditorInsertAction coreAction)
+static WebViewInsertAction kit(EditorInsertAction action)
 {
-    return static_cast<WebViewInsertAction>(coreAction);
+    switch (action) {
+    case EditorInsertAction::Typed:
+        return WebViewInsertActionTyped;
+    case EditorInsertAction::Pasted:
+        return WebViewInsertActionPasted;
+    case EditorInsertAction::Dropped:
+        return WebViewInsertActionDropped;
+    }
 }
 
 @interface WebUndoStep : NSObject
@@ -1248,7 +1255,6 @@ void WebEditorClient::handleRequestedCandidates(NSInteger sequenceNumber, NSArra
         rectForSelectionCandidates = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
     [m_webView showCandidates:candidates forString:m_paragraphContextForCandidateRequest.get() inRect:rectForSelectionCandidates forSelectedRange:m_rangeForCandidates view:m_webView completionHandler:nil];
-
 }
 
 void WebEditorClient::handleAcceptedCandidateWithSoftSpaces(TextCheckingResult acceptedCandidate)

@@ -26,6 +26,7 @@
 #pragma once
 
 #include "BufferSource.h"
+#include "IDBBindingUtilities.h"
 #include "IDLTypes.h"
 #include "JSDOMBinding.h"
 #include <runtime/JSONObject.h>
@@ -210,6 +211,38 @@ template<typename T> struct DefaultConverter {
 };
 
 // MARK: -
+// MARK: Any type
+
+template<> struct Converter<IDLAny> : DefaultConverter<IDLAny> {
+    using ReturnType = JSC::JSValue;
+    
+    static JSC::JSValue convert(JSC::ExecState&, JSC::JSValue value)
+    {
+        return value;
+    }
+
+    static JSC::JSValue convert(const JSC::Strong<JSC::Unknown>& value)
+    {
+        return value.get();
+    }
+};
+
+template<> struct JSConverter<IDLAny> {
+    static constexpr bool needsState = false;
+    static constexpr bool needsGlobalObject = false;
+
+    static JSC::JSValue convert(const JSC::JSValue& value)
+    {
+        return value;
+    }
+
+    static JSC::JSValue convert(const JSC::Strong<JSC::Unknown>& value)
+    {
+        return value.get();
+    }
+};
+
+// MARK: -
 // MARK: Nullable type
 
 namespace Detail {
@@ -224,6 +257,11 @@ namespace Detail {
     template<typename T>
     struct NullableConversionType<IDLInterface<T>> {
         using Type = typename Converter<IDLInterface<T>>::ReturnType;
+    };
+
+    template<>
+    struct NullableConversionType<IDLAny> {
+        using Type = typename Converter<IDLAny>::ReturnType;
     };
 }
 
@@ -331,6 +369,26 @@ template<typename T> struct JSConverter<IDLNullable<T>> {
 };
 
 // MARK: -
+// MARK: Null type
+
+template<> struct Converter<IDLNull> : DefaultConverter<IDLNull> {
+    static std::nullptr_t convert(JSC::ExecState&, JSC::JSValue)
+    {
+        return nullptr;
+    }
+};
+
+template<> struct JSConverter<IDLNull> {
+    static constexpr bool needsState = false;
+    static constexpr bool needsGlobalObject = false;
+
+    static JSC::JSValue convert(std::nullptr_t)
+    {
+        return JSC::jsNull();
+    }
+};
+
+// MARK: -
 // MARK: Boolean type
 
 template<> struct Converter<IDLBoolean> : DefaultConverter<IDLBoolean> {
@@ -410,26 +468,6 @@ template<typename T> struct JSConverter<IDLInterface<T>> {
     static JSC::JSValue convertNewlyCreated(JSC::ExecState& state, JSDOMGlobalObject& globalObject, U&& value)
     {
         return toJSNewlyCreated(&state, &globalObject, std::forward<U>(value));
-    }
-};
-
-// MARK: -
-// MARK: Any type
-
-template<> struct Converter<IDLAny> : DefaultConverter<IDLAny> {
-    static JSC::JSValue convert(JSC::ExecState&, JSC::JSValue value)
-    {
-        return value;
-    }
-};
-
-template<> struct JSConverter<IDLAny> {
-    static constexpr bool needsState = false;
-    static constexpr bool needsGlobalObject = false;
-
-    static JSC::JSValue convert(const JSC::JSValue& value)
-    {
-        return value;
     }
 };
 
@@ -1443,6 +1481,26 @@ template<> struct JSConverter<IDLDate> {
 };
 
 // MARK: -
+// MARK: IDLJSON type
+
+template<> struct Converter<IDLJSON> : DefaultConverter<IDLJSON> {
+    static String convert(JSC::ExecState& state, JSC::JSValue value)
+    {
+        return JSC::JSONStringify(&state, value, 0);
+    }
+};
+
+template<> struct JSConverter<IDLJSON> {
+    static constexpr bool needsState = true;
+    static constexpr bool needsGlobalObject = false;
+
+    static JSC::JSValue convert(JSC::ExecState& state, const String& value)
+    {
+        return JSC::JSONParse(&state, value);
+    }
+};
+
+// MARK: -
 // MARK: SerializedScriptValue type
 
 template<typename T> struct Converter<IDLSerializedScriptValue<T>> : DefaultConverter<IDLSerializedScriptValue<T>> {
@@ -1517,22 +1575,16 @@ template<typename T> struct JSConverter<IDLXPathNSResolver<T>> {
 };
 
 // MARK: -
-// MARK: IDLJSON type
+// MARK: IDLIDBKey type
 
-template<> struct Converter<IDLJSON> : DefaultConverter<IDLJSON> {
-    static String convert(JSC::ExecState& state, JSC::JSValue value)
-    {
-        return JSC::JSONStringify(&state, value, 0);
-    }
-};
-
-template<> struct JSConverter<IDLJSON> {
+template<typename T> struct JSConverter<IDLIDBKey<T>> {
     static constexpr bool needsState = true;
-    static constexpr bool needsGlobalObject = false;
+    static constexpr bool needsGlobalObject = true;
 
-    static JSC::JSValue convert(JSC::ExecState& state, const String& value)
+    template <typename U>
+    static JSC::JSValue convert(JSC::ExecState& state, JSDOMGlobalObject& globalObject, U&& value)
     {
-        return JSC::JSONParse(&state, value);
+        return toJS(state, globalObject, std::forward<U>(value));
     }
 };
 

@@ -583,6 +583,16 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     return nil;
 }
 
+- (AccessibilityObjectWrapper*)_accessibilityFrameAncestor
+{
+    auto* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
+        return object.isWebArea();
+    });
+    if (!parent)
+        return nil;
+    return parent->wrapper();
+}
+
 - (uint64_t)_accessibilityTraitsFromAncestors
 {
     uint64_t traits = 0;
@@ -1239,6 +1249,13 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     std::pair<unsigned, unsigned> columnRange;
     tableCell->columnIndexRange(columnRange);
     return NSMakeRange(columnRange.first, columnRange.second);
+}
+
+- (NSUInteger)accessibilityBlockquoteLevel
+{
+    if (![self _prepareAccessibilityCall])
+        return 0;
+    return m_object->blockquoteLevel();
 }
 
 - (NSString *)accessibilityPlaceholderValue

@@ -78,8 +78,7 @@ void TileGrid::setScale(float scale)
     transform.scale(1 / m_scale);
     m_containerLayer->setTransform(transform);
 
-    // FIXME: we may revalidateTiles twice in this commit.
-    revalidateTiles(PruneSecondaryTiles);
+    m_controller.setNeedsRevalidateTiles();
 
     m_containerLayer.get().setContentsScale(m_controller.deviceScaleFactor());
 
@@ -396,29 +395,21 @@ void TileGrid::revalidateTiles(TileValidationPolicy validationPolicy)
     if (needsTileRevalidation)
         m_controller.scheduleTileRevalidation(minimumRevalidationTimerDuration);
 
-    if (tilesInCohort)
-        startedNewCohort(currCohort);
-
     if (!m_controller.shouldAggressivelyRetainTiles()) {
         if (m_controller.shouldTemporarilyRetainTileCohorts())
             scheduleCohortRemoval();
-        else if (tilesInCohort)
+        else if (tilesInCohort) {
             removeTilesInCohort(currCohort);
+            tilesInCohort = 0;
+        }
     }
 
-    // Ensure primary tile coverage tiles.
-    m_primaryTileCoverageRect = ensureTilesForRect(coverageRect, CoverageType::PrimaryTiles);
+    if (tilesInCohort)
+        startedNewCohort(currCohort);
 
     if (validationPolicy & PruneSecondaryTiles) {
         removeAllSecondaryTiles();
         m_cohortList.clear();
-    } else {
-        for (auto& secondaryCoverageRect : m_secondaryTileCoverageRects) {
-            FloatRect secondaryRectInLayerCoordinates(secondaryCoverageRect);
-            secondaryRectInLayerCoordinates.scale(1 / m_scale);
-            ensureTilesForRect(secondaryRectInLayerCoordinates, CoverageType::SecondaryTiles);
-        }
-        m_secondaryTileCoverageRects.clear();
     }
 
     if (m_controller.unparentsOffscreenTiles() && (validationPolicy & UnparentAllTiles)) {
@@ -463,6 +454,19 @@ void TileGrid::revalidateTiles(TileValidationPolicy validationPolicy)
             }
             removeTiles(tilesToRemove);
         }
+    }
+
+    // Ensure primary tile coverage tiles.
+    m_primaryTileCoverageRect = ensureTilesForRect(coverageRect, CoverageType::PrimaryTiles);
+
+    // Ensure secondary tiles (requested via prepopulateRect).
+    if (!(validationPolicy & PruneSecondaryTiles)) {
+        for (auto& secondaryCoverageRect : m_secondaryTileCoverageRects) {
+            FloatRect secondaryRectInLayerCoordinates(secondaryCoverageRect);
+            secondaryRectInLayerCoordinates.scale(1 / m_scale);
+            ensureTilesForRect(secondaryRectInLayerCoordinates, CoverageType::SecondaryTiles);
+        }
+        m_secondaryTileCoverageRects.clear();
     }
 
     m_controller.didRevalidateTiles();

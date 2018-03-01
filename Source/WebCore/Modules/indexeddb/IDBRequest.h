@@ -67,17 +67,20 @@ public:
 
     virtual ~IDBRequest();
 
-    IDBCursor* cursorResult() const { return m_cursorResult.get(); }
-    IDBDatabase* databaseResult() const { return m_databaseResult.get(); }
-    JSC::JSValue scriptResult() const { return m_scriptResult.get(); }
-    ExceptionOr<DOMError*> error() const;
-    IDBObjectStore* objectStoreSource() const { return m_objectStoreSource.get(); }
-    IDBIndex* indexSource() const { return m_indexSource.get(); }
-    IDBCursor* cursorSource() const { return m_cursorSource.get(); }
-    RefPtr<IDBTransaction> transaction() const;
-    const String& readyState() const;
+    using Result = Variant<RefPtr<IDBCursor>, RefPtr<IDBDatabase>, JSC::Strong<JSC::Unknown>>;
+    ExceptionOr<std::optional<Result>> result() const;
 
-    bool isDone() const { return m_isDone; }
+    using Source = Variant<RefPtr<IDBObjectStore>, RefPtr<IDBIndex>, RefPtr<IDBCursor>>;
+    const std::optional<Source>& source() const { return m_source; }
+
+    ExceptionOr<DOMError*> error() const;
+
+    RefPtr<IDBTransaction> transaction() const;
+    
+    enum class ReadyState { Pending, Done };
+    ReadyState readyState() const { return m_readyState; }
+
+    bool isDone() const { return m_readyState == ReadyState::Done; }
 
     uint64_t sourceObjectStoreIdentifier() const;
     uint64_t sourceIndexIdentifier() const;
@@ -122,7 +125,7 @@ protected:
 
     // FIXME: Protected data members aren't great for maintainability.
     // Consider adding protected helper functions and making these private.
-    bool m_isDone { false };
+    ReadyState m_readyState { ReadyState::Pending };
     RefPtr<IDBTransaction> m_transaction;
     bool m_shouldExposeTransactionToDOM { true };
     RefPtr<DOMError> m_domError;
@@ -136,8 +139,6 @@ private:
     IDBRequest(ScriptExecutionContext&, IDBIndex&, IDBTransaction&);
     IDBRequest(ScriptExecutionContext&, IDBObjectStore&, IndexedDB::ObjectStoreRecordType, IDBTransaction&);
     IDBRequest(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, IDBTransaction&);
-
-    void clearResult();
 
     EventTargetInterface eventTargetInterface() const override;
 
@@ -157,18 +158,11 @@ private:
 
     IDBCursor* resultCursor();
 
-    // Could consider storing these three in a union or union-like class instead.
-    JSC::Strong<JSC::Unknown> m_scriptResult;
-    RefPtr<IDBCursor> m_cursorResult;
-    RefPtr<IDBDatabase> m_databaseResult;
-
     IDBError m_idbError;
     IDBResourceIdentifier m_resourceIdentifier;
 
-    // Could consider storing these three in a union or union-like class instead.
-    RefPtr<IDBObjectStore> m_objectStoreSource;
-    RefPtr<IDBIndex> m_indexSource;
-    RefPtr<IDBCursor> m_cursorSource;
+    std::optional<Result> m_result;
+    std::optional<Source> m_source;
 
     bool m_hasPendingActivity { true };
     IndexedDB::ObjectStoreRecordType m_requestedObjectStoreRecordType { IndexedDB::ObjectStoreRecordType::ValueOnly };

@@ -39,6 +39,10 @@
 #import "SharedBuffer.h"
 #import "WebCoreURLResponse.h"
 
+#if USE(QUICK_LOOK)
+#import "QuickLook.h"
+#endif
+
 using namespace WebCore;
 
 @implementation WebCoreResourceHandleAsDelegate

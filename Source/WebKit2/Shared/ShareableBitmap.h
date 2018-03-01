@@ -93,7 +93,7 @@ public:
     static RefPtr<ShareableBitmap> create(const Handle&, SharedMemory::Protection = SharedMemory::Protection::ReadWrite);
 
     // Create a handle.
-    bool createHandle(Handle&, SharedMemory::Protection = SharedMemory::Protection::ReadWrite);
+    bool createHandle(Handle&, SharedMemory::Protection = SharedMemory::Protection::ReadWrite) const;
 
     ~ShareableBitmap();
 

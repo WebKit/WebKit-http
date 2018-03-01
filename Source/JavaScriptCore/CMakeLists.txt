@@ -905,6 +905,7 @@ set(JavaScriptCore_SOURCES
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
     wasm/WasmModuleParser.cpp
+    wasm/WasmPageCount.cpp
     wasm/WasmPlan.cpp
     wasm/WasmSignature.cpp
     wasm/WasmValidate.cpp
@@ -1078,7 +1079,6 @@ set(OFFLINE_ASM
     offlineasm/risc.rb
     offlineasm/self_hash.rb
     offlineasm/settings.rb
-    offlineasm/sh4.rb
     offlineasm/transform.rb
     offlineasm/x86.rb
 )

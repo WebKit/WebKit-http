@@ -1,3 +1,138 @@
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: WrappedPromise constructor should behave like the Promise constructor
+        https://bugs.webkit.org/show_bug.cgi?id=166523
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/WrappedPromise.js:
+        (WebInspector.WrappedPromise):
+        - Return the result of 'work' from the inner promise
+        so WrappedPromise.promise can be chained.
+        - Provide shim resolve, reject callbacks as parameters.
+
+        (WebInspector.WrappedPromise.prototype.get settled): Added.
+        Tells whether we already resolved or rejected the promise.
+
+        (WebInspector.WrappedPromise.prototype.resolve):
+        (WebInspector.WrappedPromise.prototype.reject):
+        Throw an error if already settled and update the flag.
+
+2017-01-03  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: color picker should feature an editable CSS value
+        https://bugs.webkit.org/show_bug.cgi?id=124356
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker):
+        (.color-picker > .color-inputs):
+        (.color-picker > .color-inputs > div):
+        (.color-picker > .color-inputs > div[hidden]):
+        (.color-picker > .color-inputs input):
+
+        * UserInterface/Views/ColorPicker.js:
+        (WebInspector.ColorPicker.createColorInput):
+        (WebInspector.ColorPicker):
+        (WebInspector.ColorPicker.prototype.set color):
+        (WebInspector.ColorPicker.prototype.sliderValueDidChange):
+        (WebInspector.ColorPicker.prototype._updateColor):
+        (WebInspector.ColorPicker.prototype._showColorComponentInputs.updateColorInput):
+        (WebInspector.ColorPicker.prototype._showColorComponentInputs):
+        (WebInspector.ColorPicker.prototype._handleColorInputInput):
+        Add an input element (with a label for the component name and its units) for each component
+        as part of the current color format (e.g. R, G, B, A).  If any of these inputs are changed
+        then the color is also changed and the "ColorChanged" event is fired.
+
+2017-01-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: "Invalid Characters" setting does the opposite of the checkbox
+        https://bugs.webkit.org/show_bug.cgi?id=166664
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CodeMirrorOverrides.css:
+        (.CodeMirror .cm-invalidchar):
+        (.show-invalid-characters .CodeMirror .cm-invalidchar):
+        Hide invalid characters by default, and show them with the show class.
+
+2017-01-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix Content Flow Container Regions Computed Style section
+        https://bugs.webkit.org/show_bug.cgi?id=166294
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/DOMTreeManager.js:
+        (WebInspector.DOMTreeManager.prototype._coerceRemoteArrayOfDOMNodes):
+        (WebInspector.DOMTreeManager.prototype.getNodeContentFlowInfo.domNodeResolved):
+        (WebInspector.DOMTreeManager.prototype.getNodeContentFlowInfo.remoteObjectPropertiesAvailable):
+        (WebInspector.DOMTreeManager.prototype.getNodeContentFlowInfo):
+        (WebInspector.DOMTreeManager.prototype.getNodeContentFlowInfo.backendFunction.getComputedProperty): Deleted.
+        (WebInspector.DOMTreeManager.prototype.getNodeContentFlowInfo.backendFunction.getContentFlowName): Deleted.
+        Update this to use Array.from() to convert the NodeList to an Array, and then
+        use the already available RemoteObject's size property instead of getting the
+        "length" property from the Array.
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: opening Test.html in a normal browser window doesn't log errors to console
+        https://bugs.webkit.org/show_bug.cgi?id=166570
+
+        Reviewed by Joseph Pecoraro.
+
+        Early syntax errors in the test harness should be logged to the page console since they are easier to
+        debug in a normal browser using Web Inspector. But, the checks to revert to normal console don't work.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.reportUncaughtException):
+        Add a helper to encapsulate the meaning of checking this._shouldResendResults.
+        This flag is always true until the test page injects its initializers into the
+        inspector page, which will never happen when we view Test.html outside of the test harness.
+
+2016-12-22  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210069.
+        https://bugs.webkit.org/show_bug.cgi?id=166439
+
+        This patch makes all properties in Computed Styles strike-
+        through when switching from the Rules panel. (Requested by NVI
+        on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Uncommenting CSS properties doesn't work for
+        inline styles"
+        https://bugs.webkit.org/show_bug.cgi?id=166297
+        http://trac.webkit.org/changeset/210069
+
+2016-12-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles sidebar: Uncommenting CSS rules of pseudo-elements doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=165831
+        <rdar://problem/29652688>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.uncommentAllProperties):
+        Call _resetContent() when toggling all properties to ensure properties have text markers.
+
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._propertyCommentCheckboxChanged):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._uncommentProperty): Added.
+        This method is the opposite of _commentProperty. Introduce it to minimize code duplication.
+
+2016-12-21  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Uncommenting CSS properties doesn't work for inline styles
+        https://bugs.webkit.org/show_bug.cgi?id=166297
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        Update checkboxes for inline styles, too.
+
 2016-12-20  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Window resize causes TimelineOverview graph elements to be repositioned

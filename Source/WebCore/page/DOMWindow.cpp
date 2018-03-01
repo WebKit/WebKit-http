@@ -1712,26 +1712,30 @@ void DOMWindow::clearInterval(int timeoutId)
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 
-int DOMWindow::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+int DOMWindow::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
     callback->m_useLegacyTimeBase = false;
-    if (Document* d = document())
-        return d->requestAnimationFrame(callback);
-    return 0;
+    auto* document = this->document();
+    if (!document)
+        return 0;
+    return document->requestAnimationFrame(WTFMove(callback));
 }
 
-int DOMWindow::webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+int DOMWindow::webkitRequestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
     callback->m_useLegacyTimeBase = true;
-    if (Document* d = document())
-        return d->requestAnimationFrame(callback);
-    return 0;
+    auto* document = this->document();
+    if (!document)
+        return 0;
+    return document->requestAnimationFrame(WTFMove(callback));
 }
 
 void DOMWindow::cancelAnimationFrame(int id)
 {
-    if (Document* d = document())
-        d->cancelAnimationFrame(id);
+    auto* document = this->document();
+    if (!document)
+        return;
+    document->cancelAnimationFrame(id);
 }
 
 #endif
@@ -2245,9 +2249,9 @@ RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& f
 #endif
 
     if (!firstWindow.allowPopUp()) {
-        // Because FrameTree::find() returns true for empty strings, we must check for empty frame names.
+        // Because FrameTree::findFrameForNavigation() returns true for empty strings, we must check for empty frame names.
         // Otherwise, illegitimate window.open() calls with no name will pass right through the popup blocker.
-        if (frameName.isEmpty() || !m_frame->tree().find(frameName))
+        if (frameName.isEmpty() || !m_frame->loader().findFrameForNavigation(frameName, activeDocument))
             return nullptr;
     }
 

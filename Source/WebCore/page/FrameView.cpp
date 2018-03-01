@@ -636,6 +636,13 @@ Ref<Scrollbar> FrameView::createScrollbar(ScrollbarOrientation orientation)
     return ScrollView::createScrollbar(orientation);
 }
 
+void FrameView::didRestoreFromPageCache()
+{
+    // When restoring from page cache, the main frame stays in place while subframes get swapped in.
+    // We update the scrollable area set to ensure that scrolling data structures get invalidated.
+    updateScrollableAreaSet();
+}
+
 void FrameView::setContentsSize(const IntSize& size)
 {
     if (size == contentsSize())
@@ -877,17 +884,6 @@ void FrameView::clearBackingStores()
     ASSERT(compositor.inCompositingMode());
     compositor.enableCompositingMode(false);
     compositor.clearBackingForAllLayers();
-}
-
-void FrameView::restoreBackingStores()
-{
-    RenderView* renderView = this->renderView();
-    if (!renderView)
-        return;
-
-    RenderLayerCompositor& compositor = renderView->compositor();
-    compositor.enableCompositingMode(true);
-    compositor.updateCompositingLayers(CompositingUpdateAfterLayout);
 }
 
 GraphicsLayer* FrameView::layerForScrolling() const

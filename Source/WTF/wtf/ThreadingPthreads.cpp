@@ -59,6 +59,10 @@
 #include <OS.h>
 #endif
 
+#if OS(LINUX)
+#include <sys/prctl.h>
+#endif
+
 namespace WTF {
 
 class PthreadState {
@@ -198,6 +202,8 @@ void initializeCurrentThreadInternal(const char* threadName)
     pthread_setname_np(threadName);
 #elif PLATFORM(HAIKU)
     rename_thread(find_thread(NULL), threadName);
+#elif OS(LINUX)
+    prctl(PR_SET_NAME, threadName);
 #else
     UNUSED_PARAM(threadName);
 #endif

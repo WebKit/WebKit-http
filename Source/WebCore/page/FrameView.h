@@ -154,7 +154,6 @@ public:
     void updateCompositingLayersAfterLayout();
 
     void clearBackingStores();
-    void restoreBackingStores();
 
     // Called when changes to the GraphicsLayer hierarchy have to be synchronized with
     // content rendered via the normal painting path.
@@ -587,6 +586,8 @@ public:
     void show() override;
 
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const final;
+
+    void didRestoreFromPageCache();
 
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;
