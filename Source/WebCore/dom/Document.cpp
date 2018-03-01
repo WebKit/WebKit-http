@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
  *           (C) 2006 Alexey Proskuryakov (ap@webkit.org)
- * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2009 Torch Mobile Inc. All rights reserved. (http://www.torchmobile.com/)
  * Copyright (C) 2008, 2009, 2011, 2012 Google Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
@@ -1452,7 +1452,7 @@ Element* Document::scrollingElement()
 
 template<typename CharacterType> static inline String canonicalizedTitle(Document& document, const String& title)
 {
-    // FIXME: Compiling a separate copy of this for each character type is likely unnecessary.
+    // FIXME: Compiling a separate copy of this for LChar and UChar is likely unnecessary.
     // FIXME: Missing an optimized case for when title is fine as-is. This unnecessarily allocates
     // and keeps around a new copy, and it's even the less optimal type of StringImpl with a separate buffer.
     // Could probably just use StringBuilder instead.
@@ -1463,13 +1463,20 @@ template<typename CharacterType> static inline String canonicalizedTitle(Documen
     StringBuffer<CharacterType> buffer { length };
     unsigned bufferLength = 0;
 
-    // Collapse runs of HTML spaces into single space characters; strip leading and trailing spaces.
+    auto* decoder = document.decoder();
+    auto backslashAsCurrencySymbol = decoder ? decoder->encoding().backslashAsCurrencySymbol() : '\\';
+
+    // Collapse runs of HTML spaces into single space characters.
+    // Strip leading and trailing spaces.
+    // Replace backslashes with currency symbols.
     bool previousCharacterWasHTMLSpace = false;
     for (unsigned i = 0; i < length; ++i) {
         auto character = characters[i];
         if (isHTMLSpace(character))
             previousCharacterWasHTMLSpace = true;
         else {
+            if (character == '\\')
+                character = backslashAsCurrencySymbol;
             if (previousCharacterWasHTMLSpace && bufferLength)
                 buffer[bufferLength++] = ' ';
             buffer[bufferLength++] = character;
@@ -1478,12 +1485,8 @@ template<typename CharacterType> static inline String canonicalizedTitle(Documen
     }
     if (!bufferLength)
         return { };
+
     buffer.shrink(bufferLength);
-
-    // Replace backslashes with currency symbols if the encoding requires it.
-    if (auto* decoder = document.decoder())
-        decoder->encoding().displayBuffer(buffer.characters(), bufferLength);
-
     return String::adopt(WTFMove(buffer));
 }
 
@@ -2168,13 +2171,6 @@ void Document::didBecomeCurrentDocumentInFrame()
     if (page() && m_frame->isMainFrame())
         wheelEventHandlersChanged();
 
-#if ENABLE(TOUCH_EVENTS)
-    // FIXME: Doing this only for the main frame is insufficient.
-    // A subframe could have touch event handlers.
-    if (hasTouchEventHandlers() && page() && m_frame->isMainFrame())
-        page()->chrome().client().needTouchEvents(true);
-#endif
-
     // Ensure that the scheduled task state of the document matches the DOM suspension state of the frame. It can
     // be out of sync if the DOM suspension state changed while the document was not in the frame (possibly in the
     // page cache, or simply newly created).
@@ -2202,6 +2198,8 @@ void Document::frameDestroyed()
 void Document::destroyRenderTree()
 {
     ASSERT(hasLivingRenderTree());
+    ASSERT(frame());
+    ASSERT(page());
 
     // Prevent Widget tree changes from committing until the RenderView is dead and gone.
     WidgetHierarchyUpdatesSuspensionScope suspendWidgetHierarchyUpdates;
@@ -2975,6 +2973,9 @@ SocketProvider* Document::socketProvider()
 bool Document::canNavigate(Frame* targetFrame)
 {
     if (!m_frame)
+        return false;
+
+    if (pageCacheState() != Document::NotInPageCache)
         return false;
 
     // FIXME: We shouldn't call this function without a target frame, but
@@ -5462,8 +5463,6 @@ void Document::scriptedAnimationControllerSetThrottled(bool isThrottled)
 
 void Document::windowScreenDidChange(PlatformDisplayID displayID)
 {
-    UNUSED_PARAM(displayID);
-
 #if ENABLE(REQUEST_ANIMATION_FRAME)
     if (m_scriptedAnimationController)
         m_scriptedAnimationController->windowScreenDidChange(displayID);
@@ -5475,11 +5474,11 @@ void Document::windowScreenDidChange(PlatformDisplayID displayID)
     }
 }
 
-String Document::displayStringModifiedByEncoding(const String& str) const
+String Document::displayStringModifiedByEncoding(const String& string) const
 {
-    if (m_decoder)
-        return m_decoder->encoding().displayString(str.impl()).get();
-    return str;
+    if (!m_decoder)
+        return string;
+    return String { string }.replace('\\', m_decoder->encoding().backslashAsCurrencySymbol());
 }
 
 void Document::enqueuePageshowEvent(PageshowEventPersistence persisted)
@@ -6238,11 +6237,6 @@ void Document::didAddTouchEventHandler(Node& handler)
         parent->didAddTouchEventHandler(*this);
         return;
     }
-
-    if (Page* page = this->page()) {
-        if (m_touchEventTargets->size() == 1)
-            page->chrome().client().needTouchEvents(true);
-    }
 #else
     UNUSED_PARAM(handler);
 #endif
@@ -6256,23 +6250,8 @@ void Document::didRemoveTouchEventHandler(Node& handler, EventHandlerRemoval rem
 
     removeHandlerFromSet(*m_touchEventTargets, handler, removal);
 
-    if (Document* parent = parentDocument()) {
+    if (Document* parent = parentDocument())
         parent->didRemoveTouchEventHandler(*this);
-        return;
-    }
-
-    Page* page = this->page();
-    if (!page)
-        return;
-    if (m_touchEventTargets->size())
-        return;
-
-    // FIXME: why can't we trust m_touchEventTargets?
-    for (const Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        if (frame->document() && frame->document()->hasTouchEventHandlers())
-            return;
-    }
-    page->chrome().client().needTouchEvents(false);
 #else
     UNUSED_PARAM(handler);
     UNUSED_PARAM(removal);
@@ -6496,9 +6475,9 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     Element* oldActiveElement = m_activeElement.get();
     if (oldActiveElement && !request.active()) {
         // We are clearing the :active chain because the mouse has been released.
-        for (Element* curr = oldActiveElement; curr; curr = curr->parentOrShadowHostElement()) {
-            curr->setActive(false);
-            m_userActionElements.setInActiveChain(curr, false);
+        for (Element* currentElement = oldActiveElement; currentElement; currentElement = currentElement->parentElementInComposedTree()) {
+            currentElement->setActive(false);
+            m_userActionElements.setInActiveChain(currentElement, false);
         }
         m_activeElement = nullptr;
     } else {
@@ -6536,7 +6515,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
     // If it hasn't, we do not need to do anything.
     Element* newHoveredElement = innerElementInDocument;
     while (newHoveredElement && !newHoveredElement->renderer())
-        newHoveredElement = newHoveredElement->parentOrShadowHostElement();
+        newHoveredElement = newHoveredElement->parentElementInComposedTree();
 
     m_hoveredElement = newHoveredElement;
 
@@ -6555,7 +6534,7 @@ void Document::updateHoverActiveState(const HitTestRequest& request, Element* in
         // (for instance by setting display:none in the :hover pseudo-class). In this case, the old hovered element (and its ancestors)
         // must be updated, to ensure it's normal style is re-applied.
         if (oldHoveredElement && !oldHoverObj) {
-            for (Element* element = oldHoveredElement.get(); element; element = element->parentElement()) {
+            for (Element* element = oldHoveredElement.get(); element; element = element->parentElementInComposedTree()) {
                 if (!mustBeInActiveChain || element->inActiveChain())
                     elementsToRemoveFromChain.append(element);
             }

@@ -46,6 +46,7 @@ list(APPEND DumpRenderTree_INCLUDE_DIRECTORIES
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKit
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebKitLegacy
+    ${WEBCORE_DIR}/testing/cocoa
 )
 
 # Common ${TestNetscapePlugIn_SOURCES} from CMakeLists.txt are C++ source files.
@@ -81,8 +82,6 @@ list(APPEND DumpRenderTree_ObjC_SOURCES
 )
 
 list(APPEND DumpRenderTree_Cpp_SOURCES
-    cf/WebArchiveDumpSupport.cpp
-
     cg/PixelDumpSupportCG.cpp
 )
 
@@ -112,7 +111,6 @@ list(APPEND DumpRenderTree_ObjCpp_SOURCES
     mac/TestRunnerMac.mm
     mac/UIDelegate.mm
     mac/UIScriptControllerMac.mm
-    mac/WebArchiveDumpSupportMac.mm
     mac/WorkQueueItemMac.mm
 )
 

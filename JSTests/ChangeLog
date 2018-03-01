@@ -1,3 +1,179 @@
+2017-01-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark es6/typed_arrays_correct_prototype_chains.js as failing after r210570.
+        https://bugs.webkit.org/show_bug.cgi?id=166931i
+
+        Unreviewed test gardening.
+
+        * es6.yaml:
+
+2017-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210052.
+        https://bugs.webkit.org/show_bug.cgi?id=166915
+
+        "breaks web compatability" (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for global"
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+        http://trac.webkit.org/changeset/210052
+
+2017-01-10  Mark Lam  <mark.lam@apple.com>
+
+        Property setters should not be called for bound arguments list entries.
+        https://bugs.webkit.org/show_bug.cgi?id=165631
+
+        Reviewed by Filip Pizlo.
+
+        * stress/property-setters-should-not-be-called-for-bound-arguments-list-entries.js: Added.
+
+2017-01-10  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Calling async arrow function which is in a class's member function will cause error
+        https://bugs.webkit.org/show_bug.cgi?id=166879
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-binding-in-class.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (BaseClass.prototype.baseClassValue):
+        (BaseClass.prototype.get property):
+        (BaseClass):
+        (runSomething):
+        (ChildClass.prototype.classValue):
+        (ChildClass.prototype.get classProperty):
+        (ChildClass.prototype.asyncValueExp):
+        (ChildClass.prototype.asyncValueBody):
+        (ChildClass.prototype.asyncThisPropExp):
+        (ChildClass.prototype.asyncThisPropBody):
+        (ChildClass.prototype.asyncThisPropInEvalExp):
+        (ChildClass.prototype.asyncThisPropInEvalBody):
+        (ChildClass.prototype.asyncThisValueExp):
+        (ChildClass.prototype.asyncThisValueBody):
+        (ChildClass.prototype.asyncThisValueInEvalExp):
+        (ChildClass.prototype.asyncThisValueInEvalBody):
+        (ChildClass):
+        (ChildClass2):
+        (ChildClass2.prototype.classValue):
+        (ChildClass2.prototype.get classProperty):
+        * stress/async-arrow-functions-lexical-super-binding.js:
+
+2017-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Prototype dynamic-import
+        https://bugs.webkit.org/show_bug.cgi?id=165724
+
+        Reviewed by Saam Barati.
+
+        * stress/import-basic.js: Added.
+        (async.async.load):
+        (async):
+        (catch):
+        * stress/import-from-eval.js: Added.
+        (async):
+        (catch):
+        * stress/import-syntax.js: Added.
+        (testSyntaxError):
+        * stress/import-tests/cocoa.js: Added.
+        (export.Cocoa):
+        (export.hello):
+        * stress/import-tests/multiple.js: Added.
+        (export.result):
+        * stress/import-tests/multiple2.js: Added.
+        (export.ok):
+        * stress/import-tests/should.js: Added.
+        (export.shouldBe):
+        (export.shouldThrow):
+        * stress/modules-syntax-error.js:
+
+2017-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210476.
+        https://bugs.webkit.org/show_bug.cgi?id=166859
+
+        "4% JSBench regression" (Requested by keith_mi_ on #webkit).
+
+        Reverted changeset:
+
+        "Add a slice intrinsic to the DFG/FTL"
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+        http://trac.webkit.org/changeset/210476
+
+2017-01-06  Saam Barati  <sbarati@apple.com>
+
+        Add a slice intrinsic to the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-slice-intrinsic.js: Added.
+        (assert):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        * stress/array-slice-jettison-on-constructor-change.js: Added.
+        (assert):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit-2.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+        * stress/array-slice-osr-exit.js: Added.
+        (assert):
+        (Foo):
+        (shallowEq):
+        (runTest1):
+        (runTest2):
+        (addRandomProperties):
+        (runTests):
+
+2017-01-06  Michael Saboff  <msaboff@apple.com>
+
+        @putByValDirect in Array.of and Array.from overwrites non-writable/configurable properties
+        https://bugs.webkit.org/show_bug.cgi?id=153486
+
+        Reviewed by Saam Barati.
+
+        New regression test.
+
+        * stress/regress-153486.js: Added.
+        (shouldEqual):
+        (makeUnwriteableUnconfigurableObject):
+        (testArrayOf):
+        (testArrayFrom):
+        (runTest):
+
+2016-12-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DeferGC::~DeferGC should be super cheap
+        https://bugs.webkit.org/show_bug.cgi?id=166626
+
+        Reviewed by Saam Barati.
+
+        * stress/slow-path-generator-updating-current-node-dfg.js:
+        * stress/unshift-array-storage.js:
+
+2017-01-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: sections with the same name are allowed
+        https://bugs.webkit.org/show_bug.cgi?id=166708
+
+        Reviewed by Saam Barati.
+
+        * wasm/self-test/test_BuilderJSON.js:
+        (SectionsWithSameCustomName):
+
 2017-01-04  Saam Barati  <sbarati@apple.com>
 
         stress/spread-calling.js timing out on the bots

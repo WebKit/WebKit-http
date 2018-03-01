@@ -30,6 +30,7 @@
 
 #include "CDMPrivate.h"
 #include "Document.h"
+#include "InitDataRegistry.h"
 #include "MediaKeysRestrictions.h"
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
@@ -609,6 +610,44 @@ void CDM::getConsentStatus(MediaKeySystemConfiguration&& accumulatedConfiguratio
         // 6. Return Allowed.
         callback(ConsentStatus::Allowed, WTFMove(accumulatedConfiguration), WTFMove(restrictions));
     });
+}
+
+void CDM::loadAndInitialize()
+{
+    if (m_private)
+        m_private->loadAndInitialize();
+}
+
+RefPtr<CDMInstance> CDM::createInstance()
+{
+    if (!m_private)
+        return nullptr;
+    return m_private->createInstance();
+}
+
+bool CDM::supportsServerCertificates() const
+{
+    return m_private && m_private->supportsServerCertificates();
+}
+
+bool CDM::supportsSessions() const
+{
+    return m_private && m_private->supportsSessions();
+}
+
+bool CDM::supportsInitDataType(const AtomicString& initDataType) const
+{
+    return m_private && m_private->supportsInitDataType(initDataType);
+}
+
+RefPtr<SharedBuffer> CDM::sanitizeInitData(const AtomicString& initDataType, const SharedBuffer& initData)
+{
+    return InitDataRegistry::shared().sanitizeInitData(initDataType, initData);
+}
+
+bool CDM::supportsInitData(const AtomicString& initDataType, const SharedBuffer& initData)
+{
+    return m_private && m_private->supportsInitData(initDataType, initData);
 }
 
 }

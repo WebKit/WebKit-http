@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2009, 2013-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -43,7 +43,6 @@
 #include "VisitRaceKey.h"
 #include "WeakHandleOwner.h"
 #include "WeakReferenceHarvester.h"
-#include "WriteBarrierBuffer.h"
 #include "WriteBarrierSupport.h"
 #include <wtf/AutomaticThread.h>
 #include <wtf/Deque.h>
@@ -73,8 +72,10 @@ class JSValue;
 class LLIntOffsetsExtractor;
 class MarkStackArray;
 class MarkedArgumentBuffer;
+class MarkingConstraintSet;
+class MutatorScheduler;
 class SlotVisitor;
-class SpaceTimeScheduler;
+class SpaceTimeMutatorScheduler;
 class StopIfNecessaryTimer;
 class VM;
 
@@ -123,15 +124,15 @@ public:
     // Take this if you know that from->cellState() < barrierThreshold.
     JS_EXPORT_PRIVATE void writeBarrierSlowPath(const JSCell* from);
 
-    WriteBarrierBuffer& writeBarrierBuffer() { return m_writeBarrierBuffer; }
-    void flushWriteBarrierBuffer(JSCell*);
-    
     void writeBarrierOpaqueRoot(void*);
 
     Heap(VM*, HeapType);
     ~Heap();
     void lastChanceToFinalize();
     void releaseDelayedReleasedObjects();
+
+    // Set a hard limit where JSC will crash if live heap size exceeds it.
+    void setMaxLiveSize(size_t size) { m_maxLiveSize = size; }
 
     VM* vm() const { return m_vm; }
     MarkedSpace& objectSpace() { return m_objectSpace; }
@@ -185,9 +186,7 @@ public:
     JS_EXPORT_PRIVATE void collectAllGarbageIfNotDoneRecently();
     JS_EXPORT_PRIVATE void collectAllGarbage();
 
-    bool canCollect();
     bool shouldCollectHeuristic();
-    bool shouldCollect();
     
     // Queue up a collection. Returns immediately. This will not queue a collection if a collection
     // of equal or greater strength exists. Full collections are stronger than std::nullopt collections
@@ -203,8 +202,7 @@ public:
     // and this will wait for that backlog before running its GC and returning.
     JS_EXPORT_PRIVATE void collectSync(std::optional<CollectionScope> = std::nullopt);
     
-    bool collectIfNecessaryOrDefer(GCDeferralContext* = nullptr); // Returns true if it did collect.
-    void collectAccordingToDeferGCProbability();
+    void collectIfNecessaryOrDefer(GCDeferralContext* = nullptr);
 
     void completeAllJITPlans();
     
@@ -268,7 +266,7 @@ public:
     
     void addReference(JSCell*, ArrayBuffer*);
     
-    bool isDeferred() const { return !!m_deferralDepth || !Options::useGC(); }
+    bool isDeferred() const { return !!m_deferralDepth; }
 
     StructureIDTable& structureIDTable() { return m_structureIDTable; }
 
@@ -341,6 +339,8 @@ public:
     // already be called for you at the right times.
     void stopIfNecessary();
     
+    bool mayNeedToStop();
+    
     // This is a much stronger kind of stopping of the collector, and it may require waiting for a
     // while. This is meant to be a legacy API for clients of collectAllGarbage that expect that there
     // is no GC before or after that function call. After calling this, you are free to start GCs
@@ -376,7 +376,7 @@ private:
     friend class MarkedAllocator;
     friend class MarkedBlock;
     friend class SlotVisitor;
-    friend class SpaceTimeScheduler;
+    friend class SpaceTimeMutatorScheduler;
     friend class IncrementalSweeper;
     friend class HeapStatistics;
     friend class VM;
@@ -413,9 +413,6 @@ private:
     void stopTheWorld();
     void resumeTheWorld();
     
-    class ResumeTheWorldScope;
-    friend class ResumeTheWorldScope;
-    
     void stopTheMutator();
     void resumeTheMutator();
     
@@ -447,7 +444,6 @@ private:
     
     void suspendCompilerThreads();
     void willStartCollection(std::optional<CollectionScope>);
-    void flushWriteBarrierBuffer();
     void prepareForMarking();
     
     void markToFixpoint(double gcStartTime);
@@ -455,7 +451,6 @@ private:
     void gatherJSStackRoots(ConservativeRoots&);
     void gatherScratchBufferRoots(ConservativeRoots&);
     void beginMarking();
-    void visitConservativeRoots(ConservativeRoots&);
     void visitCompilerWorklistWeakReferences();
     void removeDeadCompilerWorklistEntries();
     void updateObjectCounts(double gcStartTime);
@@ -488,7 +483,8 @@ private:
 
     void incrementDeferralDepth();
     void decrementDeferralDepth();
-    JS_EXPORT_PRIVATE void decrementDeferralDepthAndGCIfNeeded();
+    void decrementDeferralDepthAndGCIfNeeded();
+    JS_EXPORT_PRIVATE void decrementDeferralDepthAndGCIfNeededSlow();
 
     size_t threadVisitCount();
     size_t threadBytesVisited();
@@ -498,6 +494,16 @@ private:
     JS_EXPORT_PRIVATE void writeBarrierOpaqueRootSlow(void*);
     
     void setMutatorShouldBeFenced(bool value);
+    
+    void buildConstraintSet();
+    
+    template<typename Func>
+    void iterateExecutingAndCompilingCodeBlocks(const Func&);
+    
+    template<typename Func>
+    void iterateExecutingAndCompilingCodeBlocksWithoutHoldingLocks(const Func&);
+    
+    void assertSharedMarkStacksEmpty();
 
     const HeapType m_heapType;
     const size_t m_ramSize;
@@ -534,6 +540,8 @@ private:
     
     std::unique_ptr<SlotVisitor> m_collectorSlotVisitor;
     std::unique_ptr<MarkStackArray> m_mutatorMarkStack;
+    
+    std::unique_ptr<MarkingConstraintSet> m_constraintSet;
 
     // We pool the slot visitors used by parallel marking threads. It's useful to be able to
     // enumerate over them, and it's useful to have them cache some small amount of memory from
@@ -554,7 +562,6 @@ private:
     
     bool m_isSafeToCollect;
 
-    WriteBarrierBuffer m_writeBarrierBuffer;
     bool m_mutatorShouldBeFenced { Options::forceFencedBarrier() };
     unsigned m_barrierThreshold { Options::forceFencedBarrier() ? tautologicalThreshold : blackThreshold };
     Vector<bool*> m_mutatorShouldBeFencedCaches;
@@ -579,6 +586,7 @@ private:
     Vector<HeapObserver*> m_observers;
 
     unsigned m_deferralDepth;
+    bool m_didDeferGCWork { false };
 
     std::unique_ptr<HeapVerifier> m_verifier;
 
@@ -614,6 +622,11 @@ private:
     size_t m_blockBytesAllocated { 0 };
     size_t m_externalMemorySize { 0 };
 #endif
+
+    NO_RETURN_DUE_TO_CRASH void didExceedMaxLiveSize();
+    size_t m_maxLiveSize { 0 };
+    
+    std::unique_ptr<MutatorScheduler> m_scheduler;
     
     static const unsigned shouldStopBit = 1u << 0u;
     static const unsigned stoppedBit = 1u << 1u;
@@ -630,6 +643,7 @@ private:
     Ticket m_lastGrantedTicket { 0 };
     bool m_threadShouldStop { false };
     bool m_threadIsStopping { false };
+    bool m_mutatorDidRun { true };
     Box<Lock> m_threadLock;
     RefPtr<AutomaticThreadCondition> m_threadCondition; // The mutator must not wait on this. It would cause a deadlock.
     RefPtr<AutomaticThread> m_thread;

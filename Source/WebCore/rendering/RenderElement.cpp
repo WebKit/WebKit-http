@@ -1432,8 +1432,6 @@ bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewpor
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)
 {
     const Document& document = renderer.document();
-    if (document.pageCacheState() != Document::NotInPageCache)
-        return false;
     if (document.activeDOMObjectsAreSuspended())
         return false;
     if (renderer.style().visibility() != VISIBLE)
@@ -1491,8 +1489,6 @@ void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
 {
-    if (document().pageCacheState() != Document::NotInPageCache)
-        return;
     auto& frameView = view().frameView();
     auto visibleRect = frameView.windowToContents(frameView.windowClipRect());
     if (!shouldRepaintForImageAnimation(*this, visibleRect)) {
@@ -2038,11 +2034,11 @@ void RenderElement::paintFocusRing(PaintInfo& paintInfo, const RenderStyle& styl
             for (auto rect : pixelSnappedFocusRingRects)
                 path.addRect(rect);
         }
-        paintInfo.context().drawFocusRing(path, document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
+        paintInfo.context().drawFocusRing(path, page().focusController().timeSinceFocusWasSet(), needsRepaint);
     } else
-        paintInfo.context().drawFocusRing(pixelSnappedFocusRingRects, document().page()->focusController().timeSinceFocusWasSet(), needsRepaint);
+        paintInfo.context().drawFocusRing(pixelSnappedFocusRingRects, page().focusController().timeSinceFocusWasSet(), needsRepaint);
     if (needsRepaint)
-        document().page()->focusController().setFocusedElementNeedsRepaint();
+        page().focusController().setFocusedElementNeedsRepaint();
 #else
     paintInfo.context().drawFocusRing(pixelSnappedFocusRingRects, style.outlineWidth(), style.outlineOffset(), style.visitedDependentColor(CSSPropertyOutlineColor));
 #endif

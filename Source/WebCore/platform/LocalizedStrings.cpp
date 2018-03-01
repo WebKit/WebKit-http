@@ -675,6 +675,26 @@ String AXTimeFieldText()
     return WEB_UI_STRING("time field", "accessibility role description for a time field.");
 }
 
+String AXDateTimeFieldText()
+{
+    return WEB_UI_STRING("date and time field", "accessibility role description for a date and time field.");
+}
+
+String AXMonthFieldText()
+{
+    return WEB_UI_STRING("month and year field", "accessibility role description for a month field.");
+}
+
+String AXNumberFieldText()
+{
+    return WEB_UI_STRING("number field", "accessibility role description for a number field.");
+}
+
+String AXWeekFieldText()
+{
+    return WEB_UI_STRING("week and year field", "accessibility role description for a time field.");
+}
+
 String AXButtonActionVerb()
 {
     return WEB_UI_STRING("press", "Verb stating the action that will occur when a button is pressed, as used by accessibility");
@@ -1126,10 +1146,14 @@ String validationMessageTooShortText(int, int minLength)
     return formatLocalizedString(WEB_UI_STRING("Use at least %d characters", "Validation message for form control elements with a value shorter than minimum allowed length"), minLength);
 }
 
+#if !PLATFORM(COCOA)
+
 String validationMessageTooLongText(int, int maxLength)
 {
     return formatLocalizedString(WEB_UI_STRING("Use no more than %d characters", "Validation message for form control elements with a value shorter than maximum allowed length"), maxLength);
 }
+
+#endif
 
 String validationMessageRangeUnderflowText(const String& minimum)
 {

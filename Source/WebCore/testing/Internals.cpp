@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -117,6 +117,7 @@
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollingCoordinator.h"
+#include "ScrollingMomentumCalculator.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
@@ -811,7 +812,7 @@ bool Internals::hasPausedImageAnimations(Element& element)
     return element.renderer() && element.renderer()->hasPausedImageAnimations();
 }
 
-RefPtr<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Element& element) const
+Ref<CSSComputedStyleDeclaration> Internals::computedStyleIncludingVisitedInfo(Element& element) const
 {
     bool allowVisitedStyle = true;
     return CSSComputedStyleDeclaration::create(element, allowVisitedStyle);
@@ -1433,7 +1434,7 @@ String Internals::rangeAsText(const Range& range)
     return range.text();
 }
 
-RefPtr<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
+Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 {
     return TextIterator::subrange(&range, rangeLocation, rangeLength);
 }
@@ -1441,7 +1442,7 @@ RefPtr<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLeng
 ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, int y)
 {
 #if PLATFORM(MAC)
-    Document* document = contextDocument();
+    auto* document = contextDocument();
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
@@ -1822,23 +1823,76 @@ void Internals::toggleOverwriteModeEnabled()
     document->frame()->editor().toggleOverwriteModeEnabled();
 }
 
-unsigned Internals::countMatchesForText(const String& text, unsigned findOptions, const String& markMatches)
+static ExceptionOr<FindOptions> parseFindOptions(const Vector<String>& optionList)
+{
+    const struct {
+        const char* name;
+        FindOptionFlag value;
+    } flagList[] = {
+        {"CaseInsensitive", CaseInsensitive},
+        {"AtWordStarts", AtWordStarts},
+        {"TreatMedialCapitalAsWordStart", TreatMedialCapitalAsWordStart},
+        {"Backwards", Backwards},
+        {"WrapAround", WrapAround},
+        {"StartInSelection", StartInSelection},
+        {"DoNotRevealSelection", DoNotRevealSelection},
+        {"AtWordEnds", AtWordEnds},
+        {"DoNotTraverseFlatTree", DoNotTraverseFlatTree},
+    };
+    FindOptions result = 0;
+    for (auto& option : optionList) {
+        bool found = false;
+        for (auto& flag : flagList) {
+            if (flag.name == option) {
+                result |= flag.value;
+                found = true;
+                break;
+            }
+        }
+        if (!found)
+            return Exception { SYNTAX_ERR };
+    }
+    return result;
+}
+
+ExceptionOr<RefPtr<Range>> Internals::rangeOfString(const String& text, RefPtr<Range>&& referenceRange, const Vector<String>& findOptions)
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
-        return 0;
+        return Exception { INVALID_ACCESS_ERR };
 
-    bool mark = markMatches == "mark";
-    return document->frame()->editor().countMatchesForText(text, nullptr, findOptions, 1000, mark, nullptr);
+    auto parsedOptions = parseFindOptions(findOptions);
+    if (parsedOptions.hasException())
+        return parsedOptions.releaseException();
+
+    return document->frame()->editor().rangeOfString(text, referenceRange.get(), parsedOptions.releaseReturnValue());
 }
 
-unsigned Internals::countFindMatches(const String& text, unsigned findOptions)
+ExceptionOr<unsigned> Internals::countMatchesForText(const String& text, const Vector<String>& findOptions, const String& markMatches)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return Exception { INVALID_ACCESS_ERR };
+
+    auto parsedOptions = parseFindOptions(findOptions);
+    if (parsedOptions.hasException())
+        return parsedOptions.releaseException();
+
+    bool mark = markMatches == "mark";
+    return document->frame()->editor().countMatchesForText(text, nullptr, parsedOptions.releaseReturnValue(), 1000, mark, nullptr);
+}
+
+ExceptionOr<unsigned> Internals::countFindMatches(const String& text, const Vector<String>& findOptions)
 {
     Document* document = contextDocument();
     if (!document || !document->page())
-        return 0;
+        return Exception { INVALID_ACCESS_ERR };
 
-    return document->page()->countFindMatches(text, findOptions, 1000);
+    auto parsedOptions = parseFindOptions(findOptions);
+    if (parsedOptions.hasException())
+        return parsedOptions.releaseException();
+
+    return document->page()->countFindMatches(text, parsedOptions.releaseReturnValue(), 1000);
 }
 
 unsigned Internals::numberOfLiveNodes() const
@@ -1856,11 +1910,10 @@ unsigned Internals::numberOfLiveDocuments() const
 
 RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
 {
-    Page* inspectedPage = contextDocument()->frame()->page();
-    RefPtr<DOMWindow> window = inspectedPage->mainFrame().document()->domWindow();
-    RefPtr<DOMWindow> frontendWindow = window->open(url, "", "", *window, *window);
+    auto* inspectedPage = contextDocument()->frame()->page();
+    auto* window = inspectedPage->mainFrame().document()->domWindow();
+    auto frontendWindow = window->open(url, "", "", *window, *window);
     m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(*inspectedPage, frontendWindow.copyRef());
-
     return frontendWindow;
 }
 
@@ -2563,13 +2616,13 @@ ExceptionOr<String> Internals::getCurrentCursorInfo()
 #endif
 }
 
-RefPtr<ArrayBuffer> Internals::serializeObject(PassRefPtr<SerializedScriptValue> value) const
+Ref<ArrayBuffer> Internals::serializeObject(const RefPtr<SerializedScriptValue>& value) const
 {
     auto& bytes = value->data();
     return ArrayBuffer::create(bytes.data(), bytes.size());
 }
 
-RefPtr<SerializedScriptValue> Internals::deserializeBuffer(ArrayBuffer& buffer) const
+Ref<SerializedScriptValue> Internals::deserializeBuffer(ArrayBuffer& buffer) const
 {
     Vector<uint8_t> bytes;
     bytes.append(static_cast<const uint8_t*>(buffer.data()), buffer.byteLength());
@@ -2578,8 +2631,7 @@ RefPtr<SerializedScriptValue> Internals::deserializeBuffer(ArrayBuffer& buffer) 
 
 bool Internals::isFromCurrentWorld(JSC::JSValue value) const
 {
-    ASSERT(value);
-    JSC::ExecState& state = *contextDocument()->vm().topCallFrame;
+    auto& state = *contextDocument()->vm().topCallFrame;
     return !value.isObject() || &worldForDOMObject(asObject(value)) == &currentWorld(&state);
 }
 
@@ -2600,27 +2652,30 @@ void Internals::forceReload(bool endToEnd)
 
 void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
 {
-    Document* document = contextDocument();
+    auto* document = contextDocument();
     if (!document || !document->view())
         return;
     document->view()->enableAutoSizeMode(enabled, IntSize(minimumWidth, minimumHeight), IntSize(maximumWidth, maximumHeight));
 }
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+
 void Internals::initializeMockCDM()
 {
-    CDM::registerCDMFactory([](CDM* cdm) { return std::make_unique<MockCDM>(cdm); },
+    CDM::registerCDMFactory([] (CDM* cdm) { return std::make_unique<MockCDM>(cdm); },
         MockCDM::supportsKeySystem, MockCDM::supportsKeySystemAndMimeType);
 }
+
 #endif
 
 #if ENABLE(ENCRYPTED_MEDIA)
+
 Ref<MockCDMFactory> Internals::registerMockCDM()
 {
     return MockCDMFactory::create();
 }
-#endif
 
+#endif
 
 String Internals::markerTextForListItem(Element& element)
 {
@@ -3286,6 +3341,11 @@ static void appendOffsets(StringBuilder& builder, const Vector<LayoutUnit>& snap
     builder.appendLiteral(" }");
 }
     
+void Internals::setPlatformMomentumScrollingPredictionEnabled(bool enabled)
+{
+    ScrollingMomentumCalculator::setPlatformMomentumScrollingPredictionEnabled(enabled);
+}
+
 ExceptionOr<String> Internals::scrollSnapOffsets(Element& element)
 {
     if (!element.renderBox())
@@ -3313,17 +3373,21 @@ ExceptionOr<String> Internals::scrollSnapOffsets(Element& element)
     
     StringBuilder result;
 
-    if (scrollableArea->horizontalSnapOffsets()) {
-        result.appendLiteral("horizontal = ");
-        appendOffsets(result, *scrollableArea->horizontalSnapOffsets());
+    if (auto* offsets = scrollableArea->horizontalSnapOffsets()) {
+        if (offsets->size()) {
+            result.appendLiteral("horizontal = ");
+            appendOffsets(result, *offsets);
+        }
     }
 
-    if (scrollableArea->verticalSnapOffsets()) {
-        if (result.length())
-            result.appendLiteral(", ");
+    if (auto* offsets = scrollableArea->verticalSnapOffsets()) {
+        if (offsets->size()) {
+            if (result.length())
+                result.appendLiteral(", ");
 
-        result.appendLiteral("vertical = ");
-        appendOffsets(result, *scrollableArea->verticalSnapOffsets());
+            result.appendLiteral("vertical = ");
+            appendOffsets(result, *offsets);
+        }
     }
 
     return result.toString();
@@ -3487,10 +3551,9 @@ bool Internals::isProcessingUserGesture()
 
 RefPtr<GCObservation> Internals::observeGC(JSC::JSValue value)
 {
-    if (!value || value.isNull() || value.isUndefined() || !value.getObject())
+    if (!value.isObject())
         return nullptr;
-
-    return GCObservation::create(value.getObject());
+    return GCObservation::create(asObject(value));
 }
 
 void Internals::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection)

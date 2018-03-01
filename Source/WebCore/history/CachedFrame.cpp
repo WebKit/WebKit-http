@@ -125,11 +125,6 @@ void CachedFrameBase::restore()
     if (historyItem && historyItem->stateObject())
         m_document->enqueuePopstateEvent(historyItem->stateObject());
 
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-    if (m_document->hasTouchEventHandlers())
-        m_document->page()->chrome().client().needTouchEvents(true);
-#endif
-
     frame.view()->didRestoreFromPageCache();
 }
 

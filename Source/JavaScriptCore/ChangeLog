@@ -1,3 +1,1437 @@
+2017-01-11  Andreas Kling  <akling@apple.com>
+
+        Crash when WebCore's GC heap grows way too large.
+        <https://webkit.org/b/166875>
+        <rdar://problem/27896585>
+
+        Reviewed by Mark Lam.
+
+        Add a simple API to JSC::Heap that allows setting a hard limit on the amount
+        of live bytes. If this is exceeded, we crash with a recognizable signature.
+        By default there is no limit.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::didExceedMaxLiveSize):
+        (JSC::Heap::updateAllocationLimits):
+        * heap/Heap.h:
+        (JSC::Heap::setMaxLiveSize):
+
+2017-01-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Decouple module loading initiator from ScriptElement
+        https://bugs.webkit.org/show_bug.cgi?id=166888
+
+        Reviewed by Saam Barati and Ryosuke Niwa.
+
+        Add ScriptFetcher and JSScriptFetcher.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ModuleLoaderPrototype.js:
+        (requestFetch):
+        (requestInstantiate):
+        (requestSatisfy):
+        (requestInstantiateAll):
+        (requestLink):
+        (moduleEvaluation):
+        (loadAndEvaluateModule):
+        (importModule):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/Completion.cpp:
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        (JSC::linkAndEvaluateModule):
+        * runtime/Completion.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::loadAndEvaluateModule):
+        (JSC::JSModuleLoader::loadModule):
+        (JSC::JSModuleLoader::linkAndEvaluateModule):
+        (JSC::JSModuleLoader::resolve):
+        (JSC::JSModuleLoader::fetch):
+        (JSC::JSModuleLoader::instantiate):
+        (JSC::JSModuleLoader::evaluate):
+        * runtime/JSModuleLoader.h:
+        * runtime/JSScriptFetcher.cpp: Copied from Source/WebCore/dom/LoadableScript.cpp.
+        (JSC::JSScriptFetcher::destroy):
+        * runtime/JSScriptFetcher.h: Added.
+        (JSC::JSScriptFetcher::createStructure):
+        (JSC::JSScriptFetcher::create):
+        (JSC::JSScriptFetcher::fetcher):
+        (JSC::JSScriptFetcher::JSScriptFetcher):
+        * runtime/JSType.h:
+        * runtime/ScriptFetcher.h: Copied from Source/WebCore/dom/LoadableScript.cpp.
+        (JSC::ScriptFetcher::~ScriptFetcher):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-01-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement JSSourceCode to propagate SourceCode in module pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=166861
+
+        Reviewed by Saam Barati.
+
+        Instead of propagating source code string, we propagate JSSourceCode
+        cell in the module pipeline. This allows us to attach a metadata
+        to the propagated source code string. In particular, it propagates
+        SourceOrigin through the module pipeline.
+
+        And it also fixes JSC shell to use Module source type for module source code.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ModuleLoaderPrototype.js:
+        (fulfillFetch):
+        (requestFetch):
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderFetch):
+        (runWithScripts):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/Completion.cpp:
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::provide):
+        * runtime/JSModuleLoader.h:
+        * runtime/JSSourceCode.cpp: Added.
+        (JSC::JSSourceCode::destroy):
+        * runtime/JSSourceCode.h: Added.
+        (JSC::JSSourceCode::createStructure):
+        (JSC::JSSourceCode::create):
+        (JSC::JSSourceCode::sourceCode):
+        (JSC::JSSourceCode::JSSourceCode):
+        * runtime/JSType.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeParseModule):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210052.
+        https://bugs.webkit.org/show_bug.cgi?id=166915
+
+        "breaks web compatability" (Requested by keith_miller on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add support for global"
+        https://bugs.webkit.org/show_bug.cgi?id=165171
+        http://trac.webkit.org/changeset/210052
+
+2017-01-10  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove most of the custom bindings for the WebGL code
+        https://bugs.webkit.org/show_bug.cgi?id=166834
+
+        Reviewed by Alex Christensen.
+
+        * runtime/ArrayPrototype.h:
+        * runtime/ObjectPrototype.h:
+        Export the ClassInfo so it can be used from WebCore.
+
+2017-01-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Streamline the GC barrier slowpath
+        https://bugs.webkit.org/show_bug.cgi?id=166878
+
+        Reviewed by Geoffrey Garen and Saam Barati.
+        
+        This implements two optimizations to the barrier:
+        
+        - Removes the write barrier buffer. This was just overhead.
+        
+        - Teaches the slow path how to white an object that was black but unmarked, ensuring that
+          we don't take slow path for this object again.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileStoreBarrier):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::emitStoreBarrier):
+        * heap/CellState.h:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::addToRememberedSet):
+        (JSC::Heap::stopTheWorld):
+        (JSC::Heap::writeBarrierSlowPath):
+        (JSC::Heap::buildConstraintSet):
+        (JSC::Heap::flushWriteBarrierBuffer): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::writeBarrierBuffer): Deleted.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::appendJSCellOrAuxiliary):
+        (JSC::SlotVisitor::setMarkedAndAppendToMarkStack):
+        (JSC::SlotVisitor::appendToMarkStack):
+        (JSC::SlotVisitor::visitChildren):
+        * heap/WriteBarrierBuffer.cpp: Removed.
+        * heap/WriteBarrierBuffer.h: Removed.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::JSCell):
+        * runtime/StructureIDBlob.h:
+        (JSC::StructureIDBlob::StructureIDBlob):
+
+2017-01-10  Mark Lam  <mark.lam@apple.com>
+
+        Property setters should not be called for bound arguments list entries.
+        https://bugs.webkit.org/show_bug.cgi?id=165631
+
+        Reviewed by Filip Pizlo.
+
+        * builtins/FunctionPrototype.js:
+        (bind):
+        - use @putByValDirect to set the bound arguments so that we don't consult the
+          prototype chain for setters.
+
+        * runtime/IntlDateTimeFormatPrototype.cpp:
+        (JSC::IntlDateTimeFormatPrototypeGetterFormat):
+        * runtime/IntlNumberFormatPrototype.cpp:
+        (JSC::IntlNumberFormatPrototypeGetterFormat):
+        - no need to create a bound arguments array because these bound functions binds
+          no arguments according to the spec.
+
+2017-01-10  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Calling async arrow function which is in a class's member function will cause error
+        https://bugs.webkit.org/show_bug.cgi?id=166879
+
+        Reviewed by Saam Barati.
+
+        Current patch fixed loading 'super' in async arrow function. Errored appear becuase 
+        super was loaded always nevertherless if it used in async arrow function or not, but bytecompiler
+        put to arrow function context only if it used within arrow function. So to fix this issue we need to 
+        check if super was used in arrow function. 
+
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionNode::emitBytecode):
+
+2017-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210537.
+        https://bugs.webkit.org/show_bug.cgi?id=166903
+
+        This change introduced JSC test failures (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Implement JSSourceCode to propagate SourceCode in module
+        pipeline"
+        https://bugs.webkit.org/show_bug.cgi?id=166861
+        http://trac.webkit.org/changeset/210537
+
+2017-01-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210540.
+        https://bugs.webkit.org/show_bug.cgi?id=166896
+
+        too crude for non-WebCore clients (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "Crash when GC heap grows way too large."
+        https://bugs.webkit.org/show_bug.cgi?id=166875
+        http://trac.webkit.org/changeset/210540
+
+2017-01-09  Filip Pizlo  <fpizlo@apple.com>
+
+        JSArray has some object scanning races
+        https://bugs.webkit.org/show_bug.cgi?id=166874
+
+        Reviewed by Mark Lam.
+        
+        This fixes two separate bugs, both of which I detected by running
+        array-splice-contiguous.js in extreme anger:
+        
+        1) Some of the paths of shifting and unshifting were not grabbing the internal cell
+           lock. This was causing the array storage scan to crash, even though it was well
+           synchronized (the scan does hold the lock). The fix is just to hold the lock anywhere
+           that memmoves the innards of the butterfly.
+        
+        2) Out of line property scanning was synchronized using double collect snapshot. Array
+           storage scanning was synchronized using locks. But what if array storage
+           transformations messed up the out of line properties? It turns out that we actually
+           need to hoist the array storage scanner's locking up into the double collect
+           snapshot.
+        
+        I don't know how to write a test that does any better of a job of catching this than
+        array-splice-contiguous.js.
+
+        * heap/DeferGC.h: Make DisallowGC usable even if NDEBUG.
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::unshiftCountSlowCase):
+        (JSC::JSArray::shiftCountWithArrayStorage):
+        (JSC::JSArray::unshiftCountWithArrayStorage):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterflyImpl):
+
+2017-01-10  Andreas Kling  <akling@apple.com>
+
+        Crash when GC heap grows way too large.
+        <https://webkit.org/b/166875>
+        <rdar://problem/27896585>
+
+        Reviewed by Mark Lam.
+
+        Hard cap the JavaScript heap at 4GB of live objects (determined post-GC.)
+        If we go past this limit, crash with a recognizable signature.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::didExceedHeapSizeLimit):
+        (JSC::Heap::updateAllocationLimits):
+
+2017-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement JSSourceCode to propagate SourceCode in module pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=166861
+
+        Reviewed by Saam Barati.
+
+        Instead of propagating source code string, we propagate JSSourceCode
+        cell in the module pipeline. This allows us to attach a metadata
+        to the propagated source code string. In particular, it propagates
+        SourceOrigin through the module pipeline.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * builtins/ModuleLoaderPrototype.js:
+        (fulfillFetch):
+        (requestFetch):
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderFetch):
+        * llint/LLIntData.cpp:
+        (JSC::LLInt::Data::performAssertions):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/Completion.cpp:
+        (JSC::loadAndEvaluateModule):
+        (JSC::loadModule):
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::provide):
+        * runtime/JSModuleLoader.h:
+        * runtime/JSSourceCode.cpp: Added.
+        (JSC::JSSourceCode::destroy):
+        * runtime/JSSourceCode.h: Added.
+        (JSC::JSSourceCode::createStructure):
+        (JSC::JSSourceCode::create):
+        (JSC::JSSourceCode::sourceCode):
+        (JSC::JSSourceCode::JSSourceCode):
+        * runtime/JSType.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeParseModule):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        REGRESSION (r210522): ASSERTION FAILED: divot.offset >= divotStart.offset seen with stress/import-basic.js and stress/import-from-eval.js
+        https://bugs.webkit.org/show_bug.cgi?id=166873
+
+        Reviewed by Saam Barati.
+
+        The divot should be the end of `import` token.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2017-01-09  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop.
+
+        * dfg/DFGPlanInlines.h:
+
+2017-01-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Prototype dynamic-import
+        https://bugs.webkit.org/show_bug.cgi?id=165724
+
+        Reviewed by Saam Barati.
+
+        In this patch, we implement stage3 dynamic-import proposal[1].
+        This patch adds a new special operator `import`. And by using it, we can import
+        the module dynamically from modules and scripts. Before this feature, the module
+        is always imported statically and before executing the modules, importing the modules
+        needs to be done. And especially, the module can only be imported from the module.
+        So the classic script cannot import and use the modules. This dynamic-import relaxes
+        the above restrictions.
+
+        The typical dynamic-import form is the following.
+
+            import("...").then(function (namespace) { ... });
+
+        You can pass any AssignmentExpression for the import operator. So you can determine
+        the importing modules dynamically.
+
+            import(value).then(function (namespace) { ... });
+
+        And previously the module import declaration is only allowed in the top level statements.
+        But this import operator is just an expression. So you can use it in the function.
+        And you can use it conditionally.
+
+            async function go(cond)
+            {
+                if (cond)
+                    return import("...");
+                return undefined;
+            }
+            await go(true);
+
+        Currently, this patch just implements this feature only for the JSC shell.
+        JSC module loader requires a new hook, `importModule`. And the JSC shell implements
+        this hook. So, for now, this dynamic-import is not available in the browser side.
+        If you write this `import` call, it always returns the rejected promise.
+
+        import is implemented like a special operator similar to `super`.
+        This is because import is context-sensitive. If you call the `import`, the module
+        key resolution is done based on the caller's running context.
+
+        For example, if you are running the script which filename is "./ok/hello.js", the module
+        key for the call`import("./resource/syntax.js")` becomes `"./ok/resource/syntax.js"`.
+        But if you write the completely same import form in the script "./error/hello.js", the
+        key becomes "./error/resource/syntax.js". So exposing this feature as the `import`
+        function is misleading: this function becomes caller's context-sensitive. That's why
+        dynamic-import is specified as a special operator.
+
+        To resolve the module key, we need the caller's context information like the filename of
+        the caller. This is provided by the SourceOrigin implemented in r210149.
+        In the JSC shell implementation, this SourceOrigin holds the filename of the caller. So
+        based on this implementation, the module loader resolve the module key.
+        In the near future, we will extend this SourceOrigin to hold more information needed for
+        the browser-side import implementation.
+
+        [1]: https://tc39.github.io/proposal-dynamic-import/
+
+        * builtins/ModuleLoaderPrototype.js:
+        (importModule):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetTemplateObject):
+        (JSC::BytecodeGenerator::emitGetGlobalPrivate):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ImportNode::emitBytecode):
+        * jsc.cpp:
+        (absolutePath):
+        (GlobalObject::moduleLoaderImportModule):
+        (functionRun):
+        (functionLoad):
+        (functionCheckSyntax):
+        (runWithScripts):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createImportExpr):
+        * parser/NodeConstructors.h:
+        (JSC::ImportNode::ImportNode):
+        * parser/Nodes.h:
+        (JSC::ExpressionNode::isImportNode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createImportExpr):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::importModule):
+        (JSC::JSModuleLoader::getModuleNamespaceObject):
+        * runtime/JSModuleLoader.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+        (JSC::moduleLoaderPrototypeGetModuleNamespaceObject):
+
+2017-01-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Make the collector's fixpoint smart about scheduling work
+        https://bugs.webkit.org/show_bug.cgi?id=165910
+
+        Reviewed by Keith Miller.
+        
+        Prior to this change, every time the GC would run any constraints in markToFixpoint, it
+        would run all of the constraints. It would always run them in the same order. That means
+        that so long as any one constraint was generating new work, we'd pay the price of all
+        constraints. This is usually OK because most constraints are cheap but it artificially
+        inflates the cost of slow constraints - especially ones that are expensive but usually
+        generate no new work.
+        
+        This patch redoes how the GC runs constraints by applying ideas from data flow analysis.
+        The GC now builds a MarkingConstraintSet when it boots up, and this contains all of the
+        constraints as well as some meta-data about them. Now, markToFixpoint just calls into
+        MarkingConstraintSet to execute constraints. Because constraint execution and scheduling
+        need to be aware of each other, I rewrote markToFixpoint in such a way that it's more
+        obvious how the GC goes between constraint solving, marking with stopped mutator, and
+        marking with resumed mutator. This also changes the scheduler API in such a way that a
+        synchronous stop-the-world collection no longer needs to do fake stop/resume - instead we
+        just swap the space-time scheduler for the stop-the-world scheduler.
+        
+        This is a big streamlining of the GC. This is a speed-up in GC-heavy tests because we
+        now execute most constraints exactly twice regardless of how many total fixpoint
+        iterations we do. Now, when we run out of marking work, the constraint solver will just
+        run the constraint that is most likely to generate new visiting work, and if it does
+        generate work, then the GC now goes back to marking. Before, it would run *all*
+        constraints and then go back to marking. The constraint solver is armed with three
+        information signals that it uses to sort the constraints in order of descending likelihood
+        to generate new marking work. Then it runs them in that order until it there is new
+        marking work. The signals are:
+        
+        1) Whether the constraint is greyed by marking or execution. We call this the volatility
+           of the constraint. For example, weak reference constraints have GreyedByMarking as
+           their volatility because they are most likely to have something to say after we've done
+           some marking. On the other hand, conservative roots have GreyedByExecution as their
+           volatility because they will give new information anytime we let the mutator run. The
+           constraint solver will only run GreyedByExecution constraints as roots and after the
+           GreyedByMarking constraints go silent. This ensures that we don't try to scan
+           conservative roots every time we need to re-run weak references and vice-versa.
+           
+           Another way to look at it is that the constraint solver tries to predict if the
+           wavefront is advancing or retreating. The wavefront is almost certainly advancing so
+           long as the mark stacks are non-empty or so long as at least one of the GreyedByMarking
+           constraints is still producing work. Otherwise the wavefront is almost certainly
+           retreating. It's most profitable to run GreyedByMarking constraints when the wavefront
+           is advancing, and most profitable to run GreyedByExecution constraints when the
+           wavefront is retreating.
+           
+           We use the predicted wavefront direction and the volatility of constraints as a
+           first-order signal of constraint profitability.
+        
+        2) How much visiting work was created the last time the constraint ran. The solver
+           remembers the lastVisitCount, and uses it to predict how much work the constraint will
+           generate next time. In practice this means we will keep re-running the one interesting
+           constraint until it shuts up.
+        
+        3) Optional work predictors for some constraints. The constraint that shuffles the mutator
+           mark stack into the main SlotVisitor's mutator mark stack always knows exactly how much
+           work it will create.
+           
+           The sum of (2) and (3) are used as a second-order signal of constraint profitability.
+        
+        The constraint solver will always run all of the GreyedByExecution constraints at GC
+        start, since these double as the GC's roots. The constraint solver will always run all of
+        the GreyedByMarking constraints the first time that marking stalls. Other than that, the
+        solver will keep running constraints, sorted according to their likelihood to create work,
+        until either work is created or we run out of constraints to run. GC termination happens
+        when we run out of constraints to run.
+        
+        This new infrastructure means that we have a much better chance of dealing with worst-case
+        DOM pathologies. If we can intelligently factor different evil DOM things into different
+        constraints with the right work predictions then this could reduce the cost of those DOM
+        things by a factor of N where N is the number of fixpoint iterations the GC typically
+        does. N is usually around 5-6 even for simple heaps.
+        
+        My perf measurements say:
+        
+        PLT3: 0.02% faster with 5.3% confidence.
+        JetStream: 0.15% faster with 17% confidence.
+        Speedometer: 0.58% faster with 82% confidence.
+        
+        Here are the details from JetStream:
+        
+        splay: 1.02173x faster with 0.996841 confidence
+        splay-latency: 1.0617x faster with 0.987462 confidence
+        towers.c: 1.01852x faster with 0.92128 confidence
+        crypto-md5: 1.06058x faster with 0.482363 confidence
+        score: 1.00152x faster with 0.16892 confidence
+        
+        I think that Speedometer is legitimately benefiting from this change based on looking at
+        --logGC=true output. We are now spending less time reexecuting expensive constraints. I
+        think that JetStream/splay is also benefiting, because although the constraints it sees
+        are cheap, it spends 30% of its time in GC so even small improvements matter.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::markCodeBlocks): Deleted.
+        (JSC::DFG::Plan::rememberCodeBlocks): Deleted.
+        * dfg/DFGPlan.h:
+        * dfg/DFGPlanInlines.h: Added.
+        (JSC::DFG::Plan::iterateCodeBlocksForGC):
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::markCodeBlocks): Deleted.
+        (JSC::DFG::Worklist::rememberCodeBlocks): Deleted.
+        (JSC::DFG::rememberCodeBlocks): Deleted.
+        * dfg/DFGWorklist.h:
+        * dfg/DFGWorklistInlines.h: Added.
+        (JSC::DFG::iterateCodeBlocksForGC):
+        (JSC::DFG::Worklist::iterateCodeBlocksForGC):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::writeBarrierCurrentlyExecuting): Deleted.
+        * heap/CodeBlockSet.h:
+        (JSC::CodeBlockSet::iterate): Deleted.
+        * heap/CodeBlockSetInlines.h:
+        (JSC::CodeBlockSet::iterate):
+        (JSC::CodeBlockSet::iterateCurrentlyExecuting):
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::iterateExecutingAndCompilingCodeBlocks):
+        (JSC::Heap::iterateExecutingAndCompilingCodeBlocksWithoutHoldingLocks):
+        (JSC::Heap::assertSharedMarkStacksEmpty):
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::endMarking):
+        (JSC::Heap::collectInThread):
+        (JSC::Heap::stopIfNecessarySlow):
+        (JSC::Heap::acquireAccessSlow):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::buildConstraintSet):
+        (JSC::Heap::notifyIsSafeToCollect):
+        (JSC::Heap::ResumeTheWorldScope::ResumeTheWorldScope): Deleted.
+        (JSC::Heap::ResumeTheWorldScope::~ResumeTheWorldScope): Deleted.
+        (JSC::Heap::harvestWeakReferences): Deleted.
+        (JSC::Heap::visitConservativeRoots): Deleted.
+        (JSC::Heap::visitCompilerWorklistWeakReferences): Deleted.
+        * heap/Heap.h:
+        * heap/MarkingConstraint.cpp: Added.
+        (JSC::MarkingConstraint::MarkingConstraint):
+        (JSC::MarkingConstraint::~MarkingConstraint):
+        (JSC::MarkingConstraint::resetStats):
+        (JSC::MarkingConstraint::execute):
+        * heap/MarkingConstraint.h: Added.
+        (JSC::MarkingConstraint::index):
+        (JSC::MarkingConstraint::abbreviatedName):
+        (JSC::MarkingConstraint::name):
+        (JSC::MarkingConstraint::lastVisitCount):
+        (JSC::MarkingConstraint::quickWorkEstimate):
+        (JSC::MarkingConstraint::workEstimate):
+        (JSC::MarkingConstraint::volatility):
+        * heap/MarkingConstraintSet.cpp: Added.
+        (JSC::MarkingConstraintSet::ExecutionContext::ExecutionContext):
+        (JSC::MarkingConstraintSet::ExecutionContext::didVisitSomething):
+        (JSC::MarkingConstraintSet::ExecutionContext::shouldTimeOut):
+        (JSC::MarkingConstraintSet::ExecutionContext::drain):
+        (JSC::MarkingConstraintSet::ExecutionContext::didExecute):
+        (JSC::MarkingConstraintSet::ExecutionContext::execute):
+        (JSC::MarkingConstraintSet::MarkingConstraintSet):
+        (JSC::MarkingConstraintSet::~MarkingConstraintSet):
+        (JSC::MarkingConstraintSet::resetStats):
+        (JSC::MarkingConstraintSet::add):
+        (JSC::MarkingConstraintSet::executeBootstrap):
+        (JSC::MarkingConstraintSet::executeConvergence):
+        (JSC::MarkingConstraintSet::isWavefrontAdvancing):
+        (JSC::MarkingConstraintSet::executeConvergenceImpl):
+        (JSC::MarkingConstraintSet::executeAll):
+        * heap/MarkingConstraintSet.h: Added.
+        (JSC::MarkingConstraintSet::isWavefrontRetreating):
+        * heap/MutatorScheduler.cpp: Added.
+        (JSC::MutatorScheduler::MutatorScheduler):
+        (JSC::MutatorScheduler::~MutatorScheduler):
+        (JSC::MutatorScheduler::didStop):
+        (JSC::MutatorScheduler::willResume):
+        (JSC::MutatorScheduler::didExecuteConstraints):
+        (JSC::MutatorScheduler::log):
+        (JSC::MutatorScheduler::shouldStop):
+        (JSC::MutatorScheduler::shouldResume):
+        * heap/MutatorScheduler.h: Added.
+        * heap/OpaqueRootSet.h:
+        (JSC::OpaqueRootSet::add):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::visitAsConstraint):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::didReachTermination):
+        (JSC::SlotVisitor::hasWork):
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::addOpaqueRoot):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::addToVisitCount):
+        * heap/SpaceTimeMutatorScheduler.cpp: Copied from Source/JavaScriptCore/heap/SpaceTimeScheduler.cpp.
+        (JSC::SpaceTimeMutatorScheduler::Snapshot::Snapshot):
+        (JSC::SpaceTimeMutatorScheduler::Snapshot::now):
+        (JSC::SpaceTimeMutatorScheduler::Snapshot::bytesAllocatedThisCycle):
+        (JSC::SpaceTimeMutatorScheduler::SpaceTimeMutatorScheduler):
+        (JSC::SpaceTimeMutatorScheduler::~SpaceTimeMutatorScheduler):
+        (JSC::SpaceTimeMutatorScheduler::state):
+        (JSC::SpaceTimeMutatorScheduler::beginCollection):
+        (JSC::SpaceTimeMutatorScheduler::didStop):
+        (JSC::SpaceTimeMutatorScheduler::willResume):
+        (JSC::SpaceTimeMutatorScheduler::didExecuteConstraints):
+        (JSC::SpaceTimeMutatorScheduler::timeToStop):
+        (JSC::SpaceTimeMutatorScheduler::timeToResume):
+        (JSC::SpaceTimeMutatorScheduler::log):
+        (JSC::SpaceTimeMutatorScheduler::endCollection):
+        (JSC::SpaceTimeMutatorScheduler::bytesAllocatedThisCycleImpl):
+        (JSC::SpaceTimeMutatorScheduler::bytesSinceBeginningOfCycle):
+        (JSC::SpaceTimeMutatorScheduler::maxHeadroom):
+        (JSC::SpaceTimeMutatorScheduler::headroomFullness):
+        (JSC::SpaceTimeMutatorScheduler::mutatorUtilization):
+        (JSC::SpaceTimeMutatorScheduler::collectorUtilization):
+        (JSC::SpaceTimeMutatorScheduler::elapsedInPeriod):
+        (JSC::SpaceTimeMutatorScheduler::phase):
+        (JSC::SpaceTimeMutatorScheduler::shouldBeResumed):
+        (JSC::SpaceTimeScheduler::Decision::targetMutatorUtilization): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::targetCollectorUtilization): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::elapsedInPeriod): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::phase): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::shouldBeResumed): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::timeToResume): Deleted.
+        (JSC::SpaceTimeScheduler::Decision::timeToStop): Deleted.
+        (JSC::SpaceTimeScheduler::SpaceTimeScheduler): Deleted.
+        (JSC::SpaceTimeScheduler::snapPhase): Deleted.
+        (JSC::SpaceTimeScheduler::currentDecision): Deleted.
+        * heap/SpaceTimeMutatorScheduler.h: Copied from Source/JavaScriptCore/heap/SpaceTimeScheduler.h.
+        (JSC::SpaceTimeScheduler::Decision::operator bool): Deleted.
+        * heap/SpaceTimeScheduler.cpp: Removed.
+        * heap/SpaceTimeScheduler.h: Removed.
+        * heap/SynchronousStopTheWorldMutatorScheduler.cpp: Added.
+        (JSC::SynchronousStopTheWorldMutatorScheduler::SynchronousStopTheWorldMutatorScheduler):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::~SynchronousStopTheWorldMutatorScheduler):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::state):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::beginCollection):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::timeToStop):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::timeToResume):
+        (JSC::SynchronousStopTheWorldMutatorScheduler::endCollection):
+        * heap/SynchronousStopTheWorldMutatorScheduler.h: Added.
+        * heap/VisitingTimeout.h: Added.
+        (JSC::VisitingTimeout::VisitingTimeout):
+        (JSC::VisitingTimeout::visitCount):
+        (JSC::VisitingTimeout::didVisitSomething):
+        (JSC::VisitingTimeout::shouldTimeOut):
+        * runtime/Options.h:
+
+2017-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210476.
+        https://bugs.webkit.org/show_bug.cgi?id=166859
+
+        "4% JSBench regression" (Requested by keith_mi_ on #webkit).
+
+        Reverted changeset:
+
+        "Add a slice intrinsic to the DFG/FTL"
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+        http://trac.webkit.org/changeset/210476
+
+2017-01-08  Andreas Kling  <akling@apple.com>
+
+        Inject MarkedSpace size classes for a few more high-volume objects.
+        <https://webkit.org/b/166815>
+
+        Reviewed by Darin Adler.
+
+        Add the following classes to the list of manually injected size classes:
+
+            - JSString
+            - JSFunction
+            - PropertyTable
+            - Structure
+
+        Only Structure actually ends up with a new size class, the others already
+        can't get any tighter due to the current MarkedBlock::atomSize being 16.
+        I've put them in anyway to ensure that we have optimally carved-out cells
+        for them in the future, should they grow.
+
+        With this change, Structures get allocated in 128-byte cells instead of
+        160-byte cells, giving us 25% more Structures per MarkedBlock.
+
+        * heap/MarkedSpace.cpp:
+
+2017-01-06  Saam Barati  <sbarati@apple.com>
+
+        Add a slice intrinsic to the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+
+        Reviewed by Filip Pizlo.
+
+        The gist of this patch is to inline Array.prototype.slice
+        into the DFG/FTL. The implementation in the DFG-backend
+        and FTLLowerDFGToB3 is just a straight forward implementation
+        of what the C function is doing. The more interesting bits
+        of this patch are setting up the proper watchpoints and conditions
+        in the executing code to prove that its safe to skip all of the
+        observable JS actions that Array.prototype.slice normally does.
+        
+        We perform the following proofs:
+        1. Array.prototype.constructor has not changed (via a watchpoint).
+        2. That Array.prototype.constructor[Symbol.species] has not changed (via a watchpoint).
+        3. The global object is not having a bad time.
+        3. The array that is being sliced has an original array structure.
+        5. Array.prototype/Object.prototype have not transitioned.
+        
+        Conditions 1, 2, and 3 are strictly required.
+        
+        4 is ensuring a couple things:
+        1. That a "constructor" property hasn't been added to the array
+        we're slicing since we're supposed to perform a Get(array, "constructor").
+        2. That we're not slicing an instance of a subclass of Array.
+        
+        We could relax 4.1 in the future if we find other ways to test if
+        the incoming array hasn't changed the "constructor" property.
+        
+        I'm seeing a 5% speedup on crypto-pbkdf2 and often a 1% speedup on
+        the total benchmark (the results are sometimes noisy).
+
+        * bytecode/ExitKind.cpp:
+        (JSC::exitKindToString):
+        * bytecode/ExitKind.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        (JSC::DFG::Node::hasArrayMode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArraySlice):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitLoadStructure):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        (JSC::speciesWatchpointIsValid):
+        (JSC::speciesConstructArray):
+        (JSC::arrayProtoFuncSlice):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        (JSC::ArrayPrototype::initializeSpeciesWatchpoint):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        (JSC::speciesWatchpointsValid): Deleted.
+        (JSC::ArrayPrototype::attemptToInitializeSpeciesWatchpoint): Deleted.
+        * runtime/ArrayPrototype.h:
+        (JSC::ArrayPrototype::speciesWatchpointStatus): Deleted.
+        (): Deleted.
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::arraySpeciesWatchpoint):
+
+2017-01-06  Mark Lam  <mark.lam@apple.com>
+
+        The ObjC API's JSVirtualMachine's map tables need to be guarded by a lock.
+        https://bugs.webkit.org/show_bug.cgi?id=166778
+        <rdar://problem/29761198>
+
+        Reviewed by Filip Pizlo.
+
+        Now that we have a concurrent GC, access to JSVirtualMachine's
+        m_externalObjectGraph and m_externalRememberedSet need to be guarded by a lock
+        since both the GC marker thread and the mutator thread may access them at the
+        same time.
+
+        * API/JSVirtualMachine.mm:
+        (-[JSVirtualMachine addExternalRememberedObject:]):
+        (-[JSVirtualMachine addManagedReference:withOwner:]):
+        (-[JSVirtualMachine removeManagedReference:withOwner:]):
+        (-[JSVirtualMachine externalDataMutex]):
+        (scanExternalObjectGraph):
+        (scanExternalRememberedSet):
+
+        * API/JSVirtualMachineInternal.h:
+        - Deleted externalObjectGraph method.  There's no need to expose this.
+
+2017-01-06  Michael Saboff  <msaboff@apple.com>
+
+        @putByValDirect in Array.of and Array.from overwrites non-writable/configurable properties
+        https://bugs.webkit.org/show_bug.cgi?id=153486
+
+        Reviewed by Saam Barati.
+
+        Moved read only check in putDirect() to all paths.
+
+        * runtime/SparseArrayValueMap.cpp:
+        (JSC::SparseArrayValueMap::putDirect):
+
+2016-12-30  Filip Pizlo  <fpizlo@apple.com>
+
+        DeferGC::~DeferGC should be super cheap
+        https://bugs.webkit.org/show_bug.cgi?id=166626
+
+        Reviewed by Saam Barati.
+        
+        Right now, ~DeferGC requires running the collector's full collectIfNecessaryOrDefer()
+        hook, which is super big. Normally, that hook would only be called from GC slow paths,
+        so it ought to be possible to add complex logic to it. It benefits the GC algorithm to
+        make that code smart, not necessarily fast.
+
+        The right thing for it to do is to have ~DeferGC check a boolean to see if
+        collectIfNecessaryOrDefer() had previously deferred anything, and only call it if that
+        is true. That's what this patch does.
+        
+        Unfortunately, this means that we lose the collectAccordingToDeferGCProbability mode,
+        which we used for two tests. Since I could only see two tests that used this mode, I
+        felt that it was better to enhance the GC than to keep the tests. I filed bug 166627 to
+        bring back something like that mode.
+        
+        Although this patch does make some paths faster, its real goal is to ensure that bug
+        165963 can add more logic to collectIfNecessaryOrDefer() without introducing a big
+        regression. Until then, I wouldn't be surprised if this patch was a progression, but I'm
+        not betting on it.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::decrementDeferralDepthAndGCIfNeededSlow):
+        (JSC::Heap::canCollect): Deleted.
+        (JSC::Heap::shouldCollectHeuristic): Deleted.
+        (JSC::Heap::shouldCollect): Deleted.
+        (JSC::Heap::collectAccordingToDeferGCProbability): Deleted.
+        (JSC::Heap::decrementDeferralDepthAndGCIfNeeded): Deleted.
+        * heap/Heap.h:
+        * heap/HeapInlines.h:
+        (JSC::Heap::incrementDeferralDepth):
+        (JSC::Heap::decrementDeferralDepth):
+        (JSC::Heap::decrementDeferralDepthAndGCIfNeeded):
+        (JSC::Heap::mayNeedToStop):
+        (JSC::Heap::stopIfNecessary):
+        * runtime/Options.h:
+
+2017-01-05  Filip Pizlo  <fpizlo@apple.com>
+
+        AutomaticThread timeout shutdown leaves a small window where notify() would think that the thread is still running
+        https://bugs.webkit.org/show_bug.cgi?id=166742
+
+        Reviewed by Geoffrey Garen.
+        
+        Update to new AutomaticThread API.
+
+        * dfg/DFGWorklist.cpp:
+
+2017-01-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error.
+        https://bugs.webkit.org/show_bug.cgi?id=166726
+
+        Reviewed by Alex Christensen.
+
+        Add include folder.
+
+        * CMakeLists.txt:
+
+2016-12-21  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: teach the protocol generator about platform-specific types, events, and commands
+        https://bugs.webkit.org/show_bug.cgi?id=166003
+        <rdar://problem/28718990>
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch implements parser, model, and generator-side changes to account for
+        platform-specific types, events, and commands. The 'platform' property is parsed
+        for top-level definitions and assumed to be the 'generic' platform if none is specified.
+
+        Since the generator's platform setting acts to filter definitions with an incompatible platform,
+        all generators must be modified to consult a list of filtered types/commands/events for
+        a domain instead of directly accessing Domain.{type_declarations, commands, events}. To prevent
+        accidental misuse, hide those fields behind accessors (e.g., `all_type_declarations()`) so that they
+        are still accessible if truly necessary, but not used by default and caused an error if not migrated.
+
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py:
+        (CppAlternateBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.domains_to_generate):
+        (CppBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        (CppBackendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator.domains_to_generate):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_small_dispatcher_switch_implementation_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_large_dispatcher_switch_implementation_for_domain):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.domains_to_generate):
+        (CppFrontendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator.domains_to_generate):
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator._generate_forward_declarations):
+        (_generate_typedefs_for_domain):
+        (_generate_builders_for_domain):
+        (_generate_forward_declarations_for_binding_traits):
+        (_generate_declarations_for_enum_conversion_methods):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator._generate_enum_conversion_methods_for_domain):
+        (CppProtocolTypesImplementationGenerator._generate_open_field_names):
+        (CppProtocolTypesImplementationGenerator._generate_builders_for_domain):
+        * inspector/scripts/codegen/generate_js_backend_commands.py:
+        (JSBackendCommandsGenerator.should_generate_domain):
+        (JSBackendCommandsGenerator.domains_to_generate):
+        (JSBackendCommandsGenerator.generate_domain):
+        (JSBackendCommandsGenerator.domains_to_generate.should_generate_domain): Deleted.
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py:
+        (ObjCBackendDispatcherHeaderGenerator.domains_to_generate):
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations):
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_handler_declarations_for_domain):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator):
+        (ObjCBackendDispatcherImplementationGenerator.domains_to_generate):
+        (ObjCBackendDispatcherImplementationGenerator._generate_handler_implementation_for_domain):
+        (ObjCConfigurationImplementationGenerator): Deleted.
+        (ObjCConfigurationImplementationGenerator.__init__): Deleted.
+        (ObjCConfigurationImplementationGenerator.output_filename): Deleted.
+        (ObjCConfigurationImplementationGenerator.domains_to_generate): Deleted.
+        (ObjCConfigurationImplementationGenerator.generate_output): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_handler_implementation_for_domain): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_handler_implementation_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command.and): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_conversions_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_conversions_for_command.in_param_expression): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_invocation_for_command): Deleted.
+        * inspector/scripts/codegen/generate_objc_configuration_header.py:
+        (ObjCConfigurationHeaderGenerator.generate_output):
+        (ObjCConfigurationHeaderGenerator._generate_properties_for_domain):
+        * inspector/scripts/codegen/generate_objc_configuration_implementation.py:
+        (ObjCConfigurationImplementationGenerator):
+        (ObjCConfigurationImplementationGenerator.generate_output):
+        (ObjCConfigurationImplementationGenerator._generate_configuration_implementation_for_domains):
+        (ObjCConfigurationImplementationGenerator._generate_ivars):
+        (ObjCConfigurationImplementationGenerator._generate_dealloc):
+        (ObjCBackendDispatcherImplementationGenerator): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.__init__): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.output_filename): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.generate_output): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_configuration_implementation_for_domains): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_ivars): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_dealloc): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_handler_setter_for_domain): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_event_dispatcher_getter_for_domain): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._variable_name_prefix_for_domain): Deleted.
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator.domains_to_generate):
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_dispatcher_implementations):
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator.generate_output):
+        (ObjCHeaderGenerator._generate_forward_declarations):
+        (ObjCHeaderGenerator._generate_enums):
+        (ObjCHeaderGenerator._generate_types):
+        (ObjCHeaderGenerator._generate_command_protocols):
+        (ObjCHeaderGenerator._generate_event_interfaces):
+        * inspector/scripts/codegen/generate_objc_internal_header.py:
+        (ObjCInternalHeaderGenerator.generate_output):
+        (ObjCInternalHeaderGenerator._generate_event_dispatcher_private_interfaces):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_header.py:
+        (ObjCProtocolTypeConversionsHeaderGenerator.domains_to_generate):
+        (ObjCProtocolTypeConversionsHeaderGenerator._generate_enum_conversion_functions):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_implementation.py:
+        (ObjCProtocolTypeConversionsImplementationGenerator.domains_to_generate):
+        (ObjCProtocolTypeConversionsImplementationGenerator._generate_type_factory_category_interface):
+        (ObjCProtocolTypeConversionsImplementationGenerator._generate_type_factory_category_implementation):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.domains_to_generate):
+        (ObjCProtocolTypesImplementationGenerator.generate_type_implementations):
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.can_generate_platform):
+        (Generator):
+        (Generator.type_declarations_for_domain):
+        (Generator.commands_for_domain):
+        (Generator.events_for_domain):
+        These are the core methods for computing whether a definition can be used given a target platform.
+
+        (Generator.calculate_types_requiring_shape_assertions):
+        (Generator._traverse_and_assign_enum_values):
+        * inspector/scripts/codegen/models.py:
+        (Protocol.parse_type_declaration):
+        (Protocol.parse_command):
+        (Protocol.parse_event):
+        (Protocol.resolve_types):
+
+        (Domain.__init__):
+        (Domain):
+        (Domain.all_type_declarations):
+        (Domain.all_commands):
+        (Domain.all_events):
+        Hide fields behind these accessors so it's really obvious when we are ignoring platform filtering.
+
+        (Domain.resolve_type_references):
+        (TypeDeclaration.__init__):
+        (Command.__init__):
+        (Event.__init__):
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.should_generate_types_for_domain):
+        (ObjCGenerator):
+        (ObjCGenerator.should_generate_commands_for_domain):
+        (ObjCGenerator.should_generate_events_for_domain):
+        (ObjCGenerator.should_generate_domain_types_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_types_filter.should_generate_domain_types): Deleted.
+        (ObjCGenerator.should_generate_domain_command_handler_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_command_handler_filter.should_generate_domain_command_handler): Deleted.
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter.should_generate_domain_event_dispatcher): Deleted.
+        Clean up some messy code that essentially did the same definition filtering as we must do for platforms.
+        This will be enhanced in a future patch so that platform filtering will take priority over the target framework.
+
+        The results above need rebaselining because the class names for two generators were swapped by accident.
+        Fixing the names causes the order of generated files to change, and this generates ugly diffs because every
+        generated file includes the same copyright block at the top.
+
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+
+        * inspector/scripts/tests/generic/expected/fail-on-command-with-invalid-platform.json-error: Added.
+        * inspector/scripts/tests/generic/expected/fail-on-type-with-invalid-platform.json-error: Added.
+        * inspector/scripts/tests/generic/fail-on-command-with-invalid-platform.json: Added.
+        * inspector/scripts/tests/generic/fail-on-type-with-invalid-platform.json: Added.
+
+        Add error test cases for invalid platforms in commands, types, and events.
+
+        * inspector/scripts/tests/generic/definitions-with-mac-platform.json: Added.
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result: Added.
+        * inspector/scripts/tests/all/definitions-with-mac-platform.json: Added.
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result: Added.
+        * inspector/scripts/tests/ios/definitions-with-mac-platform.json: Added.
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result: Added.
+        * inspector/scripts/tests/mac/definitions-with-mac-platform.json: Added.
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result: Added.
+
+        Add a basic 4-way test that generates code for each platform from the same specification.
+        With 'macos' platform for each definition, only 'all' and 'mac' generate anything interesting.
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: teach the protocol generator about platform-specific types, events, and commands
+        https://bugs.webkit.org/show_bug.cgi?id=166003
+        <rdar://problem/28718990>
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch implements parser, model, and generator-side changes to account for
+        platform-specific types, events, and commands. The 'platform' property is parsed
+        for top-level definitions and assumed to be the 'generic' platform if none is specified.
+
+        Since the generator's platform setting acts to filter definitions with an incompatible platform,
+        all generators must be modified to consult a list of filtered types/commands/events for
+        a domain instead of directly accessing Domain.{type_declarations, commands, events}. To prevent
+        accidental misuse, hide those fields behind accessors (e.g., `all_type_declarations()`) so that they
+        are still accessible if truly necessary, but not used by default and caused an error if not migrated.
+
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py:
+        (CppAlternateBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.domains_to_generate):
+        (CppBackendDispatcherHeaderGenerator._generate_handler_declarations_for_domain):
+        (CppBackendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator.domains_to_generate):
+        (CppBackendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_small_dispatcher_switch_implementation_for_domain):
+        (CppBackendDispatcherImplementationGenerator._generate_large_dispatcher_switch_implementation_for_domain):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.domains_to_generate):
+        (CppFrontendDispatcherHeaderGenerator._generate_dispatcher_declarations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator.domains_to_generate):
+        (CppFrontendDispatcherImplementationGenerator._generate_dispatcher_implementations_for_domain):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator._generate_forward_declarations):
+        (_generate_typedefs_for_domain):
+        (_generate_builders_for_domain):
+        (_generate_forward_declarations_for_binding_traits):
+        (_generate_declarations_for_enum_conversion_methods):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator._generate_enum_conversion_methods_for_domain):
+        (CppProtocolTypesImplementationGenerator._generate_open_field_names):
+        (CppProtocolTypesImplementationGenerator._generate_builders_for_domain):
+        * inspector/scripts/codegen/generate_js_backend_commands.py:
+        (JSBackendCommandsGenerator.should_generate_domain):
+        (JSBackendCommandsGenerator.domains_to_generate):
+        (JSBackendCommandsGenerator.generate_domain):
+        (JSBackendCommandsGenerator.domains_to_generate.should_generate_domain): Deleted.
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py:
+        (ObjCBackendDispatcherHeaderGenerator.domains_to_generate):
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_forward_declarations):
+        (ObjCBackendDispatcherHeaderGenerator._generate_objc_handler_declarations_for_domain):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator):
+        (ObjCBackendDispatcherImplementationGenerator.domains_to_generate):
+        (ObjCBackendDispatcherImplementationGenerator._generate_handler_implementation_for_domain):
+        (ObjCConfigurationImplementationGenerator): Deleted.
+        (ObjCConfigurationImplementationGenerator.__init__): Deleted.
+        (ObjCConfigurationImplementationGenerator.output_filename): Deleted.
+        (ObjCConfigurationImplementationGenerator.domains_to_generate): Deleted.
+        (ObjCConfigurationImplementationGenerator.generate_output): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_handler_implementation_for_domain): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_handler_implementation_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_success_block_for_command.and): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_conversions_for_command): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_conversions_for_command.in_param_expression): Deleted.
+        (ObjCConfigurationImplementationGenerator._generate_invocation_for_command): Deleted.
+        * inspector/scripts/codegen/generate_objc_configuration_header.py:
+        (ObjCConfigurationHeaderGenerator.generate_output):
+        (ObjCConfigurationHeaderGenerator._generate_properties_for_domain):
+        * inspector/scripts/codegen/generate_objc_configuration_implementation.py:
+        (ObjCConfigurationImplementationGenerator):
+        (ObjCConfigurationImplementationGenerator.generate_output):
+        (ObjCConfigurationImplementationGenerator._generate_configuration_implementation_for_domains):
+        (ObjCConfigurationImplementationGenerator._generate_ivars):
+        (ObjCConfigurationImplementationGenerator._generate_dealloc):
+        (ObjCBackendDispatcherImplementationGenerator): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.__init__): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.output_filename): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator.generate_output): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_configuration_implementation_for_domains): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_ivars): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_dealloc): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_handler_setter_for_domain): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._generate_event_dispatcher_getter_for_domain): Deleted.
+        (ObjCBackendDispatcherImplementationGenerator._variable_name_prefix_for_domain): Deleted.
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator.domains_to_generate):
+        (ObjCFrontendDispatcherImplementationGenerator._generate_event_dispatcher_implementations):
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator.generate_output):
+        (ObjCHeaderGenerator._generate_forward_declarations):
+        (ObjCHeaderGenerator._generate_enums):
+        (ObjCHeaderGenerator._generate_types):
+        (ObjCHeaderGenerator._generate_command_protocols):
+        (ObjCHeaderGenerator._generate_event_interfaces):
+        * inspector/scripts/codegen/generate_objc_internal_header.py:
+        (ObjCInternalHeaderGenerator.generate_output):
+        (ObjCInternalHeaderGenerator._generate_event_dispatcher_private_interfaces):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_header.py:
+        (ObjCProtocolTypeConversionsHeaderGenerator.domains_to_generate):
+        (ObjCProtocolTypeConversionsHeaderGenerator._generate_enum_conversion_functions):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_implementation.py:
+        (ObjCProtocolTypeConversionsImplementationGenerator.domains_to_generate):
+        (ObjCProtocolTypeConversionsImplementationGenerator._generate_type_factory_category_interface):
+        (ObjCProtocolTypeConversionsImplementationGenerator._generate_type_factory_category_implementation):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.domains_to_generate):
+        (ObjCProtocolTypesImplementationGenerator.generate_type_implementations):
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.can_generate_platform):
+        (Generator):
+        (Generator.type_declarations_for_domain):
+        (Generator.commands_for_domain):
+        (Generator.events_for_domain):
+        These are the core methods for computing whether a definition can be used given a target platform.
+
+        (Generator.calculate_types_requiring_shape_assertions):
+        (Generator._traverse_and_assign_enum_values):
+        * inspector/scripts/codegen/models.py:
+        (Protocol.parse_type_declaration):
+        (Protocol.parse_command):
+        (Protocol.parse_event):
+        (Protocol.resolve_types):
+
+        (Domain.__init__):
+        (Domain):
+        (Domain.all_type_declarations):
+        (Domain.all_commands):
+        (Domain.all_events):
+        Hide fields behind these accessors so it's really obvious when we are ignoring platform filtering.
+
+        (Domain.resolve_type_references):
+        (TypeDeclaration.__init__):
+        (Command.__init__):
+        (Event.__init__):
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.should_generate_types_for_domain):
+        (ObjCGenerator):
+        (ObjCGenerator.should_generate_commands_for_domain):
+        (ObjCGenerator.should_generate_events_for_domain):
+        (ObjCGenerator.should_generate_domain_types_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_types_filter.should_generate_domain_types): Deleted.
+        (ObjCGenerator.should_generate_domain_command_handler_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_command_handler_filter.should_generate_domain_command_handler): Deleted.
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter): Deleted.
+        (ObjCGenerator.should_generate_domain_event_dispatcher_filter.should_generate_domain_event_dispatcher): Deleted.
+        Clean up some messy code that essentially did the same definition filtering as we must do for platforms.
+        This will be enhanced in a future patch so that platform filtering will take priority over the target framework.
+
+        The following results need rebaselining because the class names for two generators were swapped by accident.
+        Fixing the names causes the order of generated files to change, and this generates ugly diffs because every
+        generated file includes the same copyright block at the top.
+
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: teach the protocol generator about platform-specific types, events, and commands
+        https://bugs.webkit.org/show_bug.cgi?id=166003
+        <rdar://problem/28718990>
+
+        Reviewed by Joseph Pecoraro.
+
+        Make it possible to test inspector protocol generator output for different platforms.
+
+        Move existing tests to the generic/ subdirectory, as they are to be generated
+        without any specific platform. Later, platform-specific generator behavior will be
+        tested by cloning the same test to multiple platform directories.
+
+        * inspector/scripts/tests{/ => /generic/}commands-with-async-attribute.json
+        * inspector/scripts/tests{/ => /generic/}commands-with-optional-call-return-parameters.json
+        * inspector/scripts/tests{/ => /generic/}domains-with-varying-command-sizes.json
+        * inspector/scripts/tests{/ => /generic/}enum-values.json
+        * inspector/scripts/tests{/ => /generic/}events-with-optional-parameters.json
+        * inspector/scripts/tests{/ => /generic/}expected/commands-with-async-attribute.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/commands-with-optional-call-return-parameters.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/domains-with-varying-command-sizes.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/enum-values.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/events-with-optional-parameters.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-domain-availability.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-duplicate-command-call-parameter-names.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-duplicate-command-return-parameter-names.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-duplicate-event-parameter-names.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-duplicate-type-declarations.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-duplicate-type-member-names.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-enum-with-no-values.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-number-typed-optional-parameter-flag.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-number-typed-optional-type-member.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-string-typed-optional-parameter-flag.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-string-typed-optional-type-member.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-type-declaration-using-type-reference.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-type-reference-as-primitive-type.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-type-with-lowercase-name.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-unknown-type-reference-in-type-declaration.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/fail-on-unknown-type-reference-in-type-member.json-error
+        * inspector/scripts/tests{/ => /generic/}expected/generate-domains-with-feature-guards.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/same-type-id-different-domain.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/shadowed-optional-type-setters.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/type-declaration-aliased-primitive-type.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/type-declaration-array-type.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/type-declaration-enum-type.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/type-declaration-object-type.json-result
+        * inspector/scripts/tests{/ => /generic/}expected/type-requiring-runtime-casts.json-result
+        * inspector/scripts/tests{/ => /generic/}fail-on-domain-availability.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-duplicate-command-call-parameter-names.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-duplicate-command-return-parameter-names.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-duplicate-event-parameter-names.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-duplicate-type-declarations.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-duplicate-type-member-names.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-enum-with-no-values.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-number-typed-optional-parameter-flag.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-number-typed-optional-type-member.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-string-typed-optional-parameter-flag.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-string-typed-optional-type-member.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-type-declaration-using-type-reference.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-type-reference-as-primitive-type.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-type-with-lowercase-name.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-unknown-type-reference-in-type-declaration.json
+        * inspector/scripts/tests{/ => /generic/}fail-on-unknown-type-reference-in-type-member.json
+        * inspector/scripts/tests{/ => /generic/}generate-domains-with-feature-guards.json
+        * inspector/scripts/tests{/ => /generic/}same-type-id-different-domain.json
+        * inspector/scripts/tests{/ => /generic/}shadowed-optional-type-setters.json
+        * inspector/scripts/tests{/ => /generic/}type-declaration-aliased-primitive-type.json
+        * inspector/scripts/tests{/ => /generic/}type-declaration-array-type.json
+        * inspector/scripts/tests{/ => /generic/}type-declaration-enum-type.json
+        * inspector/scripts/tests{/ => /generic/}type-declaration-object-type.json
+        * inspector/scripts/tests{/ => /generic/}type-requiring-runtime-casts.json
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: teach the protocol generator about platform-specific types, events, and commands
+        https://bugs.webkit.org/show_bug.cgi?id=166003
+        <rdar://problem/28718990>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a --platform argument to generate-inspector-protocol-bindings.py and propagate
+        the specified platform to each generator. This will be used in the next few patches
+        to exclude types, events, and commands that are unsupported by the backend platform.
+
+        Covert all subclasses of Generator to pass along their positional arguments so that we
+        can easily change base class arguments without editing all generator constructors.
+
+        * inspector/scripts/codegen/cpp_generator.py:
+        (CppGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_alternate_backend_dispatcher_header.py:
+        (CppAlternateBackendDispatcherHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_header.py:
+        (CppBackendDispatcherHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_backend_dispatcher_implementation.py:
+        (CppBackendDispatcherImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_header.py:
+        (CppFrontendDispatcherHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_frontend_dispatcher_implementation.py:
+        (CppFrontendDispatcherImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_header.py:
+        (CppProtocolTypesHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_cpp_protocol_types_implementation.py:
+        (CppProtocolTypesImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_js_backend_commands.py:
+        (JSBackendCommandsGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_header.py:
+        (ObjCBackendDispatcherHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCConfigurationImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_configuration_header.py:
+        (ObjCConfigurationHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_configuration_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_frontend_dispatcher_implementation.py:
+        (ObjCFrontendDispatcherImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_header.py:
+        (ObjCHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_internal_header.py:
+        (ObjCInternalHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_header.py:
+        (ObjCProtocolTypeConversionsHeaderGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_implementation.py:
+        (ObjCProtocolTypeConversionsImplementationGenerator.__init__):
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator.__init__):
+        Pass along *args instead of single positional arguments.
+
+        * inspector/scripts/codegen/generator.py:
+        (Generator.__init__):
+        Save the target platform and add a getter.
+
+        * inspector/scripts/codegen/models.py:
+        (Platform):
+        (Platform.__init__):
+        (Platform.fromString):
+        (Platforms):
+        Define the allowed Platform instances (iOS, macOS, and Any).
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.and.__init__):
+        * inspector/scripts/generate-inspector-protocol-bindings.py:
+        (generate_from_specification):
+        Pass along *args instead of single positional arguments.
+
 2017-01-04  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly JS API: add Module.sections

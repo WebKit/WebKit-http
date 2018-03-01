@@ -177,6 +177,10 @@ namespace WebCore {
     String AXURLFieldText();
     String AXDateFieldText();
     String AXTimeFieldText();
+    String AXDateTimeFieldText();
+    String AXMonthFieldText();
+    String AXNumberFieldText();
+    String AXWeekFieldText();
     
     String AXButtonActionVerb();
     String AXRadioButtonActionVerb();
@@ -307,6 +311,11 @@ namespace WebCore {
 #define WEB_UI_STRING_KEY(string, key, description) WebCore::localizedString(key)
 
     WEBCORE_EXPORT String localizedString(const char* key);
+
+#ifdef __OBJC__
+#define WEB_UI_NSSTRING(string, description) WebCore::localizedNSString(string)
+    WEBCORE_EXPORT NSString *localizedNSString(NSString *key) NS_FORMAT_ARGUMENT(1);
+#endif
 
 } // namespace WebCore
 

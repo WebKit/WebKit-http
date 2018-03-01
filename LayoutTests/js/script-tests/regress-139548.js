@@ -1,3 +1,6 @@
+//@ slow!
+//@ noEagerNoNoLLIntTestsRunLayoutTest
+
 description("Regression test for https://webkit.org/b/139548. This test should not crash.");
 
 var maxArgCount = 8;

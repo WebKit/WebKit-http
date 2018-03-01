@@ -40,6 +40,7 @@
 #import "StorageThread.h"
 #import "WebAlternativeTextClient.h"
 #import "WebApplicationCacheInternal.h"
+#import "WebArchive.h"
 #import "WebBackForwardListInternal.h"
 #import "WebBaseNetscapePluginView.h"
 #import "WebCache.h"
@@ -6520,7 +6521,8 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
     DragData *dragData = new DragData(draggingInfo, client, global, static_cast<DragOperation>([draggingInfo draggingSourceOperationMask]), [self applicationFlags:draggingInfo]);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-    if ([draggingInfo.draggingPasteboard.types containsObject:NSFilesPromisePboardType]) {
+    NSArray* types = draggingInfo.draggingPasteboard.types;
+    if (![types containsObject:WebArchivePboardType] && ![types containsObject:NSFilenamesPboardType] && [types containsObject:NSFilesPromisePboardType]) {
         NSArray *files = [draggingInfo.draggingPasteboard propertyListForType:NSFilesPromisePboardType];
         if (![files isKindOfClass:[NSArray class]]) {
             delete dragData;

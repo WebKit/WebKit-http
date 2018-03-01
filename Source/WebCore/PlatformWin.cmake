@@ -61,7 +61,6 @@ list(APPEND WebCore_SOURCES
     platform/KillRingNone.cpp
     platform/LocalizedStrings.cpp
     platform/StaticPasteboard.cpp
-    platform/VNodeTracker.cpp
 
     platform/audio/PlatformMediaSessionManager.cpp
 
@@ -201,7 +200,6 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     accessibility/win
 
-    bindings/generic
     bindings/js
 
     bridge/c

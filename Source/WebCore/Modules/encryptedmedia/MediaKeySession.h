@@ -33,20 +33,27 @@
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "GenericEventQueue.h"
+#include "GenericTaskQueue.h"
 #include "JSDOMPromise.h"
+#include "MediaKeyMessageType.h"
 #include "MediaKeySessionType.h"
 #include <wtf/RefCounted.h>
+#include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class BufferSource;
+class CDM;
+class CDMInstance;
 class MediaKeyStatusMap;
 class MediaKeys;
+class SharedBuffer;
 
 class MediaKeySession final : public RefCounted<MediaKeySession>, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
-    static Ref<MediaKeySession> create(ScriptExecutionContext&);
+    static Ref<MediaKeySession> create(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
     virtual ~MediaKeySession();
 
     using RefCounted<MediaKeySession>::ref;
@@ -54,16 +61,17 @@ public:
 
     const String& sessionId() const;
     double expiration() const;
-    RefPtr<MediaKeyStatusMap> keyStatuses() const;
+    Ref<MediaKeyStatusMap> keyStatuses() const;
 
-    void generateRequest(const String&, const BufferSource&, Ref<DeferredPromise>&&);
+    void generateRequest(const AtomicString&, const BufferSource&, Ref<DeferredPromise>&&);
     void load(const String&, Ref<DeferredPromise>&&);
     void update(const BufferSource&, Ref<DeferredPromise>&&);
     void close(Ref<DeferredPromise>&&);
     void remove(Ref<DeferredPromise>&&);
 
 private:
-    MediaKeySession(ScriptExecutionContext&);
+    MediaKeySession(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
+    void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const override { return MediaKeySessionEventTargetInterfaceType; }
@@ -76,6 +84,23 @@ private:
     const char* activeDOMObjectName() const override;
     bool canSuspendForDocumentSuspension() const override;
     void stop() override;
+
+    String m_sessionId;
+    double m_expiration;
+    Ref<MediaKeyStatusMap> m_keyStatuses;
+    bool m_closed { false };
+    bool m_uninitialized { true };
+    bool m_callable { false };
+    bool m_useDistinctiveIdentifier;
+    MediaKeySessionType m_sessionType;
+    Ref<CDM> m_implementation;
+    Ref<CDMInstance> m_instance;
+    GenericEventQueue m_eventQueue;
+    GenericTaskQueue<Timer> m_taskQueue;
+    Vector<Ref<SharedBuffer>> m_recordOfKeyUsage;
+    double m_firstDecryptTime { 0 };
+    double m_latestDecryptTime { 0 };
+    WeakPtrFactory<MediaKeySession> m_weakPtrFactory;
 };
 
 } // namespace WebCore

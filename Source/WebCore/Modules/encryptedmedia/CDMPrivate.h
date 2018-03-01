@@ -27,6 +27,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 
+#include "CDMInstance.h"
 #include "MediaKeySessionType.h"
 #include "MediaKeysRequirement.h"
 #include <wtf/Forward.h>
@@ -39,14 +40,20 @@ struct MediaKeysRestrictions;
 class CDMPrivate {
 public:
     virtual ~CDMPrivate() { }
-    virtual bool supportsInitDataType(const String&) = 0;
-    virtual bool supportsConfiguration(const MediaKeySystemConfiguration&) = 0;
-    virtual bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
-    virtual bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) = 0;
-    virtual bool supportsRobustness(const String&) = 0;
-    virtual MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
-    virtual MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) = 0;
-    virtual bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) = 0;
+
+    virtual bool supportsInitDataType(const AtomicString&) const = 0;
+    virtual bool supportsConfiguration(const MediaKeySystemConfiguration&) const = 0;
+    virtual bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const = 0;
+    virtual bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) const = 0;
+    virtual bool supportsRobustness(const String&) const = 0;
+    virtual MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const = 0;
+    virtual MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const = 0;
+    virtual bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) const = 0;
+    virtual RefPtr<CDMInstance> createInstance() = 0;
+    virtual void loadAndInitialize() = 0;
+    virtual bool supportsServerCertificates() const = 0;
+    virtual bool supportsSessions() const = 0;
+    virtual bool supportsInitData(const AtomicString&, const SharedBuffer&) const = 0;
 };
 
 }

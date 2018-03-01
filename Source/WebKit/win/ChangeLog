@@ -1,3 +1,33 @@
+2017-01-06  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from "inspector", "platform/sql", and "platform/text"
+        https://bugs.webkit.org/show_bug.cgi?id=166797
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebEditorClient.h: Update argument to take a reference
+        instead of a PassRefPtr.
+
+2017-01-05  Andreas Kling  <akling@apple.com>
+
+        Remove ChromeClient::needTouchEvents().
+        <https://webkit.org/b/166723>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2017-01-04  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "html" directory, other improvements
+        https://bugs.webkit.org/show_bug.cgi?id=166635
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::loadIconForFiles): Take a reference instead of a pointer.
+        * WebCoreSupport/WebChromeClient.h: Updated for the above.
+
 2016-12-30  Darin Adler  <darin@apple.com>
 
         Remove PassRefPtr use from the "dom" directory, related cleanup

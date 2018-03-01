@@ -1,3 +1,215 @@
+2017-01-11  Andreas Kling  <akling@apple.com>
+
+        Crash when WebCore's GC heap grows way too large.
+        <https://webkit.org/b/166875>
+        <rdar://problem/27896585>
+
+        Reviewed by Mark Lam.
+
+        Publish the WTF::GB constant.
+
+        * wtf/StdLibExtras.h:
+
+2017-01-11  Anders Carlsson  <andersca@apple.com>
+
+        navigator.plugins.refresh and WKContextRefreshPlugIns doesn't pick up changes to already-present plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=166942
+        rdar://problem/29839194
+
+        Reviewed by Sam Weinig.
+
+        * wtf/spi/cf/CFBundleSPI.h:
+        Add SPI declaration.
+
+2017-01-06  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GTK] Should support key and code properties on keyboard events
+        https://bugs.webkit.org/show_bug.cgi?id=166759
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/FeatureDefines.h: enable key and code properties support for GTK.
+
+2017-01-08  Antti Koivisto  <antti@apple.com>
+
+        Move cache coders to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=166825
+
+        Rubber-stamped by Sam Weinig.
+
+        Make it possible to use robust serialization of WTF types on the lower levels of the stack.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/persistence: Added.
+        * wtf/persistence/Coder.h: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheCoder.h.
+        (WebKit::NetworkCache::Coder::encode): Deleted.
+        (WebKit::NetworkCache::Coder::decode): Deleted.
+        * wtf/persistence/Coders.cpp: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheCoders.cpp.
+        (WebKit::NetworkCache::Coder<AtomicString>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<AtomicString>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<CString>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<CString>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<String>::encode): Deleted.
+        (WebKit::NetworkCache::decodeStringText): Deleted.
+        (WebKit::NetworkCache::Coder<String>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<SHA1::Digest>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<SHA1::Digest>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::HTTPHeaderMap>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::HTTPHeaderMap>::decode): Deleted.
+        * wtf/persistence/Coders.h: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheCoders.h.
+        (WebKit::NetworkCache::Coder<std::optional<T>>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<std::optional<T>>::decode): Deleted.
+        * wtf/persistence/Decoder.cpp: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheDecoder.cpp.
+        (WebKit::NetworkCache::Decoder::Decoder): Deleted.
+        (WebKit::NetworkCache::Decoder::~Decoder): Deleted.
+        (WebKit::NetworkCache::Decoder::bufferIsLargeEnoughToContain): Deleted.
+        (WebKit::NetworkCache::Decoder::decodeFixedLengthData): Deleted.
+        (WebKit::NetworkCache::Decoder::decodeNumber): Deleted.
+        (WebKit::NetworkCache::Decoder::decode): Deleted.
+        (WebKit::NetworkCache::Decoder::verifyChecksum): Deleted.
+        * wtf/persistence/Decoder.h: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheDecoder.h.
+        (WebKit::NetworkCache::Decoder::length): Deleted.
+        (WebKit::NetworkCache::Decoder::currentOffset): Deleted.
+        (WebKit::NetworkCache::Decoder::decodeEnum): Deleted.
+        (WebKit::NetworkCache::Decoder::decode): Deleted.
+        (WebKit::NetworkCache::Decoder::bufferIsLargeEnoughToContain): Deleted.
+        * wtf/persistence/Encoder.cpp: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheEncoder.cpp.
+        (WebKit::NetworkCache::Encoder::Encoder): Deleted.
+        (WebKit::NetworkCache::Encoder::~Encoder): Deleted.
+        (WebKit::NetworkCache::Encoder::grow): Deleted.
+        (WebKit::NetworkCache::Encoder::updateChecksumForData): Deleted.
+        (WebKit::NetworkCache::Encoder::encodeFixedLengthData): Deleted.
+        (WebKit::NetworkCache::Encoder::encodeNumber): Deleted.
+        (WebKit::NetworkCache::Encoder::encode): Deleted.
+        (WebKit::NetworkCache::Encoder::encodeChecksum): Deleted.
+        * wtf/persistence/Encoder.h: Copied from Source/WebKit2/NetworkProcess/cache/NetworkCacheEncoder.h.
+        (WebKit::NetworkCache::Encoder::encodeEnum): Deleted.
+        (WebKit::NetworkCache::Encoder::encode): Deleted.
+        (WebKit::NetworkCache::Encoder::operator<<): Deleted.
+        (WebKit::NetworkCache::Encoder::buffer): Deleted.
+        (WebKit::NetworkCache::Encoder::bufferSize): Deleted.
+        (WebKit::NetworkCache::Encoder::updateChecksumForNumber): Deleted.
+
+2017-01-08  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Introduce CPU(X86_SSE2) instead of various SSE2 checks
+        https://bugs.webkit.org/show_bug.cgi?id=166808
+
+        Reviewed by Michael Catanzaro.
+
+        Now copyLCharsFromUCharSource can use SSE2 implementation on non-Darwin
+        OSes, and all SSE2 code paths are available for MSVC on x86 if /arch:SSE2
+        or higher is enabled, and for MSVC on x86_64.
+
+        * wtf/Platform.h:
+        * wtf/text/ASCIIFastPath.h:
+        (WTF::copyLCharsFromUCharSource):
+
+2017-01-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Carets can split up marriages and families
+        https://bugs.webkit.org/show_bug.cgi?id=166711
+        <rdar://problem/29019333>
+
+        Reviewed by Alex Christensen.
+
+        There are four code points which should be allowed to accept emoji modifiers:
+        - U+1F46A FAMILY
+        - U+1F46B MAN AND WOMAN HOLDING HANDS
+        - U+1F46C TWO MEN HOLDING HANDS
+        - U+1F46D TWO WOMEN HOLDING HANDS
+
+        Even though macOS's and iOS's emoji keyboard don't allow users to actually type
+        these combinations, we may still receive them from other platforms. We should
+        therefore treat these as joining sequences. Rendering isn't a problem because
+        the fonts accept the emoji modifiers, but our caret placement code isn't educated
+        about it. Currently, we treat these emoji groups as ligatures, allowing the caret
+        to be placed between the two code points, which visually shows as being horizontally
+        centered in the glyph. Instead, we should treat these code points as accepting
+        emoji modifiers.
+
+        Tests: editing/caret/emoji.html
+               editing/caret/ios/emoji.html
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::cursorMovementIterator):
+
+2017-01-05  Filip Pizlo  <fpizlo@apple.com>
+
+        AutomaticThread timeout shutdown leaves a small window where notify() would think that the thread is still running
+        https://bugs.webkit.org/show_bug.cgi?id=166742
+
+        Reviewed by Geoffrey Garen.
+        
+        Remove the use of the RAII ThreadScope, since the use of RAII helped make this bug possible:
+        we'd do ~ThreadScope after we had done ~LockHolder, so in between when we decided to shut
+        down a thread and when it reported itself as being shut down, there was a window where a
+        notify() call would get confused.
+        
+        Now, we run all thread shutdown stuff while the lock is held. We release the lock last. One
+        API implication is that threadWillStop becomes threadIsStopping and it's called while the
+        lock is held. This seems benign.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        (WTF::AutomaticThread::threadIsStopping):
+        (WTF::AutomaticThread::ThreadScope::ThreadScope): Deleted.
+        (WTF::AutomaticThread::ThreadScope::~ThreadScope): Deleted.
+        (WTF::AutomaticThread::threadWillStop): Deleted.
+        * wtf/AutomaticThread.h:
+
+2017-01-04  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "html" directory, other improvements
+        https://bugs.webkit.org/show_bug.cgi?id=166635
+
+        Reviewed by Alex Christensen.
+
+        * wtf/RefPtr.h:
+        (WTF::makeRefPtr): Added.
+
+2017-01-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed build fix after r210313
+        https://bugs.webkit.org/show_bug.cgi?id=166676
+
+        Revert `#pragma once` to ifdefs due to build failure.
+
+        * wtf/text/StringView.h:
+
+2017-01-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Limit thread name appropriately
+        https://bugs.webkit.org/show_bug.cgi?id=166676
+
+        Reviewed by Sam Weinig.
+
+        In some platform, the max length of thread names are limited.
+        For example, the number of the max length is 32 in Windows and
+        16 in Linux. But the specified thread name is typically long
+        in WebKit like "com.apple.CoreIPC.ReceiveQueue"
+
+        We port the logic substring the thread name in
+        generic/WorkQueueGeneric.cpp to Threading. It retrieves the name
+        "ReceiveQueue" from "com.apple.CoreIPC.ReceiveQueue". And apply
+        the appropriate the thread name limit and use it on Linux and
+        Windows environment.
+
+        * wtf/Threading.cpp:
+        (WTF::normalizeThreadName):
+        (WTF::createThread):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        * wtf/ThreadingWin.cpp:
+        (WTF::initializeCurrentThreadInternal):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::platformInitialize):
+        * wtf/text/StringView.h:
+        (WTF::StringView::left):
+        (WTF::StringView::right):
+        (WTF::StringView::reverseFind):
+
 2017-01-04  Sam Weinig  <sam@webkit.org>
 
         REGRESSION (r210257): com.apple.WebKit.WebContent.Development crashed in com.apple.WebCore: WebCore::ExceptionOr<WTF::Ref<WebCore::Database> >::operator= + 14

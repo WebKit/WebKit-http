@@ -51,3 +51,33 @@ bool WKWebsitePoliciesGetContentBlockersEnabled(WKWebsitePoliciesRef websitePoli
 {
     return toImpl(websitePolicies)->contentBlockersEnabled();
 }
+
+WKWebsiteAutoplayPolicy WKWebsitePoliciesGetAutoplayPolicy(WKWebsitePoliciesRef websitePolicies)
+{
+    switch (toImpl(websitePolicies)->autoplayPolicy()) {
+    case WebsiteAutoplayPolicy::AlwaysAllow:
+        return kWKWebsiteAutoplayPolicyAlwaysAllow;
+    case WebsiteAutoplayPolicy::AlwaysDeny:
+        return kWKWebsiteAutoplayPolicyAlwaysDeny;
+    case WebsiteAutoplayPolicy::UseHeuristics:
+        return kWKWebsiteAutoplayPolicyUseHeuristics;
+    }
+    ASSERT_NOT_REACHED();
+    return kWKWebsiteAutoplayPolicyUseHeuristics;
+}
+
+void WKWebsitePoliciesSetAutoplayPolicy(WKWebsitePoliciesRef websitePolicies, WKWebsiteAutoplayPolicy autoplayPolicy)
+{
+    switch (autoplayPolicy) {
+    case kWKWebsiteAutoplayPolicyAlwaysAllow:
+        toImpl(websitePolicies)->setAutoplayPolicy(WebsiteAutoplayPolicy::AlwaysAllow);
+        return;
+    case kWKWebsiteAutoplayPolicyAlwaysDeny:
+        toImpl(websitePolicies)->setAutoplayPolicy(WebsiteAutoplayPolicy::AlwaysDeny);
+        return;
+    case kWKWebsiteAutoplayPolicyUseHeuristics:
+        toImpl(websitePolicies)->setAutoplayPolicy(WebsiteAutoplayPolicy::UseHeuristics);
+        return;
+    }
+    ASSERT_NOT_REACHED();
+}

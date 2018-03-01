@@ -1,3 +1,88 @@
+2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove pointerLockElement from DOMDocumentPrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=166882
+
+        Reviewed by Simon Fraser.
+
+        Removed pointerLockElement declaration that was supposed to be removed in r209637.
+
+        * DOM/DOMDocumentPrivate.h:
+
+2017-01-06  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from "inspector", "platform/sql", and "platform/text"
+        https://bugs.webkit.org/show_bug.cgi?id=166797
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebEditorClient.h: Updated to take a reference.
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::requestCheckingOfString): Take a reference
+        instead of a PassRefPtr.
+
+2017-01-05  Chris Dumez  <cdumez@apple.com>
+
+        Turn preferLowPowerWebGLRendering setting on by default
+        https://bugs.webkit.org/show_bug.cgi?id=166737
+        <rdar://problem/29870033>
+
+        Reviewed by Dean Jackson.
+
+        Temporarily turn preferLowPowerWebGLRendering setting on by default until
+        we deal better with WebGL content in background tabs.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-01-05  Enrica Casucci  <enrica@apple.com>
+
+        Support File Promise during drag for macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        rdar://problem/19595567
+
+        Reviewed by Tim Horton.
+
+        Adds support for dropping a File Promise in a WebView.
+        The implementation uses new File Promise API available in Sierra.
+
+        * Misc/WebNSPasteboardExtras.mm:
+        (+[NSPasteboard _web_dragTypesForURL]):
+        * WebView/WebView.mm:
+        (-[WebView performDragOperation:]):
+
+2017-01-05  Andreas Kling  <akling@apple.com>
+
+        Remove ChromeClient::needTouchEvents().
+        <https://webkit.org/b/166723>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2017-01-04  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "html" directory, other improvements
+        https://bugs.webkit.org/show_bug.cgi?id=166635
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::loadIconForFiles): Take a reference instead of a pointer.
+
+2017-01-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210287.
+
+        This change caused editing test failures on macOS.
+
+        Reverted changeset:
+
+        "Support File Promise during drag for macOS."
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        http://trac.webkit.org/changeset/210287
+
 2017-01-04  Enrica Casucci  <enrica@apple.com>
 
         Support File Promise during drag for macOS.

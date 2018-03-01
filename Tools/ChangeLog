@@ -1,3 +1,816 @@
+2017-01-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed test fix after r210599.
+
+        * TestWebKitAPI/Tests/WebKit2/WKPageIsPlayingAudio.cpp:
+        (TestWebKitAPI::TEST): Remove debugging code that was causing a timeout.
+
+2017-01-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix after r210599.
+
+        Add missing files.
+
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.html: Added.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.mm: Added.
+
+2017-01-11  Brent Fulgham  <bfulgham@apple.com>
+
+        File scheme should not allow access of a resource on a different volume.
+        https://bugs.webkit.org/show_bug.cgi?id=158552
+        <rdar://problem/15307582>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new files.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.html: Added.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.mm: Added.
+
+2017-01-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210571.
+
+        This change broke the 32-bit macOS build and caused LayoutTest
+        failures.
+
+        Reverted changeset:
+
+        "File scheme should not allow access of a resource on a
+        different volume."
+        https://bugs.webkit.org/show_bug.cgi?id=158552
+        http://trac.webkit.org/changeset/210571
+
+2017-01-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies script misses gdb
+        https://bugs.webkit.org/show_bug.cgi?id=166917
+
+        Reviewed by Michael Catanzaro.
+
+        gdb is needed for generating the crash logs.
+
+        * gtk/install-dependencies:
+
+2017-01-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] No way for applications to set notification permissions without waiting for permission request
+        https://bugs.webkit.org/show_bug.cgi?id=163366
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewNotification):
+        (setInitialNotificationPermissionsAllowedCallback):
+        (setInitialNotificationPermissionsDisallowedCallback):
+        (testWebViewNotificationInitialPermissionAllowed):
+        (testWebViewNotificationInitialPermissionDisallowed):
+        (beforeAll):
+        * TestWebKitAPI/gtk/WebKit2Gtk/TestMain.h:
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::WebViewTest):
+        (WebViewTest::initializeWebView):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2017-01-10  Tim Horton  <timothy_horton@apple.com>
+
+        MobileMiniBrowser tests don't work by default
+        https://bugs.webkit.org/show_bug.cgi?id=166910
+
+        Reviewed by Alex Christensen.
+
+        * MobileMiniBrowser/MobileMiniBrowser.xcodeproj/xcshareddata/xcschemes/MobileMiniBrowserUITests.xcscheme: Added.
+        Add a shared scheme; the Makefile depends on the MobileMiniBrowserUITests scheme existing, at the very least.
+
+2017-01-10  Brent Fulgham  <bfulgham@apple.com>
+
+        File scheme should not allow access of a resource on a different volume.
+        https://bugs.webkit.org/show_bug.cgi?id=158552
+        <rdar://problem/15307582>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new files.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.html: Added.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.mm: Added.
+
+2017-01-10  Mark Lam  <mark.lam@apple.com>
+
+        Reverting run-jsc-stress-tests' $buildType to use string values.
+        https://bugs.webkit.org/show_bug.cgi?id=166912
+
+        Rubber stamped by Filip Pizlo.
+
+        This is so that we can test for it in the tests e.g.
+        //@ if $buildType == "debug" then runDefault("--maxSingleAllocationSize=1048576") else skip end
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Temporarily add back the file removed in r210463 to unbreak internal bots.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch: Copied from Tools/Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch.
+
+2017-01-10  Jonathan Bedard  <jbedard@apple.com>
+
+        svn-apply failed to apply a patch (deleting file with svn property)
+        https://bugs.webkit.org/show_bug.cgi?id=165953
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/VCSUtils.pm:
+        (parseSvnPropertyValue): The beginning of a diff will cause an early exit in the case of no empty newlines.
+        * Scripts/webkitperl/VCSUtils_unittest/parseSvnProperty.pl: Add tests without break between diffs for properties.
+
+2017-01-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update flakiness dashboard configuration.
+        https://bugs.webkit.org/show_bug.cgi?id=166869
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+
+2017-01-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Stop honoring the environment variable USE_NATIVE_XDISPLAY
+        https://bugs.webkit.org/show_bug.cgi?id=165232
+
+        Unreviewed follow-up patch after r210539 and r210523.
+
+        Instead of using that environment variable, the argument
+        --display-server=xorg should be passed now.
+
+        The GTK+ performance bot was the only bot using this, and is
+        already passing --display-server=xorg after r210539.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._driver_class):
+
+2017-01-10  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add a new release test bot for Wayland and pass --display-server=xorg to the GTK Perf bot.
+        https://bugs.webkit.org/show_bug.cgi?id=166872
+
+        Reviewed by Michael Catanzaro.
+
+        Add the new wayland release test bot as a test-only bot. It will download the built product from the release build-only bot.
+        Define the required "--display-server=driver" in the bot additionalArguments config entry.
+        Implement support for honoring additionalArguments on the RunGtkAPITests and RunAndUploadPerfTests steps.
+        The step RunWebKitTests already has support for it.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (RunGtkAPITests.start):
+        (RunAndUploadPerfTests.start):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2017-01-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210531.
+
+        This change broke the 32-bit macOS build and caused LayoutTest
+        failures.
+
+        Reverted changeset:
+
+        "File scheme should not allow access of a resource on a
+        different volume."
+        https://bugs.webkit.org/show_bug.cgi?id=158552
+        http://trac.webkit.org/changeset/210531
+
+2017-01-09  Brent Fulgham  <bfulgham@apple.com>
+
+        File scheme should not allow access of a resource on a different volume.
+        https://bugs.webkit.org/show_bug.cgi?id=158552
+        <rdar://problem/15307582>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add new files.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.html: Added.
+        * TestWebKitAPI/Tests/mac/CrossPartitionFileSchemeAccess.mm: Added.
+
+2017-01-09  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][Wayland] Allow running the layout tests under a native Wayland environment.
+        https://bugs.webkit.org/show_bug.cgi?id=165232
+
+        Reviewed by Michael Catanzaro.
+
+        Add a new WaylandDriver to run the tests in the user current wayland session.
+
+        Also merge all the configuration options for selecting the display server inside one
+        switch --display-server=xvfb/xorg/wayland/weston (defaulting to xvfb).
+
+        This switch is supported on the scripts: run-gtk-tests, run-perf-tests and run-webkit-tests.
+
+        * Scripts/run-gtk-tests: Add missing logging.basicConfig() initialization for the error logger.
+        (TestRunner._create_driver):
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args):
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (PerfTestsRunner._parse_args):
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.__init__):
+        (GtkPort._driver_class):
+        (GtkPort._search_paths):
+        * Scripts/webkitpy/port/waylanddriver.py: Added.
+        (WaylandDriver):
+        (WaylandDriver.check_driver):
+        (WaylandDriver._setup_environ_for_test):
+        (WaylandDriver._start):
+
+2017-01-09  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Add a layout test for webkit.org/b/135651
+        https://bugs.webkit.org/show_bug.cgi?id=166855
+
+        Reviewed by Andreas Kling.
+
+        * DumpRenderTree/mac/FrameLoadDelegate.mm:
+        (-[FrameLoadDelegate webView:didFailProvisionalLoadWithError:forFrame:]): Added output for
+        errors with code WebKitErrorCannotShowURL.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didFailProvisionalLoadWithErrorForFrame): Made the error output
+        not specific to WebKit2 error codes.
+
+2017-01-09  Antoine Quint  <graouts@apple.com>
+
+        Support webkit-test-runner key-value pairs in http tests in DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=166837
+
+        Reviewed by Alex Christensen.
+
+        We now correctly handle the --absolutePath argument in DumpRenderTree and use
+        the provided value when trying to determine the path to the test file. Failing
+        that, we use the computed URL or the raw path provided to cover all cases.
+        
+        This was tested in the context of https://bugs.webkit.org/show_bug.cgi?id=165668
+        by applying this patch and seeing the number test failures dramatically reduced
+        with WK1 due to the option to turn modern media controls off for older media controls
+        tests.
+
+        * DumpRenderTree/DumpRenderTree.h:
+        * DumpRenderTree/DumpRenderTreeCommon.cpp:
+        (parseInputLine):
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (runTest):
+
+2017-01-09  Milan Crha  <mcrha@redhat.com>
+
+        prepare-ChangeLog: Correct help string for --style option
+        https://bugs.webkit.org/show_bug.cgi?id=166725
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/prepare-ChangeLog:
+        (main):
+
+2017-01-09  Lucas Forschler  <lforschler@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=166839
+        Add php7 support for macOS.
+        Mirror the debian logic to look for a php7 module on disk, and return the appropriate apache config file.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port._is_darwin_php_version_7):
+        (Port._debian_php_version):
+        (Port):
+        (Port._darwin_php_version):
+        (Port._apache_config_file_name_for_platform):
+
+2017-01-06  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GTK] Should support key and code properties on keyboard events
+        https://bugs.webkit.org/show_bug.cgi?id=166759
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::getGDKKeySymForKeyRef): add missing modifier keys which were being reported as 'l' and 'r' only
+        on tests.
+
+2017-01-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Some tests are flaky because certain DLLs are writing to stdout.
+        https://bugs.webkit.org/show_bug.cgi?id=166760
+
+        Reviewed by Darin Adler.
+
+        Some tests are flaky because certain DLLs are writing to stdout, giving incorrect test results.
+        We can work around that by duplicating and redirecting stdout.
+
+        * DumpRenderTree/PixelDumpSupport.cpp:
+        (dumpWebViewAsPixelsAndCompareWithExpected):
+        (printPNG):
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        (logEventProc):
+        * DumpRenderTree/win/DRTDesktopNotificationPresenter.cpp:
+        (DRTDesktopNotificationPresenter::showDesktopNotification):
+        (DRTDesktopNotificationPresenter::cancelDesktopNotification):
+        (DRTDesktopNotificationPresenter::requestNotificationPermission):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dumpFrameScrollPosition):
+        (dumpHistoryItem):
+        (dumpBackForwardList):
+        (dump):
+        (runTest):
+        (main):
+        * DumpRenderTree/win/DumpRenderTreeWin.h:
+        * DumpRenderTree/win/EditingDelegate.cpp:
+        (EditingDelegate::shouldBeginEditingInDOMRange):
+        (EditingDelegate::shouldEndEditingInDOMRange):
+        (EditingDelegate::shouldInsertNode):
+        (EditingDelegate::shouldInsertText):
+        (EditingDelegate::shouldDeleteDOMRange):
+        (EditingDelegate::shouldChangeSelectedDOMRange):
+        (EditingDelegate::shouldApplyStyle):
+        (EditingDelegate::shouldChangeTypingStyle):
+        (EditingDelegate::doPlatformCommand):
+        (EditingDelegate::webViewDidBeginEditing):
+        (EditingDelegate::webViewDidChange):
+        (EditingDelegate::webViewDidEndEditing):
+        (EditingDelegate::webViewDidChangeTypingStyle):
+        (EditingDelegate::webViewDidChangeSelection):
+        * DumpRenderTree/win/FrameLoadDelegate.cpp:
+        (FrameLoadDelegate::didStartProvisionalLoadForFrame):
+        (FrameLoadDelegate::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (FrameLoadDelegate::didChangeLocationWithinPageForFrame):
+        (FrameLoadDelegate::didFailProvisionalLoadWithError):
+        (FrameLoadDelegate::didCommitLoadForFrame):
+        (FrameLoadDelegate::didReceiveTitle):
+        (FrameLoadDelegate::didFinishLoadForFrame):
+        (FrameLoadDelegate::didFailLoadWithError):
+        (FrameLoadDelegate::willPerformClientRedirectToURL):
+        (FrameLoadDelegate::didCancelClientRedirectForFrame):
+        (FrameLoadDelegate::windowScriptObjectAvailable):
+        (FrameLoadDelegate::didFinishDocumentLoadForFrame):
+        (FrameLoadDelegate::didHandleOnloadEventsForFrame):
+        (FrameLoadDelegate::didDisplayInsecureContent):
+        (FrameLoadDelegate::didRunInsecureContent):
+        (FrameLoadDelegate::webViewProgressFinishedNotification):
+        * DumpRenderTree/win/HistoryDelegate.cpp:
+        (HistoryDelegate::didNavigateWithNavigationData):
+        (HistoryDelegate::didPerformClientRedirectFromURL):
+        (HistoryDelegate::didPerformServerRedirectFromURL):
+        (HistoryDelegate::updateHistoryTitle):
+        (HistoryDelegate::populateVisitedLinksForWebView):
+        * DumpRenderTree/win/PolicyDelegate.cpp:
+        (PolicyDelegate::decidePolicyForNavigationAction):
+        (PolicyDelegate::unableToImplementPolicyWithError):
+        * DumpRenderTree/win/ResourceLoadDelegate.cpp:
+        (ResourceLoadDelegate::willSendRequest):
+        (ResourceLoadDelegate::didReceiveAuthenticationChallenge):
+        (ResourceLoadDelegate::didReceiveResponse):
+        (ResourceLoadDelegate::didFinishLoadingFromDataSource):
+        (ResourceLoadDelegate::didFailLoadingWithError):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::addDisallowedURL):
+        (TestRunner::originsWithApplicationCache):
+        (TestRunner::setStorageDatabaseIdleInterval):
+        (TestRunner::closeIdleLocalStorageDatabases):
+        (TestRunner::copyDecodedHostName):
+        (TestRunner::copyEncodedHostName):
+        (TestRunner::numberOfPendingGeolocationPermissionRequests):
+        (TestRunner::isGeolocationProviderActive):
+        (TestRunner::pathToLocalResource):
+        (TestRunner::setMockDeviceOrientation):
+        (TestRunner::setMockGeolocationPosition):
+        (TestRunner::setMockGeolocationPositionUnavailableError):
+        (TestRunner::setSpatialNavigationEnabled):
+        (TestRunner::setAutomaticLinkDetectionEnabled):
+        (TestRunner::isCommandEnabled):
+        (TestRunner::authenticateSession):
+        (TestRunner::addChromeInputField):
+        (TestRunner::removeChromeInputField):
+        (TestRunner::focusWebView):
+        (TestRunner::grantWebNotificationPermission):
+        (TestRunner::denyWebNotificationPermission):
+        (TestRunner::removeAllWebNotificationPermissions):
+        (TestRunner::simulateWebNotificationClick):
+        (TestRunner::imageCountInGeneralPasteboard):
+        * DumpRenderTree/win/UIDelegate.cpp:
+        (UIDelegate::runJavaScriptAlertPanelWithMessage):
+        (UIDelegate::runJavaScriptConfirmPanelWithMessage):
+        (UIDelegate::runJavaScriptTextInputPanelWithPrompt):
+        (UIDelegate::runBeforeUnloadConfirmPanelWithMessage):
+        (UIDelegate::webViewAddMessageToConsole):
+        (UIDelegate::exceededDatabaseQuota):
+        (UIDelegate::setStatusText):
+        (UIDelegate::didPressMissingPluginButton):
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Add a setting to create editable MiniBrowser windows by default
+        https://bugs.webkit.org/show_bug.cgi?id=166806
+
+        Reviewed by Beth Dakin.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate createBrowserWindowController:]):
+        (-[BrowserAppDelegate applicationDidFinishLaunching:]):
+        (-[BrowserAppDelegate _updateNewWindowKeyEquivalents]):
+        * MiniBrowser/mac/SettingsController.h:
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        (-[SettingsController validateMenuItem:]):
+        (-[SettingsController toggleCreateEditorByDefault:]):
+        (-[SettingsController createEditorByDefault]):
+        Add a setting and update the key equivalents accordingly.
+        Also make sure to make the right kind of window on launch.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the 32-bit build.
+
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the 32-bit build.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Make it possible to drop HTML files on the MiniBrowser icon
+        https://bugs.webkit.org/show_bug.cgi?id=166802
+
+        Reviewed by Simon Fraser.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate application:openFile:]):
+        * MiniBrowser/mac/Info.plist:
+        If you're using an editable window, the usual trick of dropping on the
+        window doesn't work anymore (it makes an <attachment> instead).
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        MiniBrowser window gets smaller each time it is instantiated
+        https://bugs.webkit.org/show_bug.cgi?id=166807
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController windowDidLoad]):
+        * MiniBrowser/mac/BrowserWindow.xib:
+        Turn on full-window content view support with IB, instead of waiting
+        until after the views have been loaded. This seems to resolve the
+        longstanding ever-shrinking-window problem.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Add indent/outdent items to MiniBrowser's new format menu
+        https://bugs.webkit.org/show_bug.cgi?id=166805
+
+        Reviewed by Dan Bernstein.
+
+        * MiniBrowser/mac/MainMenu.xib:
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Add a stock Format menu to MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=166804
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/MainMenu.xib:
+        Many of the features automatically work with editable web views.
+        However, this seems to expose a bug where none of the font-related features
+        (Cmd-B, for example) work until the first time the font panel is shown,
+        per process, which will need to be investigated separately.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Remove unused applicationWillTerminate methods from MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=166803
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate applicationWillTerminate:]): Deleted.
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController applicationTerminating]): Deleted.
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController applicationTerminating]): Deleted.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController applicationTerminating]): Deleted.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Add the ability to create empty contentEditable windows in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=166801
+
+        Reviewed by Wenson Hsieh.
+
+        * MiniBrowser/mac/AppDelegate.h:
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate createBrowserWindowController:]):
+        (-[BrowserAppDelegate newWindow:]):
+        (-[BrowserAppDelegate newEditorWindow:]):
+        (-[BrowserAppDelegate openDocument:]):
+        (-[BrowserAppDelegate _updateNewWindowKeyEquivalents]):
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController loadHTMLString:]):
+        (-[BrowserWindowController toggleEditable:]):
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController awakeFromNib]):
+        (-[WK1BrowserWindowController loadHTMLString:]):
+        (-[WK1BrowserWindowController validateMenuItem:]):
+        (-[WK1BrowserWindowController setEditable:]):
+        (-[WK1BrowserWindowController updateTitle:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController setEditable:]):
+        (-[WK2BrowserWindowController updateTitle:]):
+        (-[WK2BrowserWindowController loadHTMLString:]):
+        Merge more functionality from WebEditingTester.
+        Add two menu items for creating empty editable WebKit1/2 windows.
+        Add a menu item to the Edit menu to toggle editability on any window.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Implement find-in-page in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=166799
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        * MiniBrowser/mac/BrowserWindowController.h:
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController find:]): Deleted.
+        * MiniBrowser/mac/MainMenu.xib:
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController toggleShrinkToFit:]):
+        (-[WK1BrowserWindowController find:]): Deleted.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController awakeFromNib]):
+        (-[WK2BrowserWindowController dealloc]):
+        (-[WK2BrowserWindowController validateMenuItem:]):
+        (-[WK2BrowserWindowController performTextFinderAction:]):
+        (-[WK2BrowserWindowController findBarView]):
+        (-[WK2BrowserWindowController setFindBarView:]):
+        (-[WK2BrowserWindowController isFindBarVisible]):
+        (-[WK2BrowserWindowController setFindBarVisible:]):
+        (-[WK2BrowserWindowController contentView]):
+        (-[WK2BrowserWindowController findBarViewDidChangeHeight]):
+        (-[WK2BrowserWindowController performFindPanelAction:]): Deleted.
+        (-[WK2BrowserWindowController find:]): Deleted.
+        Implement find-in-page using WKWebView's conformance to the NSTextFinderClient
+        protocol. At first glance, it's pretty broken, but vaguely works.
+
+2017-01-07  Tim Horton  <timothy_horton@apple.com>
+
+        Share the implementation of MiniBrowser view hiding functionality
+        https://bugs.webkit.org/show_bug.cgi?id=166800
+
+        Reviewed by Andy Estes.
+
+        * MiniBrowser/mac/BrowserWindowController.m:
+        (-[BrowserWindowController showHideWebView:]):
+        (-[BrowserWindowController removeReinsertWebView:]):
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController showHideWebView:]): Deleted.
+        (-[WK1BrowserWindowController removeReinsertWebView:]): Deleted.
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController showHideWebView:]): Deleted.
+        (-[WK2BrowserWindowController removeReinsertWebView:]): Deleted.
+        Move the implementation of these two things to the shared superclass,
+        since they don't depend on WebKit-specific things.
+        Also, there was no reason to retain the (WK)WebView while it was unparented,
+        as the BrowserWindowController maintains a reference the entire time.
+
+2017-01-06  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Consolidate duplicate copies of WebArchiveDumpSupport in DRT and WKTR into WebCoreTestSupport
+        https://bugs.webkit.org/show_bug.cgi?id=166789
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj:
+        * DumpRenderTree/PlatformMac.cmake:
+        * DumpRenderTree/cf/WebArchiveDumpSupport.cpp: Removed.
+        * DumpRenderTree/cf/WebArchiveDumpSupport.h: Removed.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        Called WebCoreTestSupport::createXMLStringFromWebArchiveData() instead of
+        createXMLStringFromWebArchiveData().
+        * DumpRenderTree/mac/WebArchiveDumpSupportMac.mm: Removed.
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        Added $(BUILT_PRODUCTS_DIR)/WebCoreTestSupport to HEADER_SEARCH_PATHS.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::dumpDOMAsWebArchive):
+        Called WebCoreTestSupport::createXMLStringFromWebArchiveData() instead of
+        createXMLStringFromWebArchiveData().
+        * WebKitTestRunner/InjectedBundle/cocoa/WebArchiveDumpSupportCocoa.mm: Removed.
+        * WebKitTestRunner/PlatformMac.cmake:
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+        * WebKitTestRunner/cf/WebArchiveDumpSupport.h: Removed.
+
+2017-01-06  Tim Horton  <timothy_horton@apple.com>
+
+        Minor cleanups to IndentOutdentCommand and related code
+        https://bugs.webkit.org/show_bug.cgi?id=166791
+
+        Reviewed by Simon Fraser.
+
+        * WebEditingTester/EditingOperations.m:
+        (editingOperations):
+        Add the outdent operation to WebEditingTester.
+
+2017-01-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Create a plan and a patch files for MotionMark and delete the Animometer's ones
+        https://bugs.webkit.org/show_bug.cgi?id=166785
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/benchmark_runner/data/patches/MotionMark.patch: Renamed from Tools/Scripts/webkitpy/benchmark_runner/data/patches/Animometer.patch.
+        * Scripts/webkitpy/benchmark_runner/data/plans/motionmark.plan: Renamed from Tools/Scripts/webkitpy/benchmark_runner/data/plans/animometer.plan.
+
+2017-01-06  Antoine Quint  <graouts@apple.com>
+
+        Support webkit-test-runner key-value pairs in http tests
+        https://bugs.webkit.org/show_bug.cgi?id=149812
+
+        Reviewed by Alex Christensen.
+
+        We pass the absolute path for a test through to WKTR so that we can parse
+        tests that are running as URLs for webkit-test-runner options.
+
+        * DumpRenderTree/DumpRenderTreeCommon.cpp:
+        (parseInputLine):
+
+        Explicitly skip the --absolute-path option in DRT or else we'd crash.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._command_from_driver_input):
+
+        Pass the absolute path to the file through the CLI.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::updateTestOptionsFromTestHeader):
+        (WTR::TestController::testOptionsForTest):
+        (WTR::parseInputLine):
+        (WTR::TestController::runTest):
+        * WebKitTestRunner/TestController.h:
+
+2017-01-06  Tim Horton  <timothy_horton@apple.com>
+
+        Warning about unconnectable outlets when opening a MiniBrowser window
+        https://bugs.webkit.org/show_bug.cgi?id=166756
+
+        Reviewed by Dan Bernstein.
+
+        * MiniBrowser/mac/BrowserWindow.xib:
+        When launching MiniBrowser, it says:
+        Failed to connect (Share) outlet from (WK1BrowserWindowController) to
+            (MBToolbarItem): missing setter or instance variable
+        Failed to connect (shareButton) outlet from (WK1BrowserWindowController) to
+            (NSButtonCell): missing setter or instance variable.
+
+        It looks like someone added the connection from the share button
+        to the BrowserWindowController three times; only one of the connections
+        is valid. Remove the other two.
+
+2017-01-05  Keith Rollin  <krollin@apple.com>
+
+        Add WebCore::URL::protocolHostAndPort
+        https://bugs.webkit.org/show_bug.cgi?id=166426
+
+        Reviewed by Alex Christensen.
+
+        Add test for protocolHostAndPort.
+
+        * TestWebKitAPI/Tests/WebCore/URL.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-01-05  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Archive test result is failing.
+        https://bugs.webkit.org/show_bug.cgi?id=166720
+
+        Reviewed by Alex Christensen.
+
+        Deleting the layout test result folder is sometimes failing
+        on Windows. This is not a critical error.
+
+        * BuildSlaveSupport/test-result-archive:
+        (archiveTestResults):
+
+2017-01-04  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Minibrowser: Add printing support
+        https://bugs.webkit.org/show_bug.cgi?id=165298
+
+        Open a print dialog when the Ctrl + P shortcut is pressed. If there is
+        an error during the print, it's printed on the console.
+
+        Reviewed by Michael Catanzaro.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webKitPrintOperationFailedCallback):
+        (printPage):
+        (browser_window_init):
+
+2017-01-04  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Fix crash clamping grid lines
+        https://bugs.webkit.org/show_bug.cgi?id=166637
+
+        Reviewed by Darin Adler.
+
+        Creates new unit test to verify that the maximum tracks limit
+        is used in GridPosition too.
+
+        * TestWebKitAPI/PlatformEfl.cmake:
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/GridPosition.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2017-01-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Move editing history scripts to WebCore PrivateHeaders
+        https://bugs.webkit.org/show_bug.cgi?id=166709
+        <rdar://problem/29876612>
+
+        Reviewed by Dan Bernstein.
+
+        Update references to editing script files in WebCore that were moved.
+
+        * EditingHistory/EditingHistory.xcodeproj/project.pbxproj:
+
+2017-01-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix after r210313 part 2
+        https://bugs.webkit.org/show_bug.cgi?id=166676
+
+        Add 'U' suffix.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-01-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Limit thread name appropriately
+        https://bugs.webkit.org/show_bug.cgi?id=166676
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/StringView.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/WTFString.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-01-04  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Teach SharedBuffer to return an NSArray of data segments to avoid flattening
+        https://bugs.webkit.org/show_bug.cgi?id=166696
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/PlatformGTK.cmake:
+        * TestWebKitAPI/PlatformWin.cmake:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/SharedBuffer.cpp: Moved class SharedBufferTest to SharedBufferTest.{cpp,h}.
+        * TestWebKitAPI/Tests/WebCore/SharedBufferTest.cpp: Moved class SharedBufferTest from SharedBuffer.cpp.
+        * TestWebKitAPI/Tests/WebCore/SharedBufferTest.h: Ditto.
+        * TestWebKitAPI/Tests/WebCore/cocoa/SharedBuffer.mm: Added.
+        (TestWebKitAPI::expectDataArraysEqual): Added a helper to assert that two NSArrays of NSData are equal.
+        (TestWebKitAPI::TEST_F): Added a test for createNSDataArray.
+
+2017-01-03  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: teach the protocol generator about platform-specific types, events, and commands
+        https://bugs.webkit.org/show_bug.cgi?id=166003
+        <rdar://problem/28718990>
+
+        Reviewed by Joseph Pecoraro.
+
+        Teach run-inspector-generator-tests to generate test output using the platform name
+        derived from the directory that the test is in. For example, tests in the /generic/
+        subdirectory will pass `--platform generic` to generate-inspector-protocol-bindings.py.
+
+        * Scripts/webkitpy/inspector/main.py:
+        (InspectorGeneratorTests.generate_from_json):
+        (InspectorGeneratorTests.run_tests):
+        (InspectorGeneratorTests.main):
+
 2017-01-04  Csaba Osztrogonác  <ossy@webkit.org>
 
         Unreviewed cmake buildfix after r210266.

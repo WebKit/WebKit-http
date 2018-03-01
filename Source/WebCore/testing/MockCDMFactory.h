@@ -28,8 +28,10 @@
 #if ENABLE(ENCRYPTED_MEDIA)
 
 #include "CDM.h"
+#include "CDMInstance.h"
 #include "CDMPrivate.h"
 #include "MediaKeysRequirement.h"
+#include <wtf/HashMap.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
@@ -41,8 +43,11 @@ public:
     static Ref<MockCDMFactory> create() { return adoptRef(*new MockCDMFactory); }
     ~MockCDMFactory();
 
-    const Vector<String>& supportedDataTypes() const { return m_supportedDataTypes; }
-    void setSupportedDataTypes(Vector<String>&& types) { m_supportedDataTypes = WTFMove(types); }
+    const Vector<AtomicString>& supportedDataTypes() const { return m_supportedDataTypes; }
+    void setSupportedDataTypes(Vector<String>&&);
+
+    const Vector<MediaKeySessionType>& supportedSessionTypes() const { return m_supportedSessionTypes; }
+    void setSupportedSessionTypes(Vector<MediaKeySessionType>&& types) { m_supportedSessionTypes = WTFMove(types); }
 
     const Vector<String>& supportedRobustness() const { return m_supportedRobustness; }
     void setSupportedRobustness(Vector<String>&& robustness) { m_supportedRobustness = WTFMove(robustness); }
@@ -53,7 +58,20 @@ public:
     MediaKeysRequirement persistentStateRequirement() const { return m_persistentStateRequirement; }
     void setPersistentStateRequirement(MediaKeysRequirement requirement) { m_persistentStateRequirement = requirement; }
 
+    bool canCreateInstances() const { return m_canCreateInstances; }
+    void setCanCreateInstances(bool flag) { m_canCreateInstances = flag; }
+
+    bool supportsServerCertificates() const { return m_supportsServerCertificates; }
+    void setSupportsServerCertificates(bool flag) { m_supportsServerCertificates = flag; }
+
+    bool supportsSessions() const { return m_supportsSessions; }
+    void setSupportsSessions(bool flag) { m_supportsSessions = flag; }
+
     void unregister();
+
+    bool hasSessionWithID(const String& id) { return m_sessions.contains(id); }
+    void removeSessionWithID(const String& id) { m_sessions.remove(id); }
+    void addKeysToSessionWithID(const String& id, Vector<Ref<SharedBuffer>>&&);
 
 private:
     MockCDMFactory();
@@ -62,27 +80,58 @@ private:
 
     MediaKeysRequirement m_distinctiveIdentifiersRequirement { MediaKeysRequirement::Optional };
     MediaKeysRequirement m_persistentStateRequirement { MediaKeysRequirement::Optional };
-    Vector<String> m_supportedDataTypes;
+    Vector<AtomicString> m_supportedDataTypes;
+    Vector<MediaKeySessionType> m_supportedSessionTypes;
     Vector<String> m_supportedRobustness;
     bool m_registered { true };
+    bool m_canCreateInstances { true };
+    bool m_supportsServerCertificates { true };
+    bool m_supportsSessions { true };
     WeakPtrFactory<MockCDMFactory> m_weakPtrFactory;
+    HashMap<String, Vector<Ref<SharedBuffer>>> m_sessions;
 };
 
 class MockCDM : public CDMPrivate {
 public:
     MockCDM(WeakPtr<MockCDMFactory>);
 
+    MockCDMFactory* factory() { return m_factory.get(); }
+
 private:
-    bool supportsInitDataType(const String&) final;
-    bool supportsConfiguration(const MediaKeySystemConfiguration&) final;
-    bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) final;
-    bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) final;
-    bool supportsRobustness(const String&) final;
-    MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) final;
-    MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) final;
-    bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) final;
+    friend class MockCDMInstance;
+
+    bool supportsInitDataType(const AtomicString&) const final;
+    bool supportsConfiguration(const MediaKeySystemConfiguration&) const final;
+    bool supportsConfigurationWithRestrictions(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const final;
+    bool supportsSessionTypeWithConfiguration(MediaKeySessionType&, const MediaKeySystemConfiguration&) const final;
+    bool supportsRobustness(const String&) const final;
+    MediaKeysRequirement distinctiveIdentifiersRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const final;
+    MediaKeysRequirement persistentStateRequirement(const MediaKeySystemConfiguration&, const MediaKeysRestrictions&) const final;
+    bool distinctiveIdentifiersAreUniquePerOriginAndClearable(const MediaKeySystemConfiguration&) const final;
+    RefPtr<CDMInstance> createInstance() final;
+    void loadAndInitialize() final;
+    bool supportsServerCertificates() const final;
+    bool supportsSessions() const final;
+    bool supportsInitData(const AtomicString&, const SharedBuffer&) const final;
 
     WeakPtr<MockCDMFactory> m_factory;
+    WeakPtrFactory<MockCDM> m_weakPtrFactory;
+};
+
+class MockCDMInstance : public CDMInstance {
+public:
+    MockCDMInstance(WeakPtr<MockCDM>);
+
+private:
+    SuccessValue initializeWithConfiguration(const MediaKeySystemConfiguration&) final;
+    SuccessValue setDistinctiveIdentifiersAllowed(bool) final;
+    SuccessValue setPersistentStateAllowed(bool) final;
+    SuccessValue setServerCertificate(Ref<SharedBuffer>&&) final;
+    void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) final;
+
+    WeakPtr<MockCDM> m_cdm;
+    bool m_distinctiveIdentifiersAllowed { true };
+    bool m_persistentStateAllowed { true };
 };
 
 }

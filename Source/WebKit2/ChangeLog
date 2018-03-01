@@ -1,3 +1,503 @@
+2017-01-11  Anders Carlsson  <andersca@apple.com>
+
+        navigator.plugins.refresh and WKContextRefreshPlugIns doesn't pick up changes to already-present plug-ins
+        https://bugs.webkit.org/show_bug.cgi?id=166942
+        rdar://problem/29839194
+
+        Reviewed by Sam Weinig.
+
+        Use _CFBundleCreateUnique so the resulting bundle won't be cached.
+
+        * Shared/Plugins/Netscape/mac/NetscapePluginModuleMac.mm:
+        (WebKit::NetscapePluginModule::getPluginInfo):
+
+2017-01-11  Anders Carlsson  <andersca@apple.com>
+
+        REGRESSION: Crash in com.apple.WebKit: IPC::Connection::sendMessage(std::__1::unique_ptr<IPC::MachMessage, std::__1::default_delete<IPC::MachMessage> >) + 27
+        https://bugs.webkit.org/show_bug.cgi?id=165854
+        rdar://problem/29757269
+
+        Reviewed by Tim Horton.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::sendMessage):
+        Add assertion.
+
+        (IPC::Connection::initializeSendSource):
+        Turns out the event handler can be called spuriously, so guard against that.
+
+2017-01-11  Chris Dumez  <cdumez@apple.com>
+
+        [iOS][WK2] KeyboardEvent.key always returns an empty string
+        https://bugs.webkit.org/show_bug.cgi?id=166918
+        <rdar://problem/29861147>
+
+        Reviewed by Wenson Hsieh.
+
+        Make sure that KeyboardEvent.key gets properly initialized on iOS / WK2.
+
+        * Shared/WebEvent.h:
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent):
+        * Shared/ios/WebIOSEventFactory.mm:
+        (WebIOSEventFactory::createWebKeyboardEvent):
+
+2017-01-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] No way for applications to set notification permissions without waiting for permission request
+        https://bugs.webkit.org/show_bug.cgi?id=163366
+
+        Reviewed by Carlos Garcia Campos.
+
+        Websites can check the Notification.permission DOM property to check if they have permission
+        to show notifications *without triggering a permission request*. But the WebKitGTK+ API has
+        no way to affirmatively indicate notifications are allowed without a permission request. The
+        only way is via the permission request API, which is too late. It's a problem for Epiphany.
+        For example, open the Riot Matrix client in a web app; you will immediately see an info bar
+        informing the user that Riot does not have permission to send desktop notifications, even
+        though Epiphany automatically grants notification permission in web app mode when requested.
+        This problem is not exclusive to web apps; there is simply no way for notification
+        permission to be set correctly prior to a permission request for it. Fix this by introducing
+        a webkit_web_context_initialize_notification_permissions() API, and add a signal
+        WebKitWebContext::initialize-notification-permissions to indicate when it should be called.
+
+        * UIProcess/API/gtk/WebKitNotificationProvider.cpp:
+        (notificationPermissionsCallback):
+        (WebKitNotificationProvider::create):
+        (WebKitNotificationProvider::WebKitNotificationProvider):
+        (WebKitNotificationProvider::notificationPermissions):
+        (WebKitNotificationProvider::setNotificationPermissions):
+        * UIProcess/API/gtk/WebKitNotificationProvider.h:
+        * UIProcess/API/gtk/WebKitSecurityOrigin.cpp:
+        (webkitSecurityOriginGetSecurityOrigin):
+        * UIProcess/API/gtk/WebKitSecurityOriginPrivate.h:
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+        (webkit_web_context_class_init):
+        (addOriginToMap):
+        (webkit_web_context_initialize_notification_permissions):
+        (webkitWebContextInitializeNotificationPermissions):
+        * UIProcess/API/gtk/WebKitWebContext.h:
+        * UIProcess/API/gtk/WebKitWebContextPrivate.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+
+2017-01-10  Keith Rollin  <krollin@apple.com>
+
+        Record/replay: fix range used for fuzzy matching
+        https://bugs.webkit.org/show_bug.cgi?id=166041
+
+        Reviewed by Darin Adler and Alex Christensen.
+
+        Because of two bugs, the attempt to determine the range of URLs to
+        check as part of the process of fuzzy matching was failing. The intent
+        was to find the range of URLs that started with the same
+        <scheme://host:port> as a given URL. However, because of a reversed
+        test, the upper end of the range ended up being the "end()" iterator
+        of the entire collection of URLs. With that fixed, there was another
+        bug due to one URL being given as <scheme://host:port> and the other
+        given as <scheme://host:port/> (note the trailing slash). Both of
+        these issues are now fixed.
+
+        * NetworkProcess/capture/NetworkCaptureManager.cpp:
+        (WebKit::NetworkCapture::Manager::initialize):
+        (WebKit::NetworkCapture::Manager::findBestFuzzyMatch):
+        (WebKit::NetworkCapture::Manager::urlIdentifyingCommonDomain):
+        * NetworkProcess/capture/NetworkCaptureManager.h:
+        * NetworkProcess/capture/NetworkCaptureResource.cpp:
+        (WebKit::NetworkCapture::Resource::url):
+        (WebKit::NetworkCapture::Resource::urlIdentifyingCommonDomain):
+        (WebKit::NetworkCapture::Resource::baseURL): Deleted.
+        * NetworkProcess/capture/NetworkCaptureResource.h:
+
+2017-01-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Implement "proximity" scroll snapping
+        https://bugs.webkit.org/show_bug.cgi?id=135994
+        <rdar://problem/18162418>
+
+        Reviewed by Dean Jackson.
+
+        Adds boilerplate support for plumbing lists of snap offset ranges from the web process to the UI process
+        alongside the list of snap offsets.
+
+        * Shared/Scrolling/RemoteScrollingCoordinatorTransaction.cpp:
+        (ArgumentCoder<ScrollingStateScrollingNode>::encode):
+        (ArgumentCoder<ScrollingStateScrollingNode>::decode):
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ScrollOffsetRange<float>>::encode):
+        (IPC::ArgumentCoder<ScrollOffsetRange<float>>::decode):
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (-[WKOverflowScrollViewDelegate scrollViewWillEndDragging:withVelocity:targetContentOffset:]):
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+
+        Adjust mainframe proximity scroll snapping logic to not subtract out the top content inset when there is no
+        active snap offset (i.e. when snapping rests in a snap offset range). Attempting to subtract out the top inset
+        in this case caused the scroll offset to jump after ending a drag with no momentum in a snap offset range.
+
+        (WebKit::RemoteScrollingCoordinatorProxy::adjustTargetContentOffsetForSnapping):
+        (WebKit::RemoteScrollingCoordinatorProxy::shouldSnapForMainFrameScrolling):
+        (WebKit::RemoteScrollingCoordinatorProxy::closestSnapOffsetForMainFrameScrolling):
+
+2017-01-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        ThreadedCoordinatedLayerTreeHost::renderNextFrame() should short-cut to layer flushing
+        https://bugs.webkit.org/show_bug.cgi?id=157614
+
+        Reviewed by Carlos Garcia Campos.
+
+        CoordinatedLayerTreeHost prevents any layer flushes while a previously-commited scene
+        state is still being rendered on the composition thread. renderNextFrame() is called
+        once that is complete, and a new layer flush is scheduled.
+
+        This change improves the whole ordeal by immediately performing the layer flush only if
+        it was requested during the time we were waiting on the renderer (i.e. when the latest
+        scene state was being composited), instead of scheduling it unconditionally.
+        m_scheduledWhileWaitingForRenderer member variable is added to track that occurrence.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::scheduleLayerFlush):
+        (WebKit::CoordinatedLayerTreeHost::renderNextFrame):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+
+2017-01-09  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Drop VNodeTracker
+        https://bugs.webkit.org/show_bug.cgi?id=166868
+        <rdar://problem/29937587>
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess):
+
+2017-01-09  Enrica Casucci  <enrica@apple.com>
+
+        Selection animation flashing on editable content when zooming.
+        https://bugs.webkit.org/show_bug.cgi?id=166863
+        rdar://problem/29931470
+
+        Reviewed by Tim Horton.
+
+        Implementing _allowAnimatedUpdateSelectionRectView and returning NO,
+        prevents the selection animation in UIKit.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _allowAnimatedUpdateSelectionRectViews]):
+
+2017-01-06  Gustavo Noronha Silva  <gustavo.noronha@collabora.co.uk>
+
+        [GTK] Should support key and code properties on keyboard events
+        https://bugs.webkit.org/show_bug.cgi?id=166759
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/WebEvent.h:
+        * Shared/WebKeyboardEvent.cpp:
+        (WebKit::WebKeyboardEvent::WebKeyboardEvent): accept web key value and code on construction.
+        * Shared/gtk/WebEventFactory.cpp:
+        (WebKit::WebEventFactory::createWebKeyboardEvent): pass web key value and code on construction.
+
+2017-01-08  Antti Koivisto  <antti@apple.com>
+
+        Move cache coders to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=166825
+
+        Rubber-stamped by Sam Weinig.
+
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheCoder.h: Removed.
+        * NetworkProcess/cache/NetworkCacheCoders.cpp:
+        (WebKit::NetworkCache::Coder<AtomicString>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<AtomicString>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<CString>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<CString>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<String>::encode): Deleted.
+        (WebKit::NetworkCache::decodeStringText): Deleted.
+        (WebKit::NetworkCache::Coder<String>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<SHA1::Digest>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<SHA1::Digest>::decode): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::HTTPHeaderMap>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::HTTPHeaderMap>::decode): Deleted.
+        * NetworkProcess/cache/NetworkCacheCoders.h:
+        (): Deleted.
+        (WebKit::NetworkCache::Coder<std::optional<T>>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<std::optional<T>>::decode): Deleted.
+        * NetworkProcess/cache/NetworkCacheCodersCocoa.cpp:
+        (WebKit::NetworkCache::encodeCFData): Deleted.
+        (WebKit::NetworkCache::decodeCFData): Deleted.
+        (WebKit::NetworkCache::encodeSecTrustRef): Deleted.
+        (WebKit::NetworkCache::decodeSecTrustRef): Deleted.
+        (WebKit::NetworkCache::encodeCertificateChain): Deleted.
+        (WebKit::NetworkCache::decodeCertificateChain): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::CertificateInfo>::encode): Deleted.
+        (WebKit::NetworkCache::Coder<WebCore::CertificateInfo>::decode): Deleted.
+        * NetworkProcess/cache/NetworkCacheDecoder.cpp: Removed.
+        * NetworkProcess/cache/NetworkCacheDecoder.h: Removed.
+        * NetworkProcess/cache/NetworkCacheEncoder.cpp: Removed.
+        * NetworkProcess/cache/NetworkCacheEncoder.h: Removed.
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::encodeAsStorageRecord):
+        (WebKit::NetworkCache::Entry::decodeStorageRecord):
+        * NetworkProcess/cache/NetworkCacheKey.cpp:
+        (WebKit::NetworkCache::Key::encode):
+        (WebKit::NetworkCache::Key::decode):
+        * NetworkProcess/cache/NetworkCacheKey.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::decodeRecordMetaData):
+        (WebKit::NetworkCache::encodeRecordMetaData):
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp:
+        (WebKit::NetworkCache::SubresourceInfo::encode):
+        (WebKit::NetworkCache::SubresourceInfo::decode):
+        (WebKit::NetworkCache::SubresourcesEntry::encodeAsStorageRecord):
+        (WebKit::NetworkCache::SubresourcesEntry::decodeStorageRecord):
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.h:
+        * UIProcess/API/APIUserContentExtensionStore.cpp:
+        (API::encodeContentExtensionMetaData):
+        (API::decodeContentExtensionMetaData):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-01-09  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Replace WebKitWebSettings with WebKitSettings in documentation
+        https://bugs.webkit.org/show_bug.cgi?id=166836
+
+        Reviewed by Carlos Garcia Campos.
+
+        Don't use WebKitWebSettings (it was a WebKit1 thing) in documentation,
+        but replace it with WebKitSettings.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webkit_settings_class_init):
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+
+2017-01-06  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from "inspector", "platform/sql", and "platform/text"
+        https://bugs.webkit.org/show_bug.cgi?id=166797
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::requestCheckingOfString): Take a reference
+        instead of a PassRefPtr.
+        * WebProcess/WebCoreSupport/WebEditorClient.h: Updated for above change.
+
+2017-01-07  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Consolidate usage of QuickLookHandle into SubresourceLoader
+        https://bugs.webkit.org/show_bug.cgi?id=166713
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Network/WebResourceLoader.cpp:
+        (WebKit::WebResourceLoader::didReceiveResponse): Removed QuickLook code.
+        (WebKit::WebResourceLoader::didReceiveData): Ditto.
+        (WebKit::WebResourceLoader::didFinishResourceLoad): Ditto.
+        (WebKit::WebResourceLoader::didFailResourceLoad): Ditto.
+        (WebKit::WebResourceLoader::didReceiveResource): Ditto.
+
+2017-01-06  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the EFL build following <http://trac.webkit.org/changeset/210461>
+        (https://bugs.webkit.org/show_bug.cgi?id=166781)
+
+        * UIProcess/API/C/WKWebsitePolicies.cpp:
+        (WKWebsitePoliciesGetAutoplayPolicy): Invoke ASSERT_NOT_REACHED() and return kWKWebsiteAutoplayPolicyUseHeuristics
+        if the specified policy is not covered by a switch case.
+        (WKWebsitePoliciesSetAutoplayPolicy): Substituted "return" for "break" in each switch case and
+        invoke ASSERT_NOT_REACHED() if the specified policy is not covered by a switch case.
+
+2017-01-06  Matt Rajca  <mrajca@apple.com>
+
+        Add infrastructure for sending autoplay website policies to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=166781
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebsitePolicies.h:
+        (WebKit::WebsitePolicies::encode):
+        (WebKit::WebsitePolicies::decode):
+        * UIProcess/API/APIWebsitePolicies.h:
+        * UIProcess/API/C/WKWebsitePolicies.cpp:
+        (WKWebsitePoliciesGetAutoplayPolicy):
+        (WKWebsitePoliciesSetAutoplayPolicy):
+        * UIProcess/API/C/WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.mm:
+        (-[_WKWebsitePolicies setAutoplayPolicy:]):
+        (-[_WKWebsitePolicies autoplayPolicy]):
+
+2017-01-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Network process crash in WebKit::CustomProtocolManagerImpl::didFailWithError
+        https://bugs.webkit.org/show_bug.cgi?id=165082
+
+        Reviewed by Alex Christensen.
+
+        CustomProtocolManager uses a Workqueue to receive the IPC messages since r149194. Then we added the Soup
+        implementation adopting that approach, but without making our implementation thread safe. The crash happens
+        because the CustomProtocolManager implementation is used by two threads at the same time, the main thread
+        because of a ping load (probably caused by an image load in the unload handler, I haven't been able to
+        reproduce the crash) and the work queue thread. The reasons to make CustomProtocolManager use a WorkQueue
+        are no longer valid because CustomProtocolManager is now only used in the network process and sync loads don't
+        use any nested run loop, they are just an IPC sync message. So this patch makes CustomProtocolManager a normal
+        message receiver again to ensure messages are handled in the main thread. It also adds the common implementation
+        to a new CustomProtocolManager.cpp file shared by Cocoa and Soup based ports.
+
+        * CMakeLists.txt: Add CustomProtocolManager.cpp.
+        * NetworkProcess/CustomProtocols/Cocoa/CustomProtocolManagerCocoa.mm:
+        (-[WKCustomProtocol initWithRequest:cachedResponse:client:]): Use new CustomProtocolManager API.
+        (-[WKCustomProtocol startLoading]): Ditto.
+        (-[WKCustomProtocol stopLoading]): Ditto.
+        (WebKit::CustomProtocolManager::registerProtocolClass): Register the NSURLProtocol class when not using the
+        network session.
+        (WebKit::CustomProtocolManager::didFailWithError): removeCustomProtocol now receives an ID.
+        (WebKit::CustomProtocolManager::didFinishLoading): Ditto.
+        * NetworkProcess/CustomProtocols/CustomProtocolManager.cpp: Added.
+        (WebKit::generateCustomProtocolID): Moved from CustomProtocolManagerCocoa.mm and CustomProtocolManagerSoup.cpp.
+        (WebKit::CustomProtocolManager::supplementName): Ditto.
+        (WebKit::CustomProtocolManager::CustomProtocolManager): Also removes the work queue initialization.
+        (WebKit::CustomProtocolManager::initialize): Copied and modernized the loop.
+        (WebKit::CustomProtocolManager::addCustomProtocol): Copied from CustomProtocolManagerCocoa.mm.
+        (WebKit::CustomProtocolManager::removeCustomProtocol): Ditto.
+        (WebKit::CustomProtocolManager::startLoading): Send the StartLoading message to the proxy.
+        (WebKit::CustomProtocolManager::stopLoading): Send the StopLoading message to the proxy.
+        * NetworkProcess/CustomProtocols/CustomProtocolManager.h:
+        * NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp: Removed.
+        * NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.h: Removed.
+        * NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp: Moved the implementation from
+        CustomProtocolManagerImpl and updated to the new CustomProtocolManager API.
+        (WebKit::CustomProtocolManager::WebSoupRequestAsyncData::WebSoupRequestAsyncData):
+        (WebKit::CustomProtocolManager::WebSoupRequestAsyncData::~WebSoupRequestAsyncData):
+        (WebKit::CustomProtocolManager::registerProtocolClass):
+        (WebKit::CustomProtocolManager::registerScheme):
+        (WebKit::CustomProtocolManager::supportsScheme):
+        (WebKit::CustomProtocolManager::didFailWithError):
+        (WebKit::CustomProtocolManager::didLoadData):
+        (WebKit::CustomProtocolManager::didReceiveResponse):
+        (WebKit::CustomProtocolManager::didFinishLoading):
+        (WebKit::CustomProtocolManager::wasRedirectedToRequest):
+        * NetworkProcess/cocoa/NetworkSessionCocoa.mm:
+        (WebKit::globalCustomProtocolManager):
+        (WebKit::NetworkSessionCocoa::defaultSession):
+        CustomProtocolManager is no longer refcounted, so just pass a pointer.
+        A static pointer has the same lifetime as the NetworkProcess object in the NetworkProcess,
+        and in the WebProcess it will remain nullptr, just like it used to.
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-01-05  Antti Koivisto  <antti@apple.com>
+
+        Use WTF::Function instead of std::function in network cache code
+        https://bugs.webkit.org/show_bug.cgi?id=166721
+
+        Reviewed by Andreas Kling.
+
+        Use better move-only type. Fix some unnecessary function copies.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::retrieve):
+        (WebKit::NetworkCache::Cache::clear):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheData.h:
+        * NetworkProcess/cache/NetworkCacheDataCocoa.mm:
+        (WebKit::NetworkCache::Data::apply):
+        * NetworkProcess/cache/NetworkCacheDataSoup.cpp:
+        (WebKit::NetworkCache::Data::apply):
+        * NetworkProcess/cache/NetworkCacheFileSystem.cpp:
+        (WebKit::NetworkCache::traverseDirectory):
+        * NetworkProcess/cache/NetworkCacheFileSystem.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::SpeculativeLoadManager::canRetrieve):
+        (WebKit::NetworkCache::SpeculativeLoadManager::retrieve):
+
+            Split retrieve() to canRetrieve() and retrieve() functions.
+            This avoids the need to copy the completion handler in the caller.
+
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::ReadOperation::ReadOperation):
+        (WebKit::NetworkCache::Storage::traverse):
+        (WebKit::NetworkCache::Storage::clear):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2017-01-05  Enrica Casucci  <enrica@apple.com>
+
+        Unreviewed build fix after https://trac.webkit.org/changeset/210360
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::performDragOperation):
+
+2017-01-05  Enrica Casucci  <enrica@apple.com>
+
+        Support File Promise during drag for macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        rdar://problem/19595567
+
+        Reviewed by Tim Horton.
+
+        Adds support for dropping a File Promise in a WKWebView.
+        The implementation uses new File Promise API available in Sierra.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<DragData>::encode):
+        (IPC::ArgumentCoder<DragData>::decode):
+        * Shared/mac/PasteboardTypes.mm:
+        (WebKit::PasteboardTypes::forURL):
+        * UIProcess/Cocoa/WebViewImpl.h:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::createSandboxExtensionsIfNeeded):
+        (WebKit::WebViewImpl::performDragOperation):
+        (WebKit::maybeCreateSandboxExtensionFromPasteboard): Deleted.
+        (WebKit::createSandboxExtensionsForFileUpload): Deleted.
+
+2017-01-05  Andreas Kling  <akling@apple.com>
+
+        Remove ChromeClient::needTouchEvents().
+        <https://webkit.org/b/166723>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2017-01-04  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "html" directory, other improvements
+        https://bugs.webkit.org/show_bug.cgi?id=166635
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::loadIconForFiles): Take a reference instead of a pointer.
+        * WebProcess/WebCoreSupport/WebChromeClient.h: Ditto.
+
+2017-01-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove runtime flag for variation fonts
+        https://bugs.webkit.org/show_bug.cgi?id=164251
+
+        Reviewed by Dean Jackson.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-01-04  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210287.
+
+        This change caused editing test failures on macOS.
+
+        Reverted changeset:
+
+        "Support File Promise during drag for macOS."
+        https://bugs.webkit.org/show_bug.cgi?id=165204
+        http://trac.webkit.org/changeset/210287
+
 2017-01-04  Enrica Casucci  <enrica@apple.com>
 
         Support File Promise during drag for macOS.

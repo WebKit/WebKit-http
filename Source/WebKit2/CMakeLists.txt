@@ -100,6 +100,8 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
 endif ()
 
 set(NetworkProcess_COMMON_SOURCES
+    NetworkProcess/CustomProtocols/CustomProtocolManager.cpp
+
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkDataTask.cpp
     NetworkProcess/NetworkDataTaskBlob.cpp
@@ -115,8 +117,6 @@ set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
     NetworkProcess/cache/NetworkCacheCoders.cpp
     NetworkProcess/cache/NetworkCacheData.cpp
-    NetworkProcess/cache/NetworkCacheDecoder.cpp
-    NetworkProcess/cache/NetworkCacheEncoder.cpp
     NetworkProcess/cache/NetworkCacheEntry.cpp
     NetworkProcess/cache/NetworkCacheFileSystem.cpp
     NetworkProcess/cache/NetworkCacheKey.cpp

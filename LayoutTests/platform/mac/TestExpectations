@@ -279,18 +279,12 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 
 # Pointer Lock can only check some of the API at the moment.
 pointer-lock/bug90391-move-then-window-open-crash.html
-pointer-lock/lock-already-locked.html
-pointer-lock/lock-element-not-in-dom.html
 pointer-lock/locked-element-iframe-removed-from-dom.html
 pointer-lock/locked-element-removed-from-dom.html
 pointer-lock/mouse-event-delivery.html
 pointer-lock/pointerlockchange-event-on-lock-lost.html
 pointer-lock/pointerlockchange-pointerlockerror-events.html
 pointer-lock/pointerlockelement-null-when-pending.html
-pointer-lock/lock-lost-on-navigation.html [ Pass ]
-http/tests/pointer-lock/
-
-pointer-lock/lock-lost-on-alert.html [ Pass ]
 
 webkit.org/b/82763 fast/forms/textarea-placeholder-set-attribute.html
 
@@ -1187,6 +1181,7 @@ webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeo
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
 webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
+webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
@@ -1387,6 +1382,7 @@ webkit.org/b/128312 media/video-load-preload-metadata.html [ Pass Failure ]
 # rdar://problem/27475162
 [ Sierra+ ] compositing/video/poster.html [ Pass ImageOnlyFailure ]
 
+webkit.org/b/159755 [ Sierra+ ] fast/text/emoji-num-glyphs.html [ Pass ]
 webkit.org/b/159755 [ Sierra+ ] fast/text/emoji-gender-2-3.html [ Pass ]
 webkit.org/b/159755 [ Sierra+ ] fast/text/emoji-gender-2-4.html [ Pass ]
 webkit.org/b/159755 [ Sierra+ ] fast/text/emoji-gender-2-5.html [ Pass ]
@@ -1470,5 +1466,11 @@ webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
 
 # New Encrypted Media API not enabled on Mac
 media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
+media/encrypted-media/mock-MediaKeySystemAccess.html [ Skip ]
+media/encrypted-media/mock-MediaKeys-setServerCertificate.html [ Skip ]
+media/encrypted-media/mock-MediaKeys-createSession.html [ Skip ]
+media/encrypted-media/mock-MediaKeySession-generateRequest.html [ Skip ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
+
+webkit.org/b/166672 [ Sierra+ ] fast/text/variations/advances.html [ Failure ]

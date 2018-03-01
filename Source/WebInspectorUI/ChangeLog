@@ -1,3 +1,131 @@
+2017-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: fix UIString for Print Styles button
+        https://bugs.webkit.org/show_bug.cgi?id=166892
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView):
+        Changed UIString to better match documentation.
+
+2017-01-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210260.
+        https://bugs.webkit.org/show_bug.cgi?id=166860
+
+        new colorpicker UI doesn't seem to work in trunk,
+        investigating offline (Requested by brrian on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: color picker should feature an editable CSS
+        value"
+        https://bugs.webkit.org/show_bug.cgi?id=124356
+        http://trac.webkit.org/changeset/210260
+
+2017-01-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r210110.
+        https://bugs.webkit.org/show_bug.cgi?id=166783
+
+        Introduced a regression commenting out individual properties
+        (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Styles sidebar: Uncommenting CSS rules of
+        pseudo-elements doesn't work"
+        https://bugs.webkit.org/show_bug.cgi?id=165831
+        http://trac.webkit.org/changeset/210110
+
+2017-01-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused delegate from VisualStyleSelectorSection
+        https://bugs.webkit.org/show_bug.cgi?id=166744
+
+        Reviewed by Alex Christensen.
+
+        * UserInterface/Views/VisualStyleDetailsPanel.js:
+        (WebInspector.VisualStyleDetailsPanel.prototype.initialLayout):
+        * UserInterface/Views/VisualStyleSelectorSection.js:
+        (WebInspector.VisualStyleSelectorSection):
+
+2017-01-04  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Test.html should support globals reportInternalError, reportUnhandledRejection, reportUncaughtException
+        https://bugs.webkit.org/show_bug.cgi?id=161358
+        <rdar://problem/28066446>
+
+        Reviewed by Joseph Pecoraro.
+
+        We have a hodgepodge of redundant code that reports uncaught exceptions in the inspector page.
+        There is better handling of uncaught exceptions in the inspected page, such as including stack traces.
+
+        This patch consolidates a lot of this code and makes it possible to report
+        unhandled promise rejections, top-level uncaught exceptions, and exceptions
+        caught in a try-catch block. The formatting and sanitization code for all of
+        these things is shared and consistent. Finally, some tests have been added to
+        catch regressions in unhandled rejection/uncaught exception reporting.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness): Explicitly set initial flag state here so it's easy to find all flags.
+
+        (FrontendTestHarness.prototype.redirectConsoleToTestOutput):
+        Extract this code to sanitize stack frames and put it in TestHarness. It is used
+        by other methods that need to print stack frames.
+
+        (FrontendTestHarness.prototype.reportUnhandledRejection):
+        (FrontendTestHarness.prototype.reportUncaughtException):
+        Added. Sanitize stack trace data so it is deterministic. Log the message to the
+        original window.console but don't exit early. Sometimes the test page is not
+        fully loaded if we throw an exception quite early in the test() method, and there's
+        no harm in not early returning. If we do early return in this case, then a test that
+        uses reportUncaughtException on purpose may not complete because the call to completeTest()
+        would be skipped by returning early.
+
+        (FrontendTestHarness.prototype.reportUncaughtExceptionFromEvent):
+        Renamed from reportUncaughtException since the signature of that method suggests
+        it should have a single exception argument rather than lots of data arguments.
+
+        * UserInterface/Test/Test.js: Add globals.
+
+        * UserInterface/Test/TestHarness.js:
+        (TestHarness): Document class flags.
+        (TestHarness.sanitizeURL):
+        (TestHarness.sanitizeStackFrame):
+        (TestHarness.prototype.sanitizeStack):
+        Extract this code from other parts of the test harness. Make sanitizeStack
+        an instance method so that there is only one place that needs to check the
+        'suppressStackTraces' flag.
+
+        * UserInterface/Test/TestSuite.js:
+        (TestSuite.prototype.logThrownObject):
+        (TestSuite):
+        (AsyncTestSuite.prototype.runTestCases):
+        (AsyncTestSuite):
+        (SyncTestSuite.prototype.runTestCases):
+        (SyncTestSuite):
+        (TestSuite.messageFromThrownObject): Deleted.
+        Inline some helpers with only one use-site and consolidate redundant code
+        for adding an exception and message to the test results.
+
+2017-01-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: application cache details not shown in Storage Tab
+        https://bugs.webkit.org/show_bug.cgi?id=166699
+        <rdar://problem/29871716>
+
+        Reviewed by Brian Burg.
+
+        Fix a ternary operator precedence. The following expression throws an exception:
+
+            true || false ? i.dont.exist : false
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        (WebInspector.ApplicationCacheFrameTreeElement.prototype.updateTitles):
+
 2017-01-03  Brian Burg  <bburg@apple.com>
 
         Web Inspector: WrappedPromise constructor should behave like the Promise constructor
