@@ -35,7 +35,7 @@ set(test_webcore_LIBRARIES
     WebCore
     gtest
     ${Qt5Gui_LIBRARIES}
-    ${DEPEND_STATIC_LIBS}
+    ${STATIC_LIB_DEPENDENCIES}
 )
 
 add_executable(TestWebCore
