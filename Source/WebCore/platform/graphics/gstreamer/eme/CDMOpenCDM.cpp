@@ -375,6 +375,7 @@ void CDMInstanceOpenCDM::removeSessionData(const String& sessionId, LicenseType,
         keys.append(std::pair<Ref<SharedBuffer>, MediaKeyStatus>{initData, keyStatus});
         callback(WTFMove(keys), std::nullopt, SuccessValue::Failed);
     }
+    m_sessionsMap.erase(iterator);
 }
 
 void CDMInstanceOpenCDM::closeSession(const String& session, CloseSessionCallback callback)
