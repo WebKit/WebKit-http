@@ -435,9 +435,9 @@ void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     panel->Show();
 }
 
-void ChromeClientHaiku::loadIconForFiles(const Vector<String>& filenames, FileIconLoader* loader)
+void ChromeClientHaiku::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& loader)
 {
-    loader->notifyFinished(Icon::createIconForFiles(filenames));
+    Icon::createIconForFiles(filenames);
 }
 
 void ChromeClientHaiku::setCursor(const Cursor& cursor)

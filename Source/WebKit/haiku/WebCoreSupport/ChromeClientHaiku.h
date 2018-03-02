@@ -148,7 +148,7 @@ namespace WebCore {
         void setPanelDirectory(entry_ref dir) { m_filePanelDirectory = dir; }
 
         // Asynchronous request to load an icon for specified filenames.
-        void loadIconForFiles(const Vector<String>&, FileIconLoader*) override;
+        void loadIconForFiles(const Vector<String>&, FileIconLoader&) override;
 
         bool selectItemWritingDirectionIsNatural() override;
         bool selectItemAlignmentFollowsMenuWritingDirection() override;

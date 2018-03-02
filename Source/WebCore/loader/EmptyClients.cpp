@@ -339,6 +339,7 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
 
     void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) final;
     void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction) final;
+    bool dispatchDidReceiveInvalidCertificate(DocumentLoader*, const CertificateInfo&, const char* message) final { return false; }
 
     void revertToProvisionalState(DocumentLoader*) final { }
     void setMainDocumentError(DocumentLoader*, const ResourceError&) final { }

@@ -129,7 +129,7 @@ public:
                                       int* badGrammarLocation, int* badGrammarLength) override;
 
     void getGuessesForWord(const String& word, const String& context, const WebCore::VisibleSelection&, Vector<String>& guesses) override;
-    void requestCheckingOfString(PassRefPtr<TextCheckingRequest>, const WebCore::VisibleSelection&) override;
+    void requestCheckingOfString(TextCheckingRequest&, const VisibleSelection& currentSelection) override;
 
 private:
     bool handleEditingKeyboardEvent(KeyboardEvent* event,

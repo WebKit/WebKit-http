@@ -598,7 +598,7 @@ void EditorClientHaiku::getGuessesForWord(const String&, const String&, const We
     notImplemented();
 }
 
-void EditorClientHaiku::requestCheckingOfString(PassRefPtr<TextCheckingRequest>, const WebCore::VisibleSelection&)
+void EditorClientHaiku::requestCheckingOfString(TextCheckingRequest&, const WebCore::VisibleSelection&)
 {
     notImplemented();
 }
