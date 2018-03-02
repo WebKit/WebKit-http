@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcess_h
-#define WebProcess_h
+#pragma once
 
 #include "CacheModel.h"
 #include "ChildProcess.h"
@@ -68,6 +67,7 @@ class SessionID;
 class UserGestureToken;
 struct PluginInfo;
 struct SecurityOriginData;
+struct SoupNetworkProxySettings;
 }
 
 namespace WebKit {
@@ -286,6 +286,10 @@ private:
     void gamepadDisconnected(unsigned index);
 #endif
 
+#if USE(SOUP)
+    void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
+#endif
+
     void releasePageCache();
 
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, WebsiteData&);
@@ -346,20 +350,20 @@ private:
     RefPtr<ViewUpdateDispatcher> m_viewUpdateDispatcher;
 #endif
 
-    bool m_inDidClose;
+    bool m_inDidClose { false };
 
     HashMap<WebCore::SessionID, HashMap<unsigned, double>> m_plugInAutoStartOriginHashes;
     HashSet<String> m_plugInAutoStartOrigins;
 
-    bool m_hasSetCacheModel;
-    CacheModel m_cacheModel;
+    bool m_hasSetCacheModel { false };
+    CacheModel m_cacheModel { CacheModelDocumentViewer };
 
 #if PLATFORM(COCOA)
     WebCore::MachSendRight m_compositingRenderServerPort;
     pid_t m_presenterApplicationPid;
 #endif
 
-    bool m_fullKeyboardAccessEnabled;
+    bool m_fullKeyboardAccessEnabled { false };
 
     HashMap<uint64_t, WebFrame*> m_frameMap;
 
@@ -388,9 +392,9 @@ private:
 #endif
 
 #if ENABLE(SERVICE_CONTROLS)
-    bool m_hasImageServices;
-    bool m_hasSelectionServices;
-    bool m_hasRichContentServices;
+    bool m_hasImageServices { false };
+    bool m_hasSelectionServices { false };
+    bool m_hasRichContentServices { false };
 #endif
 
     HashSet<uint64_t> m_pagesInWindows;
@@ -416,5 +420,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebProcess_h

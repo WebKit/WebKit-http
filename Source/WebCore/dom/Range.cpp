@@ -40,7 +40,6 @@
 #include "HTMLNames.h"
 #include "NodeTraversal.h"
 #include "NodeWithIndex.h"
-#include "Page.h"
 #include "ProcessingInstruction.h"
 #include "RenderBoxModelObject.h"
 #include "RenderText.h"
@@ -1108,11 +1107,8 @@ ExceptionOr<void> Range::surroundContents(Node& newParent)
         return fragment.releaseException();
 
     // Step 4: If newParent has children, replace all with null within newParent.
-    while (auto* child = newParent.firstChild()) {
-        auto result = downcast<ContainerNode>(newParent).removeChild(*child);
-        if (result.hasException())
-            return result.releaseException();
-    }
+    if (newParent.hasChildNodes())
+        downcast<ContainerNode>(newParent).replaceAllChildren(nullptr);
 
     // Step 5: Insert newParent into context object.
     auto insertResult = insertNode(newParent);

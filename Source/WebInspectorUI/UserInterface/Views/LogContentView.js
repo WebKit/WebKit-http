@@ -77,7 +77,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
         this._scopeBar = new WebInspector.ScopeBar("log-scope-bar", scopeBarItems, scopeBarItems[0]);
         this._scopeBar.addEventListener(WebInspector.ScopeBar.Event.SelectionChanged, this._scopeBarSelectionDidChange, this);
 
-        this._clearLogNavigationItem = new WebInspector.ButtonNavigationItem("clear-log", WebInspector.UIString("Clear log (%s or %s)").format(this._logViewController.messagesClearKeyboardShortcut.displayName, this._logViewController.messagesAlternateClearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
+        this._clearLogNavigationItem = new WebInspector.ButtonNavigationItem("clear-log", WebInspector.UIString("Clear log (%s or %s)").format(WebInspector.clearKeyboardShortcut.displayName, this._logViewController.messagesAlternateClearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
         this._clearLogNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._clearLog, this);
 
         var toolTip = WebInspector.UIString("Show console tab");
@@ -216,6 +216,11 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
         event.preventDefault();
     }
 
+    handleClearShortcut(event)
+    {
+        this._logViewController.requestClearMessages();
+    }
+
     findBannerRevealPreviousResult()
     {
         if (!this.hasPerformedSearch || isEmptyObject(this._searchMatches))
@@ -279,7 +284,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
 
     _sessionStarted(event)
     {
-        if (WebInspector.logManager.clearLogOnNavigateSetting.value) {
+        if (WebInspector.settings.clearLogOnNavigate.value) {
             this._reappendProvisionalMessages();
             return;
         }
@@ -373,9 +378,6 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
 
         contextMenu.appendItem(WebInspector.UIString("Clear Log"), this._clearLog.bind(this));
         contextMenu.appendSeparator();
-
-        let clearLogOnReloadUIString = WebInspector.logManager.clearLogOnNavigateSetting.value ? WebInspector.UIString("Keep Log on Navigation") : WebInspector.UIString("Clear Log on Navigation");
-        contextMenu.appendItem(clearLogOnReloadUIString, this._toggleClearLogOnNavigateSetting.bind(this));
     }
 
     _mousedown(event)
@@ -663,11 +665,6 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     _showConsoleTab()
     {
         WebInspector.showConsoleTab();
-    }
-
-    _toggleClearLogOnNavigateSetting()
-    {
-        WebInspector.logManager.clearLogOnNavigateSetting.value = !WebInspector.logManager.clearLogOnNavigateSetting.value;
     }
 
     _clearLog()

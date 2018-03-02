@@ -87,7 +87,7 @@ void WebResourceLoader::willSendRequest(ResourceRequest&& proposedRequest, Resou
 
     RefPtr<WebResourceLoader> protectedThis(this);
 
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
         return;
 
     m_coreLoader->willSendRequest(WTFMove(proposedRequest), redirectResponse, [protectedThis](ResourceRequest&& request) {
@@ -110,7 +110,7 @@ void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, boo
 
     Ref<WebResourceLoader> protect(*this);
 
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(m_coreLoader.get(), response))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForResponse(m_coreLoader.get(), response))
         return;
 
     m_coreLoader->didReceiveResponse(response);
@@ -135,6 +135,14 @@ void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t e
     m_coreLoader->didReceiveData(reinterpret_cast<const char*>(data.data()), data.size(), encodedDataLength, DataPayloadBytes);
 }
 
+void WebResourceLoader::didRetrieveDerivedData(const String& type, const IPC::DataReference& data)
+{
+    LOG(Network, "(WebProcess) WebResourceLoader::didRetrieveDerivedData of size %lu for '%s'", data.size(), m_coreLoader->url().string().latin1().data());
+
+    auto buffer = SharedBuffer::create(data.data(), data.size());
+    m_coreLoader->didRetrieveDerivedDataFromCache(type, buffer.get());
+}
+
 void WebResourceLoader::didFinishResourceLoad(double finishTime)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didFinishResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
@@ -148,7 +156,7 @@ void WebResourceLoader::didFailResourceLoad(const ResourceError& error)
     LOG(Network, "(WebProcess) WebResourceLoader::didFailResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
     RELEASE_LOG_IF_ALLOWED("didFailResourceLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
-    if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForError(m_coreLoader.get(), error))
+    if (m_coreLoader->documentLoader()->applicationCacheHost().maybeLoadFallbackForError(m_coreLoader.get(), error))
         return;
     m_coreLoader->didFail(error);
 }

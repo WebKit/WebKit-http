@@ -31,7 +31,6 @@
 
 #if USE(SOUP)
 
-#include "CookieJarSoup.h"
 #include "CredentialStorage.h"
 #include "FileSystem.h"
 #include "GUniquePtrSoup.h"
@@ -81,8 +80,8 @@ ResourceHandleInternal::~ResourceHandleInternal()
 static SoupSession* sessionFromContext(NetworkingContext* context)
 {
     if (!context || !context->isValid())
-        return SoupNetworkSession::defaultSession().soupSession();
-    return context->storageSession().soupNetworkSession().soupSession();
+        return NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().soupSession();
+    return context->storageSession().getOrCreateSoupNetworkSession().soupSession();
 }
 
 ResourceHandle::~ResourceHandle()

@@ -137,6 +137,11 @@ template<typename T> struct IDLEnumeration : IDLType<T> { };
 
 template<typename T> struct IDLNullable : IDLType<typename T::NullableType> {
     using InnerType = T;
+
+    using NullableType = typename T::NullableType;
+    static inline auto nullValue() -> decltype(T::nullValue()) { return T::nullValue(); }
+    template<typename U> static inline bool isNullValue(U&& value) { return T::isNullValue(std::forward<U>(value)); }
+    template<typename U> static inline auto extractValueFromNullable(U&& value) -> decltype(T::extractValueFromNullable(std::forward<U>(value))) { return T::extractValueFromNullable(std::forward<U>(value)); }
 };
 
 template<typename T> struct IDLSequence : IDLType<Vector<typename T::ImplementationType>> {
@@ -151,11 +156,11 @@ template<typename T> struct IDLFrozenArray : IDLType<Vector<typename T::Implemen
     using ParameterType = const Vector<typename T::ImplementationType>&;
 };
 
-template<typename K, typename V> struct IDLRecord : IDLType<HashMap<typename K::ImplementationType, typename V::ImplementationType>> {
+template<typename K, typename V> struct IDLRecord : IDLType<Vector<WTF::KeyValuePair<typename K::ImplementationType, typename V::ImplementationType>>> {
     using KeyType = K;
     using ValueType = V;
 
-    using ParameterType = const HashMap<typename K::ImplementationType, typename V::ImplementationType>&;
+    using ParameterType = const Vector<WTF::KeyValuePair<typename K::ImplementationType, typename V::ImplementationType>>&;
 };
 
 template<typename T> struct IDLPromise : IDLType<DOMPromise<T>> {

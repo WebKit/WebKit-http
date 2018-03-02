@@ -421,6 +421,9 @@ public:
     MediaController* controller() const;
     void setController(RefPtr<MediaController>&&);
 
+    MediaController* controllerForBindings() const { return controller(); }
+    void setControllerForBindings(MediaController*);
+
     void enteredOrExitedFullscreen() { configureMediaControls(); }
 
     unsigned long long fileSize() const;
@@ -885,7 +888,7 @@ private:
     MediaPlayerEnums::VideoGravity m_videoFullscreenGravity { MediaPlayer::VideoGravityResizeAspect };
 #endif
 
-    std::unique_ptr<MediaPlayer> m_player;
+    RefPtr<MediaPlayer> m_player;
 
     MediaPlayerEnums::Preload m_preload { MediaPlayer::Auto };
 

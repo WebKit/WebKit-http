@@ -44,6 +44,7 @@ struct GraphicsContext3DAttributes {
     bool useGLES3 { false };
     bool noExtensions { false };
     float devicePixelRatio { 1 };
+    bool initialPreferLowPowerToHighPerformance { false };
 };
 
 }

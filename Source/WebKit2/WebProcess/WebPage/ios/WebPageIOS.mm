@@ -94,6 +94,7 @@
 #import <WebCore/RenderImage.h>
 #import <WebCore/RenderThemeIOS.h>
 #import <WebCore/RenderView.h>
+#import <WebCore/Settings.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
@@ -467,10 +468,10 @@ String WebPage::cachedResponseMIMETypeForURL(const URL&)
     return String();
 }
 
-PassRefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
+RefPtr<SharedBuffer> WebPage::cachedResponseDataForURL(const URL&)
 {
     notImplemented();
-    return 0;
+    return nullptr;
 }
 
 bool WebPage::platformCanHandleRequest(const WebCore::ResourceRequest&)
@@ -535,6 +536,9 @@ void WebPage::handleSyntheticClick(Node* nodeRespondingToClick, const WebCore::F
     m_pendingSyntheticClickNode = nullptr;
     m_pendingSyntheticClickLocation = FloatPoint();
 
+    if (m_isClosed)
+        return;
+
     switch (WKObservedContentChange()) {
     case WKContentVisibilityChange:
         // The move event caused new contents to appear. Don't send the click event.
@@ -570,12 +574,19 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
 
     RefPtr<Frame> oldFocusedFrame = m_page->focusController().focusedFrame();
     RefPtr<Element> oldFocusedElement = oldFocusedFrame ? oldFocusedFrame->document()->focusedElement() : nullptr;
-    m_userIsInteracting = true;
+
+    SetForScope<bool> userIsInteractingChange { m_userIsInteracting, true };
 
     bool tapWasHandled = false;
     m_lastInteractionLocation = roundedAdjustedPoint;
+
     tapWasHandled |= mainframe.eventHandler().handleMousePressEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick, syntheticClickType));
+    if (m_isClosed)
+        return;
+
     tapWasHandled |= mainframe.eventHandler().handleMouseReleaseEvent(PlatformMouseEvent(roundedAdjustedPoint, roundedAdjustedPoint, LeftButton, PlatformEvent::MouseReleased, 1, false, false, false, false, currentTime(), WebCore::ForceAtClick, syntheticClickType));
+    if (m_isClosed)
+        return;
 
     RefPtr<Frame> newFocusedFrame = m_page->focusController().focusedFrame();
     RefPtr<Element> newFocusedElement = newFocusedFrame ? newFocusedFrame->document()->focusedElement() : nullptr;
@@ -586,8 +597,6 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
     // keyboard is not on screen.
     if (newFocusedElement && newFocusedElement == oldFocusedElement)
         elementDidFocus(newFocusedElement.get());
-
-    m_userIsInteracting = false;
 
     if (!tapWasHandled || !nodeRespondingToClick || !nodeRespondingToClick->isElementNode())
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
@@ -2282,6 +2291,20 @@ static Element* containingLinkElement(Element* element)
     return nullptr;
 }
 
+static inline bool isAssistableElement(Element& node)
+{
+    if (is<HTMLSelectElement>(node))
+        return true;
+    if (is<HTMLTextAreaElement>(node))
+        return true;
+    if (is<HTMLInputElement>(node)) {
+        HTMLInputElement& inputElement = downcast<HTMLInputElement>(node);
+        // FIXME: This laundry list of types is not a good way to factor this. Need a suitable function on HTMLInputElement itself.
+        return inputElement.isTextField() || inputElement.isDateField() || inputElement.isDateTimeLocalField() || inputElement.isMonthField() || inputElement.isTimeField();
+    }
+    return node.isContentEditable();
+}
+
 void WebPage::getPositionInformation(const InteractionInformationRequest& request, InteractionInformationAtPosition& info)
 {
     info.request = request;
@@ -2435,7 +2458,7 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
             } else {
                 info.isSelectable = renderer->style().userSelect() != SELECT_NONE;
                 if (info.isSelectable && !hitNode->isTextNode())
-                    info.isSelectable = !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
+                    info.isSelectable = !isAssistableElement(*downcast<Element>(hitNode)) && !rectIsTooBigForSelection(info.bounds, *result.innerNodeFrame());
             }
         }
     }
@@ -2495,20 +2518,6 @@ void WebPage::performActionOnElement(uint32_t action)
         sharedMemoryBuffer->createHandle(handle, SharedMemory::Protection::ReadOnly);
         send(Messages::WebPageProxy::SaveImageToLibrary(handle, bufferSize));
     }
-}
-
-static inline bool isAssistableElement(Element& node)
-{
-    if (is<HTMLSelectElement>(node))
-        return true;
-    if (is<HTMLTextAreaElement>(node))
-        return true;
-    if (is<HTMLInputElement>(node)) {
-        HTMLInputElement& inputElement = downcast<HTMLInputElement>(node);
-        // FIXME: This laundry list of types is not a good way to factor this. Need a suitable function on HTMLInputElement itself.
-        return inputElement.isTextField() || inputElement.isDateField() || inputElement.isDateTimeLocalField() || inputElement.isMonthField() || inputElement.isTimeField();
-    }
-    return node.isContentEditable();
 }
 
 static inline Element* nextAssistableElement(Node* startNode, Page& page, bool isForward)

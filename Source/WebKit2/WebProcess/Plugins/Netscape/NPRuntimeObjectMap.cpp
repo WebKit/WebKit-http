@@ -41,7 +41,6 @@
 #include <JavaScriptCore/StrongInlines.h>
 #include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/Frame.h>
-#include <WebCore/Page.h>
 #include <WebCore/ScriptController.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -300,7 +299,7 @@ void NPRuntimeObjectMap::addToInvalidationQueue(NPObject* npObject)
 
 void NPRuntimeObjectMap::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    JSNPObject* object = jsCast<JSNPObject*>(handle.get().asCell());
+    JSNPObject* object = static_cast<JSNPObject*>(handle.get().asCell());
     weakRemove(m_jsNPObjects, static_cast<NPObject*>(context), object);
     addToInvalidationQueue(object->leakNPObject());
 }

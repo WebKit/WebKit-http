@@ -186,7 +186,6 @@ class PageClient;
 class RemoteLayerTreeScrollingPerformanceData;
 class RemoteLayerTreeTransaction;
 class RemoteScrollingCoordinatorProxy;
-class StringPairVector;
 class UserData;
 class ViewSnapshot;
 class VisitedLinkStore;
@@ -206,11 +205,12 @@ class WebProcessProxy;
 class WebUserContentControllerProxy;
 class WebWheelEvent;
 class WebsiteDataStore;
+class GamepadData;
+
 struct AttributedString;
 struct ColorSpaceData;
 struct EditingRange;
 struct EditorState;
-class GamepadData;
 struct InteractionInformationRequest;
 struct LoadParameters;
 struct PlatformPopupMenuData;
@@ -377,6 +377,9 @@ public:
     void close();
     bool tryClose();
     bool isClosed() const { return m_isClosed; }
+
+    void setIsUsingHighPerformanceWebGL(bool value) { m_isUsingHighPerformanceWebGL = value; }
+    bool isUsingHighPerformanceWebGL() const { return m_isUsingHighPerformanceWebGL; }
 
     void closePage(bool stopResponsivenessTimer);
 
@@ -1269,8 +1272,8 @@ private:
     // UI client
     void createNewPage(uint64_t frameID, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, uint64_t& newPageID, WebPageCreationParameters&);
     void showPage();
-    void runJavaScriptAlert(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>);
-    void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>);
+    void runJavaScriptAlert(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>&&);
+    void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>&&);
     void runJavaScriptPrompt(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
     void setStatusText(const String&);
     void mouseDidMoveOverElement(const WebHitTestResultData&, uint32_t modifiers, const UserData&);
@@ -1826,7 +1829,7 @@ private:
     RefPtr<WebColorPicker> m_colorPicker;
 #endif
 #if PLATFORM(COCOA)
-    std::unique_ptr<WebCore::ValidationBubble> m_validationBubble;
+    RefPtr<WebCore::ValidationBubble> m_validationBubble;
 #endif
 
     const uint64_t m_pageID;
@@ -1973,6 +1976,8 @@ private:
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_syncNavigationActionHasDownloadAttribute { false };
 #endif
+
+    bool m_isUsingHighPerformanceWebGL { false };
         
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 };

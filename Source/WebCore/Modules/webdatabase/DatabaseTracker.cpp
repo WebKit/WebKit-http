@@ -29,8 +29,6 @@
 #include "config.h"
 #include "DatabaseTracker.h"
 
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "Database.h"
 #include "DatabaseContext.h"
 #include "DatabaseManager.h"
@@ -40,7 +38,6 @@
 #include "FileSystem.h"
 #include "Logging.h"
 #include "OriginLock.h"
-#include "Page.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginData.h"
 #include "SecurityOriginHash.h"

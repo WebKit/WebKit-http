@@ -313,6 +313,7 @@ list(APPEND WebCore_SOURCES
     platform/cf/SharedBufferCF.cpp
     platform/cf/URLCF.cpp
 
+    platform/cocoa/CPUTimeCocoa.mm
     platform/cocoa/ContentFilterUnblockHandlerCocoa.mm
     platform/cocoa/CoreVideoSoftLink.cpp
     platform/cocoa/DisplaySleepDisablerCocoa.cpp
@@ -747,6 +748,7 @@ list(APPEND WebCoreTestSupport_SOURCES
     testing/Internals.mm
     testing/MockContentFilter.cpp
     testing/MockContentFilterSettings.cpp
+    testing/MockQuickLookHandleClient.cpp
 
     testing/cocoa/WebArchiveDumpSupport.mm
 )

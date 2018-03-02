@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,10 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
+#import "AudioSourceObserverObjC.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
-#import "NotImplemented.h"
+#import "MediaSampleAVFObjC.h"
 #import "RealtimeMediaSourceSettings.h"
 #import "SoftLinking.h"
 #import "WebAudioSourceProviderAVFObjC.h"
@@ -49,21 +50,14 @@ typedef AVCaptureDevice AVCaptureDeviceTypedef;
 typedef AVCaptureDeviceInput AVCaptureDeviceInputType;
 typedef AVCaptureOutput AVCaptureOutputType;
 
-#if !PLATFORM(IOS)
-typedef AVCaptureAudioPreviewOutput AVCaptureAudioPreviewOutputType;
-#endif
-
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 
 SOFT_LINK_CLASS(AVFoundation, AVCaptureAudioChannel)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureAudioDataOutput)
-SOFT_LINK_CLASS(AVFoundation, AVCaptureAudioPreviewOutput)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureConnection)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureDevice)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureDeviceInput)
 SOFT_LINK_CLASS(AVFoundation, AVCaptureOutput)
-
-#define AVCaptureAudioPreviewOutput getAVCaptureAudioPreviewOutputClass()
 
 #define AVCaptureAudioChannel getAVCaptureAudioChannelClass()
 #define AVCaptureAudioDataOutput getAVCaptureAudioDataOutputClass()
@@ -79,79 +73,6 @@ SOFT_LINK_POINTER(AVFoundation, AVMediaTypeAudio, NSString *)
 #define AVMediaTypeAudio getAVMediaTypeAudio()
 
 namespace WebCore {
-
-#if !PLATFORM(IOS)
-class AVAudioSourcePreview: public AVMediaSourcePreview {
-public:
-    static RefPtr<AVMediaSourcePreview> create(AVCaptureSession *, AVAudioCaptureSource*);
-
-private:
-    AVAudioSourcePreview(AVCaptureSession *, AVAudioCaptureSource*);
-
-    void invalidate() final;
-
-    void play() const final;
-    void pause() const final;
-    void setVolume(double) const final;
-    void setEnabled(bool) final;
-    PlatformLayer* platformLayer() const final { return nullptr; }
-
-    void updateState() const;
-
-    RetainPtr<AVCaptureAudioPreviewOutputType> m_audioPreviewOutput;
-    mutable double m_volume { 1 };
-    mutable bool m_paused { false };
-    mutable bool m_enabled { true };
-};
-
-RefPtr<AVMediaSourcePreview> AVAudioSourcePreview::create(AVCaptureSession *session, AVAudioCaptureSource* parent)
-{
-    return adoptRef(new AVAudioSourcePreview(session, parent));
-}
-
-AVAudioSourcePreview::AVAudioSourcePreview(AVCaptureSession *session, AVAudioCaptureSource* parent)
-    : AVMediaSourcePreview(parent)
-{
-    m_audioPreviewOutput = adoptNS([allocAVCaptureAudioPreviewOutputInstance() init]);
-    setVolume(1);
-    [session addOutput:m_audioPreviewOutput.get()];
-}
-
-void AVAudioSourcePreview::invalidate()
-{
-    m_audioPreviewOutput = nullptr;
-    AVMediaSourcePreview::invalidate();
-}
-
-void AVAudioSourcePreview::play() const
-{
-    m_paused = false;
-    updateState();
-}
-
-void AVAudioSourcePreview::pause() const
-{
-    m_paused = true;
-    updateState();
-}
-
-void AVAudioSourcePreview::setEnabled(bool enabled)
-{
-    m_enabled = enabled;
-    updateState();
-}
-
-void AVAudioSourcePreview::setVolume(double volume) const
-{
-    m_volume = volume;
-    m_audioPreviewOutput.get().volume = volume;
-}
-
-void AVAudioSourcePreview::updateState() const
-{
-    m_audioPreviewOutput.get().volume = (!m_enabled || m_paused) ? 0 : m_volume;
-}
-#endif
 
 RefPtr<AVMediaCaptureSource> AVAudioCaptureSource::create(AVCaptureDeviceTypedef* device, const AtomicString& id, const MediaConstraints* constraints, String& invalidConstraint)
 {
@@ -190,25 +111,28 @@ void AVAudioCaptureSource::initializeSupportedConstraints(RealtimeMediaSourceSup
 
 void AVAudioCaptureSource::updateSettings(RealtimeMediaSourceSettings& settings)
 {
-    // FIXME: use [AVCaptureAudioPreviewOutput volume] for volume
+    // FIXME: support volume
 
     settings.setDeviceId(id());
 }
 
-void AVAudioCaptureSource::addObserver(AVAudioCaptureSource::Observer* observer)
+void AVAudioCaptureSource::addObserver(AudioSourceObserverObjC& observer)
 {
     LockHolder lock(m_lock);
-    m_observers.append(observer);
+    m_observers.append(&observer);
     if (m_inputDescription->mSampleRate)
-        observer->prepare(m_inputDescription.get());
+        observer.prepare(m_inputDescription.get());
 }
 
-void AVAudioCaptureSource::removeObserver(AVAudioCaptureSource::Observer* observer)
+void AVAudioCaptureSource::removeObserver(AudioSourceObserverObjC& observer)
 {
     LockHolder lock(m_lock);
-    size_t pos = m_observers.find(observer);
-    if (pos != notFound)
-        m_observers.remove(pos);
+    m_observers.removeFirst(&observer);
+}
+
+void AVAudioCaptureSource::start()
+{
+    startProducingData();
 }
 
 void AVAudioCaptureSource::setupCaptureSession()
@@ -276,6 +200,11 @@ void AVAudioCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCa
     if (!formatDescription)
         return;
 
+    RetainPtr<CMSampleBufferRef> buffer = sampleBuffer;
+    scheduleDeferredTask([this, buffer] {
+        mediaDataUpdated(MediaSampleAVFObjC::create(buffer.get()));
+    });
+
     std::unique_lock<Lock> lock(m_lock, std::try_to_lock);
     if (!lock.owns_lock()) {
         // Failed to acquire the lock, just return instead of blocking.
@@ -304,15 +233,6 @@ AudioSourceProvider* AVAudioCaptureSource::audioSourceProvider()
     return m_audioSourceProvider.get();
 }
 
-RefPtr<AVMediaSourcePreview> AVAudioCaptureSource::createPreview()
-{
-#if !PLATFORM(IOS)
-    return AVAudioSourcePreview::create(session(), this);
-#else
-    return nullptr;
-#endif
-}
-    
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)

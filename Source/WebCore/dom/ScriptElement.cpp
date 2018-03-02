@@ -38,19 +38,16 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "IgnoreDestructiveWriteCountIncrementer.h"
+#include "InlineClassicScript.h"
 #include "LoadableClassicScript.h"
 #include "LoadableModuleScript.h"
 #include "MIMETypeRegistry.h"
-#include "Page.h"
 #include "PendingScript.h"
-#include "SVGNames.h"
 #include "SVGScriptElement.h"
 #include "ScriptController.h"
 #include "ScriptRunner.h"
 #include "ScriptSourceCode.h"
 #include "ScriptableDocumentParser.h"
-#include "SecurityOrigin.h"
-#include "Settings.h"
 #include "TextNodeTraversal.h"
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -275,7 +272,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     } else {
         ASSERT(scriptType == ScriptType::Classic);
         TextPosition position = document.isInDocumentWrite() ? TextPosition() : scriptStartPosition;
-        executeClassicScript(ScriptSourceCode(scriptContent(), document.url(), position, JSC::SourceProviderSourceType::Program));
+        executeClassicScript(ScriptSourceCode(scriptContent(), document.url(), position, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
     }
 
     return true;
@@ -348,8 +345,10 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
         return true;
     }
 
+    auto script = LoadableModuleScript::create(nonce, crossOriginMode, scriptCharset(), m_element.localName(), m_element.isInUserAgentShadowTree());
+
     TextPosition position = m_element.document().isInDocumentWrite() ? TextPosition() : scriptStartPosition;
-    ScriptSourceCode sourceCode(scriptContent(), m_element.document().url(), position, JSC::SourceProviderSourceType::Module);
+    ScriptSourceCode sourceCode(scriptContent(), m_element.document().url(), position, JSC::SourceProviderSourceType::Module, script.copyRef());
 
     ASSERT(m_element.document().contentSecurityPolicy());
     const auto& contentSecurityPolicy = *m_element.document().contentSecurityPolicy();
@@ -357,7 +356,6 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
     if (!contentSecurityPolicy.allowInlineScript(m_element.document().url(), m_startLineNumber, sourceCode.source().toStringWithoutCopying(), hasKnownNonce))
         return false;
 
-    auto script = LoadableModuleScript::create(nonce, crossOriginMode, scriptCharset(), m_element.localName(), m_element.isInUserAgentShadowTree());
     script->load(m_element.document(), sourceCode);
     m_loadableScript = WTFMove(script);
     return true;
@@ -426,7 +424,7 @@ void ScriptElement::executePendingScript(PendingScript& pendingScript)
     else {
         ASSERT(!pendingScript.error());
         ASSERT_WITH_MESSAGE(scriptType() == ScriptType::Classic, "Module script always have a loadableScript pointer.");
-        executeClassicScript(ScriptSourceCode(scriptContent(), m_element.document().url(), pendingScript.startingPosition(), JSC::SourceProviderSourceType::Program));
+        executeClassicScript(ScriptSourceCode(scriptContent(), m_element.document().url(), pendingScript.startingPosition(), JSC::SourceProviderSourceType::Program, InlineClassicScript::create(*this)));
         dispatchLoadEvent();
     }
 }

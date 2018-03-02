@@ -44,7 +44,6 @@
 #include "PopupOpeningObserver.h"
 #include "RenderObject.h"
 #include "ResourceHandle.h"
-#include "SecurityOrigin.h"
 #include "Settings.h"
 #include "StorageNamespace.h"
 #include "WindowFeatures.h"
@@ -432,7 +431,7 @@ std::unique_ptr<ColorChooser> Chrome::createColorChooser(ColorChooserClient* cli
 }
 #endif
 
-void Chrome::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> fileChooser)
+void Chrome::runOpenPanel(Frame& frame, FileChooser& fileChooser)
 {
     notifyPopupOpeningObservers();
     m_client.runOpenPanel(frame, fileChooser);
@@ -480,14 +479,12 @@ void Chrome::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
 #endif
 }
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
 void Chrome::scheduleAnimation()
 {
 #if !USE(REQUEST_ANIMATION_FRAME_TIMER)
     m_client.scheduleAnimation();
 #endif
 }
-#endif
 
 PlatformDisplayID Chrome::displayID() const
 {

@@ -40,8 +40,6 @@
 #include "CSSSupportsRule.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "ClientRect.h"
 #include "ClientRectList.h"
 #include "ComposedTreeIterator.h"
@@ -224,6 +222,11 @@
 
 #if ENABLE(POINTER_LOCK)
 #include "PointerLockController.h"
+#endif
+
+#if USE(QUICK_LOOK)
+#include "MockQuickLookHandleClient.h"
+#include "QuickLook.h"
 #endif
 
 using JSC::CallData;
@@ -426,6 +429,11 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
+
+#if USE(QUICK_LOOK)
+    MockQuickLookHandleClient::singleton().setPassword("");
+    QuickLookHandle::setClientForTesting(nullptr);
+#endif
 }
 
 Internals::Internals(Document& document)
@@ -539,7 +547,7 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
 
     ResourceRequest request(contextDocument()->completeURL(url));
 #if ENABLE(CACHE_PARTITIONING)
-    request.setDomainForCachePartition(contextDocument()->topOrigin()->domainForCachePartition());
+    request.setDomainForCachePartition(contextDocument()->topOrigin().domainForCachePartition());
 #endif
     CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
@@ -961,14 +969,10 @@ ExceptionOr<bool> Internals::isTimerThrottled(int timeoutId)
 
 bool Internals::isRequestAnimationFrameThrottled() const
 {
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     auto* scriptedAnimationController = contextDocument()->scriptedAnimationController();
     if (!scriptedAnimationController)
         return false;
     return scriptedAnimationController->isThrottled();
-#else
-    return false;
-#endif
 }
 
 bool Internals::areTimersThrottled() const
@@ -2377,7 +2381,7 @@ void Internals::setApplicationCacheOriginQuota(unsigned long long quota)
     Document* document = contextDocument();
     if (!document || !document->page())
         return;
-    document->page()->applicationCacheStorage().storeUpdatedQuotaForOrigin(document->securityOrigin(), quota);
+    document->page()->applicationCacheStorage().storeUpdatedQuotaForOrigin(&document->securityOrigin(), quota);
 }
 
 void Internals::registerURLSchemeAsBypassingContentSecurityPolicy(const String& scheme)
@@ -3657,5 +3661,14 @@ Vector<String> Internals::accessKeyModifiers() const
 
     return accessKeyModifierStrings;
 }
+
+#if USE(QUICK_LOOK)
+void Internals::setQuickLookPassword(const String& password)
+{
+    auto& quickLookHandleClient = MockQuickLookHandleClient::singleton();
+    QuickLookHandle::setClientForTesting(&quickLookHandleClient);
+    quickLookHandleClient.setPassword(password);
+}
+#endif
 
 } // namespace WebCore

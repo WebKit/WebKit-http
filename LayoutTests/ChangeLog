@@ -1,3 +1,1040 @@
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble gets dismissed when its associated element's frame gets detached
+        https://bugs.webkit.org/show_bug.cgi?id=167215
+        <rdar://problem/29885052>
+
+        Reviewed by Andreas Kling.
+
+        Add layout test coverage.
+
+        * fast/forms/resources/form-validation-iframe.html: Added.
+        * fast/forms/validation-message-detached-iframe-expected.txt: Added.
+        * fast/forms/validation-message-detached-iframe.html: Added.
+        * fast/forms/validation-message-detached-iframe2-expected.txt: Added.
+        * fast/forms/validation-message-detached-iframe2.html: Added.
+
+2017-01-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping three crashing pointer lock tests.
+        https://bugs.webkit.org/show_bug.cgi?id=166765
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-18  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Records should preserve javascript object order
+        https://bugs.webkit.org/show_bug.cgi?id=167189
+
+        Reviewed by Alex Christensen.
+
+        * js/dom/webidl-type-mapping-expected.txt:
+        * js/dom/webidl-type-mapping.html:
+        Update test to reflect changes to TypeConversions.idl
+
+2017-01-18  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link header support for preload.
+        https://bugs.webkit.org/show_bug.cgi?id=165521
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/preload/download_resources_from_header_iframe-expected.txt: Added
+        * http/tests/preload/download_resources_from_header_iframe.html: Added
+        * http/tests/preload/download_resources_from_invalid_headers-expected: Added
+        * http/tests/preload/download_resources_from_invalid_headers.html: Added
+        * http/tests/preload/resources/download_resources_from_header.php: Added.
+        * http/tests/preload/resources/invalid_resources_from_header.php: Added.
+
+2017-01-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table only works for the first 5 properties
+        https://bugs.webkit.org/show_bug.cgi?id=167175
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/console/console-table-expected.txt:
+        * inspector/console/console-table.html:
+        Include a test that we get values beyond the first 5 properties.
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Moving flaky expectation for fast/images/animated-gif-restored-from-bfcache.html to mac TestExpectations file.
+        https://bugs.webkit.org/show_bug.cgi?id=162510
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/indexeddb/clearObjectStore.html as flaky on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=167184
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking two fast/dom/Window/window-properties-performance-* tests as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=166911
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/fetch/fetching-same-resource-with-diffferent-options.html as flaky on ios-simulator-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=166025
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/misc/module-script-async.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=165764
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking js/dom/Promise.html as flaky on both debug and release builds.
+        https://bugs.webkit.org/show_bug.cgi?id=140043
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/worker/debugger-pause.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=164833
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210881.
+
+        This test is failing on macOS.
+
+        Reverted changeset:
+
+        "REGRESSION(r203110): LayoutTest
+        http/tests/preload/single_download_preload_runner.html timing
+        out"
+        https://bugs.webkit.org/show_bug.cgi?id=159678
+        http://trac.webkit.org/changeset/210881
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210848.
+
+        This change introduced media-related LayoutTest failures and
+        crashes on macOS.
+
+        Reverted changeset:
+
+        "[Modern Media Controls] Turn modern media controls on by
+        default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210848
+
+2017-01-18  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        background-repeat-x doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=166997
+
+        Reviewed by Simon Fraser.
+
+        * fast/backgrounds/background-repeat-x-y-expected.html: Added.
+        * fast/backgrounds/background-repeat-x-y-parse-expected.txt: Added.
+        * fast/backgrounds/background-repeat-x-y-parse.html: Added.
+        * fast/backgrounds/background-repeat-x-y.html: Added.
+
+2017-01-18  Yoav Weiss  <yoav@yoav.ws>
+
+        REGRESSION(r203110): LayoutTest http/tests/preload/single_download_preload_runner.html timing out
+        https://bugs.webkit.org/show_bug.cgi?id=159678
+
+        Move the single_download_preload test to be in a single document rather than a frame, as the frame based version was timing out.
+        I suspect that recent changes to handling of feature flags resulted in feature flags turned off for frames, which caused this test
+        to fail. As the frame doesn't seem required in this case, we can fold the entire test to a single document.
+        On top of that, I added per resource verification for the number of requests, which makes the test clearer.
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Removed the timeout expectation for the test.
+        * http/tests/preload/single_download_preload-expected.txt: Renamed from LayoutTests/http/tests/preload/single_download_preload_runner-expected.txt.
+        * http/tests/preload/single_download_preload.html: Renamed from LayoutTests/http/tests/preload/resources/single_download_preload.html as well as fixed.
+        * http/tests/preload/single_download_preload_runner.html: Removed.
+        * http/tests/resources/dummy.xml: Added.
+        * http/tests/resources/test.oga: Added.
+        * platform/mac/TestExpectations: Removed the timeout expectation for the test.
+
+2017-01-18  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Support password-protected documents
+        https://bugs.webkit.org/show_bug.cgi?id=167153
+        <rdar://problem/28544527>
+
+        Reviewed by Alex Christensen.
+
+        * platform/ios-simulator/TestExpectations: Temporarily skipped the new test until the
+        necessary support is available in QuickLook.framework.
+        * quicklook/password-protected-expected.html: Added.
+        * quicklook/password-protected.html: Added.
+        * quicklook/resources/password-protected.pages: Added.
+
+2017-01-18  Youenn Fablet  <youenn@apple.com>
+
+        [Streams API] ReadableStream generic reader constructor does not need to call ReadableStream getReader
+        https://bugs.webkit.org/show_bug.cgi?id=167137
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * streams/shadowing-getReader-expected.txt: Added.
+        * streams/shadowing-getReader.html: Added.
+
+2017-01-18  Youenn Fablet  <youenn@apple.com>
+
+        Reject fetch promise in case of ReadableStream upload
+        https://bugs.webkit.org/show_bug.cgi?id=167145
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2017-01-18  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Update content-type in case of form data
+        https://bugs.webkit.org/show_bug.cgi?id=167143
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations:
+
+2017-01-18  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Turn modern media controls off for a majority of pre-existing tests that made assumptions on the implementation
+        of media controls.
+
+        For tests designed for modern media controls, we don't need to opt out since modern media controls are now on
+        by default, and we turn them back on since they were skipped. But we make these tests more resilient by:
+        
+            1. adding iPad-specific tests
+            2. adding platform-agnostic ways to press an element, using either eventSender or uiController
+            3. checking that elements that are sized asynchronously are indeed sized before making assumptions to that effect
+            4. ensuring that we don't have additional scheduler.frameDidFire callbacks after we no longer need them 
+
+        * TestExpectations:
+        * accessibility/mac/video-tag-hit-test.html:
+        * accessibility/mac/video-volume-slider-accessibility.html:
+        * accessibility/media-element.html:
+        * accessibility/media-emits-object-replacement.html:
+        * compositing/video/poster-expected.html:
+        * compositing/video/poster.html:
+        * fast/hidpi/video-controls-in-hidpi.html:
+        * fast/layers/video-layer.html:
+        * fullscreen/video-controls-drag.html:
+        * fullscreen/video-controls-override.html:
+        * fullscreen/video-controls-rtl.html:
+        * fullscreen/video-controls-timeline.html:
+        * http/tests/media/hls/video-controls-live-stream.html:
+        * http/tests/media/hls/video-duration-accessibility.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked2.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/video-controls-allowed.html:
+        * media/accessibility-closed-captions-has-aria-owns.html:
+        * media/adopt-node-crash.html:
+        * media/airplay-autoplay.html:
+        * media/audio-as-video-fullscreen.html:
+        * media/audio-controls-do-not-fade-out.html:
+        * media/audio-controls-rendering.html:
+        * media/audio-controls-timeline-in-media-document.html:
+        * media/audio-delete-while-slider-thumb-clicked.html:
+        * media/audio-repaint.html:
+        * media/click-placeholder-not-pausing.html:
+        * media/click-volume-bar-not-pausing.html:
+        * media/controls-after-reload.html:
+        * media/controls-drag-timebar.html:
+        * media/controls-right-click-on-timebar.html:
+        * media/controls-strict.html:
+        * media/controls-styling.html:
+        * media/controls-without-preload.html:
+        * media/controls/airplay-controls.html:
+        * media/controls/airplay-picker.html:
+        * media/controls/basic.html:
+        * media/controls/elementOrder.html:
+        * media/controls/forced-tracks-only.html:
+        * media/controls/fullscreen-button-inline-layout.html:
+        * media/controls/inline-elements-dropoff-order.html:
+        * media/controls/picture-in-picture.html:
+        * media/controls/pip-placeholder-without-video-controls.html:
+        * media/controls/showControlsButton.html:
+        * media/controls/statusDisplay.html:
+        * media/controls/statusDisplayBad.html:
+        * media/controls/track-menu.html:
+        * media/mac/controls-panel-not-clipped-out-expected.html:
+        * media/mac/controls-panel-not-clipped-out.html:
+        * media/media-captions-no-controls.html:
+        * media/media-controller-drag-crash.html:
+        * media/media-controls-accessibility.html:
+        * media/media-controls-cancel-events.html:
+        * media/media-controls-clone.html:
+        * media/media-controls-drag-timeline-set-controls-property.html:
+        * media/media-controls-timeline-updates-after-playing.html:
+        * media/media-controls-timeline-updates-when-hovered.html:
+        * media/media-controls-timeline-updates.html:
+        * media/media-document-audio-controls-visible.html:
+        * media/media-document-audio-repaint.html:
+        * media/media-fullscreen-return-to-inline.html:
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+        * media/modern-media-controls/airplay-placard/airplay-placard-text-section.html:
+        * media/modern-media-controls/audio/audio-controls-buttons-expected.txt:
+        * media/modern-media-controls/audio/audio-controls-buttons.html:
+        * media/modern-media-controls/audio/audio-controls-metrics.html:
+        * media/modern-media-controls/button/button.html:
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property.html:
+        * media/modern-media-controls/forward-button/forward-button.html:
+        * media/modern-media-controls/fullscreen-button/fullscreen-button.html:
+        * media/modern-media-controls/fullscreen-support/fullscreen-support-click.html:
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap-expected.txt: Added.
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html: Added.
+        * media/modern-media-controls/icon-button/icon-button-active-state.html:
+        * media/modern-media-controls/icon-button/icon-button-on.html:
+        * media/modern-media-controls/icon-button/icon-button.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-layout.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-dropping-controls.html:
+        * media/modern-media-controls/layout-node/addChild.html:
+        * media/modern-media-controls/layout-node/children.html:
+        * media/modern-media-controls/layout-node/height.html:
+        * media/modern-media-controls/layout-node/insertAfter.html:
+        * media/modern-media-controls/layout-node/insertBefore.html:
+        * media/modern-media-controls/layout-node/node-made-dirty-during-layout.html:
+        * media/modern-media-controls/layout-node/remove.html:
+        * media/modern-media-controls/layout-node/removeChild.html:
+        * media/modern-media-controls/layout-node/subclassing.html:
+        * media/modern-media-controls/layout-node/visible.html:
+        * media/modern-media-controls/layout-node/width.html:
+        * media/modern-media-controls/layout-node/x.html:
+        * media/modern-media-controls/layout-node/y.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-status-label.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-dropping-controls.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide.html:
+        * media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor.html:
+        * media/modern-media-controls/media-controller/media-controller-single-container.html:
+        * media/modern-media-controls/mute-button/mute-button.html:
+        * media/modern-media-controls/pip-button/pip-button.html:
+        * media/modern-media-controls/pip-placard/pip-placard-text-section.html:
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-enabled.html.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-click.html.
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * media/modern-media-controls/pip-support/pip-support-enabled.html:
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip-expected.txt: Copied from LayoutTests/media/modern-media-controls/placard-support/placard-support-airplay-expected.txt.
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip.html: Added.
+        * media/modern-media-controls/placard-support/placard-support-airplay-expected.txt:
+        * media/modern-media-controls/play-pause-button/play-pause-button.html:
+        * media/modern-media-controls/playback-support/playback-support-button-click-expected.txt:
+        * media/modern-media-controls/playback-support/playback-support-button-click.html:
+        * media/modern-media-controls/resources/media-controls-utils.js:
+        (pressOnElement):
+        (finishMediaControlsTest):
+        * media/modern-media-controls/rewind-button/rewind-button.html:
+        * media/modern-media-controls/scheduler/not-reentrant.html:
+        * media/modern-media-controls/scheduler/single-callback-when-registered-multiple-times.html:
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag-expected.txt: Copied from LayoutTests/media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt.
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html: Added.
+        * media/modern-media-controls/scrubber-support/scrubber-support-click.html:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag.html:
+        * media/modern-media-controls/seek-backward-support/seek-backward-support.html:
+        * media/modern-media-controls/seek-forward-support/seek-forward-support.html:
+        * media/modern-media-controls/skip-back-button/skip-back-button.html:
+        * media/modern-media-controls/slider/slider-fill.html:
+        * media/modern-media-controls/slider/slider-styles.html:
+        * media/modern-media-controls/start-support/start-support-click-to-start-expected.txt:
+        * media/modern-media-controls/start-support/start-support-click-to-start.html:
+        * media/modern-media-controls/status-label/status-label-font.html:
+        * media/modern-media-controls/status-label/status-label-text-selection.html:
+        * media/modern-media-controls/status-label/status-label.html:
+        * media/modern-media-controls/time-label/time-label.html:
+        * media/modern-media-controls/tracks-button/tracks-button.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-right-x.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-keyboard.html:
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-and-populate-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html:
+        * media/modern-media-controls/volume-slider/volume-slider-value.html:
+        * media/modern-media-controls/volume-support/volume-support-click.html:
+        * media/modern-media-controls/volume-support/volume-support-drag.html:
+        * media/nodesFromRect-shadowContent.html:
+        * media/progress-events-generated-correctly.html:
+        * media/require-user-gesture-to-load-video.html:
+        * media/tab-focus-inside-media-elements.html:
+        * media/track/track-cue-rendering-horizontal.html:
+        * media/track/track-cue-rendering-vertical.html:
+        * media/track/track-cues-cuechange.html:
+        * media/track/track-cues-enter-exit.html:
+        * media/track/track-in-band-duplicate-tracks-when-source-changes.html:
+        * media/track/track-manual-mode.html:
+        * media/video-controls-audiotracks-trackmenu.html:
+        * media/video-controls-captions-trackmenu-localized.html:
+        * media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html:
+        * media/video-controls-captions-trackmenu-sorted.html:
+        * media/video-controls-captions-trackmenu.html:
+        * media/video-controls-drop-and-restore-timeline.html:
+        * media/video-controls-in-media-document.html:
+        * media/video-controls-no-display-with-text-track.html:
+        * media/video-controls-rendering.html:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+        * media/video-controls-toggling.html:
+        * media/video-controls-transformed.html:
+        * media/video-controls-visible-audio-only.html:
+        * media/video-controls-visible-exiting-fullscreen.html:
+        * media/video-controls-zoomed.html:
+        * media/video-display-toggle.html:
+        * media/video-empty-source.html:
+        * media/video-fullscreeen-only-controls.html:
+        * media/video-fullscreeen-only-playback.html:
+        * media/video-initially-hidden-volume-slider-up.html:
+        * media/video-no-audio.html:
+        * media/video-play-audio-require-user-gesture.html:
+        * media/video-play-require-user-gesture.html:
+        * media/video-trackmenu-selection.html:
+        * media/video-volume-slider-drag.html:
+        * media/video-volume-slider.html:
+        * media/video-zoom-controls.html:
+        * media/volume-bar-empty-when-muted.html:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container.html:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r210834
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        It introduced dozens of test timeouts.
+
+        Reverted changeset:
+        "[Modern Media Controls] Turn modern media controls on by default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210834
+
+2017-01-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][MediaStream] Update bug number for some tests after r210838.
+
+        Fix the bug number for tests fast/mediastream/MediaStream-add-ended-tracks.html
+        and fast/mediastream/MediaStream-add-remove-tracks.html that I wrongly updated
+        in r210838.
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-01-17  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][MediaStream] Update list of MediaStream tests that fail.
+
+        Unskip all the MediaStream tests and instead mark them as failing or timing out.
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-01-17  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Turn modern media controls off for a majority of pre-existing tests that made assumptions on the implementation
+        of media controls.
+
+        For tests designed for modern media controls, we don't need to opt out since modern media controls are now on
+        by default, and we turn them back on since they were skipped. But we make these tests more resilient by:
+        
+            1. adding iPad-specific tests
+            2. adding platform-agnostic ways to press an element, using either eventSender or uiController
+            3. checking that elements that are sized asynchronously are indeed sized before making assumptions to that effect
+            4. ensuring that we don't have additional scheduler.frameDidFire callbacks after we no longer need them 
+
+        * TestExpectations:
+        * accessibility/mac/video-tag-hit-test.html:
+        * accessibility/mac/video-volume-slider-accessibility.html:
+        * accessibility/media-element.html:
+        * accessibility/media-emits-object-replacement.html:
+        * compositing/video/poster-expected.html:
+        * compositing/video/poster.html:
+        * fast/hidpi/video-controls-in-hidpi.html:
+        * fast/layers/video-layer.html:
+        * fullscreen/video-controls-drag.html:
+        * fullscreen/video-controls-override.html:
+        * fullscreen/video-controls-rtl.html:
+        * fullscreen/video-controls-timeline.html:
+        * http/tests/media/hls/video-controls-live-stream.html:
+        * http/tests/media/hls/video-duration-accessibility.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked2.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/video-controls-allowed.html:
+        * media/accessibility-closed-captions-has-aria-owns.html:
+        * media/adopt-node-crash.html:
+        * media/airplay-autoplay.html:
+        * media/audio-as-video-fullscreen.html:
+        * media/audio-controls-do-not-fade-out.html:
+        * media/audio-controls-rendering.html:
+        * media/audio-controls-timeline-in-media-document.html:
+        * media/audio-delete-while-slider-thumb-clicked.html:
+        * media/audio-repaint.html:
+        * media/click-placeholder-not-pausing.html:
+        * media/click-volume-bar-not-pausing.html:
+        * media/controls-after-reload.html:
+        * media/controls-drag-timebar.html:
+        * media/controls-right-click-on-timebar.html:
+        * media/controls-strict.html:
+        * media/controls-styling.html:
+        * media/controls-without-preload.html:
+        * media/controls/airplay-controls.html:
+        * media/controls/airplay-picker.html:
+        * media/controls/basic.html:
+        * media/controls/elementOrder.html:
+        * media/controls/forced-tracks-only.html:
+        * media/controls/fullscreen-button-inline-layout.html:
+        * media/controls/inline-elements-dropoff-order.html:
+        * media/controls/picture-in-picture.html:
+        * media/controls/pip-placeholder-without-video-controls.html:
+        * media/controls/showControlsButton.html:
+        * media/controls/statusDisplay.html:
+        * media/controls/statusDisplayBad.html:
+        * media/controls/track-menu.html:
+        * media/mac/controls-panel-not-clipped-out-expected.html:
+        * media/mac/controls-panel-not-clipped-out.html:
+        * media/media-captions-no-controls.html:
+        * media/media-controller-drag-crash.html:
+        * media/media-controls-accessibility.html:
+        * media/media-controls-cancel-events.html:
+        * media/media-controls-clone.html:
+        * media/media-controls-drag-timeline-set-controls-property.html:
+        * media/media-controls-timeline-updates-after-playing.html:
+        * media/media-controls-timeline-updates-when-hovered.html:
+        * media/media-controls-timeline-updates.html:
+        * media/media-document-audio-controls-visible.html:
+        * media/media-document-audio-repaint.html:
+        * media/media-fullscreen-return-to-inline.html:
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+        * media/modern-media-controls/airplay-placard/airplay-placard-text-section.html:
+        * media/modern-media-controls/audio/audio-controls-buttons-expected.txt:
+        * media/modern-media-controls/audio/audio-controls-buttons.html:
+        * media/modern-media-controls/audio/audio-controls-metrics.html:
+        * media/modern-media-controls/button/button.html:
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property.html:
+        * media/modern-media-controls/forward-button/forward-button.html:
+        * media/modern-media-controls/fullscreen-button/fullscreen-button.html:
+        * media/modern-media-controls/fullscreen-support/fullscreen-support-click.html:
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap-expected.txt: Added.
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html: Added.
+        * media/modern-media-controls/icon-button/icon-button-active-state.html:
+        * media/modern-media-controls/icon-button/icon-button-on.html:
+        * media/modern-media-controls/icon-button/icon-button.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-layout.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-dropping-controls.html:
+        * media/modern-media-controls/layout-node/addChild.html:
+        * media/modern-media-controls/layout-node/children.html:
+        * media/modern-media-controls/layout-node/height.html:
+        * media/modern-media-controls/layout-node/insertAfter.html:
+        * media/modern-media-controls/layout-node/insertBefore.html:
+        * media/modern-media-controls/layout-node/node-made-dirty-during-layout.html:
+        * media/modern-media-controls/layout-node/remove.html:
+        * media/modern-media-controls/layout-node/removeChild.html:
+        * media/modern-media-controls/layout-node/subclassing.html:
+        * media/modern-media-controls/layout-node/visible.html:
+        * media/modern-media-controls/layout-node/width.html:
+        * media/modern-media-controls/layout-node/x.html:
+        * media/modern-media-controls/layout-node/y.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-status-label.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-dropping-controls.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide.html:
+        * media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor.html:
+        * media/modern-media-controls/media-controller/media-controller-single-container.html:
+        * media/modern-media-controls/mute-button/mute-button.html:
+        * media/modern-media-controls/pip-button/pip-button.html:
+        * media/modern-media-controls/pip-placard/pip-placard-text-section.html:
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-enabled.html.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-click.html.
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * media/modern-media-controls/pip-support/pip-support-enabled.html:
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip-expected.txt: Copied from LayoutTests/media/modern-media-controls/placard-support/placard-support-airplay-expected.txt.
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip.html: Added.
+        * media/modern-media-controls/placard-support/placard-support-airplay-expected.txt:
+        * media/modern-media-controls/play-pause-button/play-pause-button.html:
+        * media/modern-media-controls/playback-support/playback-support-button-click-expected.txt:
+        * media/modern-media-controls/playback-support/playback-support-button-click.html:
+        * media/modern-media-controls/resources/media-controls-utils.js:
+        (pressOnElement):
+        (finishMediaControlsTest):
+        * media/modern-media-controls/rewind-button/rewind-button.html:
+        * media/modern-media-controls/scheduler/not-reentrant.html:
+        * media/modern-media-controls/scheduler/single-callback-when-registered-multiple-times.html:
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag-expected.txt: Copied from LayoutTests/media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt.
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html: Added.
+        * media/modern-media-controls/scrubber-support/scrubber-support-click.html:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag.html:
+        * media/modern-media-controls/seek-backward-support/seek-backward-support.html:
+        * media/modern-media-controls/seek-forward-support/seek-forward-support.html:
+        * media/modern-media-controls/skip-back-button/skip-back-button.html:
+        * media/modern-media-controls/slider/slider-fill.html:
+        * media/modern-media-controls/slider/slider-styles.html:
+        * media/modern-media-controls/start-support/start-support-click-to-start-expected.txt:
+        * media/modern-media-controls/start-support/start-support-click-to-start.html:
+        * media/modern-media-controls/status-label/status-label-font.html:
+        * media/modern-media-controls/status-label/status-label-text-selection.html:
+        * media/modern-media-controls/status-label/status-label.html:
+        * media/modern-media-controls/time-label/time-label.html:
+        * media/modern-media-controls/tracks-button/tracks-button.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-right-x.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-keyboard.html:
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-and-populate-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html:
+        * media/modern-media-controls/volume-slider/volume-slider-value.html:
+        * media/modern-media-controls/volume-support/volume-support-click.html:
+        * media/modern-media-controls/volume-support/volume-support-drag.html:
+        * media/nodesFromRect-shadowContent.html:
+        * media/progress-events-generated-correctly.html:
+        * media/require-user-gesture-to-load-video.html:
+        * media/tab-focus-inside-media-elements.html:
+        * media/track/track-cue-rendering-horizontal.html:
+        * media/track/track-cue-rendering-vertical.html:
+        * media/track/track-cues-cuechange.html:
+        * media/track/track-cues-enter-exit.html:
+        * media/track/track-in-band-duplicate-tracks-when-source-changes.html:
+        * media/track/track-manual-mode.html:
+        * media/video-controls-audiotracks-trackmenu.html:
+        * media/video-controls-captions-trackmenu-localized.html:
+        * media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html:
+        * media/video-controls-captions-trackmenu-sorted.html:
+        * media/video-controls-captions-trackmenu.html:
+        * media/video-controls-drop-and-restore-timeline.html:
+        * media/video-controls-in-media-document.html:
+        * media/video-controls-no-display-with-text-track.html:
+        * media/video-controls-rendering.html:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+        * media/video-controls-toggling.html:
+        * media/video-controls-transformed.html:
+        * media/video-controls-visible-audio-only.html:
+        * media/video-controls-visible-exiting-fullscreen.html:
+        * media/video-controls-zoomed.html:
+        * media/video-display-toggle.html:
+        * media/video-empty-source.html:
+        * media/video-fullscreeen-only-controls.html:
+        * media/video-fullscreeen-only-playback.html:
+        * media/video-initially-hidden-volume-slider-up.html:
+        * media/video-no-audio.html:
+        * media/video-play-audio-require-user-gesture.html:
+        * media/video-play-require-user-gesture.html:
+        * media/video-trackmenu-selection.html:
+        * media/video-volume-slider-drag.html:
+        * media/video-volume-slider.html:
+        * media/video-zoom-controls.html:
+        * media/volume-bar-empty-when-muted.html:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container.html:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-17  Chris Dumez  <cdumez@apple.com>
+
+        Document title changed twice when setting document.title
+        https://bugs.webkit.org/show_bug.cgi?id=167065
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/Node/textContent-mutationEvents-expected.txt: Added.
+        * fast/dom/Node/textContent-mutationEvents.html: Added.
+        Add layout test to make sure that the mutation events are properly
+        fired when setting Node.textContent.
+
+        * fast/dom/title-text-property-2-expected.txt:
+        * fast/dom/title-text-property-2.html:
+        * fast/dom/title-text-property-expected.txt:
+        * http/tests/globalhistory/history-delegate-basic-title-expected.txt:
+        Update / rebaseline existing tests now that we no longer temporarily
+        reset document.title to the empty string when overriding the title.
+
+2017-01-17  Zalan Bujtas  <zalan@apple.com>
+
+        Editing nested RTL-LTR content makes the process unresponsive.
+        https://bugs.webkit.org/show_bug.cgi?id=167140
+        rdar://problem/29057611
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/rtl-to-ltr-editing-word-move-spin-expected.txt: Added.
+        * editing/rtl-to-ltr-editing-word-move-spin.html: Added.
+
+2017-01-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/media/hls/hls-video-resize.html as flaky on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=162507
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-17  Brady Eidson  <beidson@apple.com>
+
+        An update to one gamepad's values should only change that gamepad's modified timestamp.
+        <rdar://problem/28620865> and https://bugs.webkit.org/show_bug.cgi?id=167139
+
+        Reviewed by Andy Estes.
+
+        * gamepad/gamepad-timestamp.html:
+
+2017-01-17  Youenn Fablet  <youenn@apple.com>
+
+        Refresh WPT tests up to 73f4ad361ca56d890b5f46d62c3bc84371a77e10
+        https://bugs.webkit.org/show_bug.cgi?id=167105
+
+        Reviewed by Alex Christensen.
+
+         Skipping two fetch tests as they reach an ASSERT on debug builds (missing implemented feature).
+
+        * TestExpectations:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-expected.txt: Added.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/dom/reflection-embedded-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/constraints/form-validation-willValidate-expected.txt:
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/form-control-infrastructure/form-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/form-control-infrastructure/form-expected.txt.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-label-element/labelable-elements-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/the-label-element/labelable-elements-expected.txt.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/forms/the-select-element/select-validity-expected.txt: Added.
+        * platform/ios-simulator-wk2/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/interfaces-expected.txt.
+        * tests-options.json:
+
+2017-01-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][MSE] Update list of media-source tests that fail.
+
+        Unskip imported/w3c/web-platform-tests/media-source tests for WebKitGTK+
+        Report the list of those tests that fail.
+        Rebase imported/w3c/web-platform-tests/media-source/mediasource-removesourcebuffer.html.
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/media-source/mediasource-removesourcebuffer-expected.txt: Added. Rebased.
+
+2017-01-16  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Implementing baseline positioning for grid containers
+        https://bugs.webkit.org/show_bug.cgi?id=165063
+
+        Reviewed by Darin Adler and Sergio Villar Senin.
+
+        Tests to verify the baseline positioning of grid and inline-grid blocks.
+        Note that two of these new tests are expected to fail because of a Flexbox
+        bug, since we use Flexbox as reference test.
+
+        * TestExpectations:
+        * fast/css-grid-layout/grid-baseline-expected.html: Added.
+        * fast/css-grid-layout/grid-baseline-margins-expected.html: Added.
+        * fast/css-grid-layout/grid-baseline-margins.html: Added.
+        * fast/css-grid-layout/grid-baseline-must-respect-grid-order-expected.txt: Added.
+        * fast/css-grid-layout/grid-baseline-must-respect-grid-order.html: Added.
+        * fast/css-grid-layout/grid-baseline.html: Added.
+        * fast/css-grid-layout/resources/grid-alignment.css:
+        (.alignSelfBaseline):
+        (.selfBaseline):
+
+2017-01-15  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for HTMLInputElement, HTMLFrameElement, HTMLMediaElement and HTMLOptionsCollection
+        https://bugs.webkit.org/show_bug.cgi?id=167039
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/HTMLSelectElement/select-selectedIndex-expected.txt:
+        * fast/dom/HTMLSelectElement/select-selectedIndex-multiple-expected.txt:
+        * fast/dom/HTMLSelectElement/select-selectedIndex-multiple.html:
+        * fast/dom/HTMLSelectElement/select-selectedIndex.html:
+        Update tests / results now that negative lengths don't throw, but do log due to be converted
+        to a large number.
+
+        * fast/forms/select-max-length-expected.txt:
+        Update result now that a large length is not clamped, but rather, ignored.
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Annotate large string tests with largeHeap
+        https://bugs.webkit.org/show_bug.cgi?id=167054
+
+        Reviewed by Filip Pizlo.
+
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-1.js:
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-2.js:
+        * js/script-tests/stringimpl-to-jsstring-on-large-strings-3.js:
+
+2017-01-14  Chris Dumez  <cdumez@apple.com>
+
+        Align the innerText setter with the HTML spec and Gecko
+        https://bugs.webkit.org/show_bug.cgi?id=160971
+
+        Reviewed by Alex Christensen.
+
+        Add test coverage for outerText, which is non-standard.
+
+        * fast/dom/br-set-outerText-expected.txt: Added.
+        * fast/dom/br-set-outerText.html: Added.
+
+2017-01-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/worker/debugger-scripts.html as flaky on macOS.
+        https://trac.webkit.org/changeset/209517
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream, Mac] Add mock audio source
+        https://bugs.webkit.org/show_bug.cgi?id=166974
+
+        Reviewed by Jer Noble.
+
+        * webaudio/mediastreamaudiosourcenode-expected.txt:
+        * webaudio/mediastreamaudiosourcenode.html:
+
+2017-01-13  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for DeviceMotionEvent and DeviceOrientationEvent
+        https://bugs.webkit.org/show_bug.cgi?id=167006
+
+        Reviewed by Geoffrey Garen.
+
+        * fast/dom/DeviceMotion/optional-event-properties-expected.txt:
+        * fast/dom/DeviceMotion/script-tests/optional-event-properties.js:
+        Update test to account for slightly stricter, but more consistent IDL conversion rules.
+
+2017-01-13  Eric Carlson  <eric.carlson@apple.com>
+
+        REGRESSION (r210621): [mac-wk2] LayoutTest fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html timing out
+        https://bugs.webkit.org/show_bug.cgi?id=166980
+        
+        Unreviewed, fix test broken by r210621.
+
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled-expected.txt:
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html:
+        * platform/mac-wk2/TestExpectations: Un-skip fixed test.
+
+2017-01-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Skip to test imported/w3c/web-platform-tests
+
+        Unreviewed EFL gardening. There are too many timeout and crash.
+
+        * platform/efl/TestExpectations:
+
+2017-01-12  Enrica Casucci  <enrica@apple.com>
+
+        Do not allow selection of editable content when not editing.
+        https://bugs.webkit.org/show_bug.cgi?id=166897
+        <rdar://problem/29388806>
+
+        Reviewed by Tim Horton.
+
+        * fast/events/touch/ios/long-press-on-editable-expected.txt: Added.
+        * fast/events/touch/ios/long-press-on-editable.html: Added.
+
+2017-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html as a timeout on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=166980
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-12  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Make the grid sizing data persistent through layouts
+        https://bugs.webkit.org/show_bug.cgi?id=166883
+
+        Reviewed by Darin Adler and Manuel Rego Casasnovas.
+
+        The tests added are now needed to verify we perform correctly the
+        data validation after certain style changes.
+
+        * fast/css-grid-layout/grid-add-item-with-positioned-items-expected.txt: Added.
+        * fast/css-grid-layout/grid-add-item-with-positioned-items.html: Added.
+        * fast/css-grid-layout/grid-add-positioned-block-item-after-inline-item-expected.txt: Added.
+        * fast/css-grid-layout/grid-add-positioned-block-item-after-inline-item.html: Added.
+        * fast/css-grid-layout/grid-container-change-explicit-grid-recompute-child-expected.txt: Added.
+        * fast/css-grid-layout/grid-container-change-explicit-grid-recompute-child.html: Added.
+        * fast/css-grid-layout/grid-item-change-order-auto-flow-expected.txt: Added.
+        * fast/css-grid-layout/grid-item-change-order-auto-flow.html: Added.
+
+2017-01-12  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Implement support for KeyboardEvent.code
+        https://bugs.webkit.org/show_bug.cgi?id=166932
+        <rdar://problem/29972518>
+
+        Reviewed by Darin Adler.
+
+        Extend layout test coverage and rebaseline a couple of existing tests
+        now that more checks are passing.
+
+        * fast/events/ios/keyboard-event-key-attribute-expected.txt:
+        * fast/events/ios/keyboard-event-key-attribute.html:
+        * platform/ios-simulator/fast/events/constructors/keyboard-event-constructor-expected.txt:
+        * platform/ios-simulator/imported/w3c/web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt:
+
+2017-01-12  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Autogenerate named getters
+        https://bugs.webkit.org/show_bug.cgi?id=166835
+
+        Reviewed by Alex Christensen.
+
+        * fast/dom/HTMLSelectElement/select-selectedIndex-expected.txt:
+        * fast/dom/HTMLSelectElement/select-selectedIndex-multiple-expected.txt:
+        * js/dom/reflect-set-onto-dom-expected.txt:
+        Update exception text.
+
+2017-01-12  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline inspector/dom/getAccessibilityPropertiesForNode.html after r210605.
+
+        Unreviewed test gardening.
+
+        * inspector/dom/getAccessibilityPropertiesForNode-expected.txt:
+
+2017-01-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Gardening on 13th Jan.
+
+        Unreviewed EFL Gardening. Update crash and timeout tests after bumping Ubuntu version.
+
+        * platform/efl/TestExpectations:
+
+2017-01-12  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Second update TestExpectation file for Ubuntu 16.04.
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Need to update this file for EFL bot again.
+
+2017-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r206133): LayoutTest inspector/css/manager-preferredInspectorStyleSheetForFrame.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=162305
+        <rdar://problem/28389364>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/css/manager-preferredInspectorStyleSheetForFrame-expected.txt:
+        * inspector/css/manager-preferredInspectorStyleSheetForFrame.html:
+        Revert the change that broke this and move to more deterministic callbacks
+        that don't include the extra variance in producing output.
+
+2017-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION: [mac-wk2] LayoutTest inspector/debugger/breakpoint-columns.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=161774
+        <rdar://problem/28217256>
+
+        Reviewed by Mark Lam.
+
+        * platform/mac-wk2/TestExpectations:
+        Remove flaky expectations for a test that hasn't failed in a month.
+
 2017-01-11  Joseph Pecoraro  <pecoraro@apple.com>
 
         REGRESSION: LayoutTest inspector/debugger/csp-exceptions.html is a flaky failure

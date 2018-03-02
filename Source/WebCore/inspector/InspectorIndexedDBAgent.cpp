@@ -573,20 +573,16 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
     if (!document)
         return;
 
-    auto* openingOrigin = document->securityOrigin();
-    if (!openingOrigin)
-        return;
+    auto& openingOrigin = document->securityOrigin();
 
-    auto* topOrigin = document->topOrigin();
-    if (!topOrigin)
-        return;
+    auto& topOrigin = document->topOrigin();
 
     IDBFactory* idbFactory = assertIDBFactory(errorString, document);
     if (!idbFactory)
         return;
 
     RefPtr<RequestDatabaseNamesCallback> callback = WTFMove(requestCallback);
-    idbFactory->getAllDatabaseNames(*topOrigin, *openingOrigin, [callback](auto& databaseNames) {
+    idbFactory->getAllDatabaseNames(topOrigin, openingOrigin, [callback](auto& databaseNames) {
         if (!callback->isActive())
             return;
 
@@ -610,7 +606,7 @@ void InspectorIndexedDBAgent::requestDatabase(ErrorString& errorString, const St
         return;
 
     Ref<DatabaseLoader> databaseLoader = DatabaseLoader::create(document, WTFMove(requestCallback));
-    databaseLoader->start(idbFactory, document->securityOrigin(), databaseName);
+    databaseLoader->start(idbFactory, &document->securityOrigin(), databaseName);
 }
 
 void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const InspectorObject* keyRange, Ref<RequestDataCallback>&& requestCallback)
@@ -633,7 +629,7 @@ void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String
     }
 
     Ref<DataLoader> dataLoader = DataLoader::create(document, WTFMove(requestCallback), injectedScript, objectStoreName, indexName, WTFMove(idbKeyRange), skipCount, pageSize);
-    dataLoader->start(idbFactory, document->securityOrigin(), databaseName);
+    dataLoader->start(idbFactory, &document->securityOrigin(), databaseName);
 }
 
 class ClearObjectStoreListener final : public EventListener {
@@ -735,7 +731,7 @@ void InspectorIndexedDBAgent::clearObjectStore(ErrorString& errorString, const S
         return;
 
     Ref<ClearObjectStore> clearObjectStore = ClearObjectStore::create(document, objectStoreName, WTFMove(requestCallback));
-    clearObjectStore->start(idbFactory, document->securityOrigin(), databaseName);
+    clearObjectStore->start(idbFactory, &document->securityOrigin(), databaseName);
 }
 
 } // namespace WebCore

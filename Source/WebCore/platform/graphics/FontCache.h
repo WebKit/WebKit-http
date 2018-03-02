@@ -27,15 +27,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontCache_h
-#define FontCache_h
+#pragma once
 
 #include "FontDescription.h"
 #include "Timer.h"
 #include <array>
 #include <limits.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -278,7 +276,6 @@ void platformInvalidateFontCache();
 SynthesisPair computeNecessarySynthesis(CTFontRef, const FontDescription&, bool isPlatformFont = false);
 RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontWeight, CTFontSymbolicTraits, float size);
 RetainPtr<CTFontRef> platformFontWithFamily(const AtomicString& family, CTFontSymbolicTraits, FontWeight, TextRenderingMode, float size);
-RetainPtr<CTFontRef> platformLookupFallbackFont(CTFontRef, FontWeight, const AtomicString& locale, const UChar* characters, unsigned length);
 bool requiresCustomFallbackFont(UChar32 character);
 
 #else
@@ -290,5 +287,3 @@ inline void FontCache::platformPurgeInactiveFontData()
 #endif
 
 }
-
-#endif

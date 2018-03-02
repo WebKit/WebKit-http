@@ -670,7 +670,7 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
-    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:frame->document()->securityOrigin()];
+    WebSecurityOrigin *webOrigin = [[WebSecurityOrigin alloc] _initWithWebCoreSecurityOrigin:&frame->document()->securityOrigin()];
     CallUIDelegate(m_webView, @selector(webView:frame:exceededDatabaseQuotaForSecurityOrigin:database:), kit(frame), webOrigin, (NSString *)databaseName);
     [webOrigin release];
 
@@ -741,10 +741,10 @@ void WebChromeClient::requestPointerUnlock()
 }
 #endif
 
-void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
+void WebChromeClient::runOpenPanel(Frame&, FileChooser& chooser)
 {
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
-    BOOL allowMultipleFiles = chooser->settings().allowsMultipleFiles;
+    BOOL allowMultipleFiles = chooser.settings().allowsMultipleFiles;
     WebOpenPanelResultListener *listener = [[WebOpenPanelResultListener alloc] initWithChooser:chooser];
     id delegate = [m_webView UIDelegate];
     if ([delegate respondsToSelector:@selector(webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:)])

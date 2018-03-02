@@ -1,3 +1,344 @@
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble gets dismissed when its associated element's frame gets detached
+        https://bugs.webkit.org/show_bug.cgi?id=167215
+        <rdar://problem/29885052>
+
+        Reviewed by Andreas Kling.
+
+        Make sure HTML validation bubble gets dismissed when its associated
+        element's frame gets detached and that we do not crash.
+
+        * WebCoreSupport/WebValidationMessageClient.h:
+        * WebCoreSupport/WebValidationMessageClient.mm:
+        (WebValidationMessageClient::documentDetached):
+
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-19  Andreas Kling  <akling@apple.com>
+
+        ScriptExecutionContext::topOrigin() should return a reference.
+        <https://webkit.org/b/167190>
+
+        Reviewed by Sam Weinig.
+
+        * Misc/WebCache.mm:
+        (+[WebCache addImageToCache:forURL:forFrame:]):
+        (+[WebCache removeImageFromCacheForURL:forFrame:]):
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed fix for the macOS build.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:disableOrdering:carbon:]):
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210848.
+
+        This change introduced media-related LayoutTest failures and
+        crashes on macOS.
+
+        Reverted changeset:
+
+        "[Modern Media Controls] Turn modern media controls on by
+        default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210848
+
+2017-01-18  Andreas Kling  <akling@apple.com>
+
+        Document::securityOrigin() should return a reference.
+        <https://webkit.org/b/167124>
+
+        Reviewed by Sam Weinig.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::loadRequest):
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::WebNetscapePluginStream):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView loadRequest:inTarget:withNotifyData:sendNotification:]):
+        * Plugins/WebPluginContainerCheck.mm:
+        (-[WebPluginContainerCheck _isForbiddenFileLoad]):
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::exceededDatabaseQuota):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::didRunInsecureContent):
+        * WebCoreSupport/WebGeolocationClient.mm:
+        (WebGeolocationClient::requestPermission):
+        (-[WebGeolocationProviderInitializationListener initializationAllowedWebView:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame _allowsFollowingLink:]):
+
+2017-01-18  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Enabled modern media controls by default in WK1. 
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-01-15  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr from "loader" directory of WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=167055
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebChromeClient.h: Updated for changes to ChromeClient.
+        Also made class final and most functions private and final.
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::runOpenPanel): Updated to take references.
+
+        * WebCoreSupport/WebEditorClient.h: Updated for changes to EditorClient.
+        * WebCoreSupport/WebEditorClient.mm:
+        (-[WebUndoStep initWithUndoStep:]): Take reference instead of PassRefPtr.
+        (+[WebUndoStep stepWithUndoStep:]): Ditto.
+        (-[WebUndoStep step]): Return reference instead of pointer.
+        (-[WebEditorUndoTarget undoEditing:]): Updated for the above.
+        (-[WebEditorUndoTarget redoEditing:]): Ditto.
+        (WebEditorClient::registerUndoOrRedoStep): Take reference instead of
+        PassRefPtr.
+        (WebEditorClient::registerUndoStep): Ditto.
+        (WebEditorClient::registerRedoStep): Ditto.
+
+        * WebCoreSupport/WebFrameLoaderClient.h: Updated for changes to
+        FrameLoaderClient, marked functions final instead of override.
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction): Take
+        pointer instead of PassRefPtr.
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction): Ditto.
+        (makeFormFieldValuesDictionary): Take a reference.
+        (WebFrameLoaderClient::dispatchWillSendSubmitEvent): Take Ref&& instead
+        of PassRefPtr.
+        (WebFrameLoaderClient::dispatchWillSubmitForm): Take a reference instead
+        of PassRefPtr.
+        (WebFrameLoaderClient::actionDictionary): Take a pointer instead of PassRePtr.
+        (WebFrameLoaderClient::createFrame): Take a reference instead of a pointer.
+        (WebFrameLoaderClient::createPlugin): Ditto.
+        (WebFrameLoaderClient::createJavaAppletWidget): Ditto.
+        (WebFrameLoaderClient::createNetworkingContext): Ditto.
+        (WebFrameLoaderClient::didCreateQuickLookHandle): Pass a reference.
+
+        * WebCoreSupport/WebFrameNetworkingContext.h: Use Ref instead of PassRefPtr.
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Tweak style a bit.
+
+        * WebCoreSupport/WebOpenPanelResultListener.h: Take a reference instead of
+        PassRefPtr. Use RefPtr for class field.
+        * WebCoreSupport/WebOpenPanelResultListener.mm:
+        (-[WebOpenPanelResultListener dealloc]): Deleted. Compiler will now do it
+        correctly without us declaring anything explicitly.
+        (-[WebOpenPanelResultListener cancel]): Get rid of hand-written deref code,
+        and let RefPtr do the work.
+        (-[WebOpenPanelResultListener chooseFilename:]): Ditto.
+        (-[WebOpenPanelResultListener chooseFilenames:]): Ditto.
+        (-[WebOpenPanelResultListener chooseFilenames:displayString:iconImage:]):
+        Rewrote to use a modern Objective-C for loop, reserveInitialCapacity,
+        and uncheckedAppend.
+
+        * WebView/WebArchive.mm:
+        (-[WebArchive initWithMainResource:subresources:subframeArchives:]):
+        Updated for changes to LegacyWebArchive.
+        (-[WebArchive mainResource]): Ditto.
+        (-[WebArchive subresources]): Ditto.
+        (-[WebArchive subframeArchives]): Ditto.
+
+        * WebView/WebDataSource.mm:
+        (-[WebDataSource _addSubframeArchives:]): Use a modern Objective-C for loop
+        instead of NSEnumerator.
+        (-[WebDataSource _fileWrapperForURL:]): Use auto.
+        (-[WebDataSource _documentFragmentWithArchive:]): Pass a reference.
+        (-[WebDataSource mainResource]): Ditto.
+        (-[WebDataSource subresources]): Ditto.
+        (-[WebDataSource subresourceForURL:]): Ditto.
+        (-[WebDataSource addSubresource:]): Ditto.
+
+        * WebView/WebResource.mm:
+        (-[WebResourcePrivate initWithCoreResource:]): Take Ref&& instead of PassRefPtr.
+        (-[WebResourcePrivate dealloc]): Remove explicit deref since RefPtr will now take
+        care of it
+        (-[WebResource initWithCoder:]): Pass a reference.
+        (-[WebResource encodeWithCoder:]): Updated since coreResource is now RefPtr.
+        (-[WebResource _initWithCoreResource:]): Take Ref&& instead of PassRefPtr.
+        (-[WebResource _coreResource]): Return reference rather than pointer.
+        (-[WebResource _initWithData:URL:MIMEType:textEncodingName:frameName:response:copyData:]):
+        Added code to handle the null case and pass a reference rather than a pointer.
+        * WebView/WebResourceInternal.h: Updated for the above.
+
+2017-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r210834
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        It introduced dozens of test timeouts.
+
+        Reverted changeset:
+        "[Modern Media Controls] Turn modern media controls on by default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210834
+
+2017-01-17  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Enabled modern media controls by default in WK1. 
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ENABLE(USER_TIMING) Not Defined for Apple Windows or OS X Ports
+        https://bugs.webkit.org/show_bug.cgi?id=116551
+        <rdar://problem/13949830>
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Crash when closing tab with debugger paused
+        https://bugs.webkit.org/show_bug.cgi?id=161746
+        <rdar://problem/15607819>
+
+        Reviewed by Brian Burg and Brent Fulgham.
+
+        * WebView/WebView.mm:
+        (WebKit::DeferredPageDestructor::createDeferredPageDestructor):
+        (WebKit::DeferredPageDestructor::DeferredPageDestructor):
+        (WebKit::DeferredPageDestructor::tryDestruction):
+        (-[WebView _close]):
+        Defer destruction of the Page if we are in a nested runloop.
+
+2017-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove the REQUEST_ANIMATION_FRAME flag
+        https://bugs.webkit.org/show_bug.cgi?id=156980
+        <rdar://problem/25906849>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-16  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Do some cleanup in QuickLookHandle
+        https://bugs.webkit.org/show_bug.cgi?id=166864
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::didCreateQuickLookHandle): Changed to pass a
+        Ref<QuickLookHandleClient>&& to QuickLookHandle::setClient().
+
+2017-01-15  Tim Horton  <timothy_horton@apple.com>
+
+        De-duplicate more (nearly) identical code in Editor(Mac|IOS).mm
+        https://bugs.webkit.org/show_bug.cgi?id=167063
+
+        Reviewed by Dan Bernstein.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _selectionStartFontAttributesAsRTF]):
+        (-[WebHTMLView _updateFontPanel]):
+        * WebView/WebView.mm:
+        (-[WebView typingAttributes]):
+        Adjust to fontAttributesForSelectionStart returning a RetainPtr.
+
+2017-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(DETAILS_ELEMENT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167042
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-11  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr from more of "platform"
+        https://bugs.webkit.org/show_bug.cgi?id=166809
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (NetscapePluginWidget::handleEvent): Pass a reference.
+        * WebView/WebView.mm:
+        (-[WebView _addScrollerDashboardRegionsForFrameView:dashboardRegions:]):
+        Updated since the children set now contains Ref instead of RefPtr.
+
+2017-01-13  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for DeviceMotionEvent and DeviceOrientationEvent
+        https://bugs.webkit.org/show_bug.cgi?id=167006
+
+        Reviewed by Geoffrey Garen.
+
+        * WebView/WebDeviceOrientation.mm:
+        (convert):
+        (-[WebDeviceOrientation initWithCanProvideAlpha:alpha:canProvideBeta:beta:canProvideGamma:gamma:]):
+        Update for new use of std::optional.
+
+2017-01-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unnecessary includes of Page.h
+        https://bugs.webkit.org/show_bug.cgi?id=166996
+
+        Reviewed by Yusuke Suzuki.
+
+        * DOM/DOMHTML.mm:
+        * History/WebBackForwardList.mm:
+        * Plugins/WebPluginController.mm:
+        * WebCoreSupport/WebNotificationClient.mm:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        * WebView/WebFullScreenController.mm:
+
+2017-01-12  Chris Dumez  <cdumez@apple.com>
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=166995
+
+        Reviewed by Jer Noble.
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        as some people are having trouble building without it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-12  Chris Dumez  <cdumez@apple.com>
+
+        HTML form validation popover sometimes does not go away
+        https://bugs.webkit.org/show_bug.cgi?id=166990
+        <rdar://problem/29985957>
+
+        Reviewed by Tim Horton.
+
+        Update code using ValidationBubble now that it is RefCounted.
+
+        * WebView/WebView.mm:
+        (-[WebView showFormValidationMessage:withAnchorRect:]):
+
 2017-01-10  Ryosuke Niwa  <rniwa@webkit.org>
 
         Remove pointerLockElement from DOMDocumentPrivate.h

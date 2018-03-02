@@ -261,7 +261,7 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     if (!cachedResource) {
         ResourceRequest request(url);
 #if ENABLE(CACHE_PARTITIONING)
-        request.setDomainForCachePartition(frame->document()->topOrigin()->domainForCachePartition());
+        request.setDomainForCachePartition(frame->document()->topOrigin().domainForCachePartition());
 #endif
         cachedResource = MemoryCache::singleton().resourceForRequest(request, frame->page()->sessionID());
     }
@@ -765,7 +765,7 @@ String InspectorPageAgent::loaderId(DocumentLoader* loader)
 Frame* InspectorPageAgent::findFrameWithSecurityOrigin(const String& originRawString)
 {
     for (Frame* frame = &m_page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        RefPtr<SecurityOrigin> documentOrigin = frame->document()->securityOrigin();
+        Ref<SecurityOrigin> documentOrigin = frame->document()->securityOrigin();
         if (documentOrigin->toRawString() == originRawString)
             return frame;
     }
@@ -869,7 +869,7 @@ Ref<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForFrame(Fr
         .setLoaderId(loaderId(frame->loader().documentLoader()))
         .setUrl(frame->document()->url().string())
         .setMimeType(frame->loader().documentLoader()->responseMIMEType())
-        .setSecurityOrigin(frame->document()->securityOrigin()->toRawString())
+        .setSecurityOrigin(frame->document()->securityOrigin().toRawString())
         .release();
     if (frame->tree().parent())
         frameObject->setParentId(frameId(frame->tree().parent()));

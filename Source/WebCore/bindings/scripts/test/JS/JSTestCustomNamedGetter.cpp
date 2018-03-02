@@ -24,7 +24,6 @@
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMConvert.h"
-#include "wtf/text/AtomicString.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
@@ -140,10 +139,10 @@ bool JSTestCustomNamedGetter::getOwnPropertySlot(JSObject* object, ExecState* st
     if (proto.isObject() && jsCast<JSObject*>(proto)->hasProperty(state, propertyName))
         return false;
 
-    if (thisObject->classInfo() == info()) {
+    if (thisObject->classInfo() == info() && !propertyName.isSymbol()) {
         JSValue value;
         if (thisObject->nameGetter(state, propertyName, value)) {
-            slot.setValue(thisObject, ReadOnly | DontEnum, value);
+            slot.setValue(thisObject, ReadOnly, value);
             return true;
         }
     }
@@ -158,7 +157,7 @@ bool JSTestCustomNamedGetter::getOwnPropertySlotByIndex(JSObject* object, ExecSt
     if (thisObject->classInfo() == info()) {
         JSValue value;
         if (thisObject->nameGetter(state, propertyName, value)) {
-            slot.setValue(thisObject, ReadOnly | DontDelete | DontEnum, value);
+            slot.setValue(thisObject, ReadOnly, value);
             return true;
         }
     }
@@ -228,7 +227,7 @@ bool JSTestCustomNamedGetterOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::U
 
 void JSTestCustomNamedGetterOwner::finalize(JSC::Handle<JSC::Unknown> handle, void* context)
 {
-    auto* jsTestCustomNamedGetter = jsCast<JSTestCustomNamedGetter*>(handle.slot()->asCell());
+    auto* jsTestCustomNamedGetter = static_cast<JSTestCustomNamedGetter*>(handle.slot()->asCell());
     auto& world = *static_cast<DOMWrapperWorld*>(context);
     uncacheWrapper(world, &jsTestCustomNamedGetter->wrapped(), jsTestCustomNamedGetter);
 }

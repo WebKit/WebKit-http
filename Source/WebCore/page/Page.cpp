@@ -33,6 +33,7 @@
 #include "ContextMenuController.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
 #include "DragController.h"
@@ -65,6 +66,7 @@
 #include "PageDebuggable.h"
 #include "PageGroup.h"
 #include "PageOverlayController.h"
+#include "PerformanceMonitor.h"
 #include "PlatformMediaSessionManager.h"
 #include "PlugInClient.h"
 #include "PluginData.h"
@@ -97,7 +99,9 @@
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
+#include "WebGLStateTracker.h"
 #include "Widget.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/Base64.h>
@@ -125,6 +129,12 @@
 namespace WebCore {
 
 static HashSet<Page*>* allPages;
+static unsigned nonUtilityPageCount { 0 };
+
+static inline bool isUtilityPageChromeClient(ChromeClient& chromeClient)
+{
+    return chromeClient.isEmptyChromeClient() || chromeClient.isSVGImageChromeClient();
+}
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
@@ -190,7 +200,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
-    , m_subframeCount(0)
+    , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -244,6 +254,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
+    , m_isUtilityPage(isUtilityPageChromeClient(chrome().client()))
+    , m_performanceMonitor(isUtilityPage() ? nullptr : std::make_unique<PerformanceMonitor>(*this))
 {
     updateTimerThrottlingState();
 
@@ -260,6 +272,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
     ASSERT(!allPages->contains(this));
     allPages->add(this);
+    if (!isUtilityPage())
+        ++nonUtilityPageCount;
 
 #ifndef NDEBUG
     pageCounter.increment();
@@ -276,11 +290,16 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
 Page::~Page()
 {
+    ASSERT(!m_nestedRunLoopCount);
+    ASSERT(!m_unnestCallback);
+
     m_validationMessageClient = nullptr;
     m_diagnosticLoggingClient = nullptr;
     m_mainFrame->setView(nullptr);
     setGroupName(String());
     allPages->remove(this);
+    if (!isUtilityPage())
+        --nonUtilityPageCount;
     
     m_settings->pageDestroyed();
 
@@ -552,10 +571,8 @@ bool Page::showAllPlugins() const
     if (m_showAllPlugins)
         return true;
 
-    if (Document* document = mainFrame().document()) {
-        if (SecurityOrigin* securityOrigin = document->securityOrigin())
-            return securityOrigin->isLocal();
-    }
+    if (Document* document = mainFrame().document())
+        return document->securityOrigin().isLocal();
 
     return false;
 }
@@ -918,6 +935,25 @@ void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInte
         frame->document()->userInterfaceLayoutDirectionChanged();
     }
 #endif
+}
+
+void Page::didStartProvisionalLoad()
+{
+    if (m_performanceMonitor)
+        m_performanceMonitor->didStartProvisionalLoad();
+}
+
+void Page::didFinishLoad()
+{
+    resetRelevantPaintedObjectCounter();
+
+    if (m_performanceMonitor)
+        m_performanceMonitor->didFinishLoad();
+}
+
+bool Page::isOnlyNonUtilityPage() const
+{
+    return !isUtilityPage() && nonUtilityPageCount == 1;
 }
 
 void Page::setTopContentInset(float contentInset)
@@ -1333,18 +1369,15 @@ void Page::dnsPrefetchingStateChanged()
 Vector<Ref<PluginViewBase>> Page::pluginViews()
 {
     Vector<Ref<PluginViewBase>> views;
-
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        FrameView* view = frame->view();
+        auto* view = frame->view();
         if (!view)
             break;
-
         for (auto& widget : view->children()) {
-            if (is<PluginViewBase>(*widget))
-                views.append(downcast<PluginViewBase>(*widget));
+            if (is<PluginViewBase>(widget.get()))
+                views.append(downcast<PluginViewBase>(widget.get()));
         }
     }
-
     return views;
 }
 
@@ -1472,6 +1505,9 @@ void Page::setActivityState(ActivityState::Flags activityState)
 
     if (wasVisibleAndActive != isVisibleAndActive())
         PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary();
+
+    if (m_performanceMonitor)
+        m_performanceMonitor->activityStateChanged(oldActivityState, activityState);
 }
 
 bool Page::isVisibleAndActive() const
@@ -1578,6 +1614,41 @@ void Page::addFooterWithHeight(int footerHeight)
     renderView->compositor().updateLayerForFooter(m_footerHeight);
 }
 #endif
+
+void Page::incrementNestedRunLoopCount()
+{
+    m_nestedRunLoopCount++;
+}
+
+void Page::decrementNestedRunLoopCount()
+{
+    ASSERT(m_nestedRunLoopCount);
+    if (m_nestedRunLoopCount <= 0)
+        return;
+
+    m_nestedRunLoopCount--;
+
+    if (!m_nestedRunLoopCount && m_unnestCallback) {
+        callOnMainThread([this] {
+            if (insideNestedRunLoop())
+                return;
+
+            // This callback may destruct the Page.
+            if (m_unnestCallback) {
+                auto callback = m_unnestCallback;
+                m_unnestCallback = nullptr;
+                callback();
+            }
+        });
+    }
+}
+
+void Page::whenUnnested(std::function<void()> callback)
+{
+    ASSERT(!m_unnestCallback);
+
+    m_unnestCallback = callback;
+}
 
 #if ENABLE(REMOTE_INSPECTOR)
 bool Page::remoteInspectionAllowed() const

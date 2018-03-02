@@ -177,7 +177,7 @@ public:
     virtual void setCursor(const Cursor&) = 0;
     virtual void setCursorHiddenUntilMouseMoves(bool) = 0;
 #endif
-#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+#if !USE(REQUEST_ANIMATION_FRAME_TIMER)
     virtual void scheduleAnimation() = 0;
 #endif
     // End methods used by HostWindow.
@@ -273,7 +273,7 @@ public:
     virtual std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) = 0;
 #endif
 
-    virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) = 0;
+    virtual void runOpenPanel(Frame&, FileChooser&) = 0;
     // Asynchronous request to load an icon for specified filenames.
     virtual void loadIconForFiles(const Vector<String>&, FileIconLoader&) = 0;
         
@@ -454,6 +454,8 @@ public:
 #endif
 
     virtual void didInvalidateDocumentMarkerRects() { }
+
+    virtual void reportProcessCPUTime(int64_t, ActivityStateForCPUSampling) { }
 
 protected:
     virtual ~ChromeClient() { }

@@ -1,3 +1,279 @@
+2017-01-19  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Network Tab's "Clear Network Items" button should have keyboard shortcuts
+        https://bugs.webkit.org/show_bug.cgi?id=166943
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._clear):
+        Move clear keyboard shortcut to main object and call _handleClearShortcut on the visible
+        content view if able.
+
+        * UserInterface/Controllers/JavaScriptLogViewController.js:
+        (WebInspector.JavaScriptLogViewController):
+        (WebInspector.JavaScriptLogViewController.prototype.requestClearMessages):
+        (WebInspector.JavaScriptLogViewController.prototype._handleClearShortcut): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype.handleClearShortcut):
+        Move logic for requesting to clear messages from the LogManager to a better named function.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype.handleClearShortcut):
+
+2017-01-19  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Dashboard's log/error/warning help tag says "click to show the Console" even when clicking does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=167102
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.showConsoleTab):
+        Don't revert to the All scopes if the requested scope is already selected.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/DefaultDashboardView.js:
+        (WebInspector.DefaultDashboardView):
+        (WebInspector.DefaultDashboardView.prototype._appendElementForNamedItem):
+        (WebInspector.DefaultDashboardView.prototype._setItemEnabled):
+        Only apply a title to the element when it is enabled.
+
+2017-01-18  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: split console should be allowed for Network and Timeline tabs when Inspector is not docked
+        https://bugs.webkit.org/show_bug.cgi?id=167075
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.dockedConfigurationSupportsSplitContentBrowser):
+        Helper function to determine if the current docked state supports having the content view
+        and split console at the same time.  Currently set to be true if not docked bottom.
+
+        * UserInterface/Views/ClusterContentView.js:
+        (WebInspector.ClusterContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WebInspector.NetworkTabContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype.get supportsSplitContentBrowser): Deleted.
+        Update supportsSplitContentBrowser functions to only be true/false based on the return value
+        of WebInspector.dockedConfigurationSupportsSplitContentBrowser.
+
+2017-01-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table only works for the first 5 properties
+        https://bugs.webkit.org/show_bug.cgi?id=167175
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._formatParameterAsTable):
+        Allow a max of 15 columns instead of 10.
+
+2017-01-16  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: add "Persist Logs on Navigation" to settings screen
+        https://bugs.webkit.org/show_bug.cgi?id=166992
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Controllers/LogManager.js:
+        (WebInspector.LogManager):
+        (WebInspector.LogManager.prototype._delayedMessagesCleared):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._sessionStarted):
+        (WebInspector.LogContentView.prototype._handleContextMenuEvent):
+        (WebInspector.LogContentView.prototype._toggleClearLogOnNavigateSetting):
+        Move setting and UI toggle for "Keep Log on Navigation" to the global settings dictionary
+        and content view.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.initialLayout):
+        (WebInspector.SettingsTabContentView):
+        Add checkbox for new setting and spacer between text settings and log settings.
+
+2017-01-16  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: add UI Zoom level to Settings screen
+        https://bugs.webkit.org/show_bug.cgi?id=166991
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        (WebInspector._dockedResizerMouseDown):
+        (WebInspector._increaseZoom):
+        (WebInspector._decreaseZoom):
+        (WebInspector._resetZoom):
+        (WebInspector.getZoomFactor): Renamed from _zoomFactor.
+        (WebInspector.setZoomFactor): Renamed from _setZoomFactor.
+        * UserInterface/Base/Setting.js:
+        (WebInspector.settings):
+        Moved zoomFactor setting to global dictionary.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .setting-container > .setting-value-controller input[type="number"]):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.initialLayout):
+        Add UI input for changing zoomFactor.
+
+2017-01-14  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Cmd-, should open Settings tab
+        https://bugs.webkit.org/show_bug.cgi?id=167028
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._showSettingsTab): Added.
+
+2017-01-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Settings tab is restored when reopening inspector
+        https://bugs.webkit.org/show_bug.cgi?id=167025
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._tabBrowserSelectedTabContentViewDidChange):
+        Only save the selectedTabIndex if the current tab should be saved and reloaded upon opening
+        the WebInspector window.
+
+2017-01-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Resources disappear from the network tab when iframe gets removed from DOM
+        https://bugs.webkit.org/show_bug.cgi?id=166776
+        <rdar://problem/29909640>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel):
+        Don't remove resource tree elements from Network tab when iframe gets detached from the DOM.
+
+2017-01-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: the 'lock' icon for non-editable rules in the Style Rules sidebar lacks a tooltip
+        https://bugs.webkit.org/show_bug.cgi?id=166909
+        <rdar://problem/29959406>
+
+        Reviewed by Matt Baker.
+
+        Convert the lock icon from a pseudo-element to an 'img' element and add a title attribute.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section.locked > .header > .locked-icon):
+        (.style-declaration-section.locked > .header::before): Deleted.
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+
+2017-01-12  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r209711): Web Inspector: in Elements Tab, selecting a deeply nested DOM element causes navigation bar buttons to be pushed off the leading edge
+        https://bugs.webkit.org/show_bug.cgi?id=166898
+        <rdar://problem/29951737>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/HierarchicalPathComponent.js:
+        (WebInspector.HierarchicalPathComponent.prototype.set selectorArrows):
+        The following operations do NOT produce the same result:
+
+            classList.toogle(aString, undefined)
+            classList.toogle(aString, false)
+
+        The former is an equivalent of classList.toogle(aString), e.g. it set a class if it wasn't set before.
+
+2017-01-12  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: cubic-bezier editor behaves poorly for invalid inputs in component fields
+        https://bugs.webkit.org/show_bug.cgi?id=166928
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor):
+        (.bezier-editor > .number-input-container > input):
+
+        * UserInterface/Views/BezierEditor.js:
+        (WebInspector.BezierEditor.createBezierInput):
+        (WebInspector.BezierEditor):
+        Add type, step, min, and max to the bezier component inputs to better control user input.
+
+2017-01-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Add another Protocol Version
+        https://bugs.webkit.org/show_bug.cgi?id=166953
+        <rdar://problem/29980631>
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js: Added.
+        * Versions/Inspector-iOS-10.3.json: Added.
+
+2017-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: spring function editor has unusual layout, should have left-aligned labels and slider tracks
+        https://bugs.webkit.org/show_bug.cgi?id=166933
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Main.css:
+        (input[type=range]::-webkit-slider-thumb):
+        (input[type=range]::-webkit-slider-runnable-track):
+        (input[type=range]::-webkit-slider-runnable-track::before): Deleted.
+        Fix slider styles.
+
+        * UserInterface/Views/SpringEditor.css:
+        (.spring-editor):
+        (.spring-editor > .spring-preview):
+        (.spring-editor > .spring-timing):
+        (.spring-editor > .number-input-container > .number-input-row > .number-input-row-title):
+        (.spring-editor > .number-input-container > .number-input-row > input):
+        (.spring-editor > .number-input-container > .number-input-row > input::-webkit-inner-spin-button):
+        (.spring-editor > .number-input-container > .number-input-row > input[type="range"]):
+        Decrease spacing and left-align text.
+
+        * UserInterface/Views/SpringEditor.js:
+        (WebInspector.SpringEditor.prototype._handleNumberInputKeydown):
+        (WebInspector.SpringEditor.prototype._changeSpringForInput):
+        Only update editor values when the new value of any input has changed.  This allows users to
+        enter decimal values ("." was being stripped by `parseFloat`).
+
+2017-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: color, gradient, cubic-bezier, spring editors should be dismissable using ESC
+        https://bugs.webkit.org/show_bug.cgi?id=166934
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover):
+        (WebInspector.Popover.prototype.dismiss):
+        (WebInspector.Popover.prototype.handleEvent):
+        (WebInspector.Popover.prototype._addListenersIfNeeded):
+        Adds a keydown listener while visible for the Escape key that dismisses the popover.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.prototype.set keyboardShortcutDisabled):
+        Expose the ability to disable the global keyboard shortcut.  This allows the Popover to have
+        its own Escape keyboard shortcut to take precedence.
+
 2017-01-11  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: fix UIString for Print Styles button

@@ -35,20 +35,21 @@ namespace WebCore {
 
 class CachedModuleScriptLoaderClient;
 class CachedScript;
+class CachedScriptFetcher;
 class DeferredPromise;
 class Document;
 class JSDOMGlobalObject;
-class LoadableScript;
 class URL;
 
 class CachedModuleScriptLoader final : public RefCounted<CachedModuleScriptLoader>, private CachedResourceClient {
 public:
-    static Ref<CachedModuleScriptLoader> create(CachedModuleScriptLoaderClient&, DeferredPromise&);
+    static Ref<CachedModuleScriptLoader> create(CachedModuleScriptLoaderClient&, DeferredPromise&, CachedScriptFetcher&);
 
     virtual ~CachedModuleScriptLoader();
 
-    bool load(Document&, LoadableScript&, const URL& sourceURL);
+    bool load(Document&, const URL& sourceURL);
 
+    CachedScriptFetcher& scriptFetcher() { return m_scriptFetcher.get(); }
     CachedScript* cachedScript() { return m_cachedScript.get(); }
 
     void clearClient()
@@ -58,12 +59,13 @@ public:
     }
 
 private:
-    CachedModuleScriptLoader(CachedModuleScriptLoaderClient&, DeferredPromise&);
+    CachedModuleScriptLoader(CachedModuleScriptLoaderClient&, DeferredPromise&, CachedScriptFetcher&);
 
     void notifyFinished(CachedResource&) final;
 
     CachedModuleScriptLoaderClient* m_client { nullptr };
     RefPtr<DeferredPromise> m_promise;
+    Ref<CachedScriptFetcher> m_scriptFetcher;
     CachedResourceHandle<CachedScript> m_cachedScript;
 };
 

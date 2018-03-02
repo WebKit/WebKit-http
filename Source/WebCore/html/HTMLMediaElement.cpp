@@ -569,7 +569,10 @@ HTMLMediaElement::~HTMLMediaElement()
 
     m_completelyLoaded = true;
 
-    m_player = nullptr;
+    if (m_player) {
+        m_player->invalidate();
+        m_player = nullptr;
+    }
     updatePlaybackControlsManager();
 }
 
@@ -1425,11 +1428,8 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     }
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    DocumentLoader* documentLoader = frame->loader().documentLoader();
-
-    if (documentLoader) {
-        auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(url, ResourceType::Media, *documentLoader);
-        if (blockedStatus.blockedLoad) {
+    if (auto* documentLoader = frame->loader().documentLoader()) {
+        if (page->userContentProvider().processContentExtensionRulesForLoad(url, ResourceType::Media, *documentLoader).blockedLoad) {
             mediaLoadingFailed(MediaPlayer::FormatError);
             return;
         }
@@ -1439,11 +1439,9 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
     // The resource fetch algorithm 
     m_networkState = NETWORK_LOADING;
 
-    // If the url should be loaded from the application cache, pass the url of the cached file
-    // to the media engine.
-    ApplicationCacheHost* cacheHost = frame->loader().documentLoader()->applicationCacheHost();
+    // If the URL should be loaded from the application cache, pass the URL of the cached file to the media engine.
     ApplicationCacheResource* resource = nullptr;
-    if (cacheHost && cacheHost->shouldLoadResourceFromApplicationCache(ResourceRequest(url), resource)) {
+    if (frame->loader().documentLoader()->applicationCacheHost().shouldLoadResourceFromApplicationCache(ResourceRequest(url), resource)) {
         // Resources that are not present in the manifest will always fail to load (at least, after the
         // cache has been primed the first time), making the testing of offline applications simpler.
         if (!resource || resource->path().isEmpty()) {
@@ -1457,7 +1455,7 @@ void HTMLMediaElement::loadResource(const URL& initialURL, ContentType& contentT
 
     m_firstTimePlaying = true;
 
-    // Set m_currentSrc *before* changing to the cache url, the fact that we are loading from the app
+    // Set m_currentSrc *before* changing to the cache URL, the fact that we are loading from the app
     // cache is an internal detail not exposed through the media element API.
     m_currentSrc = url;
 
@@ -1968,7 +1966,7 @@ bool HTMLMediaElement::isSafeToLoadURL(const URL& url, InvalidURLAction actionIf
     }
 
     Frame* frame = document().frame();
-    if (!frame || !document().securityOrigin()->canDisplay(url)) {
+    if (!frame || !document().securityOrigin().canDisplay(url)) {
         if (actionIfInvalid == Complain)
             FrameLoader::reportLocalLoadFailed(frame, url.stringCenterEllipsizedToLength());
         LOG(Media, "HTMLMediaElement::isSafeToLoadURL(%p) - %s -> FALSE rejected by SecurityOrigin", this, urlForLoggingMedia(url).utf8().data());
@@ -2434,11 +2432,7 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
     if (storageDirectory.isEmpty())
         return emptyString();
 
-    SecurityOrigin* origin = document().securityOrigin();
-    if (!origin)
-        return emptyString();
-
-    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
+    return pathByAppendingComponent(storageDirectory, SecurityOriginData::fromSecurityOrigin(document().securityOrigin()).databaseIdentifier());
 }
 
 void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
@@ -5050,7 +5044,10 @@ void HTMLMediaElement::clearMediaPlayer(DelayedActionType flags)
         document().removeMediaCanStartListener(this);
     }
 
-    m_player = nullptr;
+    if (m_player) {
+        m_player->invalidate();
+        m_player = nullptr;
+    }
     updatePlaybackControlsManager();
 
     stopPeriodicTimers();
@@ -5991,7 +5988,7 @@ void HTMLMediaElement::createMediaPlayer()
 #if ENABLE(VIDEO_TRACK)
     forgetResourceSpecificTracks();
 #endif
-    m_player = std::make_unique<MediaPlayer>(static_cast<MediaPlayerClient&>(*this));
+    m_player = MediaPlayer::create(*this);
     scheduleUpdatePlaybackControlsManager();
 
 #if ENABLE(WEB_AUDIO)
@@ -6091,6 +6088,15 @@ void HTMLMediaElement::setController(RefPtr<MediaController>&& controller)
 
     if (hasMediaControls())
         mediaControls()->setMediaController(m_mediaController ? m_mediaController.get() : static_cast<MediaControllerInterface*>(this));
+}
+
+void HTMLMediaElement::setControllerForBindings(MediaController* controller)
+{
+    // 4.8.10.11.2 Media controllers: controller attribute.
+    // On setting, it must first remove the element's mediagroup attribute, if any, 
+    setMediaGroup({ });
+    // and then set the current media controller to the given value.
+    setController(controller);
 }
 
 void HTMLMediaElement::updateMediaController()

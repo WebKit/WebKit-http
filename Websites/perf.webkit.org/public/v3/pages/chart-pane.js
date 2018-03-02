@@ -6,7 +6,7 @@ function createTrendLineExecutableFromAveragingFunction(callback) {
         if (!values.length)
             return Promise.resolve(null);
 
-        var averageValues = callback.call(null, values, parameters[0], parameters[1]);
+        var averageValues = callback.call(null, values, ...parameters);
         if (!averageValues)
             return Promise.resolve(null);
 
@@ -77,9 +77,14 @@ class ChartPane extends ChartPaneBase {
         this._trendLineVersion = 0;
         this._renderedTrendLineOptions = false;
 
-        this.content().querySelector('close-button').component().setCallback(chartsPage.closePane.bind(chartsPage, this));
-
         this.configure(platformId, metricId);
+    }
+
+    didConstructShadowTree()
+    {
+        this.part('close').listenToAction('activate', () => {
+            this._chartsPage.closePane(this);
+        })
     }
 
     serializeState()
@@ -186,8 +191,8 @@ class ChartPane extends ChartPaneBase {
     {
         if (repository != this._commitLogViewer.currentRepository()) {
             var range = this._mainChartStatus.setCurrentRepository(repository);
-            this._commitLogViewer.view(repository, range.from, range.to).then(this.render.bind(this));
-            this.render();
+            this._commitLogViewer.view(repository, range.from, range.to).then(() => { this.enqueueToRender(); });
+            this.enqueueToRender();
         }
     }
 
@@ -251,6 +256,8 @@ class ChartPane extends ChartPaneBase {
         var element = ComponentBase.createElement;
         var link = ComponentBase.createLink;
         var self = this;
+
+        this.part('close').enqueueToRender();
 
         if (this._chartsPage.canBreakdown(platform, metric)) {
             actions.push(element('li', link('Breakdown', function () {
@@ -402,15 +409,15 @@ class ChartPane extends ChartPaneBase {
         var link = ComponentBase.createLink;
         var self = this;
 
-        if (this._trendLineType == null) {
-            this.renderReplace(this.content().querySelector('.trend-line-types'), [
+        const trendLineTypesContainer = this.content().querySelector('.trend-line-types');
+        if (!trendLineTypesContainer.querySelector('select')) {
+            this.renderReplace(trendLineTypesContainer, [
                 element('select', {onchange: this._trendLineTypeDidChange.bind(this)},
-                    ChartTrendLineTypes.map(function (type) {
-                        return element('option', type == self._trendLineType ? {value: type.id, selected: true} : {value: type.id}, type.label);
-                    }))
+                    ChartTrendLineTypes.map((type) => { return element('option', {value: type.id}, type.label); }))
             ]);
-        } else
-            this.content().querySelector('.trend-line-types select').value = this._trendLineType.id;
+        }
+        if (this._trendLineType)
+            trendLineTypesContainer.querySelector('select').value = this._trendLineType.id;
 
         if (this._renderedTrendLineOptions)
             return;
@@ -448,7 +455,7 @@ class ChartPane extends ChartPaneBase {
 
         this._updateTrendLine();
         this._chartsPage.graphOptionsDidChange();
-        this.render();
+        this.enqueueToRender();
     }
 
     _defaultParametersForTrendLine(type)
@@ -493,7 +500,7 @@ class ChartPane extends ChartPaneBase {
 
         if (!currentTrendLineType.execute) {
             this._mainChart.clearTrendLines();
-            this.render();
+            this.enqueueToRender();
         } else {
             // Wait for all trendlines to be ready. Otherwise we might see FOC when the domain is expanded.
             Promise.all(sourceList.map(function (source, sourceIndex) {
@@ -502,7 +509,7 @@ class ChartPane extends ChartPaneBase {
                         self._mainChart.setTrendLine(sourceIndex, trendlineSeries);
                 });
             })).then(function () {
-                self.render();
+                self.enqueueToRender();
             });
         }
     }
@@ -514,7 +521,7 @@ class ChartPane extends ChartPaneBase {
                 <h2 class="chart-pane-title">-</h2>
                 <nav class="chart-pane-actions">
                     <ul>
-                        <li class="close"><close-button></close-button></li>
+                        <li><close-button id="close"></close-button></li>
                     </ul>
                     <ul class="chart-pane-action-buttons buttoned-toolbar"></ul>
                     <ul class="chart-pane-alternative-platforms popover" style="display:none"></ul>

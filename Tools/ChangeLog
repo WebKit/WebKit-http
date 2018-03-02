@@ -1,3 +1,332 @@
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ unit tests failing since r210531.
+
+        Avoid using paths to files that don't actually exist.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestConsoleMessage.cpp:
+        (testWebKitConsoleMessageNetworkError):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/silence.mpg: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/simple.json: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/tracks.ogg: Added.
+
+2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Provide API to set proxy settings
+        https://bugs.webkit.org/show_bug.cgi?id=128674
+
+        Reviewed by Michael Catanzaro.
+
+        Add tests for new proxy settings API.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (serverCallback):
+        (ProxyTest::ProxyTest):
+        (ProxyTest::~ProxyTest):
+        (ProxyTest::loadURIAndGetMainResourceData):
+        (ProxyTest::proxyServerPortAsString):
+        (testWebContextProxySettings):
+        (beforeAll):
+
+2017-01-19  Timothy Hatcher  <timothy@hatcher.name>
+
+        Add back my old email address so old commits will still match it.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-01-19  Timothy Hatcher  <timothy@hatcher.name>
+
+        Remove my old email address from contributors.json and watchlist.
+
+        * Scripts/validate-committer-lists:
+        (CommitterListFromGit): Change the mapping to the correct email.
+        * Scripts/webkitpy/common/config/contributors.json:
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-01-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210848.
+
+        This change introduced media-related LayoutTest failures and
+        crashes on macOS.
+
+        Reverted changeset:
+
+        "[Modern Media Controls] Turn modern media controls on by
+        default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210848
+
+2017-01-18  Andreas Kling  <akling@apple.com>
+
+        Document::securityOrigin() should return a reference.
+        <https://webkit.org/b/167124>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-01-18  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Clipboard tests are flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167088
+
+        Reviewed by Brent Fulgham.
+
+        Tests involving the clipboard are flaky when running with multiple DRTs, since the clipboard is global. 
+        We can fix this by assigning each DRT a separate window station (each window station has its own clipboard).
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (main):
+
+2017-01-18  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Enabled modern media controls by default in test runners. 
+
+        * DumpRenderTree/TestOptions.h:
+        * WebKitTestRunner/TestOptions.h:
+
+2017-01-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, rolling out r210834
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        It introduced dozens of test timeouts.
+
+        Reverted changeset:
+        "[Modern Media Controls] Turn modern media controls on by default"
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+        http://trac.webkit.org/changeset/210834
+
+2017-01-17  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Enabled modern media controls by default in test runners. 
+
+        * DumpRenderTree/TestOptions.h:
+        * WebKitTestRunner/TestOptions.h:
+
+2017-01-17  Chris Dumez  <cdumez@apple.com>
+
+        Document title changed twice when setting document.title
+        https://bugs.webkit.org/show_bug.cgi?id=167065
+
+        Reviewed by Darin Adler.
+
+        Add WebKit2GTK API test that was written by Michael Catanzaro.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewTitleChange):
+        (beforeAll):
+
+2017-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ENABLE(USER_TIMING) Not Defined for Apple Windows or OS X Ports
+        https://bugs.webkit.org/show_bug.cgi?id=116551
+        <rdar://problem/13949830>
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        Remove stale RESOURCE_TIMING references which are now a runtime enabled feature
+        that is part of the existing WEB_TIMING feature.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-17  Jonathan Bedard  <jbedard@apple.com>
+
+        'webkit-patch post' no longer works with moved/copied files
+        https://bugs.webkit.org/show_bug.cgi?id=166914
+        <rdar://problem/29979707>
+
+        Reviewed by Daniel Bates.
+
+        SVN 1.9 has a bug where when a file has been moved or copied, the svn diff of the new
+        file outputs only the "Index:" line with an empty body.  This workaround
+        ignores such output from svn diff.  A issue has been filed with SVN, a link to the
+        public email list tracking this bug is below.
+        http://mail-archives.apache.org/mod_mbox/subversion-users/201701.mbox/%3cCF9BDE0A-7454-4405-8259-1120C6B76A03@apple.com%3e
+        
+
+        * Scripts/svn-create-patch:
+        (generateDiff): Ignore an "Index:" line with an empty body.
+
+2017-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove the REQUEST_ANIMATION_FRAME flag
+        https://bugs.webkit.org/show_bug.cgi?id=156980
+        <rdar://problem/25906849>
+
+        Reviewed by Simon Fraser.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-15  Sam Weinig  <sam@webkit.org>
+
+        Add the ability to use numbers in makeString()
+        https://bugs.webkit.org/show_bug.cgi?id=167087
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/StringConcatenate.cpp: Added.
+        Add tests for StringConcatenate, focusing on new numeric additions.
+
+2017-01-15  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, remove stale comment.
+
+        This test was fixed by r163173.
+
+        * TestWebKitAPI/Tests/WebKit2/PageLoadBasic.cpp:
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Annotate large string tests with largeHeap
+        https://bugs.webkit.org/show_bug.cgi?id=167054
+
+        Reviewed by Filip Pizlo.
+
+        * Scripts/run-javascriptcore-tests:
+        * Scripts/run-jsc-stress-tests:
+
+2017-01-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove stale references to ENABLE_ES6_GENERATORS and ENABLE_PROMISES
+        https://bugs.webkit.org/show_bug.cgi?id=167043
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2017-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(DETAILS_ELEMENT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167042
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        26 MotionMark performance tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=166854
+
+        Reviewed by Ryosuke Niwa.
+
+        Unrelated change. This is the last place that we need to rename Animometer
+        to MotionMark.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-01-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        run-jsc-benchmarks' echo should have -e option
+        https://bugs.webkit.org/show_bug.cgi?id=167009
+
+        Reviewed by Sam Weinig.
+
+        echo requires `-e` option to use escape sequence.
+        Without it, in some environment (in my Fedora 25), the escape sequence is not
+        recognized and just dumped as `\c` etc.
+
+        * Scripts/run-jsc-benchmarks:
+
+2017-01-12  Chris Dumez  <cdumez@apple.com>
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=166995
+
+        Reviewed by Jer Noble.
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        as some people are having trouble building without it.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-12  Sam Weinig  <sam@webkit.org>
+
+        Add the ability to filter the set of bindings tests you want to run
+        https://bugs.webkit.org/show_bug.cgi?id=166977
+
+        Reviewed by Tim Horton.
+
+        Allows doing things like:
+            run-bindings-tests TestObj* TestCEReactions*
+        
+        to run only those tests that match the patterns.
+
+        * Scripts/run-bindings-tests:
+        (main):
+        Switch to using optparse and pass the remaining args as the filters.
+
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.__init__):
+        Store the pattens.
+
+        (BindingsTests.test_matches_patterns):
+        Add helper predicate to determine if a test should be run. When no
+        patterns are present, all tests should run.
+
+        (BindingsTests.run_tests):
+        Filter tests using the passed in patterns.
+
+2017-01-12  Per Arne Vollan  <pvollan@apple.com>
+
+        Followup fix after r210503.
+        https://bugs.webkit.org/show_bug.cgi?id=166887
+
+        Reviewed by Alex Christensen.
+
+        After <http://trac.webkit.org/changeset/210503>, test results are written to a
+        duplicated file handle on Windows. This patch fixes the remaining call sites.
+
+        * DumpRenderTree/PixelDumpSupport.cpp:
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::waitToDumpWatchdogTimerFired):
+        * DumpRenderTree/TestRunner.h:
+        * DumpRenderTree/win/AccessibilityControllerWin.cpp:
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        * DumpRenderTree/win/DumpRenderTreeWin.h:
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setSpellCheckerLoggingEnabled):
+
+2017-01-11  Megan Gardner  <megan_gardner@apple.com>
+
+        Add committer status for Megan
+        https://bugs.webkit.org/show_bug.cgi?id=166954
+
+        Reviewed by Tim Horton.
+
+        Add committer status for Megan Gardner
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
 2017-01-11  Brent Fulgham  <bfulgham@apple.com>
 
         Unreviewed test fix after r210599.

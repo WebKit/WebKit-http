@@ -53,6 +53,8 @@ public:
 
     WEBCORE_EXPORT unsigned length() const;
     HTMLElement* item(unsigned index);
+    std::optional<Variant<RefPtr<RadioNodeList>, RefPtr<Element>>> namedItem(const AtomicString&);
+    Vector<AtomicString> supportedPropertyNames() const;
 
     String enctype() const { return m_attributes.encodingType(); }
     WEBCORE_EXPORT void setEnctype(const String&);
@@ -126,7 +128,7 @@ public:
     const Vector<FormAssociatedElement*>& associatedElements() const { return m_associatedElements; }
     const Vector<HTMLImageElement*>& imageElements() const { return m_imageElements; }
 
-    void getTextFieldValues(StringPairVector& fieldNamesAndValues) const;
+    StringPairVector textFieldValues() const;
 
     static HTMLFormElement* findClosestFormAncestor(const Element&);
 

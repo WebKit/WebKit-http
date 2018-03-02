@@ -28,7 +28,6 @@
 
 #include "ApplicationCacheHost.h"
 #include "BackForwardController.h"
-#include "MemoryCache.h"
 #include "CachedPage.h"
 #include "DOMWindow.h"
 #include "DeviceMotionController.h"
@@ -50,7 +49,6 @@
 #include "Page.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
-#include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
@@ -164,7 +162,7 @@ static bool canCacheFrame(Frame& frame, DiagnosticLoggingClient& diagnosticLoggi
     }
     // FIXME: We should investigating caching frames that have an associated
     // application cache. <rdar://problem/5917899> tracks that work.
-    if (!documentLoader->applicationCacheHost()->canCacheInPageCache()) {
+    if (!documentLoader->applicationCacheHost().canCacheInPageCache()) {
         PCLOG("   -The DocumentLoader uses an application cache");
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::applicationCacheKey());
         isCacheable = false;

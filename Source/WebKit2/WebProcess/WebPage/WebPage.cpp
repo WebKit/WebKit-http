@@ -115,6 +115,7 @@
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/ArchiveResource.h>
+#include <WebCore/BackForwardController.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/CommonVM.h>
 #include <WebCore/ContextMenuController.h>
@@ -143,6 +144,7 @@
 #include <WebCore/HistoryController.h>
 #include <WebCore/HistoryItem.h>
 #include <WebCore/HitTestResult.h>
+#include <WebCore/InspectorController.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -176,6 +178,7 @@
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
+#include <WebCore/WebGLStateTracker.h>
 #include <WebCore/htmlediting.h>
 #include <WebCore/markup.h>
 #include <bindings/ScriptValue.h>
@@ -277,6 +280,37 @@ private:
     WebPage* m_page;
 };
 
+class DeferredPageDestructor {
+public:
+    static void createDeferredPageDestructor(std::unique_ptr<Page> page, WebPage* webPage)
+    {
+        new DeferredPageDestructor(WTFMove(page), webPage);
+    }
+
+private:
+    DeferredPageDestructor(std::unique_ptr<Page> page, WebPage* webPage)
+        : m_page(WTFMove(page))
+        , m_webPage(webPage)
+    {
+        tryDestruction();
+    }
+
+    void tryDestruction()
+    {
+        if (m_page->insideNestedRunLoop()) {
+            m_page->whenUnnested([this] { tryDestruction(); });
+            return;
+        }
+
+        m_page = nullptr;
+        m_webPage = nullptr;
+        delete this;
+    }
+
+    std::unique_ptr<Page> m_page;
+    RefPtr<WebPage> m_webPage;
+};
+
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, webPageCounter, ("WebPage"));
 
 Ref<WebPage> WebPage::create(uint64_t pageID, const WebPageCreationParameters& parameters)
@@ -340,7 +374,7 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
 #endif
 
     PageConfiguration pageConfiguration(makeUniqueRef<WebEditorClient>(this), WebSocketProvider::create());
-    pageConfiguration.chromeClient = new WebChromeClient(this);
+    pageConfiguration.chromeClient = new WebChromeClient(*this);
 #if ENABLE(CONTEXT_MENUS)
     pageConfiguration.contextMenuClient = new WebContextMenuClient(this);
 #endif
@@ -357,6 +391,9 @@ WebPage::WebPage(uint64_t pageID, const WebPageCreationParameters& parameters)
     pageConfiguration.loaderClientForMainFrame = new WebFrameLoaderClient;
     pageConfiguration.progressTrackerClient = new WebProgressTrackerClient(*this);
     pageConfiguration.diagnosticLoggingClient = std::make_unique<WebDiagnosticLoggingClient>(*this);
+    pageConfiguration.webGLStateTracker = std::make_unique<WebGLStateTracker>([this](bool isUsingHighPerformanceWebGL) {
+        send(Messages::WebPageProxy::SetIsUsingHighPerformanceWebGL(isUsingHighPerformanceWebGL));
+    });
 
 #if PLATFORM(COCOA)
     pageConfiguration.validationMessageClient = std::make_unique<WebValidationMessageClient>(*this);
@@ -693,7 +730,8 @@ void WebPage::initializeInjectedBundleDiagnosticLoggingClient(WKBundlePageDiagno
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-PassRefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginElement, const Plugin::Parameters& parameters, String& newMIMEType)
+
+RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginElement, const Plugin::Parameters& parameters, String& newMIMEType)
 {
     String frameURLString = frame->coreFrame()->loader().documentLoader()->responseURL().string();
     String pageURLString = m_page->mainFrame().loader().documentLoader()->responseURL().string();
@@ -1022,6 +1060,8 @@ void WebPage::close()
         m_inspector = nullptr;
     }
 
+    m_page->inspectorController().disconnectAllFrontends();
+
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenManager = nullptr;
 #endif
@@ -1079,8 +1119,9 @@ void WebPage::close()
 
     m_printContext = nullptr;
     m_mainFrame->coreFrame()->loader().detachFromParent();
-    m_page = nullptr;
     m_drawingArea = nullptr;
+
+    DeferredPageDestructor::createDeferredPageDestructor(WTFMove(m_page), this);
 
     bool isRunningModal = m_isRunningModal;
     m_isRunningModal = false;
@@ -1320,7 +1361,7 @@ void WebPage::layoutIfNeeded()
 
 WebPage* WebPage::fromCorePage(Page* page)
 {
-    return static_cast<WebChromeClient&>(page->chrome().client()).page();
+    return &static_cast<WebChromeClient&>(page->chrome().client()).page();
 }
 
 void WebPage::setSize(const WebCore::IntSize& viewSize)
@@ -1786,7 +1827,8 @@ void WebPage::postInjectedBundleMessage(const String& messageName, const UserDat
 }
 
 #if !PLATFORM(IOS)
-void WebPage::setHeaderPageBanner(PassRefPtr<PageBanner> pageBanner)
+
+void WebPage::setHeaderPageBanner(PageBanner* pageBanner)
 {
     if (m_headerBanner)
         m_headerBanner->detachFromPage();
@@ -1802,7 +1844,7 @@ PageBanner* WebPage::headerPageBanner()
     return m_headerBanner.get();
 }
 
-void WebPage::setFooterPageBanner(PassRefPtr<PageBanner> pageBanner)
+void WebPage::setFooterPageBanner(PageBanner* pageBanner)
 {
     if (m_footerBanner)
         m_footerBanner->detachFromPage();
@@ -2330,7 +2372,7 @@ void WebPage::restoreSessionInternal(const Vector<BackForwardListItemState>& ite
     for (const auto& itemState : itemStates) {
         auto historyItem = toHistoryItem(itemState.pageState);
         historyItem->setWasRestoredFromSession(restoredByAPIRequest == WasRestoredByAPIRequest::Yes);
-        WebBackForwardListProxy::addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID);
+        static_cast<WebBackForwardListProxy*>(corePage()->backForward().client())->addItemFromUIProcess(itemState.identifier, WTFMove(historyItem), m_pageID);
     }
 }
 
@@ -2393,7 +2435,6 @@ void WebPage::gestureEvent(const WebGestureEvent& gestureEvent)
     bool handled = handleGestureEvent(gestureEvent, m_page.get());
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(gestureEvent.type()), handled));
 }
-
 #endif
 
 bool WebPage::scroll(Page* page, ScrollDirection direction, ScrollGranularity granularity)
@@ -3570,6 +3611,7 @@ void WebPage::setActivePopupMenu(WebPopupMenu* menu)
 }
 
 #if ENABLE(INPUT_TYPE_COLOR)
+
 void WebPage::setActiveColorChooser(WebColorChooser* colorChooser)
 {
     m_activeColorChooser = colorChooser;
@@ -3584,11 +3626,12 @@ void WebPage::didChooseColor(const WebCore::Color& color)
 {
     m_activeColorChooser->didChooseColor(color);
 }
+
 #endif
 
-void WebPage::setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener> openPanelResultListener)
+void WebPage::setActiveOpenPanelResultListener(Ref<WebOpenPanelResultListener>&& openPanelResultListener)
 {
-    m_activeOpenPanelResultListener = openPanelResultListener;
+    m_activeOpenPanelResultListener = WTFMove(openPanelResultListener);
 }
 
 bool WebPage::findStringFromInjectedBundle(const String& target, FindOptions options)
@@ -5403,11 +5446,11 @@ bool WebPage::plugInIsPrimarySize(WebCore::HTMLPlugInImageElement& plugInImageEl
 
 #endif // ENABLE(PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC)
 
-PassRefPtr<Range> WebPage::currentSelectionAsRange()
+RefPtr<Range> WebPage::currentSelectionAsRange()
 {
-    Frame* frame = frameWithSelection(m_page.get());
+    auto* frame = frameWithSelection(m_page.get());
     if (!frame)
-        return 0;
+        return nullptr;
 
     return frame->selection().toNormalizedRange();
 }
@@ -5507,7 +5550,7 @@ void WebPage::getSamplingProfilerOutput(uint64_t callbackID)
 #endif
 }
 
-PassRefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame, const EditingRange& range, EditingRangeIsRelativeTo editingRangeIsRelativeTo)
+RefPtr<WebCore::Range> WebPage::rangeFromEditingRange(WebCore::Frame& frame, const EditingRange& range, EditingRangeIsRelativeTo editingRangeIsRelativeTo)
 {
     ASSERT(range.location != notFound);
 

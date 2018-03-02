@@ -26,7 +26,6 @@
 
 #include "CSSFontSelector.h"
 #include "CSSValueKeywords.h"
-#include "Chrome.h"
 #include "Font.h"
 #include "Frame.h"
 #include "FrameSelection.h"
@@ -34,7 +33,6 @@
 #include "HTMLNames.h"
 #include "HitTestResult.h"
 #include "LocalizedStrings.h"
-#include "Page.h"
 #include "RenderLayer.h"
 #include "RenderScrollbar.h"
 #include "RenderTheme.h"

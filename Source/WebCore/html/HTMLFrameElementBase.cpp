@@ -25,19 +25,19 @@
 #include "HTMLFrameElementBase.h"
 
 #include "Document.h"
-#include "EventNames.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "URL.h"
+#include "JSDOMBinding.h"
 #include "Page.h"
 #include "RenderWidget.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include "SubframeLoader.h"
+#include "URL.h"
 
 namespace WebCore {
 
@@ -182,6 +182,16 @@ void HTMLFrameElementBase::setLocation(const String& str)
 
     if (inDocument())
         openURL(LockHistory::No, LockBackForwardList::No);
+}
+
+void HTMLFrameElementBase::setLocation(JSC::ExecState& state, const String& newLocation)
+{
+    if (protocolIsJavaScript(stripLeadingAndTrailingHTMLSpaces(newLocation))) {
+        if (!BindingSecurity::shouldAllowAccessToNode(state, contentDocument()))
+            return;
+    }
+
+    setLocation(newLocation);
 }
 
 bool HTMLFrameElementBase::supportsFocus() const

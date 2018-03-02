@@ -27,25 +27,24 @@
 
 #if USE(QUICK_LOOK)
 
-#include "QuickLookHandleClient.h"
 #include <objc/objc.h>
 #include <wtf/Forward.h>
-#include <wtf/RefPtr.h>
 #include <wtf/RetainPtr.h>
 
 OBJC_CLASS NSArray;
 OBJC_CLASS NSData;
 OBJC_CLASS NSDictionary;
-OBJC_CLASS NSFileHandle;
 OBJC_CLASS NSSet;
 OBJC_CLASS NSString;
 OBJC_CLASS NSURL;
 OBJC_CLASS NSURLRequest;
 OBJC_CLASS NSURLResponse;
 OBJC_CLASS QLPreviewConverter;
+OBJC_CLASS WebPreviewConverter;
 
 namespace WebCore {
 
+class QuickLookHandleClient;
 class ResourceLoader;
 class ResourceResponse;
 class SharedBuffer;
@@ -82,28 +81,22 @@ public:
     bool didFinishLoading();
     void didFail();
 
-    WEBCORE_EXPORT NSURLResponse *nsResponse();
-
-    void setClient(PassRefPtr<QuickLookHandleClient> client) { m_client = client; }
+    WEBCORE_EXPORT void setClient(Ref<QuickLookHandleClient>&&);
+    WEBCORE_EXPORT static void setClientForTesting(RefPtr<QuickLookHandleClient>&&);
 
     WEBCORE_EXPORT String previewFileName() const;
     WEBCORE_EXPORT String previewUTI() const;
-    NSURL *firstRequestURL() const { return m_firstRequestURL.get(); }
     WEBCORE_EXPORT NSURL *previewRequestURL() const;
-    QLPreviewConverter *converter() const { return m_converter.get(); }
+    WEBCORE_EXPORT QLPreviewConverter *converter() const;
+    NSURL *firstRequestURL() const { return m_firstRequestURL.get(); }
 
 private:
-    QuickLookHandle(NSURL *, NSURLResponse *, id delegate);
-
-    void didReceiveDataArray(NSArray *);
+    friend std::unique_ptr<QuickLookHandle> std::make_unique<QuickLookHandle>(ResourceLoader&, const ResourceResponse&);
+    QuickLookHandle(ResourceLoader&, const ResourceResponse&);
 
     RetainPtr<NSURL> m_firstRequestURL;
-    RetainPtr<QLPreviewConverter> m_converter;
-    RetainPtr<id> m_delegate;
-    bool m_finishedLoadingDataIntoConverter;
-    RetainPtr<NSFileHandle *> m_quicklookFileHandle;
-    RetainPtr<NSURLResponse> m_nsResponse;
-    RefPtr<QuickLookHandleClient> m_client;
+    RetainPtr<WebPreviewConverter> m_converter;
+    bool m_finishedLoadingDataIntoConverter { false };
 };
 
 } // namespace WebCore

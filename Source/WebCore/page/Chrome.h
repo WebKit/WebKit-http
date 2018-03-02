@@ -85,9 +85,7 @@ public:
     void setCursor(const Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
     void scheduleAnimation() override;
-#endif
 
     PlatformDisplayID displayID() const override;
     void windowScreenDidChange(PlatformDisplayID) override;
@@ -156,7 +154,7 @@ public:
     std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color& initialColor);
 #endif
 
-    void runOpenPanel(Frame*, PassRefPtr<FileChooser>);
+    void runOpenPanel(Frame&, FileChooser&);
     void loadIconForFiles(const Vector<String>&, FileIconLoader&);
 
     void dispatchViewportPropertiesDidChange(const ViewportArguments&) const;

@@ -1,3 +1,1296 @@
+2017-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        The mutator needs to fire a barrier after memmoving stuff around in an object that the GC scans
+        https://bugs.webkit.org/show_bug.cgi?id=167208
+
+        Reviewed by Saam Barati.
+        
+        It used to be that if you moved a value from one place to another in the same object
+        then there is no need for a barrier because the generational GC would have no need to
+        know that some old object still continues to refer to the same other old object.
+
+        But the concurrent GC might scan that object as the mutator moves pointers around in
+        it. If the ordering is right, this could mean that the collector never sees some of
+        those pointers. This can be fixed by adding a barrier.
+
+        This fixes the most obvious cases I found. There may be more and I'll continue to
+        audit. Most of the other memmove users seem to already use some kind of synchronization
+        to prevent this. For example, this can also be fixed by just holding the cell lock
+        around the memmove since we're dealing with indexing storage and the GC reads that
+        under the cell lock.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-19  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        "this" missing after await in async arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=166919
+
+        Reviewed by NOBODY Saam Barati.
+
+        This patch fixed issue in async arrow function. Issue appears because in arrow
+        function _this_ is loaded from arrow function virtual scope. 
+        Async arrow function can be suspended and when resuming should be used _this_ from 
+        virtual scope, to allow this we load _this_ from virtual scope before store it to 
+        generator.generatorThis property 
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionNode::emitBytecode):
+
+2017-01-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [B3] B3 strength reduction could encounter Value without owner in PureCSE
+        https://bugs.webkit.org/show_bug.cgi?id=167161
+
+        Reviewed by Filip Pizlo.
+
+        PureCSE relies on the fact that all the stored Values have owner member.
+        This assumption is broken when you execute specializeSelect in B3ReduceStrength phase.
+        It clears owner of Values which are in between Select and Check to clone them to then/else
+        blocks. If these cleared Values are already stored in PureCSE map, this map poses a Value
+        with nullptr owner in PureCSE.
+
+        This patch changes PureCSE to ignore stored Values tha have nullptr owner. This even means
+        that a client of PureCSE could deliberately null the owner if they wanted to signal the
+        Value should be ignored.
+
+        While PureCSE ignores chance for optimization if Value's owner is nullptr, in the current
+        strength reduction algorithm, this does not hurt optimization because CSE will be eventually
+        applied since the strength reduction phase want to reach fixed point. But even without
+        this iterations, our result itself is valid since PureCSE is allowed to be conservative.
+
+        * b3/B3PureCSE.cpp:
+        (JSC::B3::PureCSE::findMatch):
+        (JSC::B3::PureCSE::process):
+        * b3/testb3.cpp:
+        (JSC::B3::testCheckSelectAndCSE):
+        (JSC::B3::run):
+
+2017-01-18  Filip Pizlo  <fpizlo@apple.com>
+
+        JSSegmentedVariableObject and its subclasses should have a sane destruction story
+        https://bugs.webkit.org/show_bug.cgi?id=167193
+
+        Reviewed by Saam Barati.
+        
+        Prior to this change, JSSegmentedVariableObjects' subclasses install finalizers that call
+        destroy. They did this in random ways, which sometimes resulted in
+        JSSegmentedVariableObject::~JSSegmentedVariableObject executing more than once (which worked
+        because of the way that ~SegmentedVector is written). Maybe this works now, but it's a disaster
+        waiting to happen.
+
+        Fortunately we can now just give those things their own Subspace and teach it its own protocol of
+        destruction. This change introduces JSSegmentedVariableObjectSubspace and stashes a m_classInfo
+        in JSSegmentedVariableObject. Now, subclasses of JSSegmentedVariableObject are destructible in
+        much the same way as JSDestructibleObject without having to be subclasses of
+        JSDestructibleObject.
+
+        * API/JSCallbackObject.cpp:
+        (JSC::JSCallbackObject<JSGlobalObject>::create):
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jsc.cpp:
+        (GlobalObject::create):
+        * runtime/JSGlobalLexicalEnvironment.h:
+        (JSC::JSGlobalLexicalEnvironment::create):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::create):
+        (JSC::JSGlobalObject::finishCreation):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::create): Deleted.
+        (JSC::JSGlobalObject::finishCreation): Deleted.
+        * runtime/JSSegmentedVariableObject.cpp:
+        (JSC::JSSegmentedVariableObject::destroy):
+        (JSC::JSSegmentedVariableObject::JSSegmentedVariableObject):
+        (JSC::JSSegmentedVariableObject::~JSSegmentedVariableObject):
+        (JSC::JSSegmentedVariableObject::finishCreation):
+        * runtime/JSSegmentedVariableObject.h:
+        (JSC::JSSegmentedVariableObject::subspaceFor):
+        (JSC::JSSegmentedVariableObject::classInfo):
+        (JSC::JSSegmentedVariableObject::JSSegmentedVariableObject): Deleted.
+        (JSC::JSSegmentedVariableObject::finishCreation): Deleted.
+        * runtime/JSSegmentedVariableObjectSubspace.cpp: Added.
+        (JSC::JSSegmentedVariableObjectSubspace::JSSegmentedVariableObjectSubspace):
+        (JSC::JSSegmentedVariableObjectSubspace::~JSSegmentedVariableObjectSubspace):
+        (JSC::JSSegmentedVariableObjectSubspace::finishSweep):
+        (JSC::JSSegmentedVariableObjectSubspace::destroy):
+        * runtime/JSSegmentedVariableObjectSubspace.h: Added.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * testRegExp.cpp:
+        (GlobalObject::create):
+
+2017-01-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: console.table only works for the first 5 properties
+        https://bugs.webkit.org/show_bug.cgi?id=167175
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype.wrapTable):
+        (InjectedScript.RemoteObject.createObjectPreviewForValue):
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        Pass through secondLevelKeys. Though the keys are themselves ignored, the
+        existence is a signal that we should send more than the first 5 properties.
+
+2017-01-18  Antti Koivisto  <antti@apple.com>
+
+        Only delete source provider caches on full collection
+        https://bugs.webkit.org/show_bug.cgi?id=167173
+
+        Reviewed by Andreas Kling.
+
+        They are currently often wiped and recreated during page loading due to eden collections.
+
+        It is not clear that tying the lifetime of these caches to gc makes sense at all but this
+        should at least help some.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::deleteSourceProviderCaches):
+
+2017-01-18  Filip Pizlo  <fpizlo@apple.com>
+
+        JSObjectSetPrivate should not use jsCast<>
+        rdar://problem/30069096
+
+        Reviewed by Keith Miller.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectSetPrivate):
+
+2017-01-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove an unnecessary include in generated Objective-C Inspector protocol code
+        https://bugs.webkit.org/show_bug.cgi?id=167156
+
+        Rubber-stamped by Geoffrey Garen.
+
+        * inspector/scripts/codegen/objc_generator_templates.py:
+        This include of config.h doesn't make sense when using the code generator
+        outside of JavaScriptCore/WebKit. It is not necessary either, so remove it.
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+        Rebaseline test results.
+
+2017-01-18  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the JSCOnly build after r210844
+        https://bugs.webkit.org/show_bug.cgi?id=167155
+
+        Unreviewed buildfix.
+
+        * heap/EdenGCActivityCallback.cpp:
+
+2017-01-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Make opaque root scanning truly constraint-based
+        https://bugs.webkit.org/show_bug.cgi?id=165760
+
+        Reviewed by Geoffrey Garen.
+
+        We have bugs when visitChildren() changes its mind about what opaque root to add, since
+        we don't have barriers on opaque roots. This supposedly once worked for generational GC,
+        and I started adding more barriers to support concurrent GC. But I think that the real
+        bug here is that we want the JSObject->OpaqueRoot to be evaluated as a constraint that
+        participates in the fixpoint. I like to think of this as an *output* constraint, because it
+        is concerned with outgoing edges in the heap from the object that registered the constraint.
+        An *input* constraint is like what Weak<> does when deciding whether the thing it points to
+        should be live.
+
+        Whether or not an object has output constraints depends on its type. So, we want the GC to
+        have a feature where we rapidly call some function on all marked objects of some type.
+        
+        It's easy to rapidly scan all marked objects in a MarkedBlock. So, we want to allocate all
+        objects that have output constraints in their own MarkedBlocks and we want to track the set
+        of MarkedBlocks with output constraints.
+        
+        This patch makes it easy to have clients of JSC's internal C++ APIs create a Subspace - like
+        what we used to call MarkedSpace::Subspace but now it's in the JSC namespace - which is
+        a collection of objects that you can easily scan during GC from a MarkingConstraint. It's
+        now possible for internal C++ API clients to register their own MarkingConstraints. The DOM
+        now uses this to create two Subspaces (more on why two below) and it calls
+        JSCell::visitOutputConstraints() on all of the marked objects in those subspaces using a new
+        MarkingConstraint. That MarkingConstraint uses a new style of volatility, called
+        SeldomGreyed, which is like GreyedByExecution except it is opportunistically not executed
+        as roots in the hopes that their sole execution will be the snapshot-at-the-end. I also
+        converted the CodeBlock rescan constraint to SeldomGreyed, since that's also an output
+        constraint.
+        
+        This patch also uses Subspace for something pretty obvious: knowing how to call the
+        destructor. Subspaces can specialize the sweep for their way of invoking destructors. We
+        have the following subspaces:
+        
+        - auxiliary
+        - cell
+        - destructibleCell - for JSCell subclasses that have destructors and StructureIsImmortal
+        - stringSpace - inlines ~JSString into the sweep, making string allocation 7% faster
+        - destructibleObjectSpace - for JSDestructibleObject subclasses
+        
+        And WebCore adds:
+        
+        - outputConstraint - for JSDOMObjects that have a visitAdditionalChildren
+        - globalObjectOutputConstraint - for JSDOMGlobalObjects that have a visitAdditionalChildren,
+          since JSDOMGlobalObjects are not JSDestructibleObjects
+        
+        The Subspace for a type is selected by saying JSC::subspaceFor<Type>(vm). This calls
+        Type::subspaceFor<Type>(vm). This allows cell classes to override subspaceFor<> and it
+        allows any subspaceFor<> implementation to query static flags in the type. This is how
+        JSCell::subspaceFor<> can select either cellSpace or destructibleCellSpace.
+        
+        This patch is mostly about:
+        
+        - Moving MarkedSpace::Subspace out of MarkedSpace and making it a nice class with a nice
+          API. Almost all of its functionality is just taken out of MarkedSpace.
+        - Converting users of the old API for allocating objects and getting MarkedAllocators, like
+          heap.allocatorForObjectWithoutDestructor() and its friends. That would now say
+          vm.cellSpace.allocatorFor().
+        
+        Altogether, this means that we only have a small regression on Dromaeo. The regression is
+        due to the fact that we scan output constraints. Before the Subspace optimizations (see
+        r209766, which was rolled out in r209812), this regression on Dromaeo/jslib was 2x but after
+        the optimizations in this patch it's only 1.12x. Note that Dromaeo/jslib creats gigabytes of
+        DOM nodes. Compared to web pages, this is a very extreme synthetic microbenchmark. Still, we
+        like optimizing these because we don't want to presume what web pages will look like.
+        
+        The use of Subspaces to specialize destructors happened not because it's super necessary but
+        because I wanted to introduce a single unified way of communicating to the GC how to treat
+        different types. Any Subspace feature that allowed us to collect some types together would
+        have to be mindful of the destructorness of objects. I could have turned this into a
+        liability where each Subspace has two subsubspaces - one for destructor objects and one for
+        non-destructor objects, which would have allowed me to keep the old sweep specialization
+        code. Just days prior, mlam wanted to do something that was hard because of that old sweep
+        specializer, so I decided to take the opportunity to fix the sweep specializer while also
+        making Subspace be the one true way of teaching the GC about types. To validate that this
+        actually does things, I added a JSStringSubspace and a test that shows that this is a 7%
+        string allocation progression.
+        
+        In bug 167066, I'm getting rid of the rest of the code in JSC that would special-case for
+        JSDestructibleObject vs StructureIsImmortal by using the GC's DestructionMode. After that,
+        Subspace will be only mechanism by which JSC uses the GC to encode types.
+        
+        Prior to this change, having multiple MarkedSpace::Subspaces would have been expensive
+        because they create a bunch of MarkedAllocators upfront. We now have the ability to create
+        MarkedAllocators lazily. We create them on the first allocation from that size class or when
+        a JIT asks for the MarkedAllocator. The concurrent JITs can ask for MarkedAllocators because
+        their creation is under a lock.
+        
+        On my machine, this might be a 1.1% JetStream speed-up with 87% confidence and it might be
+        a 0.4% PLT3 slow-down with 92% confidence. Note that 0.4% on PLT3 is the level of systematic
+        error on PLT3 on my computer: I've seen definite 0.4% speed-ups and slow-downs that were not
+        confirmed by any bot. Let's see what the bots say.
+        
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/ObjectAllocationProfile.h:
+        (JSC::ObjectAllocationProfile::initialize):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::AccessCase::generateImpl):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitAllocateRawObject):
+        (JSC::DFG::SpeculativeJIT::compileMakeRope):
+        (JSC::DFG::SpeculativeJIT::compileAllocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileReallocatePropertyStorage):
+        (JSC::DFG::SpeculativeJIT::compileNewTypedArray):
+        (JSC::DFG::SpeculativeJIT::emitAllocateButterfly):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewTypedArray):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMakeRope):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeNewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatePropertyStorageWithSizeImpl):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocatorForSize):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateVariableSizedObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateVariableSizedCell):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        * heap/AllocatorAttributes.h:
+        (JSC::AllocatorAttributes::AllocatorAttributes):
+        * heap/ConstraintVolatility.h: Added.
+        (WTF::printInternal):
+        * heap/GCActivityCallback.cpp:
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::collectInThread):
+        (JSC::Heap::stopTheWorld):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::bytesVisited):
+        (JSC::Heap::addCoreConstraints):
+        (JSC::Heap::addMarkingConstraint):
+        (JSC::Heap::notifyIsSafeToCollect):
+        (JSC::Heap::preventCollection):
+        (JSC::Heap::allowCollection):
+        (JSC::Heap::setMutatorShouldBeFenced):
+        (JSC::Heap::buildConstraintSet): Deleted.
+        (JSC::Heap::writeBarrierOpaqueRootSlow): Deleted.
+        (JSC::Heap::addMutatorShouldBeFencedCache): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::mutatorExecutionVersion):
+        (JSC::Heap::numOpaqueRoots):
+        (JSC::Heap::vm): Deleted.
+        (JSC::Heap::subspaceForObjectWithoutDestructor): Deleted.
+        (JSC::Heap::subspaceForObjectDestructor): Deleted.
+        (JSC::Heap::subspaceForAuxiliaryData): Deleted.
+        (JSC::Heap::allocatorForObjectWithoutDestructor): Deleted.
+        (JSC::Heap::allocatorForObjectWithDestructor): Deleted.
+        (JSC::Heap::allocatorForAuxiliaryData): Deleted.
+        * heap/HeapInlines.h:
+        (JSC::Heap::vm):
+        (JSC::Heap::allocateWithDestructor): Deleted.
+        (JSC::Heap::allocateWithoutDestructor): Deleted.
+        (JSC::Heap::allocateObjectOfType): Deleted.
+        (JSC::Heap::subspaceForObjectOfType): Deleted.
+        (JSC::Heap::allocatorForObjectOfType): Deleted.
+        (JSC::Heap::allocateAuxiliary): Deleted.
+        (JSC::Heap::tryAllocateAuxiliary): Deleted.
+        (JSC::Heap::tryReallocateAuxiliary): Deleted.
+        (JSC::Heap::ascribeOwner): Deleted.
+        (JSC::Heap::writeBarrierOpaqueRoot): Deleted.
+        * heap/LargeAllocation.cpp:
+        (JSC::LargeAllocation::tryCreate):
+        (JSC::LargeAllocation::LargeAllocation):
+        (JSC::LargeAllocation::~LargeAllocation):
+        (JSC::LargeAllocation::sweep):
+        * heap/LargeAllocation.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::MarkedAllocator):
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting):
+        (JSC::MarkedAllocator::tryAllocateIn):
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        (JSC::MarkedAllocator::tryAllocateBlock):
+        (JSC::MarkedAllocator::shrink):
+        (JSC::MarkedAllocator::markedSpace):
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::nextAllocatorInSubspace):
+        (JSC::MarkedAllocator::setNextAllocatorInSubspace):
+        (JSC::MarkedAllocator::subspace):
+        (JSC::MarkedAllocator::tryAllocate): Deleted.
+        (JSC::MarkedAllocator::allocate): Deleted.
+        (JSC::MarkedAllocator::forEachBlock): Deleted.
+        * heap/MarkedAllocatorInlines.h: Added.
+        (JSC::MarkedAllocator::tryAllocate):
+        (JSC::MarkedAllocator::allocate):
+        (JSC::MarkedAllocator::forEachBlock):
+        (JSC::MarkedAllocator::forEachNotEmptyBlock):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::subspace):
+        (JSC::MarkedBlock::Handle::sweep):
+        (JSC::MarkedBlock::Handle::specializedSweep): Deleted.
+        (JSC::MarkedBlock::Handle::sweepHelperSelectScribbleMode): Deleted.
+        (JSC::MarkedBlock::Handle::sweepHelperSelectEmptyMode): Deleted.
+        (JSC::MarkedBlock::Handle::sweepHelperSelectHasNewlyAllocated): Deleted.
+        (JSC::MarkedBlock::Handle::sweepHelperSelectSweepMode): Deleted.
+        (JSC::MarkedBlock::Handle::sweepHelperSelectMarksMode): Deleted.
+        * heap/MarkedBlock.h:
+        (JSC::MarkedBlock::Handle::visitWeakSet):
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::isNewlyAllocatedStale):
+        (JSC::MarkedBlock::Handle::hasAnyNewlyAllocated):
+        (JSC::MarkedBlock::heap):
+        (JSC::MarkedBlock::space):
+        (JSC::MarkedBlock::Handle::space):
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::finishSweepKnowingSubspace):
+        (JSC::MarkedBlock::Handle::sweepDestructionMode):
+        (JSC::MarkedBlock::Handle::emptyMode):
+        (JSC::MarkedBlock::Handle::scribbleMode):
+        (JSC::MarkedBlock::Handle::newlyAllocatedMode):
+        (JSC::MarkedBlock::Handle::marksMode):
+        (JSC::MarkedBlock::Handle::forEachMarkedCell):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::initializeSizeClassForStepSize):
+        (JSC::MarkedSpace::MarkedSpace):
+        (JSC::MarkedSpace::lastChanceToFinalize):
+        (JSC::MarkedSpace::addMarkedAllocator):
+        (JSC::MarkedSpace::allocate): Deleted.
+        (JSC::MarkedSpace::tryAllocate): Deleted.
+        (JSC::MarkedSpace::allocateLarge): Deleted.
+        (JSC::MarkedSpace::tryAllocateLarge): Deleted.
+        * heap/MarkedSpace.h:
+        (JSC::MarkedSpace::heap):
+        (JSC::MarkedSpace::allocatorLock):
+        (JSC::MarkedSpace::subspaceForObjectsWithDestructor): Deleted.
+        (JSC::MarkedSpace::subspaceForObjectsWithoutDestructor): Deleted.
+        (JSC::MarkedSpace::subspaceForAuxiliaryData): Deleted.
+        (JSC::MarkedSpace::allocatorFor): Deleted.
+        (JSC::MarkedSpace::destructorAllocatorFor): Deleted.
+        (JSC::MarkedSpace::auxiliaryAllocatorFor): Deleted.
+        (JSC::MarkedSpace::allocateWithoutDestructor): Deleted.
+        (JSC::MarkedSpace::allocateWithDestructor): Deleted.
+        (JSC::MarkedSpace::allocateAuxiliary): Deleted.
+        (JSC::MarkedSpace::tryAllocateAuxiliary): Deleted.
+        (JSC::MarkedSpace::forEachSubspace): Deleted.
+        * heap/MarkingConstraint.cpp:
+        (JSC::MarkingConstraint::MarkingConstraint):
+        * heap/MarkingConstraint.h:
+        (JSC::MarkingConstraint::volatility):
+        * heap/MarkingConstraintSet.cpp:
+        (JSC::MarkingConstraintSet::resetStats):
+        (JSC::MarkingConstraintSet::add):
+        (JSC::MarkingConstraintSet::executeConvergenceImpl):
+        * heap/MarkingConstraintSet.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::visitChildren):
+        (JSC::SlotVisitor::visitAsConstraint):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::addOpaqueRoot):
+        (JSC::SlotVisitor::mergeIfNecessary):
+        (JSC::SlotVisitor::mergeOpaqueRootsIfNecessary): Deleted.
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::setIgnoreNewOpaqueRoots):
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::reportExtraMemoryVisited):
+        (JSC::SlotVisitor::reportExternalMemoryVisited):
+        * heap/Subspace.cpp: Added.
+        (JSC::Subspace::Subspace):
+        (JSC::Subspace::~Subspace):
+        (JSC::Subspace::finishSweep):
+        (JSC::Subspace::destroy):
+        (JSC::Subspace::allocate):
+        (JSC::Subspace::tryAllocate):
+        (JSC::Subspace::allocatorForSlow):
+        (JSC::Subspace::allocateSlow):
+        (JSC::Subspace::tryAllocateSlow):
+        * heap/Subspace.h: Added.
+        (JSC::Subspace::tryAllocatorFor):
+        (JSC::Subspace::allocatorFor):
+        * heap/SubspaceInlines.h: Added.
+        (JSC::Subspace::forEachMarkedBlock):
+        (JSC::Subspace::forEachNotEmptyMarkedBlock):
+        (JSC::Subspace::forEachLargeAllocation):
+        (JSC::Subspace::forEachMarkedCell):
+        * heap/WeakBlock.cpp:
+        (JSC::WeakBlock::specializedVisit):
+        * heap/WeakBlock.h:
+        * heap/WeakSet.h:
+        (JSC::WeakSet::visit):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitAllocateJSObjectWithKnownSize):
+        (JSC::AssemblyHelpers::emitAllocateVariableSized):
+        (JSC::AssemblyHelpers::emitAllocateVariableSizedCell):
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_new_object):
+        * jsc.cpp:
+        * runtime/ButterflyInlines.h:
+        (JSC::Butterfly::createUninitialized):
+        (JSC::Butterfly::growArrayRight):
+        * runtime/ClassInfo.h:
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createEmpty):
+        * runtime/DirectArguments.cpp:
+        (JSC::DirectArguments::overrideThings):
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::initModifiedArgumentsDescriptor):
+        * runtime/HashMapImpl.h:
+        (JSC::HashMapBuffer::create):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::tryCreateUninitialized):
+        (JSC::JSArray::unshiftCountSlowCase):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        * runtime/JSCell.h:
+        (JSC::subspaceFor):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::visitOutputConstraints):
+        (JSC::JSCell::subspaceFor):
+        (JSC::allocateCell):
+        * runtime/JSDestructibleObject.h:
+        (JSC::JSDestructibleObject::subspaceFor):
+        * runtime/JSDestructibleObjectSubspace.cpp: Added.
+        (JSC::JSDestructibleObjectSubspace::JSDestructibleObjectSubspace):
+        (JSC::JSDestructibleObjectSubspace::~JSDestructibleObjectSubspace):
+        (JSC::JSDestructibleObjectSubspace::finishSweep):
+        (JSC::JSDestructibleObjectSubspace::destroy):
+        * runtime/JSDestructibleObjectSubspace.h: Added.
+        * runtime/JSObject.h:
+        (JSC::JSObject::JSObject):
+        * runtime/JSObjectInlines.h:
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/JSString.h:
+        (JSC::JSString::subspaceFor):
+        * runtime/JSStringSubspace.cpp: Added.
+        (JSC::JSStringSubspace::JSStringSubspace):
+        (JSC::JSStringSubspace::~JSStringSubspace):
+        (JSC::JSStringSubspace::finishSweep):
+        (JSC::JSStringSubspace::destroy):
+        * runtime/JSStringSubspace.h: Added.
+        * runtime/RegExpMatchesArray.h:
+        (JSC::tryCreateUninitializedRegExpMatchesArray):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-01-17  Michael Saboff  <msaboff@apple.com>
+
+        Nested parenthesized regular expressions with non-zero minimum counts appear to hang and use lots of memory
+        https://bugs.webkit.org/show_bug.cgi?id=167125
+
+        Reviewed by Filip Pizlo.
+
+        Changed Yarr to handle nested parenthesized subexpressions where the minimum count is
+        not 0 directly in the Yarr interpreter.  Previously we'd factor an expression like
+        (a|b)+ into (a|b)(a|b)* with special handling for captures.  This factoring was done
+        using a deep copy that doubled the size of the resulting expresion for each nested 
+        parenthesized subexpression.  Now the Yarr interpreter can directly process a regexp
+        like (a|b){2,42}.  
+
+        The parser will allow one level of nested, non-zero minimum, counted parenthesis using
+        the old copy method.  After one level, it will generate parenthesis terms with a non-zero
+        minimum.   Such an expression wasn't handled by the Yarr JIT before the change, so this
+        change isn't a performance regression.
+
+        Added a minimum count to the YarrPattern and ByteTerm classes, and then factored that
+        minimum into the interpreter.  A non-zero minimum is only handled by the Yarr interpreter.
+        If the Yarr JIT see such a term, it punts back to the interpreter.
+
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::backtrackPatternCharacter):
+        (JSC::Yarr::Interpreter::backtrackPatternCasedCharacter):
+        (JSC::Yarr::Interpreter::matchCharacterClass):
+        (JSC::Yarr::Interpreter::backtrackCharacterClass):
+        (JSC::Yarr::Interpreter::matchBackReference):
+        (JSC::Yarr::Interpreter::backtrackBackReference):
+        (JSC::Yarr::Interpreter::matchParenthesesOnceBegin):
+        (JSC::Yarr::Interpreter::matchParenthesesOnceEnd):
+        (JSC::Yarr::Interpreter::backtrackParenthesesOnceBegin):
+        (JSC::Yarr::Interpreter::backtrackParenthesesOnceEnd):
+        (JSC::Yarr::Interpreter::matchParenthesesTerminalBegin):
+        (JSC::Yarr::Interpreter::backtrackParenthesesTerminalBegin):
+        (JSC::Yarr::Interpreter::matchParentheticalAssertionBegin):
+        (JSC::Yarr::Interpreter::matchParentheticalAssertionEnd):
+        (JSC::Yarr::Interpreter::backtrackParentheticalAssertionBegin):
+        (JSC::Yarr::Interpreter::backtrackParentheticalAssertionEnd):
+        (JSC::Yarr::Interpreter::matchParentheses):
+        (JSC::Yarr::Interpreter::backtrackParentheses):
+        (JSC::Yarr::Interpreter::matchDisjunction):
+        (JSC::Yarr::ByteCompiler::atomPatternCharacter):
+        (JSC::Yarr::ByteCompiler::atomCharacterClass):
+        (JSC::Yarr::ByteCompiler::atomBackReference):
+        (JSC::Yarr::ByteCompiler::atomParentheticalAssertionEnd):
+        (JSC::Yarr::ByteCompiler::atomParenthesesSubpatternEnd):
+        (JSC::Yarr::ByteCompiler::atomParenthesesOnceEnd):
+        (JSC::Yarr::ByteCompiler::atomParenthesesTerminalEnd):
+        (JSC::Yarr::ByteCompiler::emitDisjunction):
+        * yarr/YarrInterpreter.h:
+        (JSC::Yarr::ByteTerm::ByteTerm):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterOnce):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterFixed):
+        (JSC::Yarr::YarrGenerator::generatePatternCharacterGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackPatternCharacterNonGreedy):
+        (JSC::Yarr::YarrGenerator::generateCharacterClassFixed):
+        (JSC::Yarr::YarrGenerator::generateCharacterClassGreedy):
+        (JSC::Yarr::YarrGenerator::backtrackCharacterClassNonGreedy):
+        (JSC::Yarr::YarrGenerator::generateTerm):
+        (JSC::Yarr::YarrGenerator::backtrackTerm):
+        (JSC::Yarr::YarrGenerator::generate):
+        (JSC::Yarr::YarrGenerator::backtrack):
+        (JSC::Yarr::YarrGenerator::opCompileParenthesesSubpattern):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::copyTerm):
+        (JSC::Yarr::YarrPatternConstructor::quantifyAtom):
+        (JSC::Yarr::YarrPatternConstructor::checkForTerminalParentheses):
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::PatternTerm::PatternTerm):
+        (JSC::Yarr::PatternTerm::quantify):
+        (JSC::Yarr::YarrPattern::reset):
+
+2017-01-17  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ENABLE(USER_TIMING) Not Defined for Apple Windows or OS X Ports
+        https://bugs.webkit.org/show_bug.cgi?id=116551
+        <rdar://problem/13949830>
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-16  Filip Pizlo  <fpizlo@apple.com>
+
+        JSCell::classInfo() shouldn't have a bunch of mitigations for being called during destruction
+        https://bugs.webkit.org/show_bug.cgi?id=167066
+
+        Reviewed by Keith Miller and Michael Saboff.
+        
+        This reduces the size of JSCell::classInfo() by half and removes some checks that
+        this function previously had to do in case it was called from destructors.
+        
+        I changed all of the destructors so that they don't call JSCell::classInfo() and I
+        added an assertion to JSCell::classInfo() to catch cases where someone called it
+        from a destructor accidentally.
+        
+        This means that we only have one place in destruction that needs to know the class:
+        the sweeper's call to the destructor.
+        
+        One of the trickiest outcomes of this is the need to support inherits() tests in
+        JSObjectGetPrivate(), when it is called from the destructor callback on the object
+        being destructed. JSObjectGetPrivate() is undefined behavior anyway if you use it
+        on any dead-but-not-destructed object other than the one being destructed right
+        now. The purpose of the inherits() tests is to distinguish between different kinds
+        of CallbackObjects, which may have different kinds of base classes. I think that
+        this was always subtly wrong - for example, if the object being destructed is a
+        JSGlobalObject then it's not a DestructibleObject, is not in a destructor block,
+        but does not have an immortal Structure - so classInfo() is not valid. This fixes
+        the issue by having ~JSCallbackObject know its classInfo. It now stashes its
+        classInfo in VM so that JSObjectGetPrivate can use that classInfo if it detects
+        that it's being used on a currently-destructing object.
+        
+        That was the only really weird part of this patch. The rest is mostly removing
+        illegal uses of jsCast<> in destructors. There were a few other genuine uses of
+        classInfo() but they were in code that already knew how to get its classInfo()
+        using other means:
+        
+        - You can still say structure()->classInfo(), and I use this form in code that
+          knows that its StructureIsImmortal.
+        
+        - You can use this->classInfo() if it's overridden, like in subclasses of
+          JSDestructibleObject.
+        
+        Rolling this back in because I think I fixed the crashes.
+
+        * API/JSAPIWrapperObject.mm:
+        (JSAPIWrapperObjectHandleOwner::finalize):
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::~JSCallbackObject):
+        (JSC::JSCallbackObject<Parent>::init):
+        * API/JSObjectRef.cpp:
+        (classInfoPrivate):
+        (JSObjectGetPrivate):
+        (JSObjectSetPrivate):
+        * bytecode/EvalCodeBlock.cpp:
+        (JSC::EvalCodeBlock::destroy):
+        * bytecode/FunctionCodeBlock.cpp:
+        (JSC::FunctionCodeBlock::destroy):
+        * bytecode/ModuleProgramCodeBlock.cpp:
+        (JSC::ModuleProgramCodeBlock::destroy):
+        * bytecode/ProgramCodeBlock.cpp:
+        (JSC::ProgramCodeBlock::destroy):
+        * bytecode/UnlinkedEvalCodeBlock.cpp:
+        (JSC::UnlinkedEvalCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionCodeBlock.cpp:
+        (JSC::UnlinkedFunctionCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::destroy):
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy):
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::destroy):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::lastChanceToFinalize):
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::finalize):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::destroy):
+        * runtime/ExecutableBase.cpp:
+        (JSC::ExecutableBase::clearCode):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        (JSC::JSCell::callDestructor):
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::destroy):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::destroy):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::destroy):
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::destroy):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::destroy):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::destroy):
+        * wasm/js/WebAssemblyToJSCallee.cpp:
+        (JSC::WebAssemblyToJSCallee::WebAssemblyToJSCallee):
+        (JSC::WebAssemblyToJSCallee::destroy):
+
+2017-01-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out http://trac.webkit.org/changeset/210821
+        It was causing crashes.
+
+        * API/JSAPIWrapperObject.mm:
+        (JSAPIWrapperObjectHandleOwner::finalize):
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::~JSCallbackObject):
+        (JSC::JSCallbackObject<Parent>::init):
+        * API/JSObjectRef.cpp:
+        (JSObjectGetPrivate):
+        (JSObjectSetPrivate):
+        (classInfoPrivate): Deleted.
+        * bytecode/EvalCodeBlock.cpp:
+        (JSC::EvalCodeBlock::destroy):
+        * bytecode/FunctionCodeBlock.cpp:
+        (JSC::FunctionCodeBlock::destroy):
+        * bytecode/ModuleProgramCodeBlock.cpp:
+        (JSC::ModuleProgramCodeBlock::destroy):
+        * bytecode/ProgramCodeBlock.cpp:
+        (JSC::ProgramCodeBlock::destroy):
+        * bytecode/UnlinkedEvalCodeBlock.cpp:
+        (JSC::UnlinkedEvalCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionCodeBlock.cpp:
+        (JSC::UnlinkedFunctionCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::destroy):
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy):
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::destroy):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::lastChanceToFinalize):
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::finalize):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::destroy):
+        * runtime/ExecutableBase.cpp:
+        (JSC::ExecutableBase::clearCode):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        (JSC::JSCell::callDestructor):
+        * runtime/JSLock.h:
+        (JSC::JSLock::exclusiveThread):
+        (JSC::JSLock::ownerThread): Deleted.
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::destroy):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::destroy):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::destroy):
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::destroy):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::destroy):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::destroy):
+        * wasm/js/WebAssemblyToJSCallee.cpp:
+        (JSC::WebAssemblyToJSCallee::WebAssemblyToJSCallee):
+        (JSC::WebAssemblyToJSCallee::destroy):
+
+2017-01-16  Filip Pizlo  <fpizlo@apple.com>
+
+        JSCell::classInfo() shouldn't have a bunch of mitigations for being called during destruction
+        https://bugs.webkit.org/show_bug.cgi?id=167066
+
+        Reviewed by Keith Miller and Michael Saboff.
+        
+        This reduces the size of JSCell::classInfo() by half and removes some checks that
+        this function previously had to do in case it was called from destructors.
+        
+        I changed all of the destructors so that they don't call JSCell::classInfo() and I
+        added an assertion to JSCell::classInfo() to catch cases where someone called it
+        from a destructor accidentally.
+        
+        This means that we only have one place in destruction that needs to know the class:
+        the sweeper's call to the destructor.
+        
+        One of the trickiest outcomes of this is the need to support inherits() tests in
+        JSObjectGetPrivate(), when it is called from the destructor callback on the object
+        being destructed. JSObjectGetPrivate() is undefined behavior anyway if you use it
+        on any dead-but-not-destructed object other than the one being destructed right
+        now. The purpose of the inherits() tests is to distinguish between different kinds
+        of CallbackObjects, which may have different kinds of base classes. I think that
+        this was always subtly wrong - for example, if the object being destructed is a
+        JSGlobalObject then it's not a DestructibleObject, is not in a destructor block,
+        but does not have an immortal Structure - so classInfo() is not valid. This fixes
+        the issue by having ~JSCallbackObject know its classInfo. It now stashes its
+        classInfo in VM so that JSObjectGetPrivate can use that classInfo if it detects
+        that it's being used on a currently-destructing object.
+        
+        That was the only really weird part of this patch. The rest is mostly removing
+        illegal uses of jsCast<> in destructors. There were a few other genuine uses of
+        classInfo() but they were in code that already knew how to get its classInfo()
+        using other means:
+        
+        - You can still say structure()->classInfo(), and I use this form in code that
+          knows that its StructureIsImmortal.
+        
+        - You can use this->classInfo() if it's overridden, like in subclasses of
+          JSDestructibleObject.
+
+        * API/JSAPIWrapperObject.mm:
+        (JSAPIWrapperObjectHandleOwner::finalize):
+        * API/JSCallbackObject.h:
+        * API/JSCallbackObjectFunctions.h:
+        (JSC::JSCallbackObject<Parent>::~JSCallbackObject):
+        (JSC::JSCallbackObject<Parent>::init):
+        * API/JSObjectRef.cpp:
+        (classInfoPrivate):
+        (JSObjectGetPrivate):
+        (JSObjectSetPrivate):
+        * bytecode/EvalCodeBlock.cpp:
+        (JSC::EvalCodeBlock::destroy):
+        * bytecode/FunctionCodeBlock.cpp:
+        (JSC::FunctionCodeBlock::destroy):
+        * bytecode/ModuleProgramCodeBlock.cpp:
+        (JSC::ModuleProgramCodeBlock::destroy):
+        * bytecode/ProgramCodeBlock.cpp:
+        (JSC::ProgramCodeBlock::destroy):
+        * bytecode/UnlinkedEvalCodeBlock.cpp:
+        (JSC::UnlinkedEvalCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionCodeBlock.cpp:
+        (JSC::UnlinkedFunctionCodeBlock::destroy):
+        * bytecode/UnlinkedFunctionExecutable.cpp:
+        (JSC::UnlinkedFunctionExecutable::destroy):
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        (JSC::UnlinkedModuleProgramCodeBlock::destroy):
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::destroy):
+        * heap/CodeBlockSet.cpp:
+        (JSC::CodeBlockSet::lastChanceToFinalize):
+        (JSC::CodeBlockSet::deleteUnmarkedAndUnreferenced):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::finalize):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::destroy):
+        * runtime/ExecutableBase.cpp:
+        (JSC::ExecutableBase::clearCode):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        (JSC::JSCell::callDestructor):
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::destroy):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::destroy):
+        * runtime/JSPropertyNameEnumerator.cpp:
+        (JSC::JSPropertyNameEnumerator::destroy):
+        * runtime/JSSegmentedVariableObject.h:
+        * runtime/SymbolTable.cpp:
+        (JSC::SymbolTable::destroy):
+        * runtime/VM.h:
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::destroy):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::destroy):
+        * wasm/js/WebAssemblyToJSCallee.cpp:
+        (JSC::WebAssemblyToJSCallee::WebAssemblyToJSCallee):
+        (JSC::WebAssemblyToJSCallee::destroy):
+
+2017-01-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove the REQUEST_ANIMATION_FRAME flag
+        https://bugs.webkit.org/show_bug.cgi?id=156980
+        <rdar://problem/25906849>
+
+        Reviewed by Simon Fraser.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WebAssembly: Suppress warnings & errors in GCC
+        https://bugs.webkit.org/show_bug.cgi?id=167049
+
+        Reviewed by Sam Weinig.
+
+        * wasm/WasmFunctionParser.h:
+        Add missing { } after the switch. Ideally, it is not necessary.
+        But in GCC, it is required. Since this function is fairly large,
+        I think the code generated by this does not cause performance
+        regression.
+
+        * wasm/WasmPageCount.h:
+        UINT_MAX is defined in limits.h.
+
+        * wasm/generateWasmValidateInlinesHeader.py:
+        On the other hand, we use this suppress pragma here to solve the
+        same problem in wasm/WasmFunctionParser.h. Since the load function
+        is fairly small, the additional `return { };` may generate some
+        suboptimal code. See bug 150794 for more detail.
+
+2017-01-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Reserve capacity for StringBuilder in unescape
+        https://bugs.webkit.org/show_bug.cgi?id=167008
+
+        Reviewed by Sam Weinig.
+
+        `unescape` function is frequently called in Kraken sha256-iterative.
+        This patch just reserves the capacity for the StringBuilder.
+
+        Currently, we select the length of the string for the reserved capacity.
+        It improves the performance 2.73%.
+
+            Benchmark report for Kraken on sakura-trick.
+
+            VMs tested:
+            "baseline" at /home/yusukesuzuki/dev/WebKit/WebKitBuild/untot/Release/bin/jsc
+            "patched" at /home/yusukesuzuki/dev/WebKit/WebKitBuild/un/Release/bin/jsc
+
+            Collected 100 samples per benchmark/VM, with 100 VM invocations per benchmark. Emitted a call to gc() between
+            sample measurements. Used 1 benchmark iteration per VM invocation for warm-up. Used the jsc-specific preciseTime()
+            function to get microsecond-level timing. Reporting benchmark execution times with 95% confidence intervals in
+            milliseconds.
+
+                                                       baseline                  patched
+
+            stanford-crypto-sha256-iterative        51.609+-0.672             50.237+-0.860           might be 1.0273x faster
+
+            <arithmetic>                            51.609+-0.672             50.237+-0.860           might be 1.0273x faster
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncUnescape):
+
+2017-01-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove ENABLE(DETAILS_ELEMENT) guards
+        https://bugs.webkit.org/show_bug.cgi?id=167042
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-11  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr from more of "platform"
+        https://bugs.webkit.org/show_bug.cgi?id=166809
+
+        Reviewed by Sam Weinig.
+
+        * inspector/JSInjectedScriptHost.h:
+        (Inspector::JSInjectedScriptHost::impl): Simplified code since we don't need a
+        const_cast here any more.
+        * runtime/PrivateName.h:
+        (JSC::PrivateName::uid): Ditto.
+
+2017-01-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r210735.
+
+        This change introduced LayoutTest and JSC test flakiness.
+
+        Reverted changeset:
+
+        "Reserve capacity for StringBuilder in unescape"
+        https://bugs.webkit.org/show_bug.cgi?id=167008
+        http://trac.webkit.org/changeset/210735
+
+2017-01-13  Saam Barati  <sbarati@apple.com>
+
+        Initialize the ArraySpecies watchpoint as Clear and transition to IsWatched once slice is called for the first time
+        https://bugs.webkit.org/show_bug.cgi?id=167017
+        <rdar://problem/30019309>
+
+        Reviewed by Keith Miller and Filip Pizlo.
+
+        This patch is to reverse the JSBench regression from r210695.
+        
+        The new state diagram for the array species watchpoint is as
+        follows:
+        
+        1. On GlobalObject construction, it starts life out as ClearWatchpoint.
+        2. When slice is called for the first time, we observe the state
+        of the world, and either transition it to IsWatched if we were able
+        to set up the object property conditions, or to IsInvalidated if we
+        were not.
+        3. The DFG compiler will now only lower slice as an intrinsic if
+        it observed the speciesWatchpoint.state() as IsWatched.
+        4. The IsWatched => IsInvalidated transition happens only when
+        one of the object property condition watchpoints fire.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::speciesWatchpointIsValid):
+        (JSC::speciesConstructArray):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        (JSC::ArrayPrototype::tryInitializeSpeciesWatchpoint):
+        (JSC::ArrayPrototype::initializeSpeciesWatchpoint): Deleted.
+        * runtime/ArrayPrototype.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+
+2017-01-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Reserve capacity for StringBuilder in unescape
+        https://bugs.webkit.org/show_bug.cgi?id=167008
+
+        Reviewed by Sam Weinig.
+
+        `unescape` function is frequently called in Kraken sha256-iterative.
+        This patch just reserves the capacity for the StringBuilder.
+
+        Currently, we select the length of the string for the reserved capacity.
+        It improves the performance 2.73%.
+
+            Benchmark report for Kraken on sakura-trick.
+
+            VMs tested:
+            "baseline" at /home/yusukesuzuki/dev/WebKit/WebKitBuild/untot/Release/bin/jsc
+            "patched" at /home/yusukesuzuki/dev/WebKit/WebKitBuild/un/Release/bin/jsc
+
+            Collected 100 samples per benchmark/VM, with 100 VM invocations per benchmark. Emitted a call to gc() between
+            sample measurements. Used 1 benchmark iteration per VM invocation for warm-up. Used the jsc-specific preciseTime()
+            function to get microsecond-level timing. Reporting benchmark execution times with 95% confidence intervals in
+            milliseconds.
+
+                                                       baseline                  patched
+
+            stanford-crypto-sha256-iterative        51.609+-0.672             50.237+-0.860           might be 1.0273x faster
+
+            <arithmetic>                            51.609+-0.672             50.237+-0.860           might be 1.0273x faster
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncUnescape):
+
+2017-01-12  Saam Barati  <sbarati@apple.com>
+
+        Add a slice intrinsic to the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=166707
+        <rdar://problem/29913445>
+
+        Reviewed by Filip Pizlo.
+
+        The gist of this patch is to inline Array.prototype.slice
+        into the DFG/FTL. The implementation in the DFG-backend
+        and FTLLowerDFGToB3 is just a straight forward implementation
+        of what the C function is doing. The more interesting bits
+        of this patch are setting up the proper watchpoints and conditions
+        in the executing code to prove that its safe to skip all of the
+        observable JS actions that Array.prototype.slice normally does.
+        
+        We perform the following proofs:
+        1. Array.prototype.constructor has not changed (via a watchpoint).
+        2. That Array.prototype.constructor[Symbol.species] has not changed (via a watchpoint).
+        3. The global object is not having a bad time.
+        4. The array that is being sliced has an original array structure.
+        5. Array.prototype/Object.prototype have not transitioned.
+        
+        Conditions 1, 2, and 3 are strictly required.
+        
+        4 is ensuring a couple things:
+        1. That a "constructor" property hasn't been added to the array
+        we're slicing since we're supposed to perform a Get(array, "constructor").
+        2. That we're not slicing an instance of a subclass of Array.
+        
+        We could relax 4.1 in the future if we find other ways to test if
+        the incoming array hasn't changed the "constructor" property. We
+        would probably use TryGetById to do this.
+        
+        I'm seeing a 5% speedup on crypto-pbkdf2 and often a 1% speedup on
+        the total benchmark (the results are sometimes noisy).
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGCallArrayAllocatorSlowPathGenerator.h:
+        (JSC::DFG::CallArrayAllocatorWithVariableStructureVariableSizeSlowPathGenerator::CallArrayAllocatorWithVariableStructureVariableSizeSlowPathGenerator):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArraySlice):
+        (JSC::DFG::SpeculativeJIT::emitAllocateButterfly):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::emitInitializeButterfly):
+        (JSC::DFG::SpeculativeJIT::compileAllocateNewArrayWithSize):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::emitInitializeButterfly):
+        (JSC::DFG::SpeculativeJIT::compileAllocateNewArrayWithSize):
+        * ftl/FTLAbstractHeapRepository.h:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArraySlice):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArrayWithSize):
+        (JSC::FTL::DFG::LowerDFGToB3::compileMaterializeNewObject):
+        (JSC::FTL::DFG::LowerDFGToB3::initializeArrayElements):
+        (JSC::FTL::DFG::LowerDFGToB3::storeStructure):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateCell):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateObject):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateJSArray):
+        (JSC::FTL::DFG::LowerDFGToB3::allocateUninitializedContiguousJSArray):
+        * jit/AssemblyHelpers.cpp:
+        (JSC::AssemblyHelpers::emitLoadStructure):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        (JSC::speciesWatchpointIsValid):
+        (JSC::speciesConstructArray):
+        (JSC::arrayProtoFuncSlice):
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        (JSC::ArrayPrototype::initializeSpeciesWatchpoint):
+        (JSC::ArrayPrototypeAdaptiveInferredPropertyWatchpoint::handleFire):
+        (JSC::speciesWatchpointsValid): Deleted.
+        (JSC::ArrayPrototype::attemptToInitializeSpeciesWatchpoint): Deleted.
+        * runtime/ArrayPrototype.h:
+        (JSC::ArrayPrototype::speciesWatchpointStatus): Deleted.
+        (): Deleted.
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::arraySpeciesWatchpoint):
+        * runtime/Structure.h:
+
+2017-01-12  Saam Barati  <sbarati@apple.com>
+
+        Concurrent GC has a bug where we would detect a race but fail to rescan the object
+        https://bugs.webkit.org/show_bug.cgi?id=166960
+        <rdar://problem/29983526>
+
+        Reviewed by Filip Pizlo and Mark Lam.
+
+        We have code like this in JSC:
+        
+        ```
+        Butterfly* butterfly = allocateMoreOutOfLineStorage(vm, oldOutOfLineCapacity, newOutOfLineCapacity);
+        nukeStructureAndSetButterfly(vm, structureID, butterfly);
+        structure->setLastOffset(newLastOffset);
+        WTF::storeStoreFence();
+        setStructureIDDirectly(structureID);
+        ```
+        
+        Note that the collector could detect a race here, which sometimes
+        incorrectly caused us to not visit the object again.
+        
+        Mutator Thread: M, Collector Thread: C, assuming sequential consistency via
+        proper barriers:
+        
+        M: allocate new butterfly
+        M: Set nuked structure ID
+        M: Set butterfly (this does a barrier)
+        C: Start scanning O
+        C: load structure ID
+        C: See it's nuked and bail, (we used to rely on a write barrier to rescan).
+        
+        We sometimes never rescanned here because we were calling
+        setStructureIDDirectly which doesn't do a write barrier.
+        (Note, the places that do this but call setStructure were
+        OK because setStructure will perform a write barrier.)
+        
+        (This same issue also existed in places where the collector thread
+        detected races for Structure::m_offset, but places that changed
+        Structure::m_offset didn't perform a write barrier on the object
+        after changing its Structure's m_offset.)
+        
+        To prevent such code from requiring every call site to perform
+        a write barrier on the object, I've changed the collector code
+        to keep a stack of cells to be revisited due to races. This stack
+        is then consulted when we do marking. Because such races are rare,
+        we have a single stack on Heap that is guarded by a lock.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::~Heap):
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::endMarking):
+        (JSC::Heap::buildConstraintSet):
+        (JSC::Heap::addToRaceMarkStack):
+        * heap/Heap.h:
+        (JSC::Heap::collectorSlotVisitor):
+        (JSC::Heap::mutatorMarkStack): Deleted.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didRace):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::didRace):
+        (JSC::SlotVisitor::didNotRace): Deleted.
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::didNotRace): Deleted.
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::visitButterfly):
+        (JSC::JSObject::visitButterflyImpl):
+        * runtime/JSObjectInlines.h:
+        (JSC::JSObject::prepareToPutDirectWithoutTransition):
+        * runtime/Structure.cpp:
+        (JSC::Structure::flattenDictionaryStructure):
+
+2017-01-12  Chris Dumez  <cdumez@apple.com>
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        https://bugs.webkit.org/show_bug.cgi?id=166995
+
+        Reviewed by Jer Noble.
+
+        Add KEYBOARD_KEY_ATTRIBUTE / KEYBOARD_CODE_ATTRIBUTE to FeatureDefines.xcconfig
+        as some people are having trouble building without it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement InlineClassicScript
+        https://bugs.webkit.org/show_bug.cgi?id=166925
+
+        Reviewed by Ryosuke Niwa.
+
+        Add ScriptFetcher field for SourceOrigin.
+
+        * runtime/SourceOrigin.h:
+        (JSC::SourceOrigin::SourceOrigin):
+        (JSC::SourceOrigin::fetcher):
+
 2017-01-11  Andreas Kling  <akling@apple.com>
 
         Crash when WebCore's GC heap grows way too large.

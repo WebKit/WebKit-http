@@ -185,8 +185,7 @@ WebInspector.loaded = function()
     if (this.showPrintStylesSetting.value && window.PageAgent)
         PageAgent.setEmulatedMedia("print");
 
-    this._zoomFactorSetting = new WebInspector.Setting("zoom-factor", 1);
-    this._setZoomFactor(this._zoomFactorSetting.value);
+    this.setZoomFactor(WebInspector.settings.zoomFactor.value);
 
     this.mouseCoords = {
         x: 0,
@@ -258,6 +257,8 @@ WebInspector.contentLoaded = function()
 
     this.settingsTabContentView = new WebInspector.SettingsTabContentView;
 
+    this._settingsKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, WebInspector.KeyboardShortcut.Key.Comma, this._showSettingsTab.bind(this));
+
     // Create the user interface elements.
     this.toolbar = new WebInspector.Toolbar(document.getElementById("toolbar"), null, true);
     this.toolbar.displayMode = WebInspector.Toolbar.DisplayMode.IconOnly;
@@ -274,6 +275,8 @@ WebInspector.contentLoaded = function()
     const disableFindBanner = false;
     this.splitContentBrowser = new WebInspector.ContentBrowser(document.getElementById("split-content-browser"), this, disableBackForward, disableFindBanner);
     this.splitContentBrowser.navigationBar.element.addEventListener("mousedown", this._consoleResizerMouseDown.bind(this));
+
+    this.clearKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl, "K", this._clear.bind(this));
 
     this.quickConsole = new WebInspector.QuickConsole(document.getElementById("quick-console"));
     this.quickConsole.addEventListener(WebInspector.QuickConsole.Event.DidResize, this._quickConsoleDidResize, this);
@@ -566,6 +569,11 @@ WebInspector._rememberOpenTabs = function()
 WebInspector._openDefaultTab = function(event)
 {
     this.showNewTabTab();
+};
+
+WebInspector._showSettingsTab = function(event)
+{
+    this.tabBrowser.showTabForContentView(this.settingsTabContentView);
 };
 
 WebInspector._tryToRestorePendingTabs = function()
@@ -882,6 +890,11 @@ WebInspector.isShowingSplitConsole = function()
     return !this.splitContentBrowser.element.classList.contains("hidden");
 };
 
+WebInspector.dockedConfigurationSupportsSplitContentBrowser = function()
+{
+    return this._dockConfiguration !== WebInspector.DockConfiguration.Bottom;
+};
+
 WebInspector.doesCurrentTabSupportSplitContentBrowser = function()
 {
     var currentContentView = this.tabBrowser.selectedTabContentView;
@@ -943,16 +956,11 @@ WebInspector.hideSplitConsole = function()
 
 WebInspector.showConsoleTab = function(requestedScope)
 {
+    requestedScope = requestedScope || WebInspector.LogContentView.Scopes.All;
+
     this.hideSplitConsole();
 
-    var scope = requestedScope || WebInspector.LogContentView.Scopes.All;
-
-    // If the requested scope is already selected and the console is showing, then switch back to All.
-    if (this.isShowingConsoleTab() && this.consoleContentView.scopeBar.item(scope).selected)
-        scope = WebInspector.LogContentView.Scopes.All;
-
-    if (requestedScope || !this.consoleContentView.scopeBar.selectedItems.length)
-        this.consoleContentView.scopeBar.item(scope).selected = true;
+    this.consoleContentView.scopeBar.item(requestedScope).selected = true;
 
     this.showRepresentedObject(this._consoleRepresentedObject);
 
@@ -1590,7 +1598,7 @@ WebInspector._setupViewHierarchy = function()
 
 WebInspector._tabBrowserSelectedTabContentViewDidChange = function(event)
 {
-    if (this.tabBar.selectedTabBarItem)
+    if (this.tabBar.selectedTabBarItem && this.tabBar.selectedTabBarItem.representedObject.constructor.shouldSaveTab())
         this._selectedTabIndexSetting.value = this.tabBar.tabBarItems.indexOf(this.tabBar.selectedTabBarItem);
 
     if (!this.doesCurrentTabSupportSplitContentBrowser())
@@ -1727,7 +1735,7 @@ WebInspector._dockedResizerMouseDown = function(event)
         let dimension = Math.max(0, window[windowProperty] - delta);
         // If zoomed in/out, there be greater/fewer document pixels shown, but the inspector's
         // width or height should be the same in device pixels regardless of the document zoom.
-        dimension *= this._zoomFactor();
+        dimension *= this.getZoomFactor();
 
         if (this._dockConfiguration === WebInspector.DockConfiguration.Bottom)
             InspectorFrontendHost.setAttachedWindowHeight(dimension);
@@ -2012,6 +2020,19 @@ WebInspector._saveAs = function(event)
     WebInspector.saveDataToFile(contentView.saveData, true);
 };
 
+WebInspector._clear = function(event)
+{
+    let contentView = this.focusedOrVisibleContentView();
+    if (!contentView || typeof contentView.handleClearShortcut !== "function") {
+        // If the current content view is unable to handle this event, clear the console to reset
+        // the dashboard counters.
+        this.logManager.requestClearMessages();
+        return;
+    }
+
+    contentView.handleClearShortcut(event);
+};
+
 WebInspector._copy = function(event)
 {
     var selection = window.getSelection();
@@ -2047,45 +2068,43 @@ WebInspector._increaseZoom = function(event)
 {
     const epsilon = 0.0001;
     const maximumZoom = 2.4;
-    let currentZoom = this._zoomFactor();
+    let currentZoom = this.getZoomFactor();
     if (currentZoom + epsilon >= maximumZoom) {
         InspectorFrontendHost.beep();
         return;
     }
 
-    let newZoom = Math.min(maximumZoom, currentZoom + 0.2);
-    this._setZoomFactor(newZoom);
+    this.setZoomFactor(Math.min(maximumZoom, currentZoom + 0.2));
 };
 
 WebInspector._decreaseZoom = function(event)
 {
     const epsilon = 0.0001;
     const minimumZoom = 0.6;
-    let currentZoom = this._zoomFactor();
+    let currentZoom = this.getZoomFactor();
     if (currentZoom - epsilon <= minimumZoom) {
         InspectorFrontendHost.beep();
         return;
     }
 
-    let newZoom = Math.max(minimumZoom, currentZoom - 0.2);
-    this._setZoomFactor(newZoom);
+    this.setZoomFactor(Math.max(minimumZoom, currentZoom - 0.2));
 };
 
 WebInspector._resetZoom = function(event)
 {
-    this._setZoomFactor(1);
+    this.setZoomFactor(1);
 };
 
-WebInspector._zoomFactor = function()
+WebInspector.getZoomFactor = function()
 {
-    return this._zoomFactorSetting.value;
+    return WebInspector.settings.zoomFactor.value;
 };
 
-WebInspector._setZoomFactor = function(factor)
+WebInspector.setZoomFactor = function(factor)
 {
     InspectorFrontendHost.setZoomFactor(factor);
     // Round-trip through the frontend host API in case the requested factor is not used.
-    this._zoomFactorSetting.value = InspectorFrontendHost.zoomFactor();
+    WebInspector.settings.zoomFactor.value = InspectorFrontendHost.zoomFactor();
 };
 
 WebInspector._showTabAtIndex = function(i, event)

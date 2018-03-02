@@ -1,30 +1,43 @@
 
 class ButtonBase extends ComponentBase {
-    constructor(name)
+    didConstructShadowTree()
     {
-        super(name);
+        this.content('button').addEventListener('click', this.createEventHandler(() => {
+            this.dispatchAction('activate');
+        }));
     }
 
-    setCallback(callback)
+    static htmlTemplate()
     {
-        this.content().querySelector('a').addEventListener('click', ComponentBase.createActionHandler(callback));
+        return `<a id="button" href="#"><svg viewBox="0 0 100 100">${this.buttonContent()}</svg></a>`;
     }
+
+    static buttonContent() { throw 'NotImplemented'; }
+    static sizeFactor() { return 1; }
 
     static cssTemplate()
     {
+        const sizeFactor = this.sizeFactor();
         return `
-            .button {
-                vertical-align: bottom;
+            :host {
                 display: inline-block;
-                width: 1rem;
-                height: 1rem;
+                width: ${sizeFactor}rem;
+                height: ${sizeFactor}rem;
+            }
+
+            a {
+                vertical-align: bottom;
+                display: block;
                 opacity: 0.3;
             }
 
-            .button:hover {
+            a:hover {
                 opacity: 0.6;
+            }
+
+            svg {
+                display: block;
             }
         `;
     }
-
 }
