@@ -1057,8 +1057,7 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         //  ClearKey for some reason.
         auto& cdmInstanceOpenCDM = downcast<CDMInstanceOpenCDM>(instance);
         GST_TRACE("instance is OpenCDM, continuing with %s", cdmInstanceOpenCDM.keySystem().utf8().data());
-        //FIXME: Correct initData should be passed to cdmInstanceOpenCDM to retrieve proper session
-        String sessionId = cdmInstanceOpenCDM.sessionIdByInitData(String());
+        String sessionId = cdmInstanceOpenCDM.getCurrentSessionId();
         ASSERT(!sessionId.isEmpty());
         GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr));
         for (const auto& it : m_appendPipelinesMap)
