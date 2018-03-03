@@ -469,7 +469,7 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction function)
+void FrameLoaderClientHaiku::dispatchWillSubmitForm(FormState&, FramePolicyFunction function)
 {
     CALLED();
     notImplemented();
@@ -510,7 +510,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::Reso
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action,
-    const ResourceRequest& request, PassRefPtr<FormState> /*formState*/, const String& /*targetName*/, FramePolicyFunction function)
+    const ResourceRequest& request, FormState* /*formState*/, const String& /*targetName*/, FramePolicyFunction function)
 {
     ASSERT(function);
     if (!function)
@@ -556,7 +556,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
-    const ResourceRequest& request, PassRefPtr<FormState> formState, FramePolicyFunction function)
+    const ResourceRequest& request, FormState* formState, FramePolicyFunction function)
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
@@ -660,7 +660,7 @@ void FrameLoaderClientHaiku::didDisplayInsecureContent()
 {
 }
 
-void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin*, const WebCore::URL&)
+void FrameLoaderClientHaiku::didRunInsecureContent(WebCore::SecurityOrigin&, const WebCore::URL&)
 {
     notImplemented();
 }
@@ -883,7 +883,7 @@ bool FrameLoaderClientHaiku::canCachePage() const
 }
 
 RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
-    const String& name, HTMLFrameOwnerElement* ownerElement,
+    const String& name, HTMLFrameOwnerElement& ownerElement,
     const String& referrer, bool /*allowsScrolling*/, int /*marginWidth*/,
     int /*marginHeight*/)
 {
@@ -892,7 +892,7 @@ RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     ASSERT(m_webFrame);
     ASSERT(m_webPage);
 
-    BWebFrame* subFrame = m_webFrame->AddChild(m_webPage, name, ownerElement);
+    BWebFrame* subFrame = m_webFrame->AddChild(m_webPage, name, &ownerElement);
     if (!subFrame)
         return nullptr;
 
@@ -952,7 +952,7 @@ ObjectContentType FrameLoaderClientHaiku::objectContentType(const URL& url, cons
     return ObjectContentType::None;
 }
 
-RefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
+RefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&,
                                                         const Vector<String>&, const String&, bool /*loadManually*/)
 {
     CALLED();
@@ -966,7 +966,7 @@ void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
     debugger("plugins are not implemented on Haiku!");
 }
 
-PassRefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& /*baseURL*/,
+RefPtr<Widget> FrameLoaderClientHaiku::createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL& /*baseURL*/,
                                                                   const Vector<String>& /*paramNames*/, const Vector<String>& /*paramValues*/)
 {
     notImplemented();
@@ -1020,7 +1020,7 @@ void FrameLoaderClientHaiku::registerForIconNotification(bool /*listen*/)
     notImplemented();
 }
 
-PassRefPtr<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
+Ref<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()
 {
     return FrameNetworkingContextHaiku::create(m_webFrame->Frame(), m_webPage->GetContext());
 }

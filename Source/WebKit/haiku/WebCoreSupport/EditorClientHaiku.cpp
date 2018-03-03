@@ -220,16 +220,16 @@ void EditorClientHaiku::canceledComposition()
 {
 }
 
-void EditorClientHaiku::registerUndoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
+void EditorClientHaiku::registerUndoStep(WebCore::UndoStep& step)
 {
     if (!m_isInRedo)
         m_redoStack.clear();
-    m_undoStack.append(step);
+    m_undoStack.append(&step);
 }
 
-void EditorClientHaiku::registerRedoStep(WTF::PassRefPtr<WebCore::UndoStep> step)
+void EditorClientHaiku::registerRedoStep(WebCore::UndoStep& step)
 {
-    m_redoStack.append(step);
+    m_redoStack.append(&step);
 }
 
 void EditorClientHaiku::clearUndoRedoOperations()

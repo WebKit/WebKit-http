@@ -1029,7 +1029,7 @@ void BWebPage::MessageReceived(BMessage* message)
         break;
 
     case B_REFS_RECEIVED: {
-		RefPtr<FileChooser>* chooser;
+	FileChooser* chooser;
         if (message->FindPointer("chooser", reinterpret_cast<void**>(&chooser)) == B_OK) {
             entry_ref ref;
             BPath path;
@@ -1038,8 +1038,7 @@ void BWebPage::MessageReceived(BMessage* message)
                 path.SetTo(&ref);
                 filenames.append(String(path.Path()));
             }
-            (*chooser)->chooseFiles(filenames);
-            delete chooser;
+            chooser->chooseFiles(filenames);
         }
     	break;
     }

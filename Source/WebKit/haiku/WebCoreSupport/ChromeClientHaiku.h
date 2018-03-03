@@ -144,7 +144,7 @@ namespace WebCore {
             return static_cast<CompositingTriggerFlags>(0);
         }
 
-        void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
+        void runOpenPanel(Frame&, FileChooser&) override;
         void setPanelDirectory(entry_ref dir) { m_filePanelDirectory = dir; }
 
         // Asynchronous request to load an icon for specified filenames.

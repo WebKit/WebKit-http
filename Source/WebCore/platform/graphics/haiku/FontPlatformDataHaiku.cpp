@@ -144,32 +144,39 @@ FontPlatformData FontPlatformData::cloneWithSize(const FontPlatformData& source,
 }
 
 
+unsigned FontPlatformData::hash() const
+{
+	if (isHashTableDeletedValue())
+		return 1;
+	String hashString = description();
+	return StringHasher::hashMemory<sizeof(hashString.length())>(hashString.utf8().data());
+}
+
+
 bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 {
 	if (m_font == nullptr && other.m_font == nullptr)
 		return true;
 	if (m_font == nullptr || other.m_font == nullptr)
 		return false;
-    return (*m_font == *other.m_font);
+	return (*m_font == *other.m_font);
 }
 
 bool FontPlatformData::isFixedPitch() const
 {
 	if (m_font == nullptr)
 		return false;
-    return m_font->Spacing() == B_FIXED_SPACING;
+	return m_font->Spacing() == B_FIXED_SPACING;
 }
 
-#ifndef NDEBUG
 String FontPlatformData::description() const
 {
 	font_family fontFamily;
 	font_style fontStyle;
 	m_font->GetFamilyAndStyle(&fontFamily, &fontStyle);
-    return String(fontFamily) + "/" + String(fontStyle)
+	return String(fontFamily) + "/" + String(fontStyle)
 		+ String::format("/%.1f/%d&%d", m_size, m_syntheticBold, m_syntheticOblique);
 }
-#endif
 
 void
 FontPlatformData::SetFallBackSerifFont(const BString& font)

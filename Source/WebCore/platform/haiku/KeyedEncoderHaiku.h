@@ -40,7 +40,7 @@ public:
     KeyedEncoderHaiku();
     ~KeyedEncoderHaiku();
 
-    virtual PassRefPtr<WebCore::SharedBuffer> finishEncoding() override;
+    virtual RefPtr<WebCore::SharedBuffer> finishEncoding() override;
 
 private:
     virtual void encodeBytes(const String& key, const uint8_t*, size_t) override;

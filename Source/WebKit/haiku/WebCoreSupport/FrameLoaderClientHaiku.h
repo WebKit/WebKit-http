@@ -117,15 +117,15 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) override;
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
-        const ResourceRequest&, PassRefPtr<FormState>, const String&, FramePolicyFunction) override;
+        const ResourceRequest&, FormState*, const String&, FramePolicyFunction) override;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                         const ResourceRequest&, PassRefPtr<FormState>, FramePolicyFunction) override;
+                                                         const ResourceRequest&, FormState*, FramePolicyFunction) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const ResourceError&) override;
 
-    void dispatchWillSendSubmitEvent(PassRefPtr<FormState>) override { }
-    void dispatchWillSubmitForm(PassRefPtr<FormState>, FramePolicyFunction) override;
+    void dispatchWillSendSubmitEvent(WTF::Ref<FormState>&&) override { }
+    void dispatchWillSubmitForm(FormState&, FramePolicyFunction) override;
 
     void revertToProvisionalState(DocumentLoader*) override;
     void setMainDocumentError(DocumentLoader*, const ResourceError&) override;
@@ -156,7 +156,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     void didDisplayInsecureContent() override;
 
-    void didRunInsecureContent(SecurityOrigin*, const URL&) override;
+    void didRunInsecureContent(SecurityOrigin&, const URL&) override;
     void didDetectXSS(const URL&, bool didBlockEntirePage) override;
 
     ResourceError cancelledError(const ResourceRequest&) override;
@@ -194,14 +194,14 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     void setTitle(const StringWithDirection&, const URL&) override;
 
-    RefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement*,
+    RefPtr<Frame> createFrame(const URL& url, const String& name, HTMLFrameOwnerElement&,
         const String& referrer, bool allowsScrolling, int marginWidth, int marginHeight) override;
-    RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement*, const URL&, const Vector<String>&,
+    RefPtr<Widget> createPlugin(const IntSize&, HTMLPlugInElement&, const URL&, const Vector<String>&,
         const Vector<String>&, const String&, bool) override;
     void recreatePlugin(Widget*) override { }
     void redirectDataToPlugin(Widget* pluginWidget) override;
 
-    PassRefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement*, const URL& baseURL,
+    RefPtr<Widget> createJavaAppletWidget(const IntSize&, HTMLAppletElement&, const URL& baseURL,
         const Vector<String>& paramNames, const Vector<String>& paramValues) override;
 
     ObjectContentType objectContentType(const URL&, const String& mimeType) override;
@@ -217,7 +217,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     void registerForIconNotification(bool listen) override;
 
-    PassRefPtr<FrameNetworkingContext> createNetworkingContext() override;
+    Ref<FrameNetworkingContext> createNetworkingContext() override;
     void updateCachedDocumentLoader(WebCore::DocumentLoader&) override { }
 
     void prefetchDNS(const String&) override { }

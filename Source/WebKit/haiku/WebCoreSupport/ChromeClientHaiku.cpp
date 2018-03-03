@@ -422,14 +422,13 @@ void ChromeClientHaiku::reachedApplicationCacheOriginQuota(SecurityOrigin*, int6
     notImplemented();
 }
 
-void ChromeClientHaiku::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
+void ChromeClientHaiku::runOpenPanel(Frame&, FileChooser& chooser)
 {
-    RefPtr<FileChooser> *ref = new RefPtr<FileChooser>(chooser);
     BMessage message(B_REFS_RECEIVED);
-    message.AddPointer("chooser", ref);
+    message.AddPointer("chooser", &chooser);
     BMessenger target(m_webPage);
     BFilePanel* panel = new BFilePanel(B_OPEN_PANEL, &target,
-        &m_filePanelDirectory, 0, (*ref)->settings().allowsMultipleFiles,
+        &m_filePanelDirectory, 0, chooser.settings().allowsMultipleFiles,
         &message, NULL, true, true);
 
     panel->Show();

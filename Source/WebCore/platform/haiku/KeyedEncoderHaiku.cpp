@@ -46,7 +46,7 @@ KeyedEncoderHaiku::~KeyedEncoderHaiku()
 {
 }
 
-PassRefPtr<WebCore::SharedBuffer> KeyedEncoderHaiku::finishEncoding()
+RefPtr<WebCore::SharedBuffer> KeyedEncoderHaiku::finishEncoding()
 {
     class SharedBufferIO: public BDataIO {
         public:

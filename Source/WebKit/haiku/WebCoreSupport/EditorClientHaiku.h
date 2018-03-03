@@ -84,8 +84,8 @@ public:
     void discardedComposition(Frame*) override;
     void canceledComposition() override;
 
-    void registerUndoStep(PassRefPtr<UndoStep>) override;
-    void registerRedoStep(PassRefPtr<UndoStep>) override;
+    void registerUndoStep(UndoStep&) override;
+    void registerRedoStep(UndoStep&) override;
     void clearUndoRedoOperations() override;
 
     bool canCopyCut(Frame*, bool defaultValue) const override;
@@ -144,7 +144,7 @@ private:
 
     BWebPage* m_page;
 
-    typedef Deque<RefPtr<WebCore::UndoStep> > UndoManagerStack;
+    typedef Deque<WebCore::UndoStep*> UndoManagerStack;
     UndoManagerStack m_undoStack;
     UndoManagerStack m_redoStack;
 

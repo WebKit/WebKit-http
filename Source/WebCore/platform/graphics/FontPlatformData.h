@@ -238,7 +238,7 @@ public:
     RefPtr<SharedBuffer> openTypeTable(uint32_t table) const;
 #endif
 
-#ifndef NDEBUG
+#if !defined(NDEBUG) || PLATFORM(HAIKU)
     String description() const;
 #endif
 

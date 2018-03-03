@@ -46,9 +46,9 @@ static std::unique_ptr<NetworkStorageSession>& privateSession()
     return session;
 }
 
-PassRefPtr<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext* context)
+Ref<FrameNetworkingContextHaiku> FrameNetworkingContextHaiku::create(Frame* frame, BUrlContext* context)
 {
-    return adoptRef(new FrameNetworkingContextHaiku(frame, context));
+    return adoptRef(*new FrameNetworkingContextHaiku(frame, context));
 }
 
 FrameNetworkingContextHaiku::FrameNetworkingContextHaiku(Frame* frame, BUrlContext* context)
