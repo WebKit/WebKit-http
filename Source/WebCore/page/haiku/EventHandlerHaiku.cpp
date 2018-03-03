@@ -50,7 +50,7 @@ namespace WebCore {
 
 const double EventHandler::TextDragDelay = 0.0;
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent*) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent&) const
 {
     return true;
 }
@@ -104,7 +104,7 @@ bool EventHandler::widgetDidHandleWheelEvent(const PlatformWheelEvent& event, Wi
     return static_cast<FrameView&>(widget).frame().eventHandler().handleWheelEvent(event);
 }
 
-PassRefPtr<DataTransfer> EventHandler::createDraggingDataTransfer() const
+Ref<DataTransfer> EventHandler::createDraggingDataTransfer() const
 {
     return DataTransfer::createForDragAndDrop();
 }

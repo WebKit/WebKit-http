@@ -47,8 +47,6 @@ list(APPEND WebCore_SOURCES
 
   page/PointerLockController.cpp
 
-  platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
-
   platform/haiku/CursorHaiku.cpp
   platform/haiku/DragImageHaiku.cpp
   platform/haiku/DragDataHaiku.cpp
@@ -162,9 +160,10 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
+        crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp
+
         crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
@@ -209,9 +208,9 @@ list(APPEND WebCore_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h)
 set(WebCore_USER_AGENT_SCRIPTS_DEPENDENCIES ${WEBCORE_DIR}/platform/haiku/RenderThemeHaiku.cpp)
 
 list(APPEND WebCore_LIBRARIES
-  ${GNUTLS_LIBRARIES}
   ${ICU_LIBRARIES}
   ${JPEG_LIBRARY}
+  ${LIBGCRYPT_LIBRARIES}
   ${LIBXML2_LIBRARIES}
   ${LIBXSLT_LIBRARIES}
   ${PNG_LIBRARY}

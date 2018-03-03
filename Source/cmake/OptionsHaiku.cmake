@@ -30,8 +30,7 @@ endif ()
 #endforeach(flag_var)
 #set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fvisibility-inlines-hidden")
 
-
-find_package(GnuTLS 3.0.0 REQUIRED)
+find_package(LibGcrypt 1.6.0 REQUIRED)
 FIND_PACKAGE(Sqlite REQUIRED)
 FIND_PACKAGE(LibXml2 2.8.0 REQUIRED)
 FIND_PACKAGE(LibXslt 1.1.7 REQUIRED)
@@ -118,10 +117,6 @@ WEBKIT_OPTION_END()
 
 if (ENABLE_WEBKIT2 AND ENABLE_NETSCAPE_PLUGIN_API)
     set(ENABLE_PLUGIN_PROCESS 1)
-endif ()
-
-if (ENABLE_BATTERY_STATUS)
-    find_package(DBus REQUIRED)
 endif ()
 
 IF (ENABLE_WEB_AUDIO)

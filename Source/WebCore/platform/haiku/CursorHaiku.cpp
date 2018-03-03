@@ -33,28 +33,6 @@
 
 namespace WebCore {
 
-Cursor::Cursor(const Cursor& other)
-    : m_type(other.m_type)
-    , m_platformCursor(nullptr)
-{
-    if (other.platformCursor())
-        m_platformCursor = new BCursor(*other.platformCursor());
-}
-
-Cursor::~Cursor()
-{
-    delete m_platformCursor;
-}
-
-Cursor& Cursor::operator=(const Cursor& other)
-{
-    m_type = other.m_type;
-
-    delete m_platformCursor;
-    m_platformCursor = other.platformCursor() ? new BCursor(*other.platformCursor()) : nullptr;
-    return *this;
-}
-
 void Cursor::ensurePlatformCursor() const
 {
     if (m_platformCursor)

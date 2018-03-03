@@ -128,7 +128,7 @@ void ChromeClientHaiku::focusedFrameChanged(Frame*)
     notImplemented();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame* /*frame*/, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
+Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
 {
 	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the
@@ -250,7 +250,7 @@ bool ChromeClientHaiku::canRunBeforeUnloadConfirmPanel()
     return true;
 }
 
-bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame* frame)
+bool ChromeClientHaiku::runBeforeUnloadConfirmPanel(const String& message, Frame& frame)
 {
     return runJavaScriptConfirm(frame, message);
 }
@@ -266,19 +266,19 @@ void ChromeClientHaiku::closeWindowSoon()
     m_webPage->closeWindow();
 }
 
-void ChromeClientHaiku::runJavaScriptAlert(Frame*, const String& msg)
+void ChromeClientHaiku::runJavaScriptAlert(Frame&, const String& msg)
 {
     m_webPage->runJavaScriptAlert(BString(msg));
 }
 
-bool ChromeClientHaiku::runJavaScriptConfirm(Frame*, const String& msg)
+bool ChromeClientHaiku::runJavaScriptConfirm(Frame&, const String& msg)
 {
     return m_webPage->runJavaScriptConfirm(BString(msg));
     BAlert* alert = new BAlert("JavaScript", BString(msg).String(), "Yes", "No");
     return !alert->Go();
 }
 
-bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& /*message*/, const String& /*defaultValue*/, String& /*result*/)
+bool ChromeClientHaiku::runJavaScriptPrompt(Frame&, const String& /*message*/, const String& /*defaultValue*/, String& /*result*/)
 {
     notImplemented();
     return false;
@@ -286,9 +286,9 @@ bool ChromeClientHaiku::runJavaScriptPrompt(Frame*, const String& /*message*/, c
 
 
 std::unique_ptr<ColorChooser> ChromeClientHaiku::createColorChooser(
-    ColorChooserClient* client, const Color& color)
+    ColorChooserClient& client, const Color& color)
 {
-    return std::make_unique<ColorChooserHaiku>(client, color);
+    return std::make_unique<ColorChooserHaiku>(&client, color);
 }
 
 
@@ -364,7 +364,7 @@ PlatformPageClient ChromeClientHaiku::platformPageClient() const
     return m_webView;
 }
 
-void ChromeClientHaiku::contentsSizeChanged(Frame*, const IntSize&) const
+void ChromeClientHaiku::contentsSizeChanged(Frame&, const IntSize&) const
 {
 }
 
@@ -402,12 +402,12 @@ void ChromeClientHaiku::setToolTip(const String& tip, TextDirection)
     m_webView->UnlockLooper();
 }
 
-void ChromeClientHaiku::print(Frame*)
+void ChromeClientHaiku::print(Frame&)
 {
     notImplemented();
 }
 
-void ChromeClientHaiku::exceededDatabaseQuota(Frame*, const String& /*databaseName*/, DatabaseDetails)
+void ChromeClientHaiku::exceededDatabaseQuota(Frame&, const String& /*databaseName*/, DatabaseDetails)
 {
     notImplemented();
 }
@@ -417,7 +417,7 @@ void ChromeClientHaiku::reachedMaxAppCacheSize(int64_t /*spaceNeeded*/)
     notImplemented();
 }
 
-void ChromeClientHaiku::reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t /*totalSpaceNeeded*/)
+void ChromeClientHaiku::reachedApplicationCacheOriginQuota(SecurityOrigin&, int64_t /*totalSpaceNeeded*/)
 {
     notImplemented();
 }
@@ -473,14 +473,14 @@ bool ChromeClientHaiku::hasOpenedPopup() const
     return false;
 }
 
-RefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient* client) const
+RefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient& client) const
 {
-    return adoptRef(new PopupMenuHaiku(client));
+    return adoptRef(new PopupMenuHaiku(&client));
 }
 
-RefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient* client) const
+RefPtr<SearchPopupMenu> ChromeClientHaiku::createSearchPopupMenu(PopupMenuClient& client) const
 {
-    return adoptRef(new SearchPopupMenuHaiku(client));
+    return adoptRef(new SearchPopupMenuHaiku(&client));
 }
 
 
@@ -501,12 +501,12 @@ bool ChromeClientHaiku::isPointerLocked() {
 #endif
 
 
-void ChromeClientHaiku::attachRootGraphicsLayer(Frame*, GraphicsLayer* layer)
+void ChromeClientHaiku::attachRootGraphicsLayer(Frame&, GraphicsLayer* layer)
 {
     m_webView->SetRootLayer(layer);
 }
 
-void ChromeClientHaiku::attachViewOverlayGraphicsLayer(Frame*, GraphicsLayer*)
+void ChromeClientHaiku::attachViewOverlayGraphicsLayer(Frame&, GraphicsLayer*)
 {
     // FIXME: If we want view-relative page overlays, this would be the place to hook them up.
 	fprintf(stderr, "!!! Trying to create an overlay layer!\n");

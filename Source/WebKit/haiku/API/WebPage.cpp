@@ -58,6 +58,7 @@
 #include "IconDatabase.h"
 #include "InitializeThreading.h"
 #include "InspectorClientHaiku.h"
+#include "LibWebRTCProvider.h"
 #include "Logging.h"
 #include "MemoryCache.h"
 #include "WebNavigatorContentUtilsClient.h"
@@ -239,7 +240,10 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     RefPtr<WebViewGroup> viewGroup = WebViewGroup::getOrCreate("default",
         storagePath.Path());
 
-    PageConfiguration pageClients(makeUniqueRef<EditorClientHaiku>(this), SocketProvider::create());
+    PageConfiguration pageClients(
+	makeUniqueRef<EditorClientHaiku>(this),
+	SocketProvider::create(),
+        makeUniqueRef<LibWebRTCProvider>());
     fillWithEmptyClients(pageClients);
 	//pageClients.backForwardClient = this;
     // pluginClient

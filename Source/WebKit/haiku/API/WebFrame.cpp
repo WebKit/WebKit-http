@@ -450,7 +450,7 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
     coreFrame->tree().setName(name.String());
 
     if (ownerElement)
-        ownerElement->document().frame()->tree().appendChild(coreFrame.get());
+        ownerElement->document().frame()->tree().appendChild(*coreFrame.get());
     data->frame->init();
     // TODO? evas_object_smart_member_add(frame, ewkFrame);
     

@@ -65,7 +65,7 @@ namespace WebCore {
         void focusedElementChanged(Element*) override;
         void focusedFrameChanged(Frame*) override;
 
-        Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override;
+        Page* createWindow(Frame&, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override;
 
         void show() override;
 
@@ -90,14 +90,14 @@ namespace WebCore {
                                          const String& message, unsigned int lineNumber, unsigned columnNumber, const String& sourceID) override;
 
         bool canRunBeforeUnloadConfirmPanel() override;
-        bool runBeforeUnloadConfirmPanel(const String& message, Frame* frame) override;
+        bool runBeforeUnloadConfirmPanel(const String& message, Frame& frame) override;
 
         void closeWindowSoon() override;
 
-        void runJavaScriptAlert(Frame*, const String&) override;
-        bool runJavaScriptConfirm(Frame*, const String&) override;
-        bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
-        std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
+        void runJavaScriptAlert(Frame&, const String&) override;
+        bool runJavaScriptConfirm(Frame&, const String&) override;
+        bool runJavaScriptPrompt(Frame&, const String& message, const String& defaultValue, String& result) override;
+        std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient&, const Color&) override;
 
         KeyboardUIMode keyboardUIMode() override;
 
@@ -113,9 +113,9 @@ namespace WebCore {
         IntRect rootViewToScreen(const IntRect&) const override;
 
         PlatformPageClient platformPageClient() const override;
-        void contentsSizeChanged(Frame*, const IntSize&) const override;
+        void contentsSizeChanged(Frame&, const IntSize&) const override;
         void scrollRectIntoView(const IntRect&) const override;
-        void attachViewOverlayGraphicsLayer(WebCore::Frame* frame, WebCore::GraphicsLayer* layer) override;
+        void attachViewOverlayGraphicsLayer(WebCore::Frame& frame, WebCore::GraphicsLayer* layer) override;
 
         void scrollbarsModeDidChange() const override { }
         void setCursor(const Cursor&) override ;
@@ -129,13 +129,13 @@ namespace WebCore {
 
         void setToolTip(const String&, TextDirection) override;
 
-        void print(Frame*) override;
+        void print(Frame&) override;
 
-        void exceededDatabaseQuota(Frame*, const String& databaseName, DatabaseDetails) override;
+        void exceededDatabaseQuota(Frame&, const String& databaseName, DatabaseDetails) override;
         void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
-        void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
+        void reachedApplicationCacheOriginQuota(SecurityOrigin&, int64_t totalSpaceNeeded) override;
 
-        void attachRootGraphicsLayer(Frame*, GraphicsLayer*) override;
+        void attachRootGraphicsLayer(Frame&, GraphicsLayer*) override;
         void setNeedsOneShotDrawingSynchronization() override;
         void scheduleCompositingLayerFlush() override;
 
@@ -153,8 +153,8 @@ namespace WebCore {
         bool selectItemWritingDirectionIsNatural() override;
         bool selectItemAlignmentFollowsMenuWritingDirection() override;
         bool hasOpenedPopup() const override;
-        RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
-        RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
+        RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const override;
+        RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const override;
 
         void wheelEventHandlersChanged(bool) override { }
 
