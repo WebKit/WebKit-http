@@ -1,0 +1,172 @@
+2017-01-24  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Use HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE for libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167353
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Filter libwebrtc link flags
+        https://bugs.webkit.org/show_bug.cgi?id=167287
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Make VP8 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167257
+
+        Reviewed by Darin Adler.
+
+        Reusing strategy used to have VP9 optional for VP8 codec.
+
+        * CMakeLists.txt: Updated tocompile and link vp8_noop.cc
+        * Source/webrtc/media/engine/webrtcvideoengine2.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/include/vp8.h:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_noop.cc: Added.
+        * Source/webrtc/video/video_encoder.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update build system to make G711 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167256
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt: Updating to add compilation of generic pcm encoder functions.
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update libwertc AudioRtpSender::SetAudioSend
+        https://bugs.webkit.org/show_bug.cgi?id=167243
+
+        Reviewed by Alex Christensen.
+
+        Introducing  WEBRTC_WEBKIT_BUILD macro to match existing WEBRTC_CHROMIUM_BUILD.
+        WEBRTC_WEBKIT_BUILD is defined by current WebKit libwebrtc build system.
+
+        * Source/webrtc/api/rtpsender.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] libwebrtc NO_RETURN is conflicting with WebKit one
+        https://bugs.webkit.org/show_bug.cgi?id=167244
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/typedefs.h: Defining NO_RETURN only if not already defined.
+
+2017-01-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] libwebrtc headers are incompatible with WebKit compilation flags
+        https://bugs.webkit.org/show_bug.cgi?id=167242
+
+        Reviewed by Alex Christensen.
+
+        WebKit is enforcing -Wunused-parameter and -Wunused-variable which conflict with some included libwertc headers.
+        Removed unused parameter names for inlined functions.
+
+        * Source/webrtc/api/jsep.h:
+        (webrtc::SessionDescriptionInterface::RemoveCandidates):
+        * Source/webrtc/api/mediastreaminterface.h:
+        (webrtc::AudioSourceInterface::SetVolume):
+        (webrtc::AudioSourceInterface::RegisterAudioObserver):
+        (webrtc::AudioSourceInterface::UnregisterAudioObserver):
+        (webrtc::AudioSourceInterface::AddSink):
+        (webrtc::AudioSourceInterface::RemoveSink):
+        (webrtc::AudioTrackInterface::GetSignalLevel):
+        * Source/webrtc/api/peerconnectionfactory.h:
+        * Source/webrtc/api/peerconnectioninterface.h:
+        (webrtc::MetricsObserverInterface::IncrementEnumCounter):
+        (webrtc::PeerConnectionInterface::AddTrack):
+        (webrtc::PeerConnectionInterface::RemoveTrack):
+        (webrtc::PeerConnectionInterface::CreateSender):
+        (webrtc::PeerConnectionInterface::GetStats):
+        (webrtc::PeerConnectionInterface::CreateOffer):
+        (webrtc::PeerConnectionInterface::CreateAnswer):
+        (webrtc::PeerConnectionInterface::UpdateIce):
+        (webrtc::PeerConnectionInterface::SetConfiguration):
+        (webrtc::PeerConnectionInterface::RemoveIceCandidates):
+        (webrtc::PeerConnectionInterface::StartRtcEventLog):
+        (webrtc::PeerConnectionObserver::OnAddStream):
+        (webrtc::PeerConnectionObserver::OnRemoveStream):
+        (webrtc::PeerConnectionObserver::OnDataChannel):
+        (webrtc::PeerConnectionObserver::OnIceCandidatesRemoved):
+        (webrtc::PeerConnectionObserver::OnIceConnectionReceivingChange):
+        * Source/webrtc/api/rtpsender.cc:
+        * Source/webrtc/base/messagehandler.h:
+        (rtc::FunctorMessageHandler::OnMessage):
+        * Source/webrtc/base/sanitizer.h:
+        (rtc_AsanPoison):
+        (rtc_AsanUnpoison):
+        (rtc_MsanMarkUninitialized):
+        (rtc_MsanCheckInitialized):
+        * Source/webrtc/base/stream.h:
+        (rtc::StreamInterface::ConsumeReadData):
+        (rtc::StreamInterface::ConsumeWriteBuffer):
+        * Source/webrtc/media/base/mediachannel.h:
+        (cricket::DataMediaChannel::GetStats):
+        (cricket::DataMediaChannel::OnNetworkRouteChanged):
+        * Source/webrtc/media/engine/webrtcvideodecoderfactory.h:
+        (cricket::WebRtcVideoDecoderFactory::CreateVideoDecoderWithParams):
+        * Source/webrtc/media/engine/webrtcvideoencoderfactory.h:
+        (cricket::WebRtcVideoEncoderFactory::VideoCodec::VideoCodec):
+        (cricket::WebRtcVideoEncoderFactory::EncoderTypeHasInternalSource):
+        * Source/webrtc/media/engine/webrtcvideoengine2.cc:
+        * Source/webrtc/modules/include/module.h:
+        (webrtc::Module::ProcessThreadAttached):
+        * Source/webrtc/modules/video_coding/codecs/vp9/vp9_noop.cc:
+        * Source/webrtc/p2p/base/port.h:
+        (cricket::Port::HandleIncomingPacket):
+        (cricket::Port::HandleConnectionDestroyed):
+        (cricket::Connection::set_receiving_timeout):
+        * Source/webrtc/p2p/base/stun.h:
+        (cricket::StunAttribute::SetOwner):
+        * Source/webrtc/p2p/base/stunrequest.h:
+        (cricket::StunRequest::Prepare):
+        (cricket::StunRequest::OnResponse):
+        (cricket::StunRequest::OnErrorResponse):
+        * Source/webrtc/p2p/base/transport.h:
+        (cricket::Transport::SetLocalCertificate):
+        (cricket::Transport::GetLocalCertificate):
+        (cricket::Transport::GetSslRole):
+        (cricket::Transport::SetSslMaxProtocolVersion):
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc:
+        * Source/webrtc/typedefs.h:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update libwertc AudioRtpSender::SetAudioSend
+        https://bugs.webkit.org/show_bug.cgi?id=167243
+
+        Reviewed by Alex Christensen.
+
+        Introducing  WEBRTC_WEBKIT_BUILD macro to match existing WEBRTC_CHROMIUM_BUILD.
+        WEBRTC_WEBKIT_BUILD is defined by current WebKit libwebrtc build system.
+
+        * Source/webrtc/api/rtpsender.cc:
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] libwebrtc H.264 codec is using VTB only for IOS
+        https://bugs.webkit.org/show_bug.cgi?id=167245
+
+        Reviewed by Alex Christensen.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/videotoolboxvideocodecfactory.cc: Removing WEBRTC_IOS flag.
+
+2017-01-19  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Upload libwebrtc code base
+        https://bugs.webkit.org/show_bug.cgi?id=167205
+
+        Reviewed by Alex Christensen and Jon Lee.
+
+        Add initial libwebrtc source from branch 56. Here's how to get what we committed:
+        git clone https://chromium.googlesource.com/external/webrtc.git && cd webrtc && git checkout 7bf536976366443ea59153ff3d22da0ec32badc1

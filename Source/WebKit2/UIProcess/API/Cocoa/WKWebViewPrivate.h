@@ -59,6 +59,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @class _WKIconLoadingDelegate;
 @class _WKRemoteObjectRegistry;
 @class _WKSessionState;
+@class _WKWebsitePolicies;
 @class _WKWebViewPrintFormatter;
 
 @protocol WKHistoryDelegatePrivate;
@@ -116,6 +117,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly, getter=_isShowingNavigationGestureSnapshot) BOOL _showingNavigationGestureSnapshot;
 
 - (void)_close;
+
+- (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies;
 
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
 // For use with _layoutMode = _WKLayoutModeFixedSize:
@@ -180,6 +183,9 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 - (id)_snapshotLayerContentsForBackForwardListItem:(WKBackForwardListItem *)item WK_API_AVAILABLE(ios(9_0));
 - (NSArray *)_dataDetectionResults;
+
+- (void)_accessibilityRetrieveSpeakSelectionContent;
+- (void)_accessibilityDidGetSpeakSelectionContent:(NSString *)content;
 
 #else
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
@@ -308,14 +314,14 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_forceRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_didUpdateCandidateListVisibility:(BOOL)visible WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, readonly) BOOL _shouldRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(WK_MAC_TBA));
-
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 - (void)_setHeaderBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 #endif
+
+- (void)_requestActiveNowPlayingSessionInfo WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_handleActiveNowPlayingSessionInfoResponse:(BOOL)hasActiveSession title:(NSString *)title duration:(double)duration elapsedTime:(double)elapsedTime WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_setPageScale:(CGFloat)scale withOrigin:(CGPoint)origin WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (CGFloat)_pageScale WK_API_AVAILABLE(ios(WK_IOS_TBA));

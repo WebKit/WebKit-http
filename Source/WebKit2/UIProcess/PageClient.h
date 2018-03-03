@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageClient_h
-#define PageClient_h
+#pragma once
 
 #include "ShareableBitmap.h"
 #include "WebColorPicker.h"
@@ -138,6 +137,8 @@ public:
         return false;
     }
 
+    virtual void didStartProvisionalLoadForMainFrame() { };
+    virtual void didFailProvisionalLoadForMainFrame() { };
     virtual void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) = 0;
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -253,7 +254,6 @@ public:
     virtual void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle) = 0;
     virtual void removeNavigationGestureSnapshot() = 0;
     virtual void handleControlledElementIDResponse(const String&) = 0;
-    virtual void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) = 0;
 
     virtual CGRect boundsOfLayerInLayerBackedWindowCoordinates(CALayer *) const = 0;
 
@@ -283,6 +283,10 @@ public:
 #endif // USE(APPKIT)
     virtual void setEditableElementIsFocused(bool) = 0;
 #endif // PLATFORM(MAC)
+
+#if PLATFORM(COCOA)
+    virtual void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) = 0;
+#endif
 
 #if PLATFORM(IOS)
     virtual void commitPotentialTapFailed() = 0;
@@ -372,8 +376,15 @@ public:
     virtual bool windowIsFrontWindowUnderMouse(const NativeWebMouseEvent&) { return false; }
 
     virtual WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() = 0;
+
+#if USE(QUICK_LOOK)
+    virtual void requestPasswordForQuickLookDocument(const String& fileName, std::function<void(const String&)>&&) = 0;
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+    virtual void didPerformDataInteractionControllerOperation() = 0;
+    virtual void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, bool isLink) = 0;
+#endif
 };
 
 } // namespace WebKit
-
-#endif // PageClient_h

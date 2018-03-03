@@ -228,8 +228,8 @@ public:
     bool isGetterSetter() const;
     bool isCustomGetterSetter() const;
     bool isObject() const;
-    bool inherits(const ClassInfo*) const;
-    const ClassInfo* classInfoOrNull() const;
+    bool inherits(VM&, const ClassInfo*) const;
+    const ClassInfo* classInfoOrNull(VM&) const;
         
     // Extracting the value.
     bool getString(ExecState*, WTF::String&) const;
@@ -316,9 +316,9 @@ public:
 
     // Constants used for Int52. Int52 isn't part of JSValue right now, but JSValues may be
     // converted to Int52s and back again.
-    static const unsigned numberOfInt52Bits = 52;
-    static const int64_t notInt52 = static_cast<int64_t>(1) << numberOfInt52Bits;
-    static const unsigned int52ShiftAmount = 12;
+    static constexpr const unsigned numberOfInt52Bits = 52;
+    static constexpr const int64_t notInt52 = static_cast<int64_t>(1) << numberOfInt52Bits;
+    static constexpr const unsigned int52ShiftAmount = 12;
     
     static ptrdiff_t offsetOfPayload() { return OBJECT_OFFSETOF(JSValue, u.asBits.payload); }
     static ptrdiff_t offsetOfTag() { return OBJECT_OFFSETOF(JSValue, u.asBits.tag); }

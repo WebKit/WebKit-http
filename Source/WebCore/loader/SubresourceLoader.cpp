@@ -455,7 +455,7 @@ static void logResourceLoaded(Frame* frame, CachedResource::Type type)
         resourceType = DiagnosticLoggingKeys::otherKey();
         break;
     }
-    frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceKey(), DiagnosticLoggingKeys::loadedKey(), resourceType, ShouldSample::Yes);
+    frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceLoadedKey(), resourceType, ShouldSample::Yes);
 }
 
 bool SubresourceLoader::checkResponseCrossOriginAccessControl(const ResourceResponse& response, String& errorDescription)
@@ -540,8 +540,10 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     m_loadTiming.setResponseEnd(responseEndTime);
 
 #if ENABLE(WEB_TIMING)
-    if (m_documentLoader->cachedResourceLoader().document() && RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
-        m_documentLoader->cachedResourceLoader().resourceTimingInformation().addResourceTiming(m_resource, *m_documentLoader->cachedResourceLoader().document(), m_resource->loader()->loadTiming());
+    if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
+        if (Document* document = m_documentLoader->cachedResourceLoader().document())
+            m_documentLoader->cachedResourceLoader().resourceTimingInformation().addResourceTiming(m_resource, *document, m_resource->loader()->loadTiming());
+    }
 #endif
 
     m_state = Finishing;

@@ -678,6 +678,11 @@ static void invalidateAnyPreviousWaitToDumpWatchdog()
 
 void dump()
 {
+    if (done) {
+        fprintf(stderr, "dump() has already been called!\n");
+        return;
+    }
+
     ::InvalidateRect(webViewWindow, 0, TRUE);
     ::SendMessage(webViewWindow, WM_PAINT, 0, 0);
 
@@ -722,7 +727,7 @@ void dump()
             if (::gTestRunner->dumpBackForwardList())
                 dumpBackForwardListForAllWindows();
         } else
-            fprintf(testResult, "ERROR: nil result from %s", ::gTestRunner->dumpAsText() ? "IDOMElement::innerText" : "IFrameViewPrivate::renderTreeAsExternalRepresentation");
+            fprintf(testResult, "ERROR: nil result from %s\n", ::gTestRunner->dumpAsText() ? "IDOMElement::innerText" : "IFrameViewPrivate::renderTreeAsExternalRepresentation");
 
         if (printSeparators)
             fputs("#EOF\n", testResult); // terminate the content block
@@ -762,9 +767,25 @@ static bool shouldEnableDeveloperExtras(const char* pathOrURL)
     return true;
 }
 
+static void enableExperimentalFeatures(IWebPreferences* preferences)
+{
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, preferences);    
+
+    // FIXME: CSSGridLayout
+    // FIXME: SpringTimingFunction
+    // FIXME: Gamepads
+    // FIXME: ModernMediaControls
+    // FIXME: InputEvents
+    // FIXME: SubtleCrypto
+    prefsPrivate4->setWebAnimationsEnabled(TRUE);
+    // FIXME: WebGL2
+}
+
 static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
 {
     ASSERT(preferences);
+
+    enableExperimentalFeatures(preferences);
 
     preferences->setAutosaves(FALSE);
 
@@ -813,6 +834,7 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     preferences->setPlugInsEnabled(TRUE);
     preferences->setTextAreasAreResizable(TRUE);
     preferences->setUsesPageCache(FALSE);
+    prefsPrivate->setAllowsPageCacheWithWindowOpener(FALSE);
 
     preferences->setPrivateBrowsingEnabled(FALSE);
     prefsPrivate->setAuthorAndUserStylesEnabled(TRUE);
@@ -850,14 +872,12 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
 
     preferences->setFontSmoothing(FontSmoothingTypeStandard);
 
-    COMPtr<IWebPreferencesPrivate3> prefsPrivate3(Query, preferences);
-    ASSERT(prefsPrivate3);
-    prefsPrivate3->setFetchAPIEnabled(TRUE);
-    prefsPrivate3->setShadowDOMEnabled(TRUE);
-    prefsPrivate3->setCustomElementsEnabled(TRUE);
-
-    prefsPrivate3->setDOMIteratorEnabled(TRUE);
-    prefsPrivate3->setModernMediaControlsEnabled(FALSE);
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, preferences);
+    ASSERT(prefsPrivate4);
+    prefsPrivate4->setFetchAPIEnabled(TRUE);
+    prefsPrivate4->setShadowDOMEnabled(TRUE);
+    prefsPrivate4->setCustomElementsEnabled(TRUE);
+    prefsPrivate4->setModernMediaControlsEnabled(FALSE);
 
     setAlwaysAcceptCookies(false);
 }

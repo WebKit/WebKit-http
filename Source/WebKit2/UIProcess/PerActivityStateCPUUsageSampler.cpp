@@ -30,6 +30,7 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/DiagnosticLoggingKeys.h>
+#include <wtf/DecimalNumber.h>
 
 namespace WebKit {
 
@@ -70,15 +71,12 @@ static inline String loggingKeyForActivityState(ActivityStateForCPUSampling stat
     }
 }
 
-static inline String loggingKeyForCPUUsage(ActivityStateForCPUSampling state, double cpuUsage)
+static String toStringRoundingSignificantFigures(double value, unsigned significantFigures)
 {
-    switch (state) {
-    case ActivityStateForCPUSampling::NonVisible:
-        return DiagnosticLoggingKeys::backgroundCPUUsageToDiagnosticLoggingKey(cpuUsage);
-    case ActivityStateForCPUSampling::VisibleNonActive:
-    case ActivityStateForCPUSampling::VisibleAndActive:
-        return DiagnosticLoggingKeys::foregroundCPUUsageToDiagnosticLoggingKey(cpuUsage);
-    }
+    DecimalNumber decimal(value, RoundingSignificantFigures, significantFigures);
+    NumberToLStringBuffer buffer;
+    unsigned length = decimal.toStringDecimal(buffer, WTF::NumberToStringBufferLength);
+    return String(buffer, length);
 }
 
 void PerActivityStateCPUUsageSampler::loggingTimerFired()
@@ -94,9 +92,9 @@ void PerActivityStateCPUUsageSampler::loggingTimerFired()
 
     for (auto& pair : m_cpuTimeInActivityState) {
         double cpuUsage = static_cast<double>(pair.value * 100.) / cpuTimeDelta;
-        String loggingKey = loggingKeyForActivityState(pair.key);
-        page->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::cpuUsageKey(), loggingKey, loggingKeyForCPUUsage(pair.key, cpuUsage), false);
-        RELEASE_LOG(PerformanceLogging, "WebContent processes used %.1f%% CPU in %s state", cpuUsage, loggingKey.utf8().data());
+        String activityStateKey = loggingKeyForActivityState(pair.key);
+        page->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::cpuUsageKey(), activityStateKey, toStringRoundingSignificantFigures(cpuUsage, 2), false);
+        RELEASE_LOG(PerformanceLogging, "WebContent processes used %.1f%% CPU in %s state", cpuUsage, activityStateKey.utf8().data());
     }
 
     m_cpuTimeInActivityState.clear();

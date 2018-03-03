@@ -630,6 +630,10 @@ TEST_F(URLParserTest, ParseRelative)
     checkRelativeURL("", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "", "applewebdata://Host"});
     checkRelativeURL("?query", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "query", "", "applewebdata://Host?query"});
     checkRelativeURL("#fragment", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "fragment", "applewebdata://Host#fragment"});
+    checkRelativeURL("notspecial://something?", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something?"}, TestTabs::No);
+    checkRelativeURL("notspecial://something#", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something#"}, TestTabs::No);
+    checkRelativeURL("http://something?", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/?"}, TestTabs::No);
+    checkRelativeURL("http://something#", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/#"}, TestTabs::No);
 
     // The checking of slashes in SpecialAuthoritySlashes needed to get this to pass contradicts what is in the spec,
     // but it is included in the web platform tests.
@@ -783,7 +787,12 @@ TEST_F(URLParserTest, ParserDifferences)
     checkURLDifferences("file:pAtH/",
         {"file", "", "", "", 0, "/pAtH/", "", "", "file:///pAtH/"},
         {"file", "", "", "", 0, "pAtH/", "", "", "file://pAtH/"});
-    
+    checkURLDifferences("http://example.com%A0",
+        {"", "", "", "", 0, "", "", "", "http://example.com%A0"},
+        {"http", "", "", "example.com%a0", 0, "/", "", "", "http://example.com%a0/"});
+    checkURLDifferences("http://%E2%98%83",
+        {"http", "", "", "xn--n3h", 0, "/", "", "", "http://xn--n3h/"},
+        {"http", "", "", "%e2%98%83", 0, "/", "", "", "http://%e2%98%83/"});
     checkURLDifferences("http://host%73",
         {"http", "", "", "hosts", 0, "/", "", "", "http://hosts/"},
         {"http", "", "", "host%73", 0, "/", "", "", "http://host%73/"});

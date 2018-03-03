@@ -280,8 +280,6 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 # Pointer Lock can only check some of the API at the moment.
 pointer-lock/bug90391-move-then-window-open-crash.html
 pointer-lock/locked-element-iframe-removed-from-dom.html
-pointer-lock/locked-element-removed-from-dom.html
-pointer-lock/mouse-event-delivery.html
 pointer-lock/pointerlockchange-event-on-lock-lost.html
 pointer-lock/pointerlockchange-pointerlockerror-events.html
 pointer-lock/pointerlockelement-null-when-pending.html
@@ -1176,7 +1174,6 @@ webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/modify-rule-selector.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/css/pseudo-element-matches.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
 webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
@@ -1191,10 +1188,12 @@ webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
+webkit.org/b/167408 [ Debug ] inspector/heap/gc.html [ Slow ]
 webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass Timeout ]
 webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
+webkit.org/b/167265 inspector/network/client-blocked-load.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
@@ -1342,9 +1341,6 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 # <rdar://problem/23505582> Fails on iMac10,1 and iMac11,1
 [ Sierra+ ] fast/canvas/canvas-imageSmoothingEnabled-repaint.html [ Pass Failure ]
 
-# <rdar://problem/23601055>
-[ Sierra+ ] media/track/track-in-band-style.html [ Pass Failure ]
-
 # Sierra supports true font feature coverage queries. We use the -coverage versions of these tests instead.
 [ Sierra+ ] css3/font-variant-small-caps-synthesis.html [ ImageOnlyFailure ]
 [ Sierra+ ] css3/font-variant-petite-caps-synthesis.html [ ImageOnlyFailure ]
@@ -1355,9 +1351,6 @@ webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Fail
 # <rdar://problem/25780035> CSP does not ignore paths for media redirects
 [ Sierra+ ] http/tests/security/contentSecurityPolicy/audio-redirect-allowed2.html [ Skip ]
 [ Sierra+ ] http/tests/security/contentSecurityPolicy/video-redirect-allowed2.html [ Skip ]
-
-# <rdar://problem/26590623> LayoutTest http/tests/preload/single_download_preload_runner.html failing
-[ Sierra+ ] http/tests/preload/single_download_preload_runner.html [ Pass Timeout Failure ]
 
 # rdar://problem/26952627
 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-border-radius-and-reflection-add.html [ Pass ImageOnlyFailure ]
@@ -1428,9 +1421,6 @@ webkit.org/b/162830 [ Debug ] fast/events/tabindex-focus-blur-all.html [ Pass Ti
 
 webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]
 
-# rdar://problem/28586837
-fast/text/variations/order.html [ Crash ]
-animations/font-variations/font-variation-settings-order.html [ Pass Failure ImageOnlyFailure Crash ]
 # Variation fonts are not implemented earlier than Sierra.
 [ ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
 [ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure ]
@@ -1461,6 +1451,45 @@ webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex
 
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
+
+# picture-in-picture is not supported prior to Sierra.
+[ ElCapitan ] media/modern-media-controls/pip-support [ Skip ]
+[ ElCapitan ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
+[ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+
+# iPad-specific tests
+media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-enabled.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
+media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip ]
+media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+
+# This one always times out on the bots, cannot reproduce locally.
+webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Pass Timeout ]
+
+webkit.org/b/165290 media/modern-media-controls/tracks-panel/tracks-panel-hide-click-outside.html [ Pass Timeout ]
+
+webkit.org/b/167254 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
+
+webkit.org/b/167263 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
+
+webkit.org/b/167275 media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html [ Pass Failure ]
+
+webkit.org/b/167347 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Failure ]
+
+webkit.org/b/167266 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Pass Failure ]
+
+webkit.org/b/167373 media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html [ Pass Failure ]
+
+webkit.org/b/167396 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Failure ]
+
+webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
+
+webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
+
+webkit.org/b/165319 media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html [ Pass Timeout ]
+
+webkit.org/b/167461 media/modern-media-controls/layout-node/addChild.html [ Pass Timeout ]
 
 webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
 

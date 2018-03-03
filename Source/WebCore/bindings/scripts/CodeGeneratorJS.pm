@@ -1802,6 +1802,7 @@ sub GenerateHeader
 
         # FIXME: Add extended attribute for this.
         my @toWrappedArguments = ();
+        push(@toWrappedArguments, "JSC::VM&");
         push(@toWrappedArguments, "JSC::ExecState&") if $interface->type->name eq "XPathNSResolver";
         push(@toWrappedArguments, "JSC::JSValue");
 
@@ -2669,9 +2670,9 @@ END
                     if ($codeGenerator->IsWrapperType($subtype) || $codeGenerator->IsTypedArrayType($subtype)) {
                         if ($subtype->name eq "DOMWindow") {
                             AddToImplIncludes("JSDOMWindowShell.h");
-                            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(JSDOMWindowShell::info()) || asObject(distinguishingArg)->inherits(JSDOMWindow::info()))");
+                            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(vm, JSDOMWindowShell::info()) || asObject(distinguishingArg)->inherits(vm, JSDOMWindow::info()))");
                         } else {
-                            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JS" . $subtype->name . "::info())");
+                            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JS" . $subtype->name . "::info())");
                         }
                     }
                 }
@@ -2681,7 +2682,7 @@ END
             &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->type() == RegExpObjectType");
 
             $overload = GetOverloadThatMatches($S, $d, \&$isObjectOrErrorOrDOMExceptionParameter);
-            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(JSDOMCoreException::info())");
+            &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSDOMCoreException::info())");
 
             $overload = GetOverloadThatMatches($S, $d, \&$isObjectOrErrorParameter);
             &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->type() == ErrorInstanceType");
@@ -2965,6 +2966,29 @@ sub GetResultTypeFilter
 
     my $IDLType = GetIDLType($interface, $type);
     return "DOMJIT::IDLResultTypeFilter<${IDLType}>::value";
+}
+
+sub GetAttributeWithName
+{
+    my ($interface, $attributeName) = @_;
+    
+    foreach my $attribute (@{$interface->attributes}) {
+        return $attribute if $attribute->name eq $attributeName;
+    }
+}
+
+# https://heycam.github.io/webidl/#es-iterator
+sub InterfaceNeedsIterator
+{
+    my ($interface) = @_;
+    
+    return 1 if $interface->iterable;
+    if (GetIndexedGetterFunction($interface)) {
+        my $lengthAttribute = GetAttributeWithName($interface, "length");
+        return 1 if $lengthAttribute and $codeGenerator->IsIntegerType($lengthAttribute->type);
+    }
+    # FIXME: This should return 1 for maplike and setlike once we support them.
+    return 0;
 }
 
 sub GenerateImplementation
@@ -3320,9 +3344,16 @@ sub GenerateImplementation
             push(@implContent, "#endif\n") if $conditionalString;
         }
 
-        if ($interface->iterable) {
-            addIterableProperties($interface, $className);
+        if (InterfaceNeedsIterator($interface)) {
+            if (IsKeyValueIterableInterface($interface)) {
+                my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
+                push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
+            } else {
+                AddToImplIncludes("<builtins/BuiltinNames.h>");
+                push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayPrototype()->getDirect(vm, vm.propertyNames->builtinNames().valuesPrivateName()), DontEnum);\n");
+            }
         }
+        push(@implContent, "    addValueIterableMethods(*globalObject(), *this);\n") if $interface->iterable and !IsKeyValueIterableInterface($interface);
 
         addUnscopableProperties($interface);
 
@@ -3385,7 +3416,7 @@ sub GenerateImplementation
         push(@implContent, "void ${className}::finishCreation(VM& vm)\n");
         push(@implContent, "{\n");
         push(@implContent, "    Base::finishCreation(vm);\n");
-        push(@implContent, "    ASSERT(inherits(info()));\n\n");
+        push(@implContent, "    ASSERT(inherits(vm, info()));\n\n");
     }
 
     # Support for RuntimeEnabled attributes on instances.
@@ -3518,12 +3549,12 @@ sub GenerateImplementation
             push(@implContent, "    auto decodedThisValue = JSValue::decode(thisValue);\n");
             push(@implContent, "    if (decodedThisValue.isUndefinedOrNull())\n");
             push(@implContent, "        decodedThisValue = state.thisValue().toThis(&state, NotStrictMode);\n");
-            push(@implContent, "    return $castingFunction(decodedThisValue);");
+            push(@implContent, "    return $castingFunction(state.vm(), decodedThisValue);");
             push(@implContent, "}\n\n");
         } else {
-            push(@implContent, "template<> inline ${className}* BindingCaller<${className}>::castForAttribute(ExecState&, EncodedJSValue thisValue)\n");
+            push(@implContent, "template<> inline ${className}* BindingCaller<${className}>::castForAttribute(ExecState& state, EncodedJSValue thisValue)\n");
             push(@implContent, "{\n");
-            push(@implContent, "    return $castingFunction(JSValue::decode(thisValue));\n");
+            push(@implContent, "    return $castingFunction(state.vm(), JSValue::decode(thisValue));\n");
             push(@implContent, "}\n\n");
         }
     }
@@ -3534,7 +3565,7 @@ sub GenerateImplementation
         my $thisValue = $interface->extendedAttributes->{"CustomProxyToJSObject"} ? "state.thisValue().toThis(&state, NotStrictMode)" : "state.thisValue()";
         push(@implContent, "template<> inline ${className}* BindingCaller<${className}>::castForOperation(ExecState& state)\n");
         push(@implContent, "{\n");
-        push(@implContent, "    return $castingFunction($thisValue);\n");
+        push(@implContent, "    return $castingFunction(state.vm(), $thisValue);\n");
         push(@implContent, "}\n\n");
     }
 
@@ -3695,7 +3726,7 @@ sub GenerateImplementation
             push(@implContent, "{\n");
             push(@implContent, "    VM& vm = state->vm();\n");
             push(@implContent, "    auto throwScope = DECLARE_THROW_SCOPE(vm);\n");
-            push(@implContent, "    ${className}Prototype* domObject = jsDynamicDowncast<${className}Prototype*>(JSValue::decode(thisValue));\n");
+            push(@implContent, "    ${className}Prototype* domObject = jsDynamicDowncast<${className}Prototype*>(vm, JSValue::decode(thisValue));\n");
             push(@implContent, "    if (UNLIKELY(!domObject))\n");
             push(@implContent, "        return throwVMTypeError(state, throwScope);\n");
 
@@ -3717,7 +3748,7 @@ sub GenerateImplementation
         push(@implContent, "    VM& vm = state->vm();\n");
         push(@implContent, "    auto throwScope = DECLARE_THROW_SCOPE(vm);\n");
         push(@implContent, "    JSValue value = JSValue::decode(encodedValue);\n");
-        push(@implContent, "    ${className}Prototype* domObject = jsDynamicDowncast<${className}Prototype*>(JSValue::decode(thisValue));\n");
+        push(@implContent, "    ${className}Prototype* domObject = jsDynamicDowncast<${className}Prototype*>(vm, JSValue::decode(thisValue));\n");
         push(@implContent, "    if (UNLIKELY(!domObject)) {\n");
         push(@implContent, "        throwVMTypeError(state, throwScope);\n");
         push(@implContent, "        return false;\n");
@@ -4128,9 +4159,6 @@ END
         push(@implContent, "    auto* thisObject = jsCast<${className}*>(cell);\n");
         push(@implContent, "    ASSERT_GC_OBJECT_INHERITS(thisObject, info());\n");
         push(@implContent, "    Base::visitChildren(thisObject, visitor);\n");
-        if ($codeGenerator->InheritsInterface($interface, "EventTarget")) {
-            push(@implContent, "    thisObject->wrapped().visitJSEventListeners(visitor);\n");
-        }
         push(@implContent, "    thisObject->visitAdditionalChildren(visitor);\n") if $interface->extendedAttributes->{JSCustomMarkFunction};
         if ($interface->extendedAttributes->{ReportExtraMemoryCost}) {
             push(@implContent, "    visitor.reportExtraMemoryVisited(thisObject->wrapped().memoryCost());\n");
@@ -4336,9 +4364,9 @@ END
     }
 
     if (ShouldGenerateToWrapped($hasParent, $interface) and !$interface->extendedAttributes->{JSCustomToNativeObject}) {
-        push(@implContent, "$implType* ${className}::toWrapped(JSC::JSValue value)\n");
+        push(@implContent, "$implType* ${className}::toWrapped(JSC::VM& vm, JSC::JSValue value)\n");
         push(@implContent, "{\n");
-        push(@implContent, "    if (auto* wrapper = " . GetCastingHelperForThisObject($interface) . "(value))\n");
+        push(@implContent, "    if (auto* wrapper = " . GetCastingHelperForThisObject($interface) . "(vm, value))\n");
         push(@implContent, "        return &wrapper->wrapped();\n");
         push(@implContent, "    return nullptr;\n");
         push(@implContent, "}\n");
@@ -5155,24 +5183,6 @@ JSC::EncodedJSValue JSC_HOST_CALL ${functionName}(JSC::ExecState* state)
 }
 
 END
-    }
-}
-
-sub addIterableProperties()
-{
-    my $interface = shift;
-    my $className = shift;
-
-    if (NeedsRuntimeCheck($interface->iterable)) {
-        my $enable_function = GetRuntimeEnableFunctionName($interface->iterable);
-        push(@implContent, "    if (${enable_function}())\n    ");
-    }
-
-    if (IsKeyValueIterableInterface($interface)) {
-        my $functionName = GetFunctionName($interface, $className, @{$interface->iterable->functions}[0]);
-        push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral(\"[Symbol.Iterator]\"), $functionName), DontEnum);\n");
-    } else {
-        push(@implContent, "    addValueIterableMethods(*globalObject(), *this);\n");
     }
 }
 

@@ -26,11 +26,37 @@
 #include "config.h"
 #include "PluginInfoProvider.h"
 
+#include "MainFrame.h"
+#include "Page.h"
+#include "SubframeLoader.h"
+
 namespace WebCore {
 
 PluginInfoProvider::~PluginInfoProvider()
 {
     ASSERT(m_pages.isEmpty());
+}
+
+void PluginInfoProvider::refresh(bool reloadPages)
+{
+    refreshPlugins();
+
+    Vector<Ref<MainFrame>> framesNeedingReload;
+
+    for (auto& page : m_pages) {
+        page->clearPluginData();
+
+        if (!reloadPages)
+            continue;
+
+        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
+            if (frame->loader().subframeLoader().containsPlugins())
+                framesNeedingReload.append(page->mainFrame());
+        }
+    }
+
+    for (auto& frame : framesNeedingReload)
+        frame->loader().reload();
 }
 
 void PluginInfoProvider::addPage(Page& page)

@@ -107,7 +107,7 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
 {
     if (layer.isRootLayer()) {
         m_isMainFrameRenderViewLayer = renderer().frame().isMainFrame();
-        m_usingTiledCacheLayer = renderer().page().chrome().client().shouldUseTiledBackingForFrameView(renderer().frame().view());
+        m_usingTiledCacheLayer = renderer().page().chrome().client().shouldUseTiledBackingForFrameView(renderer().view().frameView());
     }
     
     createPrimaryGraphicsLayer();
@@ -2213,6 +2213,10 @@ GraphicsLayer* RenderLayerBacking::childForSuperlayers() const
 
 bool RenderLayerBacking::paintsIntoWindow() const
 {
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        return false;
+#endif
+
     if (m_usingTiledCacheLayer)
         return false;
 

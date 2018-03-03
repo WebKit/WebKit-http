@@ -73,8 +73,6 @@ list(APPEND WebCore_SOURCES
 
     platform/cf/win/CertificateCFWin.cpp
 
-    platform/crypto/win/CryptoDigestWin.cpp
-
     platform/graphics/GraphicsContext3DPrivate.cpp
 
     platform/graphics/egl/GLContextEGL.cpp
@@ -244,6 +242,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     platform/graphics/texmap
     platform/graphics/transforms
     platform/graphics/win
+
+    platform/mediastream/libwebrtc
 
     platform/text/transcoder
 

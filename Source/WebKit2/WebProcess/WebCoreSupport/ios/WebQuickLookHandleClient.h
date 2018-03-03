@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebQuickLookHandleClient_h
-#define WebQuickLookHandleClient_h
+#pragma once
 
 #if USE(QUICK_LOOK)
 
@@ -46,12 +45,17 @@ public:
     {
         return adoptRef(*new WebQuickLookHandleClient(handle, pageID));
     }
+    ~WebQuickLookHandleClient();
+
+    static void didReceivePassword(const String&, uint64_t pageID);
 
 private:
     WebQuickLookHandleClient(const WebCore::QuickLookHandle&, uint64_t pageID);
     void didReceiveDataArray(CFArrayRef) override;
     void didFinishLoading() override;
     void didFail() override;
+    bool supportsPasswordEntry() const override { return true; }
+    void didRequestPassword(Function<void(const String&)>&&) override;
 
     const String m_fileName;
     const String m_uti;
@@ -62,5 +66,3 @@ private:
 } // namespace WebKit
 
 #endif // USE(QUICK_LOOK)
-
-#endif // WebQuickLookHandleClient_h

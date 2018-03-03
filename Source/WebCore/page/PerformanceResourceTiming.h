@@ -44,7 +44,6 @@ namespace WebCore {
 class Document;
 class URL;
 class NetworkLoadTiming;
-class ResourceRequest;
 class ResourceResponse;
 
 class PerformanceResourceTiming final : public PerformanceEntry {
@@ -56,6 +55,7 @@ public:
 
     AtomicString initiatorType() const;
 
+    double workerStart() const;
     double redirectStart() const;
     double redirectEnd() const;
     double fetchStart() const;

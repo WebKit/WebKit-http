@@ -1,3 +1,48 @@
+2017-01-27  Dean Jackson  <dino@apple.com>
+
+        Add a simple demo for Touch stylus events
+        https://bugs.webkit.org/show_bug.cgi?id=167534
+
+        Reviewed by Simon Fraser.
+
+        * demos/touch/stylus.html: Added.
+
+2017-01-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, update scroll snapping demos to use current Module 1 spec
+
+        * demos/scroll-snap/index.html:
+
+        Adopt the new CSS properties scroll-snap-type and scroll-snap-align.
+
+2017-01-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, add a demo page for an input events blog post
+
+        * demos/input-events/index.html: Added.
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        Web Animations should be off by default and enabled as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+        <rdar://problem/30048963>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a test for Web Animations feature detection.
+
+        * experimental-features.html:
+
+2017-01-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Include SubtleCrypto test on experimental-features test page
+        https://bugs.webkit.org/show_bug.cgi?id=167226
+
+        Reviewed by Yusuke Suzuki.
+
+        * experimental-features.html:
+        Add a test for SubtleCrypto and make the test resilient against exceptions.
+
 2017-01-19  Timothy Hatcher  <timothy@hatcher.name>
 
         Add Tesla to the domain associations on the team page

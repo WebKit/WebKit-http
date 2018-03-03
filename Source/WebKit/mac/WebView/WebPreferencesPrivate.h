@@ -227,6 +227,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)showDebugBorders;
 - (void)setShowDebugBorders:(BOOL)show;
 
+- (BOOL)simpleLineLayoutEnabled;
+- (void)setSimpleLineLayoutEnabled:(BOOL)enabled;
+
 - (BOOL)simpleLineLayoutDebugBordersEnabled;
 - (void)setSimpleLineLayoutDebugBordersEnabled:(BOOL)enabled;
 
@@ -294,6 +297,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (NSString *)pictographFontFamily;
 - (void)setPictographFontFamily:(NSString *)family;
+
+- (BOOL)allowsPageCacheWithWindowOpener;
+- (void)setAllowsPageCacheWithWindowOpener:(BOOL)flag;
 
 - (BOOL)pageCacheSupportsPlugins;
 - (void)setPageCacheSupportsPlugins:(BOOL)flag;
@@ -498,9 +504,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setCustomElementsEnabled:(BOOL)flag;
 - (BOOL)customElementsEnabled;
-
-- (void)setDOMIteratorEnabled:(BOOL)flag;
-- (BOOL)DOMIteratorEnabled;
 
 - (void)setFetchAPIEnabled:(BOOL)flag;
 - (BOOL)fetchAPIEnabled;

@@ -55,6 +55,7 @@
 #include "HistoryItem.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "LibWebRTCProvider.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
@@ -124,6 +125,10 @@
 #if ENABLE(INDEXED_DATABASE)
 #include "IDBConnectionToServer.h"
 #include "InProcessIDBServer.h"
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+#include "SelectionRect.h"
 #endif
 
 namespace WebCore {
@@ -201,6 +206,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
     , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
+    , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -363,7 +369,7 @@ ViewportArguments Page::viewportArguments() const
 ScrollingCoordinator* Page::scrollingCoordinator()
 {
     if (!m_scrollingCoordinator && m_settings->scrollingCoordinatorEnabled()) {
-        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(this);
+        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(*this);
         if (!m_scrollingCoordinator)
             m_scrollingCoordinator = ScrollingCoordinator::create(this);
     }
@@ -461,6 +467,17 @@ void Page::setOpenedByDOM()
     m_openedByDOM = true;
 }
 
+bool Page::openedByWindowOpen() const
+{
+    auto* document = m_mainFrame->document();
+    if (!document)
+        return false;
+    auto* window = document->domWindow();
+    if (!window)
+        return false;
+    return window->opener();
+}
+
 void Page::goToItem(HistoryItem& item, FrameLoadType type)
 {
     // stopAllLoaders may end up running onload handlers, which could cause further history traversals that may lead to the passed in HistoryItem
@@ -537,26 +554,11 @@ void Page::refreshPlugins(bool reload)
 
     HashSet<PluginInfoProvider*> pluginInfoProviders;
 
-    Vector<Ref<Frame>> framesNeedingReload;
-
-    for (auto& page : *allPages) {
+    for (auto& page : *allPages)
         pluginInfoProviders.add(&page->pluginInfoProvider());
-        page->m_pluginData = nullptr;
-
-        if (!reload)
-            continue;
-        
-        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            if (frame->loader().subframeLoader().containsPlugins())
-                framesNeedingReload.append(*frame);
-        }
-    }
 
     for (auto& pluginInfoProvider : pluginInfoProviders)
-        pluginInfoProvider->refreshPlugins();
-
-    for (auto& frame : framesNeedingReload)
-        frame->loader().reload();
+        pluginInfoProvider->refresh(reload);
 }
 
 PluginData& Page::pluginData()
@@ -564,6 +566,11 @@ PluginData& Page::pluginData()
     if (!m_pluginData)
         m_pluginData = PluginData::create(*this);
     return *m_pluginData;
+}
+
+void Page::clearPluginData()
+{
+    m_pluginData = nullptr;
 }
 
 bool Page::showAllPlugins() const
@@ -2159,5 +2166,27 @@ void Page::accessibilitySettingsDidChange()
     if (neededRecalc)
         LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+bool Page::hasDataInteractionAtPosition(const FloatPoint& position) const
+{
+    auto currentSelection = m_mainFrame->selection().selection();
+    if (!currentSelection.isRange())
+        return false;
+
+    if (auto selectedRange = currentSelection.toNormalizedRange()) {
+        Vector<SelectionRect> selectionRects;
+        selectedRange->collectSelectionRects(selectionRects);
+        for (auto selectionRect : selectionRects) {
+            if (FloatRect(selectionRect.rect()).contains(position))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+#endif
 
 } // namespace WebCore

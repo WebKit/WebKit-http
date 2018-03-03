@@ -159,6 +159,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setLocalStorageDatabasePath(_In_ BSTR);
     virtual HRESULT STDMETHODCALLTYPE experimentalNotificationsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setExperimentalNotificationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE allowsPageCacheWithWindowOpener(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setAllowsPageCacheWithWindowOpener(BOOL);
 
     // These two methods are no-ops, and only retained to keep
     // the Interface consistent. DO NOT USE THEM.
@@ -234,8 +236,6 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setShowTiledScrollingIndicator(BOOL);
     virtual HRESULT STDMETHODCALLTYPE fetchAPIEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setFetchAPIEnabled(BOOL);
-    virtual HRESULT STDMETHODCALLTYPE domIteratorEnabled(_Out_ BOOL*);
-    virtual HRESULT STDMETHODCALLTYPE setDOMIteratorEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE shadowDOMEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setShadowDOMEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE customElementsEnabled(_Out_ BOOL*);
@@ -245,6 +245,8 @@ public:
 
     // IWebPreferencesPrivate4
     virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
+    virtual HRESULT STDMETHODCALLTYPE webAnimationsEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setWebAnimationsEnabled(BOOL);
 
     // WebPreferences
 

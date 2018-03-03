@@ -1,3 +1,217 @@
+2017-01-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide a way to trigger a Garbage Collection
+        https://bugs.webkit.org/show_bug.cgi?id=167345
+        <rdar://problem/30102853>
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        New "Garbage collect" tooltip.
+
+        * Versions/Inspector-iOS-10.3.json:
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        Update 10.3 so it generates its list of supported domains for workers.
+        Note that the Heap domain is not be available in this backend but it is now.
+
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.WorkerConnection):
+        * UserInterface/Protocol/HeapObserver.js:
+        (WebInspector.HeapObserver.prototype.garbageCollected):
+        * UserInterface/Protocol/InspectorBackend.js:
+        (InspectorBackendClass):
+        (InspectorBackendClass.prototype.get workerSupportedDomains):
+        (InspectorBackendClass.prototype.workerSupportedDomain):
+
+        * UserInterface/Images/NavigationItemClear.svg: Added.
+        * UserInterface/Images/NavigationItemGarbageCollect.svg: Added.
+        New image for Garbage Collection. Better image for clearing.
+        
+        * UserInterface/Images/gtk/NavigationItemClear.svg: Added.
+        Copy the Trash icon for Clear for gtk.
+
+        * UserInterface/Protocol/Target.js:
+        (WebInspector.Target.prototype.get HeapAgent):
+        * UserInterface/Protocol/WorkerTarget.js:
+        (WebInspector.WorkerTarget):
+        Include Heap agent for Workers.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView):
+        (WebInspector.LogContentView.prototype.get navigationItems):
+        (WebInspector.LogContentView.prototype._garbageCollect):
+        Add garbage collect button which triggers gc on all capable targets.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView):
+        Update the Clear icon to an improved icon.
+
+        * UserInterface/Controllers/HeapManager.js:
+        (WebInspector.HeapManager.prototype.garbageCollected):
+        Timelines only shows Main Target events, do not show GC events for Workers.
+
+2017-01-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: long press on New Tab Tab Item should show context menu with recently closed tabs that are still closed
+        https://bugs.webkit.org/show_bug.cgi?id=166901
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.Event):
+        (WebInspector.TabBar.prototype._handleNewTabContextMenu):
+        Add listener dispatch for contextmenu event on New Tab tab item.
+
+        (WebInspector.TabBar.prototype.get newTabTabBarItem): Deleted.
+        Unused.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        (WebInspector.TabBrowser.prototype._tabBarItemAdded):
+        (WebInspector.TabBrowser.prototype._tabBarItemRemoved):
+        (WebInspector.TabBrowser.prototype._handleNewTabContextMenu): Added.
+        Create an array that keeps track of tabs as they are closed, and populate the contextmenu
+        of the New Tab tab item with entries for each of these tabs.
+
+2017-01-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: tree elements with depth > 1 should have context menu "expand all"/"collapse all" commands
+        https://bugs.webkit.org/show_bug.cgi?id=135590
+
+        Reviewed by Timothy Hatcher.
+
+        Rework the context menu event handlers for all TreeOutline and TreeElement instances such
+        that the TreeOutline handles the event listener and creates the context menu object and the
+        TreeElement populates the list with items.  This is necessary due to the way in which
+        children are laid out, as there is padding on either side of the element that would not
+        trigger a context menu event.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.ondetach):
+        (WebInspector.BreakpointTreeElement.prototype.populateContextMenu):
+        (WebInspector.BreakpointTreeElement.prototype.oncontextmenu): Deleted.
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForSourceCode):
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline):
+        (WebInspector.DOMTreeOutline.prototype.populateContextMenu):
+        (WebInspector.DOMTreeOutline.prototype._onmousedown):
+        (WebInspector.DOMTreeOutline.prototype._onmousemove):
+        (WebInspector.DOMTreeOutline.prototype._ondragstart):
+        (WebInspector.DOMTreeOutline.prototype._ondragover):
+        (WebInspector.DOMTreeOutline.prototype._ondrop):
+        (WebInspector.DOMTreeOutline.prototype._treeElementFromEvent): Deleted.
+        (WebInspector.DOMTreeOutline.prototype._contextMenuEventFired): Deleted.
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._breakpointTreeOutlineContextMenuTreeElement):
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement.prototype.onattach):
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.onattach):
+        (WebInspector.GeneralTreeElement.prototype.ondetach): Deleted.
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.populateContextMenu):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._logSymbolProperty):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._logValue):
+        (WebInspector.ObjectTreeBaseTreeElement.prototype.oncontextmenu): Deleted.
+        (WebInspector.ObjectTreeBaseTreeElement.prototype._contextMenuHandler): Deleted.
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype.populateContextMenu):
+        (WebInspector.ResourceTreeElement.prototype.onattach): Deleted.
+        (WebInspector.ResourceTreeElement.prototype._handleContextMenuEvent): Deleted.
+        * UserInterface/Views/ThreadTreeElement.js:
+        (WebInspector.ThreadTreeElement.prototype.populateContextMenu):
+        (WebInspector.ThreadTreeElement.prototype.oncontextmenu): Deleted.
+        * UserInterface/Views/TreeElement.js:
+        (WebInspector.TreeElement.prototype.populateContextMenu):
+        (WebInspector.TreeElement):
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline):
+        (WebInspector.TreeOutline.prototype.treeElementFromEvent):
+        (WebInspector.TreeOutline.prototype.populateContextMenu):
+        (WebInspector.TreeOutline._generateStyleRulesIfNeeded):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.onattach):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.populateContextMenu):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._highlightNodesWithSelector):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._hideDOMNodeHighlight):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleContextMenuEvent): Deleted.
+        * UserInterface/Views/WorkerTreeElement.js:
+        (WebInspector.WorkerTreeElement.prototype.populateContextMenu):
+        (WebInspector.WorkerTreeElement.prototype.onattach):
+        (WebInspector.WorkerTreeElement.prototype._handleContextMenuEvent): Deleted.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._contextMenuInDataTable):
+        Add "Expand All"/"Collapse All" context menu items.
+
+2017-01-23  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: color picker should feature an editable CSS value
+        https://bugs.webkit.org/show_bug.cgi?id=124356
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker):
+        (.color-picker.hide-inputs):
+        (.color-picker > .color-inputs):
+        (.color-picker > .color-inputs > div):
+        (.color-picker > .color-inputs > div[hidden]):
+        (.color-picker > .color-inputs input):
+
+        * UserInterface/Views/ColorPicker.js:
+        (WebInspector.ColorPicker.createColorInput):
+        (WebInspector.ColorPicker):
+        (WebInspector.ColorPicker.prototype.set color):
+        (WebInspector.ColorPicker.prototype.set enableColorComponentInputs):
+        (WebInspector.ColorPicker.prototype._updateColor):
+        (WebInspector.ColorPicker.prototype._handleFormatChange):
+        (WebInspector.ColorPicker.prototype._showColorComponentInputs.updateColorInput):
+        (WebInspector.ColorPicker.prototype._showColorComponentInputs):
+        (WebInspector.ColorPicker.prototype._handleColorInputInput):
+        Add an input element (with a label for the component name and its units) for each component
+        as part of the current color format (e.g. R, G, B, A).  If any of these inputs are changed
+        then the color is also changed and the "ColorChanged" event is fired.
+
+        * UserInterface/Controllers/CodeMirrorColorEditingController.js:
+        (WebInspector.CodeMirrorColorEditingController.prototype.popoverWillPresent):
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        Add FormatChanged event that fires whenever a new color is set with a different format or 
+        the color value is set for the first time (there is no old format to compare to).  This is
+        needed because if the format becomes RGB, RGBA, HSL, or HSLA from something not in that list
+        then the size of the containing popover needs to change since the newly added color inputs
+        will be displayed.
+
+        * UserInterface/Views/GradientEditor.js:
+        (WebInspector.GradientEditor):
+        Prevent the color inputs from displaying at all, since there aren't individual swatches for
+        each color in a gradient.
+
+2017-01-20  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Search Tab should display search results immediately when closing and reopening Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=167073
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.focusSearchField):
+        Add parameter that will trigger a search with the current input value when true.
+
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView):
+        (WebInspector.SearchTabContentView.prototype.focusSearchField):
+        (WebInspector.SearchTabContentView.prototype.initialLayout):
+
 2017-01-19  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: Network Tab's "Clear Network Items" button should have keyboard shortcuts

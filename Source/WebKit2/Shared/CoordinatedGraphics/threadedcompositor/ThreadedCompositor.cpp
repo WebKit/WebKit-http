@@ -42,26 +42,48 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, const IntSize& viewportSize, float scaleFactor, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
 {
-    return adoptRef(*new ThreadedCompositor(client, nativeSurfaceHandle, doFrameSync, paintFlags));
+    return adoptRef(*new ThreadedCompositor(client, viewportSize, scaleFactor, nativeSurfaceHandle, doFrameSync, paintFlags));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client& client, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+ThreadedCompositor::ThreadedCompositor(Client& client, const IntSize& viewportSize, float scaleFactor, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
     : m_client(client)
+    , m_viewportSize(viewportSize)
+    , m_scaleFactor(scaleFactor)
     , m_nativeSurfaceHandle(nativeSurfaceHandle)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
+    , m_needsResize(!viewportSize.isEmpty())
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 {
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
-        m_scene->setActive(!!m_nativeSurfaceHandle);
+        if (m_nativeSurfaceHandle) {
+            createGLContext();
+            m_scene->setActive(true);
+        } else
+            m_scene->setActive(false);
     });
 }
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+}
+
+void ThreadedCompositor::createGLContext()
+{
+    ASSERT(!isMainThread());
+    ASSERT(m_nativeSurfaceHandle);
+
+    m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), &PlatformDisplay::sharedDisplayForCompositing());
+    if (!m_context)
+        return;
+
+    if (m_doFrameSync == ShouldDoFrameSync::No) {
+        if (m_context->makeContextCurrent())
+            m_context->swapInterval(0);
+    }
 }
 
 void ThreadedCompositor::invalidate()
@@ -80,13 +102,16 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     m_compositingRunLoop->stopUpdateTimer();
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this), handle] {
-        m_scene->setActive(!!handle);
-
         // A new native handle can't be set without destroying the previous one first if any.
         ASSERT(!!handle ^ !!m_nativeSurfaceHandle);
         m_nativeSurfaceHandle = handle;
-        if (!m_nativeSurfaceHandle)
+        if (m_nativeSurfaceHandle) {
+            createGLContext();
+            m_scene->setActive(true);
+        } else {
+            m_scene->setActive(false);
             m_context = nullptr;
+        }
     });
 }
 
@@ -147,27 +172,6 @@ void ThreadedCompositor::scheduleDisplayImmediately()
     m_compositingRunLoop->startUpdateTimer(CompositingRunLoop::Immediate);
 }
 
-bool ThreadedCompositor::makeContextCurrent()
-{
-    if (m_context)
-        return m_context->makeContextCurrent();
-
-    if (!m_nativeSurfaceHandle)
-        return false;
-
-    m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), &PlatformDisplay::sharedDisplayForCompositing());
-    if (!m_context)
-        return false;
-
-    if (!m_context->makeContextCurrent())
-        return false;
-
-    if (m_doFrameSync == ShouldDoFrameSync::No)
-        m_context->swapInterval(0);
-
-    return true;
-}
-
 void ThreadedCompositor::forceRepaint()
 {
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
@@ -180,7 +184,7 @@ void ThreadedCompositor::renderLayerTree()
     if (!m_scene || !m_scene->isActive())
         return;
 
-    if (!makeContextCurrent())
+    if (!m_context || !m_context->makeContextCurrent())
         return;
 
     if (m_needsResize) {

@@ -46,15 +46,12 @@ namespace WebCore {
 
 class QuickLookHandleClient;
 class ResourceLoader;
+class ResourceRequest;
 class ResourceResponse;
 class SharedBuffer;
 class URL;
 
 WEBCORE_EXPORT NSSet *QLPreviewGetSupportedMIMETypesSet();
-
-// Used for setting the permissions on the saved QL content
-NSDictionary *QLFileAttributes();
-NSDictionary *QLDirectoryAttributes();
 
 WEBCORE_EXPORT void addQLPreviewConverterWithFileForURL(NSURL *, id converter, NSString *fileName);
 WEBCORE_EXPORT NSString *qlPreviewConverterFileNameForURL(NSURL *);
@@ -62,8 +59,6 @@ WEBCORE_EXPORT NSString *qlPreviewConverterUTIForURL(NSURL *);
 WEBCORE_EXPORT void removeQLPreviewConverterForURL(NSURL *);
 
 WEBCORE_EXPORT RetainPtr<NSURLRequest> registerQLPreviewConverterIfNeeded(NSURL *, NSString *mimeType, NSData *);
-
-const URL safeQLURLForDocumentURLAndResourceURL(const URL& documentURL, const String& resourceURL);
 
 WEBCORE_EXPORT const char* QLPreviewProtocol();
 
@@ -76,6 +71,7 @@ public:
     static std::unique_ptr<QuickLookHandle> create(ResourceLoader&, const ResourceResponse&);
     ~QuickLookHandle();
 
+    void willSendRequest(ResourceRequest&);
     bool didReceiveData(const char* data, unsigned length);
     bool didReceiveBuffer(const SharedBuffer&);
     bool didFinishLoading();

@@ -149,8 +149,6 @@ void MathMLElement::defaultEventHandler(Event& event)
             auto& href = attributeWithoutSynchronization(hrefAttr);
             const auto& url = stripLeadingAndTrailingHTMLSpaces(href);
             event.setDefaultHandled();
-            if (document().pageCacheState() != Document::NotInPageCache)
-                return;
             if (auto* frame = document().frame())
                 frame->loader().urlSelected(document().completeURL(url), "_self", &event, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, document().shouldOpenExternalURLsPolicyToPropagate());
             return;
@@ -182,7 +180,7 @@ bool MathMLElement::isKeyboardFocusable(KeyboardEvent& event) const
         return StyledElement::isKeyboardFocusable(event);
 
     if (isLink())
-        return document().frame()->eventHandler().tabsToLinks(&event);
+        return document().frame()->eventHandler().tabsToLinks(event);
 
     return StyledElement::isKeyboardFocusable(event);
 }

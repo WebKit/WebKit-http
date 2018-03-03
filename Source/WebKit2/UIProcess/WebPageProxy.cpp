@@ -817,10 +817,6 @@ void WebPageProxy::initializeWebPage()
 
     process().send(Messages::WebProcess::CreateWebPage(m_pageID, creationParameters()), 0);
 
-#if PLATFORM(COCOA)
-    send(Messages::WebPage::SetSmartInsertDeleteEnabled(m_isSmartInsertDeleteEnabled));
-#endif
-
     m_needsToFinishInitializingWebPageAfterProcessLaunch = true;
     finishInitializingWebPageAfterProcessLaunch();
 }
@@ -3171,6 +3167,7 @@ void WebPageProxy::didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t na
 
     if (frame->isMainFrame()) {
         m_pageLoadState.didStartProvisionalLoad(transaction, url, unreachableURL);
+        m_pageClient.didStartProvisionalLoadForMainFrame();
         hideValidationMessage();
     }
 
@@ -3246,8 +3243,10 @@ void WebPageProxy::didFailProvisionalLoadForFrame(uint64_t frameID, const Securi
 
     auto transaction = m_pageLoadState.transaction();
 
-    if (frame->isMainFrame())
+    if (frame->isMainFrame()) {
         m_pageLoadState.didFailProvisionalLoad(transaction);
+        m_pageClient.didFailProvisionalLoadForMainFrame();
+    }
 
     frame->didFailProvisionalLoad();
 
@@ -3349,6 +3348,11 @@ void WebPageProxy::didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID
             m_mainFramePluginHandlesPageScaleGesture = false;
         }
     }
+
+#if ENABLE(POINTER_LOCK)
+    if (frame->isMainFrame())
+        requestPointerUnlock();
+#endif
 
     m_pageLoadState.commitChanges();
     if (m_navigationClient) {
@@ -5574,6 +5578,9 @@ WebPageCreationParameters WebPageProxy::creationParameters()
 #else
     parameters.appleMailPaginationQuirkEnabled = false;
 #endif
+#if PLATFORM(COCOA)
+    parameters.smartInsertDeleteEnabled = m_isSmartInsertDeleteEnabled;
+#endif
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
     parameters.userInterfaceLayoutDirection = m_pageClient.userInterfaceLayoutDirection();
     parameters.observedLayoutMilestones = m_observedLayoutMilestones;
@@ -5603,9 +5610,9 @@ void WebPageProxy::backForwardClear()
 
 #if ENABLE(GAMEPAD)
 
-void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas)
+void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas, bool shouldMakeGamepadsVisible)
 {
-    m_process->send(Messages::WebPage::GamepadActivity(gamepadDatas), m_pageID);
+    m_process->send(Messages::WebPage::GamepadActivity(gamepadDatas, shouldMakeGamepadsVisible), m_pageID);
 }
 
 #endif
@@ -5890,6 +5897,11 @@ void WebPageProxy::didBlockInsecurePluginVersion(const String& mimeType, const S
 bool WebPageProxy::willHandleHorizontalScrollEvents() const
 {
     return !m_canShortCircuitHorizontalWheelEvents;
+}
+
+void WebPageProxy::updateWebsitePolicies(const WebsitePolicies& websitePolicies)
+{
+    m_process->send(Messages::WebPage::UpdateWebsitePolicies(websitePolicies), m_pageID);
 }
 
 void WebPageProxy::didFinishLoadingDataForCustomContentProvider(const String& suggestedFilename, const IPC::DataReference& dataReference)
@@ -6477,16 +6489,6 @@ void WebPageProxy::requestControlledElementID() const
 #endif
 }
 
-void WebPageProxy::requestActiveNowPlayingSessionInfo()
-{
-    m_process->send(Messages::WebPage::RequestActiveNowPlayingSessionInfo(), m_pageID);
-}
-
-void WebPageProxy::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const
-{
-    m_pageClient.handleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime);
-}
-
 void WebPageProxy::handleControlledElementIDResponse(const String& identifier) const
 {
     m_pageClient.handleControlledElementIDResponse(identifier);
@@ -6499,6 +6501,18 @@ bool WebPageProxy::isPlayingVideoInEnhancedFullscreen() const
 #else
     return false;
 #endif
+}
+#endif
+
+#if PLATFORM(COCOA)
+void WebPageProxy::requestActiveNowPlayingSessionInfo()
+{
+    m_process->send(Messages::WebPage::RequestActiveNowPlayingSessionInfo(), m_pageID);
+}
+
+void WebPageProxy::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const
+{
+    m_pageClient.handleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime);
 }
 #endif
 
@@ -6521,6 +6535,11 @@ void WebPageProxy::focusedContentMediaElementDidChange(uint64_t elementID)
     focusManager->setFocusedMediaElement(*this, elementID);
 }
 #endif
+
+void WebPageProxy::didPlayMediaPreventedFromPlayingWithoutUserGesture()
+{
+    m_uiClient->didPlayMediaPreventedFromPlayingWithoutUserGesture(*this);
+}
 
 #if PLATFORM(MAC)
 void WebPageProxy::removeNavigationGestureSnapshot()
@@ -6708,7 +6727,7 @@ void WebPageProxy::getLoadDecisionForIcon(const WebCore::LinkIcon& icon, uint64_
     if (!m_iconLoadingClient)
         return;
 
-    m_iconLoadingClient->getLoadDecisionForIcon(icon, [this, protectedThis = Ref<WebPageProxy>(*this), loadIdentifier](std::function<void (API::Data*, CallbackBase::Error)> callbackFunction) {
+    m_iconLoadingClient->getLoadDecisionForIcon(icon, [this, protectedThis = RefPtr<WebPageProxy>(this), loadIdentifier](std::function<void (API::Data*, CallbackBase::Error)> callbackFunction) {
         if (!isValid()) {
             if (callbackFunction)
                 callbackFunction(nullptr, CallbackBase::Error::Unknown);

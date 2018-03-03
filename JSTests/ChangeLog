@@ -1,3 +1,151 @@
+2017-01-26  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception check in genericTypedArrayViewProtoFuncSet().
+        https://bugs.webkit.org/show_bug.cgi?id=166812
+        <rdar://problem/29916672>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-166812.js: Added.
+
+2017-01-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211224.
+        https://bugs.webkit.org/show_bug.cgi?id=167479
+
+        "It was a Kraken performance regression" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "OSR entry: delay outer-loop compilation when at inner-loop"
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+        http://trac.webkit.org/changeset/211224
+
+2017-01-26  JF Bastien  <jfbastien@apple.com>
+
+        OSR entry: delay outer-loop compilation when at inner-loop
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+
+        Reviewed by Filip Pizlo.
+
+        Try to be mean to OSR entry by using nested loops, and having
+        non-int32 types or truly varying types.
+
+        Mandelbrot currently never tiers up to FTL because it exits too
+        many times before this. That shouldn't happen because it's just
+        numbers and int32s. I'll file a bug to fix this.
+
+        * microbenchmarks/mandelbrot.js: Added.
+        (mandelbrot):
+        (printable):
+        * microbenchmarks/nonude.js: Added.
+        (Array.prototype.remove):
+        (const.u):
+        (const.load):
+        (const.scan):
+        (const.main):
+
+2017-01-25  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: coerce return values from imports
+        https://bugs.webkit.org/show_bug.cgi?id=165480
+        <rdar://problem/29760318>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/function-import-return-value.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.x.assert.eq):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.Math.fround):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.let.type.of.Reflect.ownKeys):
+        (test.1):
+        (assert.truthy):
+        (assert.throws):
+
+2017-01-25  Filip Pizlo  <fpizlo@apple.com>
+
+        jsc.cpp should have the $.agent stuff for testing SAB
+        https://bugs.webkit.org/show_bug.cgi?id=167431
+
+        Reviewed by Saam Barati.
+        
+        Add a very basic test of Atomics using $.agent. This is based on
+        LayoutTests/workers/sab/simple.html.
+
+        * stress/lars-sab-workers.js: Added.
+        (startWorker):
+        (resources):
+        (wake):
+        (else):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value according to toInteger
+        https://bugs.webkit.org/show_bug.cgi?id=167399
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-add-uint32.js: Added.
+        * stress/atomics-store-return.js: Fix the test to match what the spec wants.
+
+2017-01-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number#toString with Int52
+        https://bugs.webkit.org/show_bug.cgi?id=167303
+
+        Reviewed by Sam Weinig.
+
+        * stress/to-string-with-int52.js: Added.
+        (shouldBe):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value, not the value that it stored
+        https://bugs.webkit.org/show_bug.cgi?id=167395
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-store-return.js: Added.
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        -0 is a valid array index and AtomicsObject should know this
+        https://bugs.webkit.org/show_bug.cgi?id=167386
+
+        Reviewed by Mark Lam.
+
+        * stress/atomics-neg-zero.js: Added.
+
+2017-01-23  Saam Barati  <sbarati@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=167247
+        JSC: operationSpreadGeneric uses the wrong global object for the builtin function and slow_path_spread consults the wrong global object to prove if the iterator protocol is unobservable
+        <rdar://problem/30121809>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/spread-consults-correct-global-object.js: Added.
+        (assert):
+        (spread):
+        * stress/spread-correct-global-object-on-exception.js: Added.
+        (assert):
+        (spread):
+        (const.objectText.let.o.Symbol.iterator):
+        (catch):
+
+2017-01-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        dynamic import is ambiguous with import declaration at module code
+        https://bugs.webkit.org/show_bug.cgi?id=167098
+
+        Reviewed by Darin Adler.
+
+        * modules/import-call.js: Added.
+        (from.string_appeared_here.import.string_appeared_here.then):
+        * modules/import-call/main.js: Added.
+        * stress/import-syntax.js:
+        (async):
+
 2017-01-19  Skachkov Oleksandr  <gskachkov@gmail.com>
 
         "this" missing after await in async arrow function

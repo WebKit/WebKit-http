@@ -316,6 +316,10 @@ messages -> WebPageProxy {
     StartDrag(struct WebKit::WebSelectionData selection, uint64_t dragOperation, WebKit::ShareableBitmap::Handle dragImage)
 #endif
 
+#if ENABLE(DATA_INTERACTION)
+    DidPerformDataInteractionControllerOperation()
+#endif
+
 #if PLATFORM(COCOA)
     # Dictionary support.
     DidPerformDictionaryLookup(struct WebCore::DictionaryPopupInfo dictionaryPopupInfo)
@@ -431,6 +435,7 @@ messages -> WebPageProxy {
 #if USE(QUICK_LOOK)
     DidStartLoadForQuickLookDocumentInMainFrame(String fileName, String uti)
     DidFinishLoadForQuickLookDocumentInMainFrame(WebKit::QuickLookDocumentData data)
+    DidRequestPasswordForQuickLookDocumentInMainFrame(String fileName)
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
@@ -438,6 +443,7 @@ messages -> WebPageProxy {
 #endif
 
     IsPlayingMediaDidChange(unsigned state, uint64_t sourceElementID)
+    DidPlayMediaPreventedFromPlayingWithoutUserGesture()
 
 #if ENABLE(MEDIA_SESSION)
     HasMediaSessionWithActiveMediaElementsDidChange(bool state)
@@ -483,6 +489,9 @@ messages -> WebPageProxy {
 
 #if PLATFORM(MAC)
     DidHandleAcceptedCandidate()
+#endif
+
+#if PLATFORM(COCOA)
     HandleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, String title, double duration, double elapsedTime)
 #endif
 

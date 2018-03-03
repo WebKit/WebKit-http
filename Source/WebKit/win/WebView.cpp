@@ -123,6 +123,7 @@
 #include <WebCore/IntRect.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/LibWebRTCProvider.h>
 #include <WebCore/LogInitialization.h>
 #include <WebCore/Logging.h>
 #include <WebCore/MIMETypeRegistry.h>
@@ -3100,7 +3101,11 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
     m_inspectorClient = new WebInspectorClient(this);
 
-    PageConfiguration configuration(makeUniqueRef<WebEditorClient>(this), SocketProvider::create());
+    PageConfiguration configuration(
+        makeUniqueRef<WebEditorClient>(this),
+        SocketProvider::create(),
+        makeUniqueRef<LibWebRTCProvider>()
+    );
     configuration.backForwardClient = BackForwardList::create();
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
@@ -5182,7 +5187,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setShouldDisplayTextDescriptions(enabled);
 #endif
 
-    COMPtr<IWebPreferencesPrivate3> prefsPrivate(Query, preferences);
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate(Query, preferences);
     if (prefsPrivate) {
         hr = prefsPrivate->localStorageDatabasePath(&str);
         if (FAILED(hr))
@@ -5229,15 +5234,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 
     // FIXME: Add preferences for the runtime enabled features.
 
-#if ENABLE(INDEXED_DATABASE)
-    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
-#endif
-
-    hr = prefsPrivate->domIteratorEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled(!!enabled);
-
 #if ENABLE(FETCH_API)
     hr = prefsPrivate->fetchAPIEnabled(&enabled);
     if (FAILED(hr))
@@ -5259,6 +5255,13 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(!!enabled);
+
+#if ENABLE(WEB_ANIMATIONS)
+    hr = prefsPrivate->webAnimationsEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(!!enabled);
+#endif
 
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
@@ -5401,6 +5404,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setExperimentalNotificationsEnabled(enabled);
+
+    hr = prefsPrivate->allowsPageCacheWithWindowOpener(&enabled);
+    if (FAILED(hr))
+        return hr;
+    settings.setAllowsPageCacheWithWindowOpener(enabled);
 
     hr = prefsPrivate->isWebSecurityEnabled(&enabled);
     if (FAILED(hr))
@@ -5856,7 +5864,7 @@ HRESULT WebView::standardUserAgentWithApplicationName(_In_ BSTR applicationName,
 HRESULT WebView::clearFocusNode()
 {
     if (m_page)
-        m_page->focusController().setFocusedElement(0, 0);
+        m_page->focusController().setFocusedElement(nullptr, m_page->focusController().focusedOrMainFrame());
     return S_OK;
 }
 
@@ -6490,7 +6498,7 @@ HRESULT WebView::reportException(_In_ JSContextRef context, _In_ JSValueRef exce
     JSC::JSLockHolder lock(execState);
 
     // Make sure the context has a DOMWindow global object, otherwise this context didn't originate from a WebView.
-    if (!toJSDOMWindow(execState->lexicalGlobalObject()))
+    if (!toJSDOMWindow(execState->vm(), execState->lexicalGlobalObject()))
         return E_FAIL;
 
     WebCore::reportException(execState, toJS(execState, exception));
@@ -6509,7 +6517,7 @@ HRESULT WebView::elementFromJS(_In_ JSContextRef context, _In_ JSValueRef nodeOb
 
     JSC::ExecState* exec = toJS(context);
     JSC::JSLockHolder lock(exec);
-    Element* elt = JSElement::toWrapped(toJS(exec, nodeObject));
+    Element* elt = JSElement::toWrapped(exec->vm(), toJS(exec, nodeObject));
     if (!elt)
         return E_FAIL;
 
@@ -7755,7 +7763,7 @@ HRESULT WebView::setCustomBackingScaleFactor(double customScaleFactor)
 
     m_customDeviceScaleFactor = customScaleFactor;
 
-    if (oldScaleFactor != deviceScaleFactor())
+    if (m_page && oldScaleFactor != deviceScaleFactor())
         m_page->setDeviceScaleFactor(deviceScaleFactor());
 
     return S_OK;

@@ -47,6 +47,7 @@
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITExceptions.h"
+#include "JSArrayInlines.h"
 #include "JSCInlines.h"
 #include "JSFixedArray.h"
 #include "JSGenericTypedArrayViewConstructorInlines.h"
@@ -837,7 +838,7 @@ EncodedJSValue JIT_OPERATION operationRegExpExecGeneric(ExecState* exec, JSGloba
     JSValue base = JSValue::decode(encodedBase);
     JSValue argument = JSValue::decode(encodedArgument);
     
-    if (!base.inherits(RegExpObject::info()))
+    if (!base.inherits(vm, RegExpObject::info()))
         return throwVMTypeError(exec, scope);
 
     JSString* input = argument.toStringOrNull(exec);
@@ -884,7 +885,7 @@ size_t JIT_OPERATION operationRegExpTestGeneric(ExecState* exec, JSGlobalObject*
     JSValue base = JSValue::decode(encodedBase);
     JSValue argument = JSValue::decode(encodedArgument);
 
-    if (!base.inherits(RegExpObject::info())) {
+    if (!base.inherits(vm, RegExpObject::info())) {
         throwTypeError(exec, scope);
         return false;
     }
@@ -1405,7 +1406,7 @@ size_t JIT_OPERATION operationObjectIsObject(ExecState* exec, JSGlobalObject* gl
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return false;
@@ -1425,7 +1426,7 @@ size_t JIT_OPERATION operationObjectIsFunction(ExecState* exec, JSGlobalObject* 
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return false;
@@ -1445,7 +1446,7 @@ JSCell* JIT_OPERATION operationTypeOfObject(ExecState* exec, JSGlobalObject* glo
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return vm.smallStrings.undefinedString();
@@ -1465,7 +1466,7 @@ int32_t JIT_OPERATION operationTypeOfObjectAsTypeofType(ExecState* exec, JSGloba
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    ASSERT(jsDynamicCast<JSObject*>(object));
+    ASSERT(jsDynamicCast<JSObject*>(vm, object));
     
     if (object->structure(vm)->masqueradesAsUndefined(globalObject))
         return static_cast<int32_t>(TypeofType::Undefined);
@@ -1945,7 +1946,7 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     unsigned length = 0;
     for (unsigned i = 0; i < numItems; i++) {
         JSValue value = JSValue::decode(values[i]);
-        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(value))
+        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(vm, value))
             length += array->size();
         else
             ++length;
@@ -1955,13 +1956,13 @@ JSCell* JIT_OPERATION operationNewArrayWithSpreadSlow(ExecState* exec, void* buf
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
-    JSArray* result = JSArray::tryCreateUninitialized(vm, structure, length);
+    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, length);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
     unsigned index = 0;
     for (unsigned i = 0; i < numItems; i++) {
         JSValue value = JSValue::decode(values[i]);
-        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(value)) {
+        if (JSFixedArray* array = jsDynamicCast<JSFixedArray*>(vm, value)) {
             // We are spreading.
             for (unsigned i = 0; i < array->size(); i++) {
                 result->initializeIndex(vm, index, array->get(i));
@@ -1984,19 +1985,18 @@ JSCell* JIT_OPERATION operationSpreadGeneric(ExecState* exec, JSCell* iterable)
 
     auto throwScope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = iterable->structure(vm)->globalObject();
-    if (!globalObject)
-        globalObject = exec->lexicalGlobalObject();
-
-    if (isJSArray(iterable) && globalObject->isArrayIteratorProtocolFastAndNonObservable()) {
+    if (isJSArray(iterable)) {
         JSArray* array = jsCast<JSArray*>(iterable);
-        throwScope.release();
-        return JSFixedArray::createFromArray(exec, vm, array);
+        if (array->isIteratorProtocolFastAndNonObservable()) {
+            throwScope.release();
+            return JSFixedArray::createFromArray(exec, vm, array);
+        }
     }
 
     // FIXME: we can probably make this path faster by having our caller JS code call directly into
     // the iteration protocol builtin: https://bugs.webkit.org/show_bug.cgi?id=164520
 
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     JSArray* array;
     {
         JSFunction* iterationFunction = globalObject->iteratorProtocolFunction();
@@ -2022,7 +2022,7 @@ JSCell* JIT_OPERATION operationSpreadFastArray(ExecState* exec, JSCell* cell)
 
     ASSERT(isJSArray(cell));
     JSArray* array = jsCast<JSArray*>(cell);
-    ASSERT(array->globalObject()->isArrayIteratorProtocolFastAndNonObservable());
+    ASSERT(array->isIteratorProtocolFastAndNonObservable());
 
     return JSFixedArray::createFromArray(exec, vm, array);
 }

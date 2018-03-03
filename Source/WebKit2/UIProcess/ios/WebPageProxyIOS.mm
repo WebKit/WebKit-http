@@ -1081,6 +1081,21 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
         m_validationBubble->show();
 }
 
+#if ENABLE(DATA_INTERACTION)
+
+void WebPageProxy::didPerformDataInteractionControllerOperation()
+{
+    m_pageClient.didPerformDataInteractionControllerOperation();
+}
+
+void WebPageProxy::requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)
+{
+    if (isValid())
+        m_process->send(Messages::WebPage::RequestStartDataInteraction(clientPosition, globalPosition), m_pageID);
+}
+
+#endif
+
 #if USE(QUICK_LOOK)
     
 void WebPageProxy::didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti)
@@ -1100,6 +1115,14 @@ void WebPageProxy::didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookD
     else
         m_loaderClient->didFinishLoadForQuickLookDocumentInMainFrame(data);
 }
+
+void WebPageProxy::didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName)
+{
+    m_pageClient.requestPasswordForQuickLookDocument(fileName, [protectedThis = makeRefPtr(this)](const String& password) {
+        protectedThis->process().send(Messages::WebPage::DidReceivePasswordForQuickLookDocument(password), protectedThis->m_pageID);
+    });
+}
+
 #endif
 
 } // namespace WebKit

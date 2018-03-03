@@ -1,3 +1,1518 @@
+2017-01-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        setTimeout / setInterval's string execution should inherit SourceOrigin correctly
+        https://bugs.webkit.org/show_bug.cgi?id=167097
+
+        Reviewed by Darin Adler.
+
+        We set the default SourceOrigin for the ScriptController::executeScriptInWorld.
+        The default SourceOrigin has the document baseURL and CachedScriptFetcher.
+
+        setTimeout and setInterval use this interface. And it uses the default SourceOrigin
+        for the document (Realm of the setTimeout / setInterval). This is the expected
+        behavior in the dynamic import proposal.
+
+        * js/dom/modules/import-from-set-interval-expected.txt: Added.
+        * js/dom/modules/import-from-set-interval.html: Added.
+        * js/dom/modules/import-from-set-timeout-expected.txt: Added.
+        * js/dom/modules/import-from-set-timeout.html: Added.
+
+2017-01-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Tweak the test to avoid one pixel of difference on some hardware.
+
+        * css3/filters/backdrop/backdrop-filter-uneven-corner-radii-expected.html:
+        * css3/filters/backdrop/backdrop-filter-uneven-corner-radii.html:
+
+2017-01-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Element with a backdrop-filter and a mask may not correctly mask the backdrop
+        https://bugs.webkit.org/show_bug.cgi?id=167456
+        rdar://problem/29320059
+
+        Reviewed by Antoine Quint.
+
+        * css3/filters/backdrop/backdrop-filter-uneven-corner-radii-expected.html: Added.
+        * css3/filters/backdrop/backdrop-filter-uneven-corner-radii.html: Added.
+
+2017-01-27  Jer Noble  <jer.noble@apple.com>
+
+        media/track/track-in-band-style.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=167516
+
+        Reviewed by Eric Carlson.
+
+        Update the test to use 'cuechange' rather than a 200ms timer.
+
+        * media/track/track-in-band-style-expected.txt:
+        * media/track/track-in-band-style.html:
+        * platform/mac/TestExpectations:
+
+2017-01-27  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest fast/mediastream/getUserMedia-webaudio.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=167513
+
+        Unreviewed.
+
+        * TestExpectations: Not yet ready to run this test.
+
+2017-01-27  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Do not bail out on -webkit-line-box-contain: block glyphs unless text overflows vertically.
+        https://bugs.webkit.org/show_bug.cgi?id=167481
+        <rdar://problem/30180150>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-line-box-contain-glyphs-expected.html: Added.
+        * fast/text/simple-line-layout-line-box-contain-glyphs.html: Added.
+
+2017-01-27  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Styles should not show background-repeat-x/y, or -webkit-mask-repeat-x/y
+        https://bugs.webkit.org/show_bug.cgi?id=167255
+
+        Reviewed by Joseph Pecoraro.
+
+        Checks that internal-only CSS properties are marked as invalid when passed to WebInspector.
+
+        * inspector/css/css-property-expected.txt: Added.
+        * inspector/css/css-property.html: Added.
+
+2017-01-27  Antti Koivisto  <antti@apple.com>
+
+        Implement Cache-control: immutable
+        https://bugs.webkit.org/show_bug.cgi?id=167497
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/cache/cache-control-immutable-http-expected.txt: Added.
+        * http/tests/cache/cache-control-immutable-http.html: Added.
+        * http/tests/cache/cache-control-immutable-https-expected.txt: Added.
+        * http/tests/cache/cache-control-immutable-https.html: Added.
+        * http/tests/cache/resources/cache-control-immutable.js: Added.
+        * http/tests/cache/resources/iframe-with-script.cgi: Added.
+
+2017-01-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/layout-node/addChild.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167461
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Implement dynamic-import for WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=166926
+
+        Reviewed by Ryosuke Niwa.
+
+        * http/tests/misc/import-absolute-url-expected.txt: Added.
+        * http/tests/misc/import-absolute-url.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/import-scriptnonce-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/import-scriptnonce.html: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed1.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed2.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed3.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed4.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed5.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-allowed6.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked1.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked2.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked3.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked4.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked5.js: Added.
+        * http/tests/security/contentSecurityPolicy/1.1/resources/import-scriptnonce-blocked6.js: Added.
+        * http/tests/security/import-module-crossorigin-loads-error-expected.txt: Added.
+        * http/tests/security/import-module-crossorigin-loads-error-src-expected.txt: Added.
+        * http/tests/security/import-module-crossorigin-loads-error-src.html: Added.
+        * http/tests/security/import-module-crossorigin-loads-error.html: Added.
+        * http/tests/security/import-module-crossorigin-loads-expected.txt: Added.
+        * http/tests/security/import-module-crossorigin-loads-src-expected.txt: Added.
+        * http/tests/security/import-module-crossorigin-loads-src.html: Added.
+        * http/tests/security/import-module-crossorigin-loads.html: Added.
+        * http/tests/security/import-script-crossorigin-loads-error-expected.txt: Added.
+        * http/tests/security/import-script-crossorigin-loads-error.html: Added.
+        * http/tests/security/import-script-crossorigin-loads-omit-expected.txt: Added.
+        * http/tests/security/import-script-crossorigin-loads-omit.html: Added.
+        * http/tests/security/resources/cors-deny.php: Added.
+        * http/tests/security/resources/import-module-crossorigin-loads-error-src.js: Added.
+        (import.string_appeared_here.then):
+        * http/tests/security/resources/import-module-crossorigin-loads-src.js: Added.
+        (import.string_appeared_here.then):
+        * js/dom/modules/import-execution-order-expected.txt: Added.
+        * js/dom/modules/import-execution-order.html: Copied from LayoutTests/js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html.
+        * js/dom/modules/import-from-handler-expected.txt: Added.
+        * js/dom/modules/import-from-handler.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/import-from-javascript-url-expected.txt: Added.
+        * js/dom/modules/import-from-javascript-url.html: Copied from LayoutTests/js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html.
+        * js/dom/modules/import-from-loaded-classic-expected.txt: Added.
+        * js/dom/modules/import-from-loaded-classic.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/import-from-loaded-module-expected.txt: Added.
+        * js/dom/modules/import-from-loaded-module.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/import-from-module-expected.txt: Added.
+        * js/dom/modules/import-from-module.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/import-incorrect-relative-specifier-expected.txt: Added.
+        * js/dom/modules/import-incorrect-relative-specifier.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/import-simple-expected.txt: Added.
+        * js/dom/modules/import-simple.html: Copied from LayoutTests/js/dom/modules/module-src-simple.html.
+        * js/dom/modules/module-document-write-src.html:
+        * js/dom/modules/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.html:
+        * js/dom/modules/module-execution-order-mixed-with-classic-scripts.html:
+        * js/dom/modules/module-execution-order-mixed.html:
+        * js/dom/modules/module-inline-dynamic.html:
+        * js/dom/modules/module-inline-simple.html:
+        * js/dom/modules/module-load-event-with-src.html:
+        * js/dom/modules/module-load-same-module-from-different-entry-point-dynamic.html:
+        * js/dom/modules/module-load-same-module-from-different-entry-point-in-src.html:
+        * js/dom/modules/module-load-same-module-from-different-entry-point.html:
+        * js/dom/modules/module-not-found-error-event-with-src-and-import.html:
+        * js/dom/modules/module-src-current-script.html:
+        * js/dom/modules/module-src-dynamic.html:
+        * js/dom/modules/module-src-simple.html:
+        * js/dom/modules/module-type-case-insensitive.html:
+        * js/dom/modules/module-will-fire-beforeload.html:
+        * js/dom/modules/nomodule-dynamic-classic-src.html:
+        * js/dom/modules/nomodule-has-no-effect-on-module-inline.html:
+        * js/dom/modules/nomodule-has-no-effect-on-module-src.html:
+        * js/dom/modules/nomodule-prevents-execution-classic-script-src.html:
+        * js/dom/modules/nomodule-reflect.html:
+        * js/dom/modules/resources/error-classic-script.js: Renamed from LayoutTests/js/dom/modules/script-tests/error-classic-script.js.
+        * js/dom/modules/resources/import-from-loaded-classic-finish.js: Added.
+        * js/dom/modules/resources/import-from-loaded-classic.js: Added.
+        * js/dom/modules/resources/import-from-loaded-module-finish.js: Added.
+        * js/dom/modules/resources/import-from-loaded-module.js: Added.
+        * js/dom/modules/resources/module-document-write-src.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-document-write-src.js.
+        * js/dom/modules/resources/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror-throw.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror-throw.js.
+        * js/dom/modules/resources/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-error-inside-dependent-module-should-be-propagated-to-onerror.js.
+        * js/dom/modules/resources/module-execution-order-mixed-2.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-2.js.
+        * js/dom/modules/resources/module-execution-order-mixed-cappuccino.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-cappuccino.js.
+        * js/dom/modules/resources/module-execution-order-mixed-cocoa.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-cocoa.js.
+        * js/dom/modules/resources/module-execution-order-mixed-matcha.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-matcha.js.
+        * js/dom/modules/resources/module-execution-order-mixed-with-classic-scripts-2.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-2.js.
+        * js/dom/modules/resources/module-execution-order-mixed-with-classic-scripts-cappuccino.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-cappuccino.js.
+        * js/dom/modules/resources/module-execution-order-mixed-with-classic-scripts-cocoa.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-cocoa.js.
+        * js/dom/modules/resources/module-execution-order-mixed-with-classic-scripts-matcha.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts-matcha.js.
+        * js/dom/modules/resources/module-execution-order-mixed-with-classic-scripts.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed-with-classic-scripts.js.
+        * js/dom/modules/resources/module-execution-order-mixed.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-execution-order-mixed.js.
+        * js/dom/modules/resources/module-inline-dynamic.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-inline-dynamic.js.
+        * js/dom/modules/resources/module-inline-simple.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-inline-simple.js.
+        * js/dom/modules/resources/module-load-event-with-src.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-load-event-with-src.js.
+        * js/dom/modules/resources/module-load-same-module-from-different-entry-point.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-load-same-module-from-different-entry-point.js.
+        * js/dom/modules/resources/module-not-found-error-event-with-src-and-import.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-not-found-error-event-with-src-and-import.js.
+        * js/dom/modules/resources/module-src-current-script.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-src-current-script.js.
+        * js/dom/modules/resources/module-src-dynamic-cocoa.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-src-dynamic-cocoa.js.
+        * js/dom/modules/resources/module-src-dynamic.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-src-dynamic.js.
+        * js/dom/modules/resources/module-src-simple-cocoa.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-src-simple-cocoa.js.
+        * js/dom/modules/resources/module-src-simple.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-src-simple.js.
+        * js/dom/modules/resources/module-will-fire-beforeload.js: Renamed from LayoutTests/js/dom/modules/script-tests/module-will-fire-beforeload.js.
+
+2017-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Crash when navigating back to a page in PacheCache when one of its frames has been removed
+        https://bugs.webkit.org/show_bug.cgi?id=167421
+        <rdar://problem/30188490>
+
+        Reviewed by Darin Adler.
+
+        * fast/history/page-cache-after-window-open-expected.txt: Added.
+        * fast/history/page-cache-after-window-open.html: Added.
+        * fast/history/page-cache-back-navigation-crash-expected.txt: Added.
+        * fast/history/page-cache-back-navigation-crash.html: Added.
+        * fast/history/page-cache-with-opener-expected.txt: Added.
+        * fast/history/page-cache-with-opener.html: Added.
+        * fast/history/resources/page-cache-window-with-iframe.html: Added.
+        * fast/history/resources/page-cache-window-with-opener.html: Added.
+        Add layout test coverage.
+
+        * editing/mac/input/unconfirmed-text-navigation-with-page-cache.html:
+        * fast/harness/page-cache-crash-on-data-urls.html:
+        * fast/harness/use-page-cache.html:
+        * fast/history/page-cache-after-window-open-expected.txt: Added.
+        * fast/history/page-cache-after-window-open.html: Added.
+        * fast/history/page-cache-with-opener-expected.txt: Added.
+        * fast/history/page-cache-with-opener.html: Added.
+        * fast/history/resources/page-cache-window-with-opener.html: Added.
+        * fast/loader/stateobjects/no-popstate-when-back-to-stateless-entry-with-page-cache.html:
+        * fast/loader/stateobjects/popstate-fires-with-page-cache.html:
+        * tiled-drawing/tiled-drawing-scroll-position-page-cache-restoration.html:
+        These tests relied on using window.open() to test PageCache for convenience. They now
+        need to override a setting in order to be allowed to do so.
+
+2017-01-26  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Add a LibWebRTC mock for testing
+        https://bugs.webkit.org/show_bug.cgi?id=167429
+
+        Reviewed by Alex Christensen.
+
+        * TestExpectations: Marking webrtc new tests as skipped for the moment.
+        * fast/mediastream/RTCPeerConnection-createAnswer.html:
+        * fast/mediastream/RTCPeerConnection-icecandidate-event.html:
+        * fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html:
+        * webrtc/datachannel/basic.html: Added.
+        * webrtc/routines.js: Added.
+        (createConnections):
+        (closeConnections):
+        (onCreateSessionDescriptionError):
+        (gotDescription1):
+        (gotDescription2):
+        (iceCallback1):
+        (iceCallback2):
+        (onAddIceCandidateSuccess):
+        (onAddIceCandidateError):
+        * webrtc/video.html: Added.
+
+2017-01-26  Daniel Bates  <dabates@apple.com>
+
+        [QuickLook] Add test to ensure that RTF documents have a unique origin
+        https://bugs.webkit.org/show_bug.cgi?id=167480
+
+        Reviewed by Andy Estes.
+
+        * http/tests/quicklook/resources/document-domain-is-empty-string.rtf: Added.
+        * http/tests/quicklook/rtf-document-domain-is-empty-string-expected.txt: Added.
+        * http/tests/quicklook/rtf-document-domain-is-empty-string.html: Added.
+        * platform/ios-simulator/TestExpectations: Skip the test in OpenSource as we
+        do not support touch events.
+
+2017-01-26  Jeremy Jones  <jeremyj@apple.com>
+
+        Page should be able to request pointer lock without user gesture if it relinquished it without a user gesture
+        https://bugs.webkit.org/show_bug.cgi?id=167126
+
+        Reviewed by Jon Lee.
+
+        Enable pointer-lock/locked-element-removed-from-dom.html for WK2 by enabling for Mac and disabling for WK1.
+        Not enable in WK1 becuase of https://bugs.webkit.org/show_bug.cgi?id=167127
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-26  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] REGRESSION (WebKit2): Requests are made to invalid x-apple-ql-id: URLs
+        https://bugs.webkit.org/show_bug.cgi?id=167453
+
+        Reviewed by Brent Fulgham.
+
+        * quicklook/invalid-ql-id-url-expected.txt: Added.
+        * quicklook/invalid-ql-id-url.html: Added.
+        * quicklook/nil-response-mime-type-expected.txt: Removed.
+        * quicklook/nil-response-mime-type.html: Removed.
+        * quicklook/resources/invalid-ql-id-url.xls: Added.
+        * quicklook/resources/nil-response-mime-type.xls: Removed.
+
+2017-01-26  Jeremy Jones  <jeremyj@apple.com>
+
+        Pointer lock events should be delivered directly to the target element
+        https://bugs.webkit.org/show_bug.cgi?id=167134
+
+        Reviewed by Jon Lee.
+
+        The pointer-lock/mouse-event-delivery.html test is modified to explicitly move the mouse pointer to a valid
+        location before sending mouse actions. Without this, the test infrastructure doesn't know that the pointer
+        is over the web view and doesn't deliver events.
+
+        Added code to test for wheel events.
+
+        * platform/mac/TestExpectations: enabled test.
+        * pointer-lock/mouse-event-delivery.html:
+        * pointer-lock/mouse-event-delivery-expected.txt:
+
+2017-01-26  Jeremy Jones  <jeremyj@apple.com>
+
+        Request pointer unlock on navigation and re-enable pointer-lock tests for WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=166765
+
+        Reviewed by Tim Horton.
+
+        Enabled pointer lock tests for wk2 now that pointer lock state is being reset after each test.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-26  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add support for -webkit-hyphenate-limit-lines
+        https://bugs.webkit.org/show_bug.cgi?id=167446
+        <rdar://problem/30194030>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-hyphen-limit-lines-expected.html: Added.
+        * fast/text/simple-line-layout-hyphen-limit-lines.html: Added.
+        * fast/text/simple-line-layout-hyphen-limit-lines2-expected.html: Added.
+        * fast/text/simple-line-layout-hyphen-limit-lines2.html: Added.
+        * platform/mac/fast/text/hyphenate-limit-lines-expected.txt: progression
+
+2017-01-26  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add support for -webkit-hyphenate-limit-after and -webkit-hyphenate-limit-before
+        https://bugs.webkit.org/show_bug.cgi?id=167439
+        <rdar://problem/30180184>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-hyphen-limit-after.html: Added.
+        * fast/text/simple-line-layout-hyphen-limit-before-expected.html: Added.
+        * fast/text/simple-line-layout-hyphen-limit-before.html: Added.
+        * platform/mac/fast/text/hyphenate-limit-before-after-expected.txt: progression.
+
+2017-01-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking swipe/main-frame-pinning-requirement.html as flaky on El Capitan.
+        https://bugs.webkit.org/show_bug.cgi?id=161887
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-26  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=165319
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/heap/gc.html as slow on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=167408
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-26  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Hiding controls, changing their width and showing them again shows an incorrect layout
+        https://bugs.webkit.org/show_bug.cgi?id=167160
+        <rdar://problem/29612318>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that creates media controls at a given width, hides the controls bar, increases the width, makes
+        the controls bar visible again, and checks that the layout was correctly updated as a result.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-resize-with-hidden-controls-bar-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-resize-with-hidden-controls-bar.html: Added.
+
+2017-01-25  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash under DOMSelection::deleteFromDocument()
+        https://bugs.webkit.org/show_bug.cgi?id=167232
+
+        Reviewed by Chris Dumez.
+
+        Based on a patch by Chris Dumez. Add a regression test and rebaseline a Blink test as WebKit's
+        new behavior matches that of Gecko instead of Blink.
+
+        * editing/selection/deleteFromDocument-shadow-tree-crash-expected.txt: Added.
+        * editing/selection/deleteFromDocument-shadow-tree-crash.html: Added.
+        * imported/blink/editing/selection/deleteFromDocument-crash-expected.html:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/airplay-support/airplay-support.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167442
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        modern-media-test gardening.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/forms/ios/ipad/focus-input-via-button.html.
+
+        Unreviewed test gardening.
+
+        * fast/forms/ios/ipad/focus-input-via-button-expected.txt:
+
+2017-01-25  Yoav Weiss  <yoav@yoav.ws>
+
+        REGRESSION(r203110): LayoutTest http/tests/preload/single_download_preload_runner.html timing out
+        https://bugs.webkit.org/show_bug.cgi?id=159678
+
+        Move the single_download_preload test to be in a single document rather than a frame, as the frame based version was timing out.
+        I suspect that recent changes to handling of feature flags resulted in feature flags turned off for frames, which caused this test
+        to fail. As the frame doesn't seem required in this case, we can fold the entire test to a single document.
+        On top of that, I added per resource verification for the number of requests, which makes the test clearer, and avoided verifying
+        result for resource types that are currently failing/flaky.
+
+        Reviewed by Alex Christensen
+
+        * TestExpectations: Removed the timeout expectation for the test.
+        * http/tests/preload/single_download_preload-expected.txt: Renamed from LayoutTests/http/tests/preload/single_download_preload_runner-expected.txt.
+        * http/tests/preload/single_download_preload.html: Renamed from LayoutTests/http/tests/preload/resources/single_download_preload.html as well as fixed.
+        * http/tests/preload/single_download_preload_runner.html: Removed.
+        * http/tests/resources/dummy.xml: Added.
+        * http/tests/resources/test.oga: Added.
+        * platform/mac/TestExpectations: Removed the timeout expectation for the test.
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Fix a typo in TestExpectations.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking fast/backgrounds/background-repeat-x-y-parse.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=167428
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        modern-media-tests LayoutTest gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=167396
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-25  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Test result gardening for ios-simulator.
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/ios/block-without-overflow-scroll-and-passive-observer-on-block-scrolling-state-expected.txt:
+        * fast/events/touch/ios/block-without-overflow-scroll-and-passive-observer-on-document-scrolling-state-expected.txt:
+        * fast/events/touch/ios/block-without-overflow-scroll-scrolling-state-expected.txt:
+        * fast/events/touch/ios/tap-with-active-touch-end-listener-expected.txt:
+
+2017-01-25  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=167253
+
+        Reviewed by Jon Lee.
+
+        This test should no longer be flaky, so let's not mark it as such anymore.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert r210882, removing support for background-repeat-x/y
+        https://bugs.webkit.org/show_bug.cgi?id=167223
+
+        Reviewed by Myles Maxfield.
+        
+        Fix the layout tests.
+        
+        fast/backgrounds/background-repeat-x-y.html was mistakenly removed in r211060 so
+        remove its expected. Fix the parsing test.
+
+        * fast/backgrounds/background-repeat-x-y-expected.html: Removed.
+        * fast/backgrounds/background-repeat-x-y-parse-expected.txt:
+        * fast/backgrounds/background-repeat-x-y-parse.html:
+
+2017-01-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Revert r210882, removing support for background-repeat-x/y
+        https://bugs.webkit.org/show_bug.cgi?id=167223
+
+        Reviewed by Myles Maxfield.
+        
+        Modify the test to check that background-repeat-x and background-repeat-y are not parsed.
+
+        * fast/backgrounds/background-repeat-x-y-parse-expected.txt:
+        * fast/backgrounds/background-repeat-x-y-parse.html:
+
+2017-01-25  Youenn Fablet  <youenn@apple.com>
+
+        Flaky Test: imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html
+        https://bugs.webkit.org/show_bug.cgi?id=167380
+
+        Unreviewed.
+
+        * TestExpectations: Marking test as flaky.
+
+2017-01-24  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/airplay-support/airplay-support.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=164323
+
+        Reviewed by Jon Lee.
+
+        Make media/modern-media-controls/airplay-support/airplay-support.html more robust by following
+        the same pattern used in media/airplay-target-availability.html which proved to be robust.
+
+        * media/modern-media-controls/airplay-support/airplay-support.html:
+        * platform/mac/TestExpectations:
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fold USER_TIMING into WEB_TIMING and make it a RuntimeEnabledFeature
+        https://bugs.webkit.org/show_bug.cgi?id=167394
+
+        Reviewed by Ryosuke Niwa.
+
+        * platform/gtk/fast/dom/Window/window-properties-performance-expected.txt:
+        Although this test is skipped on gtk, update the results.
+
+2017-01-24  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/placard-support/placard-support-airplay.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=164298
+
+        Reviewed by Jon Lee.
+
+        Make media/modern-media-controls/placard-support/placard-support-airplay.html more robust by
+        following the same pattern used in media/airplay-target-availability.html which proved to be robust.
+
+        * media/modern-media-controls/placard-support/placard-support-airplay-expected.txt:
+        * media/modern-media-controls/placard-support/placard-support-airplay.html:
+        * platform/mac/TestExpectations:
+
+2017-01-24  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/tracks-panel/tracks-panel-hide.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167311
+
+        Reviewed by Dean Jackson.
+
+        This test should no longer be flaky, so let's no mark it as such anymore.
+
+        * platform/mac/TestExpectations:
+
+2017-01-24  Antoine Quint  <graouts@apple.com>
+
+        Work around a crash when running media/modern-media-controls/pip-support/pip-support-enabled.html
+        https://bugs.webkit.org/show_bug.cgi?id=167381
+
+        Reviewed by Dean Jackson.
+
+        The test at media/modern-media-controls/pip-support/pip-support-enabled.html would crash because the test that
+        preceded it, media/modern-media-controls/pip-support/pip-support-click.html, would not exit the PiP presentation mode
+        before exiting the test. We now exit PiP before proceeding to the next test which avoid hitting the assertion
+        and the crash in Debug builds.
+
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-24  Brent Fulgham  <bfulgham@apple.com>
+
+        Bug 167392: REGRESSION(r210531): Relax same-volume display requirement for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167392
+        <rdar://problem/30074665>
+
+        Reviewed by Brady Eidson.
+
+        Rebaseline two tests for ios-simulator, now that they exclude the cross-volume file check..
+
+        * platform/ios-simulator/fast/xmlhttprequest: Added.
+        * platform/ios-simulator/fast/xmlhttprequest/xmlhttprequest-nonexistent-file-expected.txt: Added.
+        * platform/ios-simulator/storage: Added.
+        * platform/ios-simulator/storage/domstorage: Added.
+        * platform/ios-simulator/storage/domstorage/sessionstorage: Added.
+        * platform/ios-simulator/storage/domstorage/sessionstorage/blocked-file-access-expected.txt: Added.
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html as flaky on macOS WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=163598
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove always true unsafePluginPastingEnabled setting
+        https://bugs.webkit.org/show_bug.cgi?id=167360
+
+        Reviewed by Andreas Kling.
+
+        * editing/pasteboard/paste-noplugin-expected.txt: Removed.
+        * editing/pasteboard/paste-noplugin-xhtml-expected.txt: Removed.
+        * editing/pasteboard/paste-noplugin-xhtml.xhtml: Removed.
+        * editing/pasteboard/paste-noplugin.html: Removed.
+        * platform/efl/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-01-24  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add support for hyphen: auto.
+        https://bugs.webkit.org/show_bug.cgi?id=167297
+        <rdar://problem/30119463>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-hyphens-with-text-align-expected.html: Added.
+        * fast/text/simple-line-hyphens-with-text-align.html: Added.
+        * fast/text/simple-line-hyphens-with-word-letter-spacing-expected.html: Added.
+        * fast/text/simple-line-hyphens-with-word-letter-spacing.html: Added.
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        More modern-media-controls LayoutTest gardening.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-24  Nan Wang  <n_wang@apple.com>
+
+        AX: Speak Selection does not work in an iframe
+        https://bugs.webkit.org/show_bug.cgi?id=166794
+        <rdar://problem/29913013>
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/ios-simulator/speak-selection-content-expected.txt: Added.
+        * accessibility/ios-simulator/speak-selection-content.html: Added.
+        * platform/ios-simulator-wk1/TestExpectations:
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        modern-media-controls LayoutTest gardening.
+        https://bugs.webkit.org/show_bug.cgi?id=167266
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove always true selectionIncludesAltImageText setting
+        https://bugs.webkit.org/show_bug.cgi?id=167358
+
+        Reviewed by Alex Christensen.
+
+        * editing/pasteboard/copy-image-with-alt-text-expected.txt:
+        * editing/pasteboard/copy-image-with-alt-text.html:
+        * platform/efl/TestExpectations:
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/media-controller/media-controller-resize.html as flaky on macOS WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=164571
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        WPT LayoutTest gardening for ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove always true syncXHRInDocumentsEnabled setting
+        https://bugs.webkit.org/show_bug.cgi?id=167359
+
+        Reviewed by Alex Christensen.
+
+        * fast/xmlhttprequest/xmlhttprequest-sync-disabled-expected.txt: Removed.
+        * fast/xmlhttprequest/xmlhttprequest-sync-disabled.html: Removed.
+
+2017-01-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add the support for nomodule attribute on script element
+        https://bugs.webkit.org/show_bug.cgi?id=166987
+
+        Reviewed by Sam Weinig.
+
+        * js/dom/modules/nomodule-dynamic-classic-inline-expected.txt: Added.
+        * js/dom/modules/nomodule-dynamic-classic-inline.html: Added.
+        * js/dom/modules/nomodule-dynamic-classic-src-expected.txt: Added.
+        * js/dom/modules/nomodule-dynamic-classic-src.html: Added.
+        * js/dom/modules/nomodule-has-no-effect-on-module-inline-expected.txt: Added.
+        * js/dom/modules/nomodule-has-no-effect-on-module-inline.html: Added.
+        * js/dom/modules/nomodule-has-no-effect-on-module-src-expected.txt: Added.
+        * js/dom/modules/nomodule-has-no-effect-on-module-src.html: Added.
+        * js/dom/modules/nomodule-prevents-execution-classic-script-inline-expected.txt: Added.
+        * js/dom/modules/nomodule-prevents-execution-classic-script-inline.html: Added.
+        * js/dom/modules/nomodule-prevents-execution-classic-script-src-expected.txt: Added.
+        * js/dom/modules/nomodule-prevents-execution-classic-script-src.html: Added.
+        * js/dom/modules/nomodule-reflect-expected.txt: Added.
+        * js/dom/modules/nomodule-reflect.html: Added.
+        * js/dom/modules/script-tests/error-classic-script.js: Added.
+
+2017-01-23  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        [EFL] Update timeout tests in media/modern-media-controls
+
+        Unreviewed EFL gardening.
+
+        * platform/efl/TestExpectations: Dozens of modern-media-controls tests are timeout.
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        LayoutTest gardening for modern-media-tests.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove conflicting TestExpectations for font variations tests.
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-23  Filip Pizlo  <fpizlo@apple.com>
+
+        SharedArrayBuffer plus WebGL should not equal CRASH
+        https://bugs.webkit.org/show_bug.cgi?id=167329
+
+        Reviewed by Saam Barati.
+        
+        This test used to crash and now it doesn't. It throws some exception.
+
+        * js/shared-array-buffer-webgl-expected.txt: Added.
+        * js/shared-array-buffer-webgl.html: Added.
+
+2017-01-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate font variations tests to using David Jonathan Ross's Boxis font
+        https://bugs.webkit.org/show_bug.cgi?id=167222
+
+        Reviewed by Dean Jackson.
+
+        He extremely generously made this font for doing testing of variation fonts,
+        and worked with us to licence it appropriately so it can be used in WebKit
+        directly.
+
+        Thanks so much to DJR!!!!
+
+        I also took this opportunity to make the tests in animations/font-variations
+        more robust.
+
+        * animations/font-variations/font-variation-settings-expected.html: Removed.
+        * animations/font-variations/font-variation-settings-expected.txt: Added.
+        * animations/font-variations/font-variation-settings-order-expected.html: Removed.
+        * animations/font-variations/font-variation-settings-order-expected.txt: Added.
+        * animations/font-variations/font-variation-settings-order.html:
+        * animations/font-variations/font-variation-settings-unlike-expected.html: Removed.
+        * animations/font-variations/font-variation-settings-unlike-expected.txt: Added.
+        * animations/font-variations/font-variation-settings-unlike.html:
+        * animations/font-variations/font-variation-settings.html:
+        * animations/font-variations/resources/Boxis-VF.ttf: Added.
+        * fast/backgrounds/background-repeat-x-y.html: Removed.
+        * fast/text/variations/advances.html:
+        * fast/text/variations/case-axis-names-expected.html:
+        * fast/text/variations/case-axis-names.html:
+        * fast/text/variations/default-value-expected.html:
+        * fast/text/variations/default-value.html:
+        * fast/text/variations/duplicate-axis-expected.html: Removed.
+        * fast/text/variations/duplicate-axis.html: Removed.
+        * fast/text/variations/duplicate-expected.html:
+        * fast/text/variations/duplicate.html:
+        * fast/text/variations/exist-expected-mismatch.html:
+        * fast/text/variations/exist.html:
+        * fast/text/variations/getComputedStyle-expected.txt:
+        * fast/text/variations/getComputedStyle.html:
+        * fast/text/variations/inheritance-expected.html:
+        * fast/text/variations/inheritance.html:
+        * fast/text/variations/order-expected.html:
+        * fast/text/variations/order.html:
+        * fast/text/variations/outofbounds-expected-mismatch.html:
+        * fast/text/variations/outofbounds.html:
+        * fast/text/variations/resources/Boxis-VF.ttf: Added.
+        * platform/mac/TestExpectations:
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/tracks-panel/tracks-panel-hide.html as flaky on macOS debug.
+        https://bugs.webkit.org/show_bug.cgi?id=167311
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/placard-support/placard-support-pip.html as a flaky crash on Sierra WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=167320
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add Sierra flag to TestExpectation for media/modern-media-controls/placard-support/placard-support-pip.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167275
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-23  Megan Gardner  <megan_gardner@apple.com>
+
+        REGRESSION (r210941): LayoutTest scrollingcoordinator/ios/sync-layer-positions-after-scroll.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=167262
+
+        Unreviewed test gardening.
+
+        Fix to interpolation code caused a different result.
+
+        * scrollingcoordinator/ios/sync-layer-positions-after-scroll-expected.txt:
+
+2017-01-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Rebaseline WebKit1 results after r211006.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+
+2017-01-21  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r210959): LayoutTest fast/mediastream/MediaStream-video-element-video-tracks-disabled.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=167260
+
+        Unreviewed test gardening.
+
+        Since this test checks against a black frame as its expected output, we need to use the legacy
+        media controls so that there is no start button.
+
+        * fast/mediastream/MediaStream-video-element-video-tracks-disabled.html:
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-21  Chris Dumez  <cdumez@apple.com>
+
+        JavaScript for-of does not work on a lot of collection types (e.g. HTMLCollection)
+        https://bugs.webkit.org/show_bug.cgi?id=167091
+
+        Reviewed by Darin Adler.
+
+        * fast/dom/FileList-iterator-expected.txt: Added.
+        * fast/dom/FileList-iterator.html: Added.
+        * fast/dom/collection-iterators-expected.txt: Added.
+        * fast/dom/collection-iterators.html: Added.
+        * fast/events/touch/ios/touchlist-iterator-expected.txt: Added.
+        * fast/events/touch/ios/touchlist-iterator.html: Added.
+        Add layout test coverage for all types that gained an iterator.
+
+        * fast/dom/document-all-undefined-expected.txt: Added.
+        * fast/dom/document-all-undefined.html: Added.
+        Add layout test to cover the fact that HTMLAllCollection masquerades as
+        undefined, as per:
+        - https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-all
+
+        * inspector/model/remote-object-get-properties-expected.txt:
+        Rebaseline now that there is an extra Symbol.iterator property.
+
+        * platform/wk2/TestExpectations:
+        Skip that requires beginDragWithFiles() as this is unimplemented in
+        WebKitTestRunner.
+
+2017-01-21  Chris Dumez  <cdumez@apple.com>
+
+        innerText should replace existing text node
+        https://bugs.webkit.org/show_bug.cgi?id=167116
+
+        Reviewed by Darin Adler.
+
+        * accessibility/mac/aria-liveregions-changedtext.html:
+        The text is using innerText and changed behavior now that we stopped
+        reusing the existing Text child. Code in RenderObject::willBeDestroyed()
+        is supposed to call AXObjectCache::childrenChanged(parent()) to fire
+        the AXLiveRegionChanged notification. However, it did not because the
+        parent renderer did not have an associated AccessibilityObject.
+
+        * fast/dom/HTMLElement/set-inner-outer-optimization.html:
+        Update existing test which expected the non spec-compliant Text child
+        optimization.
+
+        * fast/repaint/vertical-text-repaint-expected.txt:
+        * fast/repaint/vertical-text-repaint.html:
+        Update / rebaseline test. We now repaint each 80x80 rectangle instead of
+        only repainting the text rects because we remove the Text node then add
+        a new one instead of only updating the existing Text node's test. The
+        output looks exactly the same otherwise.
+
+2017-01-21  Chris Dumez  <cdumez@apple.com>
+
+        AccessibilityRenderObject::textChanged() bypasses AXLiveRegionChanged notification coalescing
+        https://bugs.webkit.org/show_bug.cgi?id=167286
+        <rdar://problem/30133211>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update test to use a longer timer delay. When using this longer delay, we were getting 4
+        AXLiveRegionChanged notifications instead of the expected 2 because
+        AccessibilityRenderObject::textChanged() was bypassing AXLiveRegionChanged notification
+        coalescing.
+
+        * accessibility/mac/aria-multiple-liveregions-notification-expected.txt:
+        * accessibility/mac/aria-multiple-liveregions-notification.html:
+
+2017-01-21  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION (r210959): LayoutTest inspector/css/pseudo-element-matches.html timing out
+        https://bugs.webkit.org/show_bug.cgi?id=167246
+
+        Unreviewed test gardening.
+
+        This test expects elements with legacy media controls pseudo classes so we turn off
+        modern media controls for it and stop expecting a timeout.
+
+        * inspector/css/pseudo-element-matches.html:
+        * platform/mac/TestExpectations:
+
+2017-01-20  Brady Eidson  <beidson@apple.com>
+
+        Require a button press on a gamepad for them to be exposed to the DOM.
+        <rdar://problem/28620919> and https://bugs.webkit.org/show_bug.cgi?id=167272
+
+        Reviewed by Alex Christensen.
+
+        * gamepad/gamepad-visibility-1-expected.txt: Added.
+        * gamepad/gamepad-visibility-1.html: Added.
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup RuntimeEnabledFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=167228
+
+        Reviewed by Simon Fraser.
+
+        Update tests that toggle runtime enabled features to use
+        consistently named internals.settings.setFooEnabled setters.
+
+        * css3/flexbox/flexbox-lines-must-be-stretched-by-default.html:
+        * css3/flexbox/new-alignment-values-invalid-if-grid-not-enabled.html:
+        * fast/canvas/webgl/bufferData-offset-length.html:
+        * fast/canvas/webgl/copyBufferSubData.html:
+        * fast/canvas/webgl/getBufferSubData-webgl1.html:
+        * fast/canvas/webgl/webgl2-buffer-targets.html:
+        * fast/canvas/webgl/webgl2-buffers.html:
+        * fast/canvas/webgl/webgl2-context-creation.html:
+        * fast/canvas/webgl/webgl2-runtime-flag.html:
+        * fast/canvas/webgl/webgl2-texStorage.html:
+        * fast/canvas/webgl/webgl2-texture-upload-enums.html:
+        * fast/css-grid-layout/grid-disable.html:
+        * fast/css/ensure-flexbox-compatibility-with-initial-values.html:
+        * fast/dom/Window/window-properties-performance-resource-timing.html:
+        * http/tests/fetch/redirectmode-and-preload.html:
+        * http/tests/misc/resource-timing-resolution.html:
+        * http/tests/performance/performance-resource-timing-cached-entries.html:
+        * http/tests/performance/performance-resource-timing-entries-iterable.html:
+        * http/tests/performance/performance-resource-timing-entries.html:
+        * http/tests/performance/performance-resource-timing-initiator-css.html:
+        * http/tests/performance/performance-resource-timing-initiator-no-override.html:
+        * http/tests/performance/performance-resource-timing-xhr-single-entry.html:
+        * http/tests/preload/delaying_onload_link_preload_after_discovery.html:
+        * http/tests/preload/delaying_onload_link_preload_after_discovery_image.html:
+        * http/tests/preload/download_resources.html:
+        * http/tests/preload/download_resources_from_header_iframe.html:
+        * http/tests/preload/download_resources_from_invalid_headers.html:
+        * http/tests/preload/dynamic_adding_preload.html:
+        * http/tests/preload/dynamic_remove_preload_href.html:
+        * http/tests/preload/not_delaying_window_onload_before_discovery.html:
+        * http/tests/preload/onerror_event.html:
+        * http/tests/preload/onload_event.html:
+        * http/tests/preload/resources/download_resources_from_header.php:
+        * http/tests/preload/resources/invalid_resources_from_header.php:
+        * http/tests/preload/single_download_preload_runner.html:
+        * http/tests/security/cached-cross-origin-preloading-css-stylesheet.html:
+        * resources/testharnessreport.js:
+
+2017-01-20  Megan Gardner  <megan_gardner@apple.com>
+
+        REGRESSION (r210941): LayoutTest scrollingcoordinator/ios/sync-layer-positions-after-scroll.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=167262
+
+        Updating Tests to comply with change in bug 167171.
+        Change is correct, but causes the results for this test to be different.
+        
+        Unreviewed test gardening.
+
+        * scrollingcoordinator/ios/sync-layer-positions-after-scroll-expected.txt:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167266
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/network/client-blocked-load.html as a flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=167265
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/pip-support/pip-support-enabled.html as crashing on macOS WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=164336
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        More media test gardening.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove outdated ENABLE(CSP_NEXT) build flag
+        https://bugs.webkit.org/show_bug.cgi?id=167252
+
+        Reviewed by Brent Fulgham.
+
+        * fast/dom/event-handler-attributes.html:
+        * http/tests/security/contentSecurityPolicy/1.1/securitypolicyviolation-basics.html:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Cleaning up TestExpectations for inspector/css/pseudo-element-matches.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/audio/audio-controls-metrics.html as failing on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=167258
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167254
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-20  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add support for non-breaking space character.
+        https://bugs.webkit.org/show_bug.cgi?id=167250
+        <rdar://problem/30119638>
+
+        Reviewed by Antti Koivisto.
+        
+        These are output progressions (they do not reflect changes in functionality).
+
+        * fast/block/float/br-with-clear-2-expected.txt:
+        * platform/mac/css1/text_properties/text_transform-expected.txt:
+        * platform/mac/tables/mozilla/bugs/bug4427-expected.txt:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=167253
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking inspector/css/pseudo-element-matches.html as a timeout on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=167246
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/placard-support/placard-support-airplay.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=164298
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking media/modern-media-controls/tracks-panel/tracks-panel-hide-click-outside.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=165290
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        Web Animations should be off by default and enabled as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+        <rdar://problem/30048963>
+
+        Reviewed by Joseph Pecoraro.
+
+        No need for an explicit preference anymore.
+
+        * webanimations/script-tests/Document.js:
+
+2017-01-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skipping pointer-lock tests on macOS WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=167246
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Turn modern media controls off for a majority of pre-existing tests that made assumptions on the implementation
+        of media controls.
+
+        For tests designed for modern media controls, we don't need to opt out since modern media controls are now on
+        by default, and we turn them back on since they were skipped. But we make these tests more resilient by:
+        
+            1. adding iPad-specific tests
+            2. adding platform-agnostic ways to press an element, using either eventSender or uiController
+            3. checking that elements that are sized asynchronously are indeed sized before making assumptions to that effect
+            4. ensuring that we don't have additional scheduler.frameDidFire callbacks after we no longer need them 
+
+        * TestExpectations:
+        * accessibility/mac/video-tag-hit-test.html:
+        * accessibility/mac/video-volume-slider-accessibility.html:
+        * accessibility/media-element.html:
+        * accessibility/media-emits-object-replacement.html:
+        * compositing/video/poster-expected.html:
+        * compositing/video/poster.html:
+        * fast/hidpi/video-controls-in-hidpi.html:
+        * fast/layers/video-layer.html:
+        * fullscreen/video-controls-drag.html:
+        * fullscreen/video-controls-override.html:
+        * fullscreen/video-controls-rtl.html:
+        * fullscreen/video-controls-timeline.html:
+        * http/tests/media/hls/video-controls-live-stream.html:
+        * http/tests/media/hls/video-duration-accessibility.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-allowed.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/default-src-object-data-url-blocked2.html:
+        * http/tests/security/contentSecurityPolicy/userAgentShadowDOM/video-controls-allowed.html:
+        * media/accessibility-closed-captions-has-aria-owns.html:
+        * media/adopt-node-crash.html:
+        * media/airplay-autoplay.html:
+        * media/audio-as-video-fullscreen.html:
+        * media/audio-controls-do-not-fade-out.html:
+        * media/audio-controls-rendering.html:
+        * media/audio-controls-timeline-in-media-document.html:
+        * media/audio-delete-while-slider-thumb-clicked.html:
+        * media/audio-repaint.html:
+        * media/click-placeholder-not-pausing.html:
+        * media/click-volume-bar-not-pausing.html:
+        * media/controls-after-reload.html:
+        * media/controls-drag-timebar.html:
+        * media/controls-right-click-on-timebar.html:
+        * media/controls-strict.html:
+        * media/controls-styling.html:
+        * media/controls-without-preload.html:
+        * media/controls/airplay-controls.html:
+        * media/controls/airplay-picker.html:
+        * media/controls/basic.html:
+        * media/controls/elementOrder.html:
+        * media/controls/forced-tracks-only.html:
+        * media/controls/fullscreen-button-inline-layout.html:
+        * media/controls/inline-elements-dropoff-order.html:
+        * media/controls/picture-in-picture.html:
+        * media/controls/pip-placeholder-without-video-controls.html:
+        * media/controls/showControlsButton.html:
+        * media/controls/statusDisplay.html:
+        * media/controls/statusDisplayBad.html:
+        * media/controls/track-menu.html:
+        * media/mac/controls-panel-not-clipped-out-expected.html:
+        * media/mac/controls-panel-not-clipped-out.html:
+        * media/media-captions-no-controls.html:
+        * media/media-controller-drag-crash.html:
+        * media/media-controls-accessibility.html:
+        * media/media-controls-cancel-events.html:
+        * media/media-controls-clone.html:
+        * media/media-controls-drag-timeline-set-controls-property.html:
+        * media/media-controls-timeline-updates-after-playing.html:
+        * media/media-controls-timeline-updates-when-hovered.html:
+        * media/media-controls-timeline-updates.html:
+        * media/media-document-audio-controls-visible.html:
+        * media/media-document-audio-repaint.html:
+        * media/media-fullscreen-return-to-inline.html:
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+        * media/modern-media-controls/airplay-placard/airplay-placard-text-section.html:
+        * media/modern-media-controls/audio/audio-controls-buttons-expected.txt:
+        * media/modern-media-controls/audio/audio-controls-buttons.html:
+        * media/modern-media-controls/audio/audio-controls-metrics.html:
+        * media/modern-media-controls/button/button.html:
+        * media/modern-media-controls/buttons-container/buttons-container-buttons-property.html:
+        * media/modern-media-controls/forward-button/forward-button.html:
+        * media/modern-media-controls/fullscreen-button/fullscreen-button.html:
+        * media/modern-media-controls/fullscreen-support/fullscreen-support-click.html:
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap-expected.txt: Added.
+        * media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html: Added.
+        * media/modern-media-controls/icon-button/icon-button-active-state.html:
+        * media/modern-media-controls/icon-button/icon-button-on.html:
+        * media/modern-media-controls/icon-button/icon-button.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-layout.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-dropping-controls.html:
+        * media/modern-media-controls/layout-node/addChild.html:
+        * media/modern-media-controls/layout-node/children.html:
+        * media/modern-media-controls/layout-node/height.html:
+        * media/modern-media-controls/layout-node/insertAfter.html:
+        * media/modern-media-controls/layout-node/insertBefore.html:
+        * media/modern-media-controls/layout-node/node-made-dirty-during-layout.html:
+        * media/modern-media-controls/layout-node/remove.html:
+        * media/modern-media-controls/layout-node/removeChild.html:
+        * media/modern-media-controls/layout-node/subclassing.html:
+        * media/modern-media-controls/layout-node/visible.html:
+        * media/modern-media-controls/layout-node/width.html:
+        * media/modern-media-controls/layout-node/x.html:
+        * media/modern-media-controls/layout-node/y.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-status-label.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-dropping-controls.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-pause.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html:
+        * media/modern-media-controls/media-controller/media-controller-auto-hide.html:
+        * media/modern-media-controls/media-controller/media-controller-fade-controls-when-entering-fullscreen.html:
+        * media/modern-media-controls/media-controller/media-controller-fullscreen-ltr.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor.html:
+        * media/modern-media-controls/media-controller/media-controller-single-container.html:
+        * media/modern-media-controls/mute-button/mute-button.html:
+        * media/modern-media-controls/pip-button/pip-button.html:
+        * media/modern-media-controls/pip-placard/pip-placard-text-section.html:
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-enabled.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-enabled.html.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap-expected.txt: Added.
+        * media/modern-media-controls/pip-support/ipad/pip-support-tap.html: Copied from LayoutTests/media/modern-media-controls/pip-support/pip-support-click.html.
+        * media/modern-media-controls/pip-support/pip-support-click.html:
+        * media/modern-media-controls/pip-support/pip-support-enabled.html:
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip-expected.txt: Copied from LayoutTests/media/modern-media-controls/placard-support/placard-support-airplay-expected.txt.
+        * media/modern-media-controls/placard-support/ipad/placard-support-pip.html: Added.
+        * media/modern-media-controls/placard-support/placard-support-airplay-expected.txt:
+        * media/modern-media-controls/play-pause-button/play-pause-button.html:
+        * media/modern-media-controls/playback-support/playback-support-button-click-expected.txt:
+        * media/modern-media-controls/playback-support/playback-support-button-click.html:
+        * media/modern-media-controls/resources/media-controls-utils.js:
+        (pressOnElement):
+        (finishMediaControlsTest):
+        * media/modern-media-controls/rewind-button/rewind-button.html:
+        * media/modern-media-controls/scheduler/not-reentrant.html:
+        * media/modern-media-controls/scheduler/single-callback-when-registered-multiple-times.html:
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag-expected.txt: Copied from LayoutTests/media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt.
+        * media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html: Added.
+        * media/modern-media-controls/scrubber-support/scrubber-support-click.html:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag-expected.txt:
+        * media/modern-media-controls/scrubber-support/scrubber-support-drag.html:
+        * media/modern-media-controls/seek-backward-support/seek-backward-support.html:
+        * media/modern-media-controls/seek-forward-support/seek-forward-support.html:
+        * media/modern-media-controls/skip-back-button/skip-back-button.html:
+        * media/modern-media-controls/slider/slider-fill.html:
+        * media/modern-media-controls/slider/slider-styles.html:
+        * media/modern-media-controls/start-support/start-support-click-to-start-expected.txt:
+        * media/modern-media-controls/start-support/start-support-click-to-start.html:
+        * media/modern-media-controls/status-label/status-label-font.html:
+        * media/modern-media-controls/status-label/status-label-text-selection.html:
+        * media/modern-media-controls/status-label/status-label.html:
+        * media/modern-media-controls/time-label/time-label.html:
+        * media/modern-media-controls/tracks-button/tracks-button.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-right-x.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-keyboard.html:
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-and-populate-panel.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html:
+        * media/modern-media-controls/volume-slider/volume-slider-value.html:
+        * media/modern-media-controls/volume-support/volume-support-click.html:
+        * media/modern-media-controls/volume-support/volume-support-drag.html:
+        * media/nodesFromRect-shadowContent.html:
+        * media/progress-events-generated-correctly.html:
+        * media/require-user-gesture-to-load-video.html:
+        * media/tab-focus-inside-media-elements.html:
+        * media/track/track-cue-rendering-horizontal.html:
+        * media/track/track-cue-rendering-vertical.html:
+        * media/track/track-cues-cuechange.html:
+        * media/track/track-cues-enter-exit.html:
+        * media/track/track-in-band-duplicate-tracks-when-source-changes.html:
+        * media/track/track-manual-mode.html:
+        * media/video-controls-audiotracks-trackmenu.html:
+        * media/video-controls-captions-trackmenu-localized.html:
+        * media/video-controls-captions-trackmenu-only-captions-descriptions-and-subtitles.html:
+        * media/video-controls-captions-trackmenu-sorted.html:
+        * media/video-controls-captions-trackmenu.html:
+        * media/video-controls-drop-and-restore-timeline.html:
+        * media/video-controls-in-media-document.html:
+        * media/video-controls-no-display-with-text-track.html:
+        * media/video-controls-rendering.html:
+        * media/video-controls-show-on-kb-or-ax-event.html:
+        * media/video-controls-toggling.html:
+        * media/video-controls-transformed.html:
+        * media/video-controls-visible-audio-only.html:
+        * media/video-controls-visible-exiting-fullscreen.html:
+        * media/video-controls-zoomed.html:
+        * media/video-display-toggle.html:
+        * media/video-empty-source.html:
+        * media/video-fullscreeen-only-controls.html:
+        * media/video-fullscreeen-only-playback.html:
+        * media/video-initially-hidden-volume-slider-up.html:
+        * media/video-no-audio.html:
+        * media/video-play-audio-require-user-gesture.html:
+        * media/video-play-require-user-gesture.html:
+        * media/video-trackmenu-selection.html:
+        * media/video-volume-slider-drag.html:
+        * media/video-volume-slider.html:
+        * media/video-zoom-controls.html:
+        * media/volume-bar-empty-when-muted.html:
+        * platform/gtk/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+        * platform/ios-simulator/media/video-play-glyph-composited-outside-overflow-scrolling-touch-container.html:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-01-20  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Super property access in base class constructor doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=166665
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+
+2017-01-20  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Super property access in base class constructor doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=166665
+
+        Reviewed by Ryosuke Niwa.
+
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-super.js:
+
+2017-01-19  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r206156): Animated images are repeated one extra iteration than the value which is saved in the image file
+        https://bugs.webkit.org/show_bug.cgi?id=167174
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/animated-image-loop-count-expected.html: Added.
+        * fast/images/animated-image-loop-count.html: Added.
+        * fast/images/resources/animated-red-green-blue-repeat-1.gif: Added.
+        * fast/images/resources/animated-red-green-blue-repeat-2.gif: Added.
+        Ensure the animated image stops animating after loopCount iterations.
+
+2017-01-19  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Extend coverage for justified content.
+        https://bugs.webkit.org/show_bug.cgi?id=167219
+        <rdar://problem/30108391>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-with-justified-punctuation-expected.html: Added.
+        * fast/text/simple-line-layout-with-justified-punctuation.html: Added.
+
+2017-01-19  Jer Noble  <jer.noble@apple.com>
+
+        CRASH at WebCore::TrackListBase::remove
+        https://bugs.webkit.org/show_bug.cgi?id=167217
+
+        Reviewed by Brent Fulgham.
+
+        * media/media-source/media-source-error-crash-expected.txt: Added.
+        * media/media-source/media-source-error-crash.html: Added.
+
+2017-01-19  Megan Gardner  <megan_gardner@apple.com>
+
+        Additional selection tests and interpolation fix
+        https://bugs.webkit.org/show_bug.cgi?id=167171
+
+        Reviewed by Simon Fraser.
+
+        Selections tests for dragging left and right.
+        Factored out common functions used across tests.
+
+        * fast/events/touch/ios/long-press-then-drag-left-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-then-drag-left-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/long-press-then-drag-right-to-change-selected-text-expected.txt: Added.
+        * fast/events/touch/ios/long-press-then-drag-right-to-change-selected-text.html: Added.
+        * fast/events/touch/ios/resources: Added.
+        * fast/events/touch/ios/resources/basic-gestures.js: Added.
+        (pressAtPoint):
+        (dragFromPointToPoint):
+
 2017-01-19  Chris Dumez  <cdumez@apple.com>
 
         Make sure HTML validation bubble gets dismissed when its associated element's frame gets detached

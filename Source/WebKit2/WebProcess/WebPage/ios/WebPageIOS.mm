@@ -49,6 +49,7 @@
 #import "WebKitSystemInterface.h"
 #import "WebPageProxyMessages.h"
 #import "WebProcess.h"
+#import "WebQuickLookHandleClient.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Autofill.h>
 #import <WebCore/Chrome.h>
@@ -618,6 +619,13 @@ void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransaction
     } else
         handleSyntheticClick(nodeRespondingToClick, adjustedPoint);
 }
+
+#if ENABLE(DATA_INTERACTION)
+void WebPage::requestStartDataInteraction(const IntPoint& clientPosition, const IntPoint& globalPosition)
+{
+    m_page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(clientPosition, globalPosition);
+}
+#endif
 
 void WebPage::sendTapHighlightForNodeIfNecessary(uint64_t requestID, Node* node)
 {
@@ -2462,6 +2470,10 @@ void WebPage::getPositionInformation(const InteractionInformationRequest& reques
             }
         }
     }
+
+#if ENABLE(DATA_INTERACTION)
+    info.hasDataInteractionAtPosition = m_page->hasDataInteractionAtPosition(adjustedPoint);
+#endif
 }
 
 void WebPage::requestPositionInformation(const InteractionInformationRequest& request)
@@ -3115,7 +3127,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
 
 void WebPage::willStartUserTriggeredZooming()
 {
-    m_page->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::webViewKey(), DiagnosticLoggingKeys::userKey(), DiagnosticLoggingKeys::zoomedKey(), ShouldSample::No);
+    m_page->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::webViewKey(), DiagnosticLoggingKeys::userZoomActionKey(), ShouldSample::No);
     m_userHasChangedPageScaleFactor = true;
 }
 
@@ -3172,6 +3184,13 @@ String WebPage::platformUserAgent(const URL&) const
 {
     return String();
 }
+
+#if USE(QUICK_LOOK)
+void WebPage::didReceivePasswordForQuickLookDocument(const String& password)
+{
+    WebQuickLookHandleClient::didReceivePassword(password, m_pageID);
+}
+#endif
 
 } // namespace WebKit
 

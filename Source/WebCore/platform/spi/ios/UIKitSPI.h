@@ -30,6 +30,10 @@
 #import <UIKit/UIScreen_Private.h>
 #import <UIKit/UIViewController_Private.h>
 
+#if ENABLE(DATA_INTERACTION)
+#import <UIKit/UIItemProvider_Private.h>
+#endif
+
 #else
 
 #import <UIKit/UIKit.h>

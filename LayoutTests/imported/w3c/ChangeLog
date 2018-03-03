@@ -1,3 +1,64 @@
+2017-01-21  Chris Dumez  <cdumez@apple.com>
+
+        innerText should replace existing text node
+        https://bugs.webkit.org/show_bug.cgi?id=167116
+
+        Reviewed by Darin Adler.
+
+        Rebaseline existing test now that one more check is passing.
+
+        * web-platform-tests/innerText/setter-expected.txt:
+
+2017-01-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline html/dom/interfaces.html.
+
+        * web-platform-tests/html/dom/interfaces-expected.txt:
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup RuntimeEnabledFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=167228
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/resource-timing/resource_cached-expected.txt:
+        * web-platform-tests/resource-timing/resource_connection_reuse-expected.txt:
+        * web-platform-tests/resource-timing/resource_dynamic_insertion-expected.txt:
+        The previous internals API didn't appear to be working. Making it work
+        improved these results.
+
+2017-01-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, unskip innerText/ folder in ImportExpectations
+
+        This is needed so that the tests in this folder gets re-sync'ed
+        from upstream next time.
+
+        * resources/ImportExpectations:
+
+2017-01-20  Chris Dumez  <cdumez@apple.com>
+
+        Re-sync innerText web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=167229
+
+        Reviewed by Alex Christensen.
+
+        Re-sync innerText web-platform-tests from upstream 1a36aa52.
+
+        * web-platform-tests/innerText/setter-expected.txt:
+        * web-platform-tests/innerText/setter-tests.js:
+        * web-platform-tests/innerText/setter.html:
+
+2017-01-19  Alex Christensen  <achristensen@webkit.org>
+
+        Construct URLSearchParams from array or object
+        https://bugs.webkit.org/show_bug.cgi?id=166973
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/url/urlsearchparams-constructor-expected.txt:
+
 2017-01-18  Alex Christensen  <achristensen@webkit.org>
 
         Implement URLSearchParams's sort()

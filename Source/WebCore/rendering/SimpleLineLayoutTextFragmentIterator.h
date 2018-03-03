@@ -64,9 +64,12 @@ public:
         bool isLineBreak() const { return m_type == SoftLineBreak || m_type == HardLineBreak; }
         bool isCollapsed() const { return m_isCollapsed; }
         bool isCollapsible() const { return m_isCollapsible; }
+        bool hasHyphen() const { return m_hasHyphen; }
+        unsigned wrappingWithHyphenCounter() const { return m_hyphenationCounter; }
 
         bool isEmpty() const { return start() == end() && !isLineBreak(); }
         TextFragment split(unsigned splitPosition, const TextFragmentIterator&);
+        TextFragment splitWithHyphen(unsigned hyphenPosition, const TextFragmentIterator&);
         bool operator==(const TextFragment& other) const
         {
             return m_start == other.m_start
@@ -76,7 +79,8 @@ public:
                 && m_isLastInRenderer == other.m_isLastInRenderer
                 && m_overlapsToNextRenderer == other.m_overlapsToNextRenderer
                 && m_isCollapsed == other.m_isCollapsed
-                && m_isCollapsible == other.m_isCollapsible;
+                && m_isCollapsible == other.m_isCollapsible
+                && m_hasHyphen == other.m_hasHyphen;
         }
 
     private:
@@ -88,10 +92,15 @@ public:
         bool m_overlapsToNextRenderer { false };
         bool m_isCollapsed { false };
         bool m_isCollapsible { false };
+        bool m_hasHyphen { false };
+        unsigned m_hyphenationCounter { 0 };
     };
     TextFragment nextTextFragment(float xPosition = 0);
     void revertToEndOfFragment(const TextFragment&);
+
+    // FIXME: These functions below should be decoupled from the text iterator.
     float textWidth(unsigned startPosition, unsigned endPosition, float xPosition) const;
+    std::optional<unsigned> lastHyphenPosition(const TextFragmentIterator::TextFragment& run, unsigned beforeIndex) const;
 
     struct Style {
         explicit Style(const RenderStyle&);
@@ -108,7 +117,12 @@ public:
         float spaceWidth;
         float wordSpacing;
         unsigned tabWidth;
+        bool shouldHyphenate;
+        float hyphenStringWidth;
+        unsigned hyphenLimitBefore;
+        unsigned hyphenLimitAfter;
         AtomicString locale;
+        std::optional<unsigned> hyphenLimitLines;
     };
     const Style& style() const { return m_style; }
 
@@ -142,13 +156,24 @@ inline TextFragmentIterator::TextFragment TextFragmentIterator::TextFragment::sp
         fragment.m_isCollapsed = false;
     };
 
-    TextFragment newFragment(*this);
+    TextFragment rightSide(*this);
     m_end = splitPosition;
     updateFragmentProperties(*this);
 
-    newFragment.m_start = splitPosition;
-    updateFragmentProperties(newFragment);
-    return newFragment;
+    rightSide.m_start = splitPosition;
+    updateFragmentProperties(rightSide);
+    return rightSide;
+}
+
+inline TextFragmentIterator::TextFragment TextFragmentIterator::TextFragment::splitWithHyphen(unsigned hyphenPosition,
+    const TextFragmentIterator& textFragmentIterator)
+{
+    ASSERT(textFragmentIterator.style().shouldHyphenate);
+    auto rightSide = split(hyphenPosition, textFragmentIterator);
+    rightSide.m_hyphenationCounter = m_hyphenationCounter + 1;
+    m_hasHyphen = true;
+    m_width += textFragmentIterator.style().hyphenStringWidth;
+    return rightSide;
 }
 
 inline bool TextFragmentIterator::isSoftLineBreak(unsigned position) const

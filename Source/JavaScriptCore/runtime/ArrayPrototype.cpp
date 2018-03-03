@@ -81,7 +81,7 @@ ArrayPrototype::ArrayPrototype(VM& vm, Structure* structure)
 void ArrayPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     vm.prototypeMap.addPrototype(this);
 
     putDirectWithoutTransition(vm, vm.propertyNames->toString, globalObject->arrayProtoToStringFunction(), DontEnum);
@@ -1041,7 +1041,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
                 RETURN_IF_EXCEPTION(scope, encodedJSValue());
             }
         } else {
-            result = JSArray::tryCreateUninitialized(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
+            result = JSArray::tryCreateForInitializationPrivate(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
             if (!result)
                 return JSValue::encode(throwOutOfMemoryError(exec, scope));
             
@@ -1283,7 +1283,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState* exec)
     }
 
     Structure* resultStructure = exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(type);
-    JSArray* result = JSArray::tryCreateUninitialized(vm, resultStructure, firstArraySize + secondArraySize);
+    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, resultStructure, firstArraySize + secondArraySize);
     if (!result)
         return JSValue::encode(throwOutOfMemoryError(exec, scope));
     

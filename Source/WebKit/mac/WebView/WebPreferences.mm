@@ -478,6 +478,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitDOMPasteAllowedPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES],  WebKitUsesPageCachePreferenceKey,
+        [NSNumber numberWithBool:NO],   WebKitAllowsPageCacheWithWindowOpenerKey,
         [NSNumber numberWithInt:cacheModelForMainBundle()], WebKitCacheModelPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitPageCacheSupportsPluginsPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitDeveloperExtrasEnabledPreferenceKey,
@@ -500,6 +501,7 @@ public:
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO],   WebKitShowDebugBordersPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitSimpleLineLayoutEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
@@ -613,6 +615,7 @@ public:
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
@@ -1959,6 +1962,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitShowDebugBordersPreferenceKey];
 }
 
+- (BOOL)simpleLineLayoutEnabled
+{
+    return [self _boolValueForKey:WebKitSimpleLineLayoutEnabledPreferenceKey];
+}
+
+- (void)setSimpleLineLayoutEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSimpleLineLayoutEnabledPreferenceKey];
+}
+
 - (BOOL)simpleLineLayoutDebugBordersEnabled
 {
     return [self _boolValueForKey:WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey];
@@ -2433,6 +2446,16 @@ static NSString *classIBCreatorID = nil;
 
 }
 
+- (BOOL)allowsPageCacheWithWindowOpener
+{
+    return [self _boolValueForKey:WebKitAllowsPageCacheWithWindowOpenerKey];
+}
+
+- (void)setAllowsPageCacheWithWindowOpener:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitAllowsPageCacheWithWindowOpenerKey];
+}
+
 #if PLATFORM(IOS)
 - (void)_invalidateCachedPreferences
 {
@@ -2829,16 +2852,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setCustomElementsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCustomElementsEnabledPreferenceKey];
-}
-
-- (BOOL)DOMIteratorEnabled
-{
-    return [self _boolValueForKey:WebKitDOMIteratorEnabledPreferenceKey];
-}
-
-- (void)setDOMIteratorEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitDOMIteratorEnabledPreferenceKey];
 }
 
 - (BOOL)fetchAPIEnabled

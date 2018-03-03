@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2010, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
@@ -52,12 +52,18 @@ void JSDOMWindow::visitAdditionalChildren(SlotVisitor& visitor)
 {
     if (Frame* frame = wrapped().frame())
         visitor.addOpaqueRoot(frame);
+    
+    // Normally JSEventTargetCustom.cpp's JSEventTarget::visitAdditionalChildren() would call this. But
+    // even though DOMWindow is an EventTarget, JSDOMWindow does not subclass JSEventTarget, so we need
+    // to do this here.
+    wrapped().visitJSEventListeners(visitor);
 }
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 static EncodedJSValue jsDOMWindowWebKit(ExecState* exec, EncodedJSValue thisValue, PropertyName)
 {
-    JSDOMWindow* castedThis = toJSDOMWindow(JSValue::decode(thisValue));
+    VM& vm = exec->vm();
+    JSDOMWindow* castedThis = toJSDOMWindow(vm, JSValue::decode(thisValue));
     if (!BindingSecurity::shouldAllowAccessToDOMWindow(exec, castedThis->wrapped()))
         return JSValue::encode(jsUndefined());
     return JSValue::encode(toJS(exec, castedThis->globalObject(), castedThis->wrapped().webkitNamespace()));
@@ -178,7 +184,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
     if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot)) {
         // Detect when we're getting the property 'showModalDialog', this is disabled, and has its original value.
         bool isShowModalDialogAndShouldHide = propertyName == state->propertyNames().showModalDialog
-            && !DOMWindow::canShowModalDialog(frame)
+            && !DOMWindow::canShowModalDialog(*frame)
             && slot.isValue() && isHostFunction(slot.getValue(state, propertyName), jsDOMWindowInstanceFunctionShowModalDialog);
         // Unless we're in the showModalDialog special case, we're done.
         if (!isShowModalDialogAndShouldHide)
@@ -519,14 +525,14 @@ JSValue JSDOMWindow::setInterval(ExecState& state)
     return toJS<IDLLong>(state, scope, wrapped().setInterval(WTFMove(action), delay));
 }
 
-DOMWindow* JSDOMWindow::toWrapped(JSValue value)
+DOMWindow* JSDOMWindow::toWrapped(VM& vm, JSValue value)
 {
     if (!value.isObject())
         return nullptr;
     JSObject* object = asObject(value);
-    if (object->inherits(JSDOMWindow::info()))
+    if (object->inherits(vm, JSDOMWindow::info()))
         return &jsCast<JSDOMWindow*>(object)->wrapped();
-    if (object->inherits(JSDOMWindowShell::info()))
+    if (object->inherits(vm, JSDOMWindowShell::info()))
         return &jsCast<JSDOMWindowShell*>(object)->wrapped();
     return nullptr;
 }

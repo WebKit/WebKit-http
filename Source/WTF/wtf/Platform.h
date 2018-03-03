@@ -704,6 +704,10 @@
 /* Include feature macros */
 #include <wtf/FeatureDefines.h>
 
+#if defined(__has_include) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
+#include <WebKitAdditions/AdditionalFeatureDefines.h>
+#endif
+
 #if OS(WINDOWS)
 #define USE_SYSTEM_MALLOC 1
 #endif
@@ -1168,10 +1172,6 @@
 #define __STDC_FORMAT_MACROS
 #undef __STDC_LIMIT_MACROS
 #define __STDC_LIMIT_MACROS
-#if _MSC_VER < 1900
-#undef _HAS_EXCEPTIONS
-#define _HAS_EXCEPTIONS 1
-#endif
 #endif
 
 #if PLATFORM(MAC)

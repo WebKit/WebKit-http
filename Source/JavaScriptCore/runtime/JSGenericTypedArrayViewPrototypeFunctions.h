@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,7 +73,7 @@ inline JSArrayBufferView* speciesConstruct(ExecState* exec, JSObject* exemplar, 
     JSValue result = construct(exec, species, args, "species is not a constructor");
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(result)) {
+    if (JSArrayBufferView* view = jsDynamicCast<JSArrayBufferView*>(vm, result)) {
         if (!view->isNeutered())
             return view;
 
@@ -123,19 +123,22 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSet(VM& vm, ExecState
     if (UNLIKELY(thisObject->isNeutered()))
         return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
 
-    JSObject* sourceArray = jsDynamicCast<JSObject*>(exec->uncheckedArgument(0));
+    JSObject* sourceArray = jsDynamicCast<JSObject*>(vm, exec->uncheckedArgument(0));
     if (UNLIKELY(!sourceArray))
         return throwVMTypeError(exec, scope, ASCIILiteral("First argument should be an object"));
 
     unsigned length;
-    if (isTypedView(sourceArray->classInfo()->typedArrayStorageType)) {
+    if (isTypedView(sourceArray->classInfo(vm)->typedArrayStorageType)) {
         JSArrayBufferView* sourceView = jsCast<JSArrayBufferView*>(sourceArray);
         if (UNLIKELY(sourceView->isNeutered()))
             return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
 
         length = jsCast<JSArrayBufferView*>(sourceArray)->length();
-    } else
-        length = sourceArray->get(exec, vm.propertyNames->length).toUInt32(exec);
+    } else {
+        JSValue lengthValue = sourceArray->get(exec, vm.propertyNames->length);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        length = lengthValue.toUInt32(exec);
+    }
 
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
@@ -465,7 +468,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncSlice(VM& vm, ExecSta
 
     // The species constructor may return an array with any arbitrary length.
     length = std::min(length, result->length());
-    switch (result->classInfo()->typedArrayStorageType) {
+    switch (result->classInfo(vm)->typedArrayStorageType) {
     case TypeInt8:
         scope.release();
         jsCast<JSInt8Array*>(result)->set(exec, 0, thisObject, begin, length, CopyType::LeftToRight);
@@ -566,7 +569,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     JSObject* result = construct(exec, species, args, "species is not a constructor");
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    if (jsDynamicCast<JSArrayBufferView*>(result))
+    if (jsDynamicCast<JSArrayBufferView*>(vm, result))
         return JSValue::encode(result);
 
     throwTypeError(exec, scope, ASCIILiteral("species constructor did not return a TypedArray View"));

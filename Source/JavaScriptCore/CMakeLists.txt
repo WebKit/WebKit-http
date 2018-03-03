@@ -373,6 +373,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGPromotedHeapLocation.cpp
     dfg/DFGPureValue.cpp
     dfg/DFGPutStackSinkingPhase.cpp
+    dfg/DFGRegisteredStructureSet.cpp
     dfg/DFGSSACalculator.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSSALoweringPhase.cpp
@@ -386,7 +387,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGStoreBarrierInsertionPhase.cpp
     dfg/DFGStrengthReductionPhase.cpp
     dfg/DFGStructureAbstractValue.cpp
-    dfg/DFGStructureRegistrationPhase.cpp
     dfg/DFGThreadData.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
@@ -503,6 +503,7 @@ set(JavaScriptCore_SOURCES
     heap/MutatorState.cpp
     heap/SlotVisitor.cpp
     heap/SpaceTimeMutatorScheduler.cpp
+    heap/StochasticSpaceTimeMutatorScheduler.cpp
     heap/StopIfNecessaryTimer.cpp
     heap/Subspace.cpp
     heap/SynchronousStopTheWorldMutatorScheduler.cpp

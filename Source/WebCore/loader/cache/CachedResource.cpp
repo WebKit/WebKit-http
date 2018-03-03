@@ -214,16 +214,6 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
 
     m_loading = true;
 
-#if USE(QUICK_LOOK)
-    if (!m_resourceRequest.isNull() && m_resourceRequest.url().protocolIs(QLPreviewProtocol())) {
-        // When QuickLook is invoked to convert a document, it returns a unique URL in the
-        // NSURLReponse for the main document. To make safeQLURLForDocumentURLAndResourceURL()
-        // work, we need to use the QL URL not the original URL.
-        const URL& documentURL = frameLoader.documentLoader()->response().url();
-        m_resourceRequest.setURL(safeQLURLForDocumentURLAndResourceURL(documentURL, url()));
-    }
-#endif
-
     if (isCacheValidator()) {
         CachedResource* resourceToRevalidate = m_resourceToRevalidate;
         ASSERT(resourceToRevalidate->canUseCacheValidator());
@@ -758,7 +748,14 @@ CachedResource::RevalidationDecision CachedResource::makeRevalidationDecision(Ca
         return RevalidationDecision::No;
 
     case CachePolicyReload:
+        return RevalidationDecision::YesDueToCachePolicy;
+
     case CachePolicyRevalidate:
+        if (m_response.cacheControlContainsImmutable() && m_response.url().protocolIs("https")) {
+            if (isExpired())
+                return RevalidationDecision::YesDueToExpired;
+            return RevalidationDecision::No;
+        }
         return RevalidationDecision::YesDueToCachePolicy;
 
     case CachePolicyVerify:

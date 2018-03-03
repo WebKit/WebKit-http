@@ -64,7 +64,7 @@ const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = {
     &javaScriptRuntimeFlags,
     &queueTaskToEventLoop,
     &shouldInterruptScriptBeforeTimeout,
-    nullptr,
+    &moduleLoaderImportModule,
     &moduleLoaderResolve,
     &moduleLoaderFetch,
     nullptr,
@@ -83,7 +83,7 @@ JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>
 void JSDOMWindowBase::finishCreation(VM& vm, JSDOMWindowShell* shell)
 {
     Base::finishCreation(vm, shell);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
     GlobalPropertyInfo staticGlobals[] = {
         GlobalPropertyInfo(vm.propertyNames->document, jsNull(), DontDelete | ReadOnly),
@@ -269,13 +269,14 @@ JSDOMWindow* toJSDOMWindow(Frame* frame, DOMWrapperWorld& world)
     return frame->script().windowShell(world)->window();
 }
 
-JSDOMWindow* toJSDOMWindow(JSValue value)
+JSDOMWindow* toJSDOMWindow(JSC::VM& vm, JSValue value)
 {
     if (!value.isObject())
         return 0;
+
     while (!value.isNull()) {
         JSObject* object = asObject(value);
-        const ClassInfo* classInfo = object->classInfo();
+        const ClassInfo* classInfo = object->classInfo(vm);
         if (classInfo == JSDOMWindow::info())
             return jsCast<JSDOMWindow*>(object);
         if (classInfo == JSDOMWindowShell::info())
@@ -329,6 +330,15 @@ JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalOb
     if (RefPtr<Document> document = thisObject->wrapped().document())
         return document->moduleLoader()->evaluate(globalObject, exec, moduleLoader, moduleKey, moduleRecord, scriptFetcher);
     return JSC::jsUndefined();
+}
+
+JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderImportModule(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSString* moduleName, const JSC::SourceOrigin& sourceOrigin)
+{
+    JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
+    if (RefPtr<Document> document = thisObject->wrapped().document())
+        return document->moduleLoader()->importModule(globalObject, exec, moduleLoader, moduleName, sourceOrigin);
+    JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
+    return deferred->reject(exec, jsUndefined());
 }
 
 } // namespace WebCore

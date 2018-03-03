@@ -318,6 +318,7 @@ imported/w3c/web-platform-tests/fetch/api/cors/cors-preflight-status.html [ Dump
 imported/w3c/web-platform-tests/fetch/api/cors/cors-redirect-preflight.html [ DumpJSConsoleLogInStdErr ]
 
 webkit.org/b/159724 imported/w3c/web-platform-tests/XMLHttpRequest/send-redirect-post-upload.htm [ Failure Pass ]
+webkit.org/b/167380 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Failure Pass ]
 
 # Flaky tests due to always changing assertion error message
 imported/w3c/web-platform-tests/html/semantics/forms/form-submission-0/url-encoded.html [ Failure ]
@@ -678,8 +679,9 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
-# Skip modern-media-controls tests until flakiness can be resolved - webkit.org/b/164322
-media/modern-media-controls [ Skip ]
+# WebRTC backend not enabled by default.
+webrtc [ Skip ]
+fast/mediastream/getUserMedia-webaudio.html [ Skip ]
 
 # Only iOS WK1 has testRunner.setPagePaused.
 fast/dom/timer-fire-after-page-pause.html [ Skip ]
@@ -911,8 +913,6 @@ media/video-contained-in-fullscreen-element-going-into-pip.html [ WontFix ]
 
 webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Skip ]
 
-webkit.org/b/159678 http/tests/preload/single_download_preload_runner.html [ Timeout ]
-
 # This test is way too slow for debug.
 [ Debug ] workers/bomb.html [ Skip ]
 # This test is just way too slow.
@@ -995,5 +995,10 @@ webkit.org/b/165195 fast/css/parsing-css-allowed-string-characters.html [ Pass F
 webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-no-content.html [ Failure ]
 webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-out-of-view.html [ Failure ]
 
+# iOS-specific test
+media/modern-media-controls/media-controller/media-controller-scale-factor.html [ Skip ]
+
 webkit.org/b/166911 fast/dom/Window/window-properties-performance.html [ Pass Failure ]
 webkit.org/b/166911 fast/dom/Window/window-properties-performance-resource-timing.html [ Pass Failure ]
+
+webkit.org/b/167428 fast/backgrounds/background-repeat-x-y-parse.html [ Failure ]
