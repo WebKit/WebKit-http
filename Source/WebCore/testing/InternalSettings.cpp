@@ -95,7 +95,6 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_forcedDisplayIsMonochromeAccessibilityValue(settings.forcedDisplayIsMonochromeAccessibilityValue())
     , m_forcedPrefersReducedMotionAccessibilityValue(settings.forcedPrefersReducedMotionAccessibilityValue())
     , m_resourceTimingEnabled(RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
-    , m_linkPreloadEnabled(RuntimeEnabledFeatures::sharedFeatures().linkPreloadEnabled())
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
@@ -184,7 +183,6 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     Settings::setAllowsAnySSLCertificate(false);
 
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(m_resourceTimingEnabled);
-    RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(m_linkPreloadEnabled);
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
@@ -642,6 +640,15 @@ ExceptionOr<void> InternalSettings::setScrollingTreeIncludesFrames(bool enabled)
     return { };
 }
 
+ExceptionOr<void> InternalSettings::setAllowUnclampedScrollPosition(bool allowUnclamped)
+{
+    if (!m_page || !m_page->mainFrame().view())
+        return Exception { INVALID_ACCESS_ERR };
+
+    m_page->mainFrame().view()->setAllowsUnclampedScrollPositionForTesting(allowUnclamped);
+    return { };
+}
+
 ExceptionOr<void> InternalSettings::setAllowsInlineMediaPlayback(bool allows)
 {
     if (!m_page)
@@ -669,11 +676,6 @@ ExceptionOr<void> InternalSettings::setInlineMediaPlaybackRequiresPlaysInlineAtt
 void InternalSettings::setResourceTimingEnabled(bool enabled)
 {
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(enabled);
-}
-
-void InternalSettings::setLinkPreloadEnabled(bool enabled)
-{
-    RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(enabled);
 }
 
 void InternalSettings::setIndexedDBWorkersEnabled(bool enabled)

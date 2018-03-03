@@ -495,11 +495,13 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 
 @interface WKContentView (WKInteractionPrivate)
 - (void)accessibilitySpeakSelectionSetContent:(NSString *)string;
+- (NSArray *)webSelectionRectsForSelectionRects:(const Vector<WebCore::SelectionRect>&)selectionRects;
+- (void)_accessibilityDidGetSelectionRects:(NSArray *)selectionRects withGranularity:(UITextGranularity)granularity atOffset:(NSInteger)offset;
 @end
 
 @implementation WKContentView (WKInteraction)
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKContentViewInteractionAdditions.mm>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WKContentViewInteractionAdditions.mm>
 #endif
 
@@ -849,7 +851,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 - (BOOL)resignFirstResponder
 {
 #if ENABLE(DATA_INTERACTION)
-    _shouldHandleLongPressActionAfterDataInteraction = NO;
+    _dataInteractionState.shouldHandleLongPressAction = NO;
 #endif
     // FIXME: Maybe we should call resignFirstResponder on the superclass
     // and do nothing if the return value is NO.
@@ -1496,11 +1498,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return _positionInformation.nodeAtPositionIsAssistedNode;
 }
 
-- (NSArray *)webSelectionRects
+- (NSArray *)webSelectionRectsForSelectionRects:(const Vector<WebCore::SelectionRect>&)selectionRects
 {
-    if (_page->editorState().selectionIsNone)
-        return nil;
-    const auto& selectionRects = _page->editorState().postLayoutData().selectionRects;
     unsigned size = selectionRects.size();
     if (!size)
         return nil;
@@ -1522,6 +1521,14 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     }
 
     return webRects;
+}
+
+- (NSArray *)webSelectionRects
+{
+    if (_page->editorState().selectionIsNone)
+        return nil;
+    const auto& selectionRects = _page->editorState().postLayoutData().selectionRects;
+    return [self webSelectionRectsForSelectionRects:selectionRects];
 }
 
 - (void)_highlightLongPressRecognized:(UILongPressGestureRecognizer *)gestureRecognizer
@@ -2194,6 +2201,28 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
         [webView _accessibilityDidGetSpeakSelectionContent:string];
         if ([view respondsToSelector:@selector(accessibilitySpeakSelectionSetContent:)])
             [view accessibilitySpeakSelectionSetContent:string];
+    });
+}
+
+- (void)_accessibilityRetrieveRectsEnclosingSelectionOffset:(NSInteger)offset withGranularity:(UITextGranularity)granularity
+{
+    RetainPtr<WKContentView> view = self;
+    _page->requestRectsForGranularityWithSelectionOffset(toWKTextGranularity(granularity), offset , [view, offset, granularity](const Vector<WebCore::SelectionRect>& selectionRects, CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None)
+            return;
+        if ([view respondsToSelector:@selector(_accessibilityDidGetSelectionRects:withGranularity:atOffset:)])
+            [view _accessibilityDidGetSelectionRects:[view webSelectionRectsForSelectionRects:selectionRects] withGranularity:granularity atOffset:offset];
+    });
+}
+
+- (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text
+{
+    RetainPtr<WKContentView> view = self;
+    _page->requestRectsAtSelectionOffsetWithText(offset, text, [view, offset](const Vector<WebCore::SelectionRect>& selectionRects, CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None)
+            return;
+        if ([view respondsToSelector:@selector(_accessibilityDidGetSelectionRects:withGranularity:atOffset:)])
+            [view _accessibilityDidGetSelectionRects:[view webSelectionRectsForSelectionRects:selectionRects] withGranularity:UITextGranularityWord atOffset:offset];
     });
 }
 

@@ -247,6 +247,10 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setApplicationId(BSTR);
     virtual HRESULT STDMETHODCALLTYPE webAnimationsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setWebAnimationsEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE userTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setUserTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE linkPreloadEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setLinkPreloadEnabled(BOOL);
 
     // WebPreferences
 

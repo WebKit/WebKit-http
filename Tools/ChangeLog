@@ -1,3 +1,455 @@
+2017-02-01  Alexey Proskuryakov  <ap@apple.com>
+
+        [Mac] TestWebKitAPI includes system frameworks incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=167703
+        rdar://problem/30301498
+
+        Reviewed by Ryosuke Niwa.
+
+        FRAMEWORK_SEARCH_PATH results in frameworks being treated as user ones, not system.
+        Make TestWebKitAPI use -iframework instead, like the rest of WebKit does.
+
+        Also, reduced the number of subframework search paths, looks like we only need one now.
+
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+
+2017-02-01  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct "filesHaveSameVolume" predicate
+        https://bugs.webkit.org/show_bug.cgi?id=167696
+        <rdar://problem/30298722>
+
+        Reviewed by David Kilzer.
+
+        Add new tests that confirm that the 'filesHaveSamePath' predicate properly handles
+        percent-escaped path inputs.
+
+        * TestWebKitAPI/Tests/WebCore/FileSystem.cpp:
+        (TestWebKitAPI::FileSystemTest::spaceContainingFilePath):
+        (TestWebKitAPI::FileSystemTest::bangContainingFilePath):
+        (TestWebKitAPI::FileSystemTest::quoteContainingFilePath):
+        (TestWebKitAPI::TEST_F):
+
+2017-02-01  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed. Fix coding style in MiniBrowser
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (editingCommandCallback):
+        (insertImageCommandCallback):
+        (insertLinkCommandCallback):
+
+2017-02-01  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Add an API to add a custom tab into the print dialog
+        https://bugs.webkit.org/show_bug.cgi?id=151998
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a new WebKitPrintOperation/custom-widget test in TestPrinting
+        that is testing a newly added API.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestPrinting.cpp:
+        (testPrintCustomWidget):
+        (beforeAll):
+
+2017-02-01  Enrique Ocaña González  <eocanha@igalia.com>
+
+        [GStreamer][MSE] qtdemux: Update the tfdt patch to the version finally accepted upstream
+        https://bugs.webkit.org/show_bug.cgi?id=166529
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gtk/patches/gst-plugins-good-use-the-tfdt-decode-time.patch:
+        New patch version accepted in GStreamer upstream.
+
+2017-02-01  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GTK] Install either libxfont1-dev or libxfont-dev as dependency
+        https://bugs.webkit.org/show_bug.cgi?id=167498
+
+        Reviewed by Carlos Garcia Campos.
+
+        Depending on the distro version you can need either libxfont1-dev
+        or libfont-dev to build with jhbuild.
+
+        * gtk/install-dependencies:
+
+2017-01-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable API test WebKit2.WKWebProcessPlugInRangeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=167594
+
+        Unreviewed test gardening.
+
+        Disabling this test while we investigate the cause of a timeout on ios-simulator.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm:
+        (TEST):
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Move slow-running microbenchmarks out of JSTests/microbenchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=167676
+
+        Reviewed by Saam Barati.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests): Add slowMicrobenchmarks.yaml.
+
+2017-01-31  Megan Gardner  <megan_gardner@apple.com>
+
+        Make Dump Render Tree not crash
+        https://bugs.webkit.org/show_bug.cgi?id=167667
+
+        DumpRenderTree is crashing when running WK2 tests that it's not supposed to be running. 
+        DumpRenderTree uses RunLoop::main.dispatch(), but that crashes because it's not set up on iOS.
+        So we're making use of RunWebThread, which is the correct thing to do on iOS, and it doesn't crash.
+        This does not fix any tests, it just fixes the crash.
+        
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/TestRunner.cpp:
+        (TestRunner::callUIScriptCallback):
+
+2017-01-31  Jonathan Bedard  <jbedard@apple.com>
+
+        Workaround for simctl install failing to report install failure
+        https://bugs.webkit.org/show_bug.cgi?id=167654
+
+        Reviewed by Daniel Bates.
+
+        simctl install will sometimes report success even though install has failed.
+        To workaround this bug, we attempt an app launch after install to ensure
+        install has succeeded.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.install_app): Attempt app launch after install, retry install if launch fails.
+        (Device.launch_app): Correct comment.
+
+2017-01-31  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed webkitpy fix after r211405.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.launch_app): Remove @staticmethod on _log_debug_error.
+
+2017-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Do not include libwebrtc and qunit in GTK+ tarballs.
+
+        * gtk/manifest.txt.in:
+
+2017-01-31  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: enable search predication for iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167558
+        <rdar://problem/30251367>
+
+        Reviewed by Joanmarie Diggs.
+
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::uiElementForSearchPredicate):
+        * DumpRenderTree/mac/AccessibilityCommonMac.h:
+        * DumpRenderTree/mac/AccessibilityCommonMac.mm:
+        (searchPredicateParameterizedAttributeForSearchCriteria):
+        * DumpRenderTree/mac/AccessibilityUIElementMac.mm:
+        (searchPredicateParameterizedAttributeForSearchCriteria): Deleted.
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::uiElementCountForSearchPredicate):
+        (WTR::AccessibilityUIElement::uiElementForSearchPredicate):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityCommonMac.h:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityCommonMac.mm:
+        (WTR::searchPredicateParameterizedAttributeForSearchCriteria):
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::searchPredicateParameterizedAttributeForSearchCriteria): Deleted.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj:
+
+2017-01-30  Jonathan Bedard  <jbedard@apple.com>
+
+        Workaround for simctl launch bug
+        https://bugs.webkit.org/show_bug.cgi?id=167613
+
+        Reviewed by Daniel Bates.
+
+        simctl launch will sometimes fail because of a race condition when many
+        simulators are being run simultaneously. These failures will always have
+        an exit code of 1. This change attempts to launch an app multiple times
+        before reporting a failure to workaround this bug.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.launch_app): Execute multiple launch attempts, better logging of failures.
+
+2017-01-30  Alexey Proskuryakov  <ap@apple.com>
+
+        Commit queue fails to look at real name aliases for the reviewer
+        https://bugs.webkit.org/show_bug.cgi?id=167422
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/common/checkout/changelog_unittest.py:
+        (test_has_valid_reviewer): Added tests.
+
+        * Scripts/webkitpy/common/config/committers.py:
+        (CommitterList._name_to_contributor_map):
+        Made _name_to_contributor_map include alias names.
+
+        * Scripts/webkitpy/common/config/committers_unittest.py:
+        (CommittersTest.test_contributors_by_fuzzy_match):
+        Removed subtests that are now obsolete, as these matches are strict. It is not
+        obvious if distance based fuzzy matching for names is useful at all, but we can
+        look into that some other time.
+
+2017-01-30  Aakash Jain  <aakash_jain@apple.com>
+
+        QueueStatusServer should have an explicit timeout for _fetch_url
+        https://bugs.webkit.org/show_bug.cgi?id=167467
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer._fetch_url): Add an explicit timeout of 300s.
+
+2017-01-30  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Add support for Trac instances that host multiple projects.
+        https://bugs.webkit.org/show_bug.cgi?id=167524
+
+        Reviewed by Alexey Proskuryakov.
+
+        When multiple projects are hosted on a single Trac instance, the current
+        behavior will retrieve changesets from all tracked projects.
+        This patch teaches Trac.js to get project-specific changesets from Trac.
+        We do this by replacing the parameter `changeset=on` to `repo-projectname=on`
+        when querying the Trac timeline.
+
+        To tell Trac to be aware of multi-project instances we leverage the 
+        `options` parameter when creating a new instance: 
+
+            new Trac("https://mytrac.com/", { projectIdentifier: "tracProjectName" });
+
+        If this option is not provided, the original behaviour will prevail.
+        Additionally, add corresponding tests.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Trac.js:
+        (Trac): Reason about new optional parameter 'projectIdentifier'.
+        (Trac.prototype.revisionURL): Given a projectIdentifier, append it to the end of the URL.
+        (Trac.prototype._xmlTimelineURL): Given a projectIdentifier,
+        replace default parameter `changeset=on` with `repo-projectname=on`.
+        (Trac.prototype._convertCommitInfoElementToObject): Fix missing ';'.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockTrac.js:
+        (MockTrac): Add support for instantiating Trac with a projectIdentifier.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/tests.js:
+        (setup): Provide a multiple-project MockTrac instance to all test cases for testing.
+        Add the following tests:
+            test("revisionURL")
+            test("revisionURL with Trac Identifier")
+            test("_xmlTimelineURL")
+            test("_xmlTimelineURL with Trac Identifier")
+        (this.view._latestProductiveIteration): Fix missing ';'.
+
+2017-01-30  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Correct spacing regression on inter-element complex path shaping on some fonts
+        https://bugs.webkit.org/show_bug.cgi?id=166013
+
+        Reviewed by Simon Fraser.
+
+        Unskip existing tests and make some new tests:
+        - Testing complex text with no origins
+        - Testing initial expansions
+        - Testing the sign of vertical advances
+
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-01-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][EFL] Avoid using a thin directory to create the built product on the archive-built-product step.
+        https://bugs.webkit.org/show_bug.cgi?id=167596
+
+        Reviewed by Daniel Bates.
+
+        We avoid needing a thin directory by invoking the zip program with
+        the list of directories from the build directory to be zipped,
+        and by using the zip feature to exclude files matching a pattern.
+
+        * BuildSlaveSupport/built-product-archive:
+        (copyBuildFiles):
+        (createZipFromList):
+        (archiveBuiltProduct):
+
+2017-01-30  Jonathan Bedard  <jbedard@apple.com>
+
+        Use simctl instead of LayoutTestRelay
+        https://bugs.webkit.org/show_bug.cgi?id=165927
+
+        Reviewed by Daniel Bates.
+
+        Part 1
+
+        LayoutTestRelay uses SPI, since recent versions of the iOS SDK allow for installing apps on
+        simulators through simctl (iOS 10 and later), use this functionality instead.
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__): Added _test_runner_process_constructor.
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.app_identifier_from_bundle): Added function to extract bundle ID from plist.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._start): Pass worker_number to server_process so we can look up the correct simulator device to use.
+        (IOSSimulatorDriver): Deleted.
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_stop_cleans_up_properly): Set _test_runner_process_constructor for testing.
+        (DriverTest.test_two_starts_cleans_up_properly): Ditto.
+        (DriverTest.test_start_actually_starts): Ditto.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSSimulatorPort): Remove relay_name.
+        (IOSSimulatorPort.__init__): Set _test_runner_process_constructor to SimulatorProcess for IOSSimulatorPort.
+        (IOSSimulatorPort._create_simulators): Formatting change.
+        (IOSSimulatorPort.relay_path): Deleted.
+        (IOSSimulatorPort._check_relay): Deleted.
+        (IOSSimulatorPort._check_port_build): Deleted. Use base class implementation
+        (IOSSimulatorPort._build_relay): Deleted.
+        (IOSSimulatorPort._build_driver): Deleted. Use base class implementation
+        (IOSSimulatorPort._driver_class): Deleted. Use base class implementation
+        * Scripts/webkitpy/port/ios_unittest.py:
+        (iosTest.test_32bit): Update test.
+        (iosTest.test_64bit): Update test.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess.__init__): Added argument worker_number. This class does not make use of it. We will make use of this argument in SimulatorProcess to lookup the associated simulator device.
+        (ServerProcess._set_file_nonblocking): Added to share common code.
+        * Scripts/webkitpy/port/server_process_mock.py:
+        (MockServerProcess.__init__): Added argument worker_number.
+        * Scripts/webkitpy/port/simulator_process.py: Added.
+        (SimulatorProcess): Added.
+        (SimulatorProcess.Popen): Added.
+        (SimulatorProcess.Popen.__init__): Added. Initialize Popen structure with stdin, stdout, stderr and pid.
+        (SimulatorProcess.Popen.poll): Added. Check if the process is running.
+        (SimulatorProcess.Popen.wait): Added. Wait for process to close.
+        (SimulatorProcess.__init__): Added. Install app to device specified through port and worker_number.
+        (SimulatorProcess._reset): Added. Unlink fifos.
+        (SimulatorProcess._start): Added. Launch app on simulator, link fifos.
+        (SimulatorProcess._kill): Added. Shutdown app on simulator.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.__init__): Accept host to run install/launch/terminate.
+        (Device.install_app): Install app to target Device.
+        (Device.launch_app): Launch app on target Device.
+        (Device.terminate_app): Shutdown app on target Device.
+        (Simulator._parse_devices): Pass host to Device.
+
+2017-01-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] pixman fails to compile on Raspberry Pi (GCC crash)
+        https://bugs.webkit.org/show_bug.cgi?id=167411
+
+        Reviewed by Michael Catanzaro.
+
+        Disable the ARM iwMMXt fast path for pixman, because it triggers
+        a GCC bug on the RPi with Raspbian/PIXEL causing a build failure.
+
+        * gtk/jhbuild.modules:
+
+2017-01-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to handle the accelerated compositing policy
+        https://bugs.webkit.org/show_bug.cgi?id=167509
+
+        Reviewed by Michael Catanzaro.
+
+        Handle new setting in MiniBrowser. The settings dialog doesn't support enum settings so it needs to be handled
+        as a special case. Also add test cases to the get/set API.
+
+        * MiniBrowser/gtk/BrowserSettingsDialog.c:
+        (hardwareAccelerationPolicyToString):
+        (stringToHardwareAccelerationPolicy):
+        (cellRendererChanged):
+        (browserSettingsDialogConstructed):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitSettings.cpp:
+        (testWebKitSettings):
+
+2017-01-29  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Add a WebPreference to enable saving QuickLook documents in WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=167563
+        <rdar://problem/30253207>
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/QuickLook.mm:
+        (-[QuickLookNavigationDelegate _webView:didStartLoadForQuickLookDocumentInMainFrameWithFileName:uti:]):
+        (-[QuickLookNavigationDelegate _webView:didFinishLoadForQuickLookDocumentInMainFrame:]):
+        (runTest):
+        (-[QuickLookFrameLoadDelegate webView:didFinishLoadForFrame:]):
+        (TEST):
+
+2017-01-29  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Expose WebCore::DataDetection::detectContentInRange WKWebProcessPlugInRangeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=167565
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm: Added.
+        (-[BundleRangeHandleRemoteObject textFromBodyRange:]):
+        (-[BundleRangeHandleRemoteObject bodyInnerHTMLAfterDetectingData:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandlePlugIn.mm: Added.
+        (-[BundleRangeHandlePlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[BundleRangeHandlePlugIn webProcessPlugInBrowserContextController:didFinishDocumentLoadForFrame:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandleProtocol.h: Added.
+
+2017-01-28  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link Preload as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167201
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add User Timing Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Patch Review: EWS Bubbles wrap to multiple lines but can fit on one line
+        https://bugs.webkit.org/show_bug.cgi?id=167519
+
+        Reviewed by Ryosuke Niwa.
+
+        * QueueStatusServer/templates/statusbubble.html:
+        To measure the bubbleContainer's width, it must not be wrapping based
+        on its parent container. So when measuring the width temporarily set
+        the parent to a very large width so as to not artificially wrap us.
+        Restore the parent's width after measuring.
+
+2017-01-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Add a test for _WKNSFileManagerExtras
+        https://bugs.webkit.org/show_bug.cgi?id=167478
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/NSFileManagerExtras.mm: Added.
+        (expectAttributes):
+        (TEST):
+
 2017-01-27  Keith Miller  <keith_miller@apple.com>
 
         run-benchmarks should make sure it passes the test url to the right application

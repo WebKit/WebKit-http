@@ -53,13 +53,6 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
         let showNextTab = () => { this._showNextTab(); };
         let showPreviousTab = () => { this._showPreviousTab(); };
-        let closeCurrentTab = () => {
-            let selectedTabBarItem = this._tabBar.selectedTabBarItem;
-            if (this._tabBar.tabBarItems.length > 3 || !selectedTabBarItem.isDefaultTab)
-                this._tabBar.removeTabBarItem(selectedTabBarItem);
-        };
-
-        this._closeCurrentTabKeyboardShortuct = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "W", closeCurrentTab);
 
         this._showNextTabKeyboardShortcut1 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.RightCurlyBrace, showNextTab);
         this._showPreviousTabKeyboardShortcut1 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.LeftCurlyBrace, showPreviousTab);
@@ -74,7 +67,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemSelected, this._tabBarItemSelected, this);
         this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemAdded, this._tabBarItemAdded, this);
         this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemRemoved, this._tabBarItemRemoved, this);
-        this._tabBar.addEventListener(WebInspector.TabBar.Event.NewTabContextMenu, this._handleNewTabContextMenu, this);
+        this._tabBar.newTabTabBarItem.addEventListener(WebInspector.PinnedTabBarItem.Event.ContextMenu, this._handleNewTabContextMenu, this);
 
         this._recentTabContentViews = [];
         this._closedTabClasses = new Set;

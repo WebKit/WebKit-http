@@ -25,6 +25,7 @@
 #include "Frame.h"
 #include "HTMLCollection.h"
 #include "HTMLDocument.h"
+#include "JSDOMBindingSecurity.h"
 #include "JSEvent.h"
 #include "JSEventListener.h"
 #include "JSHTMLAudioElement.h"
@@ -91,6 +92,11 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
 
         // FIXME: We should have a message here that explains why the property access/function call was
         // not allowed. 
+        slot.setUndefined();
+        return true;
+    }
+
+    if (propertyName == exec->propertyNames().toStringTagSymbol || propertyName == exec->propertyNames().hasInstanceSymbol || propertyName == exec->propertyNames().isConcatSpreadableSymbol) {
         slot.setUndefined();
         return true;
     }

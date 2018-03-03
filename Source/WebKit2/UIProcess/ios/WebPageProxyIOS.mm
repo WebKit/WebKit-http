@@ -186,6 +186,17 @@ void WebPageProxy::autocorrectionContextCallback(const String& beforeText, const
     callback->performCallbackWithReturnValue(beforeText, markedText, selectedText, afterText, location, length);
 }
 
+void WebPageProxy::selectionRectsCallback(const Vector<WebCore::SelectionRect>& selectionRects, uint64_t callbackID)
+{
+    auto callback = m_callbacks.take<SelectionRectsCallback>(callbackID);
+    if (!callback) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+    
+    callback->performCallbackWithReturnValue(selectionRects);
+}
+
 void WebPageProxy::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visibleContentRectUpdate)
 {
     if (!isValid())
@@ -257,9 +268,9 @@ WebCore::FloatRect WebPageProxy::computeCustomFixedPositionRect(const FloatRect&
 
     LayoutPoint layoutViewportOrigin;
     if (isBelowMinimumScale)
-        layoutViewportOrigin = FrameView::computeLayoutViewportOrigin(enclosingLayoutRect(constrainedUnobscuredRect), m_minStableLayoutViewportOrigin, m_maxStableLayoutViewportOrigin, enclosingLayoutRect(layoutViewportRect));
+        layoutViewportOrigin = FrameView::computeLayoutViewportOrigin(enclosingLayoutRect(constrainedUnobscuredRect), m_minStableLayoutViewportOrigin, m_maxStableLayoutViewportOrigin, enclosingLayoutRect(layoutViewportRect), StickToViewportBounds);
     else
-        layoutViewportOrigin = FrameView::computeLayoutViewportOrigin(enclosingLayoutRect(unobscuredContentRectRespectingInputViewBounds), m_minStableLayoutViewportOrigin, m_maxStableLayoutViewportOrigin, enclosingLayoutRect(layoutViewportRect));
+        layoutViewportOrigin = FrameView::computeLayoutViewportOrigin(enclosingLayoutRect(unobscuredContentRectRespectingInputViewBounds), m_minStableLayoutViewportOrigin, m_maxStableLayoutViewportOrigin, enclosingLayoutRect(layoutViewportRect), StickToViewportBounds);
 
     if (constraint == UnobscuredRectConstraint::ConstrainedToDocumentRect) {
         // The max stable layout viewport origin really depends on the size of the layout viewport itself, so we need to adjust the location of the layout viewport one final time to make sure it does not end up out of bounds of the document.
@@ -720,6 +731,28 @@ void WebPageProxy::extendSelection(WebCore::TextGranularity granularity)
 void WebPageProxy::selectWordBackward()
 {
     m_process->send(Messages::WebPage::SelectWordBackward(), m_pageID);
+}
+
+void WebPageProxy::requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity granularity, uint32_t offset, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(Vector<WebCore::SelectionRect>(), CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::GetRectsForGranularityWithSelectionOffset(static_cast<uint32_t>(granularity), offset, callbackID), m_pageID);
+}
+
+void WebPageProxy::requestRectsAtSelectionOffsetWithText(int32_t offset, const String& text, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)> callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(Vector<WebCore::SelectionRect>(), CallbackBase::Error::Unknown);
+        return;
+    }
+    
+    uint64_t callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::GetRectsAtSelectionOffsetWithText(offset, text, callbackID), m_pageID);
 }
 
 void WebPageProxy::moveSelectionByOffset(int32_t offset, std::function<void (CallbackBase::Error)> callbackFunction)

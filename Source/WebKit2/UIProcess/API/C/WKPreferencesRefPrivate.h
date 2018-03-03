@@ -449,6 +449,10 @@ WK_EXPORT bool WKPreferencesGetAllowsPictureInPictureMediaPlayback(WKPreferences
 WK_EXPORT void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef);
 
+// Defaults to false
+WK_EXPORT void WKPreferencesSetUserTimingEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetUserTimingEnabled(WKPreferencesRef);
+
 // Defaults to true
 WK_EXPORT void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef);
@@ -456,6 +460,10 @@ WK_EXPORT bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef);
 // Defaults to false
 WK_EXPORT void WKPreferencesSetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetLinkPreloadEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetLinkPreloadEnabled(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

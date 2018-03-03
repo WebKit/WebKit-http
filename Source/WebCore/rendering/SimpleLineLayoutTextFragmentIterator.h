@@ -41,7 +41,7 @@ public:
     TextFragmentIterator(const RenderBlockFlow&);
     class TextFragment {
     public:
-        enum Type { ContentEnd, SoftLineBreak, HardLineBreak, Whitespace, NonWhitespace };
+        enum Type { Invalid, ContentEnd, SoftLineBreak, HardLineBreak, Whitespace, NonWhitespace };
         TextFragment() = default;
         TextFragment(unsigned start, unsigned end, float width, Type type, bool isLastInRenderer = false, bool overlapsToNextRenderer = false, bool isCollapsed = false, bool isCollapsible = false)
             : m_start(start)
@@ -55,8 +55,10 @@ public:
         {
         }
 
+        bool isValid() const { return m_type != Invalid; }
         unsigned start() const { return m_start; }
         unsigned end() const { return m_end; }
+        unsigned length() const { ASSERT(m_end >= m_start); return m_end - m_start; }
         float width() const { return m_width; }
         Type type() const { return m_type; }
         bool overlapsToNextRenderer() const { return m_overlapsToNextRenderer; }
@@ -87,7 +89,7 @@ public:
         unsigned m_start { 0 };
         unsigned m_end { 0 };
         float m_width { 0 };
-        Type m_type { NonWhitespace };
+        Type m_type { Invalid };
         bool m_isLastInRenderer { false };
         bool m_overlapsToNextRenderer { false };
         bool m_isCollapsed { false };
@@ -133,8 +135,7 @@ private:
     bool isSoftLineBreak(unsigned position) const;
     bool isHardLineBreak(const FlowContents::Iterator& segment) const;
     unsigned nextBreakablePosition(const FlowContents::Segment&, unsigned startPosition);
-    template <typename CharacterType> unsigned nextNonWhitespacePosition(const FlowContents::Segment&, unsigned startPosition);
-    float runWidth(const FlowContents::Segment&, unsigned startPosition, unsigned endPosition, float xPosition) const;
+    unsigned nextNonWhitespacePosition(const FlowContents::Segment&, unsigned startPosition);
 
     FlowContents m_flowContents;
     FlowContents::Iterator m_currentSegment;

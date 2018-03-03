@@ -1233,6 +1233,7 @@ fast/events/input-events-ime-composition.html [ Failure ]
 fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
 fast/events/input-events-spell-checking-datatransfer.html [ Failure ]
 fast/events/input-events-selection-forecolor-data.html [ Failure ]
+fast/events/input-events-insert-newlines-after-mutation.html [ Failure ]
 fast/events/before-input-events-prevent-default.html [ Failure ]
 fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
 fast/events/before-input-events-different-start-end-elements.html [ Failure ]
@@ -2800,6 +2801,7 @@ media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-en
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
 
 # Tests designed for macOS that have iOS equivalents in "ipad" directories
 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
@@ -2837,3 +2839,5 @@ quicklook/password-protected.html [ Skip ]
 
 webkit.org/b/167376 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Pass Failure ]
 webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ Pass Failure ]
+
+webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]

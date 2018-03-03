@@ -262,7 +262,7 @@ bool SubresourceLoader::shouldCreateQuickLookHandleForResponse(const ResourceRes
     if (m_resource->type() != CachedResource::MainResource)
         return false;
 
-    if (m_documentLoader->quickLookHandle())
+    if (m_quickLookHandle)
         return false;
 
     return QuickLookHandle::shouldCreateForMIMEType(response.mimeType());
@@ -277,7 +277,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 
 #if USE(QUICK_LOOK)
     if (shouldCreateQuickLookHandleForResponse(response)) {
-        m_documentLoader->setQuickLookHandle(QuickLookHandle::create(*this, response));
+        m_quickLookHandle = QuickLookHandle::create(*this, response);
         return;
     }
 #endif
@@ -356,7 +356,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 void SubresourceLoader::didReceiveData(const char* data, unsigned length, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+    if (auto quickLookHandle = m_quickLookHandle.get()) {
         if (quickLookHandle->didReceiveData(data, length))
             return;
     }
@@ -368,7 +368,7 @@ void SubresourceLoader::didReceiveData(const char* data, unsigned length, long l
 void SubresourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+    if (auto quickLookHandle = m_quickLookHandle.get()) {
         if (quickLookHandle->didReceiveBuffer(buffer.get()))
             return;
     }
@@ -377,7 +377,7 @@ void SubresourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long e
     didReceiveDataOrBuffer(nullptr, 0, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
-void SubresourceLoader::didReceiveDataOrBuffer(const char* data, int length, RefPtr<SharedBuffer>&& prpBuffer, long long encodedDataLength, DataPayloadType dataPayloadType)
+void SubresourceLoader::didReceiveDataOrBuffer(const char* data, int length, RefPtr<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
     if (m_resource->response().httpStatusCode() >= 400 && !m_resource->shouldIgnoreHTTPStatusCodeErrors())
         return;
@@ -387,9 +387,8 @@ void SubresourceLoader::didReceiveDataOrBuffer(const char* data, int length, Ref
     // Reference the object in this method since the additional processing can do
     // anything including removing the last reference to this object; one example of this is 3266216.
     Ref<SubresourceLoader> protectedThis(*this);
-    RefPtr<SharedBuffer> buffer = prpBuffer;
-    
-    ResourceLoader::didReceiveDataOrBuffer(data, length, WTFMove(buffer), encodedDataLength, dataPayloadType);
+
+    ResourceLoader::didReceiveDataOrBuffer(data, length, buffer.copyRef(), encodedDataLength, dataPayloadType);
 
     if (!m_loadingMultipartContent) {
         if (auto* resourceData = this->resourceData())
@@ -513,7 +512,7 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
 void SubresourceLoader::didFinishLoading(double finishTime)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+    if (auto quickLookHandle = m_quickLookHandle.get()) {
         if (quickLookHandle->didFinishLoading())
             return;
     }
@@ -564,7 +563,7 @@ void SubresourceLoader::didFinishLoading(double finishTime)
 void SubresourceLoader::didFail(const ResourceError& error)
 {
 #if USE(QUICK_LOOK)
-    if (auto quickLookHandle = m_documentLoader->quickLookHandle())
+    if (auto quickLookHandle = m_quickLookHandle.get())
         quickLookHandle->didFail();
 #endif
 

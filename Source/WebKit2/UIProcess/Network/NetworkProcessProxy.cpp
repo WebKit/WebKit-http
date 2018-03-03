@@ -65,7 +65,8 @@ Ref<NetworkProcessProxy> NetworkProcessProxy::create(WebProcessPool& processPool
 }
 
 NetworkProcessProxy::NetworkProcessProxy(WebProcessPool& processPool)
-    : m_processPool(processPool)
+    : ChildProcessProxy(processPool.alwaysRunsAtBackgroundPriority())
+    , m_processPool(processPool)
     , m_numPendingConnectionRequests(0)
     , m_customProtocolManagerProxy(this, processPool)
     , m_throttler(*this)
@@ -316,7 +317,7 @@ void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Con
 #endif
 }
 
-void NetworkProcessProxy::logSampledDiagnosticMessage(uint64_t pageID, const String& message, const String& description)
+void NetworkProcessProxy::logDiagnosticMessage(uint64_t pageID, const String& message, const String& description, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -324,10 +325,10 @@ void NetworkProcessProxy::logSampledDiagnosticMessage(uint64_t pageID, const Str
     if (!page)
         return;
 
-    page->logSampledDiagnosticMessage(message, description);
+    page->logDiagnosticMessage(message, description, shouldSample);
 }
 
-void NetworkProcessProxy::logSampledDiagnosticMessageWithResult(uint64_t pageID, const String& message, const String& description, uint32_t result)
+void NetworkProcessProxy::logDiagnosticMessageWithResult(uint64_t pageID, const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -335,10 +336,10 @@ void NetworkProcessProxy::logSampledDiagnosticMessageWithResult(uint64_t pageID,
     if (!page)
         return;
 
-    page->logSampledDiagnosticMessageWithResult(message, description, result);
+    page->logDiagnosticMessageWithResult(message, description, result, shouldSample);
 }
 
-void NetworkProcessProxy::logSampledDiagnosticMessageWithValue(uint64_t pageID, const String& message, const String& description, const String& value)
+void NetworkProcessProxy::logDiagnosticMessageWithValue(uint64_t pageID, const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample shouldSample)
 {
     WebPageProxy* page = WebProcessProxy::webPage(pageID);
     // FIXME: We do this null-check because by the time the decision to log is made, the page may be gone. We should refactor to avoid this,
@@ -346,7 +347,7 @@ void NetworkProcessProxy::logSampledDiagnosticMessageWithValue(uint64_t pageID, 
     if (!page)
         return;
 
-    page->logSampledDiagnosticMessageWithValue(message, description, value);
+    page->logDiagnosticMessageWithValue(message, description, value, significantFigures, shouldSample);
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -385,11 +386,6 @@ void NetworkProcessProxy::sendProcessDidResume()
 {
     if (canSendMessage())
         send(Messages::NetworkProcess::ProcessDidResume(), 0);
-}
-
-bool NetworkProcessProxy::alwaysRunsAtBackgroundPriority()
-{
-    return m_processPool.alwaysRunsAtBackgroundPriority();
 }
 
 void NetworkProcessProxy::processReadyToSuspend()

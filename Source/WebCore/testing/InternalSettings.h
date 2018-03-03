@@ -87,6 +87,7 @@ public:
     ExceptionOr<void> setBackgroundShouldExtendBeyondPage(bool);
     ExceptionOr<void> setShouldConvertPositionStyleOnCopy(bool);
     ExceptionOr<void> setScrollingTreeIncludesFrames(bool);
+    ExceptionOr<void> setAllowUnclampedScrollPosition(bool);
     ExceptionOr<void> setAllowsInlineMediaPlayback(bool);
     ExceptionOr<void> setAllowsInlineMediaPlaybackAfterFullscreen(bool);
     ExceptionOr<void> setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool);
@@ -110,7 +111,6 @@ public:
 
     // RuntimeEnabledFeatures.
     static void setResourceTimingEnabled(bool);
-    static void setLinkPreloadEnabled(bool);
     static void setIndexedDBWorkersEnabled(bool);
     static void setCSSGridLayoutEnabled(bool);
     static void setWebGL2Enabled(bool);
@@ -188,7 +188,6 @@ private:
 
         // Runtime enabled settings.
         bool m_resourceTimingEnabled;
-        bool m_linkPreloadEnabled;
         bool m_indexedDBWorkersEnabled;
         bool m_cssGridLayoutEnabled;
         bool m_webGL2Enabled;

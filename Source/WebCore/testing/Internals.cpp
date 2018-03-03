@@ -739,7 +739,7 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    return document->frame()->animation().isSuspended();
+    return document->frame()->animation().animationsAreSuspendedForDocument(document);
 }
 
 ExceptionOr<void> Internals::suspendAnimations() const
@@ -748,7 +748,13 @@ ExceptionOr<void> Internals::suspendAnimations() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    document->frame()->animation().suspendAnimations();
+    document->frame()->animation().suspendAnimationsForDocument(document);
+
+    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document())
+            frame->animation().suspendAnimationsForDocument(document);
+    }
+
     return { };
 }
 
@@ -758,7 +764,13 @@ ExceptionOr<void> Internals::resumeAnimations() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    document->frame()->animation().resumeAnimations();
+    document->frame()->animation().resumeAnimationsForDocument(document);
+
+    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document())
+            frame->animation().resumeAnimationsForDocument(document);
+    }
+
     return { };
 }
 
@@ -1454,6 +1466,11 @@ String Internals::rangeAsText(const Range& range)
 Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 {
     return TextIterator::subrange(&range, rangeLocation, rangeLength);
+}
+
+RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
+{
+    return findClosestPlainText(searchRange, text, 0, targetOffset);
 }
 
 ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, int y)
@@ -3642,12 +3659,16 @@ Vector<String> Internals::accessKeyModifiers() const
     return accessKeyModifierStrings;
 }
 
-#if USE(QUICK_LOOK)
+#if PLATFORM(IOS)
 void Internals::setQuickLookPassword(const String& password)
 {
+#if USE(QUICK_LOOK)
     auto& quickLookHandleClient = MockQuickLookHandleClient::singleton();
     QuickLookHandle::setClientForTesting(&quickLookHandleClient);
     quickLookHandleClient.setPassword(password);
+#else
+    UNUSED_PARAM(password);
+#endif
 }
 #endif
 

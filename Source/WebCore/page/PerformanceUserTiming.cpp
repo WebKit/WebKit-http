@@ -30,9 +30,6 @@
 
 #include "ExceptionCode.h"
 #include "Performance.h"
-#include "PerformanceEntry.h"
-#include "PerformanceMark.h"
-#include "PerformanceMeasure.h"
 #include "PerformanceTiming.h"
 #include <array>
 #include <wtf/NeverDestroyed.h>
@@ -46,6 +43,7 @@ typedef unsigned long long (PerformanceTiming::*NavigationTimingFunction)() cons
 
 static NavigationTimingFunction restrictedMarkFunction(const String& markName)
 {
+    // FIXME: Update this list when moving to Navigation Timing Level 2.
     using MapPair = std::pair<ASCIILiteral, NavigationTimingFunction>;
     static const std::array<MapPair, 21> pairs = { {
         MapPair { ASCIILiteral("navigationStart"), &PerformanceTiming::navigationStart },
@@ -87,17 +85,7 @@ UserTiming::UserTiming(Performance& performance)
 {
 }
 
-static void insertPerformanceEntry(PerformanceEntryMap& performanceEntryMap, Ref<PerformanceEntry>&& performanceEntry)
-{
-    RefPtr<PerformanceEntry> entry = WTFMove(performanceEntry);
-    auto it = performanceEntryMap.find(entry->name());
-    if (it != performanceEntryMap.end())
-        it->value.append(WTFMove(entry));
-    else
-        performanceEntryMap.set(entry->name(), Vector<RefPtr<PerformanceEntry>> { WTFMove(entry) });
-}
-
-static void clearPeformanceEntries(PerformanceEntryMap& performanceEntryMap, const String& name)
+static void clearPerformanceEntries(PerformanceEntryMap& performanceEntryMap, const String& name)
 {
     if (name.isNull()) {
         performanceEntryMap.clear();
@@ -107,18 +95,20 @@ static void clearPeformanceEntries(PerformanceEntryMap& performanceEntryMap, con
     performanceEntryMap.remove(name);
 }
 
-ExceptionOr<void> UserTiming::mark(const String& markName)
+ExceptionOr<Ref<PerformanceMark>> UserTiming::mark(const String& markName)
 {
     if (restrictedMarkFunction(markName))
         return Exception { SYNTAX_ERR };
 
-    insertPerformanceEntry(m_marksMap, PerformanceMark::create(markName, m_performance.now()));
-    return { };
+    auto& performanceEntryList = m_marksMap.ensure(markName, [] { return Vector<RefPtr<PerformanceEntry>>(); }).iterator->value;
+    auto entry = PerformanceMark::create(markName, m_performance.now());
+    performanceEntryList.append(entry.copyRef());
+    return WTFMove(entry);
 }
 
 void UserTiming::clearMarks(const String& markName)
 {
-    clearPeformanceEntries(m_marksMap, markName);
+    clearPerformanceEntries(m_marksMap, markName);
 }
 
 ExceptionOr<double> UserTiming::findExistingMarkStartTime(const String& markName)
@@ -127,16 +117,22 @@ ExceptionOr<double> UserTiming::findExistingMarkStartTime(const String& markName
         return m_marksMap.get(markName).last()->startTime();
 
     if (auto function = restrictedMarkFunction(markName)) {
-        double value = static_cast<double>((m_performance.timing().*(function))());
-        if (!value)
-            return Exception { INVALID_ACCESS_ERR };
-        return value - m_performance.timing().navigationStart();
+        if (PerformanceTiming* timing = m_performance.timing()) {
+            double value = static_cast<double>(((*timing).*(function))());
+            if (!value)
+                return Exception { INVALID_ACCESS_ERR };
+            return value - timing->navigationStart();
+        } else {
+            // FIXME: Support UserTiming in Workers.
+            ASSERT_NOT_REACHED();
+            return Exception { SYNTAX_ERR };
+        }
     }
 
     return Exception { SYNTAX_ERR };
 }
 
-ExceptionOr<void> UserTiming::measure(const String& measureName, const String& startMark, const String& endMark)
+ExceptionOr<Ref<PerformanceMeasure>> UserTiming::measure(const String& measureName, const String& startMark, const String& endMark)
 {
     double startTime = 0.0;
     double endTime = 0.0;
@@ -148,7 +144,7 @@ ExceptionOr<void> UserTiming::measure(const String& measureName, const String& s
         auto startMarkResult = findExistingMarkStartTime(startMark);
         if (startMarkResult.hasException())
             return startMarkResult.releaseException();
-        endTime = startMarkResult.releaseReturnValue();
+        startTime = startMarkResult.releaseReturnValue();
     } else {
         auto endMarkResult = findExistingMarkStartTime(endMark);
         if (endMarkResult.hasException())
@@ -160,13 +156,15 @@ ExceptionOr<void> UserTiming::measure(const String& measureName, const String& s
         endTime = endMarkResult.releaseReturnValue();
     }
 
-    insertPerformanceEntry(m_measuresMap, PerformanceMeasure::create(measureName, startTime, endTime));
-    return { };
+    auto& performanceEntryList = m_measuresMap.ensure(measureName, [] { return Vector<RefPtr<PerformanceEntry>>(); }).iterator->value;
+    auto entry = PerformanceMeasure::create(measureName, startTime, endTime);
+    performanceEntryList.append(entry.copyRef());
+    return WTFMove(entry);
 }
 
 void UserTiming::clearMeasures(const String& measureName)
 {
-    clearPeformanceEntries(m_measuresMap, measureName);
+    clearPerformanceEntries(m_measuresMap, measureName);
 }
 
 static Vector<RefPtr<PerformanceEntry>> convertToEntrySequence(const PerformanceEntryMap& performanceEntryMap)

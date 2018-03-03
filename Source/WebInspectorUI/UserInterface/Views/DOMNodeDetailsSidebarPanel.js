@@ -500,11 +500,11 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 let roleType = null;
                 let buttonType = null;
                 let buttonTypePopupString = WebInspector.UIString("popup");
-                let buttonTypeToggleString = WebInspector.UIString("toggle")
-                let buttonTypePopupToggleString = WebInspector.UIString("popup, toggle")
+                let buttonTypeToggleString = WebInspector.UIString("toggle");
+                let buttonTypePopupToggleString = WebInspector.UIString("popup, toggle");
 
                 if (role === "" || role === "unknown")
-                    role = WebInspector.UIString("No exact ARIA role match.");
+                    role = WebInspector.UIString("No matching ARIA role");
                 else if (role) {
                     if (role === "button") {
                         if (pressed)

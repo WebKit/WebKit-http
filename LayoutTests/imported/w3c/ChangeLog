@@ -1,3 +1,86 @@
+2017-02-01  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(r205136): {}.toString.call(crossOriginWindow) should not throw
+        https://bugs.webkit.org/show_bug.cgi?id=167681
+        <rdar://problem/30301117>
+
+        Reviewed by Mark Lam.
+
+        Rebaseline W3C test now that we passing one more check. We're still failing
+        later because {}.toString.call(crossOriginWindow) returns "[object Window]"
+        instead of "[object Object]". I am planning to fix this in a follow-up.
+        This is not a regression since we were returning "[object Window]" before
+        r205136.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+
+2017-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Drop legacy Attributes.isId attribute
+        https://bugs.webkit.org/show_bug.cgi?id=167603
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2017-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Drop legacy constants on Event interface
+        https://bugs.webkit.org/show_bug.cgi?id=167602
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/dom/historical-expected.txt:
+
+2017-01-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Import web-platform-tests/user-timing
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Rubber-stamped by Ryosuke Niwa.
+
+        Only failures are ones where User Timing Level 2 differs
+        from User Timing Level 1.
+
+        * resources/ImportExpectations:
+        * web-platform-tests/user-timing/OWNERS: Added.
+        * web-platform-tests/user-timing/idlharness-expected.txt: Added.
+        * web-platform-tests/user-timing/idlharness.html: Added.
+        * web-platform-tests/user-timing/resources/w3c-import.log: Added.
+        * web-platform-tests/user-timing/resources/webperftestharness.js: Added.
+        * web-platform-tests/user-timing/resources/webperftestharnessextension.js: Added.
+        * web-platform-tests/user-timing/test_user_timing_clear_marks-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_clear_marks.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_clear_measures-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_clear_measures.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_entry_type-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_entry_type.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_exists-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_exists.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_and_measure_exception_when_invoke_with_timing_attributes-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_and_measure_exception_when_invoke_with_timing_attributes.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_and_measure_exception_when_invoke_with_timing_attributes.js: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_and_measure_exception_when_invoke_without_parameter-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_and_measure_exception_when_invoke_without_parameter.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_exceptions-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_exceptions.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_with_name_of_navigation_timing_optional_attribute-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_mark_with_name_of_navigation_timing_optional_attribute.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure_exceptions-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure_exceptions.html: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure_navigation_timing-expected.txt: Added.
+        * web-platform-tests/user-timing/test_user_timing_measure_navigation_timing.html: Added.
+        * web-platform-tests/user-timing/w3c-import.log: Added.
+
 2017-01-21  Chris Dumez  <cdumez@apple.com>
 
         innerText should replace existing text node

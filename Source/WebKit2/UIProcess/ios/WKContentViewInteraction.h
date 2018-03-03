@@ -44,7 +44,7 @@
 #import <wtf/Vector.h>
 #import <wtf/text/WTFString.h>
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKContentViewInteractionAdditions.h>)
+#if USE(APPLE_INTERNAL_SDK)
 #import <WebKitAdditions/WKContentViewInteractionAdditions.h>
 #endif
 
@@ -118,6 +118,9 @@ struct WKAutoCorrectionData {
     RetainPtr<UITapGestureRecognizer> _twoFingerDoubleTapGestureRecognizer;
     RetainPtr<UITapGestureRecognizer> _twoFingerSingleTapGestureRecognizer;
     RetainPtr<WKInspectorNodeSearchGestureRecognizer> _inspectorNodeSearchGestureRecognizer;
+#if ENABLE(DATA_INTERACTION)
+    RetainPtr<UILongPressGestureRecognizer> _dataInteractionGestureRecognizer;
+#endif
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
@@ -185,10 +188,7 @@ struct WKAutoCorrectionData {
     BOOL _needsDeferredEndScrollingSelectionUpdate;
 
 #if ENABLE(DATA_INTERACTION)
-    RetainPtr<UILongPressGestureRecognizer> _dataInteractionGestureRecognizer;
-    RetainPtr<UIImage> _currentDataInteractionImage;
-    CGPoint _currentDataInteractionOrigin;
-    BOOL _shouldHandleLongPressActionAfterDataInteraction;
+    WebKit::WKDataInteractionState _dataInteractionState;
 #endif
 }
 
@@ -247,6 +247,8 @@ struct WKAutoCorrectionData {
 - (NSArray *)_dataDetectionResults;
 - (NSArray<NSValue *> *)_uiTextSelectionRects;
 - (void)accessibilityRetrieveSpeakSelectionContent;
+- (void)_accessibilityRetrieveRectsEnclosingSelectionOffset:(NSInteger)offset withGranularity:(UITextGranularity)granularity;
+- (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text;
 
 #if ENABLE(DATA_INTERACTION)
 - (void)_didPerformDataInteractionControllerOperation;

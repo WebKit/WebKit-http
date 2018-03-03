@@ -67,6 +67,10 @@
 #include "CompiledContentExtension.h"
 #endif
 
+#if USE(QUICK_LOOK)
+#include "QuickLookHandleClient.h"
+#endif
+
 namespace WebCore {
 
 class UserMessageHandlerDescriptor;
@@ -116,7 +120,7 @@ class EmptyDatabaseProvider final : public DatabaseProvider {
 class EmptyDiagnosticLoggingClient final : public DiagnosticLoggingClient {
     void logDiagnosticMessage(const String&, const String&, ShouldSample) final { }
     void logDiagnosticMessageWithResult(const String&, const String&, DiagnosticLoggingResultType, ShouldSample) final { }
-    void logDiagnosticMessageWithValue(const String&, const String&, const String&, ShouldSample) final { }
+    void logDiagnosticMessageWithValue(const String&, const String&, double, unsigned, ShouldSample) final { }
 };
 
 #if ENABLE(DRAG_SUPPORT)
@@ -442,6 +446,10 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
 
     bool isEmptyFrameLoaderClient() final { return true; }
     void prefetchDNS(const String&) final { }
+
+#if USE(QUICK_LOOK)
+    RefPtr<QuickLookHandleClient> createQuickLookHandleClient(const String&, const String&) final { return nullptr; }
+#endif
 };
 
 class EmptyFrameNetworkingContext final : public FrameNetworkingContext {

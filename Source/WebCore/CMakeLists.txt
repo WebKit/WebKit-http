@@ -608,6 +608,9 @@ set(WebCore_NON_SVG_IDL_FILES
     page/PerformanceEntry.idl
     page/PerformanceMark.idl
     page/PerformanceMeasure.idl
+    page/PerformanceObserver.idl
+    page/PerformanceObserverCallback.idl
+    page/PerformanceObserverEntryList.idl
     page/PerformanceNavigation.idl
     page/PerformanceResourceTiming.idl
     page/PerformanceTiming.idl
@@ -1076,7 +1079,6 @@ set(WebCore_SOURCES
 
     bindings/js/CachedModuleScriptLoader.cpp
     bindings/js/CachedScriptFetcher.cpp
-    bindings/js/CallbackFunction.cpp
     bindings/js/CommonVM.cpp
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/GCController.cpp
@@ -1107,6 +1109,9 @@ set(WebCore_SOURCES
     bindings/js/JSCustomEventCustom.cpp
     bindings/js/JSCustomXPathNSResolver.cpp
     bindings/js/JSDOMBinding.cpp
+    bindings/js/JSDOMBindingSecurity.cpp
+    bindings/js/JSDOMConstructor.cpp
+    bindings/js/JSDOMExceptionHandling.cpp
     bindings/js/JSDOMGlobalObject.cpp
     bindings/js/JSDOMGlobalObjectTask.cpp
     bindings/js/JSDOMPromise.cpp
@@ -1116,6 +1121,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMWindowProperties.cpp
     bindings/js/JSDOMWindowShell.cpp
     bindings/js/JSDOMWrapper.cpp
+    bindings/js/JSDOMWrapperCache.cpp
     bindings/js/JSDocumentCustom.cpp
     bindings/js/JSDocumentFragmentCustom.cpp
     bindings/js/JSElementCustom.cpp
@@ -1997,6 +2003,8 @@ set(WebCore_SOURCES
     page/PerformanceLogging.cpp
     page/PerformanceMonitor.cpp
     page/PerformanceNavigation.cpp
+    page/PerformanceObserver.cpp
+    page/PerformanceObserverEntryList.cpp
     page/PerformanceResourceTiming.cpp
     page/PerformanceTiming.cpp
     page/PerformanceUserTiming.cpp

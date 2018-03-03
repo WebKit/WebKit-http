@@ -28,7 +28,8 @@
 #include "JSWorker.h"
 
 #include "Document.h"
-#include "JSDOMBinding.h"
+#include "JSDOMConstructor.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWindowCustom.h"
 #include "Worker.h"
@@ -57,7 +58,7 @@ EncodedJSValue JSC_HOST_CALL constructJSWorker(ExecState& state)
     auto& window = asJSDOMWindow(state.lexicalGlobalObject())->wrapped();
 
     ASSERT(window.document());
-    return JSValue::encode(toJSNewlyCreated(state, globalObject, scope, Worker::create(*window.document(), scriptURL, globalObject.runtimeFlags())));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<Worker>>(state, globalObject, scope, Worker::create(*window.document(), scriptURL, globalObject.runtimeFlags())));
 }
 
 } // namespace WebCore

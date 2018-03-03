@@ -55,6 +55,7 @@ class BUrlProtocolHandler;
 
 #if USE(SOUP)
 #include "GUniquePtrSoup.h"
+#include "SoupNetworkSession.h"
 #include <libsoup/soup.h>
 #include <wtf/RunLoop.h>
 #include <wtf/glib/GRefPtr.h>
@@ -161,6 +162,7 @@ public:
 		BString	m_url;
 #endif
 #if USE(SOUP)
+    SoupNetworkSession* m_session { nullptr };
     GRefPtr<SoupMessage> m_soupMessage;
     ResourceResponse m_response;
     bool m_cancelled { false };

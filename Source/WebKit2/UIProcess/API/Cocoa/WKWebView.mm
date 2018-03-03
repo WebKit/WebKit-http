@@ -50,6 +50,7 @@
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKBrowsingContextHandleInternal.h"
+#import "WKDataDetectorTypesInternal.h"
 #import "WKErrorInternal.h"
 #import "WKHistoryDelegatePrivate.h"
 #import "WKLayoutMode.h"
@@ -90,6 +91,7 @@
 #import <WebCore/GraphicsContextCG.h>
 #import <WebCore/IOSurface.h>
 #import <WebCore/JSDOMBinding.h>
+#import <WebCore/JSDOMExceptionHandling.h>
 #import <WebCore/NSTextFinderSPI.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -351,34 +353,6 @@ static bool shouldRequireUserGestureToLoadVideo()
     return true;
 #endif
 }
-
-#if ENABLE(DATA_DETECTION) && PLATFORM(IOS)
-static WebCore::DataDetectorTypes fromWKDataDetectorTypes(uint64_t types)
-{
-    if (static_cast<WKDataDetectorTypes>(types) == WKDataDetectorTypeNone)
-        return WebCore::DataDetectorTypeNone;
-    if (static_cast<WKDataDetectorTypes>(types) == WKDataDetectorTypeAll)
-        return WebCore::DataDetectorTypeAll;
-    
-    uint32_t value = WebCore::DataDetectorTypeNone;
-    if (types & WKDataDetectorTypePhoneNumber)
-        value |= WebCore::DataDetectorTypePhoneNumber;
-    if (types & WKDataDetectorTypeLink)
-        value |= WebCore::DataDetectorTypeLink;
-    if (types & WKDataDetectorTypeAddress)
-        value |= WebCore::DataDetectorTypeAddress;
-    if (types & WKDataDetectorTypeCalendarEvent)
-        value |= WebCore::DataDetectorTypeCalendarEvent;
-    if (types & WKDataDetectorTypeTrackingNumber)
-        value |= WebCore::DataDetectorTypeTrackingNumber;
-    if (types & WKDataDetectorTypeFlightNumber)
-        value |= WebCore::DataDetectorTypeFlightNumber;
-    if (types & WKDataDetectorTypeLookupSuggestion)
-        value |= WebCore::DataDetectorTypeLookupSuggestion;
-
-    return static_cast<WebCore::DataDetectorTypes>(value);
-}
-#endif
 
 #if PLATFORM(MAC)
 static uint32_t convertUserInterfaceDirectionPolicy(WKUserInterfaceDirectionPolicy policy)
@@ -4444,7 +4418,10 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 #if USE(IOSURFACE)
     // If we are parented and thus won't incur a significant penalty from paging in tiles, snapshot the view hierarchy directly.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if (CADisplay *display = self.window.screen._display) {
+#pragma clang diagnostic pop
         auto surface = WebCore::IOSurface::create(WebCore::expandedIntSize(WebCore::FloatSize(imageSize)), WebCore::sRGBColorSpaceRef());
         if (!surface) {
             completionHandler(nullptr);

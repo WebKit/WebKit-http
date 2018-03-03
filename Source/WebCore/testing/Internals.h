@@ -201,6 +201,7 @@ public:
     String rangeAsText(const Range&);
     Ref<Range> subrange(Range&, int rangeLocation, int rangeLength);
     ExceptionOr<RefPtr<Range>> rangeForDictionaryLookupAtLocation(int x, int y);
+    RefPtr<Range> rangeOfStringNearLocation(const Range&, const String&, unsigned);
 
     ExceptionOr<void> setDelegatesScrolling(bool enabled);
 
@@ -520,7 +521,7 @@ public:
 
     Vector<String> accessKeyModifiers() const;
 
-#if USE(QUICK_LOOK)
+#if PLATFORM(IOS)
     void setQuickLookPassword(const String&);
 #endif
 

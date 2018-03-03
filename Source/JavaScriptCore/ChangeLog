@@ -1,3 +1,492 @@
+2017-02-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Use guaranteed RunLoop instead of RunLoop::current for dispatching inspector GC event
+        https://bugs.webkit.org/show_bug.cgi?id=167683
+        <rdar://problem/30167791>
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/agents/InspectorHeapAgent.cpp:
+        (Inspector::SendGarbageCollectionEventsTask::SendGarbageCollectionEventsTask):
+        Use RunLoop::main instead of RunLoop::current which may go away.
+
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        Ensure RunLoop::main is initialized when using JSC APIs.
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ArityFixup should adjust SP first
+        https://bugs.webkit.org/show_bug.cgi?id=167239
+
+        Reviewed by Michael Saboff.
+
+        Arity fixup extends the stack and copy/fill the stack with
+        the values. At that time, we accidentally read/write stack
+        space below the stack pointer. As a result, we touch the area
+        of the stack space below the x64 red zone. These areas are unsafe.
+        OS may corrupt this space when constructing a signal stack.
+        The Linux kernel could not populate the pages for this space
+        and causes segmentation fault. This patch changes the stack
+        pointer before performing the arity fixup.
+
+        * jit/ThunkGenerators.cpp:
+        (JSC::arityFixupGenerator):
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Make verifyEdge a RELEASE_ASSERT
+        <rdar://problem/30296879>
+
+        Rubber stamped by Saam Barati.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+
+2017-01-31  JF Bastien  <jfbastien@apple.com>
+
+        OSR entry: delay outer-loop compilation when at inner-loop
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+
+        Reviewed by Filip Pizlo.
+
+        r211224 was reverted because it caused a massive kraken/ai-astar
+        regression. This patch instead does the minimally-disruptive
+        change to fix the original bug as described below, but omits extra
+        tuning and refactoring which I had before. I'll commit tuning and
+        refactoring separately, if this sticks. This patch is therefore
+        very minimal, and layers carefully on top of the complex
+        spaghetti-logic. The only change it makes is that it uses triggers
+        to indicate to outer loops that they should compile, which fixes
+        the immediate bug and seems roughly perf neutral (maybe a small
+        gain on kraken sometimes, other times a small regression as would
+        be expected from compiling later).
+
+        As of https://bugs.webkit.org/show_bug.cgi?id=155217 OSR
+        compilation can be kicked off for an entry into an outer-loop,
+        while executing an inner-loop. This is desirable because often the
+        codegen from an inner-entry isn't as good as the codegen from an
+        outer-entry, but execution from an inner-loop is often pretty hot
+        and likely to kick off compilation. This approach provided nice
+        speedups on Kraken because we'd select to enter to the outer-loop
+        very reliably, which reduces variability (the inner-loop was
+        selected roughly 1/5 times from my unscientific measurements).
+
+        When compilation starts we take a snapshot of the JSValues at the
+        current execution state using OSR's recovery mechanism. These
+        values are passed to the compiler and are used as way to perform
+        type profiling, and could be used to observe cell types as well as
+        to perform predictions such as through constant propagation.
+
+        It's therefore desired to enter from the outer-loop when we can,
+        but we need to be executing from that location to capture the
+        right JSValues, otherwise we're confusing the compiler and giving
+        it inaccurate JSValues which can lead it to predict the wrong
+        things, leading to suboptimal code or recompilation due to
+        misprediction, or in super-corner-cases a crash.
+
+        These effects are pretty hard to measure: Fil points out that
+        marsalis-osr-entry really needs mustHandleValues (the JSValues
+        from the point of execution) because right now it just happens to
+        correctly guess int32. I tried removing mustHandleValues entirely
+        and saw no slowdowns, but our benchmarks probably aren't
+        sufficient to reliably find issues, sometimes because we happen to
+        have sufficient mitigations.
+
+        DFG tier-up was added here:
+        https://bugs.webkit.org/show_bug.cgi?id=112838
+
+        * dfg/DFGOperations.cpp:
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        The mutator should be able to perform increments of GC work
+        https://bugs.webkit.org/show_bug.cgi?id=167528
+
+        Reviewed by Keith Miller and Geoffrey Garen.
+
+        The cool thing about having a concurrent and parallel collector is that it's easy to also make
+        it incremental, because the load balancer can also hand over work to anyone (including the
+        mutator) and since the collector is running concurrently anyway, the mutator can usually rely
+        on the balancer having some spare work.
+
+        This change adds a classic work-based incremental mode to the GC. When you allocate K bytes,
+        you have to do Options::gcIncrementScale() * K "bytes" of draining. This is ammortized so that
+        it only happens in allocation slow paths.
+
+        On computers that have a lot of CPUs, this mode is not profitable and we set gcIncrementScale
+        to zero. On such computers, Riptide was already performing great because there was no way that
+        one mutator thread could outpace many GC threads. But on computers with fewer CPUs, there were
+        problems having to do with making the collector progress quickly enough so that the heap
+        doesn't grow too much. The stochastic scheduler actually made things worse, because it relies
+        a lot on the fact that the GC will simply be faster than the mutator anyway. The old scheduler
+        claimed to address the problem of GC pace, but it used a time-based scheduler, which is not as
+        precise at keeping pase as the new work-based incremental mode.
+
+        In theory, the work-based mode guarantees a bound on how much the heap can grow during a
+        collection just because each byte allocated means some number of bytes visited. We don't try
+        to create such a theoretical bound. We're just trying to give the collector an unfair advantage
+        in any race with the mutator.
+
+        Turning on incremental mode, the stochastic scheduler, and passive draining in combination with
+        each other is a huge splay-latency speed-up on my iPad. It's also a CDjs progression. It does
+        regress splay-throughput, but I think that's fine (the regression is 11%, the progression is
+        3x).
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        (JSC::Heap::~Heap):
+        (JSC::Heap::markToFixpoint):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::endMarking):
+        (JSC::Heap::finalize):
+        (JSC::Heap::didAllocate):
+        (JSC::Heap::visitCount):
+        (JSC::Heap::bytesVisited):
+        (JSC::Heap::forEachSlotVisitor):
+        (JSC::Heap::performIncrement):
+        (JSC::Heap::threadVisitCount): Deleted.
+        (JSC::Heap::threadBytesVisited): Deleted.
+        * heap/Heap.h:
+        * heap/MarkStack.cpp:
+        (JSC::MarkStackArray::transferTo):
+        * heap/MarkStack.h:
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::didStartMarking):
+        (JSC::SlotVisitor::clearMarkStacks):
+        (JSC::SlotVisitor::appendToMarkStack):
+        (JSC::SlotVisitor::noteLiveAuxiliaryCell):
+        (JSC::SlotVisitor::donateKnownParallel):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::performIncrementOfDraining):
+        (JSC::SlotVisitor::didReachTermination):
+        (JSC::SlotVisitor::hasWork):
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::donateAll):
+        (JSC::SlotVisitor::correspondingGlobalStack):
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::reportExtraMemoryVisited):
+        (JSC::SlotVisitor::forEachMarkStack):
+        * heap/SpaceTimeMutatorScheduler.cpp:
+        (JSC::SpaceTimeMutatorScheduler::log):
+        * heap/StochasticSpaceTimeMutatorScheduler.cpp:
+        (JSC::StochasticSpaceTimeMutatorScheduler::log):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionHeapCapacity):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        * runtime/Options.h:
+
+2017-01-31  Tomas Popela  <tpopela@redhat.com>
+
+        Compilation error in JSArrayBufferView.h
+        https://bugs.webkit.org/show_bug.cgi?id=167642
+
+        Reviewed by Alex Christensen.
+
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::vector):
+
+2017-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not reject WebAssembly.compile() with Exception
+        https://bugs.webkit.org/show_bug.cgi?id=167585
+
+        Reviewed by Mark Lam.
+
+        We accidentally reject the promise with Exception instead of Exception::value()
+        for the result of WebAssembly::compile().
+
+        * wasm/JSWebAssembly.cpp:
+        (JSC::webAssemblyCompileFunc):
+
+2017-01-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Implement PerformanceObserver
+        https://bugs.webkit.org/show_bug.cgi?id=167546
+        <rdar://problem/30247959>
+
+        Reviewed by Ryosuke Niwa.
+
+        * runtime/CommonIdentifiers.h:
+
+2017-01-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Need some limit on Async Call Stacks for async loops (rAF loops)
+        https://bugs.webkit.org/show_bug.cgi?id=165633
+        <rdar://problem/29738502>
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch limits the memory used by the Inspector backend to store async
+        stack trace data.
+
+        Asynchronous stack traces are stored as a disjoint set of parent pointer
+        trees. Tree nodes represent asynchronous operations, and hold a copy of
+        the stack trace at the time the operation was scheduled. Each tree can
+        be regarded as a set of stack traces, stored as singly linked lists that
+        share part of their structure (specifically their tails). Traces belonging
+        to the same tree will at least share a common root. A stack trace begins
+        at a leaf node and follows the chain of parent pointers to the root of
+        of the tree. Leaf nodes always contain pending asynchronous calls.
+
+        When an asynchronous operation is scheduled with requestAnimationFrame,
+        setInterval, etc, a node is created containing the current call stack and
+        some bookkeeping data for the operation. An unique identifier comprised
+        of an operation type and callback identifier is mapped to the node. If
+        scheduling the callback was itself the result of an asynchronous call,
+        the node becomes a child of the node associated with that call, otherwise
+        it becomes the root of a new tree.
+
+        A node is either `pending`, `active`, `dispatched`, or `canceled`. Nodes
+        start out as pending. After a callback for a pending node is dispatched
+        the node is marked as such, unless it is a repeating callback such as
+        setInterval, in which case it remains pending. Once a node is no longer
+        pending it is removed, as long as it has no children. Since nodes are
+        reference counted, it is a property of the stack trace tree that nodes
+        that are no longer pending and have no children pointing to them will be
+        automatically pruned from the tree.
+
+        If an async operation is canceled (e.g. cancelTimeout), the associated
+        node is marked as such. If the callback is not being dispatched at the
+        time, and has no children, it is removed.
+
+        Because async operations can be chained indefinitely, stack traces are
+        limited to a maximum depth. The depth of a stack trace is equal to the
+        sum of the depths of its nodes, with a node's depth equal to the number
+        of frames in its associated call stack. For any stack trace,
+
+            S = { s𝟶, s𝟷, …, s𝑘 }, with endpoints s𝟶, s𝑘
+            depth(S) = depth(s𝟶) + depth(s𝟷) + … + depth(s𝑘)
+
+        A stack trace is truncated when it exceeds the maximum depth. Truncation
+        occurs on node boundaries, not call frames, consequently the maximum depth
+        is more of a target than a guarantee:
+
+            d = maximum stack trace depth
+            for all S, depth(S) ≤ d + depth(s𝑘)
+
+        Because nodes can belong to multiple stack traces, it may be necessary
+        to clone the tail of a stack trace being truncated to prevent other traces
+        from being effected.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/AsyncStackTrace.cpp: Added.
+        (Inspector::AsyncStackTrace::create):
+        (Inspector::AsyncStackTrace::AsyncStackTrace):
+        (Inspector::AsyncStackTrace::~AsyncStackTrace):
+        (Inspector::AsyncStackTrace::isPending):
+        (Inspector::AsyncStackTrace::isLocked):
+        (Inspector::AsyncStackTrace::willDispatchAsyncCall):
+        (Inspector::AsyncStackTrace::didDispatchAsyncCall):
+        (Inspector::AsyncStackTrace::didCancelAsyncCall):
+        (Inspector::AsyncStackTrace::buildInspectorObject):
+        (Inspector::AsyncStackTrace::truncate):
+        (Inspector::AsyncStackTrace::remove):
+        * inspector/AsyncStackTrace.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didScheduleAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didCancelAsyncCall):
+        (Inspector::InspectorDebuggerAgent::willDispatchAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didDispatchAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::clearAsyncStackTraceData):
+        (Inspector::InspectorDebuggerAgent::buildAsyncStackTrace): Deleted.
+        (Inspector::InspectorDebuggerAgent::refAsyncCallData): Deleted.
+        (Inspector::InspectorDebuggerAgent::derefAsyncCallData): Deleted.
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/protocol/Console.json:
+
+2017-01-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r211345.
+
+        The LayoutTest for this change is failing an assertion.
+
+        Reverted changeset:
+
+        "Web Inspector: Need some limit on Async Call Stacks for async
+        loops (rAF loops)"
+        https://bugs.webkit.org/show_bug.cgi?id=165633
+        http://trac.webkit.org/changeset/211345
+
+2017-01-28  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Need some limit on Async Call Stacks for async loops (rAF loops)
+        https://bugs.webkit.org/show_bug.cgi?id=165633
+        <rdar://problem/29738502>
+
+        Reviewed by Joseph Pecoraro.
+
+        This patch limits the memory used by the Inspector backend to store async
+        stack trace data.
+
+        Asynchronous stack traces are stored as a disjoint set of parent pointer
+        trees. Tree nodes represent asynchronous operations, and hold a copy of
+        the stack trace at the time the operation was scheduled. Each tree can
+        be regarded as a set of stack traces, stored as singly linked lists that
+        share part of their structure (specifically their tails). Traces belonging
+        to the same tree will at least share a common root. A stack trace begins
+        at a leaf node and follows the chain of parent pointers to the root of
+        of the tree. Leaf nodes always contain pending asynchronous calls.
+
+        When an asynchronous operation is scheduled with requestAnimationFrame,
+        setInterval, etc, a node is created containing the current call stack and
+        some bookkeeping data for the operation. An unique identifier comprised
+        of an operation type and callback identifier is mapped to the node. If
+        scheduling the callback was itself the result of an asynchronous call,
+        the node becomes a child of the node associated with that call, otherwise
+        it becomes the root of a new tree.
+
+        A node is either `pending`, `active`, `dispatched`, or `canceled`. Nodes
+        start out as pending. After a callback for a pending node is dispatched
+        the node is marked as such, unless it is a repeating callback such as
+        setInterval, in which case it remains pending. Once a node is no longer
+        pending it is removed, as long as it has no children. Since nodes are
+        reference counted, it is a property of the stack trace tree that nodes
+        that are no longer pending and have no children pointing to them will be
+        automatically pruned from the tree.
+
+        If an async operation is canceled (e.g. cancelTimeout), the associated
+        node is marked as such. If the callback is not being dispatched at the
+        time, and has no children, it is removed.
+
+        Because async operations can be chained indefinitely, stack traces are
+        limited to a maximum depth. The depth of a stack trace is equal to the
+        sum of the depths of its nodes, with a node's depth equal to the number
+        of frames in its associated call stack. For any stack trace,
+
+            S = { s𝟶, s𝟷, …, s𝑘 }, with endpoints s𝟶, s𝑘
+            depth(S) = depth(s𝟶) + depth(s𝟷) + … + depth(s𝑘)
+
+        A stack trace is truncated when it exceeds the maximum depth. Truncation
+        occurs on node boundaries, not call frames, consequently the maximum depth
+        is more of a target than a guarantee:
+
+            d = maximum stack trace depth
+            for all S, depth(S) ≤ d + depth(s𝑘)
+
+        Because nodes can belong to multiple stack traces, it may be necessary
+        to clone the tail of a stack trace being truncated to prevent other traces
+        from being effected.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/AsyncStackTrace.cpp: Added.
+        (Inspector::AsyncStackTrace::create):
+        (Inspector::AsyncStackTrace::AsyncStackTrace):
+        (Inspector::AsyncStackTrace::~AsyncStackTrace):
+        (Inspector::AsyncStackTrace::isPending):
+        (Inspector::AsyncStackTrace::isLocked):
+        (Inspector::AsyncStackTrace::willDispatchAsyncCall):
+        (Inspector::AsyncStackTrace::didDispatchAsyncCall):
+        (Inspector::AsyncStackTrace::didCancelAsyncCall):
+        (Inspector::AsyncStackTrace::buildInspectorObject):
+        (Inspector::AsyncStackTrace::truncate):
+        (Inspector::AsyncStackTrace::remove):
+        * inspector/AsyncStackTrace.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didScheduleAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didCancelAsyncCall):
+        (Inspector::InspectorDebuggerAgent::willDispatchAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didDispatchAsyncCall):
+        (Inspector::InspectorDebuggerAgent::didPause):
+        (Inspector::InspectorDebuggerAgent::clearAsyncStackTraceData):
+        (Inspector::InspectorDebuggerAgent::buildAsyncStackTrace): Deleted.
+        (Inspector::InspectorDebuggerAgent::refAsyncCallData): Deleted.
+        (Inspector::InspectorDebuggerAgent::derefAsyncCallData): Deleted.
+        * inspector/agents/InspectorDebuggerAgent.h:
+        * inspector/protocol/Console.json:
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remote Inspector: Listing should be updated when a target gains or loses a debugger session
+        https://bugs.webkit.org/show_bug.cgi?id=167449
+
+        Reviewed by Brian Burg.
+
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/RemoteInspector.mm:
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::updateTargetListing):
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::receivedDidCloseMessage):
+        (Inspector::RemoteInspector::receivedConnectionDiedMessage):
+        Whenever we add/remove a connection we should update the listing properties
+        for that target that corresponded to that connection. In this way group
+        updating active sessions, the target, and pushing listing together.
+
+2017-01-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Lift template escape sequence restrictions in tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=166871
+
+        Reviewed by Saam Barati.
+
+        This patch implements stage 3 Lifting Template Literal Restriction[1].
+        Prior to this patch, template literal becomes syntax error if it contains
+        invalid escape sequences. But it is too restricted; Template literal
+        can have cooked and raw representations and only cooked representation
+        can escape sequences. So even if invalid escape sequences are included,
+        the raw representation can be valid.
+
+        Lifting Template Literal Restriction relaxes the above restriction.
+        When invalid escape sequence is included, if target template literals
+        are used as tagged templates, we make the result of the template including
+        the invalid escape sequence `undefined` instead of making it SyntaxError
+        immediately. It allows us to accept the templates including invalid
+        escape sequences in the raw representations in tagged templates.
+
+        On the other hand, the raw representation is only used in tagged templates.
+        So if invalid escape sequences are included in the usual template literals,
+        we just make it SyntaxError as before.
+
+        [1]: https://github.com/tc39/proposal-template-literal-revision
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitGetTemplateObject):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::TemplateStringNode::emitBytecode):
+        (JSC::TemplateLiteralNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createTemplateString):
+        * parser/Lexer.cpp:
+        (JSC::Lexer<CharacterType>::parseUnicodeEscape):
+        (JSC::Lexer<T>::parseTemplateLiteral):
+        (JSC::Lexer<T>::lex):
+        (JSC::Lexer<T>::scanTemplateString):
+        (JSC::Lexer<T>::scanTrailingTemplateString): Deleted.
+        * parser/Lexer.h:
+        * parser/NodeConstructors.h:
+        (JSC::TemplateStringNode::TemplateStringNode):
+        * parser/Nodes.h:
+        (JSC::TemplateStringNode::cooked):
+        (JSC::TemplateStringNode::raw):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseAssignmentElement):
+        (JSC::Parser<LexerType>::parseTemplateString):
+        (JSC::Parser<LexerType>::parseTemplateLiteral):
+        (JSC::Parser<LexerType>::parsePrimaryExpression):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+        * parser/ParserTokens.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createTemplateString):
+        * runtime/TemplateRegistry.cpp:
+        (JSC::TemplateRegistry::getTemplateObject):
+        * runtime/TemplateRegistryKey.h:
+        (JSC::TemplateRegistryKey::cookedStrings):
+        (JSC::TemplateRegistryKey::create):
+        (JSC::TemplateRegistryKey::TemplateRegistryKey):
+        * runtime/TemplateRegistryKeyTable.cpp:
+        (JSC::TemplateRegistryKeyTable::createKey):
+        * runtime/TemplateRegistryKeyTable.h:
+
 2017-01-27  Saam Barati  <sbarati@apple.com>
 
         Make the CLI for the sampling profiler better for inlined call site indices

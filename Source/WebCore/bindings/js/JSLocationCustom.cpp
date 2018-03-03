@@ -24,6 +24,8 @@
 #include "JSLocation.h"
 
 #include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
+#include "JSDOMExceptionHandling.h"
 #include "RuntimeApplicationChecks.h"
 #include <runtime/JSFunction.h>
 
@@ -50,6 +52,11 @@ bool JSLocation::getOwnPropertySlotDelegate(ExecState* state, PropertyName prope
     String message;
     if (BindingSecurity::shouldAllowAccessToFrame(*state, *frame, message))
         return false;
+
+    if (propertyName == state->propertyNames().toStringTagSymbol || propertyName == state->propertyNames().hasInstanceSymbol || propertyName == state->propertyNames().isConcatSpreadableSymbol) {
+        slot.setUndefined();
+        return true;
+    }
 
     // We only allow access to Location.replace() cross origin.
     if (propertyName == state->propertyNames().replace) {

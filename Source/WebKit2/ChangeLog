@@ -1,3 +1,992 @@
+2017-02-01  Anders Carlsson  <andersca@apple.com>
+
+        IPC::Connection receive ports should be guarded
+        https://bugs.webkit.org/show_bug.cgi?id=167704
+
+        Reviewed by Tim Horton.
+
+        Guarding receive rights will make sure that they won't be closed accidentally. They are created
+        with a context pointer and can only be unguarded or destructed with the same context pointer.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::platformInvalidate):
+        Use mach_port_destruct and pass the connection pointer as the context.
+
+        (IPC::Connection::platformInitialize):
+        Guard the server port with the connection pointer as the context.
+
+        (IPC::Connection::open):
+        Use mach_port_construct to create the port which lets us avoid a call to mach_port_set_attributes and setMachPortQueueLength.
+        Make the port guarded and use the connection pointer as the context.
+
+        (IPC::createReceiveSource):
+        Get rid of this and just duplicate the five lines of code in two places. For the receive port we want to use mach_port_destruct
+        in our cancel handler.
+
+2017-02-01  Andreas Kling  <akling@apple.com>
+
+        Implement the alwaysRunsAtBackgroundPriority WK2 setting using thread QoS.
+        <https://webkit.org/b/167387>
+        <rdar://problem/29711409>
+
+        Reviewed by Antti Koivisto.
+
+        Remove the old ProcessThrottlerClient implementation of alwaysRunsAtBackgroundPriority
+        and replace it with WTF::setGlobalMaxQOSClass().
+
+        If the setting is enabled, it's passed over to each WK2 child process along with its
+        bootstrap parameter, and we notify WTF in XPCServiceInitializer(), before anything
+        too threading related happens.
+
+        * Platform/IPC/Connection.cpp:
+        (IPC::Connection::processIncomingMessage):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializer):
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.mm:
+        (WebKit::XPCServiceInitializerDelegate::getExtraInitializationData):
+        * UIProcess/API/APIProcessPoolConfiguration.h:
+        * UIProcess/ChildProcessProxy.cpp:
+        (WebKit::ChildProcessProxy::ChildProcessProxy):
+        (WebKit::ChildProcessProxy::getLaunchOptions):
+        * UIProcess/ChildProcessProxy.h:
+        * UIProcess/Databases/DatabaseProcessProxy.cpp:
+        (WebKit::DatabaseProcessProxy::DatabaseProcessProxy):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::NetworkProcessProxy):
+        (WebKit::NetworkProcessProxy::alwaysRunsAtBackgroundPriority): Deleted.
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/ProcessThrottler.cpp:
+        (WebKit::ProcessThrottler::assertionState):
+        * UIProcess/ProcessThrottlerClient.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::WebProcessProxy):
+        (WebKit::WebProcessProxy::alwaysRunsAtBackgroundPriority): Deleted.
+        * UIProcess/WebProcessProxy.h:
+
+2017-02-01  Tomas Popela  <tpopela@redhat.com>
+
+        [GTK] Add an API to add a custom tab into the print dialog
+        https://bugs.webkit.org/show_bug.cgi?id=151998
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a new create-custom-widget signal to the WebKitPrintOperation. The
+        signal is emitted before the dialog is displayed and it gives an
+        opportunity to embed a custom widget in the dialog. You can do so by
+        creating a new WebKitPrintCustomWidget and returning it from the
+        create-custom-widget signal handler. The WebKitPrintCustomWidget is
+        emitting two signals:
+          - update - emitted when the currently selected printer is changed,
+                     to be able to actualize the custom widget based on the
+                     current printer
+          - apply - emitted when the dialog is closed, just before the
+                    printing will start, to be able e.g. to change content
+                    based on the custom widget state.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/gtk/WebKitAutocleanups.h:
+        * UIProcess/API/gtk/WebKitPrintCustomWidget.cpp: Added.
+        (webkitPrintCustomWidgetSetProperty):
+        (webkit_print_custom_widget_class_init):
+        (webkit_print_custom_widget_new):
+        (webkit_print_custom_widget_get_widget):
+        (webkit_print_custom_widget_get_title):
+        (webkitPrintCustomWidgetEmitCustomWidgetApplySignal):
+        (webkitPrintCustomWidgetEmitUpdateCustomWidgetSignal):
+        * UIProcess/API/gtk/WebKitPrintCustomWidget.h: Added.
+        * UIProcess/API/gtk/WebKitPrintCustomWidgetPrivate.h: Added.
+        * UIProcess/API/gtk/WebKitPrintOperation.cpp:
+        (webkitPrintOperationAccumulatorObjectHandled):
+        (webkit_print_operation_class_init):
+        (notifySelectedPrinterCallback):
+        (webkitPrintOperationRunDialog):
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0.types:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+        * UIProcess/API/gtk/webkit2.h:
+
+2017-02-01  Antti Koivisto  <antti@apple.com>
+
+        Load resources speculatively
+        https://bugs.webkit.org/show_bug.cgi?id=167660
+
+        Reviewed by Andreas Kling.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::makeEntry):
+
+            Factor to a function.
+
+        (WebKit::NetworkCache::Cache::store):
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.cpp:
+        (WebKit::NetworkCache::SpeculativeLoad::SpeculativeLoad):
+
+            Support loads where we don't have existing cache entry to validate.
+
+        (WebKit::NetworkCache::SpeculativeLoad::didReceiveBuffer):
+
+            Synthesize a NetworkCache::Entry if we can't store it.
+
+        (WebKit::NetworkCache::SpeculativeLoad::didFinishLoading):
+        (WebKit::NetworkCache::SpeculativeLoad::didFailLoading):
+        (WebKit::NetworkCache::SpeculativeLoad::abort):
+        (WebKit::NetworkCache::SpeculativeLoad::didComplete):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        (WebKit::NetworkCache::constructRevalidationRequest):
+
+            Make having existing cache entry optional.
+
+        (WebKit::NetworkCache::SpeculativeLoadManager::retrieveEntryFromStorage):
+
+            Allow validation without validation headers (that is, normal load).
+
+        (WebKit::NetworkCache::SpeculativeLoadManager::revalidateSubresource):
+
+            Make having existing cache entry optional.
+
+        (WebKit::NetworkCache::canRevalidate):
+
+            Allow speculative loads without validation headers if we have high confidence that the
+            page is going to request this resource again. This is based on the time span we have
+            seen this resource being loaded on a given page and how much time has elapsed since we
+            last loaded it.
+
+            For example if we have seen the resource over the last 10 days we'll speculate that it will
+            be required for the next 5 days.
+
+        (WebKit::NetworkCache::SpeculativeLoadManager::preloadEntry):
+        (WebKit::NetworkCache::SpeculativeLoadManager::revalidateEntry): Deleted.
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.h:
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.cpp:
+        (WebKit::NetworkCache::SubresourceInfo::encode):
+        (WebKit::NetworkCache::SubresourceInfo::decode):
+
+            Encode the firstSeen and lastSeen time stamps.
+
+        (WebKit::NetworkCache::SubresourceInfo::SubresourceInfo):
+        (WebKit::NetworkCache::makeSubresourceInfoVector):
+        (WebKit::NetworkCache::SubresourcesEntry::SubresourcesEntry):
+        (WebKit::NetworkCache::SubresourcesEntry::updateSubresourceLoads):
+        * NetworkProcess/cache/NetworkCacheSubresourcesEntry.h:
+        (WebKit::NetworkCache::SubresourceInfo::lastSeen):
+        (WebKit::NetworkCache::SubresourceInfo::firstSeen):
+        (WebKit::NetworkCache::SubresourceInfo::setNonTransient):
+        (WebKit::NetworkCache::SubresourceInfo::SubresourceInfo): Deleted.
+        (WebKit::NetworkCache::SubresourceInfo::setTransient): Deleted.
+
+2017-02-01  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Unreviewed speculative buildfix after r211403.
+        https://bugs.webkit.org/show_bug.cgi?id=167601
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+
+2017-01-31  Antti Koivisto  <antti@apple.com>
+
+        Teach cache coders to encode time_points
+        https://bugs.webkit.org/show_bug.cgi?id=167670
+
+        Reviewed by Andreas Kling.
+
+        Encode time_point instead of duration.
+
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::decodeRecordMetaData):
+        (WebKit::NetworkCache::Storage::readRecord):
+        (WebKit::NetworkCache::encodeRecordMetaData):
+        (WebKit::NetworkCache::Storage::encodeRecord):
+        (WebKit::NetworkCache::Storage::traverse):
+
+2017-01-31  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebRTC][WebKit2] Support expanding the sandbox to allow microphone access at process launch
+        https://bugs.webkit.org/show_bug.cgi?id=167669
+        <rdar://problem/29974333>
+
+        Reviewed by Alexey Proskuryakov.
+
+        This change implements a temporary workaround to <rdar://problem/29448368> to allow us to do live
+        testing of WebRTC microphone access. It should be removed when that underlying bug is fixed.
+
+        This change adds a new process creation parameter that indicates whether we wish to expand the
+        sandbox to allow microphone access.
+
+        Tested by WebRTC suite (part of another set of bugs).
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode): Serialize the audio access entitlement handle.
+        (WebKit::WebProcessCreationParameters::decode): Ditto.
+        * Shared/WebProcessCreationParameters.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess): Create an entitlement handle and pass along to
+        the child process.
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::platformInitializeWebProcess): If an audio entitlement (for the microphone)
+        was desired, expand the sandbox to include access.
+
+2017-01-31  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the build.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _snapshotRect:intoImageOfWidth:completionHandler:]):
+
+2017-01-31  Anders Carlsson  <andersca@apple.com>
+
+        Add more CRASH calls to try to figure out why we're failing to send mach ports over the wire
+        https://bugs.webkit.org/show_bug.cgi?id=167657
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openFrontendConnection):
+
+2017-01-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Crash when trying to compute global location when the WKContentView does not have a window
+        https://bugs.webkit.org/show_bug.cgi?id=167627
+        <rdar://problem/30272380>
+
+        Reviewed by Beth Dakin.
+
+        Moves data interaction state out of OpenSource and into WebKitAdditions. Work towards fixing a crash in
+        <rdar://problem/30272380>.
+
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView resignFirstResponder]):
+
+2017-01-31  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Add support for WK2 libwebrtc endpoint
+        https://bugs.webkit.org/show_bug.cgi?id=167306
+        <rdar://problem/30245426>
+
+        Reviewed by Alex Christensen.
+
+        Implementation of the LibWebRTC networking in WebKit2.
+        The following features are required to be moved from WebProcess to NetworkProcess:
+        1 Resolution of DNS names (RTCResolver)
+        2 Enumeration of interfaces/gathering of host addresses (RTCMonitor)
+        3 Implementation of Packet Socket for TCP/UDP communication (RTCSocket).
+
+        This patch implements the related classes in WebProcess/NetworkProcess and the integration with libwebrtc.
+        NetworkProcess implementation is using libwebetc for NetworkRTCMonitor and NetworkRTCSocket.
+        This ensures an as-close implementation to libwebrtc as possible.
+        In the future, after getting a better test infrastructure we should try to implement these using native APIs.
+
+        Currently, the implementation is as follow:
+        - libwebrtc is calling WebProcess stack on the rtc network thread
+        - WebProcess stack is forwarding calls to the main thread and makes related IPC calls
+        - NetworkProcess receives the IPC calls and forward them to the rtc network thread.
+        - The calls are processed in the rtc network thread
+        Conversely, when the rtc network thread wants to notify its client, the reverse path is used.
+
+        This patch also implements the LibWebRTCProvider for WebKit2.
+        This provider uses the related classes to create a peer connection factory that will use them.
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::~NetworkConnectionToWebProcess):
+        (WebKit::NetworkConnectionToWebProcess::didReceiveMessage):
+        (WebKit::NetworkConnectionToWebProcess::rtcProvider):
+        (WebKit::NetworkConnectionToWebProcess::didClose):
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        * NetworkProcess/webrtc/LibWebRTCSocketClient.cpp: Added.
+        (WebKit::LibWebRTCSocketClient::LibWebRTCSocketClient):
+        (WebKit::LibWebRTCSocketClient::sendTo):
+        (WebKit::LibWebRTCSocketClient::close):
+        (WebKit::LibWebRTCSocketClient::setOption):
+        (WebKit::LibWebRTCSocketClient::signalReadPacket):
+        (WebKit::LibWebRTCSocketClient::signalSentPacket):
+        (WebKit::LibWebRTCSocketClient::signalAddressReady):
+        (WebKit::LibWebRTCSocketClient::signalConnect):
+        (WebKit::LibWebRTCSocketClient::signalClose):
+        * NetworkProcess/webrtc/LibWebRTCSocketClient.h: Added.
+        * NetworkProcess/webrtc/NetworkRTCMonitor.cpp: Added.
+        (WebKit::NetworkRTCMonitor::startUpdating):
+        (WebKit::NetworkRTCMonitor::stopUpdating):
+        (WebKit::NetworkRTCMonitor::onNetworksChanged):
+        * NetworkProcess/webrtc/NetworkRTCMonitor.h: Added.
+        * NetworkProcess/webrtc/NetworkRTCMonitor.messages.in: Added.
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp: Added.
+        (WebKit::createThread):
+        (WebKit::NetworkRTCProvider::NetworkRTCProvider):
+        (WebKit::NetworkRTCProvider::close):
+        (WebKit::NetworkRTCProvider::createUDPSocket):
+        (WebKit::NetworkRTCProvider::createServerTCPSocket):
+        (WebKit::NetworkRTCProvider::createClientTCPSocket):
+        (WebKit::NetworkRTCProvider::addSocket):
+        (WebKit::NetworkRTCProvider::takeSocket):
+        (WebKit::NetworkRTCProvider::didReceiveNetworkRTCSocketMessage):
+        (WebKit::NetworkRTCProvider::createResolver):
+        (WebKit::NetworkRTCProvider::stopResolver):
+        (WebKit::NetworkRTCProvider::resolvedName):
+        (WebKit::NetworkMessageData::NetworkMessageData):
+        (WebKit::NetworkRTCProvider::OnMessage):
+        (WebKit::NetworkRTCProvider::callOnRTCNetworkThread):
+        (WebKit::NetworkRTCProvider::callSocket):
+        (WebKit::NetworkRTCProvider::sendFromMainThread):
+        * NetworkProcess/webrtc/NetworkRTCProvider.h: Added.
+        (WebKit::NetworkRTCProvider::create):
+        (WebKit::NetworkRTCProvider::didReceiveNetworkRTCMonitorMessage):
+        (WebKit::NetworkRTCProvider::Resolver::Resolver):
+        (WebKit::NetworkRTCProvider::Resolver::~Resolver):
+        * NetworkProcess/webrtc/NetworkRTCProvider.messages.in: Added.
+        * NetworkProcess/webrtc/NetworkRTCSocket.cpp: Added.
+        (WebKit::NetworkRTCSocket::NetworkRTCSocket):
+        (WebKit::NetworkRTCSocket::sendTo):
+        (WebKit::NetworkRTCSocket::close):
+        (WebKit::NetworkRTCSocket::setOption):
+        * NetworkProcess/webrtc/NetworkRTCSocket.h: Added.
+        * NetworkProcess/webrtc/NetworkRTCSocket.messages.in: Added.
+        * Shared/RTCNetwork.cpp: Added.
+        (WebKit::RTCNetwork::RTCNetwork):
+        (WebKit::ips):
+        (WebKit::RTCNetwork::value):
+        (WebKit::RTCNetwork::IPAddress::decode):
+        (WebKit::RTCNetwork::IPAddress::encode):
+        (WebKit::RTCNetwork::decode):
+        (WebKit::RTCNetwork::encode):
+        * Shared/RTCNetwork.h: Added.
+        (WebKit::RTCNetwork::IPAddress::IPAddress):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Network/NetworkProcessConnection.cpp:
+        (WebKit::NetworkProcessConnection::didReceiveMessage):
+        * WebProcess/Network/webrtc/LibWebRTCNetwork.h: Added.
+        (WebKit::LibWebRTCNetwork::monitor):
+        (WebKit::LibWebRTCNetwork::socketFactory):
+        (WebKit::LibWebRTCNetwork::socket):
+        (WebKit::LibWebRTCNetwork::resolver):
+        * WebProcess/Network/webrtc/LibWebRTCProvider.cpp: Added.
+        (WebKit::LibWebRTCProvider::createPeerConnection):
+        * WebProcess/Network/webrtc/LibWebRTCProvider.h: Added.
+        * WebProcess/Network/webrtc/LibWebRTCResolver.cpp: Added.
+        (WebKit::sendOnMainThread):
+        (WebKit::LibWebRTCResolver::Start):
+        (WebKit::LibWebRTCResolver::GetResolvedAddress):
+        (WebKit::LibWebRTCResolver::Destroy):
+        (WebKit::LibWebRTCResolver::setResolvedAddress):
+        (WebKit::LibWebRTCResolver::setError):
+        * WebProcess/Network/webrtc/LibWebRTCResolver.h: Added.
+        * WebProcess/Network/webrtc/LibWebRTCSocket.cpp: Added.
+        (WebKit::sendOnMainThread):
+        (WebKit::LibWebRTCSocket::LibWebRTCSocket):
+        (WebKit::LibWebRTCSocket::~LibWebRTCSocket):
+        (WebKit::LibWebRTCSocket::GetLocalAddress):
+        (WebKit::LibWebRTCSocket::GetRemoteAddress):
+        (WebKit::LibWebRTCSocket::signalAddressReady):
+        (WebKit::LibWebRTCSocket::signalReadPacket):
+        (WebKit::LibWebRTCSocket::signalSentPacket):
+        (WebKit::LibWebRTCSocket::signalConnect):
+        (WebKit::LibWebRTCSocket::signalClose):
+        (WebKit::authKey):
+        (WebKit::LibWebRTCSocket::willSend):
+        (WebKit::LibWebRTCSocket::SendTo):
+        (WebKit::LibWebRTCSocket::Close):
+        (WebKit::LibWebRTCSocket::GetOption):
+        (WebKit::LibWebRTCSocket::SetOption):
+        * WebProcess/Network/webrtc/LibWebRTCSocket.h: Added.
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp: Added.
+        (WebKit::LibWebRTCSocketFactory::CreateServerTcpSocket):
+        (WebKit::LibWebRTCSocketFactory::CreateUdpSocket):
+        (WebKit::LibWebRTCSocketFactory::CreateClientTcpSocket):
+        (WebKit::LibWebRTCSocketFactory::detach):
+        (WebKit::LibWebRTCSocketFactory::CreateAsyncResolver):
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.h: Added.
+        * WebProcess/Network/webrtc/WebRTCMonitor.cpp: Added.
+        (WebKit::sendOnMainThread):
+        (WebKit::WebRTCMonitor::StartUpdating):
+        (WebKit::WebRTCMonitor::StopUpdating):
+        (WebKit::WebRTCMonitor::networksChanged):
+        * WebProcess/Network/webrtc/WebRTCMonitor.h: Added.
+        * WebProcess/Network/webrtc/WebRTCMonitor.messages.in: Added.
+        * WebProcess/Network/webrtc/WebRTCResolver.cpp: Added.
+        (WebKit::WebRTCResolver::WebRTCResolver):
+        (WebKit::WebRTCResolver::setResolvedAddress):
+        (WebKit::WebRTCResolver::resolvedAddressError):
+        * WebProcess/Network/webrtc/WebRTCResolver.h: Added.
+        * WebProcess/Network/webrtc/WebRTCResolver.messages.in: Added.
+        * WebProcess/Network/webrtc/WebRTCSocket.cpp: Added.
+        (WebKit::WebRTCSocket::signalOnNetworkThread):
+        (WebKit::WebRTCSocket::WebRTCSocket):
+        (WebKit::WebRTCSocket::signalAddressReady):
+        (WebKit::WebRTCSocket::signalReadPacket):
+        (WebKit::WebRTCSocket::signalSentPacket):
+        (WebKit::WebRTCSocket::signalConnect):
+        (WebKit::WebRTCSocket::signalClose):
+        * WebProcess/Network/webrtc/WebRTCSocket.h: Added.
+        * WebProcess/Network/webrtc/WebRTCSocket.messages.in: Added.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_userInterfaceLayoutDirection):
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeLibWebRTC):
+        * WebProcess/WebProcess.h:
+        (WebKit::WebProcess::libWebRTC):
+
+2017-01-31  Jessie Berlin  <jberlin@webkit.org>
+
+        Build fix.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::dragImageForView):
+        * WebProcess/Plugins/PDF/DeprecatedPDFPlugin.mm:
+        (-[WKPDFLayerControllerDelegate writeItemsToPasteboard:withTypes:]):
+        (WebKit::PDFPlugin::handleEditingCommand):
+        * WebProcess/Plugins/PDF/PDFPlugin.mm:
+        (-[WKPDFLayerControllerDelegate pdfLayerController:copyItems:withTypes:]):
+        (WebKit::PDFPlugin::handleEditingCommand):
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::WebDragClient::declareAndWriteAttachment):
+        (WebKit::WebDragClient::declareAndWriteDragImage):
+
+2017-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.15.4 release.
+
+        * gtk/NEWS: Add release notes for 2.15.4.
+
+2017-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix syntax error in GTK+ API docs.
+
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+
+2017-01-31  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Enable CSS Grid Layout by default
+        https://bugs.webkit.org/show_bug.cgi?id=167578
+
+        Reviewed by Michael Catanzaro.
+
+        Now that Safari 10.1 is shipping CSS Grid Layout it seems safe to enable the feature by default:
+        https://developer.apple.com/library/prerelease/content/releasenotes/General/WhatsNewInSafari/Articles/Safari_10_1.html
+
+        * Shared/WebPreferencesDefinitions.h: Remove Grid Layout from the list of experimental flags and enable it by default.
+
+2017-01-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [CoordinatedGraphics] WebCoordinatedSurface::create should do null-check of the return value of ShareableBitmap::createShareable
+        https://bugs.webkit.org/show_bug.cgi?id=167631
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::create): Do null-check of the
+        return value of ShareableBitmap::createShareable.
+
+2017-01-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Environment variables for enabling/disabling AC mode should take precedence over the API.
+        https://bugs.webkit.org/show_bug.cgi?id=167605
+
+        Reviewed by Žan Doberšek.
+
+        Add HardwareAccelerationManager singleton helper to handle the global values for enabling, disabling or forcing
+        accelerated compositing. This is used by WebPreferences to initialize the values like always, but also by
+        WebKitSettings to ensure those values are honored and are not changed when it's not possible. This new class can
+        be used in the future to implement the GPU blacklist.
+
+        * PlatformGTK.cmake: Add new files to compilation.
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webkit_settings_class_init): Document that the setting depends on actual hardware capabilities.
+        (webkit_settings_set_hardware_acceleration_policy): Check HardwareAccelerationManager before trying to change
+        the settings.
+        * UIProcess/gtk/HardwareAccelerationManager.cpp: Added.
+        (WebKit::HardwareAccelerationManager::singleton):
+        (WebKit::HardwareAccelerationManager::HardwareAccelerationManager): Initialize m_canUseHardwareAcceleration and
+        m_forceHardwareAcceleration dependoing on hardware and system capabilites and
+        WEBKIT_DISABLE_COMPOSITING_MODE/WEBKIT_FORCE_COMPOSITING_MODE variables.
+        * UIProcess/gtk/HardwareAccelerationManager.h: Added.
+        (WebKit::HardwareAccelerationManager::canUseHardwareAcceleration):
+        (WebKit::HardwareAccelerationManager::forceHardwareAcceleration):
+        * UIProcess/gtk/WebPreferencesGtk.cpp:
+        (WebKit::WebPreferences::platformInitializeStore): Use HardwareAccelerationManager to set the initial values.
+
+2017-01-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] HTTP authentication is not implemented for downloads
+        https://bugs.webkit.org/show_bug.cgi?id=167583
+
+        Reviewed by Michael Catanzaro.
+
+        When a normal load is converted to a download, the HTTP authentication happens before the load is converted, and
+        the download starts already authenticated. However, downloads started by DownloadManager::startDownload use the
+        DownloadClient API to do the authentication. We don't implement didReceiveAuthenticationChallenge() in our
+        download client, what makes the load to be cancelled and then fail silently. We should probably add API to
+        handle downloads authentication, but we can also forward the authentication to the web view for downloads having
+        a web view associated. That would cover most of the cases, like downloading from the context menu.
+
+        * UIProcess/API/gtk/WebKitDownloadClient.cpp: Add didReceiveAuthenticationChallenge implementation.
+
+2017-01-30  Sam Weinig  <sam@webkit.org>
+
+        JSDOMBinding is too big. Split it up!
+        https://bugs.webkit.org/show_bug.cgi?id=167601
+
+        Reviewed by Darin Adler.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        Replace include of JSDOMBinding with JSDOMExceptionHandling.
+
+2017-01-30  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] FrameLoaderClient should return the new QuickLookHandleClient it creates
+        https://bugs.webkit.org/show_bug.cgi?id=167625
+
+        Reviewed by Andreas Kling.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h: Declared createQuickLookHandleClient().
+        * WebProcess/WebCoreSupport/ios/WebFrameLoaderClientIOS.mm:
+        (WebKit::WebFrameLoaderClient::createQuickLookHandleClient): Renamed from didCreateQuickLookHandle().
+        (WebKit::WebFrameLoaderClient::didCreateQuickLookHandle): Renamed to createQuickLookHandleClient().
+        * WebProcess/WebCoreSupport/ios/WebQuickLookHandleClient.cpp:
+        (WebKit::WebQuickLookHandleClient::WebQuickLookHandleClient): Set m_fileName and m_uti from
+        the constructor arguments instead of from handle.
+        * WebProcess/WebCoreSupport/ios/WebQuickLookHandleClient.h:
+
+2017-01-30  Anders Carlsson  <andersca@apple.com>
+
+        Add some more crash reporter information to diagnose a failed mach_msg
+        https://bugs.webkit.org/show_bug.cgi?id=167610
+
+        Reviewed by Dean Jackson.
+
+        Include the receive port name as well.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::readFromMachPort):
+
+2017-01-30  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS] position:fixed inside touch-scrollable overflow is mispositioned
+        https://bugs.webkit.org/show_bug.cgi?id=167604
+        rdar://problem/29500273
+
+        Reviewed by Zalan Bujtas.
+
+        Make sure we tell m_webPageProxy.computeCustomFixedPositionRect() when visual viewports are enabled.
+
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::customFixedPositionRect):
+
+2017-01-30  Simon Fraser  <simon.fraser@apple.com>
+
+        Fixed elements should not rubber-band in WK2, nor remain at negative offsets
+        https://bugs.webkit.org/show_bug.cgi?id=167484
+        rdar://problem/29453068
+
+        Reviewed by Dean Jackson.
+
+        Pass in StickToViewportBounds as we did before visual viewports.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::computeCustomFixedPositionRect):
+
+2017-01-30  Chris Dumez  <cdumez@apple.com>
+
+        Update DiagnosticLoggingClient::logDiagnosticMessageWithValue() to take in the value as a double
+        https://bugs.webkit.org/show_bug.cgi?id=167536
+
+        Reviewed by Darin Adler.
+
+        Update DiagnosticLoggingClient::logDiagnosticMessageWithValue() to take in the value as a double
+        instead of a string. The value needs to be numeric and the current API is error-prone.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::logDiagnosticMessage):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithResult):
+        (WebKit::NetworkProcess::logDiagnosticMessageWithValue):
+        * NetworkProcess/NetworkProcess.h:
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/HighPerformanceGraphicsUsageSampler.cpp:
+        (WebKit::HighPerformanceGraphicsUsageSampler::timerFired):
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::logDiagnosticMessage):
+        (WebKit::NetworkProcessProxy::logDiagnosticMessageWithResult):
+        (WebKit::NetworkProcessProxy::logDiagnosticMessageWithValue):
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+        * UIProcess/PerActivityStateCPUUsageSampler.cpp:
+        (WebKit::PerActivityStateCPUUsageSampler::loggingTimerFired):
+        * UIProcess/WebBackForwardList.cpp:
+        (WebKit::WebBackForwardList::goToItem):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::logDiagnosticMessage):
+        (WebKit::WebPageProxy::logDiagnosticMessageWithResult):
+        (WebKit::WebPageProxy::logDiagnosticMessageWithValue):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.cpp:
+        (WebKit::WebDiagnosticLoggingClient::logDiagnosticMessage):
+        (WebKit::WebDiagnosticLoggingClient::logDiagnosticMessageWithResult):
+        (WebKit::WebDiagnosticLoggingClient::logDiagnosticMessageWithValue):
+        * WebProcess/WebCoreSupport/WebDiagnosticLoggingClient.h:
+
+2017-01-30  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [Mac][cmake] Fix the build after r211354.
+        https://bugs.webkit.org/show_bug.cgi?id=167565
+
+        Unreviewed buildfix.
+
+        * PlatformMac.cmake:
+
+2017-01-30  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] Scrolling iframes, doesn't redraw their content
+        https://bugs.webkit.org/show_bug.cgi?id=167581
+
+        Reviewed by Carlos Garcia Campos.
+
+        Take into account whether we are using AC or not in order to repaint an area after scrolling.
+
+        No behaviour change, no new tests.
+
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::invalidateContentsForSlowScroll):
+
+2017-01-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ debug build after r211365.
+
+        Remove invalid assert.
+
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::exitAcceleratedCompositingModeNow):
+
+2017-01-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not release OpenGL resource immediately when leaving accelerated compositing mode
+        https://bugs.webkit.org/show_bug.cgi?id=167544
+
+        Reviewed by Michael Catanzaro.
+
+        Sometimes the conditions to be in AC mode or not change quickly, and then we leave AC mode just enter it again
+        after a very short period of time. In those cases we are dropping all the GL resources and the compositor
+        thread, and creating it again. We could keep the layer tree host alive for a while when exiting AC mode, and
+        reuse it if we enter AC mode before the previous one has been discarded. While the previous layer tree host is
+        alive we still need to keep it up to date, for example if the web view is resized or contents size change, and
+        synchronize with the threaded compositor when it becomes the layer tree host again.
+
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::~AcceleratedDrawingArea): Discard the previous layer tree host.
+        (WebKit::AcceleratedDrawingArea::AcceleratedDrawingArea): Initialize the timer to discard the previous layer
+        tree host.
+        (WebKit::AcceleratedDrawingArea::pageBackgroundTransparencyChanged): Notify the previous layer tree host if needed.
+        (WebKit::AcceleratedDrawingArea::mainFrameContentSizeChanged): Ditto.
+        (WebKit::AcceleratedDrawingArea::updateBackingStoreState): Ditto.
+        (WebKit::AcceleratedDrawingArea::enterAcceleratedCompositingMode): Reuse the previous layer tree host if possible.
+        (WebKit::AcceleratedDrawingArea::exitAcceleratedCompositingModeNow): Exit AC mode and save the layer tree host
+        starting a timer of 5 seconds to discard it if not reused.
+        (WebKit::AcceleratedDrawingArea::discardPreviousLayerTreeHost): Invalidate and destroy the previous layer tree host.
+        (WebKit::AcceleratedDrawingArea::didChangeViewportAttributes): Notify the previous layer tree host if needed.
+        (WebKit::AcceleratedDrawingArea::deviceOrPageScaleFactorChanged): Ditto.
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents): If it's discardable add the action to
+        be synchronized instead.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::contentsSizeChanged): Ditto.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged): Ditto.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged): Ditto.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::sizeDidChange): Ditto.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::didChangeViewportAttributes): Ditto.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::setIsDiscardable): When the layer tree host becomes discardable,
+        reset the sync actions and return. When it becomes the real layer tree host again, apply all pending actions to
+        synchronize with the threaded compositor.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::scroll): Notify the previous layer tree host if needed.
+        (WebKit::DrawingAreaImpl::mainFrameContentSizeChanged): Ditto.
+        (WebKit::DrawingAreaImpl::exitAcceleratedCompositingMode): Use AcceleratedDrawingArea::exitAcceleratedCompositingModeNow().
+        * WebProcess/WebPage/LayerTreeHost.h:
+        (WebKit::LayerTreeHost::setIsDiscardable): Added.
+
+2017-01-30  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [GTK] Remove support to enable/disable experimental features
+        https://bugs.webkit.org/show_bug.cgi?id=167586
+
+        Reviewed by Michael Catanzaro.
+
+        As requested in bug #167578 we should remove the support to enable/disable
+        experimental features in WebKitGTK+.
+        One reason is that CSS Grid Layout is going to be enabled by default now,
+        so we don't need it to be in this file.
+        Another is that this support needs to be rewritten to use
+        the enumerable experimental features API.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webKitSettingsConstructed):
+        * UIProcess/gtk/ExperimentalFeatures.cpp: Removed.
+        * UIProcess/gtk/ExperimentalFeatures.h: Removed.
+
+2017-01-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add API to handle the accelerated compositing policy
+        https://bugs.webkit.org/show_bug.cgi?id=167509
+
+        Reviewed by Michael Catanzaro.
+
+        Now that we have brought back the on demand mode, we should allow applications to choose the policy, without
+        having to deal with environment variables. Settings also allows to set different policy depending on the web
+        view, so for example evolution could disable AC for the composer, but leave the on demand mode for the email
+        viewer. This patch adds a single new setting hardware-acceleration-policy to handle both
+        acceleratedCompositingEnabled and forceCompositingMode preferences using an enum with values
+        WEBKIT_HARDWARE_ACCELERATION_POLICY_ON_DEMAND, WEBKIT_HARDWARE_ACCELERATION_POLICY_ALWAYS and
+        WEBKIT_HARDWARE_ACCELERATION_POLICY_NEVER.
+
+        * UIProcess/API/gtk/WebKitSettings.cpp:
+        (webKitSettingsSetProperty): Add setter for hardware-acceleration-policy property.
+        (webKitSettingsGetProperty): Add getter for hardware-acceleration-policy property.
+        (webkit_settings_class_init): Add hardware-acceleration-policy property.
+        (webkit_settings_get_hardware_acceleration_policy): Return policy according to the preferences.
+        (webkit_settings_set_hardware_acceleration_policy): set preferences according to the given policy.
+        * UIProcess/API/gtk/WebKitSettings.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt: Add new symbols.
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::updatePreferences):
+
+2017-01-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Crash on WebCore::GLContext::version()
+        https://bugs.webkit.org/show_bug.cgi?id=167559
+
+        Reviewed by Michael Catanzaro.
+
+        This is happening because TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired() is fired after the
+        threaded compositor is deleted. CoordinatedGraphicsScene::purgeGLResources() should invalidate the proxies
+        before clearing the map.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::purgeGLResources):
+
+2017-01-29  Nan Wang  <n_wang@apple.com>
+
+        AX: WKContentView needs to implement UITextInput methods to make speak selection highlighting work
+        https://bugs.webkit.org/show_bug.cgi?id=166955
+
+        Reviewed by Ryosuke Niwa.
+
+        Implemented methods that Speak Selection can use to retrieve the word/sentence highlighting rects.
+
+        * Scripts/webkit/messages.py:
+        (headers_for_type):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView webSelectionRectsForSelectionRects:]):
+        (-[WKContentView webSelectionRects]):
+        (-[WKContentView _accessibilityRetrieveRectsEnclosingSelectionOffset:withGranularity:]):
+        (-[WKContentView _accessibilityRetrieveRectsAtSelectionOffset:withText:]):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::selectionRectsCallback):
+        (WebKit::WebPageProxy::requestRectsForGranularityWithSelectionOffset):
+        (WebKit::WebPageProxy::requestRectsAtSelectionOffsetWithText):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::visiblePositionForPositionWithOffset):
+        (WebKit::WebPage::getRectsForGranularityWithSelectionOffset):
+        (WebKit::rangeNearPositionMatchesText):
+        (WebKit::WebPage::getRectsAtSelectionOffsetWithText):
+
+2017-01-29  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Expose WebCore::DataDetection::detectContentInRange WKWebProcessPlugInRangeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=167565
+
+        Reviewed by Sam Weinig.
+
+        Test: TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm
+
+        * Shared/API/Cocoa/WKDataDetectorTypes.h: Added. Moved the enum definition from
+          WKWebViewConfiguration.h to here.
+        * Shared/API/Cocoa/WKDataDetectorTypesInternal.h: Added.
+        (fromWKDataDetectorTypes): Moved from WKWebView.mm.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (fromWKDataDetectorTypes): Moved to WKDataDetectorTypesInternal.h.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.h: Moved WKDataDetectorTypes definition out
+          to WKDataDetectorTypes.h.
+
+        * WebKit2.xcodeproj/project.pbxproj: Added references to new files.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm:
+        (-[WKWebProcessPlugInRangeHandle detectDataWithTypes:context:]): Added. Calls
+          DataDetection::detectContentInRange.
+
+2017-01-29  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Coordinated Graphics] WebPage shouldn't use the layerTreeHost directly
+        https://bugs.webkit.org/show_bug.cgi?id=167494
+
+        Reviewed by Michael Catanzaro.
+
+        In Coordinated Graphics we have a couple of methods that the WebPage uses directly from the layer tree host,
+        instead of using the drawing area interface. This patch adds DrawingArea::didChangeViewportAttributes and
+        DrawingArea::deviceOrPageScaleFactorChanged and renames LayerTreeHost::didChangeViewportProperties as
+        LayerTreeHost::didChangeViewportAttributes for consistency.
+
+        * Shared/CoordinatedGraphics/SimpleViewportController.cpp:
+        (WebKit::SimpleViewportController::didChangeViewportAttributes): Receive an rvalue reference to avoid copies.
+        * Shared/CoordinatedGraphics/SimpleViewportController.h:
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::didChangeViewportAttributes): Forward it to the layer tree host if any.
+        (WebKit::AcceleratedDrawingArea::deviceOrPageScaleFactorChanged): Ditto.
+        * WebProcess/WebPage/AcceleratedDrawingArea.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::didChangeViewportAttributes): Renamed and updated to pass an rvalue reference.
+        (WebKit::ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties): Deleted.
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/DrawingArea.h:
+        * WebProcess/WebPage/LayerTreeHost.h:
+        (WebKit::LayerTreeHost::didChangeViewportAttributes): Renamed and updated to pass an rvalue reference.
+        (WebKit::LayerTreeHost::didChangeViewportProperties): Deleted.
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::sendViewportAttributesChanged): Use the drawing area.
+        (WebKit::WebPage::scalePage): Ditto
+        (WebKit::WebPage::setDeviceScaleFactor): Ditto.
+        (WebKit::WebPage::viewportPropertiesDidChange): Ditto.
+
+2017-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Crash when detaching the CoordinatedGraphicsScene
+        https://bugs.webkit.org/show_bug.cgi?id=167547
+
+        Reviewed by Michael Catanzaro.
+
+        It seems that commitSceneState() can be called after the CoordinatedGraphicsScene has been detached.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::commitSceneState): Return early if scene has been detached.
+        (WebKit::CoordinatedGraphicsScene::detach): Take the render queue lock before clearing the render queue.
+
+2017-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Crash when deleting the compositor run loop
+        https://bugs.webkit.org/show_bug.cgi?id=167545
+
+        Reviewed by Michael Catanzaro.
+
+        The problem is that we are releasing the WorkQueue before the update timer that keeps a reference to the run
+        loop, destroyed by the WorkQueue. So, invalidate the WorkQueue in the next run loop iteration to ensure it
+        happens after the CompositingRunLoop destructor.
+
+        * Shared/CoordinatedGraphics/threadedcompositor/CompositingRunLoop.cpp:
+        (WebKit::CompositingRunLoop::~CompositingRunLoop):
+
+2017-01-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] ASSERTION FAILED: !m_layerTreeHost in DrawingAreaImpl::display()
+        https://bugs.webkit.org/show_bug.cgi?id=167548
+
+        Reviewed by Michael Catanzaro.
+
+        The problem is that non accelerated compositing forceRepaint implementation is doing a layout and then calling
+        display. The layout makes the drawing area enter in AC mode and display asserts that we have a layer tree
+        host. forceRepaint shouldn't do the layout because display already does that and it correctly handles the case
+        of entering AC mode during the layout. It shouldn't call setNeedsDisplay either, because that schedules a
+        display, but we are going to display synchronously.
+
+        * WebProcess/WebPage/DrawingAreaImpl.cpp:
+        (WebKit::DrawingAreaImpl::forceRepaint):
+
+2017-01-28  Tim Horton  <timothy_horton@apple.com>
+
+        Don't flash a tap highlight for the entirety of an editable WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=167486
+        <rdar://problem/30193996>
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::sendTapHighlightForNodeIfNecessary):
+        Bail from providing a tap highlight if we are about to highlight
+        the entire body of an editable web view.
+
+2017-01-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Check USE(APPLE_INTERNAL_SDK) instead of specific headers when importing from WebKitAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=167555
+
+        Reviewed by Dan Bernstein.
+
+        Instead of guarding #import <WebKitAdditions/*> on the existence of the imported file, consult
+        USE(APPLE_INTERNAL_SDK) instead.
+
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+
+2017-01-28  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link Preload as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167201
+
+        Reviewed by Ryosuke Niwa.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetLinkPreloadEnabled):
+        (WKPreferencesGetLinkPreloadEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add User Timing Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetUserTimingEnabled):
+        (WKPreferencesGetUserTimingEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+        Experimental feature. Off for now while we update ResourceTiming
+        and NavigationTiming to be compatible with Performance Timing 2.
+
+2017-01-28  Dan Bernstein  <mitz@apple.com>
+
+        <rdar://problem/30247736> WebKit2-7604.1.5 has failed to build: error: only virtual member functions can be marked 'override'
+
+        * UIProcess/ios/PageClientImplIOS.h: Guard the declaration of requestPasswordForQuickLookDocument
+          with USE(QUICK_LOOK) to match the base class.
+        * UIProcess/ios/PageClientImplIOS.mm: Guard the implementation as well.
+
+2017-01-27  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] No way to get the text from a WKWebProcessPlugInRangeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=167535
+
+        Reviewed by Sam Weinig.
+
+        Added a text property to WKWebProcessPlugInRangeHandle.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.h: Declare new property.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm:
+        (-[WKWebProcessPlugInRangeHandle text]): Added. Calls InjectedBundleRangeHandle::text.
+
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::text): Added. Calls WebCore::Range::text.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.h:
+
 2017-01-27  Alex Christensen  <achristensen@webkit.org>
 
         Move smartInsertDeleteEnabled to WebPageCreationParameters

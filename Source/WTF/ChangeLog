@@ -1,3 +1,86 @@
+2017-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the WebKit nightly open source build
+        <rdar://problem/30308635>
+
+        We cannot assume all internal SDKs have the latest WebKitAdditions, so we need an explicit header check here.
+
+        * wtf/Platform.h:
+
+2017-02-01  Andreas Kling  <akling@apple.com>
+
+        Implement the alwaysRunsAtBackgroundPriority WK2 setting using thread QoS.
+        <https://webkit.org/b/167387>
+        <rdar://problem/29711409>
+
+        Reviewed by Antti Koivisto.
+
+        Add a new mechanism for overriding the max thread QoS level globally:
+
+            void setGlobalMaxQOSClass(qos_class_t)
+            qos_class_t adjustedQOSClass(qos_class_t)
+
+        The QoS cap applies to all newly created threads, threads that try to override
+        their QoS class manually, and also passed down to bmalloc.
+
+        * wtf/Threading.cpp:
+        (WTF::setCurrentThreadIsUserInteractive):
+        (WTF::setCurrentThreadIsUserInitiated):
+        (WTF::setGlobalMaxQOSClass):
+        (WTF::adjustedQOSClass):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::createThreadInternal):
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::dispatchQOSClass):
+
+2017-01-31  Antti Koivisto  <antti@apple.com>
+
+        Teach cache coders to encode time_points
+        https://bugs.webkit.org/show_bug.cgi?id=167670
+
+        Reviewed by Andreas Kling.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::encode):
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::decode):
+
+2017-01-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Removed unused m_nestedCount from RunLoop
+        https://bugs.webkit.org/show_bug.cgi?id=167674
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::run):
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        The mutator should be able to perform increments of GC work
+        https://bugs.webkit.org/show_bug.cgi?id=167528
+
+        Reviewed by Keith Miller and Geoffrey Garen.
+
+        We want dataLog to be locked even if you're not logging to a file!
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
+2017-01-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Check USE(APPLE_INTERNAL_SDK) instead of specific headers when importing from WebKitAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=167555
+
+        Reviewed by Dan Bernstein.
+
+        Instead of guarding #import <WebKitAdditions/*> on the existence of the imported file, consult
+        USE(APPLE_INTERNAL_SDK) instead.
+
+        * wtf/Platform.h:
+
 2017-01-26  Saam Barati  <sbarati@apple.com>
 
         Harden how the compiler references GC objects

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 David Smith (catfish.man@gmail.com)
  * Copyright (C) 2010 Igalia S.L
  *
@@ -1354,13 +1354,14 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     pageConfiguration.contextMenuClient = new WebContextMenuClient(self);
     // FIXME: We should enable this on iOS as well.
     pageConfiguration.validationMessageClient = std::make_unique<WebValidationMessageClient>(self);
-#if ENABLE(DRAG_SUPPORT)
-    pageConfiguration.dragClient = new WebDragClient(self);
-#endif
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
 #else
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
     pageConfiguration.inspectorClient = new WebInspectorClient(self);
+#endif
+
+#if ENABLE(DRAG_SUPPORT)
+    pageConfiguration.dragClient = new WebDragClient(self);
 #endif
 
     pageConfiguration.backForwardClient = BackForwardList::create(self);
@@ -1609,7 +1610,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         makeUniqueRef<WebCore::LibWebRTCProvider>()
     );
     pageConfiguration.chromeClient = new WebChromeClientIOS(self);
-#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
+#if ENABLE(DRAG_SUPPORT)
     pageConfiguration.dragClient = new WebDragClient(self);
 #endif
 
@@ -2910,6 +2911,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setSubtleCryptoEnabled([preferences subtleCryptoEnabled]);
 #endif
 
+    RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
+
+    RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
+
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
         settings.setIncrementalRenderingSuppressionTimeoutInSeconds(timeout);
@@ -4026,19 +4031,7 @@ static inline IMP getMethod(id o, SEL s)
 #if PLATFORM(IOS)
 - (NSDictionary *)quickLookContentForURL:(NSURL *)url
 {
-#if USE(QUICK_LOOK)
-    NSString *uti = qlPreviewConverterUTIForURL(url);
-    if (!uti)
-        return nil;
-
-    NSString *fileName = qlPreviewConverterFileNameForURL(url);
-    if (!fileName)
-        return nil;
-
-    return [NSDictionary dictionaryWithObjectsAndKeys: fileName, WebQuickLookFileNameKey, uti, WebQuickLookUTIKey, nil];
-#else
     return nil;
-#endif
 }
 
 - (BOOL)_isStopping

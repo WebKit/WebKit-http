@@ -156,7 +156,7 @@ class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
 class ValidationBubble;
-enum class HasInsecureContent;
+
 struct DictionaryPopupInfo;
 struct ExceptionDetails;
 struct FileChooserSettings;
@@ -166,6 +166,9 @@ struct TextAlternativeWithRange;
 struct TextCheckingResult;
 struct ViewportAttributes;
 struct WindowFeatures;
+
+enum class HasInsecureContent;
+enum class ShouldSample;
 }
 
 #if PLATFORM(GTK)
@@ -256,6 +259,7 @@ typedef GenericCallback<const String&, double, bool> FontAtSelectionCallback;
 #if PLATFORM(IOS)
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t> GestureCallback;
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t> TouchesCallback;
+typedef GenericCallback<const Vector<WebCore::SelectionRect>&> SelectionRectsCallback;
 struct NodeAssistanceArguments {
     AssistedNodeInformation m_nodeInformation;
     bool m_userIsInteracting;
@@ -545,6 +549,8 @@ public:
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
     void setForceAlwaysUserScalable(bool);
     void setIsScrollingOrZooming(bool);
+    void requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity, uint32_t offset, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
+    void requestRectsAtSelectionOffsetWithText(int32_t offset, const String&, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
 #if ENABLE(DATA_INTERACTION)
     void didPerformDataInteractionControllerOperation();
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
@@ -1120,12 +1126,9 @@ public:
     void setShouldDispatchFakeMouseMoveEvents(bool);
 
     // Diagnostic messages logging.
-    void logDiagnosticMessage(const String& message, const String& description, bool shouldSample);
-    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample);
-    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
-    void logSampledDiagnosticMessage(const String& message, const String& description);
-    void logSampledDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
-    void logSampledDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
+    void logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample);
+    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, WebCore::ShouldSample);
+    void logDiagnosticMessageWithValue(const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample);
 
     // Form validation messages.
     void showValidationMessage(const WebCore::IntRect& anchorClientRect, const String& message);
@@ -1477,6 +1480,7 @@ private:
     void selectionContextCallback(const String&, const String&, const String&, uint64_t);
     void interpretKeyEvent(const EditorState&, bool isCharEvent, bool& handled);
     void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect);
+    void selectionRectsCallback(const Vector<WebCore::SelectionRect>&, uint64_t);
 #endif
 #if PLATFORM(GTK)
     void printFinishedCallback(const WebCore::ResourceError&, uint64_t);

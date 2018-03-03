@@ -27,20 +27,15 @@
 
 #if USE(QUICK_LOOK)
 
-#include <objc/objc.h>
 #include <wtf/Forward.h>
 #include <wtf/RetainPtr.h>
 
-OBJC_CLASS NSArray;
 OBJC_CLASS NSData;
-OBJC_CLASS NSDictionary;
 OBJC_CLASS NSSet;
 OBJC_CLASS NSString;
 OBJC_CLASS NSURL;
 OBJC_CLASS NSURLRequest;
-OBJC_CLASS NSURLResponse;
-OBJC_CLASS QLPreviewConverter;
-OBJC_CLASS WebPreviewConverter;
+OBJC_CLASS WebPreviewLoader;
 
 namespace WebCore {
 
@@ -49,19 +44,11 @@ class ResourceLoader;
 class ResourceRequest;
 class ResourceResponse;
 class SharedBuffer;
-class URL;
 
 WEBCORE_EXPORT NSSet *QLPreviewGetSupportedMIMETypesSet();
-
-WEBCORE_EXPORT void addQLPreviewConverterWithFileForURL(NSURL *, id converter, NSString *fileName);
-WEBCORE_EXPORT NSString *qlPreviewConverterFileNameForURL(NSURL *);
-WEBCORE_EXPORT NSString *qlPreviewConverterUTIForURL(NSURL *);
 WEBCORE_EXPORT void removeQLPreviewConverterForURL(NSURL *);
-
 WEBCORE_EXPORT RetainPtr<NSURLRequest> registerQLPreviewConverterIfNeeded(NSURL *, NSString *mimeType, NSData *);
-
 WEBCORE_EXPORT const char* QLPreviewProtocol();
-
 WEBCORE_EXPORT NSString *createTemporaryFileForQuickLook(NSString *fileName);
 
 class QuickLookHandle {
@@ -71,27 +58,18 @@ public:
     static std::unique_ptr<QuickLookHandle> create(ResourceLoader&, const ResourceResponse&);
     ~QuickLookHandle();
 
-    void willSendRequest(ResourceRequest&);
     bool didReceiveData(const char* data, unsigned length);
     bool didReceiveBuffer(const SharedBuffer&);
     bool didFinishLoading();
     void didFail();
 
-    WEBCORE_EXPORT void setClient(Ref<QuickLookHandleClient>&&);
     WEBCORE_EXPORT static void setClientForTesting(RefPtr<QuickLookHandleClient>&&);
-
-    WEBCORE_EXPORT String previewFileName() const;
-    WEBCORE_EXPORT String previewUTI() const;
-    WEBCORE_EXPORT NSURL *previewRequestURL() const;
-    WEBCORE_EXPORT QLPreviewConverter *converter() const;
-    NSURL *firstRequestURL() const { return m_firstRequestURL.get(); }
 
 private:
     friend std::unique_ptr<QuickLookHandle> std::make_unique<QuickLookHandle>(ResourceLoader&, const ResourceResponse&);
     QuickLookHandle(ResourceLoader&, const ResourceResponse&);
 
-    RetainPtr<NSURL> m_firstRequestURL;
-    RetainPtr<WebPreviewConverter> m_converter;
+    RetainPtr<WebPreviewLoader> m_previewLoader;
     bool m_finishedLoadingDataIntoConverter { false };
 };
 

@@ -34,11 +34,12 @@ typedef double DOMHighResTimeStamp;
 
 [
     Conditional=WEB_TIMING,
-    EnabledAtRuntime=ResourceTiming,
+    EnabledAtRuntime=PerformanceTimeline,
     CustomToJSObject,
 ] interface PerformanceEntry {
     readonly attribute DOMString name;
     readonly attribute DOMString entryType;
     readonly attribute DOMHighResTimeStamp startTime;
     readonly attribute DOMHighResTimeStamp duration;
+    serializer = { attribute };
 };

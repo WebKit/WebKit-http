@@ -33,13 +33,16 @@
 
 #if ENABLE(WEB_TIMING)
 
+#include "RuntimeEnabledFeatures.h"
+
 namespace WebCore {
 
-PerformanceEntry::PerformanceEntry(const String& name, const String& entryType, double startTime, double finishTime)
+PerformanceEntry::PerformanceEntry(Type type, const String& name, const String& entryType, double startTime, double finishTime)
     : m_name(name)
     , m_entryType(entryType)
     , m_startTime(startTime)
     , m_duration(finishTime - startTime)
+    , m_type(type)
 {
 }
 
@@ -47,24 +50,24 @@ PerformanceEntry::~PerformanceEntry()
 {
 }
 
-String PerformanceEntry::name() const
+std::optional<PerformanceEntry::Type> PerformanceEntry::parseEntryTypeString(const String& entryType)
 {
-    return m_name;
-}
+    if (entryType == "navigation")
+        return std::optional<Type>(Type::Navigation);
 
-String PerformanceEntry::entryType() const
-{
-    return m_entryType;
-}
+    if (RuntimeEnabledFeatures::sharedFeatures().userTimingEnabled()) {
+        if (entryType == "mark")
+            return std::optional<Type>(Type::Mark);
+        if (entryType == "measure")
+            return std::optional<Type>(Type::Measure);
+    }
 
-double PerformanceEntry::startTime() const
-{
-    return m_startTime;
-}
+    if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
+        if (entryType == "resource")
+            return std::optional<Type>(Type::Resource);
+    }
 
-double PerformanceEntry::duration() const
-{
-    return m_duration;
+    return std::nullopt;
 }
 
 } // namespace WebCore

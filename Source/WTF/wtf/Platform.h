@@ -704,7 +704,7 @@
 /* Include feature macros */
 #include <wtf/FeatureDefines.h>
 
-#if defined(__has_include) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
 #include <WebKitAdditions/AdditionalFeatureDefines.h>
 #endif
 

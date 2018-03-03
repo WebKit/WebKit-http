@@ -280,6 +280,7 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 # Pointer Lock can only check some of the API at the moment.
 pointer-lock/bug90391-move-then-window-open-crash.html
 pointer-lock/locked-element-iframe-removed-from-dom.html
+pointer-lock/mouse-event-delivery.html
 pointer-lock/pointerlockchange-event-on-lock-lost.html
 pointer-lock/pointerlockchange-pointerlockerror-events.html
 pointer-lock/pointerlockelement-null-when-pending.html
@@ -1181,6 +1182,7 @@ webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-sup
 webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
+webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-removal.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
@@ -1204,6 +1206,7 @@ webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
 webkit.org/b/164872 inspector/worker/debugger-multiple-targets-pause.html [ Pass Failure Timeout ]
 webkit.org/b/164833 inspector/worker/debugger-pause.html [ Pass Failure Timeout ]
 webkit.org/b/165582 inspector/worker/debugger-scripts.html [ Pass Failure ]
+webkit.org/b/167203 inspector/worker/debugger-shared-breakpoint.html [ Pass Failure Timeout ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Timeout ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
 webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
@@ -1465,11 +1468,9 @@ media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip
 media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
 
 # This one always times out on the bots, cannot reproduce locally.
-webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Pass Timeout ]
+webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
 
 webkit.org/b/165290 media/modern-media-controls/tracks-panel/tracks-panel-hide-click-outside.html [ Pass Timeout ]
-
-webkit.org/b/167254 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
 
 webkit.org/b/167263 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
 
@@ -1483,11 +1484,7 @@ webkit.org/b/167373 media/modern-media-controls/tracks-support/tracks-support-sh
 
 webkit.org/b/167396 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Failure ]
 
-webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
-
-webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
-
-webkit.org/b/165319 media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html [ Pass Timeout ]
+webkit.org/b/167442 [ ElCapitan ] media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
 webkit.org/b/167461 media/modern-media-controls/layout-node/addChild.html [ Pass Timeout ]
 
