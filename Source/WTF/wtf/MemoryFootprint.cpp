@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <WebCore/SQLiteDatabaseTrackerClient.h>
+#include "config.h"
+#include "MemoryFootprint.h"
 
-class WebSQLiteDatabaseTrackerClient : public WebCore::SQLiteDatabaseTrackerClient {
-public:
-    static WebSQLiteDatabaseTrackerClient* sharedWebSQLiteDatabaseTrackerClient();
+#if PLATFORM(COCOA)
+#include <mach/mach.h>
+#include <mach/task_info.h>
+#endif
 
-    ~WebSQLiteDatabaseTrackerClient() override { }
+namespace WTF {
 
-    void willBeginFirstTransaction() override;
-    void didFinishLastTransaction() override;
+std::optional<size_t> memoryFootprint()
+{
+#if PLATFORM(COCOA)
+    task_vm_info_data_t vmInfo;
+    mach_msg_type_number_t count = TASK_VM_INFO_COUNT;
+    kern_return_t result = task_info(mach_task_self(), TASK_VM_INFO, (task_info_t) &vmInfo, &count);
+    if (result != KERN_SUCCESS)
+        return std::nullopt;
+    return static_cast<size_t>(vmInfo.phys_footprint);
+#else
+    return std::nullopt;
+#endif
+}
 
-private:
-    WebSQLiteDatabaseTrackerClient() { }
-};
+}

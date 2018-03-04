@@ -1,3 +1,108 @@
+2017-02-02  Jonathan Bedard  <jbedard@apple.com>
+
+        Undefined subroutine in svn-create-patch
+        https://bugs.webkit.org/show_bug.cgi?id=167742
+
+        Unreviewed build-fix after r211543.
+
+        * Scripts/VCSUtils.pm: fixSVNPatchForAdditionWithHistory was not exported.
+
+2017-02-02  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Unreviewed. Fix jhbuild dependencies build.
+
+        * gtk/patches/gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch:
+        Patch updated.
+
+2017-02-02  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME][GStreamer] Fixed decryptor selection
+        https://bugs.webkit.org/show_bug.cgi?id=167588
+
+        Reviewed by Žan Doberšek.
+
+        This patches are pending at https://bugzilla.gnome.org/show_bug.cgi?id=770107
+
+        * gtk/jhbuild.modules: Added patches to gstreamer and
+        gst-plugins-good packages.
+        * gtk/patches/gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch: Added.
+        * gtk/patches/gstreamer-0001-protection-added-function-to-filter-system-ids.patch: Added.
+
+2017-02-01  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Make run-benchmark script supports 'config' key in test plan.
+        https://bugs.webkit.org/show_bug.cgi?id=167715
+
+        Reviewed by Ryosuke Niwa.
+
+        Add support for 'config' key in test paln.
+        'config' key is a dictionary that specifies environment configurations while test is running.
+        Specifies orientation to be portrait in MotionMark benchmark.
+
+        * Scripts/webkitpy/benchmark_runner/README.md:
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner._run_benchmark):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.prepare_env):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_browser_driver.py:
+        (LinuxBrowserDriver.prepare_env):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver.prepare_env):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.prepare_env):
+        * Scripts/webkitpy/benchmark_runner/data/plans/motionmark.plan:
+
+2017-02-01  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r210820): svn-create-patch does not emit property change only diff
+        https://bugs.webkit.org/show_bug.cgi?id=167169
+
+        Reviewed by David Kilzer.
+
+        More directly handle the SVN 1.9 or newer syntax change for a diff of a copied or moved file
+        - a SVN diff header and an empty body. In particular, remove a duplicate leading SVN diff
+        header from the output of "svn diff" on a file that was copied or moved.
+
+        Following r210820 svn-create-patch emits to standard output a diff only if it has at least one
+        chunk range line (e.g. @@ -0,0 +1,7 @@) as a means to workaround a syntax change in the diff
+        output of a copied or moved file in SVN version 1.9 or newer. In SVN 1.9 or newer "svn diff"
+        of a copied or moved file always emits to standard output a leading SVN diff header (an "Index:"
+        line followed by a separator line) with an empty body; => no chunk range lines. However a diff
+        of a file with only a property change also does not contain any chunk range lines. Therefore
+        svn-create-patch no longer emitted to standard output such a diff. Instead of indirectly detecting
+        a SVN diff header with an empty body by counting the number of chunk range lines in the diff
+        we should directly test for the presence of a leading SVN diff header with an empty body and
+        remove such lines from the diff.
+
+        * Scripts/VCSUtils.pm:
+        (fixSVNPatchForAdditionWithHistory): Added.
+        * Scripts/svn-create-patch:
+        (generateDiff): Pass the output from "svn diff" to fixSVNPatchForAdditionWithHistory() when
+        we have a non empty patch for an added file with history (i.e. a copied or moved file).
+        * Scripts/webkitperl/VCSUtils_unittest/fixSVNPatchForAdditionWithHistory.pl: Added.
+
+2017-02-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update CARingBuffer class
+        https://bugs.webkit.org/show_bug.cgi?id=167656
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/CARingBuffer.cpp: Added.
+        (TestWebKitAPI::CARingBufferTest::SetUp):
+        (TestWebKitAPI::CARingBufferTest::setup):
+        (TestWebKitAPI::CARingBufferTest::setListDataBuffer):
+        (TestWebKitAPI::CARingBufferTest::description):
+        (TestWebKitAPI::CARingBufferTest::bufferList):
+        (TestWebKitAPI::CARingBufferTest::ringBuffer):
+        (TestWebKitAPI::CARingBufferTest::capacity):
+        (TestWebKitAPI::CARingBufferTest::audioBufferListSizeForStream):
+        (TestWebKitAPI::CARingBufferTest::configureBufferListForStream):
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::MixingTest::run):
+
 2017-02-01  Alexey Proskuryakov  <ap@apple.com>
 
         [Mac] TestWebKitAPI includes system frameworks incorrectly

@@ -1,3 +1,132 @@
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes.
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Enable the in-process memory monitor for WebContent processes on macOS 10.12+
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2017-02-02  Chris Dumez  <cdumez@apple.com>
+
+        [Crash] com.apple.WebKit.WebContent at WebKit: WebKit::WebPage::fromCorePage()
+        https://bugs.webkit.org/show_bug.cgi?id=167738
+        <rdar://problem/30229990>
+
+        Reviewed by Andreas Kling.
+
+        The BackForwardClient no longer needs to worry about removing HistoryItems
+        from the PageCache now that WebCore takes care of it.
+
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::addItemFromUIProcess):
+        (WebKit::WebBackForwardListProxy::addItem):
+        (WebKit::WebBackForwardListProxy::close):
+        * WebProcess/WebPage/WebBackForwardListProxy.h:
+
+2017-02-02  Anders Carlsson  <andersca@apple.com>
+
+        <rdar://problem/30323148> Webkit Nightly on 10.10 broken
+
+        Follow-up fix.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::open):
+
+2017-02-02  Anders Carlsson  <andersca@apple.com>
+
+        <rdar://problem/30323148> Webkit Nightly on 10.10 broken
+
+        Try to fix the 10.10 build.
+
+        * Platform/IPC/mac/ConnectionMac.mm:
+        (IPC::Connection::open):
+
+2017-02-01  Anders Carlsson  <andersca@apple.com>
+
+        Handle m_processLauncher being null in ChildProcessProxy::processIdentifier()
+        https://bugs.webkit.org/show_bug.cgi?id=167713
+        rdar://problem/28896113
+
+        Reviewed by Dan Bernstein.
+
+        This can happen if the process has been explicitly terminated.
+
+        * UIProcess/ChildProcessProxy.h:
+        (WebKit::ChildProcessProxy::processIdentifier):
+
+2017-02-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        In iOS, we should take background assertion when accessing localstorage databases.
+        https://bugs.webkit.org/show_bug.cgi?id=165478
+
+        Just like in WebKit1, when initializing a WKWebView, initialize the database transaction
+        tracker client. Also, we should set up the start and end background task blocks here. In
+        WebKit1, this is done inside UIKit.
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        (-[WKWebView _setUpSQLiteDatabaseTrackerClient]): Set up the start/end background task blocks
+            and database transaction tracker client.
+
+2017-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the nightly open source build.
+
+        Adds more header checks when importing from WebKitAdditions.
+
+        * UIProcess/Cocoa/WebPageProxyCocoa.mm:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+
+2017-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] With visual viewports, a fixed bottom bar can be clipped out when the keyboard is visible
+        https://bugs.webkit.org/show_bug.cgi?id=167710
+        rdar://problem/30100286
+
+        Reviewed by Wenson Hsieh.
+
+        The unobscuredRectInContentCoordinates passed to -didUpdateVisibleRect:... could project outside
+        of the bounds of the document, which is OK when rubber-banding, but not when we're in a stable state,
+        because that can cause fixed elements to get pushed outside the doc. This happened when the keyboard
+        triggered bottom content insets on the scroll view.
+
+        Fix by computing a rectangle which is the "allowed" bounds of fixed content, which is permitted
+        to extend outside the document bounds only when rubber-banding, and intersect unobscuredRectInContentCoordinates
+        with that rectangle.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _contentBoundsExtendedForRubberbandingWithScale:]):
+        (-[WKWebView _updateContentRectsWithState:]):
+
+2017-02-01  Enrica Casucci  <enrica@apple.com>
+
+        WebProcess crashes in  int WTF::__throw_bad_variant_access<int> when expanding/shrinking a block selection.
+        https://bugs.webkit.org/show_bug.cgi?id=167673
+        rdar://problem/30229620
+
+        Reviewed by Anders Carlsson
+
+        This is a speculative fix for a bug that might have been introduced
+        with http://trac.webkit.org/changeset/208479.
+        The code in containsRange inline fuction in WebPageIOS.mm has not been
+        updated when the return value of Range::compareBoundaryPoints was changed
+        to ExceptionOr<short>.
+        Since there is already a method containsRange in the Range class that
+        does the right thing, expandedRangeFromHandle now uses that.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::expandedRangeFromHandle):
+        (WebKit::containsRange): Deleted.
+
 2017-02-01  Anders Carlsson  <andersca@apple.com>
 
         IPC::Connection receive ports should be guarded

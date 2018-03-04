@@ -1,3 +1,234 @@
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=164041
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed ios-simulator test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2017-02-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up css3/filters/backdrop/dynamic-with-clip-path.html
+
+        This test used a clip-path that was entirely outside the element, making it confusing.
+        Move the clipping circle to the center.
+
+        * css3/filters/backdrop/dynamic-with-clip-path-expected.html:
+        * css3/filters/backdrop/dynamic-with-clip-path.html:
+
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167607
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-02-02  David Kilzer  <ddkilzer@apple.com>
+
+        Clean up accessibility & animations tests to stop calling testRunner.waitUntilDone() twice
+        <https://webkit.org/b/167598>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * accessibility/frame-disconnect-textmarker-cache-crash.html:
+        * accessibility/loading-iframe-sends-notification.html:
+        * accessibility/mac/combobox-activedescendant-notifications.html:
+        * accessibility/mac/ordered-textmarker-crash.html:
+        * accessibility/mac/stale-textmarker-crash.html:
+        * accessibility/notification-listeners.html:
+        * accessibility/scroll-to-global-point-iframe-nested.html:
+        * accessibility/scroll-to-global-point-iframe.html:
+        * accessibility/scroll-to-make-visible-iframe.html:
+        * accessibility/svg-element-press.html:
+        - Remove call to testRunner.waitUntilDone() since
+          window.jsTestIsAsync is set to true, and thus waitUntilDone()
+          is called from either js-test.js or js-test-post.js.
+
+        * animations/animation-delay-changed.html:
+        * animations/change-keyframes-name.html:
+        * animations/font-variations/font-variation-settings-order.html:
+        * animations/font-variations/font-variation-settings-unlike.html:
+        * animations/font-variations/font-variation-settings.html:
+        * animations/longhand-timing-function.html:
+        * animations/transition-and-animation-3.html:
+        * animations/unanimated-style.html:
+        - Remove call to testRunner.waitUntilDone() since that's moved
+          into animation-test-helpers.js.
+
+        * animations/resources/animation-test-helpers.js:
+        (runAnimationTest): Call testRunner.waitUntilDone() when this
+        script resource is included instead of when runAnimationTest()
+        is called since runAnimationTest() expects it to be set anyway.
+
+        * animations/animation-direction-reverse-fill-mode-hardware.html:
+        * animations/animation-direction-reverse-fill-mode.html:
+        * animations/animation-hit-test-transform.html:
+        * animations/animation-hit-test.html:
+        * animations/animation-internals-api-multiple-keyframes.html:
+        * animations/animation-internals-api.html:
+        * animations/change-transform-style-during-animation.html:
+        * animations/keyframes-iteration-count-non-integer.html:
+        - Remove call to testRunner.waitUntilDone() since that now
+          happens when loading animation-test-helpers.js.  These tests
+          don't currently call runAnimationTest(), but they manage their
+          own state by calling testRunner.notifyDone() themselves.
+
+        * animations/crash-on-removing-animation.html:
+        * animations/resources/crash-on-removing-animation-window.html: Copied from LayoutTests/animations/crash-on-removing-animation.html.
+        - Split this test into a main resource and a window resource.
+          Previously testRunner.waitUntilDone() was being called twice
+          when js-test-post.js was loaded in the main window and then
+          loaded a second time when the window was opened.  The new
+          resource file doesn't load either js-test-pre.js or
+          js-test-post.js, avoiding the duplicate call.
+
+2017-02-02  Antti Koivisto  <antti@apple.com>
+
+        Column progression wrong after enabling pagination on RTL document
+        https://bugs.webkit.org/show_bug.cgi?id=167733
+        <rdar://problem/29012252>
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/multicol/pagination/pagination-dynamic-rtl-expected.html: Added.
+        * fast/multicol/pagination/pagination-dynamic-rtl.html: Added.
+
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Marking http/tests/contentextensions/block-everything-unless-domain.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=167653
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-02-02  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/buttons-container/buttons-container-buttons-property.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167371
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip fast/visual-viewport/ios/bottom-bar-with-keyboard.html on ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+
+2017-02-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r211529.
+
+        This change caused the test to fail on macOS.
+
+        Reverted changeset:
+
+        "Clean up css3/filters/backdrop/backdrop-filter-with-clip-
+        path.html expected results."
+        http://trac.webkit.org/changeset/211529
+
+2017-02-02  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=167372
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-02  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/media-controller/media-controller-resize.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=164571
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-02  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/rewind-button/rewind-button.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167352
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Web Inspector: Upgrade Esprima to the latest one to support dynamic import
+        https://bugs.webkit.org/show_bug.cgi?id=167698
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/formatting/formatting-javascript-expected.txt:
+        * inspector/formatting/formatting-javascript.html:
+        * inspector/formatting/resources/javascript-tests/import-expected.js: Added.
+        (async.load):
+        * inspector/formatting/resources/javascript-tests/import.js: Added.
+        (async.load):
+        * inspector/formatting/resources/javascript-tests/object-array-literal-expected.js:
+        * inspector/formatting/resources/javascript-tests/object-array-literal.js:
+        * inspector/formatting/resources/javascript-tests/variable-declaration-expected.js:
+        * inspector/formatting/resources/javascript-tests/variable-declaration.js:
+        * inspector/formatting/resources/utilities.js:
+        (TestPage.registerInitializer.):
+        (TestPage.registerInitializer):
+        Fix a bug which occurs when output is not expected one.
+
+        * inspector/model/parse-script-syntax-tree-expected.txt:
+        * inspector/model/parse-script-syntax-tree.html:
+
+2017-02-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] Implement MediaKeySession::update()
+        https://bugs.webkit.org/show_bug.cgi?id=167636
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add the mock-MediaKeySession-update.html test, cotaining a few cases that check
+        the basic operations of MediaKeySession::update(), focusing on proper promise
+        resolution and rejection based on the state of the object and the passed-in
+        response argument. Skip the test on all platforms for now.
+
+        * media/encrypted-media/mock-MediaKeySession-update-expected.txt: Added.
+        * media/encrypted-media/mock-MediaKeySession-update.html: Added.
+        * platform/efl/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-02-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline compositing/geometry/fixed-in-composited.html for ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/compositing/geometry/fixed-in-composited-expected.txt:
+
+2017-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] With visual viewports, a fixed bottom bar can be clipped out when the keyboard is visible
+        https://bugs.webkit.org/show_bug.cgi?id=167710
+        rdar://problem/30100286
+
+        Reviewed by Wenson Hsieh.
+
+        * fast/visual-viewport/ios/bottom-bar-with-keyboard-expected.txt: Added.
+        * fast/visual-viewport/ios/bottom-bar-with-keyboard.html: Added.
+
 2017-02-01  Ryan Haddad  <ryanhaddad@apple.com>
 
         Marking compositing/repaint/fixed-background-scroll.html as flaky on macOS WK1.

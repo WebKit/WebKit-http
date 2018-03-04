@@ -1,3 +1,430 @@
+2017-02-02  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix the Windows build after r211571.
+
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::thresholdForPolicy):
+        (WebCore::policyForFootprint):
+
+2017-02-02  Brent Fulgham  <bfulgham@apple.com>
+
+        Correct memory leak in MediaConstraints
+        https://bugs.webkit.org/show_bug.cgi?id=167744
+        <rdar://problem/30331444>
+
+        Reviewed by Anders Carlsson.
+
+        ConstraintHolder returns a reference to an object created by operator new. When the
+        returned value is assigned or stored in Vector or other containers we leak memory.
+        Instead, this value should just be returned as a regular object so that the return
+        value optimization can make sure memory is properly (and efficiently) used.
+
+        * platform/mediastream/MediaConstraints.h:
+        (WebCore::FlattenedConstraint::ConstraintHolder::create): Return by value.
+
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes AKA websam
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Add a new timer-based memory pressure monitor that checks the process memory
+        footprint every 30 seconds and reacts to changes by setting a MemoryUsagePolicy.
+
+        There are four MemoryUsagePolicy values:
+
+            - Unrestricted (below 1GB)
+            - Conservative (above 1GB)
+            - Strict (above 2GB)
+            - Panic (above 4GB, or 3GB if 32-bit)
+
+        For Strict and above, the old-style "isUnderMemoryPressure()" API will return true.
+
+        Transitioning to a higher policy will cause memory pressure handlers to run:
+
+        At Strict, we run the "non-critical" memory pressure handler, then carry on.
+
+        At Panic, we run the "critical" memory pressure handler. If that fails to recover
+        enough memory to bring us back below 4GB, we may kill the process:
+
+        A process is eligible to get killed for using too much memory if:
+
+            - It's not visible on screen (i.e it's a background tab.)
+            - It's not playing audio.
+            - It has not performed a main frame navigation in the last hour.
+
+        Before killing the process, an exit-time callback will run. This patch installs such
+        a callback that prints out some time-of-death statistics about C++ and JavaScript memory
+        usage to hopefully help understand what was soaking up all the memory.
+
+        * bindings/js/CommonVM.cpp:
+        (WebCore::commonVMSlow):
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::setState):
+        * page/MainFrame.cpp:
+        (WebCore::MainFrame::didCompleteLoad):
+        * page/MainFrame.h:
+        * page/MemoryRelease.cpp:
+        (WebCore::pageCount):
+        (WebCore::logMemoryStatisticsAtTimeOfDeath):
+        (WebCore::didExceedMemoryLimitAndFailedToRecover):
+        (WebCore::processIsEligibleForMemoryKill):
+        * page/MemoryRelease.h:
+        * page/ResourceUsageThread.h:
+        * page/cocoa/ResourceUsageThreadCocoa.mm:
+        (WebCore::vmPageSize):
+        * platform/MemoryPressureHandler.cpp:
+        (WebCore::MemoryPressureHandler::MemoryPressureHandler):
+        (WebCore::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+        (WebCore::toString):
+        (WebCore::thresholdForPolicy):
+        (WebCore::policyForFootprint):
+        (WebCore::MemoryPressureHandler::measurementTimerFired):
+        * platform/MemoryPressureHandler.h:
+        (WebCore::MemoryPressureHandler::setMemoryKillCallback):
+        (WebCore::MemoryPressureHandler::setProcessIsEligibleForMemoryKillCallback):
+        (WebCore::MemoryPressureHandler::isUnderMemoryPressure):
+
+2017-02-02  Chris Dumez  <cdumez@apple.com>
+
+        [Crash] com.apple.WebKit.WebContent at WebKit: WebKit::WebPage::fromCorePage()
+        https://bugs.webkit.org/show_bug.cgi?id=167738
+        <rdar://problem/30229990>
+
+        Reviewed by Andreas Kling.
+
+        Upon destruction of a Page, we destroy the BackForwardClient, which is supposed
+        to keep track of HistoryItems associated to this particular page and remove them
+        from the PageCache. Given the crash trace, the issue seems to be that some
+        HistoryItems associated with the Page sometimes linger in the PageCache *after*
+        the Page has been destroyed, which leads to crashes later on when pruning the
+        PageCache.
+
+        In order to make the process more robust, this patch refactors the code so that
+        the Page is now in charge of removing all its associated HistoryItems from the
+        PageCache instead of relying on the BackForwardClient. Also, instead of having
+        the Page keep track of which HistoryItems are associated with it (which is
+        error prone), we now scan all PageCache entries instead to find which ones are
+        associated with the Page. While this is in theory slower, this is much safer
+        and in practice not an issue because the PageCache usually has 3-5 entries.
+
+        No new tests, could not reproduce.
+
+        * history/CachedPage.cpp:
+        (WebCore::CachedPage::CachedPage):
+        * history/CachedPage.h:
+        (WebCore::CachedPage::page):
+        * history/PageCache.cpp:
+        (WebCore::PageCache::removeAllItemsForPage):
+        * history/PageCache.h:
+        * page/Page.cpp:
+        (WebCore::Page::~Page):
+
+2017-02-02  Antti Koivisto  <antti@apple.com>
+
+        Column progression wrong after enabling pagination on RTL document
+        https://bugs.webkit.org/show_bug.cgi?id=167733
+        <rdar://problem/29012252>
+
+        Reviewed by Zalan Bujtas.
+
+        Column progression depends on document direction but was not updated when direction changed.
+
+        Test: fast/multicol/pagination/pagination-dynamic-rtl.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::styleDidChange):
+
+            Update column styles if document direction changes.
+
+2017-02-02  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [EME][GStreamer] Fixed decryptor selection
+        https://bugs.webkit.org/show_bug.cgi?id=167588
+
+        Reviewed by Žan Doberšek.
+
+        GStreamer selected a decryptor automatically but we need to be
+        able to tell it which decryptor we want because one file can be
+        encrypted with more than one system and the one we want to use can
+        depend on what the user tells us.
+
+        Now when the demuxer is about to select the demuxer, it runs a
+        GstContext query with the events, which are forwarded through the
+        EME api to the application, which will answer the the
+        generateKeyRequest and then we can instruct the demuxer to select
+        the one we tell it, not the one that is selected automatically. If
+        the demuxer has already a preferred decryptor, the codepath will
+        be similar to the older one.
+
+        Something that is also fixed is the report of the keyneeded event,
+        which will contain all pssh boxes as requested by the spec.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp:
+        (WebCore::MediaPlayerPrivateGStreamer::handleMessage): Intercept
+        the event and handle it.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase):
+        Initialize the CDM session.
+        (WebCore::MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase):
+        Unlock the protection condition just in case and set CDM to null.
+        (WebCore::extractEventsAndSystemsFromMessage): Access the events
+        and accepted key systems coming at the message from the demuxer.
+        (WebCore::MediaPlayerPrivateGStreamerBase::handleSyncMessage):
+        Handle the protection event not as an element event but as a
+        context request. It also concatenates all the initdatas in case
+        there is more than one. The event is sent in the main thread and
+        the current one blocks until a timeout is hit or the
+        generateKeyRequest is called.
+        (WebCore::MediaPlayerPrivateGStreamerBase::handleProtectionEvent):
+        Check if the event was already handled and if not, run the need
+        key event.
+        (WebCore::MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest):
+        Notify the that the query arrived so that we can unlock the
+        demuxer thread.
+        (WebCore::keySystemIdToUuid): Translates ids to uuids, meaning
+        the ones coming from JS to the ones coming from the media engine.
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.h:
+        Attributes and methods.
+        * platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp:
+        (webkit_media_clear_key_decrypt_class_init):
+        (webKitMediaClearKeyDecryptorRequestDecryptionKey): Deleted.
+        * platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.h:
+        Added the ui and uuid.
+        * platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.cpp:
+        (webkitMediaCommonEncryptionDecryptSinkEventHandler): Do not rely
+        on the subclass, just forward the event to the pipeline inside a message.
+        * platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.h:
+        Remove unused function signature.
+        * platform/graphics/gstreamer/mse/AppendPipeline.cpp:
+        (WebCore::appendPipelineNeedContextMessageCallback): Renamed from
+        appendPipelineElementMessageCallback.
+        (WebCore::AppendPipeline::AppendPipeline): Connect to the
+        need-context message instead of the element one.
+        (WebCore::AppendPipeline::dispatchPendingDecryptionKey):
+        Dispatches the drm-cypher message if there is one pending.
+        (WebCore::AppendPipeline::dispatchDecryptionKey): Dispatches the
+        drm-cypher.
+        (WebCore::AppendPipeline::handleNeedContextSyncMessage): Handles
+        the need-context event instead of the element one.
+        (WebCore::AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread):
+        Dispatches the key to the pipeline if there's any pending.
+        (WebCore::appendPipelineElementMessageCallback): Deleted.
+        (WebCore::AppendPipeline::handleElementMessage): Deleted.
+        * platform/graphics/gstreamer/mse/AppendPipeline.h: New methods
+        and attributes.
+        * platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey):
+        Use the dispatchDecryptionKey method of the AppendPipeline.
+
+2017-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Removed unused EventHandler members
+        https://bugs.webkit.org/show_bug.cgi?id=167723
+
+        Reviewed by Yusuke Suzuki.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::clear):
+        (WebCore::EventHandler::handleWheelEvent):
+        * page/EventHandler.h:
+        Remove unused members.
+
+        * editing/FrameSelection.cpp:
+        * html/HTMLTextAreaElement.cpp:
+        * rendering/RenderObject.cpp:
+        * rendering/RenderSlider.cpp:
+        Remove unnecessary includes.
+
+2017-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Removed unused m_navigationStart from NavigatorGamepad
+        https://bugs.webkit.org/show_bug.cgi?id=167722
+
+        Reviewed by Yusuke Suzuki.
+
+        * Modules/gamepad/NavigatorGamepad.cpp:
+        (WebCore::NavigatorGamepad::NavigatorGamepad):
+        (WebCore::NavigatorGamepad::from):
+        * Modules/gamepad/NavigatorGamepad.h:
+        (WebCore::NavigatorGamepad::navigationStart): Deleted.
+
+2017-02-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        In iOS, we should take background assertion when accessing localstorage databases.
+        https://bugs.webkit.org/show_bug.cgi?id=165478
+
+        Move WebSQLiteDatabaseTrackerClient from WebKitLegacy to WebCore so that it can be accessible from
+        WebKit1 and WebKit2. Previously, to avoid dependencies on UIKit, WebKitLegacy introduced several
+        global methods for UIKit to setup the start/end background task blocks on runtime (WebKitSetStartBackgroundTaskBlock,
+        WebKitSetInvalidWebBackgroundTaskIdentifier and WebKitSetEndBackgroundTaskBlock). Since we have to
+        move the background task handling to WebCore, to avoid adding WebCore dependencies on UIKit, this
+        patch introdues a new WebCore class WebBackgroundTaskController which holds the start/end background
+        task blocks. The existing WebKitSetStartBackgroundTaskBlock and WebKitSetEndBackgroundTaskBlock methods
+        in WebKit1 will use WebBackgroundTaskController to store the blocks set by UIKit. 
+
+        Reviewed by Brady Eidson.
+
+        No new test since this is code refactoring.
+
+        * WebCore.xcodeproj/project.pbxproj: Add a new class WebBackgroundTaskController to the project. Also move
+            WebSQLiteDatabaseTrackerClient from WebKitLegacy to WebCore.
+        * platform/ios/WebBackgroundTaskController.h: Use properties to hold the blocks for starting or ending background tasks.
+        * platform/ios/WebBackgroundTaskController.mm:
+        (+[WebBackgroundTaskController sharedController]):
+        (-[WebBackgroundTaskController dealloc]):
+        (-[WebBackgroundTaskController startBackgroundTaskWithExpirationHandler:]): Start a background task with a expiration handler;
+            to start the background task, we will use backgroundTaskStartBlock set up by UIKit.
+        (-[WebBackgroundTaskController endBackgroundTaskWithIdentifier:]): Call backgroundTaskEndBlack to end a background task.
+        * platform/ios/WebSQLiteDatabaseTrackerClient.h: Copied from Source/WebKit/ios/Storage/WebSQLiteDatabaseTrackerClient.h.
+        * platform/ios/WebSQLiteDatabaseTrackerClient.mm: Copied from Source/WebKit/ios/Storage/WebSQLiteDatabaseTrackerClient.mm.
+        (WebCore::WebSQLiteDatabaseTrackerClient::sharedWebSQLiteDatabaseTrackerClient): Make WebSQLiteDatabaseTrackerClient a singleton.
+        (WebCore::WebSQLiteDatabaseTrackerClient::WebSQLiteDatabaseTrackerClient): 
+        (WebCore::WebSQLiteDatabaseTrackerClient::~WebSQLiteDatabaseTrackerClient):
+        (WebCore::WebSQLiteDatabaseTrackerClient::willBeginFirstTransaction): Use a utility class WebDatabaseTransactionBackgroundTaskController
+            to schedule database transaction background task.
+        (WebCore::WebSQLiteDatabaseTrackerClient::didFinishLastTransaction): Use WebDatabaseTransactionBackgroundTaskController to stop
+            databas transaction background task.
+        (transactionBackgroundTaskIdentifierLock: Moved from Source/WebKit/mac/Storage/WebDatabaseManager.mm.
+        (setTransactionBackgroundTaskIdentifier): Ditto.
+        (getTransactionBackgroundTaskIdentifier): Ditto.
+        (+[WebDatabaseTransactionBackgroundTaskController startBackgroundTask]): Ditto.
+        (+[WebDatabaseTransactionBackgroundTaskController endBackgroundTask]): Ditto.
+
+2017-02-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [EME] Implement MediaKeySession::update()
+        https://bugs.webkit.org/show_bug.cgi?id=167636
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Implement the MediaKeySession::update() method by following the steps as
+        they are described in the specification.
+
+        In order to sanitize the passed-in response data, CDM::sanitizeResponse()
+        is added. It passes the SharedBuffer object by reference to the CDMPrivate
+        interface implementor, which returns a SharedBuffer object containing
+        sanitized response data.
+
+        CDMInstance::updateLicense() virtual method is added to perform the license
+        update for some specific CDMInstance object. After the update the CDMInstance
+        invokes the callback that's passed to updateLicense(), providing information
+        about session being closed, changed keys or expiration value, any message
+        that has to be enqueued, and whether the update was successful.
+
+        After that callback is invoked, MediaKeySession::update() goes on to handle
+        all the provided information in a future task, finally resolving the promise
+        (or rejecting it beforehand in case of any failure during response handling
+        or license update).
+
+        Three algorithms that can be invoked from MediaKeySession::update() (key
+        status update, expiration update and session closure) will be implemented
+        separately. Placeholder methods are provided until then.
+
+        MockCDM::sanitizeResponse() and MockCDMInstance::updateLicense() are
+        implemented for testing purposes. For now only the response sanitization
+        and sanitized response format are checked there. Key status update,
+        expiration update and session closure should be tested once the
+        implementations for those algorithms are added.
+
+        Test: media/encrypted-media/mock-MediaKeySession-update.html
+
+        * Modules/encryptedmedia/CDM.cpp:
+        (WebCore::CDM::sanitizeResponse):
+        * Modules/encryptedmedia/CDM.h:
+        * Modules/encryptedmedia/CDMInstance.h:
+        * Modules/encryptedmedia/CDMPrivate.h:
+        * Modules/encryptedmedia/MediaKeySession.cpp:
+        (WebCore::MediaKeySession::update):
+        (WebCore::MediaKeySession::updateKeyStatuses):
+        (WebCore::MediaKeySession::updateExpiration):
+        (WebCore::MediaKeySession::sessionClosed):
+        * Modules/encryptedmedia/MediaKeySession.h:
+        * testing/MockCDMFactory.cpp:
+        (WebCore::MockCDM::sanitizeResponse):
+        (WebCore::MockCDMInstance::updateLicense):
+        * testing/MockCDMFactory.h:
+
+2017-02-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update CARingBuffer class
+        https://bugs.webkit.org/show_bug.cgi?id=167656
+        <rdar://problem/30318329>
+
+        Unreviewed fix the 32-bit build after r211539.
+
+        * platform/audio/mac/CAAudioStreamDescription.cpp:
+        (WebCore::CAAudioStreamDescription::CAAudioStreamDescription):
+
+2017-02-01  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] With visual viewports, a fixed bottom bar can be clipped out when the keyboard is visible
+        https://bugs.webkit.org/show_bug.cgi?id=167710
+        rdar://problem/30100286
+
+        Reviewed by Wenson Hsieh.
+        
+        Add a bit of logging to show when RLC decides to not composite a fixed element which
+        is out of bounds.
+
+        Test: fast/visual-viewport/ios/bottom-bar-with-keyboard.html
+
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::requiresCompositingForPosition):
+
+2017-02-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update CARingBuffer class
+        https://bugs.webkit.org/show_bug.cgi?id=167656
+
+        Unreviewed build fix after r211539.
+
+        * platform/audio/mac/CAAudioStreamDescription.cpp:
+        (WebCore::CAAudioStreamDescription::CAAudioStreamDescription): Initialize a variable to fix
+        release builds.
+
+2017-02-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [Mac] Update CARingBuffer class
+        https://bugs.webkit.org/show_bug.cgi?id=167656
+
+        Reviewed by Jer Noble.
+
+        API test CARingBufferTest added.
+
+        * WebCore.xcodeproj/project.pbxproj: Add headers to framework so they can be used from the API test.
+
+        * platform/audio/AudioStreamDescription.h: Add Int32.
+
+        * platform/audio/mac/CAAudioStreamDescription.cpp:
+        (WebCore::CAAudioStreamDescription::CAAudioStreamDescription):
+        (WebCore::CAAudioStreamDescription::~CAAudioStreamDescription):
+        (WebCore::CAAudioStreamDescription::format): Support Int32.
+        (WebCore::CAAudioStreamDescription::operator==): Make inline.
+        * platform/audio/mac/CAAudioStreamDescription.h:
+
+        * platform/audio/mac/CARingBuffer.cpp:
+        (WebCore::CARingBuffer::CARingBuffer): Move initializers into class declaration.
+        (WebCore::CARingBuffer::allocate): Use flush method, get allocation info from a CAAudioStreamDescription.
+        (WebCore::FetchABL): Add a mode parameter to allow samples to replace or mix into destination.
+        (WebCore::CARingBuffer::flush): New.
+        (WebCore::CARingBuffer::fetch): Add mode parameter.
+        (WebCore::CARingBuffer::~CARingBuffer): Deleted.
+        * platform/audio/mac/CARingBuffer.h:
+        (WebCore::CARingBuffer::~CARingBuffer):
+
+        * platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm:
+        (WebCore::AudioSourceProviderAVFObjC::prepare): Use new CARingBuffer constructor.
+        (WebCore::operator==): Deleted.
+        (WebCore::operator!=): Deleted.
+
+        * platform/mediastream/mac/WebAudioSourceProviderAVFObjC.mm:
+        (WebCore::WebAudioSourceProviderAVFObjC::prepare): Use new CARingBuffer constructor
+        (WebCore::operator==): Deleted.
+        (WebCore::operator!=): Deleted.
+
 2017-02-01  Zalan Bujtas  <zalan@apple.com>
 
         Simple line layout: Move TextFragmentIterator::runWidth to ::textWidth.

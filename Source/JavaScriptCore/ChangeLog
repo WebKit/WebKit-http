@@ -1,3 +1,79 @@
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes.
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Remove the sloppy "max live heap size" mechanism from JSC in favor of the new
+        WebCore-side memory footprint monitor.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didExceedMaxLiveSize): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::setMaxLiveSize): Deleted.
+
+2017-02-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Removed unused m_errorHandlingModeReentry from Interpreter
+        https://bugs.webkit.org/show_bug.cgi?id=167726
+
+        Reviewed by Yusuke Suzuki.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::Interpreter):
+        * interpreter/Interpreter.h:
+
+2017-02-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211461.
+        https://bugs.webkit.org/show_bug.cgi?id=167721
+
+        Big regression on kraken (Requested by jfbastien on #webkit).
+
+        Reverted changeset:
+
+        "OSR entry: delay outer-loop compilation when at inner-loop"
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+        http://trac.webkit.org/changeset/211461
+
+2017-02-01  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix unintended change.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::StackFrame::displayName):
+
+2017-02-01  Keith Miller  <keith_miller@apple.com>
+
+        The sampling profile should have an option to sample from C frames.
+        https://bugs.webkit.org/show_bug.cgi?id=167614
+
+        Reviewed by Saam Barati.
+
+        We should be able to use the sampling profiler, at least
+        internally, to trace C calls.  This patch only modifies the JSC
+        shell although it would be nice to add it to the Web Inspector in
+        a future patch.
+
+        * runtime/Options.h:
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::FrameWalker):
+        (JSC::FrameWalker::walk):
+        (JSC::FrameWalker::recordJSFrame):
+        (JSC::CFrameWalker::CFrameWalker):
+        (JSC::CFrameWalker::walk):
+        (JSC::CFrameWalker::isCFrame):
+        (JSC::CFrameWalker::advanceToParentFrame):
+        (JSC::CFrameWalker::frame):
+        (JSC::SamplingProfiler::takeSample):
+        (JSC::SamplingProfiler::processUnverifiedStackTraces):
+        (JSC::SamplingProfiler::StackFrame::displayName):
+        * runtime/SamplingProfiler.h:
+        (JSC::SamplingProfiler::UnprocessedStackFrame::UnprocessedStackFrame):
+
 2017-02-01  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Use guaranteed RunLoop instead of RunLoop::current for dispatching inspector GC event
