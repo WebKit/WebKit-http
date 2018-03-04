@@ -493,7 +493,6 @@ inline void AXObjectCache::recomputeIsIgnored(RenderObject*) { }
 inline void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock&) { }
 inline void AXObjectCache::performDeferredIsIgnoredChange() { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
-inline void AXObjectCache::performDeferredIsIgnoredChange() { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, const AXTextStateChangeIntent&, const VisibleSelection&) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, AXTextEditType, const String&, const VisiblePosition&) { }
 inline void AXObjectCache::postTextReplacementNotification(Node*, AXTextEditType, const String&, AXTextEditType, const String&, const VisiblePosition&) { }
@@ -504,7 +503,6 @@ inline void AXObjectCache::postPlatformNotification(AccessibilityObject*, AXNoti
 inline void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject*) { }
 inline void AXObjectCache::focusAriaModalNode() { }
 inline RefPtr<Range> AXObjectCache::rangeForNodeContents(Node*) { return nullptr; }
-inline void AXObjectCache::recomputeDeferredIsIgnored(WebCore::RenderBlock&) {}
 inline void AXObjectCache::remove(AXID) { }
 inline void AXObjectCache::remove(RenderObject*) { }
 inline void AXObjectCache::remove(Node*) { }
