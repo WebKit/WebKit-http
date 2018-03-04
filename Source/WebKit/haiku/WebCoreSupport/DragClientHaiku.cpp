@@ -64,7 +64,7 @@ void DragClientHaiku::willPerformDragSourceAction(DragSourceAction, const IntPoi
     notImplemented();
 }
 
-void DragClientHaiku::startDrag(DragImageRef dragImage, const IntPoint&, const IntPoint&, DataTransfer&, Frame&, bool)
+void DragClientHaiku::startDrag(DragImage dragImage, const IntPoint&, const IntPoint&, const FloatPoint&, DataTransfer&, Frame&, DragSourceAction)
 {
     notImplemented();
 }

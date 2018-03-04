@@ -30,6 +30,8 @@
 #include "MIMETypeRegistry.h"
 
 #include <MimeType.h>
+#include <String.h>
+
 #include <wtf/Assertions.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/CString.h>
@@ -84,6 +86,17 @@ String MIMETypeRegistry::getMIMETypeForExtension(const String& ext)
 
     // unknown
     return String();
+}
+
+
+String MIMETypeRegistry::getPreferredExtensionForMIMEType(const String& type)
+{
+	BMimeType mimeType(type.utf8().data());
+	BMessage storage;
+	mimeType.GetFileExtensions(&storage);
+	BString extension = storage.FindString("extensions");
+
+	return extension;
 }
 
 bool MIMETypeRegistry::isApplicationPluginMIMEType(const String&)

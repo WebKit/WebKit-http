@@ -82,6 +82,7 @@ list(APPEND WebCore_SOURCES
   platform/graphics/haiku/AffineTransformHaiku.cpp
   platform/graphics/haiku/BitmapImageHaiku.cpp
   platform/graphics/haiku/ColorHaiku.cpp
+  platform/graphics/haiku/ComplexTextControllerHaiku.cpp
   platform/graphics/haiku/FontCacheHaiku.cpp
   platform/graphics/haiku/FontCustomPlatformData.cpp
   platform/graphics/haiku/FontPlatformDataHaiku.cpp

@@ -148,7 +148,7 @@ public:
         m_adjustedSpaceWidth = spaceWidth;
     }
 
-#if USE(CG) || USE(DIRECT2D) || USE(CAIRO)
+#if USE(CG) || USE(DIRECT2D) || USE(CAIRO) || USE(HAIKU)
     float syntheticBoldOffset() const { return m_syntheticBoldOffset; }
 #endif
 
@@ -277,7 +277,7 @@ private:
 
     mutable std::unique_ptr<DerivedFonts> m_derivedFontData;
 
-#if USE(CG) || USE(DIRECT2D) || USE(CAIRO)
+#if USE(CG) || USE(DIRECT2D) || USE(CAIRO) || USE(HAIKU)
     float m_syntheticBoldOffset;
 #endif
 

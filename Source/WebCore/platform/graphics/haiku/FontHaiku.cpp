@@ -53,13 +53,6 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run,
     return getGlyphsAndAdvancesForSimpleText(run, from, to, glyphBuffer);
 }
 
-void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& /* context */,
-        const TextRun& /* run */, const AtomicString& /* mark */,
-        const FloatPoint& /* point */, unsigned /* from */, unsigned /* to */) const
-{
-    notImplemented();
-}
-
 void FontCascade::drawGlyphs(GraphicsContext& graphicsContext, const Font& font,
     const GlyphBuffer& glyphBuffer, unsigned from, unsigned numGlyphs,
     const FloatPoint& point, WebCore::FontSmoothingMode smoothing)
