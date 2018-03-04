@@ -102,6 +102,12 @@ public:
     bool acceleratesDrawing() const override;
     void setAcceleratesDrawing(bool) override;
 
+    bool wantsDeepColorBackingStore() const override;
+    void setWantsDeepColorBackingStore(bool) override;
+
+    bool supportsSubpixelAntialiasedText() const override;
+    void setSupportsSubpixelAntialiasedText(bool) override;
+
     CFTypeRef contents() const override;
     void setContents(CFTypeRef) override;
 

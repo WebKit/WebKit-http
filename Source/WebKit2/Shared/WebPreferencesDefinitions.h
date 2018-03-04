@@ -31,12 +31,6 @@
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED false
 #endif
 
-#if PLATFORM(EFL)
-#define DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED true
-#else
-#define DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED false
-#endif
-
 #if ENABLE(SMOOTH_SCROLLING)
 #define DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED true
 #else
@@ -212,7 +206,6 @@
     macro(SubpixelCSSOMElementMetricsEnabled, subpixelCSSOMElementMetricsEnabled, Bool, bool, false, "", "") \
     macro(UseGiantTiles, useGiantTiles, Bool, bool, false, "", "") \
     macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, false, "", "") \
-    macro(PeerConnectionEnabled, peerConnectionEnabled, Bool, bool, false, "", "") \
     macro(UseLegacyTextAlignPositionedElementBehavior, useLegacyTextAlignPositionedElementBehavior, Bool, bool, false, "", "") \
     macro(SpatialNavigationEnabled, spatialNavigationEnabled, Bool, bool, false, "", "") \
     macro(MediaSourceEnabled, mediaSourceEnabled, Bool, bool, true, "", "") \
@@ -234,7 +227,7 @@
     macro(ShadowDOMEnabled, shadowDOMEnabled, Bool, bool, true, "Shadow DOM", "HTML Shadow DOM prototype") \
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, true, "", "") \
     macro(DownloadAttributeEnabled, downloadAttributeEnabled, Bool, bool, true, "", "") \
-    macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
+    macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, false, "", "") \
     macro(ApplePayEnabled, applePayEnabled, Bool, bool, false, "", "") \
     macro(ApplePayCapabilityDisclosureAllowed, applePayCapabilityDisclosureAllowed, Bool, bool, true, "", "") \
     macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, true, "", "") \
@@ -280,6 +273,7 @@
 
 #define FOR_EACH_WEBKIT_DEBUG_BOOL_PREFERENCE(macro) \
     macro(AcceleratedDrawingEnabled, acceleratedDrawingEnabled, Bool, bool, DEFAULT_ACCELERATED_DRAWING_ENABLED, "", "") \
+    macro(SubpixelAntialiasedLayerTextEnabled, subpixelAntialiasedLayerTextEnabled, Bool, bool, false, "", "") \
     macro(DisplayListDrawingEnabled, displayListDrawingEnabled, Bool, bool, false, "", "") \
     macro(CompositingBordersVisible, compositingBordersVisible, Bool, bool, false, "", "") \
     macro(CompositingRepaintCountersVisible, compositingRepaintCountersVisible, Bool, bool, false, "", "") \
@@ -312,12 +306,18 @@
 //   DEFAULT_EXPERIMENTAL_FEATURE_ENABLED (for features that are ready for
 //   wider testing).
 
+// Disable webrtc feature if libwebrtc library is not present
+namespace WebKit {
+bool checkWebRTCAvailability();
+}
+
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Gamepads", "Web Gamepad API support") \
     macro(LinkPreloadEnabled, linkPreloadEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Link Preload", "Link preload support") \
     macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Modern Media Controls", "Use modern media controls look") \
     macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Input Events", "Enable InputEvents support") \
+    macro(PeerConnectionEnabled, peerConnectionEnabled, Bool, bool, checkWebRTCAvailability(), "WebRTC", "Enable WebRTC API") \
     macro(SubtleCryptoEnabled, subtleCryptoEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "SubtleCrypto", "Enable SubtleCrypto support") \
     macro(UserTimingEnabled, userTimingEnabled, Bool, bool, false, "User Timing", "Enable UserTiming API") \
     macro(WebAnimationsEnabled, webAnimationsEnabled, Bool, bool, false, "Web Animations", "Web Animations prototype") \
@@ -345,7 +345,7 @@
     macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji", "", "") \
     \
 
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(HAIKU)
+#elif PLATFORM(GTK) || PLATFORM(HAIKU)
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
     macro(StandardFontFamily, standardFontFamily, String, String, "Times", "", "") \

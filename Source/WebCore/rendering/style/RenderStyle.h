@@ -69,10 +69,8 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 
-#if ENABLE(CSS_GRID_LAYOUT)
 #include "StyleGridData.h"
 #include "StyleGridItemData.h"
-#endif
 
 #if ENABLE(DASHBOARD_SUPPORT)
 #include "StyleDashboardRegion.h"
@@ -517,7 +515,6 @@ public:
     const StyleSelfAlignmentData& justifyItems() const { return m_rareNonInheritedData->justifyItems; }
     const StyleSelfAlignmentData& justifySelf() const { return m_rareNonInheritedData->justifySelf; }
 
-#if ENABLE(CSS_GRID_LAYOUT)
     const Vector<GridTrackSize>& gridColumns() const { return m_rareNonInheritedData->grid->gridColumns; }
     const Vector<GridTrackSize>& gridRows() const { return m_rareNonInheritedData->grid->gridRows; }
     const Vector<GridTrackSize>& gridAutoRepeatColumns() const { return m_rareNonInheritedData->grid->gridAutoRepeatColumns; }
@@ -551,7 +548,6 @@ public:
     const GridPosition& gridItemColumnEnd() const { return m_rareNonInheritedData->gridItem->gridColumnEnd; }
     const GridPosition& gridItemRowStart() const { return m_rareNonInheritedData->gridItem->gridRowStart; }
     const GridPosition& gridItemRowEnd() const { return m_rareNonInheritedData->gridItem->gridRowEnd; }
-#endif // ENABLE(CSS_GRID_LAYOUT)
 
     const ShadowData* boxShadow() const { return m_rareNonInheritedData->boxShadow.get(); }
     void getBoxShadowExtent(LayoutUnit& top, LayoutUnit& right, LayoutUnit& bottom, LayoutUnit& left) const { getShadowExtent(boxShadow(), top, right, bottom, left); }
@@ -1064,7 +1060,6 @@ public:
     void setBoxDecorationBreak(EBoxDecorationBreak b) { SET_VAR(m_boxData, m_boxDecorationBreak, b); }
 #endif
 
-#if ENABLE(CSS_GRID_LAYOUT)
     void setGridAutoColumns(const Vector<GridTrackSize>& trackSizeList) { SET_NESTED_VAR(m_rareNonInheritedData, grid, gridAutoColumns, trackSizeList); }
     void setGridAutoRows(const Vector<GridTrackSize>& trackSizeList) { SET_NESTED_VAR(m_rareNonInheritedData, grid, gridAutoRows, trackSizeList); }
     void setGridColumns(const Vector<GridTrackSize>& lengths) { SET_NESTED_VAR(m_rareNonInheritedData, grid, gridColumns, lengths); }
@@ -1093,7 +1088,6 @@ public:
     void setGridItemRowEnd(const GridPosition& rowEndPosition) { SET_NESTED_VAR(m_rareNonInheritedData, gridItem, gridRowEnd, rowEndPosition); }
     void setGridColumnGap(Length&& length) { SET_NESTED_VAR(m_rareNonInheritedData, grid, gridColumnGap, WTFMove(length)); }
     void setGridRowGap(Length&& length) { SET_NESTED_VAR(m_rareNonInheritedData, grid, gridRowGap, WTFMove(length)); }
-#endif // ENABLE(CSS_GRID_LAYOUT)
 
     void setMarqueeIncrement(Length&& length) { SET_NESTED_VAR(m_rareNonInheritedData, marquee, increment, WTFMove(length)); }
     void setMarqueeSpeed(int f) { SET_NESTED_VAR(m_rareNonInheritedData, marquee, speed, f); }
@@ -1242,6 +1236,25 @@ public:
     void setApplePayButtonType(ApplePayButtonType type) { SET_VAR(m_rareNonInheritedData, applePayButtonType, static_cast<unsigned>(type)); }
 #endif
 
+    // Support for paint-order, stroke-linecap, and stroke-linejoin from https://drafts.fxtf.org/paint/.
+    void setPaintOrder(PaintOrder order) { SET_VAR(m_rareInheritedData, paintOrder, static_cast<unsigned>(order)); }
+    PaintOrder paintOrder() const { return static_cast<PaintOrder>(m_rareInheritedData->paintOrder); }
+    static PaintOrder initialPaintOrder() { return PaintOrder::Normal; }
+    static Vector<PaintType, 3> paintTypesForPaintOrder(PaintOrder);
+    
+    void setCapStyle(LineCap val) { SET_VAR(m_rareInheritedData, capStyle, val); }
+    LineCap capStyle() const { return static_cast<LineCap>(m_rareInheritedData->capStyle); }
+    static LineCap initialCapStyle() { return ButtCap; }
+    
+    void setJoinStyle(LineJoin val) { SET_VAR(m_rareInheritedData, joinStyle, val); }
+    LineJoin joinStyle() const { return static_cast<LineJoin>(m_rareInheritedData->joinStyle); }
+    static LineJoin initialJoinStyle() { return MiterJoin; }
+    
+    const Length& strokeWidth() const { return m_rareInheritedData->strokeWidth; }
+    void setStrokeWidth(Length&& w) { SET_VAR(m_rareInheritedData, strokeWidth, WTFMove(w)); }
+    bool hasVisibleStroke() const { return svgStyle().hasStroke() && !strokeWidth().isZero(); }
+
+    
     const SVGRenderStyle& svgStyle() const { return m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return m_svgStyle.access(); }
 
@@ -1256,8 +1269,6 @@ public:
     void setStrokePaintColor(const Color& color) { accessSVGStyle().setStrokePaint(SVG_PAINTTYPE_RGBCOLOR, color, emptyString()); }
     float strokeOpacity() const { return svgStyle().strokeOpacity(); }
     void setStrokeOpacity(float f) { accessSVGStyle().setStrokeOpacity(f); }
-    const Length& strokeWidth() const { return svgStyle().strokeWidth(); }
-    void setStrokeWidth(Length&& w) { accessSVGStyle().setStrokeWidth(WTFMove(w)); }
     Vector<SVGLengthValue> strokeDashArray() const { return svgStyle().strokeDashArray(); }
     void setStrokeDashArray(Vector<SVGLengthValue> array) { accessSVGStyle().setStrokeDashArray(array); }
     const Length& strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
@@ -1561,7 +1572,6 @@ public:
     static ApplePayButtonType initialApplePayButtonType() { return ApplePayButtonType::Plain; }
 #endif
 
-#if ENABLE(CSS_GRID_LAYOUT)
     // The initial value is 'none' for grid tracks.
     static Vector<GridTrackSize> initialGridColumns() { return Vector<GridTrackSize>(); }
     static Vector<GridTrackSize> initialGridRows() { return Vector<GridTrackSize>(); }
@@ -1592,7 +1602,6 @@ public:
     static GridPosition initialGridItemColumnEnd() { return GridPosition(); }
     static GridPosition initialGridItemRowStart() { return GridPosition(); }
     static GridPosition initialGridItemRowEnd() { return GridPosition(); }
-#endif // ENABLE(CSS_GRID_LAYOUT)
 
     static unsigned initialTabSize() { return 8; }
 
@@ -2300,10 +2309,7 @@ inline void RenderStyle::getShadowBlockDirectionExtent(const ShadowData* shadow,
 inline bool RenderStyle::isDisplayReplacedType(EDisplay display)
 {
     return display == INLINE_BLOCK || display == INLINE_BOX || display == INLINE_FLEX
-#if ENABLE(CSS_GRID_LAYOUT)
-        || display == INLINE_GRID
-#endif
-        || display == INLINE_TABLE;
+        || display == INLINE_GRID || display == INLINE_TABLE;
 }
 
 inline bool RenderStyle::isDisplayInlineType(EDisplay display)
@@ -2318,12 +2324,7 @@ inline bool RenderStyle::isDisplayFlexibleBox(EDisplay display)
 
 inline bool RenderStyle::isDisplayGridBox(EDisplay display)
 {
-#if ENABLE(CSS_GRID_LAYOUT)
     return display == GRID || display == INLINE_GRID;
-#else
-    UNUSED_PARAM(display);
-    return false;
-#endif
 }
 
 inline bool RenderStyle::isDisplayFlexibleOrGridBox(EDisplay display)

@@ -158,6 +158,8 @@ void InspectorFrontendHost::requestSetDockSide(const String& side)
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Undocked);
     else if (side == "right")
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Right);
+    else if (side == "left")
+        m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Left);
     else if (side == "bottom")
         m_client->requestSetDockSide(InspectorFrontendClient::DockSide::Bottom);
 }
@@ -271,8 +273,6 @@ String InspectorFrontendHost::port()
 {
 #if PLATFORM(GTK)
     return ASCIILiteral("gtk");
-#elif PLATFORM(EFL)
-    return ASCIILiteral("efl");
 #else
     return ASCIILiteral("unknown");
 #endif

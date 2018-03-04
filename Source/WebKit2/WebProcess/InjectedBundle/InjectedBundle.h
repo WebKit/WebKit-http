@@ -40,10 +40,6 @@
 typedef struct _GModule GModule;
 #endif
 
-#if PLATFORM(EFL)
-#include <Eina.h>
-#endif
-
 #if PLATFORM(HAIKU)
 #include <kernel/image.h>
 #endif
@@ -71,8 +67,6 @@ namespace WebKit {
 typedef NSBundle *PlatformBundle;
 #elif PLATFORM(GTK)
 typedef ::GModule* PlatformBundle;
-#elif PLATFORM(EFL)
-typedef Eina_Module* PlatformBundle;
 #elif PLATFORM(HAIKU)
 typedef image_id PlatformBundle;
 #endif

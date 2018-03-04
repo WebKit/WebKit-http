@@ -1246,13 +1246,13 @@ void Editor::performCutOrCopy(EditorActionSpecifier action)
             imageElement = imageElementFromImageDocument(document());
 
         if (imageElement) {
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
             writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), *imageElement, document().url(), document().title());
 #else
             Pasteboard::createForCopyAndPaste()->writeImage(*imageElement, document().url(), document().title());
 #endif
         } else {
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
             writeSelectionToPasteboard(*Pasteboard::createForCopyAndPaste());
 #else
             // FIXME: Convert all other platforms to match Mac and delete this.
@@ -1346,10 +1346,23 @@ void Editor::copyURL(const URL& url, const String& title, Pasteboard& pasteboard
     pasteboardURL.title = title;
 
 #if PLATFORM(MAC)
-    fillInUserVisibleForm(pasteboardURL);
+    pasteboardURL.userVisibleForm = userVisibleString(url);
 #endif
 
     pasteboard.write(pasteboardURL);
+}
+
+PasteboardWriterData::URL Editor::pasteboardWriterURL(const URL& url, const String& title)
+{
+    PasteboardWriterData::URL result;
+
+    result.url = url;
+    result.title = title;
+#if PLATFORM(MAC)
+    result.userVisibleForm = userVisibleString(url);
+#endif
+
+    return result;
 }
 
 #if !PLATFORM(IOS)
@@ -1364,7 +1377,7 @@ void Editor::copyImage(const HitTestResult& result)
     if (url.isEmpty())
         url = result.absoluteImageURL();
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), *element, url, result.altDisplayString());
 #else
     Pasteboard::createForCopyAndPaste()->writeImage(*element, url, result.altDisplayString());
@@ -3740,5 +3753,15 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
     return font;
 }
 
+Ref<DocumentFragment> Editor::createFragmentForImageAndURL(const String& url)
+{
+    auto imageElement = HTMLImageElement::create(*m_frame.document());
+    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
+
+    auto fragment = document().createDocumentFragment();
+    fragment->appendChild(imageElement);
+
+    return fragment;
+}
 
 } // namespace WebCore

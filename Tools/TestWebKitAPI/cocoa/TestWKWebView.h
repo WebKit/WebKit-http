@@ -24,6 +24,7 @@
  */
 
 #import <WebKit/WebKit.h>
+#import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
@@ -32,6 +33,7 @@
 @end
 
 @interface TestWKWebView : WKWebView
+- (void)clearMessageHandlers:(NSArray *)messageNames;
 - (void)performAfterReceivingMessage:(NSString *)message action:(dispatch_block_t)action;
 - (void)loadTestPageNamed:(NSString *)pageName;
 - (void)synchronouslyLoadTestPageNamed:(NSString *)pageName;
@@ -39,6 +41,12 @@
 - (void)waitForMessage:(NSString *)message;
 - (void)performAfterLoading:(dispatch_block_t)actions;
 @end
+
+#if PLATFORM(IOS)
+@interface TestWKWebView (IOSOnly)
+@property (nonatomic, readonly) RetainPtr<NSArray> selectionRectsAfterPresentationUpdate;
+@end
+#endif
 
 #if PLATFORM(MAC)
 @interface TestWKWebView (MacOnly)

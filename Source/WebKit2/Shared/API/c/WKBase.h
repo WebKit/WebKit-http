@@ -34,10 +34,6 @@
 #include <WebKit/WKBaseGtk.h>
 #endif
 
-#if defined(BUILDING_EFL__)
-#include <WebKit/WKBaseEfl.h>
-#endif
-
 #if defined(BUILDING_HAIKU__)
 #include <WebKit/WKBaseHaiku.h>
 #endif

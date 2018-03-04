@@ -30,14 +30,10 @@
 #include "Error.h"
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
-#include "JSPropertyNameIterator.h"
 
 namespace JSC {
 
-static EncodedJSValue JSC_HOST_CALL moduleNamespaceObjectSymbolIterator(ExecState*);
-
 const ClassInfo JSModuleNamespaceObject::s_info = { "ModuleNamespaceObject", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSModuleNamespaceObject) };
-
 
 JSModuleNamespaceObject::JSModuleNamespaceObject(VM& vm, Structure* structure)
     : Base(vm, structure)
@@ -45,7 +41,7 @@ JSModuleNamespaceObject::JSModuleNamespaceObject(VM& vm, Structure* structure)
 {
 }
 
-void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject* globalObject, AbstractModuleRecord* moduleRecord, const IdentifierSet& exports)
+void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject*, AbstractModuleRecord* moduleRecord, Vector<std::pair<Identifier, AbstractModuleRecord::Resolution>>&& resolutions)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -58,20 +54,26 @@ void JSModuleNamespaceObject::finishCreation(ExecState* exec, JSGlobalObject* gl
     //     The list is ordered as if an Array of those String values had been sorted using Array.prototype.sort using SortCompare as comparefn.
     //
     // Sort the exported names by the code point order.
-    Vector<UniquedStringImpl*> temporaryVector(exports.size(), nullptr);
-    std::transform(exports.begin(), exports.end(), temporaryVector.begin(), [](const RefPtr<WTF::UniquedStringImpl>& ref) {
-        return ref.get();
+    std::sort(resolutions.begin(), resolutions.end(), [] (const auto& lhs, const auto& rhs) {
+        return codePointCompare(lhs.first.impl(), rhs.first.impl()) < 0;
     });
-    std::sort(temporaryVector.begin(), temporaryVector.end(), [] (UniquedStringImpl* lhs, UniquedStringImpl* rhs) {
-        return codePointCompare(lhs, rhs) < 0;
-    });
-    for (auto* identifier : temporaryVector)
-        m_exports.add(identifier);
 
     m_moduleRecord.set(vm, this, moduleRecord);
-    JSFunction* iteratorFunction = JSFunction::create(vm, globalObject, 0, ASCIILiteral("[Symbol.iterator]"), moduleNamespaceObjectSymbolIterator, NoIntrinsic);
-    putDirect(vm, vm.propertyNames->iteratorSymbol, iteratorFunction, DontEnum);
-    putDirect(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Module"), DontEnum | ReadOnly);
+    {
+        unsigned moduleRecordOffset = 0;
+        m_names.reserveCapacity(resolutions.size());
+        for (const auto& pair : resolutions) {
+            moduleRecordAt(moduleRecordOffset).set(vm, this, pair.second.moduleRecord);
+            m_names.append(pair.first);
+            m_exports.add(pair.first.impl(), ExportEntry {
+                pair.second.localName,
+                moduleRecordOffset
+            });
+            ++moduleRecordOffset;
+        }
+    }
+
+    putDirect(vm, vm.propertyNames->toStringTagSymbol, jsString(&vm, "Module"), DontEnum | DontDelete | ReadOnly);
 
     // http://www.ecma-international.org/ecma-262/6.0/#sec-module-namespace-exotic-objects-getprototypeof
     // http://www.ecma-international.org/ecma-262/6.0/#sec-module-namespace-exotic-objects-setprototypeof-v
@@ -93,6 +95,22 @@ void JSModuleNamespaceObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
     visitor.append(thisObject->m_moduleRecord);
+    for (unsigned i = 0; i < thisObject->m_names.size(); ++i)
+        visitor.appendHidden(thisObject->moduleRecordAt(i));
+}
+
+static JSValue getValue(JSModuleEnvironment* environment, PropertyName localName, ScopeOffset& scopeOffset)
+{
+    SymbolTable* symbolTable = environment->symbolTable();
+    {
+        ConcurrentJSLocker locker(symbolTable->m_lock);
+        auto iter = symbolTable->find(locker, localName.uid());
+        ASSERT(iter != symbolTable->end(locker));
+        SymbolTableEntry& entry = iter->value;
+        ASSERT(!entry.isNull());
+        scopeOffset = entry.scopeOffset();
+    }
+    return environment->variableAt(scopeOffset).get();
 }
 
 bool JSModuleNamespaceObject::getOwnPropertySlot(JSObject* cell, ExecState* exec, PropertyName propertyName, PropertySlot& slot)
@@ -110,40 +128,29 @@ bool JSModuleNamespaceObject::getOwnPropertySlot(JSObject* cell, ExecState* exec
     if (propertyName.isSymbol())
         return JSObject::getOwnPropertySlot(thisObject, exec, propertyName, slot);
 
-    // FIXME: Add IC for module namespace object.
-    // https://bugs.webkit.org/show_bug.cgi?id=160590
-    slot.disableCaching();
     slot.setIsTaintedByOpaqueObject();
-    if (!thisObject->m_exports.contains(propertyName.uid()))
+
+    auto iterator = thisObject->m_exports.find(propertyName.uid());
+    if (iterator == thisObject->m_exports.end())
         return false;
+    ExportEntry& exportEntry = iterator->value;
 
     switch (slot.internalMethodType()) {
-    case PropertySlot::InternalMethodType::Get:
-    case PropertySlot::InternalMethodType::GetOwnProperty: {
-        AbstractModuleRecord* moduleRecord = thisObject->moduleRecord();
-
-        AbstractModuleRecord::Resolution resolution = moduleRecord->resolveExport(exec, Identifier::fromUid(exec, propertyName.uid()));
-        ASSERT(resolution.type != AbstractModuleRecord::Resolution::Type::NotFound && resolution.type != AbstractModuleRecord::Resolution::Type::Ambiguous);
-
-        AbstractModuleRecord* targetModule = resolution.moduleRecord;
-        JSModuleEnvironment* targetEnvironment = targetModule->moduleEnvironment();
-
-        PropertySlot trampolineSlot(targetEnvironment, PropertySlot::InternalMethodType::Get);
-        bool found = targetEnvironment->methodTable(vm)->getOwnPropertySlot(targetEnvironment, exec, resolution.localName, trampolineSlot);
-        ASSERT_UNUSED(found, found);
-
-        JSValue value = trampolineSlot.getValue(exec, propertyName);
-        ASSERT(!scope.exception());
-
+    case PropertySlot::InternalMethodType::GetOwnProperty:
+    case PropertySlot::InternalMethodType::Get: {
+        JSModuleEnvironment* environment = thisObject->moduleRecordAt(exportEntry.moduleRecordOffset)->moduleEnvironment();
+        ScopeOffset scopeOffset;
+        JSValue value = getValue(environment, exportEntry.localName, scopeOffset);
         // If the value is filled with TDZ value, throw a reference error.
         if (!value) {
             throwVMError(exec, scope, createTDZError(exec));
             return false;
         }
 
-        slot.setValue(thisObject, DontDelete, value);
+        slot.setValueModuleNamespace(thisObject, DontDelete, value, environment, scopeOffset);
         return true;
     }
+
     case PropertySlot::InternalMethodType::HasProperty: {
         // Do not perform [[Get]] for [[HasProperty]].
         // [[Get]] / [[GetOwnProperty]] onto namespace object could throw an error while [[HasProperty]] just returns true here.
@@ -181,10 +188,13 @@ bool JSModuleNamespaceObject::putByIndex(JSCell*, ExecState* exec, unsigned, JSV
     return false;
 }
 
-bool JSModuleNamespaceObject::deleteProperty(JSCell* cell, ExecState*, PropertyName propertyName)
+bool JSModuleNamespaceObject::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propertyName)
 {
     // http://www.ecma-international.org/ecma-262/6.0/#sec-module-namespace-exotic-objects-delete-p
     JSModuleNamespaceObject* thisObject = jsCast<JSModuleNamespaceObject*>(cell);
+    if (propertyName.isSymbol())
+        return JSObject::deleteProperty(thisObject, exec, propertyName);
+
     return !thisObject->m_exports.contains(propertyName.uid());
 }
 
@@ -192,8 +202,8 @@ void JSModuleNamespaceObject::getOwnPropertyNames(JSObject* cell, ExecState* exe
 {
     // http://www.ecma-international.org/ecma-262/6.0/#sec-module-namespace-exotic-objects-ownpropertykeys
     JSModuleNamespaceObject* thisObject = jsCast<JSModuleNamespaceObject*>(cell);
-    for (const auto& name : thisObject->m_exports)
-        propertyNames.add(name.get());
+    for (const auto& name : thisObject->m_names)
+        propertyNames.add(name.impl());
     return JSObject::getOwnPropertyNames(thisObject, exec, propertyNames, mode);
 }
 
@@ -206,17 +216,6 @@ bool JSModuleNamespaceObject::defineOwnProperty(JSObject*, ExecState* exec, Prop
     if (shouldThrow)
         throwTypeError(exec, scope, ASCIILiteral(NonExtensibleObjectPropertyDefineError));
     return false;
-}
-
-EncodedJSValue JSC_HOST_CALL moduleNamespaceObjectSymbolIterator(ExecState* exec)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    JSModuleNamespaceObject* object = jsDynamicCast<JSModuleNamespaceObject*>(vm, exec->thisValue());
-    if (!object)
-        return throwVMTypeError(exec, scope, ASCIILiteral("|this| should be a module namespace object"));
-    return JSValue::encode(JSPropertyNameIterator::create(exec, exec->lexicalGlobalObject()->propertyNameIteratorStructure(), object));
 }
 
 } // namespace JSC

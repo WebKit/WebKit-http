@@ -331,7 +331,6 @@ const char* TestController::libraryPathForTesting()
 void TestController::initialize(int argc, const char* argv[])
 {
     JSC::initializeThreading();
-    WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
     platformInitialize();
@@ -642,6 +641,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetPageVisibilityBasedProcessSuppressionEnabled(preferences, false);
     WKPreferencesSetOfflineWebApplicationCacheEnabled(preferences, true);
     WKPreferencesSetFontSmoothingLevel(preferences, kWKFontSmoothingLevelNoSubpixelAntiAliasing);
+    WKPreferencesSetSubpixelAntialiasedLayerTextEnabled(preferences, false);
     WKPreferencesSetXSSAuditorEnabled(preferences, false);
     WKPreferencesSetWebAudioEnabled(preferences, true);
     WKPreferencesSetMediaStreamEnabled(preferences, true);

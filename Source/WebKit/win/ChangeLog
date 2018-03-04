@@ -1,3 +1,58 @@
+2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Better handle Thread and RunLoop initialization
+        https://bugs.webkit.org/show_bug.cgi?id=167828
+
+        Reviewed by Yusuke Suzuki.
+
+        Remove unnecessary call to WTF::initializeMainThread().
+
+        * WebView.cpp:
+        (WebView::WebView):
+
+2017-02-20  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Custom scale factor is not applied in all cases.
+        https://bugs.webkit.org/show_bug.cgi?id=168117
+
+        Reviewed by Brent Fulgham.
+
+        We should not call the function deviceScaleFactorForWindow directly, since this
+        will return the system scale factor, and ignore the custom scale factor.
+
+        * WebView.cpp:
+        (WebView::handleContextMenuEvent):
+        (WebView::handleMouseEvent):
+        (WebView::setAcceleratedCompositing):
+
+2017-02-16  Daniel Bates  <dabates@apple.com>
+
+        Remove Chromium-specific code to call FrameLoaderClient::redirectDataToPlugin(nullptr)
+        https://bugs.webkit.org/show_bug.cgi?id=168417
+        <rdar://problem/30541748>
+
+        Reviewed by Brent Fulgham.
+
+        Update override of FrameLoaderClient::redirectDataToPlugin() to take a Widget& instead of a
+        Widget* as it is always called with a valid Widget.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::redirectDataToPlugin):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Another attempt at fixing the Windows build.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (WebDragClient::startDrag):
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebCoreSupport/WebDragClient.h:
+
 2017-02-15  Anders Carlsson  <andersca@apple.com>
 
         Modernize DragClient::startDrag somewhat

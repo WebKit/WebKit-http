@@ -153,9 +153,6 @@ public:
 #elif PLATFORM(HAIKU)
     explicit IntPoint(const BPoint&);
     operator BPoint() const;
-#elif PLATFORM(EFL)
-    explicit IntPoint(const Evas_Point&);
-    operator Evas_Point() const;
 #endif
 
 private:

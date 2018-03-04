@@ -645,6 +645,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     [_dataInteractionGestureRecognizer setDelegate:nil];
     [self removeGestureRecognizer:_dataInteractionGestureRecognizer.get()];
     [self teardownDataInteractionDelegates];
+    _isPerformingDataInteractionOperation = NO;
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -1441,7 +1442,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasDataInteractionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition) {
         // If the position might initiate a data interaction, we don't want to consider the content at this position to be selectable.
         // FIXME: This should be renamed to something more precise, such as textSelectionShouldRecognizeGestureAtPoint:
         return NO;
@@ -1461,14 +1462,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (_positionInformation.isImage || _positionInformation.isLink)
         return YES;
 
-    return _positionInformation.hasDataInteractionAtPosition;
+    return _positionInformation.hasSelectionAtPosition;
 }
 
 - (UILongPressGestureRecognizer *)_dataInteractionGestureRecognizer
 {
-    if ([_webView._testingDelegate respondsToSelector:@selector(dataInteractionGestureRecognizer)])
-        return _webView._testingDelegate.dataInteractionGestureRecognizer;
-
     return _dataInteractionGestureRecognizer.get();
 }
 
@@ -1487,7 +1485,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasDataInteractionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition) {
         // If the position might initiate data interaction, we don't want to change the selection.
         // FIXME: This should be renamed to something more precise, such as textInteractionShouldRecognizeGestureAtPoint:
         return NO;
@@ -3776,6 +3774,9 @@ static bool isAssistableInputType(InputType type)
     else {
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
         shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
+#if ENABLE(DATA_INTERACTION)
+        shouldShowKeyboard |= _isPerformingDataInteractionOperation;
+#endif
     }
     if (!shouldShowKeyboard)
         return;
@@ -3814,7 +3815,7 @@ static bool isAssistableInputType(InputType type)
     
     // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
     if (editableChanged)
-        [_webView _updateVisibleContentRects];
+        [_webView _scheduleVisibleContentRectUpdate];
     
     [self _displayFormNodeInputView];
 
@@ -3848,7 +3849,7 @@ static bool isAssistableInputType(InputType type)
 
     // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
     if (editableChanged)
-        [_webView _updateVisibleContentRects];
+        [_webView _scheduleVisibleContentRectUpdate];
 
     [_webView didEndFormControlInteraction];
 }

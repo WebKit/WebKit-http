@@ -186,9 +186,6 @@ public:
 #elif PLATFORM(HAIKU)
     explicit IntRect(const BRect&);
     operator BRect() const;
-#elif PLATFORM(EFL)
-    explicit IntRect(const Eina_Rectangle&);
-    operator Eina_Rectangle() const;
 #endif
 
 #if USE(CAIRO)

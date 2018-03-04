@@ -1,3 +1,1919 @@
+2017-02-23  Filip Pizlo  <fpizlo@apple.com>
+
+        SpeculativeJIT::compilePutByValForIntTypedArray should only do the constant-folding optimization when the constant passes the type check
+        https://bugs.webkit.org/show_bug.cgi?id=168787
+
+        Reviewed by Michael Saboff and Mark Lam.
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compilePutByValForIntTypedArray):
+
+2017-02-23  Mark Lam  <mark.lam@apple.com>
+
+        Ensure that the end of the last invalidation point does not extend beyond the end of the buffer.
+        https://bugs.webkit.org/show_bug.cgi?id=168786
+
+        Reviewed by Filip Pizlo.
+
+        In practice, we will always have multiple instructions after invalidation points,
+        and have enough room in the JIT buffer for the invalidation point to work with.
+        However, as a precaution, we can guarantee that there's enough room by always
+        emitting a label just before we link the buffer.  The label will emit nop padding
+        if needed.
+
+        * assembler/LinkBuffer.cpp:
+        (JSC::LinkBuffer::linkCode):
+
+2017-02-23  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, fix the cloop build. Needed a #if.
+
+        * jit/ExecutableAllocator.cpp:
+
+2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Better handle Thread and RunLoop initialization
+        https://bugs.webkit.org/show_bug.cgi?id=167828
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading): Do not initialize double_conversion, that is already initialized by WTF, and GC
+        threads that will be initialized by WTF main thread when needed.
+
+2017-02-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: clear out insignificant i32 bits when calling JavaScript
+        https://bugs.webkit.org/show_bug.cgi?id=166677
+
+        Reviewed by Keith Miller.
+
+        When WebAssembly calls JavaScript it needs to clear out the
+        insignificant bits of int32 values:
+
+          +------------------- tag
+          |  +---------------- insignificant
+          |  |   +------------ 32-bit integer value
+          |  |   |
+          |--|---|-------|
+        0xffff0000ffffffff
+
+        At least some JavaScript code assumes that these bits are all
+        zero. In the wasm-to-wasm.js example we store a 64-bit value in an
+        object with lo / hi fields, each containing 32-bit integers. We
+        then load these back, and the baseline compiler fails its
+        comparison because it first checks the value are the same type
+        (yes, because the int32 tag is set in both), and then whether they
+        have the same value (no, because comparing the two registers
+        fails). We could argue that the baseline compiler is wrong for
+        performing a 64-bit comparison, but it doesn't really matter
+        because there's not much of a point in breaking that invariant for
+        WebAssembly's sake.
+
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+
+2017-02-22  Keith Miller  <keith_miller@apple.com>
+
+        Remove the demand executable allocator
+        https://bugs.webkit.org/show_bug.cgi?id=168754
+
+        Reviewed by Saam Barati.
+
+        We currently only use the demand executable allocator for non-iOS 32-bit platforms.
+        Benchmark results on a MBP indicate there is no appreciable performance difference
+        between a the fixed and demand allocators. In a future patch I will go back through
+        this code and remove more of the abstractions.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        (JSC::FixedVMPoolExecutableAllocator::jitWriteThunkGenerator):
+        (JSC::FixedVMPoolExecutableAllocator::genericWriteToJITRegion):
+        (JSC::ExecutableAllocator::initializeAllocator):
+        (JSC::ExecutableAllocator::ExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::~FixedVMPoolExecutableAllocator):
+        (JSC::ExecutableAllocator::isValid):
+        (JSC::ExecutableAllocator::underMemoryPressure):
+        (JSC::ExecutableAllocator::memoryPressureMultiplier):
+        (JSC::ExecutableAllocator::allocate):
+        (JSC::ExecutableAllocator::isValidExecutableMemory):
+        (JSC::ExecutableAllocator::getLock):
+        (JSC::ExecutableAllocator::committedByteCount):
+        (JSC::ExecutableAllocator::dumpProfile):
+        (JSC::DemandExecutableAllocator::DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::~DemandExecutableAllocator): Deleted.
+        (JSC::DemandExecutableAllocator::bytesAllocatedByAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::bytesCommittedByAllocactors): Deleted.
+        (JSC::DemandExecutableAllocator::dumpProfileFromAllAllocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocateNewSpace): Deleted.
+        (JSC::DemandExecutableAllocator::notifyNeedPage): Deleted.
+        (JSC::DemandExecutableAllocator::notifyPageIsFree): Deleted.
+        (JSC::DemandExecutableAllocator::allocators): Deleted.
+        (JSC::DemandExecutableAllocator::allocatorsMutex): Deleted.
+        * jit/ExecutableAllocator.h:
+        * jit/ExecutableAllocatorFixedVMPool.cpp: Removed.
+        * jit/JITStubRoutine.h:
+        (JSC::JITStubRoutine::canPerformRangeFilter):
+        (JSC::JITStubRoutine::filteringStartAddress):
+        (JSC::JITStubRoutine::filteringExtentSize):
+
+2017-02-22  Saam Barati  <sbarati@apple.com>
+
+        Add biased coloring to Briggs and IRC
+        https://bugs.webkit.org/show_bug.cgi?id=168611
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements biased coloring as proposed by Briggs. See section
+        5.3.3 of his thesis for more information: http://www.cs.utexas.edu/users/mckinley/380C/lecs/briggs-thesis-1992.pdf
+
+        The main idea of biased coloring is this:
+        We try to coalesce a move between u and v, but the conservative heuristic
+        fails. We don't want coalesce the move because we don't want to risk
+        creating an uncolorable graph. However, if the conservative heuristic fails,
+        it's not proof that the graph is uncolorable if the move were indeed coalesced.
+        So, when we go to color the tmps, we'll remember that we really want the
+        same register for u and v, and if legal during coloring, we will
+        assign them to the same register.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
+2017-02-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        This patch optimizes accesses to module namespace objects.
+
+        1. Cache the resolutions for module namespace objects.
+
+            When constructing the module namespace object, we already resolves all the exports.
+            The module namespace object caches this result and leverage it in the later access in
+            getOwnPropertySlot. This avoids resolving bindings through resolveExport.
+
+        2. Introduce ModuleNamespaceLoad IC.
+
+            This patch adds new IC for module namespace objects. The mechanism is simple, getOwnPropertySlot
+            tells us about module namespace object resolution. The IC first checks whether the given object
+            is an expected module namespace object. If this check succeeds, we load the value from the module
+            environment.
+
+        3. Introduce DFG/FTL optimization.
+
+            After exploiting module namespace object accesses in (2), DFG can recognize this in ByteCodeParser.
+            DFG will convert it to CheckCell with the namespace object and GetClosureVar from the cached environment.
+            At that time, we have a chance to fold it to the constant.
+
+        This optimization improves the performance of accessing to module namespace objects.
+
+        Before
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.43s user 0.03s system 101% cpu 0.451 total
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.08s user 0.02s system 103% cpu 0.104 total
+
+        After
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m   0.11s user 0.01s system 106% cpu 0.109 total
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.j  0.08s user 0.02s system 102% cpu 0.105 total
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::GetByIdStatus):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::makesCalls):
+        (JSC::GetByIdStatus::dump):
+        * bytecode/GetByIdStatus.h:
+        (JSC::GetByIdStatus::isModuleNamespace):
+        (JSC::GetByIdStatus::takesSlowPath):
+        (JSC::GetByIdStatus::moduleNamespaceObject):
+        (JSC::GetByIdStatus::moduleEnvironment):
+        (JSC::GetByIdStatus::scopeOffset):
+        * bytecode/ModuleNamespaceAccessCase.cpp: Added.
+        (JSC::ModuleNamespaceAccessCase::ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::create):
+        (JSC::ModuleNamespaceAccessCase::~ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::clone):
+        (JSC::ModuleNamespaceAccessCase::emit):
+        * bytecode/ModuleNamespaceAccessCase.h: Added.
+        (JSC::ModuleNamespaceAccessCase::moduleNamespaceObject):
+        (JSC::ModuleNamespaceAccessCase::moduleEnvironment):
+        (JSC::ModuleNamespaceAccessCase::scopeOffset):
+        * bytecode/PolymorphicAccess.cpp:
+        (WTF::printInternal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleModuleNamespaceLoad):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::loadValue):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::getModuleNamespace):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::getValue):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlot):
+        (JSC::JSModuleNamespaceObject::getOwnPropertyNames):
+        * runtime/JSModuleNamespaceObject.h:
+        (JSC::isJSModuleNamespaceObject):
+        (JSC::JSModuleNamespaceObject::create): Deleted.
+        (JSC::JSModuleNamespaceObject::createStructure): Deleted.
+        (JSC::JSModuleNamespaceObject::moduleRecord): Deleted.
+        * runtime/JSModuleRecord.h:
+        (JSC::JSModuleRecord::moduleEnvironment): Deleted.
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::domJIT):
+        (JSC::PropertySlot::moduleNamespaceSlot):
+        (JSC::PropertySlot::setValueModuleNamespace):
+        (JSC::PropertySlot::setCacheableCustom):
+
+2017-02-22  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Rename AirGraphColoring.* files to AirAllocateRegistersByGraphColoring.* to be more consistent with the rest of the Air file names.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp: Copied from Source/JavaScriptCore/b3/air/AirGraphColoring.cpp.
+        * b3/air/AirAllocateRegistersByGraphColoring.h: Copied from Source/JavaScriptCore/b3/air/AirGraphColoring.h.
+        * b3/air/AirGenerate.cpp:
+        * b3/air/AirGraphColoring.cpp: Removed.
+        * b3/air/AirGraphColoring.h: Removed.
+
+2017-02-21  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        <rdar://problem/30401864>
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-21  Saam Barati  <sbarati@apple.com>
+
+        Add the Briggs optimistic allocator to run on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=168454
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds the Briggs allocator to Air:
+        http://www.cs.utexas.edu/users/mckinley/380C/lecs/briggs-thesis-1992.pdf
+        It uses it by default on ARM64. I was measuring an 8-10% speedup
+        in the phase because of this. I also wasn't able to detect a slowdown 
+        for generated code on ARM64. There are still a few things we can do
+        to speed things up even further. Moving the interference graph into
+        a BitVector was another 10-20% speedup. We should consider doing this
+        in a follow up patch. This is especially important now, since making
+        register allocation faster has a direct impact on startup time for
+        Wasm modules.
+        
+        I abstracted away the common bits between Briggs and IRC, and moved
+        them into a common super class. In a follow up to this patch, I plan
+        on implementing biased coloring for both Briggs and IRC (this is
+        described in Briggs's thesis). I was able to detect a 1% slowdown
+        with Briggs on Octane for x86-64. This is because the register file
+        for x86-64 is smaller than ARM64. When I implemented biased coloring,
+        I was no longer able to detect this slowdown. I still think it's a
+        sensible plan to run Briggs on ARM64 and IRC on x86-64.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        * b3/air/AirGraphColoring.cpp: Copied from Source/JavaScriptCore/b3/air/AirIteratedRegisterCoalescing.cpp.
+        (JSC::B3::Air::allocateRegistersByGraphColoring):
+        (JSC::B3::Air::iteratedRegisterCoalescing): Deleted.
+        * b3/air/AirGraphColoring.h: Copied from Source/JavaScriptCore/b3/air/AirIteratedRegisterCoalescing.h.
+        * b3/air/AirIteratedRegisterCoalescing.cpp: Removed.
+        * b3/air/AirIteratedRegisterCoalescing.h: Removed.
+        * runtime/Options.h:
+
+2017-02-21  Mark Lam  <mark.lam@apple.com>
+
+        Add more missing exception checks detected by running marathon.js.
+        https://bugs.webkit.org/show_bug.cgi?id=168697
+
+        Reviewed by Saam Barati.
+
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        (JSC::replaceUsingStringSearch):
+
+2017-02-21  JF Bastien  <jfbastien@apple.com>
+
+        FullCodeOrigin for CodeBlock+CodeOrigin printing
+        https://bugs.webkit.org/show_bug.cgi?id=168673
+
+        Reviewed by Filip Pizlo.
+
+        WebAssembly doesn't have a CodeBlock, so printing it isn't
+        valid. This patch adds FullCodeOrigin to handle the
+        CodeBlock+CodeOrigin printing pattern, and uses it through all the
+        places I could find, including Repatch.cpp where it's relevant for
+        WebAssembly.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::noticeIncomingCall):
+        * bytecode/FullCodeOrigin.cpp: Added.
+        (JSC::FullCodeOrigin::dump):
+        (JSC::FullCodeOrigin::dumpInContext):
+        * bytecode/FullCodeOrigin.h: Added.
+        (JSC::FullCodeOrigin::FullCodeOrigin):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * jit/PolymorphicCallStubRoutine.cpp:
+        (JSC::PolymorphicCallStubRoutine::PolymorphicCallStubRoutine):
+        * jit/Repatch.cpp:
+        (JSC::linkFor):
+        (JSC::linkDirectFor):
+        (JSC::linkVirtualFor):
+
+2017-02-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop. I managed to have my local patch for relanding be the one without the cloop
+        fix. I keep forgetting about cloop!
+
+        * heap/Heap.cpp:
+        (JSC::Heap::stopThePeriphery):
+        * runtime/JSLock.cpp:
+
+2017-02-21  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception checks detected by running marathon.js.
+        https://bugs.webkit.org/show_bug.cgi?id=168687
+
+        Reviewed by Saam Barati.
+
+        When running the marathon.js test from https://bugs.webkit.org/show_bug.cgi?id=168580,
+        we get some crashes due to missing exception checks.  This patch adds those
+        missing exception checks.
+
+        * runtime/JSCJSValueInlines.h:
+        (JSC::JSValue::toPropertyKey):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::getPrimitiveNumber):
+
+2017-02-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        This turns the collector thread's workflow into a state machine, so that the mutator thread can
+        run it directly. This reduces the amount of synchronization we do with the collector thread, and
+        means that most apps will never start the collector thread. The collector thread will still start
+        when we need to finish collecting and we don't have heap access.
+        
+        In this new world, "stopping the world" means relinquishing control of collection to the mutator.
+        This means tracking who is conducting collection. I use the GCConductor enum to say who is
+        conducting. It's either GCConductor::Mutator or GCConductor::Collector. I use the term "conn" to
+        refer to the concept of conducting (having the conn, relinquishing the conn, taking the conn).
+        So, stopping the world means giving the mutator the conn. Releasing heap access means giving the
+        collector the conn.
+        
+        This meant bringing back the conservative scan of the calling thread. It turns out that this
+        scan was too slow to be called on each GC increment because apparently setjmp() now does system
+        calls. So, I wrote our own callee save register saving for the GC. Then I had doubts about
+        whether or not it was correct, so I also made it so that the GC only rarely asks for the register
+        state. I think we still want to use my register saving code instead of setjmp because setjmp
+        seems to save things we don't need, and that could make us overly conservative.
+        
+        It turns out that this new scheduling discipline makes the old space-time scheduler perform
+        better than the new stochastic space-time scheduler on systems with fewer than 4 cores. This is
+        because the mutator having the conn enables us to time the mutator<->collector context switches
+        by polling. The OS is never involved. So, we can use super precise timing. This allows the old
+        space-time schduler to shine like it hadn't before.
+        
+        The splay results imply that this is all a good thing. On 2-core systems, this reduces pause
+        times by 40% and it increases throughput about 5%. On 1-core systems, this reduces pause times by
+        half and reduces throughput by 8%. On 4-or-more-core systems, this doesn't seem to have much
+        effect.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::visitChildren):
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::ThreadBody::ThreadBody):
+        (JSC::DFG::Worklist::dump):
+        (JSC::DFG::numberOfWorklists):
+        (JSC::DFG::ensureWorklistForIndex):
+        (JSC::DFG::existingWorklistForIndexOrNull):
+        (JSC::DFG::existingWorklistForIndex):
+        * dfg/DFGWorklist.h:
+        (JSC::DFG::numberOfWorklists): Deleted.
+        (JSC::DFG::ensureWorklistForIndex): Deleted.
+        (JSC::DFG::existingWorklistForIndexOrNull): Deleted.
+        (JSC::DFG::existingWorklistForIndex): Deleted.
+        * heap/CollectingScope.h: Added.
+        (JSC::CollectingScope::CollectingScope):
+        (JSC::CollectingScope::~CollectingScope):
+        * heap/CollectorPhase.cpp: Added.
+        (JSC::worldShouldBeSuspended):
+        (WTF::printInternal):
+        * heap/CollectorPhase.h: Added.
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        (JSC::FullGCActivityCallback::lastGCLength):
+        * heap/GCConductor.cpp: Added.
+        (JSC::gcConductorShortName):
+        (WTF::printInternal):
+        * heap/GCConductor.h: Added.
+        * heap/GCFinalizationCallback.cpp: Added.
+        (JSC::GCFinalizationCallback::GCFinalizationCallback):
+        (JSC::GCFinalizationCallback::~GCFinalizationCallback):
+        * heap/GCFinalizationCallback.h: Added.
+        (JSC::GCFinalizationCallbackFuncAdaptor::GCFinalizationCallbackFuncAdaptor):
+        (JSC::createGCFinalizationCallback):
+        * heap/Heap.cpp:
+        (JSC::Heap::Thread::Thread):
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::gatherStackRoots):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::sweepSynchronously):
+        (JSC::Heap::collectAllGarbage):
+        (JSC::Heap::collectAsync):
+        (JSC::Heap::collectSync):
+        (JSC::Heap::shouldCollectInCollectorThread):
+        (JSC::Heap::collectInCollectorThread):
+        (JSC::Heap::checkConn):
+        (JSC::Heap::runNotRunningPhase):
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::runFixpointPhase):
+        (JSC::Heap::runConcurrentPhase):
+        (JSC::Heap::runReloopPhase):
+        (JSC::Heap::runEndPhase):
+        (JSC::Heap::changePhase):
+        (JSC::Heap::finishChangingPhase):
+        (JSC::Heap::stopThePeriphery):
+        (JSC::Heap::resumeThePeriphery):
+        (JSC::Heap::stopTheMutator):
+        (JSC::Heap::resumeTheMutator):
+        (JSC::Heap::stopIfNecessarySlow):
+        (JSC::Heap::collectInMutatorThread):
+        (JSC::Heap::waitForCollector):
+        (JSC::Heap::acquireAccessSlow):
+        (JSC::Heap::releaseAccessSlow):
+        (JSC::Heap::relinquishConn):
+        (JSC::Heap::finishRelinquishingConn):
+        (JSC::Heap::handleNeedFinalize):
+        (JSC::Heap::notifyThreadStopping):
+        (JSC::Heap::finalize):
+        (JSC::Heap::addFinalizationCallback):
+        (JSC::Heap::requestCollection):
+        (JSC::Heap::waitForCollection):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didFinishCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::notifyIsSafeToCollect):
+        (JSC::Heap::preventCollection):
+        (JSC::Heap::performIncrement):
+        (JSC::Heap::markToFixpoint): Deleted.
+        (JSC::Heap::shouldCollectInThread): Deleted.
+        (JSC::Heap::collectInThread): Deleted.
+        (JSC::Heap::stopTheWorld): Deleted.
+        (JSC::Heap::resumeTheWorld): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::machineThreads):
+        (JSC::Heap::lastFullGCLength):
+        (JSC::Heap::lastEdenGCLength):
+        (JSC::Heap::increaseLastFullGCLength):
+        * heap/HeapInlines.h:
+        (JSC::Heap::mutatorIsStopped): Deleted.
+        * heap/HeapStatistics.cpp: Removed.
+        * heap/HeapStatistics.h: Removed.
+        * heap/HelpingGCScope.h: Removed.
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::stopSweeping):
+        (JSC::IncrementalSweeper::willFinishSweeping): Deleted.
+        * heap/IncrementalSweeper.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::callWithCurrentThreadState):
+        * heap/MachineStackMarker.h:
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * heap/MarkedSpace.cpp:
+        (JSC::MarkedSpace::sweep):
+        * heap/MutatorState.cpp:
+        (WTF::printInternal):
+        * heap/MutatorState.h:
+        * heap/RegisterState.h: Added.
+        * heap/RunningScope.h: Added.
+        (JSC::RunningScope::RunningScope):
+        (JSC::RunningScope::~RunningScope):
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::SlotVisitor):
+        (JSC::SlotVisitor::drain):
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::donateAll):
+        (JSC::SlotVisitor::donate):
+        * heap/SlotVisitor.h:
+        (JSC::SlotVisitor::codeName):
+        * heap/StochasticSpaceTimeMutatorScheduler.cpp:
+        (JSC::StochasticSpaceTimeMutatorScheduler::beginCollection):
+        (JSC::StochasticSpaceTimeMutatorScheduler::synchronousDrainingDidStall):
+        (JSC::StochasticSpaceTimeMutatorScheduler::timeToStop):
+        * heap/SweepingScope.h: Added.
+        (JSC::SweepingScope::SweepingScope):
+        (JSC::SweepingScope::~SweepingScope):
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::Thread::Thread):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionFlashHeapAccess):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::finalizeStatsAtEndOfTesting):
+
+2017-02-21  Saam Barati  <sbarati@apple.com>
+
+        Air should have a disassembly mode that dumps IR and assembly intermixed
+        https://bugs.webkit.org/show_bug.cgi?id=168629
+
+        Reviewed by Filip Pizlo.
+
+        This will make dumping FTL disassembly dump Air intermixed
+        with the assembly generated by each Air Inst. This is similar
+        to how dumpDFGDisassembly dumps the generated assembly for each
+        Node.
+        
+        Here is what the output will look like:
+        
+        Generated FTL JIT code for foo#CUaFiQ:[0x10b76c960->0x10b76c2d0->0x10b7b6da0, FTLFunctionCall, 40 (NeverInline)], instruction count = 40:
+        BB#0: ; frequency = 1.000000
+                0x469004e02e00: push %rbp
+                0x469004e02e01: mov %rsp, %rbp
+                0x469004e02e04: add $0xffffffffffffffd0, %rsp
+            Move $0x10b76c960, %rax, $4487301472(@16)
+                0x469004e02e08: mov $0x10b76c960, %rax
+            Move %rax, 16(%rbp), @19
+                0x469004e02e12: mov %rax, 0x10(%rbp)
+            Patch &Patchpoint2, %rbp, %rax, @20
+                0x469004e02e16: lea -0x50(%rbp), %rax
+                0x469004e02e1a: mov $0x1084081e0, %r11
+                0x469004e02e24: cmp %rax, (%r11)
+                0x469004e02e27: ja 0x469004e02e9a
+            Move 56(%rbp), %rdx, @23
+                0x469004e02e2d: mov 0x38(%rbp), %rdx
+            Move $0xffff000000000002, %rax, $-281474976710654(@15)
+                0x469004e02e31: mov $0xffff000000000002, %rax
+            Patch &BranchTest64(3,SameAsRep)1, NonZero, %rdx, %rax, %rdx, @26
+                0x469004e02e3b: test %rdx, %rax
+                0x469004e02e3e: jnz 0x469004e02f08
+            Move 48(%rbp), %rax, @29
+                0x469004e02e44: mov 0x30(%rbp), %rax
+            Move %rax, %rcx, @31
+                0x469004e02e48: mov %rax, %rcx
+            Xor64 $6, %rcx, @31
+                0x469004e02e4b: xor $0x6, %rcx
+            Patch &BranchTest64(3,SameAsRep)1, NonZero, %rcx, $-2, %rax, @35
+                0x469004e02e4f: test $0xfffffffffffffffe, %rcx
+                0x469004e02e56: jnz 0x469004e02f12
+            Patch &Branch32(3,SameAsRep)0, NotEqual, (%rdx), $266, %rdx, @45
+                0x469004e02e5c: cmp $0x10a, (%rdx)
+                0x469004e02e62: jnz 0x469004e02f1c
+            BranchTest32 NonZero, %rax, $1, @49
+                0x469004e02e68: test $0x1, %al
+                0x469004e02e6a: jnz 0x469004e02e91
+          Successors: #3, #1
+        BB#1: ; frequency = 1.000000
+          Predecessors: #0
+            Move $0, %rcx, @65
+                0x469004e02e70: xor %rcx, %rcx
+            Jump @66
+          Successors: #2
+        BB#2: ; frequency = 1.000000
+          Predecessors: #1, #3
+            Move 24(%rdx), %rax, @58
+                0x469004e02e73: mov 0x18(%rdx), %rax
+            Patch &BranchAdd32(4,ForceLateUseUnlessRecoverable)3, Overflow, %rcx, %rax, %rcx, %rcx, %rax, @60
+                0x469004e02e77: add %eax, %ecx
+                0x469004e02e79: jo 0x469004e02f26
+            Move $0xffff000000000000, %rax, $-281474976710656(@14)
+                0x469004e02e7f: mov $0xffff000000000000, %rax
+            Add64 %rcx, %rax, %rax, @62
+                0x469004e02e89: add %rcx, %rax
+            Ret64 %rax, @63
+                0x469004e02e8c: mov %rbp, %rsp
+                0x469004e02e8f: pop %rbp
+                0x469004e02e90: ret 
+        BB#3: ; frequency = 1.000000
+          Predecessors: #0
+            Move 16(%rdx), %rcx, @52
+                0x469004e02e91: mov 0x10(%rdx), %rcx
+            Jump @55
+                0x469004e02e95: jmp 0x469004e02e73
+          Successors: #2
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setDisassembler):
+        (JSC::B3::Air::Code::disassembler):
+        * b3/air/AirDisassembler.cpp: Added.
+        (JSC::B3::Air::Disassembler::startEntrypoint):
+        (JSC::B3::Air::Disassembler::endEntrypoint):
+        (JSC::B3::Air::Disassembler::startLatePath):
+        (JSC::B3::Air::Disassembler::endLatePath):
+        (JSC::B3::Air::Disassembler::startBlock):
+        (JSC::B3::Air::Disassembler::addInst):
+        (JSC::B3::Air::Disassembler::dump):
+        * b3/air/AirDisassembler.h: Added.
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+
+2017-02-21  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r212712.
+
+        This change broke the CLoop build.
+
+        Reverted changeset:
+
+        "JSModuleNamespace object should have IC"
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+        http://trac.webkit.org/changeset/212712
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        JSModuleNamespace object should have IC
+        https://bugs.webkit.org/show_bug.cgi?id=160590
+
+        Reviewed by Saam Barati.
+
+        This patch optimizes accesses to module namespace objects.
+
+        1. Cache the resolutions for module namespace objects.
+
+            When constructing the module namespace object, we already resolves all the exports.
+            The module namespace object caches this result and leverage it in the later access in
+            getOwnPropertySlot. This avoids resolving bindings through resolveExport.
+
+        2. Introduce ModuleNamespaceLoad IC.
+
+            This patch adds new IC for module namespace objects. The mechanism is simple, getOwnPropertySlot
+            tells us about module namespace object resolution. The IC first checks whether the given object
+            is an expected module namespace object. If this check succeeds, we load the value from the module
+            environment.
+
+        3. Introduce DFG/FTL optimization.
+
+            After exploiting module namespace object accesses in (2), DFG can recognize this in ByteCodeParser.
+            DFG will convert it to CheckCell with the namespace object and GetClosureVar from the cached environment.
+            At that time, we have a chance to fold it to the constant.
+
+        This optimization improves the performance of accessing to module namespace objects.
+
+        Before
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.43s user 0.03s system 101% cpu 0.451 total
+            $ time ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic-tot/Release/bin/jsc -m   0.08s user 0.02s system 103% cpu 0.104 total
+
+        After
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-namespace.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m   0.11s user 0.01s system 106% cpu 0.109 total
+            $ time ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.js
+            ../../WebKitBuild/module-ic/Release/bin/jsc -m module-assert-access-binding.j  0.08s user 0.02s system 102% cpu 0.105 total
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h:
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::GetByIdStatus):
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        (JSC::GetByIdStatus::makesCalls):
+        (JSC::GetByIdStatus::dump):
+        * bytecode/GetByIdStatus.h:
+        (JSC::GetByIdStatus::isModuleNamespace):
+        (JSC::GetByIdStatus::takesSlowPath):
+        (JSC::GetByIdStatus::moduleNamespaceObject):
+        (JSC::GetByIdStatus::moduleEnvironment):
+        (JSC::GetByIdStatus::scopeOffset):
+        * bytecode/ModuleNamespaceAccessCase.cpp: Added.
+        (JSC::ModuleNamespaceAccessCase::ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::create):
+        (JSC::ModuleNamespaceAccessCase::~ModuleNamespaceAccessCase):
+        (JSC::ModuleNamespaceAccessCase::clone):
+        (JSC::ModuleNamespaceAccessCase::emit):
+        * bytecode/ModuleNamespaceAccessCase.h: Added.
+        (JSC::ModuleNamespaceAccessCase::moduleNamespaceObject):
+        (JSC::ModuleNamespaceAccessCase::moduleEnvironment):
+        (JSC::ModuleNamespaceAccessCase::scopeOffset):
+        * bytecode/PolymorphicAccess.cpp:
+        (WTF::printInternal):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleModuleNamespaceLoad):
+        (JSC::DFG::ByteCodeParser::handleGetById):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::loadValue):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        * runtime/AbstractModuleRecord.cpp:
+        (JSC::AbstractModuleRecord::getModuleNamespace):
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::visitChildren):
+        (JSC::getValue):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlot):
+        (JSC::JSModuleNamespaceObject::getOwnPropertyNames):
+        * runtime/JSModuleNamespaceObject.h:
+        (JSC::isJSModuleNamespaceObject):
+        (JSC::JSModuleNamespaceObject::create): Deleted.
+        (JSC::JSModuleNamespaceObject::createStructure): Deleted.
+        (JSC::JSModuleNamespaceObject::moduleRecord): Deleted.
+        * runtime/JSModuleRecord.h:
+        (JSC::JSModuleRecord::moduleEnvironment): Deleted.
+        * runtime/PropertySlot.h:
+        (JSC::PropertySlot::PropertySlot):
+        (JSC::PropertySlot::domJIT):
+        (JSC::PropertySlot::moduleNamespaceSlot):
+        (JSC::PropertySlot::setValueModuleNamespace):
+        (JSC::PropertySlot::setCacheableCustom):
+
+2017-02-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ASSERTION FAILED: "!scope.exception()" with Object.isSealed/isFrozen and uninitialized module bindings
+        https://bugs.webkit.org/show_bug.cgi?id=168605
+
+        Reviewed by Saam Barati.
+
+        We should check exception state after calling getOwnPropertyDescriptor() since it can throw errors.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+
+2017-02-20  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        We fix this by having CachedCall use a MarkedArgumentBuffer to store its
+        arguments instead of a Vector.
+
+        Also declared CachedCall, MarkedArgumentBuffer, and ProtoCallFrame as
+        WTF_FORBID_HEAP_ALLOCATION because they rely on being stack allocated for
+        correctness.
+
+        Update: the original patch has a bug in MarkedArgumentBuffer::expandCapacity()
+        where it was copying and calling addMarkSet() on values in m_buffer beyond m_size
+        (up to m_capacity).  As a result, depending on the pre-existing values in
+        m_inlineBuffer, this may result in a computed Heap pointer that is wrong, and
+        subsequently, manifest as a crash.  This is likely to be the cause of the PLT
+        regression.
+
+        I don't have a new test for this fix because the issue relies on sufficiently bad
+        values randomly showing up in m_inlineBuffer when we do an ensureCapacity() which
+        calls expandCapacity().
+
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        (JSC::CachedCall::call):
+        (JSC::CachedCall::clearArguments):
+        (JSC::CachedCall::appendArgument):
+        (JSC::CachedCall::setArgument): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::emptyList):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::prepareForRepeatCall):
+        * interpreter/Interpreter.h:
+        * interpreter/ProtoCallFrame.h:
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::slowEnsureCapacity):
+        (JSC::MarkedArgumentBuffer::expandCapacity):
+        (JSC::MarkedArgumentBuffer::slowAppend):
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::append):
+        (JSC::MarkedArgumentBuffer::ensureCapacity):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-02-20  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212618.
+        https://bugs.webkit.org/show_bug.cgi?id=168609
+
+        "Appears to cause PLT regression" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "CachedCall should let GC know to keep its arguments alive."
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        http://trac.webkit.org/changeset/212618
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        BytecodeGenerator should not iterate its m_controlFlowScopeStack using a pointer bump.
+        https://bugs.webkit.org/show_bug.cgi?id=168585
+
+        Reviewed by Yusuke Suzuki.
+
+        This is because m_controlFlowScopeStack is a SegmentedVector, and entries for
+        consecutive indices in the vector are not guaranteed to be consecutive in memory
+        layout.  Instead, we should be using indexing instead.
+
+        This issue was detected by the marathon.js test from
+        https://bugs.webkit.org/show_bug.cgi?id=168580.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+
+2017-02-20  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Remove compilation flag ENABLE_CSS_GRID_LAYOUT
+        https://bugs.webkit.org/show_bug.cgi?id=167693
+
+        Reviewed by Sergio Villar Senin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212472.
+        https://bugs.webkit.org/show_bug.cgi?id=168584
+
+        Broke CLoop builds when r212466 was rolled out in r212616
+        (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, fix cloop build."
+        http://trac.webkit.org/changeset/212472
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        functionTestWasmModuleFunctions() should use a MarkedArgumentBuffer for storing args instead of a Vector.
+        https://bugs.webkit.org/show_bug.cgi?id=168574
+
+        Reviewed by Filip Pizlo.
+
+        * jsc.cpp:
+        (callWasmFunction):
+        (functionTestWasmModuleFunctions):
+        * runtime/ArgList.h:
+
+2017-02-19  Mark Lam  <mark.lam@apple.com>
+
+        CachedCall should let GC know to keep its arguments alive.
+        https://bugs.webkit.org/show_bug.cgi?id=168567
+        <rdar://problem/30475767>
+
+        Reviewed by Saam Barati.
+
+        We fix this by having CachedCall use a MarkedArgumentBuffer to store its
+        arguments instead of a Vector.
+
+        Also declared CachedCall, MarkedArgumentBuffer, and ProtoCallFrame as
+        WTF_FORBID_HEAP_ALLOCATION because they rely on being stack allocated for
+        correctness.
+
+        * interpreter/CachedCall.h:
+        (JSC::CachedCall::CachedCall):
+        (JSC::CachedCall::call):
+        (JSC::CachedCall::clearArguments):
+        (JSC::CachedCall::appendArgument):
+        (JSC::CachedCall::setArgument): Deleted.
+        * interpreter/CallFrame.h:
+        (JSC::ExecState::emptyList):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::prepareForRepeatCall):
+        * interpreter/Interpreter.h:
+        * interpreter/ProtoCallFrame.h:
+        * runtime/ArgList.cpp:
+        (JSC::MarkedArgumentBuffer::expandCapacity):
+        * runtime/ArgList.h:
+        (JSC::MarkedArgumentBuffer::ensureCapacity):
+        * runtime/StringPrototype.cpp:
+        (JSC::replaceUsingRegExpSearch):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-02-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212466.
+        https://bugs.webkit.org/show_bug.cgi?id=168577
+
+        causes crashes on AArch64 on linux, maybe it's causing crashes
+        on iOS too (Requested by pizlo on #webkit).
+
+        Reverted changeset:
+
+        "The collector thread should only start when the mutator
+        doesn't have heap access"
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+        http://trac.webkit.org/changeset/212466
+
+2017-02-17  Michael Saboff  <msaboff@apple.com>
+
+        Improve ARM64 disassembler handling of pseudo ops, unsupported opcodes and zero reg
+        https://bugs.webkit.org/show_bug.cgi?id=168527
+
+        Reviewed by Filip Pizlo.
+
+        Added support for data processing 1 source instructions like rbit, rev, clz and cls.
+        Added support for the FP conditional select instruction, fcsel.  Consolidated the
+        two classes for handling dmb instructions into one class.  Fixed the instruction
+        selection mask in the integer conditional select class, A64DOpcodeConditionalSelect.
+        Fixed the processing of extract instruction (extr) including the rotate right (ror)
+        pseudo instruction.  Changed the printing of x31 and w31 to xzr and wzr as operands
+        according to the spec.  Added support for common pseudo instructions.  This includes:
+        - mvn x1, X2 in place of orn x1, xzr, x2
+        - lsl x3, x4, #count in place of ubfiz x3, x4, #count, #count
+        - smull x5, w6, w7 in place of smaddl x5, w6, w7, XZR
+        - More understandable mov x8, #-304 in place of movn x8, #0x12f
+        - Eliminated xzr from register index loads and stores, outputing
+          ldr x10, [x11] instead of ldr x10, [x11, xzr]
+
+        Changed the move wide instructions to use hex literals for movz and movk.
+        This makes it much easier to decifer sequences of wide moves for large literals.
+                Before                       After
+          movz   x17, #26136           movz   x17, #0x6618
+          movk   x17, #672, lsl #16    movk   x17, #0x2a0, lsl #16
+          movk   x17, #1, lsl #32      movk   x17, #0x1, lsl #32
+
+        Verified that all instructions currently generated by the JSC stress tests are
+        disassembled.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        (JSC::ARM64Disassembler::A64DOpcodeBitfield::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing2Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing3Source::format):
+        (JSC::ARM64Disassembler::A64DOpcodeExtract::format):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::format):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointIntegerConversions::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreImmediate::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreRegisterOffset::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreRegisterPair::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreUnsignedImmediate::format):
+        (JSC::ARM64Disassembler::A64DOpcodeLogicalShiftedRegister::format):
+        (JSC::ARM64Disassembler::A64DOpcodeMoveWide::format):
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIsh::format): Deleted.
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIshSt::format): Deleted.
+        * disassembler/ARM64/A64DOpcode.h:
+        (JSC::ARM64Disassembler::A64DOpcode::appendSignedImmediate64):
+        (JSC::ARM64Disassembler::A64DOpcode::appendUnsignedHexImmediate):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::sBit):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opCode):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opCode2):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing1Source::opNameIndex):
+        (JSC::ARM64Disassembler::A64DOpcodeDataProcessing3Source::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeFloatingPointConditionalSelect::condition):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::option):
+        (JSC::ARM64Disassembler::A64DOpcodeDmb::crM):
+        (JSC::ARM64Disassembler::A64DOpcodeLogicalShiftedRegister::isMov):
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIsh::opName): Deleted.
+        (JSC::ARM64Disassembler::A64DOpcodeDmbIshSt::opName): Deleted.
+
+2017-02-17  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GLib] GCActivityCallback::scheduleTimer() keeps pushing dispatch into the future
+        https://bugs.webkit.org/show_bug.cgi?id=168363
+
+        Reviewed by Carlos Garcia Campos.
+
+        Mimic the USE(CF) implementation of GCActivityCallback and HeapTimer by
+        scheduling the timer a decade into the future instead of completely
+        cancelling it. That way new dispatch times for GCActivityCallback can be
+        computed by simply deducting the difference in the new and previous
+        delay from the GSource's current dispatch time. Previously we handled an
+        extra 'paused' state (where m_delay was -1) and allowed for a delay of
+        an infinite value to be valid, complicating the next dispatch time
+        computation.
+
+        HeapTimer gains the static s_decade variable. The dispatch function in
+        heapTimerSourceFunctions only dispatches the callback, which now delays
+        the GSource by a decade. HeapTimer::scheduleTimer() simply schedules the
+        source to dispatch in the specified amount of time, and cancelTimer()
+        'cancels' the source by setting the dispatch time to a decade.
+
+        GCActivityCallback constructor initializes the delay to the s_decade
+        value and immediately sets the ready time for GSource a decade into the
+        future, avoiding the default -1 value as the ready time that would cause
+        problems in scheduleTimer(). scheduleTimer() doesn't special-case the
+        zero-delay value anymore, instead it just computes the difference
+        between the old and the new delay and rolls back the GSource's ready
+        time for that amount. cancelTimer() sets m_delay to the decade value and
+        delays the GSource for that same amount.
+
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::GCActivityCallback):
+        (JSC::GCActivityCallback::scheduleTimer):
+        (JSC::GCActivityCallback::cancelTimer):
+        * heap/GCActivityCallback.h:
+        * heap/HeapTimer.cpp:
+        (JSC::HeapTimer::HeapTimer):
+        (JSC::HeapTimer::scheduleTimer):
+        (JSC::HeapTimer::cancelTimer):
+        * heap/HeapTimer.h:
+
+2017-02-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop PassRefPtr from ArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=168455
+
+        Reviewed by Geoffrey Garen.
+
+        This patch finally drops all the PassRefPtr in JSC.
+        We changed PassRefPtr<ArrayBuffer> to RefPtr<ArrayBuffer>&&.
+        Since ArrayBuffer may be nullptr if the array is neutered,
+        we hold it as RefPtr<> instead of Ref<>.
+
+        And we also drops 2 files, TypedArrayBase.h and IntegralTypedArrayBase.h.
+        They are not used (and they are not referenced from the project file).
+
+        * inspector/JavaScriptCallFrame.h:
+        * jsc.cpp:
+        (functionDollarAgentReceiveBroadcast):
+        * runtime/ArrayBufferView.cpp:
+        (JSC::ArrayBufferView::ArrayBufferView):
+        * runtime/ArrayBufferView.h:
+        (JSC::ArrayBufferView::possiblySharedBuffer):
+        (JSC::ArrayBufferView::unsharedBuffer):
+        (JSC::ArrayBufferView::verifySubRangeLength):
+        (JSC::ArrayBufferView::clampOffsetAndNumElements):
+        * runtime/ClassInfo.h:
+        * runtime/DataView.cpp:
+        (JSC::DataView::DataView):
+        (JSC::DataView::create):
+        * runtime/DataView.h:
+        * runtime/GenericTypedArrayView.h:
+        * runtime/GenericTypedArrayViewInlines.h:
+        (JSC::GenericTypedArrayView<Adaptor>::GenericTypedArrayView):
+        (JSC::GenericTypedArrayView<Adaptor>::create):
+        (JSC::GenericTypedArrayView<Adaptor>::subarray):
+        * runtime/IntegralTypedArrayBase.h: Removed.
+        * runtime/JSArrayBuffer.cpp:
+        (JSC::JSArrayBuffer::JSArrayBuffer):
+        (JSC::JSArrayBuffer::create):
+        * runtime/JSArrayBuffer.h:
+        * runtime/JSArrayBufferPrototype.cpp:
+        (JSC::arrayBufferProtoFuncSlice):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        * runtime/JSArrayBufferView.h:
+        * runtime/JSArrayBufferViewInlines.h:
+        (JSC::JSArrayBufferView::possiblySharedImpl):
+        (JSC::JSArrayBufferView::unsharedImpl):
+        * runtime/JSCell.cpp:
+        (JSC::JSCell::slowDownAndWasteMemory):
+        (JSC::JSCell::getTypedArrayImpl):
+        * runtime/JSCell.h:
+        * runtime/JSDataView.cpp:
+        (JSC::JSDataView::create):
+        (JSC::JSDataView::possiblySharedTypedImpl):
+        (JSC::JSDataView::unsharedTypedImpl):
+        (JSC::JSDataView::getTypedArrayImpl):
+        * runtime/JSDataView.h:
+        * runtime/JSGenericTypedArrayView.h:
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewWithArguments):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::create):
+        (JSC::JSGenericTypedArrayView<Adaptor>::possiblySharedTypedImpl):
+        (JSC::JSGenericTypedArrayView<Adaptor>::unsharedTypedImpl):
+        (JSC::JSGenericTypedArrayView<Adaptor>::getTypedArrayImpl):
+        * runtime/JSGenericTypedArrayViewPrototypeFunctions.h:
+        (JSC::genericTypedArrayViewPrivateFuncSubarrayCreate):
+        * runtime/JSTypedArrays.cpp:
+        (JSC::createUint8TypedArray):
+        * runtime/TypedArrayBase.h: Removed.
+
+2017-02-16  Keith Miller  <keith_miller@apple.com>
+
+        ASSERTION FAILED: vm.heap.mutatorState() == MutatorState::Running || vm.apiLock().ownerThread() != std::this_thread::get_id()
+        https://bugs.webkit.org/show_bug.cgi?id=168354
+
+        Reviewed by Geoffrey Garen.
+
+        Instead of adding a custom vmEntryGlobalObject for the debugger
+        we can just have it use vmEntryScope instead.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::detach):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::vmEntryGlobalObjectForDebuggerDetach): Deleted.
+        * interpreter/CallFrame.h:
+
+2017-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cloop build.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::stopThePeriphery):
+        * runtime/JSLock.cpp:
+
+2017-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        This turns the collector thread's workflow into a state machine, so that the mutator thread can
+        run it directly. This reduces the amount of synchronization we do with the collector thread, and
+        means that most apps will never start the collector thread. The collector thread will still start
+        when we need to finish collecting and we don't have heap access.
+        
+        In this new world, "stopping the world" means relinquishing control of collection to the mutator.
+        This means tracking who is conducting collection. I use the GCConductor enum to say who is
+        conducting. It's either GCConductor::Mutator or GCConductor::Collector. I use the term "conn" to
+        refer to the concept of conducting (having the conn, relinquishing the conn, taking the conn).
+        So, stopping the world means giving the mutator the conn. Releasing heap access means giving the
+        collector the conn.
+        
+        This meant bringing back the conservative scan of the calling thread. It turns out that this
+        scan was too slow to be called on each GC increment because apparently setjmp() now does system
+        calls. So, I wrote our own callee save register saving for the GC. Then I had doubts about
+        whether or not it was correct, so I also made it so that the GC only rarely asks for the register
+        state. I think we still want to use my register saving code instead of setjmp because setjmp
+        seems to save things we don't need, and that could make us overly conservative.
+        
+        It turns out that this new scheduling discipline makes the old space-time scheduler perform
+        better than the new stochastic space-time scheduler on systems with fewer than 4 cores. This is
+        because the mutator having the conn enables us to time the mutator<->collector context switches
+        by polling. The OS is never involved. So, we can use super precise timing. This allows the old
+        space-time schduler to shine like it hadn't before.
+        
+        The splay results imply that this is all a good thing. On 2-core systems, this reduces pause
+        times by 40% and it increases throughput about 5%. On 1-core systems, this reduces pause times by
+        half and reduces throughput by 8%. On 4-or-more-core systems, this doesn't seem to have much
+        effect.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGWorklist.cpp:
+        (JSC::DFG::Worklist::ThreadBody::ThreadBody):
+        (JSC::DFG::Worklist::dump):
+        (JSC::DFG::numberOfWorklists):
+        (JSC::DFG::ensureWorklistForIndex):
+        (JSC::DFG::existingWorklistForIndexOrNull):
+        (JSC::DFG::existingWorklistForIndex):
+        * dfg/DFGWorklist.h:
+        (JSC::DFG::numberOfWorklists): Deleted.
+        (JSC::DFG::ensureWorklistForIndex): Deleted.
+        (JSC::DFG::existingWorklistForIndexOrNull): Deleted.
+        (JSC::DFG::existingWorklistForIndex): Deleted.
+        * heap/CollectingScope.h: Added.
+        (JSC::CollectingScope::CollectingScope):
+        (JSC::CollectingScope::~CollectingScope):
+        * heap/CollectorPhase.cpp: Added.
+        (JSC::worldShouldBeSuspended):
+        (WTF::printInternal):
+        * heap/CollectorPhase.h: Added.
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::doCollection):
+        (JSC::FullGCActivityCallback::lastGCLength):
+        * heap/GCConductor.cpp: Added.
+        (JSC::gcConductorShortName):
+        (WTF::printInternal):
+        * heap/GCConductor.h: Added.
+        * heap/Heap.cpp:
+        (JSC::Heap::Thread::Thread):
+        (JSC::Heap::Heap):
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::gatherStackRoots):
+        (JSC::Heap::updateObjectCounts):
+        (JSC::Heap::shouldCollectInCollectorThread):
+        (JSC::Heap::collectInCollectorThread):
+        (JSC::Heap::checkConn):
+        (JSC::Heap::runCurrentPhase):
+        (JSC::Heap::runNotRunningPhase):
+        (JSC::Heap::runBeginPhase):
+        (JSC::Heap::runFixpointPhase):
+        (JSC::Heap::runConcurrentPhase):
+        (JSC::Heap::runReloopPhase):
+        (JSC::Heap::runEndPhase):
+        (JSC::Heap::changePhase):
+        (JSC::Heap::finishChangingPhase):
+        (JSC::Heap::stopThePeriphery):
+        (JSC::Heap::resumeThePeriphery):
+        (JSC::Heap::stopTheMutator):
+        (JSC::Heap::resumeTheMutator):
+        (JSC::Heap::stopIfNecessarySlow):
+        (JSC::Heap::collectInMutatorThread):
+        (JSC::Heap::collectInMutatorThreadImpl):
+        (JSC::Heap::waitForCollector):
+        (JSC::Heap::acquireAccessSlow):
+        (JSC::Heap::releaseAccessSlow):
+        (JSC::Heap::relinquishConn):
+        (JSC::Heap::finishRelinquishingConn):
+        (JSC::Heap::handleNeedFinalize):
+        (JSC::Heap::notifyThreadStopping):
+        (JSC::Heap::finalize):
+        (JSC::Heap::requestCollection):
+        (JSC::Heap::waitForCollection):
+        (JSC::Heap::updateAllocationLimits):
+        (JSC::Heap::didFinishCollection):
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        (JSC::Heap::preventCollection):
+        (JSC::Heap::performIncrement):
+        (JSC::Heap::markToFixpoint): Deleted.
+        (JSC::Heap::shouldCollectInThread): Deleted.
+        (JSC::Heap::collectInThread): Deleted.
+        (JSC::Heap::stopTheWorld): Deleted.
+        (JSC::Heap::resumeTheWorld): Deleted.
+        * heap/Heap.h:
+        (JSC::Heap::machineThreads):
+        (JSC::Heap::lastFullGCLength):
+        (JSC::Heap::lastEdenGCLength):
+        (JSC::Heap::increaseLastFullGCLength):
+        * heap/HeapInlines.h:
+        (JSC::Heap::mutatorIsStopped): Deleted.
+        * heap/HeapStatistics.cpp: Removed.
+        * heap/HeapStatistics.h: Removed.
+        * heap/HelpingGCScope.h: Removed.
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::gatherFromCurrentThread):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        * heap/MachineStackMarker.h:
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::sweep):
+        * heap/MutatorState.cpp:
+        (WTF::printInternal):
+        * heap/MutatorState.h:
+        * heap/RegisterState.h: Added.
+        * heap/SlotVisitor.cpp:
+        (JSC::SlotVisitor::drainFromShared):
+        (JSC::SlotVisitor::drainInParallelPassively):
+        (JSC::SlotVisitor::donateAll):
+        * heap/StochasticSpaceTimeMutatorScheduler.cpp:
+        (JSC::StochasticSpaceTimeMutatorScheduler::beginCollection):
+        (JSC::StochasticSpaceTimeMutatorScheduler::synchronousDrainingDidStall):
+        (JSC::StochasticSpaceTimeMutatorScheduler::timeToStop):
+        * heap/SweepingScope.h: Added.
+        (JSC::SweepingScope::SweepingScope):
+        (JSC::SweepingScope::~SweepingScope):
+        * jit/JITWorklist.cpp:
+        (JSC::JITWorklist::Thread::Thread):
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (functionFlashHeapAccess):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        * runtime/Options.h:
+        * runtime/TestRunnerUtils.cpp:
+        (JSC::finalizeStatsAtEndOfTesting):
+
+2017-02-16  Anders Carlsson  <andersca@apple.com>
+
+        Remove EFL from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=168459
+
+        Reviewed by Geoffrey Garen.
+
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::GCActivityCallback):
+        (JSC::GCActivityCallback::cancelTimer):
+        (JSC::GCActivityCallback::didAllocate):
+        * heap/GCActivityCallback.h:
+        * heap/HeapTimer.cpp:
+        (JSC::HeapTimer::add): Deleted.
+        (JSC::HeapTimer::stop): Deleted.
+        (JSC::HeapTimer::timerEvent): Deleted.
+        * heap/HeapTimer.h:
+        * inspector/EventLoop.cpp:
+        (Inspector::EventLoop::cycle):
+        * jsc.cpp:
+        (main):
+        * tools/CodeProfiling.cpp:
+        (JSC::CodeProfiling::begin):
+        (JSC::CodeProfiling::end):
+
+2017-02-15  Brian Burg  <bburg@apple.com>
+
+        [Cocoa] Web Inspector: Inspector::fromProtocolString<T> should return std::optional<T>
+        https://bugs.webkit.org/show_bug.cgi?id=168018
+        <rdar://problem/30468779>
+
+        Reviewed by Joseph Pecoraro.
+
+        These methods parse untrusted string inputs, so they should return an optional instead
+        of asserting or crashing when the input is not usable.
+
+        Update various pieces of generated code to handle the error case gracefully.
+
+        * inspector/scripts/codegen/generate_objc_backend_dispatcher_implementation.py:
+        (ObjCBackendDispatcherImplementationGenerator._generate_conversions_for_command):
+        (ObjCBackendDispatcherImplementationGenerator._generate_invocation_for_command):
+        The local variable holding the ObjC-friendly converted value should take a std::optional
+        when converting an enum from a string into an NS_ENUM value. If the enum command parameter
+        is not optional, then send a response with a command failure message and return.
+
+        The optional enum parameter case is not handled correctly, but no existing code requires it.
+
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_header.py:
+        (ObjCProtocolTypeConversionsHeaderGenerator._generate_enum_from_protocol_string):
+        Fix signature and remove default case ASSERT_NOT_REACHED.
+
+        * inspector/scripts/codegen/generate_objc_protocol_type_conversions_implementation.py:
+        (ObjCProtocolTypeConversionsImplementationGenerator._generate_type_factory_method_implementation):
+        Since this code assumes all inputs to be valid and throws an exception otherwise, we
+        try to convert the enum and throw an exception if it's nullopt. If it's valid, write to outValue.
+
+        * inspector/scripts/codegen/generate_objc_protocol_types_implementation.py:
+        (ObjCProtocolTypesImplementationGenerator._generate_init_method_for_payload):
+        The local variable holding the ObjC-friendly converted value should take a std::optional
+        when converting an enum from a string into an NS_ENUM value. If the enum command parameter
+        is not optional, then throw an exception if the value is nullopt. Otherwise, allow it to be empty.
+
+        * inspector/scripts/codegen/objc_generator.py:
+        (ObjCGenerator.protocol_to_objc_expression_for_member):
+        Unconditionally unwrap the optional. This expression is only used inside the typechecked
+        ObjC protocol objects. In this case we are guaranteed to have already initialized the enum with a valid
+        value, but must store it as a string inside a wrapped InspectorObject. The getter needs to
+        re-convert the stored string into an NS_ENUM value.
+
+        * inspector/scripts/codegen/objc_generator_templates.py:
+        Update type template for fromProtocolString<T>().
+
+        * inspector/scripts/tests/all/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-async-attribute.json-result:
+        * inspector/scripts/tests/generic/expected/commands-with-optional-call-return-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/generic/expected/domain-availability.json-result:
+        * inspector/scripts/tests/generic/expected/domains-with-varying-command-sizes.json-result:
+        * inspector/scripts/tests/generic/expected/enum-values.json-result:
+        * inspector/scripts/tests/generic/expected/events-with-optional-parameters.json-result:
+        * inspector/scripts/tests/generic/expected/generate-domains-with-feature-guards.json-result:
+        * inspector/scripts/tests/generic/expected/same-type-id-different-domain.json-result:
+        * inspector/scripts/tests/generic/expected/shadowed-optional-type-setters.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-aliased-primitive-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-array-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-enum-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-declaration-object-type.json-result:
+        * inspector/scripts/tests/generic/expected/type-requiring-runtime-casts.json-result:
+        * inspector/scripts/tests/generic/expected/worker-supported-domains.json-result:
+        * inspector/scripts/tests/ios/expected/definitions-with-mac-platform.json-result:
+        * inspector/scripts/tests/mac/expected/definitions-with-mac-platform.json-result:
+        Rebaseline tests.
+
+2017-02-16  Keith Miller  <keith_miller@apple.com>
+
+        ASSERTION FAILED: vm.heap.mutatorState() == MutatorState::Running || vm.apiLock().ownerThread() != std::this_thread::get_id()
+        https://bugs.webkit.org/show_bug.cgi?id=168354
+
+        Reviewed by Filip Pizlo.
+
+        Add a new vmEntryGlobalObject method for the debugger so that
+        the debugger does not crash in debug builds when trying to
+        detach itself from a global object.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::detach):
+        * interpreter/CallFrame.cpp:
+        (JSC::CallFrame::vmEntryGlobalObjectForDebuggerDetach):
+        * interpreter/CallFrame.h:
+
+2017-02-16  Keith Miller  <keith_miller@apple.com>
+
+        Refactor AccessCase to be more like B3Value
+        https://bugs.webkit.org/show_bug.cgi?id=168408
+
+        Reviewed by Filip Pizlo.
+
+        This patch makes AccessCase (and new subclasses) more like B3Value. In the new system each
+        type has an associated AccessCase subclass. For instance any getter should use the
+        GetterSetterAccessCase subclass. The new system is easier to follow since you no longer need
+        to know exactly which members are used by which types. The subclass to AccessType mapping is:
+
+        GetterSetterAccessCase:
+            Getter
+            CustomAccessorGetter
+            CustomValueGetter
+            Setter
+
+        ProxyableAccessCase:
+            Load
+            Miss
+            GetGetter
+
+        IntrinsicGetterAccessCase:
+            IntrinsicGetter
+
+        AccessCase:
+            Everything else
+
+        It also has the additional advantage that it uses less memory for the cases where we would have needed
+        rare data in the past but that case would only use a small bit of it.
+
+        This patch also removes megamorphic loads and renames some TryGetById related enum values from Pure to Try.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/AccessCase.cpp: Added.
+        (JSC::AccessCase::AccessCase):
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::~AccessCase):
+        (JSC::AccessCase::fromStructureStubInfo):
+        (JSC::AccessCase::clone):
+        (JSC::AccessCase::commit):
+        (JSC::AccessCase::guardedByStructureCheck):
+        (JSC::AccessCase::doesCalls):
+        (JSC::AccessCase::couldStillSucceed):
+        (JSC::AccessCase::canReplace):
+        (JSC::AccessCase::dump):
+        (JSC::AccessCase::visitWeak):
+        (JSC::AccessCase::propagateTransitions):
+        (JSC::AccessCase::generateWithGuard):
+        (JSC::AccessCase::generate):
+        (JSC::AccessCase::generateImpl):
+        * bytecode/AccessCase.h: Added.
+        (JSC::AccessCase::as):
+        (JSC::AccessCase::create):
+        (JSC::AccessCase::type):
+        (JSC::AccessCase::state):
+        (JSC::AccessCase::offset):
+        (JSC::AccessCase::structure):
+        (JSC::AccessCase::newStructure):
+        (JSC::AccessCase::conditionSet):
+        (JSC::AccessCase::alternateBase):
+        (JSC::AccessCase::additionalSet):
+        (JSC::AccessCase::viaProxy):
+        (JSC::AccessCase::isGetter):
+        (JSC::AccessCase::isAccessor):
+        (JSC::AccessCase::dumpImpl):
+        (JSC::AccessCase::resetState):
+        * bytecode/GetByIdStatus.cpp:
+        (JSC::GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback):
+        * bytecode/GetterSetterAccessCase.cpp: Added.
+        (JSC::GetterSetterAccessCase::GetterSetterAccessCase):
+        (JSC::GetterSetterAccessCase::create):
+        (JSC::GetterSetterAccessCase::~GetterSetterAccessCase):
+        (JSC::GetterSetterAccessCase::clone):
+        (JSC::GetterSetterAccessCase::alternateBase):
+        (JSC::GetterSetterAccessCase::dumpImpl):
+        (JSC::GetterSetterAccessCase::emitDOMJITGetter):
+        * bytecode/GetterSetterAccessCase.h: Added.
+        (JSC::GetterSetterAccessCase::callLinkInfo):
+        (JSC::GetterSetterAccessCase::customSlotBase):
+        (JSC::GetterSetterAccessCase::domJIT):
+        * bytecode/IntrinsicGetterAccessCase.cpp: Added.
+        (JSC::IntrinsicGetterAccessCase::IntrinsicGetterAccessCase):
+        (JSC::IntrinsicGetterAccessCase::create):
+        (JSC::IntrinsicGetterAccessCase::~IntrinsicGetterAccessCase):
+        (JSC::IntrinsicGetterAccessCase::clone):
+        * bytecode/IntrinsicGetterAccessCase.h: Added.
+        (JSC::IntrinsicGetterAccessCase::intrinsicFunction):
+        (JSC::IntrinsicGetterAccessCase::intrinsic):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        (WTF::printInternal):
+        (JSC::AccessCase::AccessCase): Deleted.
+        (JSC::AccessCase::tryGet): Deleted.
+        (JSC::AccessCase::get): Deleted.
+        (JSC::AccessCase::megamorphicLoad): Deleted.
+        (JSC::AccessCase::replace): Deleted.
+        (JSC::AccessCase::transition): Deleted.
+        (JSC::AccessCase::setter): Deleted.
+        (JSC::AccessCase::in): Deleted.
+        (JSC::AccessCase::getLength): Deleted.
+        (JSC::AccessCase::getIntrinsic): Deleted.
+        (JSC::AccessCase::~AccessCase): Deleted.
+        (JSC::AccessCase::fromStructureStubInfo): Deleted.
+        (JSC::AccessCase::clone): Deleted.
+        (JSC::AccessCase::commit): Deleted.
+        (JSC::AccessCase::guardedByStructureCheck): Deleted.
+        (JSC::AccessCase::alternateBase): Deleted.
+        (JSC::AccessCase::doesCalls): Deleted.
+        (JSC::AccessCase::couldStillSucceed): Deleted.
+        (JSC::AccessCase::canBeReplacedByMegamorphicLoad): Deleted.
+        (JSC::AccessCase::canReplace): Deleted.
+        (JSC::AccessCase::dump): Deleted.
+        (JSC::AccessCase::visitWeak): Deleted.
+        (JSC::AccessCase::propagateTransitions): Deleted.
+        (JSC::AccessCase::generateWithGuard): Deleted.
+        (JSC::AccessCase::generate): Deleted.
+        (JSC::AccessCase::generateImpl): Deleted.
+        (JSC::AccessCase::emitDOMJITGetter): Deleted.
+        * bytecode/PolymorphicAccess.h:
+        (JSC::AccessCase::type): Deleted.
+        (JSC::AccessCase::state): Deleted.
+        (JSC::AccessCase::offset): Deleted.
+        (JSC::AccessCase::viaProxy): Deleted.
+        (JSC::AccessCase::structure): Deleted.
+        (JSC::AccessCase::newStructure): Deleted.
+        (JSC::AccessCase::conditionSet): Deleted.
+        (JSC::AccessCase::intrinsicFunction): Deleted.
+        (JSC::AccessCase::intrinsic): Deleted.
+        (JSC::AccessCase::domJIT): Deleted.
+        (JSC::AccessCase::additionalSet): Deleted.
+        (JSC::AccessCase::customSlotBase): Deleted.
+        (JSC::AccessCase::isGetter): Deleted.
+        (JSC::AccessCase::callLinkInfo): Deleted.
+        (JSC::AccessCase::RareData::RareData): Deleted.
+        * bytecode/ProxyableAccessCase.cpp: Added.
+        (JSC::ProxyableAccessCase::ProxyableAccessCase):
+        (JSC::ProxyableAccessCase::create):
+        (JSC::ProxyableAccessCase::~ProxyableAccessCase):
+        (JSC::ProxyableAccessCase::clone):
+        (JSC::ProxyableAccessCase::dumpImpl):
+        * bytecode/ProxyableAccessCase.h: Added.
+        * bytecode/PutByIdStatus.cpp:
+        (JSC::PutByIdStatus::computeForStubInfo):
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::reset):
+        * bytecode/StructureStubInfo.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileTryGetById):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetById):
+        * jit/IntrinsicEmitter.cpp:
+        (JSC::IntrinsicGetterAccessCase::canEmitIntrinsicGetter):
+        (JSC::IntrinsicGetterAccessCase::emitIntrinsicGetter):
+        (JSC::AccessCase::canEmitIntrinsicGetter): Deleted.
+        (JSC::AccessCase::emitIntrinsicGetter): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_try_get_by_id):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_try_get_by_id):
+        * jit/Repatch.cpp:
+        (JSC::tryCacheGetByID):
+        (JSC::tryCachePutByID):
+        (JSC::tryRepatchIn):
+        * jit/Repatch.h:
+        * runtime/Options.h:
+
+2017-02-16  Filip Pizlo  <fpizlo@apple.com>
+
+        JSONParseTest needs to hold the lock when the VM is destroyed
+        https://bugs.webkit.org/show_bug.cgi?id=168450
+
+        Rubber stamped by Alex Christensen.
+
+        * API/tests/JSONParseTest.cpp:
+        (testJSONParse):
+
+2017-02-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop PassRefPtr in inspector/
+        https://bugs.webkit.org/show_bug.cgi?id=168420
+
+        Reviewed by Alex Christensen.
+
+        Drop PassRefPtr uses.
+        And use Ref<Inspector::ScriptArguments> and Ref<ScriptCallStack> as much as possible.
+        It drops some unnecessary null checks.
+
+        * debugger/Debugger.cpp:
+        (JSC::Debugger::hasBreakpoint):
+        (JSC::Debugger::currentDebuggerCallFrame):
+        * debugger/Debugger.h:
+        * inspector/AsyncStackTrace.cpp:
+        (Inspector::AsyncStackTrace::create):
+        (Inspector::AsyncStackTrace::AsyncStackTrace):
+        (Inspector::AsyncStackTrace::buildInspectorObject):
+        (Inspector::AsyncStackTrace::truncate):
+        * inspector/AsyncStackTrace.h:
+        * inspector/ConsoleMessage.cpp:
+        (Inspector::ConsoleMessage::ConsoleMessage):
+        * inspector/ConsoleMessage.h:
+        * inspector/InjectedScriptManager.cpp:
+        (Inspector::InjectedScriptManager::InjectedScriptManager):
+        (Inspector::InjectedScriptManager::injectedScriptHost):
+        * inspector/InjectedScriptManager.h:
+        * inspector/JSGlobalObjectConsoleClient.cpp:
+        (Inspector::JSGlobalObjectConsoleClient::messageWithTypeAndLevel):
+        (Inspector::JSGlobalObjectConsoleClient::count):
+        (Inspector::JSGlobalObjectConsoleClient::timeEnd):
+        (Inspector::JSGlobalObjectConsoleClient::timeStamp):
+        (Inspector::JSGlobalObjectConsoleClient::warnUnimplemented):
+        * inspector/JSGlobalObjectConsoleClient.h:
+        ConsoleClient now takes Ref<ScriptArgument>&& instead of RefPtr<ScriptArgument>&&.
+
+        * inspector/JSGlobalObjectInspectorController.cpp:
+        (Inspector::JSGlobalObjectInspectorController::appendAPIBacktrace):
+        (Inspector::JSGlobalObjectInspectorController::reportAPIException):
+        * inspector/JSGlobalObjectInspectorController.h:
+        * inspector/JSJavaScriptCallFrame.cpp:
+        (Inspector::JSJavaScriptCallFrame::JSJavaScriptCallFrame):
+        (Inspector::toJS):
+        * inspector/JSJavaScriptCallFrame.h:
+        (Inspector::JSJavaScriptCallFrame::create):
+        * inspector/JavaScriptCallFrame.cpp:
+        (Inspector::JavaScriptCallFrame::JavaScriptCallFrame):
+        (Inspector::JavaScriptCallFrame::caller):
+        * inspector/JavaScriptCallFrame.h:
+        (Inspector::JavaScriptCallFrame::create):
+        * inspector/ScriptDebugServer.cpp:
+        (Inspector::ScriptDebugServer::evaluateBreakpointAction):
+        (Inspector::ScriptDebugServer::dispatchDidPause):
+        (Inspector::ScriptDebugServer::exceptionOrCaughtValue):
+        * inspector/agents/InspectorConsoleAgent.cpp:
+        (Inspector::InspectorConsoleAgent::stopTiming):
+        (Inspector::InspectorConsoleAgent::count):
+        * inspector/agents/InspectorConsoleAgent.h:
+        * inspector/agents/InspectorDebuggerAgent.cpp:
+        (Inspector::InspectorDebuggerAgent::didScheduleAsyncCall):
+        * runtime/ConsoleClient.cpp:
+        (JSC::ConsoleClient::printConsoleMessageWithArguments):
+        (JSC::ConsoleClient::internalMessageWithTypeAndLevel):
+        (JSC::ConsoleClient::logWithLevel):
+        (JSC::ConsoleClient::dir):
+        (JSC::ConsoleClient::dirXML):
+        (JSC::ConsoleClient::table):
+        (JSC::ConsoleClient::trace):
+        (JSC::ConsoleClient::assertion):
+        (JSC::ConsoleClient::group):
+        (JSC::ConsoleClient::groupCollapsed):
+        (JSC::ConsoleClient::groupEnd):
+        * runtime/ConsoleClient.h:
+        * runtime/ConsoleObject.cpp:
+        (JSC::consoleLogWithLevel):
+        (JSC::consoleProtoFuncDir):
+        (JSC::consoleProtoFuncDirXML):
+        (JSC::consoleProtoFuncTable):
+        (JSC::consoleProtoFuncTrace):
+        (JSC::consoleProtoFuncAssert):
+        (JSC::consoleProtoFuncCount):
+        (JSC::consoleProtoFuncTimeStamp):
+        (JSC::consoleProtoFuncGroup):
+        (JSC::consoleProtoFuncGroupCollapsed):
+        (JSC::consoleProtoFuncGroupEnd):
+
+2017-02-15  Keith Miller  <keith_miller@apple.com>
+
+        Weak should not use jsCast in its accessors
+        https://bugs.webkit.org/show_bug.cgi?id=168406
+
+        Reviewed by Filip Pizlo.
+
+        This can cause assertion failures in WebCore where classes might remove themselves
+        from a data structure in a weak reference, if that reference is still alive.
+
+        * heap/WeakInlines.h:
+        (JSC::>):
+        (JSC::Weak<T>::operator):
+        (JSC::Weak<T>::get):
+
+2017-02-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Web Inspector: allow import() inside the inspector
+        https://bugs.webkit.org/show_bug.cgi?id=167457
+
+        Reviewed by Ryosuke Niwa.
+
+        We relax import module hook to accept null SourceOrigin.
+        Such a script can be evaluated from the inspector console.
+
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncImportModule):
+
+2017-02-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Update module namespace object according to the latest ECMA262
+        https://bugs.webkit.org/show_bug.cgi?id=168280
+
+        Reviewed by Saam Barati.
+
+        Reflect updates to the module namespace object.
+
+        1. @@iterator property is dropped[1].
+        2. @@toStringTag property becomes non-configurable[1].
+        3. delete with Symbol should be delegated to the JSObject's one[2].
+
+        [1]: https://tc39.github.io/ecma262/#sec-module-namespace-objects
+        [2]: https://github.com/tc39/ecma262/pull/767
+
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::finishCreation):
+        (JSC::JSModuleNamespaceObject::deleteProperty):
+        (JSC::moduleNamespaceObjectSymbolIterator): Deleted.
+
+2017-02-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix the build after r212424.
+
+        Add missing file.
+
+        * inspector/remote/RemoteInspector.cpp: Added.
+        (Inspector::RemoteInspector::startDisabled):
+        (Inspector::RemoteInspector::nextAvailableTargetIdentifier):
+        (Inspector::RemoteInspector::registerTarget):
+        (Inspector::RemoteInspector::unregisterTarget):
+        (Inspector::RemoteInspector::updateTarget):
+        (Inspector::RemoteInspector::updateClientCapabilities):
+        (Inspector::RemoteInspector::setRemoteInspectorClient):
+        (Inspector::RemoteInspector::setupFailed):
+        (Inspector::RemoteInspector::setupCompleted):
+        (Inspector::RemoteInspector::waitingForAutomaticInspection):
+        (Inspector::RemoteInspector::clientCapabilitiesDidChange):
+        (Inspector::RemoteInspector::stop):
+        (Inspector::RemoteInspector::listingForTarget):
+        (Inspector::RemoteInspector::updateHasActiveDebugSession):
+
+2017-02-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop PassRefPtr in bytecompiler/
+        https://bugs.webkit.org/show_bug.cgi?id=168374
+
+        Reviewed by Sam Weinig.
+
+        This patch drops PassRefPtr in bytecompiler directory.
+        We carefully change this to Ref<>. And we use Ref<Label>
+        as much as possible instead of using RefPtr<Label>.
+        And use Label& instead of Label* as much as possible.
+
+        Currently we do not apply this change for RefPtr<RegisterID>,
+        to reduce the size of this patch.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::initializeDefaultParameterValuesAndSetupFunctionScopeStack):
+        (JSC::BytecodeGenerator::newLabelScope):
+        (JSC::BytecodeGenerator::newLabel):
+        (JSC::BytecodeGenerator::newEmittedLabel):
+        Introduce a new helper function, which returns new label that is emitted right here.
+
+        (JSC::BytecodeGenerator::emitLabel):
+        (JSC::BytecodeGenerator::emitJump):
+        (JSC::BytecodeGenerator::emitJumpIfTrue):
+        (JSC::BytecodeGenerator::emitJumpIfFalse):
+        (JSC::BytecodeGenerator::emitJumpIfNotFunctionCall):
+        (JSC::BytecodeGenerator::emitJumpIfNotFunctionApply):
+        Drop returning Ref<Label> since nobody uses it.
+
+        (JSC::BytecodeGenerator::emitGetByVal):
+        (JSC::BytecodeGenerator::emitExpectedFunctionSnippet):
+        (JSC::BytecodeGenerator::emitCall):
+        (JSC::BytecodeGenerator::emitReturn):
+        (JSC::BytecodeGenerator::emitConstruct):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::breakTarget):
+        (JSC::BytecodeGenerator::pushTry):
+        (JSC::BytecodeGenerator::popTry):
+        (JSC::prepareJumpTableForSwitch):
+        (JSC::prepareJumpTableForStringSwitch):
+        (JSC::BytecodeGenerator::endSwitch):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        (JSC::BytecodeGenerator::emitIteratorNext):
+        (JSC::BytecodeGenerator::emitIteratorNextWithValue):
+        (JSC::BytecodeGenerator::emitIteratorClose):
+        (JSC::BytecodeGenerator::pushIndexedForInScope):
+        (JSC::BytecodeGenerator::pushStructureForInScope):
+        (JSC::BytecodeGenerator::invalidateForInContextForLocal):
+        (JSC::BytecodeGenerator::emitRequireObjectCoercible):
+        (JSC::BytecodeGenerator::emitYieldPoint):
+        (JSC::BytecodeGenerator::emitYield):
+        (JSC::BytecodeGenerator::emitDelegateYield):
+        (JSC::BytecodeGenerator::emitJumpViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitReturnViaFinallyIfNeeded):
+        (JSC::BytecodeGenerator::emitFinallyCompletion):
+        (JSC::BytecodeGenerator::emitJumpIf):
+        * bytecompiler/BytecodeGenerator.h:
+        FinallyJump, FinallyContext, TryData, TryContext and TryRange hold Ref<Label>
+        instead of RefPtr<Label>. They are never nullptr.
+
+        (JSC::FinallyJump::FinallyJump):
+        (JSC::FinallyContext::FinallyContext):
+        (JSC::FinallyContext::registerJump):
+        (JSC::BytecodeGenerator::emitNodeInConditionContext):
+        (JSC::BytecodeGenerator::emitNodeForLeftHandSide):
+        * bytecompiler/Label.h:
+        Make Label noncopyable.
+
+        * bytecompiler/LabelScope.h:
+        (JSC::LabelScope::LabelScope):
+        (JSC::LabelScope::breakTarget):
+        breakTarget always returns Label&. On the other hand, continueTarget may be nullptr.
+        So it returns Label*.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ExpressionNode::emitBytecodeInConditionContext):
+        (JSC::ConstantNode::emitBytecodeInConditionContext):
+        (JSC::FunctionCallValueNode::emitBytecode):
+        (JSC::CallFunctionCallDotNode::emitBytecode):
+        (JSC::ApplyFunctionCallDotNode::emitBytecode):
+        (JSC::LogicalNotNode::emitBytecodeInConditionContext):
+        (JSC::BinaryOpNode::emitBytecodeInConditionContext):
+        (JSC::InstanceOfNode::emitBytecode):
+        (JSC::LogicalOpNode::emitBytecode):
+        (JSC::LogicalOpNode::emitBytecodeInConditionContext):
+        (JSC::ConditionalNode::emitBytecode):
+        (JSC::IfElseNode::emitBytecode):
+        (JSC::DoWhileNode::emitBytecode):
+        (JSC::WhileNode::emitBytecode):
+        (JSC::ForNode::emitBytecode):
+        (JSC::ForInNode::emitBytecode):
+        (JSC::ContinueNode::trivialTarget):
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::trivialTarget):
+        (JSC::CaseBlockNode::emitBytecodeForBlock):
+        (JSC::TryNode::emitBytecode):
+        (JSC::FunctionNode::emitBytecode):
+        (JSC::ClassExprNode::emitBytecode):
+        (JSC::assignDefaultValueIfUndefined):
+        (JSC::ArrayPatternNode::bindValue):
+        Use Ref<Label> and Label&.
+
+        * parser/Nodes.h:
+
+2017-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212394.
+
+        Fixed iOS WebInspector
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r212169."
+        https://bugs.webkit.org/show_bug.cgi?id=166681
+        http://trac.webkit.org/changeset/212394
+
+2017-02-15  Guillaume Emont  <guijemont@igalia.com>
+
+        MIPS: add missing implementations of load8SignedExtendTo32()
+
+        JSC: missing implementations of MacroAssemblerMIPS::load8SignedExtendTo32()
+        https://bugs.webkit.org/show_bug.cgi?id=168350
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::load8SignedExtendTo32):
+        Add missing implementations
+
+2017-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212169.
+
+        Broke iOS WebInspector
+
+        Reverted changeset:
+
+        "WebInspector: refactor RemoteInspector to move cocoa specific
+        code to their own files"
+        https://bugs.webkit.org/show_bug.cgi?id=166681
+        http://trac.webkit.org/changeset/212169
+
 2017-02-15  Chris Dumez  <cdumez@apple.com>
 
         Expose Symbol.toPrimitive / valueOf on Location instances

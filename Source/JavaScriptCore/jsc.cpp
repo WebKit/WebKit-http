@@ -38,7 +38,6 @@
 #include "GetterSetter.h"
 #include "HeapProfiler.h"
 #include "HeapSnapshotBuilder.h"
-#include "HeapStatistics.h"
 #include "InitializeThreading.h"
 #include "Interpreter.h"
 #include "JIT.h"
@@ -120,10 +119,6 @@
 #if PLATFORM(IOS) && CPU(ARM_THUMB2)
 #include <fenv.h>
 #include <arm/arch.h>
-#endif
-
-#if PLATFORM(EFL)
-#include <Ecore.h>
 #endif
 
 #if !defined(PATH_MAX)
@@ -1088,6 +1083,7 @@ static EncodedJSValue JSC_HOST_CALL functionDollarAgentGetReport(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionDollarAgentLeaving(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionWaitForReport(ExecState*);
 static EncodedJSValue JSC_HOST_CALL functionHeapCapacity(ExecState*);
+static EncodedJSValue JSC_HOST_CALL functionFlashHeapAccess(ExecState*);
 
 struct Script {
     enum class StrictMode {
@@ -1370,6 +1366,7 @@ protected:
         addFunction(vm, "waitForReport", functionWaitForReport, 0);
 
         addFunction(vm, "heapCapacity", functionHeapCapacity, 0);
+        addFunction(vm, "flashHeapAccess", functionFlashHeapAccess, 0);
     }
     
     void addFunction(VM& vm, JSObject* object, const char* name, NativeFunction function, unsigned arguments)
@@ -1550,6 +1547,9 @@ JSInternalPromise* GlobalObject::moduleLoaderImportModule(JSGlobalObject* global
     auto rejectPromise = [&] (JSValue error) {
         return JSInternalPromiseDeferred::create(exec, globalObject)->reject(exec, error);
     };
+
+    if (sourceOrigin.isNull())
+        return rejectPromise(createError(exec, ASCIILiteral("Could not resolve the module specifier.")));
 
     auto referrer = sourceOrigin.string();
     auto moduleName = moduleNameValue->value(exec);
@@ -2553,7 +2553,8 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentReceiveBroadcast(ExecState* exec
     }
     
     RefPtr<ArrayBuffer> nativeBuffer = ArrayBuffer::create(message->releaseContents());
-    JSArrayBuffer* jsBuffer = JSArrayBuffer::create(vm, exec->lexicalGlobalObject()->arrayBufferStructure(nativeBuffer->sharingMode()), nativeBuffer);
+    ArrayBufferSharingMode sharingMode = nativeBuffer->sharingMode();
+    JSArrayBuffer* jsBuffer = JSArrayBuffer::create(vm, exec->lexicalGlobalObject()->arrayBufferStructure(sharingMode), WTFMove(nativeBuffer));
     
     MarkedArgumentBuffer args;
     args.append(jsBuffer);
@@ -2646,6 +2647,21 @@ EncodedJSValue JSC_HOST_CALL functionHeapCapacity(ExecState* exec)
 {
     VM& vm = exec->vm();
     return JSValue::encode(jsNumber(vm.heap.capacity()));
+}
+
+EncodedJSValue JSC_HOST_CALL functionFlashHeapAccess(ExecState* exec)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    
+    vm.heap.releaseAccess();
+    if (exec->argumentCount() >= 1) {
+        double ms = exec->argument(0).toNumber(exec);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
+        sleep(Seconds::fromMilliseconds(ms));
+    }
+    vm.heap.acquireAccess();
+    return JSValue::encode(jsUndefined());
 }
 
 template<typename ValueType>
@@ -3069,7 +3085,8 @@ static JSValue box(ExecState* exec, VM& vm, JSValue wasmValue)
     return JSValue::decode(bitwise_cast<uint64_t>(result));
 }
 
-static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, JSWebAssemblyCallee* wasmCallee, Vector<JSValue>& boxedArgs)
+// FIXME: https://bugs.webkit.org/show_bug.cgi?id=168582.
+static JSValue callWasmFunction(VM* vm, JSGlobalObject* globalObject, JSWebAssemblyCallee* wasmCallee, const ArgList& boxedArgs)
 {
     JSValue firstArgument;
     int argCount = 1;
@@ -3135,7 +3152,7 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
             JSObject* result = jsCast<JSObject*>(test->getIndexQuickly(0));
             JSArray* arguments = jsCast<JSArray*>(test->getIndexQuickly(1));
 
-            Vector<JSValue> boxedArgs;
+            MarkedArgumentBuffer boxedArgs;
             for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
                 boxedArgs.append(box(exec, vm, arguments->getIndexQuickly(argIndex)));
 
@@ -3150,7 +3167,7 @@ static EncodedJSValue JSC_HOST_CALL functionTestWasmModuleFunctions(ExecState* e
                 dataLog("Arguments: ");
                 CommaPrinter comma(", ");
                 for (unsigned argIndex = 0; argIndex < arguments->length(); ++argIndex)
-                    dataLog(comma, valueWithTypeOfWasmValue(exec, vm, boxedArgs[argIndex], arguments->getIndexQuickly(argIndex)));
+                    dataLog(comma, valueWithTypeOfWasmValue(exec, vm, boxedArgs.at(argIndex), arguments->getIndexQuickly(argIndex)));
                 dataLogLn();
 
                 WTFReportAssertionFailure(__FILE__, __LINE__, WTF_PRETTY_FUNCTION, toCString(" (callResult == ", valueWithTypeOfWasmValue(exec, vm, callResult, result), ", expected == ", valueWithTypeOfWasmValue(exec, vm, expected, result), ")").data());
@@ -3229,10 +3246,6 @@ int main(int argc, char** argv)
     timeBeginPeriod(1);
 #endif
 
-#if PLATFORM(EFL)
-    ecore_init();
-#endif
-
 #if PLATFORM(GTK)
     if (!setlocale(LC_ALL, ""))
         WTFLogAlways("Locale not supported by C library.\n\tUsing the fallback 'C' locale.");
@@ -3254,10 +3267,6 @@ int main(int argc, char** argv)
         res = jscmain(argc, argv);
     EXCEPT(res = 3)
     finalizeStatsAtEndOfTesting();
-
-#if PLATFORM(EFL)
-    ecore_shutdown();
-#endif
 
     jscExit(res);
 }

@@ -35,6 +35,7 @@
 #include "EditorInsertAction.h"
 #include "FindOptions.h"
 #include "FrameSelection.h"
+#include "PasteboardWriterData.h"
 #include "TextChecking.h"
 #include "TextEventInputType.h"
 #include "TextIteratorBehavior.h"
@@ -147,6 +148,7 @@ public:
 
     WEBCORE_EXPORT void copyURL(const URL&, const String& title);
     void copyURL(const URL&, const String& title, Pasteboard&);
+    PasteboardWriterData::URL pasteboardWriterURL(const URL&, const String& title);
 #if !PLATFORM(IOS)
     WEBCORE_EXPORT void copyImage(const HitTestResult&);
 #endif
@@ -464,7 +466,7 @@ public:
     WEBCORE_EXPORT void replaceSelectionWithAttributedString(NSAttributedString *, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     WEBCORE_EXPORT void writeSelectionToPasteboard(Pasteboard&);
     WEBCORE_EXPORT void writeImageToPasteboard(Pasteboard&, Element& imageElement, const URL&, const String& title);
 #endif
@@ -482,6 +484,8 @@ public:
 
     void setIsGettingDictionaryPopupInfo(bool b) { m_isGettingDictionaryPopupInfo = b; }
     bool isGettingDictionaryPopupInfo() const { return m_isGettingDictionaryPopupInfo; }
+
+    Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
 
 private:
     class WebContentReader;
@@ -522,10 +526,9 @@ private:
     String selectionInHTMLFormat();
     RefPtr<SharedBuffer> imageInWebArchiveFormat(Element&);
     RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&&);
-    Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
     RefPtr<DocumentFragment> createFragmentAndAddResources(NSAttributedString *);
     FragmentAndResources createFragment(NSAttributedString *);
-    void fillInUserVisibleForm(PasteboardURL&);
+    String userVisibleString(const URL&);
 
     static RefPtr<SharedBuffer> dataInRTFDFormat(NSAttributedString *);
     static RefPtr<SharedBuffer> dataInRTFFormat(NSAttributedString *);
@@ -588,9 +591,3 @@ inline bool Editor::markedTextMatchesAreHighlighted() const
 }
 
 } // namespace WebCore
-
-#if PLATFORM(COCOA)
-// This function is declared here but defined in the WebKitLegacy framework.
-// FIXME: Get rid of this and change this so it doesn't use WebKitLegacy.
-extern "C" void _WebCreateFragment(WebCore::Document&, NSAttributedString *, WebCore::FragmentAndResources&);
-#endif

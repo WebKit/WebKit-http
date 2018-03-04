@@ -44,6 +44,7 @@
 #include "DFGWorklist.h"
 #include "Debugger.h"
 #include "EvalCodeBlock.h"
+#include "FullCodeOrigin.h"
 #include "FunctionCodeBlock.h"
 #include "FunctionExecutableDump.h"
 #include "GetPutInfo.h"
@@ -2532,7 +2533,12 @@ void CodeBlock::visitChildren(SlotVisitor& visitor)
         visitor.reportExtraMemoryVisited(m_jitCode->size());
     if (m_instructions.size()) {
         unsigned refCount = m_instructions.refCount();
-        RELEASE_ASSERT(refCount);
+        if (!refCount) {
+            dataLog("CodeBlock: ", RawPointer(this), "\n");
+            dataLog("m_instructions.data(): ", RawPointer(m_instructions.data()), "\n");
+            dataLog("refCount: ", refCount, "\n");
+            RELEASE_ASSERT_NOT_REACHED();
+        }
         visitor.reportExtraMemoryVisited(m_instructions.size() * sizeof(Instruction) / refCount);
     }
 
@@ -3575,7 +3581,7 @@ void CodeBlock::noticeIncomingCall(ExecState* callerFrame)
     }
     
     if (callerCodeBlock->capabilityLevelState() == DFG::CapabilityLevelNotSet) {
-        dataLog("In call from ", *callerCodeBlock, " ", callerFrame->codeOrigin(), " to ", *this, ": caller's DFG capability level is not set.\n");
+        dataLog("In call from ", FullCodeOrigin(callerCodeBlock, callerFrame->codeOrigin()), " to ", *this, ": caller's DFG capability level is not set.\n");
         CRASH();
     }
     

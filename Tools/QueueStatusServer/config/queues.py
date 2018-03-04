@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Apple Inc. All rights reserved.
+# Copyright (C) 2014, 2017 Apple Inc. All rights reserved.
 # Copyright (C) 2013 Google Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -36,12 +36,12 @@ all_queue_names = [
     "gtk-wk2-ews",
     "ios-ews",
     "ios-sim-ews",
+    "jsc-ews",
     "mac-ews",
     "mac-wk2-ews",
     "mac-debug-ews",
     "mac-32bit-ews",
     "win-ews",
-    "efl-wk2-ews",
 ]
 
 # If the patch is still active after this much time, then a bot must have frozen or rebooted,

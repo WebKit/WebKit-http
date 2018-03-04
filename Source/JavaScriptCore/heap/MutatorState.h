@@ -34,8 +34,11 @@ enum class MutatorState {
     // The mutator is in an allocation slow path.
     Allocating,
     
-    // The mutator was asked by the GC to do some work.
-    HelpingGC
+    // The mutator is sweeping.
+    Sweeping,
+    
+    // The mutator is collecting.
+    Collecting
 };
 
 } // namespace JSC

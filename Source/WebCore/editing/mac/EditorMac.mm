@@ -251,9 +251,9 @@ static void getImage(Element& imageElement, RefPtr<Image>& image, CachedImage*& 
     cachedImage = tentativeCachedImage;
 }
 
-void Editor::fillInUserVisibleForm(PasteboardURL& pasteboardURL)
+String Editor::userVisibleString(const URL& url)
 {
-    pasteboardURL.userVisibleForm = client()->userVisibleString(pasteboardURL.url);
+    return client()->userVisibleString(url);
 }
 
 void Editor::selectionWillChange()
@@ -484,17 +484,6 @@ RefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard& pasteboard
     pasteboard.read(reader);
     chosePlainText = reader.madeFragmentFromPlainText;
     return WTFMove(reader.fragment);
-}
-
-Ref<DocumentFragment> Editor::createFragmentForImageAndURL(const String& url)
-{
-    auto imageElement = HTMLImageElement::create(*m_frame.document());
-    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
-
-    auto fragment = document().createDocumentFragment();
-    fragment->appendChild(imageElement);
-
-    return fragment;
 }
 
 void Editor::applyFontStyles(const String& fontFamily, double fontSize, unsigned fontTraits)

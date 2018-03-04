@@ -78,7 +78,6 @@
 - (CGSize)size;
 - (void *)regionBeingDrawn;
 - (void)setContentsChanged;
-@property BOOL acceleratesDrawing;
 @property BOOL allowsGroupBlending;
 @property BOOL canDrawConcurrently;
 @property BOOL contentsOpaque;
@@ -88,11 +87,6 @@
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300 && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
 @property (copy) NSString *contentsFormat;
 #endif
-@end
-
-@interface CATiledLayer ()
-- (void)displayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
-- (void)setNeedsDisplayInRect:(CGRect)rect levelOfDetail:(int)levelOfDetail options:(NSDictionary *)dictionary;
 @end
 
 #if PLATFORM(IOS)
@@ -130,7 +124,7 @@ typedef struct CAColorMatrix CAColorMatrix;
 @property (copy) NSString *name;
 @end
 
-#if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 typedef enum {
     kCATransactionPhasePreLayout,
     kCATransactionPhasePreCommit,
@@ -197,8 +191,6 @@ void CABackingStoreCollectBlocking(void);
 
 WTF_EXTERN_C_END
 
-extern NSString * const kCATiledLayerRemoveImmediately;
-
 extern NSString * const kCAFilterColorInvert;
 extern NSString * const kCAFilterColorMatrix;
 extern NSString * const kCAFilterColorMonochrome;
@@ -227,6 +219,10 @@ extern NSString * const kCAContextIgnoresHitTest;
 
 #if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
 extern NSString * const kCAContentsFormatRGBA10XR;
+#endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+extern NSString * const kCAContentsFormatRGBA8ColorRGBA8LinearGlyphMask;
 #endif
 
 #if (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \

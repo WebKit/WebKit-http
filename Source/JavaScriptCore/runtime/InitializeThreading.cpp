@@ -31,7 +31,6 @@
 
 #include "ExecutableAllocator.h"
 #include "Heap.h"
-#include "HeapStatistics.h"
 #include "Identifier.h"
 #include "JSDateMath.h"
 #include "JSGlobalObject.h"
@@ -56,12 +55,8 @@ void initializeThreading()
     static std::once_flag initializeThreadingOnceFlag;
 
     std::call_once(initializeThreadingOnceFlag, []{
-        WTF::double_conversion::initialize();
         WTF::initializeThreading();
-        WTF::initializeGCThreads();
         Options::initialize();
-        if (Options::recordGCPauseTimes())
-            HeapStatistics::initialize();
 #if ENABLE(WRITE_BARRIER_PROFILING)
         WriteBarrierCounters::initialize();
 #endif

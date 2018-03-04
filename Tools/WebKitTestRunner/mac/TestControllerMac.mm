@@ -143,7 +143,6 @@ void TestController::platformConfigureViewForTest(const TestInvocation& test)
 #endif
 }
 
-#if ENABLE(PLATFORM_FONT_LOOKUP)
 static NSSet *allowedFontFamilySet()
 {
     static NSSet *fontFamilySet = [[NSSet setWithObjects:
@@ -221,6 +220,7 @@ static NSSet *allowedFontFamilySet()
         @"Kokonor",
         @"Krungthep",
         @"KufiStandardGK",
+        @"LastResort",
         @"LiHei Pro",
         @"LiSong Pro",
         @"Lucida Grande",
@@ -298,7 +298,6 @@ static WKRetainPtr<WKArrayRef> generateWhitelist()
 
     return adoptWK(result);
 }
-#endif
 
 void TestController::platformInitializeContext()
 {
@@ -311,9 +310,7 @@ void TestController::platformInitializeContext()
                                           diskPath:nil]);
     [NSURLCache setSharedURLCache:sharedCache.get()];
 
-#if ENABLE(PLATFORM_FONT_LOOKUP)
     WKContextSetFontWhitelist(m_context.get(), generateWhitelist().get());
-#endif
 }
 
 void TestController::setHidden(bool hidden)

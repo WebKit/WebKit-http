@@ -125,10 +125,6 @@ public:
     virtual NativeImagePtr getFirstBBitmapOfSize(const IntSize&);
 #endif
 
-#if PLATFORM(EFL)
-    Evas_Object* getEvasObject(Evas*) override;
-#endif
-
     WEBCORE_EXPORT NativeImagePtr nativeImage(const GraphicsContext* = nullptr) override;
     NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
 #if USE(CG)

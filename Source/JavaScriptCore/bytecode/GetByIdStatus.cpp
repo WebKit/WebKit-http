@@ -28,10 +28,13 @@
 
 #include "CodeBlock.h"
 #include "ComplexGetStatus.h"
+#include "GetterSetterAccessCase.h"
+#include "IntrinsicGetterAccessCase.h"
 #include "JSCInlines.h"
 #include "JSScope.h"
 #include "LLIntData.h"
 #include "LowLevelInterpreter.h"
+#include "ModuleNamespaceAccessCase.h"
 #include "PolymorphicAccess.h"
 #include "StructureStubInfo.h"
 #include <wtf/ListDump.h>
@@ -145,6 +148,15 @@ GetByIdStatus GetByIdStatus::computeForStubInfo(const ConcurrentJSLocker& locker
 #endif // ENABLE(DFG_JIT)
 
 #if ENABLE(JIT)
+GetByIdStatus::GetByIdStatus(const ModuleNamespaceAccessCase& accessCase)
+    : m_state(ModuleNamespace)
+    , m_wasSeenInJIT(true)
+    , m_moduleNamespaceObject(accessCase.moduleNamespaceObject())
+    , m_moduleEnvironment(accessCase.moduleEnvironment())
+    , m_scopeOffset(accessCase.scopeOffset())
+{
+}
+
 GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
     const ConcurrentJSLocker& locker, CodeBlock* profiledBlock, StructureStubInfo* stubInfo, UniquedStringImpl* uid,
     CallLinkStatus::ExitSiteData callExitSiteData)
@@ -193,6 +205,16 @@ GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
     }
         
     case CacheType::Stub: {
+        if (list->size() == 1) {
+            const AccessCase& access = list->at(0);
+            switch (access.type()) {
+            case AccessCase::ModuleNamespaceLoad:
+                return GetByIdStatus(access.as<ModuleNamespaceAccessCase>());
+            default:
+                break;
+            }
+        }
+
         for (unsigned listIndex = 0; listIndex < list->size(); ++listIndex) {
             const AccessCase& access = list->at(listIndex);
             if (access.viaProxy())
@@ -231,19 +253,19 @@ GetByIdStatus GetByIdStatus::computeForStubInfoWithoutExitSiteFeedback(
                     break;
                 }
                 case AccessCase::IntrinsicGetter: {
-                    intrinsicFunction = access.intrinsicFunction();
+                    intrinsicFunction = access.as<IntrinsicGetterAccessCase>().intrinsicFunction();
                     break;
                 }
                 case AccessCase::Getter: {
                     callLinkStatus = std::make_unique<CallLinkStatus>();
-                    if (CallLinkInfo* callLinkInfo = access.callLinkInfo()) {
+                    if (CallLinkInfo* callLinkInfo = access.as<GetterSetterAccessCase>().callLinkInfo()) {
                         *callLinkStatus = CallLinkStatus::computeFor(
                             locker, profiledBlock, *callLinkInfo, callExitSiteData);
                     }
                     break;
                 }
                 case AccessCase::CustomAccessorGetter: {
-                    domJIT = access.domJIT();
+                    domJIT = access.as<GetterSetterAccessCase>().domJIT();
                     if (!domJIT)
                         return GetByIdStatus(slowPathState, true);
                     result.m_state = Custom;
@@ -374,6 +396,7 @@ bool GetByIdStatus::makesCalls() const
     case NoInformation:
     case TakesSlowPath:
     case Custom:
+    case ModuleNamespace:
         return false;
     case Simple:
         for (unsigned i = m_variants.size(); i--;) {
@@ -417,6 +440,9 @@ void GetByIdStatus::dump(PrintStream& out) const
         break;
     case Custom:
         out.print("Custom");
+        break;
+    case ModuleNamespace:
+        out.print("ModuleNamespace");
         break;
     case TakesSlowPath:
         out.print("TakesSlowPath");

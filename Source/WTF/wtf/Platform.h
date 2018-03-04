@@ -447,16 +447,13 @@
 #endif
 
 /* FIXME: these are all mixes of OS, operating environment and policy choices. */
-/* PLATFORM(EFL) */
 /* PLATFORM(GTK) */
 /* PLATFORM(HAIKU) */
 /* PLATFORM(MAC) */
 /* PLATFORM(IOS) */
 /* PLATFORM(IOS_SIMULATOR) */
 /* PLATFORM(WIN) */
-#if defined(BUILDING_EFL__)
-#define WTF_PLATFORM_EFL 1
-#elif defined(BUILDING_GTK__)
+#if defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
 #elif defined(BUILDING_HAIKU__)
 #define WTF_PLATFORM_HAIKU 1
@@ -504,7 +501,7 @@
 #define USE_CA 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
 #define USE_CAIRO 1
 #define USE_GLIB 1
 #define USE_FREETYPE 1
@@ -513,9 +510,7 @@
 #define USE_WEBP 1
 #endif
 
-#if PLATFORM(EFL)
-#define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_38
-#elif PLATFORM(GTK)
+#if PLATFORM(GTK)
 #define GLIB_VERSION_MIN_REQUIRED GLIB_VERSION_2_36
 #endif
 
@@ -648,7 +643,7 @@
 #endif
 
 #if !defined(HAVE_ACCESSIBILITY)
-#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK)
 #define HAVE_ACCESSIBILITY 1
 #endif
 #endif /* !defined(HAVE_ACCESSIBILITY) */
@@ -749,7 +744,7 @@
 /* If possible, try to enable a disassembler. This is optional. We proceed in two
    steps: first we try to find some disassembler that we can use, and then we
    decide if the high-level disassembler API can be enabled. */
-#if !defined(USE_UDIS86) && ENABLE(JIT) && ((OS(DARWIN) && !PLATFORM(EFL) && !PLATFORM(GTK)) || (OS(LINUX) && (PLATFORM(EFL) || PLATFORM(GTK))) || PLATFORM(HAIKU)) \
+#if !defined(USE_UDIS86) && ENABLE(JIT) && ((OS(DARWIN) && !PLATFORM(GTK)) || (OS(LINUX) && PLATFORM(GTK)) || PLATFORM(HAIKU)) \
     && (CPU(X86) || CPU(X86_64))
 #define USE_UDIS86 1
 #endif
@@ -780,7 +775,7 @@
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */
-#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(EFL))
+#if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK))
 #define ENABLE_DFG_JIT 1
 #endif
 /* Enable the DFG JIT on ARM and MIPS. */
@@ -817,7 +812,7 @@
  * In configurations other than Windows and Darwin, because layout of mcontext_t depends on standard libraries (like glibc),
  * sampling profiler is enabled if WebKit uses pthreads and glibc. */
 #if !defined(ENABLE_SAMPLING_PROFILER)
-#if (OS(DARWIN) || OS(WINDOWS) || PLATFORM(GTK) || PLATFORM(EFL)) && ENABLE(JIT)
+#if (OS(DARWIN) || OS(WINDOWS) || PLATFORM(GTK)) && ENABLE(JIT)
 #define ENABLE_SAMPLING_PROFILER 1
 #else
 #define ENABLE_SAMPLING_PROFILER 0
@@ -949,19 +944,9 @@
 #endif
 #endif
 
-/* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
-   On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
-#if ENABLE(ASSEMBLER)
-#if CPU(X86_64) || PLATFORM(IOS) || CPU(ARM64)
-#define ENABLE_EXECUTABLE_ALLOCATOR_FIXED 1
-#else
-#define ENABLE_EXECUTABLE_ALLOCATOR_DEMAND 1
-#endif
-#endif
-
 /* CSS Selector JIT Compiler */
 #if !defined(ENABLE_CSS_SELECTOR_JIT)
-#if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(HAIKU))
+#if (CPU(X86_64) || CPU(ARM64) || (CPU(ARM_THUMB2) && PLATFORM(IOS))) && ENABLE(JIT) && (OS(DARWIN) || PLATFORM(GTK) || PLATFORM(HAIKU))
 #define ENABLE_CSS_SELECTOR_JIT 1
 #else
 #define ENABLE_CSS_SELECTOR_JIT 0
@@ -1016,11 +1001,7 @@
 #include <wtf/glib/GTypedefs.h>
 #endif
 
-#if PLATFORM(EFL)
-#include <wtf/efl/EflTypedefs.h>
-#endif
-
-/* FIXME: This define won't be needed once #27551 is fully landed. However, 
+/* FIXME: This define won't be needed once #27551 is fully landed. However,
    since most ports try to support sub-project independence, adding new headers
    to WTF causes many ports to break, and so this way we can address the build
    breakages one port at a time. */
@@ -1032,7 +1013,7 @@
 #define USE_EXPORT_MACROS_FOR_TESTING 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(HAIKU)
+#if PLATFORM(GTK) || PLATFORM(HAIKU)
 #define USE_UNIX_DOMAIN_SOCKETS 1
 #endif
 
@@ -1112,7 +1093,7 @@
 
 #define USE_GRAMMAR_CHECKING 1
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 #define USE_UNIFIED_TEXT_CHECKING 1
 #endif
 #if PLATFORM(MAC)
@@ -1149,7 +1130,7 @@
 #define ENABLE_RESOURCE_USAGE 1
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(GTK)
 #undef ENABLE_OPENTYPE_VERTICAL
 #define ENABLE_OPENTYPE_VERTICAL 1
 #define ENABLE_CSS3_TEXT_DECORATION_SKIP_INK 1
@@ -1161,10 +1142,6 @@
 
 #if PLATFORM(COCOA)
 #define ENABLE_CSS3_TEXT_DECORATION_SKIP_INK 1
-#endif
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED > 101000)
-#define ENABLE_PLATFORM_FONT_LOOKUP 1
 #endif
 
 #if COMPILER(MSVC)
@@ -1219,18 +1196,13 @@
 /* Use Windows message pump abstraction.
  * Even if the port is AppleWin, we use the Windows message pump system for the event loop,
  * so that USE(WINDOWS_EVENT_LOOP) && USE(CF) can be true.
- * And PLATFORM(WIN), PLATFORM(EFL) and PLATFORM(GTK) are exclusive. If the port is GTK,
+ * And PLATFORM(WIN) and PLATFORM(GTK) are exclusive. If the port is GTK,
  * PLATFORM(WIN) should be false. And in that case, GLib's event loop is used.
  */
 #define USE_WINDOWS_EVENT_LOOP 1
 #elif PLATFORM(COCOA)
 /* OS X and IOS. Use CoreFoundation & GCD abstraction. */
 #define USE_COCOA_EVENT_LOOP 1
-#elif PLATFORM(EFL)
-/* EFL port uses GLib. But it uses its own event loop abstraction.
- * Thus, USE(EFL_EVENT_LOOP) && USE(GLIB) can be true.
- */
-#define USE_EFL_EVENT_LOOP 1
 #elif USE(GLIB)
 /* Use GLib's event loop abstraction. Primarily GTK port uses it. */
 #define USE_GLIB_EVENT_LOOP 1
@@ -1256,5 +1228,9 @@
 #define ENABLE_WEB_PLAYBACK_CONTROLS_MANAGER 1
 #endif
 #endif /* PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 */
+
+#if PLATFORM(MAC) && ENABLE(WEB_RTC)
+#define USE_LIBWEBRTC 1
+#endif
 
 #endif /* WTF_Platform_h */

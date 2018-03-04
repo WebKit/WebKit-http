@@ -11,6 +11,7 @@
 #ifndef WEBRTC_BASE_CHECKS_H_
 #define WEBRTC_BASE_CHECKS_H_
 
+#include "webrtc/base/export.h"
 #include "webrtc/typedefs.h"
 
 // If you for some reson need to know if DCHECKs are on, test the value of
@@ -229,7 +230,7 @@ class FatalMessageVoidify {
 // can match the Chromium behavior.
 
 // Like a stripped-down LogMessage from logging.h, except that it aborts.
-class FatalMessage {
+class WEBRTC_EXPORT FatalMessage {
  public:
   FatalMessage(const char* file, int line);
   // Used for RTC_CHECK_EQ(), etc. Takes ownership of the given string.

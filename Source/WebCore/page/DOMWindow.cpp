@@ -993,7 +993,10 @@ void DOMWindow::postMessageTimerFired(PostMessageTimer& timer)
         if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
             if (auto* pageConsole = console()) {
                 String message = makeString("Unable to post message to ", intendedTargetOrigin->toString(), ". Recipient has origin ", document()->securityOrigin().toString(), ".\n");
-                pageConsole->addMessage(MessageSource::Security, MessageLevel::Error, message, timer.stackTrace());
+                if (timer.stackTrace())
+                    pageConsole->addMessage(MessageSource::Security, MessageLevel::Error, message, *timer.stackTrace());
+                else
+                    pageConsole->addMessage(MessageSource::Security, MessageLevel::Error, message);
             }
             return;
         }
@@ -2022,6 +2025,11 @@ void DOMWindow::removeAllEventListeners()
 #if ENABLE(PROXIMITY_EVENTS)
     if (DeviceProximityController* controller = DeviceProximityController::from(page()))
         controller->removeAllDeviceEventListeners(this);
+#endif
+
+#if ENABLE(WEB_TIMING)
+    if (m_performance)
+        m_performance->removeAllEventListeners();
 #endif
 
     removeAllUnloadEventListeners(this);

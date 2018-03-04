@@ -5,12 +5,6 @@
             "xan.lopez@gmail.com"
         ]
     },
-    "EFL WK2 EWS": {
-        "port": "efl-wk2",
-        "watchers": [
-            "gyuyoung.kim@webkit.org"
-        ]
-    },
     "Win EWS": {
         "port": "win",
         "watchers": [
@@ -50,5 +44,11 @@
         "port": "mac",
         "name": "mac-32bit-ews",
         "architecture": "i386"
+    },
+    "JSC EWS": {
+        "port": "mac",
+        "name": "jsc-ews",
+        "group": "jsc",
+        "runTests": true
     }
 }

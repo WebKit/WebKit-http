@@ -10,6 +10,7 @@ fast/scrolling/ios [ Pass ]
 fast/viewport/ios [ Pass ]
 fast/visual-viewport/ios/ [ Pass ]
 scrollingcoordinator/ios [ Pass ]
+tiled-drawing/ios [ Pass ]
 editing/selection/character-granularity-rect.html [ Pass ]
 
 fast/media/mq-inverted-colors-live-update.html [ Pass ]
@@ -1914,3 +1915,5 @@ fast/css/deferred-parsing/hover-test.html [ Skip ]
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
 
 webkit.org/b/167258 media/modern-media-controls/audio/audio-controls-metrics.html [ Skip ]
+
+imported/w3c/web-platform-tests/webrtc [ Skip ]

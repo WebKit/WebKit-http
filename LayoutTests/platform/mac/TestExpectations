@@ -1184,6 +1184,7 @@ webkit.org/b/164293 [ Debug ] inspector/debugger/breakpoint-scope.html [ Pass Ti
 webkit.org/b/168090 [ Debug ] inspector/debugger/breakpoint-columns.html [ Pass Timeout ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
 webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
+webkit.org/b/168399 [ Debug ] inspector/debugger/search-scripts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-removal.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
@@ -1338,6 +1339,8 @@ webkit.org/b/159003 [ Yosemite ElCapitan ] fast/text/font-cursive-italic-cjk-2.h
 
 webkit.org/b/158889 media/video-controls-show-on-kb-or-ax-event.html [ Pass Failure ]
 
+[ Sierra+ ] fast/css/appearance-apple-pay-button.html [ Pass ]
+
 # <rdar://problem/23500327> storage/websql/alter-to-info-table.html
 [ Sierra+ ] storage/websql/alter-to-info-table.html [ Pass Failure ]
 
@@ -1489,9 +1492,9 @@ webkit.org/b/167396 media/modern-media-controls/media-controller/media-controlle
 
 webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
 
-webkit.org/b/167442 [ ElCapitan ] media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
+webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
-webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
+webkit.org/b/165874 streams/pipe-to.html [ Pass Failure ]
 
 # New Encrypted Media API not enabled on Mac
 media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
@@ -1526,3 +1529,10 @@ webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
 
 webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]
+
+webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.html [ Skip ]
+webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.html [ Skip ]
+
+webkit.org/b/212466 [ ElCapitan ] js/dom/gc-slot-visitor-parallel-drain-pings-runloop-when-done.html [ Skip ]
+
+webkit.org/b/168503 editing/pasteboard/drag-drop-copy-content.html [ Failure ]

@@ -72,6 +72,7 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
 
+    b3/air/AirAllocateRegistersByGraphColoring.cpp
     b3/air/AirAllocateStack.cpp
     b3/air/AirArg.cpp
     b3/air/AirBasicBlock.cpp
@@ -79,6 +80,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirCCallingConvention.cpp
     b3/air/AirCode.cpp
     b3/air/AirCustom.cpp
+    b3/air/AirDisassembler.cpp
     b3/air/AirDumpAsJS.cpp
     b3/air/AirEliminateDeadCode.cpp
     b3/air/AirEmitShuffle.cpp
@@ -89,7 +91,6 @@ set(JavaScriptCore_SOURCES
     b3/air/AirHandleCalleeSaves.cpp
     b3/air/AirInsertionSet.cpp
     b3/air/AirInst.cpp
-    b3/air/AirIteratedRegisterCoalescing.cpp
     b3/air/AirKind.cpp
     b3/air/AirLogRegisterPressure.cpp
     b3/air/AirLowerAfterRegAlloc.cpp
@@ -185,6 +186,7 @@ set(JavaScriptCore_SOURCES
     builtins/BuiltinExecutables.cpp
     builtins/BuiltinExecutableCreator.cpp
 
+    bytecode/AccessCase.cpp
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
     bytecode/ArithProfile.cpp
     bytecode/ArrayAllocationProfile.cpp
@@ -215,16 +217,20 @@ set(JavaScriptCore_SOURCES
     bytecode/ExecutionCounter.cpp
     bytecode/ExitKind.cpp
     bytecode/ExitingJITType.cpp
+    bytecode/FullCodeOrigin.cpp
     bytecode/FunctionCodeBlock.cpp
     bytecode/GetByIdStatus.cpp
     bytecode/GetByIdVariant.cpp
+    bytecode/GetterSetterAccessCase.cpp
     bytecode/InlineAccess.cpp
     bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
+    bytecode/IntrinsicGetterAccessCase.cpp
     bytecode/JumpTable.cpp
     bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp
     bytecode/LazyOperandValueProfile.cpp
     bytecode/MethodOfGettingAValueProfile.cpp
+    bytecode/ModuleNamespaceAccessCase.cpp
     bytecode/ModuleProgramCodeBlock.cpp
     bytecode/ObjectPropertyCondition.cpp
     bytecode/ObjectPropertyConditionSet.cpp
@@ -233,6 +239,7 @@ set(JavaScriptCore_SOURCES
     bytecode/PreciseJumpTargets.cpp
     bytecode/ProgramCodeBlock.cpp
     bytecode/PropertyCondition.cpp
+    bytecode/ProxyableAccessCase.cpp
     bytecode/PutByIdFlags.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
@@ -470,6 +477,7 @@ set(JavaScriptCore_SOURCES
     heap/CellContainer.cpp
     heap/CodeBlockSet.cpp
     heap/CollectionScope.cpp
+    heap/CollectorPhase.cpp
     heap/ConservativeRoots.cpp
     heap/DeferGC.cpp
     heap/DestructionMode.cpp
@@ -477,6 +485,7 @@ set(JavaScriptCore_SOURCES
     heap/FullGCActivityCallback.cpp
     heap/FreeList.cpp
     heap/GCActivityCallback.cpp
+    heap/GCConductor.cpp
     heap/GCLogging.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
@@ -486,7 +495,6 @@ set(JavaScriptCore_SOURCES
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
     heap/HeapSnapshotBuilder.cpp
-    heap/HeapStatistics.cpp
     heap/HeapTimer.cpp
     heap/HeapVerifier.cpp
     heap/IncrementalSweeper.cpp
@@ -572,7 +580,6 @@ set(JavaScriptCore_SOURCES
     jit/CallFrameShuffler64.cpp
     jit/ExecutableAllocationFuzz.cpp
     jit/ExecutableAllocator.cpp
-    jit/ExecutableAllocatorFixedVMPool.cpp
     jit/GCAwareJITStubRoutine.cpp
     jit/GPRInfo.cpp
     jit/HostCallReturnValue.cpp

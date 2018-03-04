@@ -443,7 +443,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_referencingNodeCount(0)
     , m_settings(frame ? Ref<Settings>(frame->settings()) : Settings::create(nullptr))
     , m_hasNodesWithPlaceholderStyle(false)
-    , m_needsNotifyRemoveAllPendingStylesheet(false)
     , m_ignorePendingStylesheets(false)
     , m_pendingSheetLayout(NoLayoutWithPendingSheets)
     , m_cachedResourceLoader(m_frame ? Ref<CachedResourceLoader>(m_frame->loader().activeDocumentLoader()->cachedResourceLoader()) : CachedResourceLoader::create(nullptr))
@@ -1132,14 +1131,10 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
     return CustomElementNameValidationStatus::Valid;
 }
 
-#if ENABLE(CSS_GRID_LAYOUT)
-
 bool Document::isCSSGridLayoutEnabled() const
 {
     return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
 }
-
-#endif
 
 #if ENABLE(CSS_REGIONS)
 
@@ -1428,7 +1423,7 @@ RefPtr<Range> Document::caretRangeFromPoint(const LayoutPoint& clientPoint)
     RenderObject* renderer = node->renderer();
     if (!renderer)
         return nullptr;
-    Position rangeCompliantPosition = renderer->positionForPoint(localPoint, nullptr).deepEquivalent().parentAnchoredEquivalent();
+    Position rangeCompliantPosition = renderer->positionForPoint(localPoint).parentAnchoredEquivalent();
     if (rangeCompliantPosition.isNull())
         return nullptr;
 
@@ -1846,6 +1841,9 @@ void Document::recalcStyle(Style::Change change)
     // to check if any other elements ended up under the mouse pointer due to re-layout.
     if (m_hoveredElement && !m_hoveredElement->renderer())
         frameView.frame().mainFrame().eventHandler().dispatchFakeMouseMoveEventSoon();
+
+    if (m_gotoAnchorNeededAfterStylesheetsLoad && !styleScope().hasPendingSheets())
+        frameView.scrollToFragment(m_url);
 }
 
 bool Document::needsStyleRecalc() const
@@ -2181,6 +2179,13 @@ void Document::frameDestroyed()
     FrameDestructionObserver::frameDestroyed();
 }
 
+void Document::didBecomeCurrentDocumentInView()
+{
+    ASSERT(view());
+    if (!hasLivingRenderTree())
+        createRenderTree();
+}
+
 void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(cachedFrame.document() == this);
@@ -2202,7 +2207,6 @@ void Document::destroyRenderTree()
 {
     ASSERT(hasLivingRenderTree());
     ASSERT(frame());
-    ASSERT(frame()->view());
     ASSERT(page());
 
     FrameView* frameView = frame()->document() == this ? frame()->view() : nullptr;
@@ -2617,7 +2621,7 @@ void Document::explicitClose()
         return;
     }
 
-    m_frame->loader().checkCompleted();
+    checkCompleted();
 }
 
 void Document::implicitClose()
@@ -2720,7 +2724,7 @@ void Document::implicitClose()
 
     m_processingLoadEvent = false;
 
-#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK) || PLATFORM(EFL)
+#if PLATFORM(COCOA) || PLATFORM(WIN) || PLATFORM(GTK)
     if (f && hasLivingRenderTree() && AXObjectCache::accessibilityEnabled()) {
         // The AX cache may have been cleared at this point, but we need to make sure it contains an
         // AX object to send the notification to. getOrCreate will make sure that an valid AX object
@@ -2843,9 +2847,11 @@ void Document::setTimerThrottlingEnabled(bool shouldThrottle)
 std::chrono::milliseconds Document::timerAlignmentInterval(bool hasReachedMaxNestingLevel) const
 {
     auto alignmentInterval = ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
+    if (!hasReachedMaxNestingLevel)
+        return alignmentInterval;
 
     // Apply Document-level DOMTimer throttling only if timers have reached their maximum nesting level as the Page may still be visible.
-    if (m_isTimerThrottlingEnabled && hasReachedMaxNestingLevel)
+    if (m_isTimerThrottlingEnabled)
         alignmentInterval = std::max(alignmentInterval, DOMTimer::hiddenPageAlignmentInterval());
 
     if (Page* page = this->page())
@@ -3067,19 +3073,17 @@ Frame* Document::findUnsafeParentScrollPropagationBoundary()
 
 void Document::didRemoveAllPendingStylesheet()
 {
-    m_needsNotifyRemoveAllPendingStylesheet = false;
-
     if (m_pendingSheetLayout == DidLayoutWithPendingSheets) {
+        // Painting is disabled when doing layouts with pending sheets to avoid FOUC.
+        // We need to force paint when coming out from this state.
+        // FIXME: This is not very elegant.
         m_pendingSheetLayout = IgnoreLayoutWithPendingSheets;
         if (renderView())
             renderView()->repaintViewAndCompositedLayers();
     }
 
-    if (ScriptableDocumentParser* parser = scriptableDocumentParser())
-        parser->executeScriptsWaitingForStylesheets();
-
-    if (m_gotoAnchorNeededAfterStylesheetsLoad && view())
-        view()->scrollToFragment(m_url);
+    if (auto* parser = scriptableDocumentParser())
+        parser->executeScriptsWaitingForStylesheetsSoon();
 }
 
 bool Document::usesStyleBasedEditability() const
@@ -6032,8 +6036,13 @@ void Document::decrementLoadEventDelayCount()
 
 void Document::loadEventDelayTimerFired()
 {
-    if (frame())
-        frame()->loader().checkCompleted();
+    checkCompleted();
+}
+
+void Document::checkCompleted()
+{
+    if (auto* frame = this->frame())
+        frame->loader().checkCompleted();
 }
 
 double Document::monotonicTimestamp() const

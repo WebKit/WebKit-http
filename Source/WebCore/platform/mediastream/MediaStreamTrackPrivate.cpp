@@ -100,6 +100,8 @@ void MediaStreamTrackPrivate::setEnabled(bool enabled)
     // Always update the enabled state regardless of the track being ended.
     m_isEnabled = enabled;
 
+    m_source->setEnabled(enabled);
+
     for (auto& observer : m_observers)
         observer->trackEnabledChanged(*this);
 }
@@ -186,6 +188,12 @@ void MediaStreamTrackPrivate::sourceMutedChanged()
         observer->trackMutedChanged(*this);
 }
 
+void MediaStreamTrackPrivate::sourceEnabledChanged()
+{
+    for (auto& observer : m_observers)
+        observer->trackEnabledChanged(*this);
+}
+
 void MediaStreamTrackPrivate::sourceSettingsChanged()
 {
     for (auto& observer : m_observers)
@@ -203,6 +211,12 @@ void MediaStreamTrackPrivate::videoSampleAvailable(MediaSample& mediaSample)
     mediaSample.setTrackID(id());
     for (auto& observer : m_observers)
         observer->sampleBufferUpdated(*this, mediaSample);
+}
+
+void MediaStreamTrackPrivate::audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t)
+{
+    for (auto& observer : m_observers)
+        observer->audioSamplesAvailable(*this);
 }
 
 } // namespace WebCore

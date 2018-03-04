@@ -53,11 +53,6 @@ OBJC_CLASS WKWebViewConfiguration;
 #include "WebInspectorClientGtk.h"
 #endif
 
-#if PLATFORM(EFL)
-#include <Ecore_Evas.h>
-#include <Evas.h>
-#endif
-
 namespace WebCore {
 class URL;
 }
@@ -70,7 +65,8 @@ class WebPreferences;
 
 enum class AttachmentSide {
     Bottom,
-    Right
+    Right,
+    Left,
 };
 
 class WebInspectorProxy : public API::ObjectImpl<API::Object::Type::Inspector>, public IPC::MessageReceiver {
@@ -130,6 +126,7 @@ public:
     AttachmentSide attachmentSide() const { return m_attachmentSide; }
     bool isAttached() const { return m_isAttached; }
     void attachRight();
+    void attachLeft();
     void attachBottom();
     void attach(AttachmentSide = AttachmentSide::Bottom);
     void detach();
@@ -227,11 +224,8 @@ private:
 
     WebPreferences& inspectorPagePreferences() const;
 
-#if PLATFORM(GTK) || PLATFORM(EFL)
-    void createInspectorWindow();
-#endif
-
 #if PLATFORM(GTK)
+    void createInspectorWindow();
     void updateInspectorWindowTitle() const;
 #endif
 
@@ -265,9 +259,6 @@ private:
     GtkWidget* m_inspectorWindow { nullptr };
     GtkWidget* m_headerBar { nullptr };
     String m_inspectedURLString;
-#elif PLATFORM(EFL)
-    Evas_Object* m_inspectorView { nullptr };
-    Ecore_Evas* m_inspectorWindow { nullptr };
 #endif
 #if ENABLE(INSPECTOR_SERVER)
     int m_remoteInspectionPageId { 0 };

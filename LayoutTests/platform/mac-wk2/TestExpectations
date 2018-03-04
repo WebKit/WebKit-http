@@ -6,6 +6,7 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 tiled-drawing [ Pass ]
+tiled-drawing/ios [ Skip ]
 fast/visual-viewport/tiled-drawing [ Pass ]
 swipe [ Pass ]
 
@@ -52,6 +53,7 @@ editing/pasteboard/drag-and-drop-image-contenteditable.html
 editing/pasteboard/drag-and-drop-inputimage-contenteditable.html
 editing/pasteboard/drag-and-drop-objectimage-contenteditable.html
 editing/pasteboard/drag-and-drop-attachment-contenteditable.html
+editing/pasteboard/drag-drop-copy-content.html
 editing/pasteboard/drag-drop-dead-frame.html
 editing/pasteboard/drag-drop-input-textarea.html
 editing/pasteboard/drag-drop-list.html
@@ -633,3 +635,5 @@ webkit.org/b/168085 tiled-drawing/scrolling/latched-to-deleted-node.html [ Pass 
 webkit.org/b/168336 [ Debug ] imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.html [ Pass Timeout ]
 
 webkit.org/b/168089 [ Release ] animations/trigger-container-scroll-empty.html [ Pass Failure ]
+
+webkit.org/b/168391 [ ElCapitan Debug ] storage/indexeddb/modern/idbcursor-continue-primary-key-1.html [ Pass Timeout ]

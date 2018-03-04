@@ -35,20 +35,6 @@
 namespace WebKit {
 
 WebProcessCreationParameters::WebProcessCreationParameters()
-    : shouldAlwaysUseComplexTextCodePath(false)
-    , shouldEnableMemoryPressureReliefLogging(false)
-    , shouldUseFontSmoothing(true)
-    , defaultRequestTimeoutInterval(INT_MAX)
-#if PLATFORM(COCOA)
-    , shouldEnableJIT(false)
-    , shouldEnableFTLJIT(false)
-#endif
-    , memoryCacheDisabled(false)
-#if ENABLE(SERVICE_CONTROLS)
-    , hasImageServices(false)
-    , hasSelectionServices(false)
-    , hasRichContentServices(false)
-#endif
 {
 }
 
@@ -98,7 +84,6 @@ void WebProcessCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << shouldSuppressMemoryPressureHandler;
     encoder << shouldUseFontSmoothing;
     encoder << resourceLoadStatisticsEnabled;
-    encoder << urlParserEnabled;
     encoder << fontWhitelist;
     encoder << iconDatabaseEnabled;
     encoder << terminationTimeout;
@@ -232,8 +217,6 @@ bool WebProcessCreationParameters::decode(IPC::Decoder& decoder, WebProcessCreat
     if (!decoder.decode(parameters.shouldUseFontSmoothing))
         return false;
     if (!decoder.decode(parameters.resourceLoadStatisticsEnabled))
-        return false;
-    if (!decoder.decode(parameters.urlParserEnabled))
         return false;
     if (!decoder.decode(parameters.fontWhitelist))
         return false;

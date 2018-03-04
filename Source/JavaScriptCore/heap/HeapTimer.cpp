@@ -34,9 +34,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/Threading.h>
 
-#if PLATFORM(EFL)
-#include <Ecore.h>
-#elif USE(GLIB)
+#if USE(GLIB)
 #include <glib.h>
 #endif
 
@@ -108,71 +106,16 @@ void HeapTimer::cancelTimer()
     m_isScheduled = false;
 }
 
-#elif PLATFORM(EFL)
-
-HeapTimer::HeapTimer(VM* vm)
-    : m_vm(vm)
-    , m_apiLock(&vm->apiLock())
-    , m_timer(0)
-{
-}
-
-HeapTimer::~HeapTimer()
-{
-    stop();
-}
-
-Ecore_Timer* HeapTimer::add(double delay, void* agent)
-{
-    return ecore_timer_add(delay, reinterpret_cast<Ecore_Task_Cb>(timerEvent), agent);
-}
-    
-void HeapTimer::stop()
-{
-    if (!m_timer)
-        return;
-
-    ecore_timer_del(m_timer);
-    m_timer = 0;
-}
-
-bool HeapTimer::timerEvent(void* info)
-{
-    HeapTimer* agent = static_cast<HeapTimer*>(info);
-    
-    JSLockHolder locker(agent->m_vm);
-    agent->doWork();
-    agent->m_timer = 0;
-    
-    return ECORE_CALLBACK_CANCEL;
-}
-
-void HeapTimer::scheduleTimer(double intervalInSeconds)
-{
-    if (ecore_timer_freeze_get(m_timer))
-        ecore_timer_thaw(m_timer);
-
-    double targetTime = currentTime() + intervalInSeconds;
-    ecore_timer_interval_set(m_timer, targetTime);
-    m_isScheduled = true;
-}
-
-void HeapTimer::cancelTimer()
-{
-    ecore_timer_freeze(m_timer);
-    m_isScheduled = false;
-}
 #elif USE(GLIB)
+
+const long HeapTimer::s_decade = 60 * 60 * 24 * 365 * 10;
 
 static GSourceFuncs heapTimerSourceFunctions = {
     nullptr, // prepare
     nullptr, // check
     // dispatch
-    [](GSource* source, GSourceFunc callback, gpointer userData) -> gboolean
+    [](GSource*, GSourceFunc callback, gpointer userData) -> gboolean
     {
-        if (g_source_get_ready_time(source) == -1)
-            return G_SOURCE_CONTINUE;
-        g_source_set_ready_time(source, -1);
         return callback(userData);
     },
     nullptr, // finalize
@@ -187,7 +130,9 @@ HeapTimer::HeapTimer(VM* vm)
 {
     g_source_set_name(m_timer.get(), "[JavaScriptCore] HeapTimer");
     g_source_set_callback(m_timer.get(), [](gpointer userData) -> gboolean {
-        static_cast<HeapTimer*>(userData)->timerDidFire();
+        auto& heapTimer = *static_cast<HeapTimer*>(userData);
+        g_source_set_ready_time(heapTimer.m_timer.get(), g_get_monotonic_time() + HeapTimer::s_decade * G_USEC_PER_SEC);
+        heapTimer.timerDidFire();
         return G_SOURCE_CONTINUE;
     }, this, nullptr);
     g_source_attach(m_timer.get(), g_main_context_get_thread_default());
@@ -218,17 +163,13 @@ void HeapTimer::timerDidFire()
 
 void HeapTimer::scheduleTimer(double intervalInSeconds)
 {
-    auto delayDuration = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<double>(intervalInSeconds));
-    gint64 currentTime = g_get_monotonic_time();
-    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, delayDuration.count());
-    ASSERT(targetTime >= currentTime);
-    g_source_set_ready_time(m_timer.get(), targetTime);
+    g_source_set_ready_time(m_timer.get(), g_get_monotonic_time() + intervalInSeconds * G_USEC_PER_SEC);
     m_isScheduled = true;
 }
 
 void HeapTimer::cancelTimer()
 {
-    g_source_set_ready_time(m_timer.get(), -1);
+    g_source_set_ready_time(m_timer.get(), g_get_monotonic_time() + s_decade * G_USEC_PER_SEC);
     m_isScheduled = false;
 }
 #else

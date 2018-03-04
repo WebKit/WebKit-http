@@ -37,7 +37,7 @@ class CryptoAlgorithmParameters {
 public:
     enum class Class {
         None,
-        AesCbcParams,
+        AesCbcCfbParams,
         AesKeyGenParams,
         HmacKeyParams,
         RsaHashedKeyGenParams,

@@ -28,7 +28,7 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmAesCbcParams.h"
+#include "CryptoAlgorithmAesCbcCfbParams.h"
 #include "CryptoAlgorithmAesCbcParamsDeprecated.h"
 #include "CryptoAlgorithmAesKeyGenParams.h"
 #include "CryptoAlgorithmAesKeyGenParamsDeprecated.h"
@@ -69,7 +69,7 @@ bool CryptoAlgorithmAES_CBC::keyAlgorithmMatches(const CryptoAlgorithmAesCbcPara
 void CryptoAlgorithmAES_CBC::encrypt(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& plainText, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
     ASSERT(parameters);
-    auto& aesParameters = downcast<CryptoAlgorithmAesCbcParams>(*parameters);
+    auto& aesParameters = downcast<CryptoAlgorithmAesCbcCfbParams>(*parameters);
     if (aesParameters.ivVector().size() != IVSIZE) {
         exceptionCallback(OperationError);
         return;
@@ -80,7 +80,7 @@ void CryptoAlgorithmAES_CBC::encrypt(std::unique_ptr<CryptoAlgorithmParameters>&
 void CryptoAlgorithmAES_CBC::decrypt(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& cipherText, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
     ASSERT(parameters);
-    auto& aesParameters = downcast<CryptoAlgorithmAesCbcParams>(*parameters);
+    auto& aesParameters = downcast<CryptoAlgorithmAesCbcCfbParams>(*parameters);
     if (aesParameters.ivVector().size() != IVSIZE) {
         exceptionCallback(OperationError);
         return;
@@ -120,14 +120,14 @@ void CryptoAlgorithmAES_CBC::importKey(SubtleCrypto::KeyFormat format, KeyData&&
         result = CryptoKeyAES::importRaw(parameters->identifier, WTFMove(WTF::get<Vector<uint8_t>>(data)), extractable, usages);
         break;
     case SubtleCrypto::KeyFormat::Jwk: {
-        auto checkAlgCallback = [](size_t length, const std::optional<String>& alg) -> bool {
+        auto checkAlgCallback = [](size_t length, const String& alg) -> bool {
             switch (length) {
             case CryptoKeyAES::s_length128:
-                return !alg || alg.value() == ALG128;
+                return alg.isNull() || alg == ALG128;
             case CryptoKeyAES::s_length192:
-                return !alg || alg.value() == ALG192;
+                return alg.isNull() || alg == ALG192;
             case CryptoKeyAES::s_length256:
-                return !alg || alg.value() == ALG256;
+                return alg.isNull() || alg == ALG256;
             }
             return false;
         };

@@ -102,7 +102,6 @@ list(APPEND WebKit2_SOURCES
     Shared/Cocoa/CompletionHandlerCallChecker.mm
     Shared/Cocoa/DataDetectionResult.mm
     Shared/Cocoa/LoadParametersCocoa.mm
-    Shared/Cocoa/WebKit2InitializeCocoa.mm
     Shared/Cocoa/WKNSArray.mm
     Shared/Cocoa/WKNSData.mm
     Shared/Cocoa/WKNSDictionary.mm
@@ -239,6 +238,7 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Cocoa/AutomationClient.mm
     UIProcess/Cocoa/AutomationSessionClient.mm
+    UIProcess/Cocoa/CustomProtocolManagerClient.mm
     UIProcess/Cocoa/DiagnosticLoggingClient.mm
     UIProcess/Cocoa/DownloadClient.mm
     UIProcess/Cocoa/FindClient.mm
@@ -259,8 +259,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebViewImpl.mm
 
     UIProcess/Launcher/mac/ProcessLauncherMac.mm
-
-    UIProcess/Network/CustomProtocols/mac/CustomProtocolManagerProxyMac.mm
 
     UIProcess/Network/mac/NetworkProcessProxyMac.mm
 

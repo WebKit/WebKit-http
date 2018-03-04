@@ -300,6 +300,8 @@ fast/events/mouse-force-down.html [ Skip ]
 fast/events/mouse-force-up.html [ Skip ]
 
 # testRunner.setPageVisibility is not implemented for iOS
+webkit.org/b/165799 fast/dom/timer-throttling-hidden-page.html [ Skip ]
+webkit.org/b/165799 fast/dom/timer-throttling-hidden-page-non-nested.html [ Skip ]
 webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
 
@@ -1328,9 +1330,12 @@ fast/flexbox/vertical-box-form-controls.html [ Failure ]
 fast/forms/autofocus-opera-003.html [ Failure ]
 fast/forms/button-inner-block-reuse.html [ Failure ]
 fast/forms/button-with-float.html [ ImageOnlyFailure ]
-fast/forms/color/color-setrangetext.html [ Failure ]
+
+# <input type=color> is not supported on iOS.
 fast/forms/color/input-color-onchange-event.html [ Failure ]
+fast/forms/color/input-color-readonly.html [ Failure ]
 fast/forms/color/input-value-sanitization-color.html [ Failure ]
+fast/forms/color/color-setrangetext.html [ Failure ]
 
 fast/forms/datalist/datalist-fallback-content.html [ ImageOnlyFailure ]
 fast/forms/datalist/datalist-nonoption-child.html [ Failure ]
@@ -2805,6 +2810,11 @@ media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-en
 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
 media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
+media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-should-pause.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-should-pause-fullscreen.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-background-to-dismiss-tracks-panel-should-not-toggle-playback.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-click-on-video-controls-should-not-pause.html [ Skip ]
 
 # Tests designed for macOS that have iOS equivalents in "ipad" directories
 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
@@ -2841,6 +2851,8 @@ media/modern-media-controls/media-controller/media-controller-reduced-padding.ht
 media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-toggle-compact-mode.html [ Skip ]
 
+webkit.org/b/168343 media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Pass Timeout ]
+
 # Form validation popover does not obey minimum font size setting on iOS but Dynamic Type instead.
 fast/forms/validation-message-minimum-font-size.html [ Skip ]
 
@@ -2866,3 +2878,8 @@ webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure
 
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
+
+# rdar://problem/23643423
+[ Debug ] fast/frames/exponential-frames.html [ Skip ]
+
+webkit.org/b/168053 pageoverlay/overlay-remove-reinsert-view.html [ Pass Failure ]

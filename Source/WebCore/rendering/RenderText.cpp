@@ -422,25 +422,34 @@ void RenderText::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 
 Vector<FloatQuad> RenderText::absoluteQuadsForRange(unsigned start, unsigned end, bool useSelectionHeight, bool* wasFixed) const
 {
-    const_cast<RenderText&>(*this).ensureLineBoxes();
-
     // Work around signed/unsigned issues. This function takes unsigneds, and is often passed UINT_MAX
-    // to mean "all the way to the end". InlineTextBox coordinates are unsigneds, so changing this 
-    // function to take ints causes various internal mismatches. But selectionRect takes ints, and 
-    // passing UINT_MAX to it causes trouble. Ideally we'd change selectionRect to take unsigneds, but 
+    // to mean "all the way to the end". InlineTextBox coordinates are unsigneds, so changing this
+    // function to take ints causes various internal mismatches. But selectionRect takes ints, and
+    // passing UINT_MAX to it causes trouble. Ideally we'd change selectionRect to take unsigneds, but
     // that would cause many ripple effects, so for now we'll just clamp our unsigned parameters to INT_MAX.
     ASSERT(end == UINT_MAX || end <= INT_MAX);
     ASSERT(start <= INT_MAX);
     start = std::min(start, static_cast<unsigned>(INT_MAX));
     end = std::min(end, static_cast<unsigned>(INT_MAX));
-    
+    if (simpleLineLayout() && !useSelectionHeight)
+        return collectAbsoluteQuadsForRange(*this, start, end, *simpleLineLayout(), wasFixed);
+    const_cast<RenderText&>(*this).ensureLineBoxes();
     return m_lineBoxes.absoluteQuadsForRange(*this, start, end, useSelectionHeight, wasFixed);
+}
+
+Position RenderText::positionForPoint(const LayoutPoint& point)
+{
+    if (auto* layout = simpleLineLayout()) {
+        auto position = Position(textNode(), SimpleLineLayout::textOffsetForPoint(point, *this, *layout));
+        ASSERT(position == positionForPoint(point, nullptr).deepEquivalent());
+        return position;
+    }
+    return positionForPoint(point, nullptr).deepEquivalent();
 }
 
 VisiblePosition RenderText::positionForPoint(const LayoutPoint& point, const RenderRegion*)
 {
     ensureLineBoxes();
-
     return m_lineBoxes.positionForPoint(*this, point);
 }
 
@@ -1508,7 +1517,7 @@ int RenderText::previousOffset(int current) const
     return result;
 }
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 
 const UChar hangulChoseongStart = 0x1100;
 const UChar hangulChoseongEnd = 0x115F;
@@ -1555,7 +1564,7 @@ int RenderText::previousOffsetForBackwardDeletion(int current) const
 
     // FIXME: Seems like this fancier case could be used on all platforms now, no
     // need for the #else case below.
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
     bool sawRegionalIndicator = false;
     bool sawEmojiGroupCandidate = false;
     bool sawEmojiFitzpatrickModifier = false;

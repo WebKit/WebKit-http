@@ -68,6 +68,7 @@
 #include "ResourceHandle.h"
 #include "ResourceLoadObserver.h"
 #include "SchemeRegistry.h"
+#include "ScriptableDocumentParser.h"
 #include "SecurityPolicy.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
@@ -305,19 +306,20 @@ void DocumentLoader::stopLoading()
 
     m_isStopping = true;
 
-    FrameLoader* frameLoader = DocumentLoader::frameLoader();
-    
-    if (isLoadingMainResource()) {
-        // Stop the main resource loader and let it send the cancelled message.
-        cancelMainResourceLoad(frameLoader->cancelledError(m_request));
-    } else if (!m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty()) {
-        // The main resource loader already finished loading. Set the cancelled error on the
-        // document and let the subresourceLoaders and pluginLoaders send individual cancelled messages below.
-        setMainDocumentError(frameLoader->cancelledError(m_request));
-    } else {
-        // If there are no resource loaders, we need to manufacture a cancelled message.
-        // (A back/forward navigation has no resource loaders because its resources are cached.)
-        mainReceivedError(frameLoader->cancelledError(m_request));
+    // The frame may have been detached from this document by the onunload handler
+    if (auto* frameLoader = DocumentLoader::frameLoader()) {
+        if (isLoadingMainResource()) {
+            // Stop the main resource loader and let it send the cancelled message.
+            cancelMainResourceLoad(frameLoader->cancelledError(m_request));
+        } else if (!m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty()) {
+            // The main resource loader already finished loading. Set the cancelled error on the
+            // document and let the subresourceLoaders and pluginLoaders send individual cancelled messages below.
+            setMainDocumentError(frameLoader->cancelledError(m_request));
+        } else {
+            // If there are no resource loaders, we need to manufacture a cancelled message.
+            // (A back/forward navigation has no resource loaders because its resources are cached.)
+            mainReceivedError(frameLoader->cancelledError(m_request));
+        }
     }
 
     // We always need to explicitly cancel the Document's parser when stopping the load.
@@ -1056,6 +1058,9 @@ bool DocumentLoader::isLoadingInAPISense() const
         if (document.processingLoadEvent())
             return true;
         if (document.hasActiveParser())
+            return true;
+        auto* scriptableParser = document.scriptableDocumentParser();
+        if (scriptableParser && scriptableParser->hasScriptsWaitingForStylesheets())
             return true;
     }
     return frameLoader()->subframeIsLoading();

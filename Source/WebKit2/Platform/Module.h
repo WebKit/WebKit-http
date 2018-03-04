@@ -37,11 +37,6 @@
 typedef struct _GModule GModule;
 #endif
 
-#if PLATFORM(EFL)
-#include <Eina.h>
-#include <wtf/efl/UniquePtrEfl.h>
-#endif
-
 #if PLATFORM(HAIKU)
 #include <image.h>
 #endif
@@ -80,8 +75,6 @@ private:
 #endif
 #elif PLATFORM(GTK)
     GModule* m_handle;
-#elif PLATFORM(EFL)
-    EflUniquePtr<Eina_Module> m_module;
 #elif PLATFORM(HAIKU)
     image_id m_module;
 #endif

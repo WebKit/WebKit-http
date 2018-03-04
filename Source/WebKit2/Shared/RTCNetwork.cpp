@@ -65,15 +65,20 @@ bool RTCNetwork::IPAddress::decode(IPC::Decoder& decoder, IPAddress& result)
     int family;
     if (!decoder.decode(family))
         return false;
+
+    ASSERT(family == AF_INET || family == AF_INET6);
+
     IPC::DataReference data;
     if (!decoder.decode(data))
         return false;
+
     if (family == AF_INET) {
         if (data.size() != sizeof(in_addr))
             return false;
         result.value = rtc::IPAddress(*reinterpret_cast<const in_addr*>(data.data()));
         return true;
     }
+
     if (data.size() != sizeof(in6_addr))
         return false;
     result.value = rtc::IPAddress(*reinterpret_cast<const in6_addr*>(data.data()));
@@ -82,14 +87,75 @@ bool RTCNetwork::IPAddress::decode(IPC::Decoder& decoder, IPAddress& result)
 
 void RTCNetwork::IPAddress::encode(IPC::Encoder& encoder) const
 {
-    encoder << value.family();
-    if (value.family() == AF_INET) {
+    auto family = value.family();
+    ASSERT(family == AF_INET || family == AF_INET6);
+    encoder << family;
+
+    if (family == AF_INET) {
         auto address = value.ipv4_address();
         encoder << IPC::DataReference(reinterpret_cast<const uint8_t*>(&address), sizeof(address));
         return;
     }
+
     auto address = value.ipv6_address();
     encoder << IPC::DataReference(reinterpret_cast<const uint8_t*>(&address), sizeof(address));
+}
+
+rtc::SocketAddress RTCNetwork::isolatedCopy(const rtc::SocketAddress& value)
+{
+    rtc::SocketAddress copy;
+    copy.SetPort(value.port());
+    copy.SetScopeID(value.scope_id());
+    copy.SetIP(std::string(value.hostname().data(), value.hostname().size()));
+    if (!value.IsUnresolvedIP())
+        copy.SetResolvedIP(value.ipaddr());
+    return rtc::SocketAddress(copy);
+}
+
+bool RTCNetwork::SocketAddress::decode(IPC::Decoder& decoder, SocketAddress& result)
+{
+    uint16_t port;
+    if (!decoder.decode(port))
+        return false;
+    int scopeId;
+    if (!decoder.decode(scopeId))
+        return false;
+    result.value.SetPort(port);
+    result.value.SetScopeID(scopeId);
+
+    IPC::DataReference hostname;
+    if (!decoder.decode(hostname))
+        return false;
+    result.value.SetIP(std::string(reinterpret_cast<const char*>(hostname.data()), hostname.size()));
+
+    bool isUnresolved;
+    if (!decoder.decode(isUnresolved))
+        return false;
+    if (isUnresolved)
+        return true;
+
+    RTCNetwork::IPAddress ipAddress;
+    if (!decoder.decode(ipAddress))
+        return false;
+    result.value.SetResolvedIP(ipAddress.value);
+    return true;
+}
+
+void RTCNetwork::SocketAddress::encode(IPC::Encoder& encoder) const
+{
+    encoder << value.port();
+    encoder << value.scope_id();
+
+    auto hostname = value.hostname();
+    encoder << IPC::DataReference(reinterpret_cast<const uint8_t*>(hostname.data()), hostname.length());
+
+    encoder << value.IsUnresolvedIP();
+    if (value.IsUnresolvedIP()) {
+        encoder << true;
+        return;
+    }
+    encoder << false;
+    encoder << RTCNetwork::IPAddress(value.ipaddr());
 }
 
 bool RTCNetwork::decode(IPC::Decoder& decoder, RTCNetwork& result)

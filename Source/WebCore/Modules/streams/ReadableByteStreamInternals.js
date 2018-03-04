@@ -78,6 +78,14 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
     return this;
 }
 
+function privateInitializeReadableStreamBYOBRequest(controller, view)
+{
+    "use strict";
+
+    this.@associatedReadableByteStreamController = controller;
+    this.@view = view;
+}
+
 function isReadableByteStreamController(controller)
 {
     "use strict";
@@ -85,6 +93,15 @@ function isReadableByteStreamController(controller)
     // Same test mechanism as in isReadableStreamDefaultController (ReadableStreamInternals.js).
     // See corresponding function for explanations.
     return @isObject(controller) && !!controller.@underlyingByteSource;
+}
+
+function isReadableStreamBYOBRequest(byobRequest)
+{
+    "use strict";
+
+    // Same test mechanism as in isReadableStreamDefaultController (ReadableStreamInternals.js).
+    // See corresponding function for explanations.
+    return @isObject(byobRequest) && !!byobRequest.@associatedReadableByteStreamController;
 }
 
 function isReadableStreamBYOBReader(reader)

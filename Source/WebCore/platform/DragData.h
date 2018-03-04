@@ -56,7 +56,7 @@ typedef WebCore::SelectionData* DragDataRef;
 #elif PLATFORM(HAIKU)
 class BMessage;
 typedef class BMessage* DragDataRef;
-#elif PLATFORM(EFL) || PLATFORM(IOS)
+#elif PLATFORM(IOS)
 typedef void* DragDataRef;
 #endif
 

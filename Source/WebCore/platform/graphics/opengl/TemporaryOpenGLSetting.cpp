@@ -36,7 +36,7 @@
 #include <OpenGLES/ES2/gl.h>
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(HAIKU) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(WIN) || PLATFORM(HAIKU)
 #include "OpenGLShims.h"
 #endif
 

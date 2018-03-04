@@ -29,7 +29,9 @@
 #include "ImageOrientation.h"
 #include "IntSize.h"
 #include "TextFlags.h"
+#include "TextIndicator.h"
 #include <wtf/Forward.h>
+#include <wtf/Optional.h>
 
 #if PLATFORM(IOS)
 #include <wtf/RetainPtr.h>
@@ -50,6 +52,7 @@ class BBitmap;
 
 namespace WebCore {
 
+class Element;
 class Frame;
 class Image;
 class IntRect;
@@ -67,8 +70,6 @@ typedef HBITMAP DragImageRef;
 typedef RefPtr<cairo_surface_t> DragImageRef;
 #elif PLATFORM(HAIKU)
 typedef BBitmap* DragImageRef;
-#elif PLATFORM(EFL)
-typedef void* DragImageRef;
 #endif
 
 #if PLATFORM(COCOA)
@@ -89,10 +90,10 @@ DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription);
 DragImageRef createDragImageIconForCachedImageFilename(const String&);
 
 WEBCORE_EXPORT DragImageRef createDragImageForNode(Frame&, Node&);
-WEBCORE_EXPORT DragImageRef createDragImageForSelection(Frame&, bool forceBlackText = false);
+WEBCORE_EXPORT DragImageRef createDragImageForSelection(Frame&, TextIndicatorData&, bool forceBlackText = false);
 WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, Range&, bool forceBlackText = false);
 DragImageRef createDragImageForImage(Frame&, Node&, IntRect& imageRect, IntRect& elementRect);
-DragImageRef createDragImageForLink(URL&, const String& label, FontRenderingMode);
+DragImageRef createDragImageForLink(Element&, URL&, const String& label, TextIndicatorData&, FontRenderingMode, float deviceScaleFactor);
 void deleteDragImage(DragImageRef);
 
 class DragImage final {
@@ -104,11 +105,16 @@ public:
 
     DragImage& operator=(DragImage&&);
 
+    void setIndicatorData(const TextIndicatorData& data) { m_indicatorData = data; }
+    bool hasIndicatorData() const { return !!m_indicatorData; }
+    std::optional<TextIndicatorData> indicatorData() const { return m_indicatorData; }
+
     explicit operator bool() const { return !!m_dragImageRef; }
     DragImageRef get() const { return m_dragImageRef; }
 
 private:
     DragImageRef m_dragImageRef;
+    std::optional<TextIndicatorData> m_indicatorData;
 };
 
 }
