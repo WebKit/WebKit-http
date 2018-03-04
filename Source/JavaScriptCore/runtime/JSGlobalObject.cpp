@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2009, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2009, 2014-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -457,7 +457,8 @@ void JSGlobalObject::init(VM& vm)
     protoAccessor->setSetter(vm, this, JSFunction::create(vm, this, 0, makeString("set ", vm.propertyNames->underscoreProto.string()), globalFuncProtoSetter));
     m_objectPrototype->putDirectNonIndexAccessor(vm, vm.propertyNames->underscoreProto, protoAccessor, Accessor | DontEnum);
     m_functionPrototype->structure()->setPrototypeWithoutTransition(vm, m_objectPrototype.get());
-    m_objectStructureForObjectConstructor.set(vm, this, vm.prototypeMap.emptyObjectStructureForPrototype(m_objectPrototype.get(), JSFinalObject::defaultInlineCapacity()));
+    m_objectStructureForObjectConstructor.set(vm, this, vm.prototypeMap.emptyObjectStructureForPrototype(this, m_objectPrototype.get(), JSFinalObject::defaultInlineCapacity()));
+    m_objectProtoValueOfFunction.set(vm, this, jsCast<JSFunction*>(objectPrototype()->getDirect(vm, vm.propertyNames->valueOf)));
     
     JSFunction* thrower = JSFunction::create(vm, this, 0, String(), globalFuncThrowTypeErrorArgumentsCalleeAndCaller);
     GetterSetter* getterSetter = GetterSetter::create(vm, this);
@@ -1193,6 +1194,7 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_arrayProtoValuesFunction.visit(visitor);
     thisObject->m_initializePromiseFunction.visit(visitor);
     thisObject->m_iteratorProtocolFunction.visit(visitor);
+    visitor.append(thisObject->m_objectProtoValueOfFunction);
     visitor.append(thisObject->m_newPromiseCapabilityFunction);
     visitor.append(thisObject->m_functionProtoHasInstanceSymbolFunction);
     thisObject->m_throwTypeErrorGetterSetter.visit(visitor);
@@ -1362,18 +1364,15 @@ bool JSGlobalObject::remoteDebuggingEnabled() const
 }
 
 #if ENABLE(WEB_REPLAY)
-void JSGlobalObject::setInputCursor(PassRefPtr<InputCursor> prpCursor)
+void JSGlobalObject::setInputCursor(Ref<InputCursor>&& cursor)
 {
-    m_inputCursor = prpCursor;
-    ASSERT(m_inputCursor);
-
-    InputCursor& cursor = inputCursor();
+    m_inputCursor = WTFMove(cursor);
     // Save or set the random seed. This performed here rather than the constructor
     // to avoid threading the input cursor through all the abstraction layers.
-    if (cursor.isCapturing())
-        cursor.appendInput<SetRandomSeed>(m_weakRandom.seed());
-    else if (cursor.isReplaying()) {
-        if (SetRandomSeed* input = cursor.fetchInput<SetRandomSeed>())
+    if (m_inputCursor->isCapturing())
+        m_inputCursor->appendInput<SetRandomSeed>(m_weakRandom.seed());
+    else if (m_inputCursor->isReplaying()) {
+        if (SetRandomSeed* input = m_inputCursor->fetchInput<SetRandomSeed>())
             m_weakRandom.setSeed(static_cast<unsigned>(input->randomSeed()));
     }
 }

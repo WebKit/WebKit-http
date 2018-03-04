@@ -1,3 +1,316 @@
+2017-02-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix the build after r212379
+
+        Rubber-stamped by Anders Carlsson.
+
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Modernize DragClient::startDrag somewhat
+        https://bugs.webkit.org/show_bug.cgi?id=168379
+
+        Reviewed by Tim Horton.
+
+        Update for WebCore changes.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+
+2017-02-14  Dean Jackson  <dino@apple.com>
+
+        Rename preferLowPowerWebGLRendering setting to forceWebGLUsesLowPower
+        https://bugs.webkit.org/show_bug.cgi?id=168339
+
+        Reviewed by Simon Fraser.
+
+        Use a better name.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences forceLowPowerGPUForWebGL]):
+        (-[WebPreferences setForceLowPowerGPUForWebGL:]):
+        (-[WebPreferences preferLowPowerWebGLRendering]): Deleted.
+        (-[WebPreferences setPreferLowPowerWebGLRendering:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-02-14  Chris Dumez  <cdumez@apple.com>
+
+        HTML Form Validation bubble should take minimum font size setting into consideration
+        https://bugs.webkit.org/show_bug.cgi?id=168271
+        <rdar://problem/29869869>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsOfUserInterfaceItem:]):
+        Return font size used in the validation bubble.
+
+        (-[WebView showFormValidationMessage:withAnchorRect:]):
+        Pass minimum font size setting when constructing the validation bubble.
+
+2017-02-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused delegate method
+        https://bugs.webkit.org/show_bug.cgi?id=168328
+
+        Reviewed by Wenson Hsieh.
+
+        * DefaultDelegates/WebDefaultUIDelegate.m:
+        (-[WebDefaultUIDelegate webView:shouldBeginDragForElement:dragImage:mouseDownEvent:mouseDraggedEvent:]): Deleted.
+
+2017-02-14  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCore shouldn't export SystemMemory.h
+        https://bugs.webkit.org/show_bug.cgi?id=168285
+
+        Reviewed by Alex Christensen.
+
+        * MigrateHeaders.make: And WebKit shouldn't re-export it.
+
+2017-02-13  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKit shouldn't re-export ScrollTypes.h and WebCoreFrameView.h
+        https://bugs.webkit.org/show_bug.cgi?id=168282
+
+        Reviewed by Dan Bernstein.
+
+        * MigrateHeaders.make:
+
+2017-02-12  Dan Bernstein  <mitz@apple.com>
+
+        Tried to fix USE(APPLE_INTERNAL_SDK) builds after r212211.
+
+        * WebView/WebHTMLView.mm:
+        (createShareMenuItem): Use non-deprecated method.
+
+2017-02-12  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Some -respondsToSelector: checks are unnecessary
+        https://bugs.webkit.org/show_bug.cgi?id=168183
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController applicationDidResignActive:]): Removed check whether NSWindow
+          responds to -isOnActiveSpace.
+        (-[WebFullScreenController exitFullScreen]): Ditto.
+        (-[WebFullScreenController _updateMenuAndDockForFullScreen]): Removed check whether
+          NSApplication responds to -setPresentationOptions.
+
+        * WebView/WebHTMLView.mm:
+        (createShareMenuItem): Removed unnecessary -respondsToSelector: check.
+        (-[WebHTMLView otherMouseDown:]): Ditto.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController _clearImmediateActionState]): Ditto.
+        (-[WebImmediateActionController _animationControllerForDataDetectedText]): Ditto.
+
+        * WebView/WebView.mm:
+        (-[WebView _didStartProvisionalLoadForFrame:]): Removed redundant nil check.
+        (+[WebView _setCacheModel:]): Removed unnecessary -respondsToSelector: check.
+
+2017-02-10  Daniel Bates  <dabates@apple.com>
+
+        Detach frame from document when entering page cache
+        https://bugs.webkit.org/show_bug.cgi?id=166774
+        <rdar://problem/29904368>
+
+        Reviewed by Chris Dumez.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences allowsPageCacheWithWindowOpener]): Deleted.
+        (-[WebPreferences setAllowsPageCacheWithWindowOpener:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-02-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Enable Resource Timing by default in Tests
+        https://bugs.webkit.org/show_bug.cgi?id=168145
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences resourceTimingEnabled]):
+        (-[WebPreferences setResourceTimingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-02-10  Aakash Jain  <aakash_jain@apple.com>
+
+        cleanup WebLocalizableStrings.
+        https://bugs.webkit.org/show_bug.cgi?id=168078
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebLocalizableStrings.h: Make visibility hidden for WebLocalizableStringsBundle 
+        as it's for each framework's own consumption, and never needs to be exported.
+
+2017-02-10  Aakash Jain  <aakash_jain@apple.com>
+
+        WebResourceLoadDelegatePrivate.h cannot be imported standalone
+        https://bugs.webkit.org/show_bug.cgi?id=168096
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WebView/WebResourceLoadDelegatePrivate.h: Change WebNSInteger to NSInteger. 
+
+2017-02-09  Antti Koivisto  <antti@apple.com>
+
+        Remove most cases of #if ENABLE(CACHE_PARTITIONING)
+        https://bugs.webkit.org/show_bug.cgi?id=167990
+
+        Reviewed by Sam Weinig.
+
+        * Misc/WebCache.mm:
+        (+[WebCache addImageToCache:forURL:forFrame:]):
+        (+[WebCache removeImageFromCacheForURL:forFrame:]):
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2017-02-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Don't migrate WebKit DOM headers in MigrateHeaders.make
+        https://bugs.webkit.org/show_bug.cgi?id=167608
+
+        Reviewed by Darin Adler.
+
+        Stop migrating DOM headers that are now in WebKit.
+
+        * DOM/DOMDOMImplementation.h: Removed.
+        * DOM/DOMDOMImplementation.mm: Removed.
+        * DOM/DOMDOMImplementationInternal.h: Removed.
+        * DOM/DOMDOMTokenList.h: Removed.
+        * DOM/DOMDOMTokenList.mm: Removed.
+        * DOM/DOMDOMTokenListInternal.h: Removed.
+        * DOM/DOMImplementation.h: Copied from Source/WebKit/mac/DOM/DOMDOMImplementation.h.
+        * DOM/DOMImplementation.mm: Copied from Source/WebKit/mac/DOM/DOMDOMImplementation.mm.
+        * DOM/DOMImplementationInternal.h: Copied from Source/WebKit/mac/DOM/DOMDOMImplementationInternal.h.
+        * DOM/DOMTokenList.h: Copied from Source/WebKit/mac/DOM/DOMDOMTokenList.h.
+        * DOM/DOMTokenList.mm: Copied from Source/WebKit/mac/DOM/DOMDOMTokenList.mm.
+        * DOM/DOMTokenListInternal.h: Copied from Source/WebKit/mac/DOM/DOMDOMTokenListInternal.h.
+        As the files are not in WebCore any more, there is no need to differentiate from
+        WebCore internal headers with the same name. This makes it possible to make these
+        headers private using Xcode mechanisms, as opposed to copying with a shell script.
+
+        * DOM/DOMElement.mm: Removed "using namespace WebCore". Other DOM implementation
+        files don't have it.
+
+        * DOM/DOMCore.h:
+        * DOM/DOMDocument.mm:
+        * DOM/DOMHTMLAnchorElement.mm:
+        * DOM/DOMHTMLAreaElement.mm:
+        * DOM/DOMHTMLLinkElement.mm:
+        * DOM/DOMUtility.mm:
+        No more "DOMDOM".
+
+        * WebKit.exp:
+        No more "DOMDOM". DOMDOMTokenList was not directly exposed via an SPI header, so
+        renaming it is likely to be safe.
+
+        * MigrateHeaders.make: Don't migrate WebKit headers.
+
+        * Configurations/WebKitLegacy.xcconfig: Don't include two iOS specific SPI headers
+        on macOS.
+
+2017-02-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Don't re-export PluginData.h from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=168020
+
+        Reviewed by Alexey Proskuryakov.
+
+        * MigrateHeaders.make: Removed PluginData.h
+
+2017-02-08  Aakash Jain  <aakash_jain@apple.com>
+
+        Don't re-export WKUtilities.h from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=167977
+
+        Reviewed by Alexey Proskuryakov.
+
+        * MigrateHeaders.make: Removed WKUtilities.h
+
+2017-02-06  Alex Christensen  <achristensen@webkit.org>
+
+        credentials should be partitioned by main document domain
+        https://bugs.webkit.org/show_bug.cgi?id=166998
+        rdar://problem/22901123
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebDownload.mm:
+        * Plugins/WebBaseNetscapePluginView.mm:
+        (WebKit::getAuthenticationInfo):
+        Don't use partitioned credentials for WebKit1 plugins or downloads.
+        Downloads should be authenticated before becoming a download anyways.
+
+2017-02-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename AnimationController to CSSAnimationController
+        https://bugs.webkit.org/show_bug.cgi?id=167829
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
+2017-02-03  Chris Dumez  <cdumez@apple.com>
+
+        Dismiss HTML form validation popover when pressing Escape key
+        https://bugs.webkit.org/show_bug.cgi?id=167716
+        <rdar://problem/29872943>
+
+        Reviewed by Simon Fraser.
+
+        Override ValidationMessageClient::hideAnyValidationMessage().
+
+        * WebCoreSupport/WebValidationMessageClient.h:
+        * WebCoreSupport/WebValidationMessageClient.mm:
+        (WebValidationMessageClient::hideAnyValidationMessage):
+
+2017-02-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Drag images should be anchored to the mouse location
+        https://bugs.webkit.org/show_bug.cgi?id=167690
+        <rdar://problem/30295261>
+
+        Reviewed by Enrica Casucci.
+
+        Adds some plumbing for the anchor point in the WK1 client layer.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+
+2017-02-02  Chris Dumez  <cdumez@apple.com>
+
+        Rename Node::inDocument() to isConnected()
+        https://bugs.webkit.org/show_bug.cgi?id=167743
+
+        Reviewed by Sam Weinig.
+
+        Rename Node::inDocument() to isConnected() to match the DOM specification more closely:
+        - https://dom.spec.whatwg.org/#connected
+
+        * DOM/DOMNode.mm:
+        (-[DOMNode isConnected]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame selectNSRange:onElement:]):
+
 2017-02-02  Chris Dumez  <cdumez@apple.com>
 
         [Crash] com.apple.WebKit.WebContent at WebKit: WebKit::WebPage::fromCorePage()

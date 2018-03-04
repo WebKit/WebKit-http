@@ -25,4 +25,5 @@
 
 button.airplay.on {
     background-color: -apple-wireless-playback-target-active !important;
+    mix-blend-mode: normal !important;
 }

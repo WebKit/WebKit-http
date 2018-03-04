@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,6 +86,7 @@
 #import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
+#import "_WKTestingDelegate.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 #import <WebCore/GraphicsContextCG.h>
@@ -99,8 +100,6 @@
 #import <WebCore/Settings.h>
 #import <WebCore/TextStream.h>
 #import <WebCore/ValidationBubble.h>
-#import <WebCore/WebBackgroundTaskController.h>
-#import <WebCore/WebSQLiteDatabaseTrackerClient.h>
 #import <WebCore/WritingMode.h>
 #import <wtf/HashMap.h>
 #import <wtf/MathExtras.h>
@@ -128,6 +127,8 @@
 #import <WebCore/InspectorOverlay.h>
 #import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/ScrollableArea.h>
+#import <WebCore/WebBackgroundTaskController.h>
+#import <WebCore/WebSQLiteDatabaseTrackerClient.h>
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
 #if __has_include(<AccessibilitySupport.h>)
@@ -139,10 +140,11 @@ CFStringRef kAXSAllowForceWebScalingEnabledNotification;
 #endif
 #endif
 
+#define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(_page && _page->isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
+
 @interface UIScrollView (UIScrollViewInternal)
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
 - (BOOL)_isScrollingToTop;
-- (BOOL)_isInterruptingDeceleration;
 - (CGPoint)_animatedTargetOffset;
 @end
 
@@ -277,6 +279,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     BOOL _delayUpdateVisibleContentRects;
     BOOL _hadDelayedUpdateVisibleContentRects;
+    
+    int _activeAnimatedResizeCount;
 
     Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
     RetainPtr<NSMutableArray> _stableStatePresentationUpdateCallbacks;
@@ -287,6 +291,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     std::unique_ptr<WebKit::WebViewImpl> _impl;
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
+
+    id<_WKTestingDelegate> _testingDelegate;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -414,6 +420,9 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->setWebsiteDataStore([_configuration websiteDataStore]->_websiteDataStore.get());
     pageConfiguration->setTreatsSHA1SignedCertificatesAsInsecure([_configuration _treatsSHA1SignedCertificatesAsInsecure]);
 
+    if (NSString *overrideContentSecurityPolicy = configuration._overrideContentSecurityPolicy)
+        pageConfiguration->setOverrideContentSecurityPolicy(overrideContentSecurityPolicy);
+
     RefPtr<WebKit::WebPageGroup> pageGroup;
     NSString *groupIdentifier = configuration._groupIdentifier;
     if (groupIdentifier.length) {
@@ -430,6 +439,9 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::shouldConvertPositionStyleOnCopyKey(), WebKit::WebPreferencesStore::Value(!![_configuration _convertsPositionStyleOnCopy]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::httpEquivEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowsMetaRefresh]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::allowUniversalAccessFromFileURLsKey(), WebKit::WebPreferencesStore::Value(!![_configuration _allowUniversalAccessFromFileURLs]));
+#if ENABLE(MEDIA_STREAM)
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::mediaStreamEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _mediaStreamEnabled]));
+#endif
     pageConfiguration->setInitialCapitalizationEnabled([_configuration _initialCapitalizationEnabled]);
     pageConfiguration->setWaitsForPaintAfterViewDidMoveToWindow([_configuration _waitsForPaintAfterViewDidMoveToWindow]);
     pageConfiguration->setControlledByAutomation([_configuration _isControlledByAutomation]);
@@ -500,6 +512,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
     _page = [_contentView page];
     _page->setDeviceOrientation(deviceOrientation());
+    _page->setDrawsBackground(self.opaque);
 
     [_contentView layer].anchorPoint = CGPointZero;
     [_contentView setFrame:bounds];
@@ -552,10 +565,6 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     _page->setDiagnosticLoggingClient(std::make_unique<WebKit::DiagnosticLoggingClient>(self));
 
     _iconLoadingDelegate = std::make_unique<WebKit::IconLoadingDelegate>(self);
-
-#if ENABLE(FULLSCREEN_API)
-    _page->setFullscreenClient(std::make_unique<WebKit::FullscreenClient>(self));
-#endif
 
 #if PLATFORM(IOS)
     [self _setUpSQLiteDatabaseTrackerClient];
@@ -617,6 +626,8 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
 - (void)encodeWithCoder:(NSCoder *)coder
 {
+    [super encodeWithCoder:coder];
+
     [coder encodeObject:_configuration.get() forKey:@"configuration"];
 
     [coder encodeBool:self.allowsBackForwardNavigationGestures forKey:@"allowsBackForwardNavigationGestures"];
@@ -965,6 +976,16 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
 #if PLATFORM(IOS)
 
+- (void)_populateArchivedSubviews:(NSMutableSet *)encodedViews
+{
+    [super _populateArchivedSubviews:encodedViews];
+
+    if (_scrollView)
+        [encodedViews removeObject:_scrollView.get()];
+    if (_customContentFixedOverlayView)
+        [encodedViews removeObject:_customContentFixedOverlayView.get()];
+}
+
 - (BOOL)_isBackground
 {
     if ([self _isDisplayingPDF])
@@ -1010,15 +1031,74 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
 - (BOOL)becomeFirstResponder
 {
-    return [self._currentContentView becomeFirstResponder] || [super becomeFirstResponder];
+    UIView *currentContentView = self._currentContentView;
+    if (currentContentView == _contentView && [_contentView superview])
+        return [_contentView becomeFirstResponderForWebView] || [super becomeFirstResponder];
+
+    return [currentContentView becomeFirstResponder] || [super becomeFirstResponder];
 }
 
 - (BOOL)canBecomeFirstResponder
 {
-    if (self._currentContentView == _contentView && [_contentView isResigningFirstResponder])
-        return NO;
+    if (self._currentContentView == _contentView)
+        return [_contentView canBecomeFirstResponderForWebView];
+
     return YES;
 }
+
+- (BOOL)resignFirstResponder
+{
+    if ([_contentView isFirstResponder])
+        return [_contentView resignFirstResponderForWebView];
+
+    return [super resignFirstResponder];
+}
+
+#define FOR_EACH_WKCONTENTVIEW_ACTION(M) \
+    M(_addShortcut) \
+    M(_arrowKey) \
+    M(_define) \
+    M(_lookup) \
+    M(_promptForReplace) \
+    M(_reanalyze) \
+    M(_share) \
+    M(_showTextStyleOptions) \
+    M(_transliterateChinese) \
+    M(copy) \
+    M(cut) \
+    M(paste) \
+    M(replace) \
+    M(select) \
+    M(selectAll) \
+    M(toggleBoldface) \
+    M(toggleItalics) \
+    M(toggleUnderline) \
+
+#define FORWARD_ACTION_TO_WKCONTENTVIEW(_action) \
+    - (void)_action:(id)sender \
+    { \
+        if (self.usesStandardContentView) \
+            [_contentView _action:sender]; \
+    }
+
+FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
+
+#undef FORWARD_ACTION_TO_WKCONTENTVIEW
+
+- (BOOL)canPerformAction:(SEL)action withSender:(id)sender
+{
+    #define FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW(_action) \
+        if (action == @selector(_action:)) \
+            return self.usesStandardContentView && [_contentView canPerformActionForWebView:action withSender:sender];
+
+    FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW)
+
+    #undef FORWARD_CANPERFORMACTION_TO_WKCONTENTVIEW
+
+    return [super canPerformAction:action withSender:sender];
+}
+
+#undef FOR_EACH_WKCONTENTVIEW_ACTION
 
 static inline CGFloat floorToDevicePixel(CGFloat input, float deviceScaleFactor)
 {
@@ -1062,6 +1142,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
         ASSERT(representationClass);
         _customContentView = adoptNS([[representationClass alloc] web_initWithFrame:self.bounds webView:self]);
         _customContentFixedOverlayView = adoptNS([[UIView alloc] initWithFrame:self.bounds]);
+        [_customContentFixedOverlayView layer].name = @"CustomContentFixedOverlay";
         [_customContentFixedOverlayView setUserInteractionEnabled:NO];
 
         [[_contentView unscaledView] removeFromSuperview];
@@ -1086,8 +1167,11 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
         [self addSubview:_customContentFixedOverlayView.get()];
     }
 
-    if (self.isFirstResponder && self._currentContentView.canBecomeFirstResponder)
-        [self._currentContentView becomeFirstResponder];
+    if (self.isFirstResponder) {
+        UIView *currentContentView = self._currentContentView;
+        if (currentContentView == _contentView ? [_contentView canBecomeFirstResponderForWebView] : currentContentView.canBecomeFirstResponder)
+            [currentContentView becomeFirstResponder];
+    }
 }
 
 - (void)_didFinishLoadingDataForCustomContentProviderWithSuggestedFilename:(const String&)suggestedFilename data:(NSData *)data
@@ -1224,6 +1308,13 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _scrollViewBackgroundColor = WebCore::Color();
     _delayUpdateVisibleContentRects = NO;
     _hadDelayedUpdateVisibleContentRects = NO;
+
+    _frozenVisibleContentRect = std::nullopt;
+    _frozenUnobscuredContentRect = std::nullopt;
+
+    _firstPaintAfterCommitLoadTransactionID = 0;
+    _firstTransactionIDAfterPageRestore = 0;
+    _resizeAnimationTransformTransactionID = std::nullopt;
 }
 
 - (void)_didCommitLoadForMainFrame
@@ -1289,6 +1380,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         }
         return;
     }
+
+    if (_activeAnimatedResizeCount)
+        RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _didCommitLayerTree:] - %d animated resizes in flight", self, _activeAnimatedResizeCount);
 
     CGSize newContentSize = roundScrollViewContentSize(*_page, [_contentView frame].size);
     [_scrollView _setContentSizePreservingContentOffsetDuringRubberband:newContentSize];
@@ -1802,6 +1896,9 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     if (oldOpaque == opaque)
         return;
 
+    if (!_page)
+        return;
+
     _page->setDrawsBackground(opaque);
     [self _updateScrollViewBackground];
 }
@@ -2093,8 +2190,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         isStableState = ![self _scrollViewIsRubberBanding];
 
     // FIXME: this can be made static after we stop supporting iOS 8.x.
-    if (isStableState && [scrollView respondsToSelector:@selector(_isInterruptingDeceleration)])
-        isStableState = ![scrollView performSelector:@selector(_isInterruptingDeceleration)];
+    if (isStableState)
+        isStableState = !scrollView._isInterruptingDeceleration;
 
     if (NSNumber *stableOverride = self._stableStateOverride)
         isStableState = stableOverride.boolValue;
@@ -3715,6 +3812,20 @@ static inline WebCore::LayoutMilestones layoutMilestones(_WKRenderingProgressEve
     });
 }
 
+- (void)_getContentsAsStringWithCompletionHandler:(void (^)(NSString *, NSError *))completionHandler
+{
+    auto handler = makeBlockPtr(completionHandler);
+
+    _page->getContentsAsString([handler](String string, WebKit::CallbackBase::Error error) {
+        if (error != WebKit::CallbackBase::Error::None) {
+            // FIXME: Pipe a proper error in from the WebPageProxy.
+            RetainPtr<NSError> error = adoptNS([[NSError alloc] init]);
+            handler(nil, error.get());
+        } else
+            handler(string, nil);
+    });
+}
+
 - (_WKPaginationMode)_paginationMode
 {
     switch (_page->paginationMode()) {
@@ -4321,10 +4432,12 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
     }
 
+    ++_activeAnimatedResizeCount;
     _resizeAnimationTransformAdjustments = CATransform3DIdentity;
 
     NSUInteger indexOfContentView = [[_scrollView subviews] indexOfObject:_contentView.get()];
     _resizeAnimationView = adoptNS([[UIView alloc] init]);
+    [_resizeAnimationView layer].name = @"ResizeAnimation";
     [_scrollView insertSubview:_resizeAnimationView.get() atIndex:indexOfContentView];
     [_resizeAnimationView addSubview:_contentView.get()];
     [_resizeAnimationView addSubview:[_contentView unscaledView]];
@@ -4391,12 +4504,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     if (!_resizeAnimationView) {
         // Paranoia. If _resizeAnimationView is null we'll end up setting a zero scale on the content view.
-        ASSERT_NOT_REACHED();
+        RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _endAnimatedResize:] - _resizeAnimationView is nil", self);
         _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
         [_contentView setHidden:NO];
         return;
     }
     
+    --_activeAnimatedResizeCount;
     NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
     [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
     [_scrollView insertSubview:[_contentView unscaledView] atIndex:indexOfResizeAnimationView + 1];
@@ -4776,7 +4890,8 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     if ([userInterfaceItem isEqualToString:@"validationBubble"]) {
         auto* validationBubble = _page->validationBubble();
         String message = validationBubble ? validationBubble->message() : emptyString();
-        return @{ userInterfaceItem: @{ @"message": (NSString *)message } };
+        double fontSize = validationBubble ? validationBubble->fontSize() : 0;
+        return @{ userInterfaceItem: @{ @"message": (NSString *)message, @"fontSize": [NSNumber numberWithDouble:fontSize] } };
     }
 
 #if PLATFORM(IOS)
@@ -4784,6 +4899,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #else
     return nil;
 #endif
+}
+
+- (id<_WKTestingDelegate>)_testingDelegate
+{
+    return _testingDelegate;
+}
+
+- (void)_setTestingDelegate:(id<_WKTestingDelegate>)testingDelegate
+{
+    _testingDelegate = testingDelegate;
 }
 
 #if PLATFORM(IOS)
@@ -5008,6 +5133,72 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_disableBackForwardSnapshotVolatilityForTesting
 {
     WebKit::ViewSnapshotStore::singleton().setDisableSnapshotVolatilityForTesting(true);
+}
+
+
+- (void)_simulateDataInteractionGestureRecognized
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionGestureRecognized:_testingDelegate.dataInteractionGestureRecognizer];
+#endif
+}
+
+- (void)_simulateDataInteractionEntered:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionEntered:info];
+#endif
+}
+
+- (void)_simulateDataInteractionUpdated:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionUpdated:info];
+#endif
+}
+
+- (void)_simulateDataInteractionPerformOperation:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionPerformOperation:info];
+#endif
+}
+
+- (void)_simulateDataInteractionEnded:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionEnded:info];
+#endif
+}
+
+- (void)_simulateDataInteractionSessionDidEnd:(id)session withOperation:(NSUInteger)operation
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionSessionDidEnd:session withOperation:operation];
+#endif
+}
+
+- (void)_simulateFailedDataInteractionWithIndex:(NSInteger)sourceIndex
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateFailedDataInteractionWithIndex:sourceIndex];
+#endif
+}
+
+- (void)_simulateWillBeginDataInteractionWithIndex:(NSInteger)sourceIndex withSession:(id)session
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateWillBeginDataInteractionWithIndex:sourceIndex withSession:session];
+#endif
+}
+
+- (NSArray *)_simulatedItemsForDataInteractionWithIndex:(NSInteger)sourceIndex
+{
+#if ENABLE(DATA_INTERACTION)
+    return [_contentView _simulatedItemsForDataInteractionWithIndex:sourceIndex];
+#else
+    return @[ ];
+#endif
 }
 
 @end

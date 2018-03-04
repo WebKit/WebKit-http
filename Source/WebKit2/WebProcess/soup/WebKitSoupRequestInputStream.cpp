@@ -20,14 +20,13 @@
 #include "config.h"
 #include "WebKitSoupRequestInputStream.h"
 
-#include <wtf/Lock.h>
-#include <wtf/Threading.h>
+#include <wtf/MainThread.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 
 struct AsyncReadData {
-    AsyncReadData(GTask* task, void* buffer, gsize count)
-        : task(task)
+    AsyncReadData(GRefPtr<GTask>&& task, void* buffer, gsize count)
+        : task(WTFMove(task))
         , buffer(buffer)
         , count(count)
     {
@@ -45,7 +44,6 @@ struct _WebKitSoupRequestInputStreamPrivate {
 
     GUniquePtr<GError> error;
 
-    Lock readLock;
     std::unique_ptr<AsyncReadData> pendingAsyncRead;
 };
 
@@ -65,12 +63,8 @@ static void webkitSoupRequestInputStreamReadAsyncResultComplete(GTask* task, voi
 
 static void webkitSoupRequestInputStreamPendingReadAsyncComplete(WebKitSoupRequestInputStream* stream)
 {
-    if (!stream->priv->pendingAsyncRead)
-        return;
-
-    AsyncReadData* data = stream->priv->pendingAsyncRead.get();
-    webkitSoupRequestInputStreamReadAsyncResultComplete(data->task.get(), data->buffer, data->count);
-    stream->priv->pendingAsyncRead = nullptr;
+    if (auto data = WTFMove(stream->priv->pendingAsyncRead))
+        webkitSoupRequestInputStreamReadAsyncResultComplete(data->task.get(), data->buffer, data->count);
 }
 
 static bool webkitSoupRequestInputStreamHasDataToRead(WebKitSoupRequestInputStream* stream)
@@ -85,10 +79,9 @@ static bool webkitSoupRequestInputStreamIsWaitingForData(WebKitSoupRequestInputS
 
 static void webkitSoupRequestInputStreamReadAsync(GInputStream* inputStream, void* buffer, gsize count, int /*priority*/, GCancellable* cancellable, GAsyncReadyCallback callback, gpointer userData)
 {
+    ASSERT(isMainThread());
     WebKitSoupRequestInputStream* stream = WEBKIT_SOUP_REQUEST_INPUT_STREAM(inputStream);
     GRefPtr<GTask> task = adoptGRef(g_task_new(stream, cancellable, callback, userData));
-
-    LockHolder locker(stream->priv->readLock);
 
     if (!webkitSoupRequestInputStreamHasDataToRead(stream) && !webkitSoupRequestInputStreamIsWaitingForData(stream)) {
         g_task_return_int(task.get(), 0);
@@ -105,7 +98,7 @@ static void webkitSoupRequestInputStreamReadAsync(GInputStream* inputStream, voi
         return;
     }
 
-    stream->priv->pendingAsyncRead = std::make_unique<AsyncReadData>(task.get(), buffer, count);
+    stream->priv->pendingAsyncRead = std::make_unique<AsyncReadData>(WTFMove(task), buffer, count);
 }
 
 static gssize webkitSoupRequestInputStreamReadFinish(GInputStream* inputStream, GAsyncResult* result, GError** error)
@@ -149,10 +142,10 @@ GInputStream* webkitSoupRequestInputStreamNew(uint64_t contentLength)
 
 void webkitSoupRequestInputStreamAddData(WebKitSoupRequestInputStream* stream, const void* data, size_t dataLength)
 {
+    ASSERT(isMainThread());
+
     if (webkitSoupRequestInputStreamFinished(stream))
         return;
-
-    LockHolder locker(stream->priv->readLock);
 
     if (dataLength) {
         // Truncate the dataLength to the contentLength if it's known.
@@ -174,10 +167,9 @@ void webkitSoupRequestInputStreamAddData(WebKitSoupRequestInputStream* stream, c
 void webkitSoupRequestInputStreamDidFailWithError(WebKitSoupRequestInputStream* stream, const WebCore::ResourceError& resourceError)
 {
     GUniquePtr<GError> error(g_error_new(g_quark_from_string(resourceError.domain().utf8().data()), resourceError.errorCode(), "%s", resourceError.localizedDescription().utf8().data()));
-    if (stream->priv->pendingAsyncRead) {
-        AsyncReadData* data = stream->priv->pendingAsyncRead.get();
+    if (auto data = WTFMove(stream->priv->pendingAsyncRead))
         g_task_return_error(data->task.get(), error.release());
-    } else {
+    else {
         stream->priv->contentLength = stream->priv->bytesReceived;
         stream->priv->error = WTFMove(error);
     }

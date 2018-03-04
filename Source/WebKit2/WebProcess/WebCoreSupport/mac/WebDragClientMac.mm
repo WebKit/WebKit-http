@@ -62,8 +62,10 @@ namespace WebKit {
 static PassRefPtr<ShareableBitmap> convertImageToBitmap(NSImage *image, const IntSize& size, Frame& frame)
 {
     ShareableBitmap::Flags flags = ShareableBitmap::SupportsAlpha;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     if (screenSupportsExtendedColor(frame.mainFrame().view()))
         flags |= ShareableBitmap::SupportsExtendedColor;
+#endif
     auto bitmap = ShareableBitmap::createShareable(size, flags);
     if (!bitmap)
         return nullptr;
@@ -80,10 +82,10 @@ static PassRefPtr<ShareableBitmap> convertImageToBitmap(NSImage *image, const In
     return WTFMove(bitmap);
 }
 
-void WebDragClient::startDrag(RetainPtr<NSImage> image, const IntPoint& point, const IntPoint&, DataTransfer&, Frame& frame, bool linkDrag)
+void WebDragClient::startDrag(DragImage image, const IntPoint& point, const IntPoint&, const FloatPoint&, DataTransfer&, Frame& frame, DragSourceAction dragSourceAction)
 {
-    IntSize bitmapSize([image size]);
-    RefPtr<ShareableBitmap> bitmap = convertImageToBitmap(image.get(), bitmapSize, frame);
+    IntSize bitmapSize([image.get() size]);
+    RefPtr<ShareableBitmap> bitmap = convertImageToBitmap(image.get().get(), bitmapSize, frame);
     ShareableBitmap::Handle handle;
     if (!bitmap || !bitmap->createHandle(handle))
         return;
@@ -91,7 +93,7 @@ void WebDragClient::startDrag(RetainPtr<NSImage> image, const IntPoint& point, c
     m_page->willStartDrag();
 
     // FIXME: Seems this message should be named StartDrag, not SetDragImage.
-    m_page->send(Messages::WebPageProxy::SetDragImage(frame.view()->contentsToWindow(point), handle, linkDrag));
+    m_page->send(Messages::WebPageProxy::SetDragImage(frame.view()->contentsToWindow(point), handle, { }, dragSourceAction == DragSourceActionLink));
 }
 
 static WebCore::CachedImage* cachedImage(Element& element)

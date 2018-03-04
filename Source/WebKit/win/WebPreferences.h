@@ -159,8 +159,6 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setLocalStorageDatabasePath(_In_ BSTR);
     virtual HRESULT STDMETHODCALLTYPE experimentalNotificationsEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setExperimentalNotificationsEnabled(BOOL);
-    virtual HRESULT STDMETHODCALLTYPE allowsPageCacheWithWindowOpener(_Out_ BOOL*);
-    virtual HRESULT STDMETHODCALLTYPE setAllowsPageCacheWithWindowOpener(BOOL);
 
     // These two methods are no-ops, and only retained to keep
     // the Interface consistent. DO NOT USE THEM.
@@ -249,6 +247,8 @@ public:
     virtual HRESULT STDMETHODCALLTYPE setWebAnimationsEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE userTimingEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setUserTimingEnabled(BOOL);
+    virtual HRESULT STDMETHODCALLTYPE resourceTimingEnabled(_Out_ BOOL*);
+    virtual HRESULT STDMETHODCALLTYPE setResourceTimingEnabled(BOOL);
     virtual HRESULT STDMETHODCALLTYPE linkPreloadEnabled(_Out_ BOOL*);
     virtual HRESULT STDMETHODCALLTYPE setLinkPreloadEnabled(BOOL);
 

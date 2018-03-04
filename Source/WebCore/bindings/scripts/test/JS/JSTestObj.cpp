@@ -30,6 +30,7 @@
 #include "JSDOMBindingCaller.h"
 #include "JSDOMBindingSecurity.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvertVariadic.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMIterator.h"
 #include "JSDOMPromise.h"
@@ -64,6 +65,7 @@
 #include <inspector/ScriptCallStackFactory.h>
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
+#include <runtime/IteratorOperations.h>
 #include <runtime/JSArray.h>
 #include <runtime/JSString.h>
 #include <runtime/ObjectConstructor.h>
@@ -8576,7 +8578,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionToStringCaller(JSC::
     return JSValue::encode(toJS<IDLUSVString>(*state, impl.stringifierAttribute()));
 }
 
-static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONCaller(ExecState* state, JSTestObj* thisObject, JSC::ThrowScope& throwScope)
+JSC::JSObject* JSTestObj::serialize(ExecState* state, JSTestObj* thisObject, ThrowScope& throwScope)
 {
     auto& vm = state->vm();
     auto* result = constructEmptyObject(state);
@@ -8597,7 +8599,12 @@ static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONCaller(ExecState* s
     ASSERT(!throwScope.exception());
     result->putDirect(vm, Identifier::fromString(&vm, "longAttr"), longAttrValue);
 
-    return JSValue::encode(result);
+    return result;
+}
+
+static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONCaller(ExecState* state, JSTestObj* thisObject, JSC::ThrowScope& throwScope)
+{
+    return JSValue::encode(JSTestObj::serialize(state, thisObject, throwScope));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(ExecState* state)

@@ -1095,7 +1095,7 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
 
 void WebPageProxy::showValidationMessage(const IntRect& anchorClientRect, const String& message)
 {
-    m_validationBubble = m_pageClient.createValidationBubble(message);
+    m_validationBubble = m_pageClient.createValidationBubble(message, { m_preferences->minimumFontSize() });
     m_validationBubble->setAnchorRect(anchorClientRect, uiClient().presentingViewController());
 
     // If we are currently doing a scrolling / zoom animation, then we'll delay showing the validation
@@ -1119,6 +1119,11 @@ void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
 void WebPageProxy::didPerformDataInteractionControllerOperation()
 {
     m_pageClient.didPerformDataInteractionControllerOperation();
+}
+
+void WebPageProxy::didHandleStartDataInteractionRequest(bool started)
+{
+    m_pageClient.didHandleStartDataInteractionRequest(started);
 }
 
 void WebPageProxy::requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition)

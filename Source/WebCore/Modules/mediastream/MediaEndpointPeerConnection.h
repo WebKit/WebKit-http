@@ -44,7 +44,7 @@ class SDPProcessor;
 
 class MediaEndpointPeerConnection final : public PeerConnectionBackend, public MediaEndpointClient {
 public:
-    explicit MediaEndpointPeerConnection(RTCPeerConnection&);
+    WEBCORE_EXPORT explicit MediaEndpointPeerConnection(RTCPeerConnection&);
 
 private:
     RefPtr<RTCSessionDescription> localDescription() const final;
@@ -57,16 +57,12 @@ private:
 
     void setConfiguration(MediaEndpointConfiguration&&) final;
 
-    void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) final;
+    void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) final;
 
     Vector<RefPtr<MediaStream>> getRemoteStreams() const final;
 
     Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) final;
     void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) final;
-
-    bool isNegotiationNeeded() const final { return m_negotiationNeeded; };
-    void markAsNeedingNegotiation() final;
-    void clearNegotiationNeededState() final { m_negotiationNeeded = false; };
 
     void emulatePlatformEvent(const String& action) final;
 
@@ -129,8 +125,6 @@ private:
     RefPtr<MediaEndpointSessionDescription> m_pendingRemoteDescription;
 
     HashMap<String, RefPtr<MediaStream>> m_remoteStreamMap;
-
-    bool m_negotiationNeeded { false };
 };
 
 } // namespace WebCore

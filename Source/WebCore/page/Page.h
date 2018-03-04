@@ -179,8 +179,6 @@ public:
     bool openedByDOM() const;
     void setOpenedByDOM();
 
-    bool openedByWindowOpen() const;
-
     WEBCORE_EXPORT void goToItem(HistoryItem&, FrameLoadType);
 
     WEBCORE_EXPORT void setGroupName(const String&);
@@ -362,6 +360,7 @@ public:
     WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
     ActivityState::Flags activityState() const { return m_activityState; }
 
+    bool isWindowActive() const;
     bool isVisibleAndActive() const;
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
@@ -390,6 +389,9 @@ public:
 #if ENABLE(RESOURCE_USAGE)
     void setResourceUsageOverlayVisible(bool);
 #endif
+
+    void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
+    bool isRunningUserScripts() const { return m_isRunningUserScripts; }
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -775,6 +777,8 @@ private:
     std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
 
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
+
+    bool m_isRunningUserScripts { false };
 };
 
 inline PageGroup& Page::group()

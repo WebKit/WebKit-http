@@ -140,7 +140,7 @@ CachedResourceLoader::~CachedResourceLoader()
     m_documentLoader = nullptr;
     m_document = nullptr;
 
-    clearPreloads();
+    clearPreloads(ClearPreloadsMode::ClearAllPreloads);
     for (auto& resource : m_documentResources.values())
         resource->setOwningCachedResourceLoader(nullptr);
 
@@ -217,10 +217,8 @@ CachedResourceHandle<CachedCSSStyleSheet> CachedResourceLoader::requestCSSStyleS
 
 CachedResourceHandle<CachedCSSStyleSheet> CachedResourceLoader::requestUserCSSStyleSheet(CachedResourceRequest&& request)
 {
-#if ENABLE(CACHE_PARTITIONING)
     ASSERT(document());
     request.setDomainForCachePartition(*document());
-#endif
 
     auto& memoryCache = MemoryCache::singleton();
     if (request.allowsCaching()) {
@@ -733,13 +731,14 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
 
     // See if we can use an existing resource from the cache.
     CachedResourceHandle<CachedResource> resource;
-#if ENABLE(CACHE_PARTITIONING)
     if (document())
         request.setDomainForCachePartition(*document());
-#endif
 
     if (request.allowsCaching())
         resource = memoryCache.resourceForRequest(request.resourceRequest(), sessionID());
+
+    if (resource && request.isLinkPreload() && !resource->isLinkPreload())
+        resource->setLinkPreload();
 
     logMemoryCacheResourceRequest(frame(), DiagnosticLoggingKeys::memoryCacheUsageKey(), resource ? DiagnosticLoggingKeys::inMemoryCacheKey() : DiagnosticLoggingKeys::notInMemoryCacheKey());
 
@@ -773,7 +772,7 @@ CachedResourceHandle<CachedResource> CachedResourceLoader::requestResource(Cache
             if (document() && RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled()) {
                 // FIXME (161170): The networkLoadTiming shouldn't be stored on the ResourceResponse.
                 resource->response().networkLoadTiming().reset();
-                loadTiming.setResponseEnd(monotonicallyIncreasingTime());
+                loadTiming.setResponseEnd(MonotonicTime::now());
                 m_resourceTimingInfo.storeResourceTimingInitiatorInformation(resource, request.initiatorName(), frame());
                 m_resourceTimingInfo.addResourceTiming(resource.get(), *document(), loadTiming);
             }
@@ -1243,7 +1242,7 @@ bool CachedResourceLoader::isPreloaded(const String& urlString) const
     return false;
 }
 
-void CachedResourceLoader::clearPreloads()
+void CachedResourceLoader::clearPreloads(ClearPreloadsMode mode)
 {
 #if PRELOAD_DEBUG
     printPreloadStats();
@@ -1251,13 +1250,21 @@ void CachedResourceLoader::clearPreloads()
     if (!m_preloads)
         return;
 
+    std::unique_ptr<ListHashSet<CachedResource*>> remainingLinkPreloads;
     for (auto* resource : *m_preloads) {
+        ASSERT(resource);
+        if (mode == ClearPreloadsMode::ClearSpeculativePreloads && resource->isLinkPreload()) {
+            if (!remainingLinkPreloads)
+                remainingLinkPreloads = std::make_unique<ListHashSet<CachedResource*>>();
+            remainingLinkPreloads->add(resource);
+            continue;
+        }
         resource->decreasePreloadCount();
         bool deleted = resource->deleteIfPossible();
         if (!deleted && resource->preloadResult() == CachedResource::PreloadNotReferenced)
             MemoryCache::singleton().remove(*resource);
     }
-    m_preloads = nullptr;
+    m_preloads = WTFMove(remainingLinkPreloads);
 }
 
 #if PRELOAD_DEBUG

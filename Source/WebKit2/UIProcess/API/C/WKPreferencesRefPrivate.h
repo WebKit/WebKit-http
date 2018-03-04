@@ -143,10 +143,6 @@ WK_EXPORT bool WKPreferencesGetLocalFileContentSniffingEnabled(WKPreferencesRef 
 WK_EXPORT void WKPreferencesSetPageCacheEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetPageCacheEnabled(WKPreferencesRef preferences);
 
-// Defaults to false.
-WK_EXPORT void WKPreferencesSetAllowsPageCacheWithWindowOpener(WKPreferencesRef preferences, bool enabled);
-WK_EXPORT bool WKPreferencesGetAllowsPageCacheWithWindowOpener(WKPreferencesRef preferences);
-
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetPageCacheSupportsPlugins(WKPreferencesRef preferences, bool pageCacheSupportsPlugins);
 WK_EXPORT bool WKPreferencesGetPageCacheSupportsPlugins(WKPreferencesRef preferences);
@@ -452,6 +448,10 @@ WK_EXPORT bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef);
 // Defaults to false
 WK_EXPORT void WKPreferencesSetUserTimingEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetUserTimingEnabled(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef);
 
 // Defaults to true
 WK_EXPORT void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef, bool flag);

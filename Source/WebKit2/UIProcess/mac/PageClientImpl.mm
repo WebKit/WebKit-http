@@ -440,9 +440,9 @@ RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, con
 }
 #endif
 
-Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& message)
+Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& message, const ValidationBubble::Settings& settings)
 {
-    return ValidationBubble::create(m_view, message);
+    return ValidationBubble::create(m_view, message, settings);
 }
 
 void PageClientImpl::setTextIndicator(Ref<TextIndicator> textIndicator, WebCore::TextIndicatorWindowLifetime lifetime)
@@ -874,18 +874,6 @@ bool PageClientImpl::windowIsFrontWindowUnderMouse(const NativeWebMouseEvent& ev
 {
     return m_impl->windowIsFrontWindowUnderMouse(event.nativeEvent());
 }
-
-#if ENABLE(DATA_INTERACTION)
-void PageClientImpl::didPerformDataInteractionControllerOperation()
-{
-    // FIXME: Implement me.
-}
-
-void PageClientImpl::startDataInteractionWithImage(const IntPoint&, const ShareableBitmap::Handle&, bool)
-{
-    // FIXME: Implement me.
-}
-#endif
 
 WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
 {

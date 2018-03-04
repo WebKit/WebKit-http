@@ -56,7 +56,7 @@
 #import <JavaScriptCore/JSContextInternal.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/AccessibilityObject.h>
-#import <WebCore/AnimationController.h>
+#import <WebCore/CSSAnimationController.h>
 #import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/CachedResourceLoader.h>
 #import <WebCore/Chrome.h>
@@ -1594,9 +1594,9 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
         return;
 
     Node* node = core(element);
-    if (!node->inDocument())
+    if (!node->isConnected())
         return;
-        
+
     frame->selection().selectRangeOnElement(range.location, range.length, *node);
 }
 

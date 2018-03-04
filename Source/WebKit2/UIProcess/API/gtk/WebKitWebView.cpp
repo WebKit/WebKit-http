@@ -62,6 +62,7 @@
 #include "WebKitWebViewBasePrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include "WebKitWebViewSessionStatePrivate.h"
+#include "WebKitWebsiteDataManagerPrivate.h"
 #include "WebKitWindowPropertiesPrivate.h"
 #include <JavaScriptCore/APICast.h>
 #include <WebCore/CertificateInfo.h>
@@ -655,8 +656,10 @@ static void webkitWebViewConstructed(GObject* object)
     if (!priv->settings)
         priv->settings = adoptGRef(webkit_settings_new());
 
-    if (priv->isEphemeral && !webkit_web_context_is_ephemeral(priv->context.get()))
+    if (priv->isEphemeral && !webkit_web_context_is_ephemeral(priv->context.get())) {
         priv->websiteDataManager = adoptGRef(webkit_website_data_manager_new_ephemeral());
+        webkitWebsiteDataManagerAddProcessPool(priv->websiteDataManager.get(), webkitWebContextGetProcessPool(priv->context.get()));
+    }
 
     webkitWebContextCreatePageForWebView(priv->context.get(), webView, priv->userContentManager.get(), priv->relatedView);
 
@@ -783,6 +786,11 @@ static void webkitWebViewDispose(GObject* object)
         // call this in finalize, not dispose, but finalize is used internally and we don't
         // have access to the instance pointer from the private struct destructor.
         webkitWebContextWebViewDestroyed(webView->priv->context.get(), webView);
+    }
+
+    if (webView->priv->websiteDataManager) {
+        webkitWebsiteDataManagerRemoveProcessPool(webView->priv->websiteDataManager.get(), webkitWebContextGetProcessPool(webView->priv->context.get()));
+        webView->priv->websiteDataManager = nullptr;
     }
 
     G_OBJECT_CLASS(webkit_web_view_parent_class)->dispose(object);
@@ -1580,8 +1588,8 @@ static void webkit_web_view_class_init(WebKitWebViewClass* webViewClass)
      * @event: the #GdkEvent that triggered the context menu
      * @hit_test_result: a #WebKitHitTestResult
      *
-     * Emmited when a context menu is about to be displayed to give the application
-     * a chance to customize the proposed menu, prevent the menu from being displayed
+     * Emitted when a context menu is about to be displayed to give the application
+     * a chance to customize the proposed menu, prevent the menu from being displayed,
      * or build its own context menu.
      * <itemizedlist>
      * <listitem><para>
@@ -2272,6 +2280,28 @@ gboolean webkit_web_view_is_ephemeral(WebKitWebView* webView)
 }
 
 /**
+ * webkit_web_view_get_website_data_manager:
+ * @web_view: a #WebKitWebView
+ *
+ * Get the #WebKitWebsiteDataManager associated to @web_view. If @web_view is not ephemeral,
+ * the returned #WebKitWebsiteDataManager will be the same as the #WebKitWebsiteDataManager
+ * of @web_view's #WebKitWebContext.
+ *
+ * Returns: (transfer none): a #WebKitWebsiteDataManager
+ *
+ * Since: 2.16
+ */
+WebKitWebsiteDataManager* webkit_web_view_get_website_data_manager(WebKitWebView* webView)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), nullptr);
+
+    if (webView->priv->websiteDataManager)
+        return webView->priv->websiteDataManager.get();
+
+    return webkit_web_context_get_website_data_manager(webView->priv->context.get());
+}
+
+/**
  * webkit_web_view_try_close:
  * @web_view: a #WebKitWebView
  *
@@ -2907,7 +2937,7 @@ gdouble webkit_web_view_get_zoom_level(WebKitWebView* webView)
  * @callback: (scope async): a #GAsyncReadyCallback to call when the request is satisfied
  * @user_data: (closure): the data to pass to callback function
  *
- * Asynchronously execute the given editing command.
+ * Asynchronously check if it is possible to execute the given editing command.
  *
  * When the operation is finished, @callback will be called. You can then call
  * webkit_web_view_can_execute_editing_command_finish() to get the result of the operation.

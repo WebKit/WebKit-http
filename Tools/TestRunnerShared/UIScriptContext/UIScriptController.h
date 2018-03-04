@@ -87,6 +87,7 @@ public:
     void selectFormAccessoryPickerRow(long);
     
     JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
+    void overridePreference(JSStringRef preference, JSStringRef value);
     
     void scrollToOffset(long x, long y);
 
@@ -140,8 +141,12 @@ public:
 
     void uiScriptComplete(JSStringRef result);
     
-    void retrieveSpeakSelectionContent(JSValueRef callback);
+    void retrieveSpeakSelectionContent(JSValueRef);
     JSRetainPtr<JSStringRef> accessibilitySpeakSelectionContent() const;
+
+    // These use a callback to allow the client to know when view visibility state updates get to the web process.
+    void removeViewFromWindow(JSValueRef);
+    void addViewToWindow(JSValueRef);
 
 private:
     UIScriptController(UIScriptContext&);

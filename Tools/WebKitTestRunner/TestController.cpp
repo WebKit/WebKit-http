@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,6 +55,7 @@
 #include <WebKit/WKPluginInformation.h>
 #include <WebKit/WKPreferencesRefPrivate.h>
 #include <WebKit/WKProtectionSpace.h>
+#include <WebKit/WKResourceLoadStatisticsManager.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
 #include <WebKit/WKTextChecker.h>
@@ -655,7 +656,6 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetFullScreenEnabled(preferences, true);
 #endif
     WKPreferencesSetPageCacheEnabled(preferences, false);
-    WKPreferencesSetAllowsPageCacheWithWindowOpener(preferences, false);
     WKPreferencesSetAsynchronousPluginInitializationEnabled(preferences, false);
     WKPreferencesSetAsynchronousPluginInitializationEnabledForAllPlugins(preferences, false);
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
@@ -678,6 +678,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     static WKStringRef sansSerifFontFamily = WKStringCreateWithUTF8CString("Helvetica");
     static WKStringRef serifFontFamily = WKStringCreateWithUTF8CString("Times");
 
+    WKPreferencesSetMinimumFontSize(preferences, 0);
     WKPreferencesSetStandardFontFamily(preferences, standardFontFamily);
     WKPreferencesSetCursiveFontFamily(preferences, cursiveFontFamily);
     WKPreferencesSetFantasyFontFamily(preferences, fantasyFontFamily);
@@ -696,6 +697,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetAcceleratedDrawingEnabled(preferences, m_shouldUseAcceleratedDrawing);
     // FIXME: We should be testing the default.
     WKPreferencesSetStorageBlockingPolicy(preferences, kWKAllowAllStorage);
+
+    WKPreferencesSetResourceTimingEnabled(preferences, true);
 
     WKPreferencesSetMediaPlaybackAllowsInline(preferences, true);
     WKPreferencesSetInlineMediaPlaybackRequiresPlaysInlineAttribute(preferences, false);
@@ -752,6 +755,9 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 #if !PLATFORM(COCOA)
     WKTextCheckerContinuousSpellCheckingEnabledStateChanged(true);
 #endif
+
+    // Make sure the view is in the window (a test can unparent it).
+    m_mainWebView->addToWindow();
 
     // In the case that a test using the chrome input field failed, be sure to clean up for the next test.
     m_mainWebView->removeChromeInputField();
@@ -1956,8 +1962,9 @@ void TestController::handleCheckOfUserMediaPermissionForOrigin(WKFrameRef frame,
 {
     auto originHash = userMediaOriginHash(userMediaDocumentOrigin, topLevelDocumentOrigin);
     auto salt = saltForOrigin(frame, originHash);
+    WKRetainPtr<WKStringRef> saltString = adoptWK(WKStringCreateWithUTF8CString(salt.utf8().data()));
 
-    WKUserMediaPermissionCheckSetUserMediaAccessInfo(checkRequest, WKStringCreateWithUTF8CString(salt.utf8().data()), settingsForOrigin(originHash).persistentPermission());
+    WKUserMediaPermissionCheckSetUserMediaAccessInfo(checkRequest, saltString.get(), settingsForOrigin(originHash).persistentPermission());
 }
 
 void TestController::handleUserMediaPermissionRequest(WKFrameRef frame, WKSecurityOriginRef userMediaDocumentOrigin, WKSecurityOriginRef topLevelDocumentOrigin, WKUserMediaPermissionRequestRef request)
@@ -2007,8 +2014,8 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
             continue;
         }
 
-        WKRetainPtr<WKArrayRef> audioDeviceUIDs = WKUserMediaPermissionRequestAudioDeviceUIDs(request);
-        WKRetainPtr<WKArrayRef> videoDeviceUIDs = WKUserMediaPermissionRequestVideoDeviceUIDs(request);
+        WKRetainPtr<WKArrayRef> audioDeviceUIDs = adoptWK(WKUserMediaPermissionRequestAudioDeviceUIDs(request));
+        WKRetainPtr<WKArrayRef> videoDeviceUIDs = adoptWK(WKUserMediaPermissionRequestVideoDeviceUIDs(request));
 
         if (!WKArrayGetSize(videoDeviceUIDs.get()) && !WKArrayGetSize(audioDeviceUIDs.get())) {
             WKUserMediaPermissionRequestDeny(request, kWKNoConstraints);
@@ -2019,13 +2026,13 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         if (WKArrayGetSize(videoDeviceUIDs.get()))
             videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
         else
-            videoDeviceUID = WKStringCreateWithUTF8CString("");
+            videoDeviceUID = adoptWK(WKStringCreateWithUTF8CString(""));
 
         WKRetainPtr<WKStringRef> audioDeviceUID;
         if (WKArrayGetSize(audioDeviceUIDs.get()))
             audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
         else
-            audioDeviceUID = WKStringCreateWithUTF8CString("");
+            audioDeviceUID = adoptWK(WKStringCreateWithUTF8CString(""));
 
         WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
     }
@@ -2202,6 +2209,55 @@ void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimi
     WKPageSetIgnoresViewportScaleLimits(m_mainWebView->page(), ignoresViewportScaleLimits);
 }
 
+void TestController::setStatisticsPrevalentResource(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerSetPrevalentResource(hostName, value);
+}
+
+bool TestController::isStatisticsPrevalentResource(WKStringRef hostName)
+{
+    return WKResourceLoadStatisticsManagerIsPrevalentResource(hostName);
+}
+
+void TestController::setStatisticsHasHadUserInteraction(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerSetHasHadUserInteraction(hostName, value);
+}
+
+bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
+{
+    return WKResourceLoadStatisticsManagerIsHasHadUserInteraction(hostName);
+}
+
+void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetTimeToLiveUserInteraction(seconds);
+}
+
+void TestController::statisticsFireDataModificationHandler()
+{
+    WKResourceLoadStatisticsManagerFireDataModificationHandler();
+}
+    
+void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
+{
+    WKResourceLoadStatisticsManagerSetNotifyPagesWhenDataRecordsWereScanned(value);
+}
+    
+void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
+{
+    WKResourceLoadStatisticsManagerSetShouldClassifyResourcesBeforeDataRecordsRemoval(value);
+}
+
+void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);
+}
+void TestController::statisticsResetToConsistentState()
+{
+    WKResourceLoadStatisticsManagerResetToConsistentState();
+}
+    
 #if !PLATFORM(COCOA)
 void TestController::platformWillRunTest(const TestInvocation&)
 {

@@ -5268,6 +5268,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(!!enabled);
 
+    hr = prefsPrivate->resourceTimingEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(!!enabled);
+
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
@@ -5409,11 +5414,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     settings.setExperimentalNotificationsEnabled(enabled);
-
-    hr = prefsPrivate->allowsPageCacheWithWindowOpener(&enabled);
-    if (FAILED(hr))
-        return hr;
-    settings.setAllowsPageCacheWithWindowOpener(enabled);
 
     hr = prefsPrivate->isWebSecurityEnabled(&enabled);
     if (FAILED(hr))

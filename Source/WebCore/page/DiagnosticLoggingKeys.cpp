@@ -343,6 +343,11 @@ String DiagnosticLoggingKeys::documentLoaderStoppingKey()
     return ASCIILiteral("documentLoaderStopping");
 }
 
+String DiagnosticLoggingKeys::domainVisitedKey()
+{
+    return ASCIILiteral("DomainVisited");
+}
+
 String DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey()
 {
     return ASCIILiteral("cannotSuspendActiveDOMObjects");
@@ -641,16 +646,6 @@ String DiagnosticLoggingKeys::expiredKey()
 String DiagnosticLoggingKeys::fontKey()
 {
     return ASCIILiteral("font");
-}
-
-String DiagnosticLoggingKeys::hasCalledWindowOpenKey()
-{
-    return ASCIILiteral("hasCalledWindowOpen");
-}
-
-String DiagnosticLoggingKeys::hasOpenerKey()
-{
-    return ASCIILiteral("hasOpener");
 }
 
 String DiagnosticLoggingKeys::prunedDueToMemoryPressureKey()

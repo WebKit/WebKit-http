@@ -137,7 +137,6 @@
     macro(WebArchiveDebugModeEnabled, webArchiveDebugModeEnabled, Bool, bool, false, "", "") \
     macro(LocalFileContentSniffingEnabled, localFileContentSniffingEnabled, Bool, bool, false, "", "") \
     macro(UsesPageCache, usesPageCache, Bool, bool, true, "", "") \
-    macro(AllowsPageCacheWithWindowOpener, allowsPageCacheWithWindowOpener, Bool, bool, false, "", "") \
     macro(PageCacheSupportsPlugins, pageCacheSupportsPlugins, Bool, bool, true, "", "") \
     macro(AuthorAndUserStylesEnabled, authorAndUserStylesEnabled, Bool, bool, true, "", "") \
     macro(PaginateDuringLayoutEnabled, paginateDuringLayoutEnabled, Bool, bool, false, "", "") \
@@ -248,6 +247,7 @@
     macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED, "HTML Interactive Form Validation", "HTML interactive form validation") \
     macro(ShouldSuppressKeyboardInputDuringProvisionalNavigation, shouldSuppressKeyboardInputDuringProvisionalNavigation, Bool, bool, false, "", "") \
     macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, true, "CSS Grid", "CSS Grid Layout Module support") \
+    macro(ResourceTimingEnabled, resourceTimingEnabled, Bool, bool, false, "Resource Timing", "Enable ResourceTiming API") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \

@@ -125,10 +125,16 @@ public:
     void storeData(const DataKey&,  const uint8_t* data, size_t);
     
     std::unique_ptr<Entry> makeEntry(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, RefPtr<WebCore::SharedBuffer>&&);
+    std::unique_ptr<Entry> makeRedirectEntry(const WebCore::ResourceRequest&, const WebCore::ResourceResponse&, const WebCore::ResourceRequest& redirectRequest);
 
     void dumpContentsToFile();
 
     String recordsPath() const;
+    bool canUseSharedMemoryForBodyData() const { return m_storage && m_storage->canUseSharedMemoryForBodyData(); }
+
+#if ENABLE(NETWORK_CACHE_SPECULATIVE_REVALIDATION)
+    SpeculativeLoadManager* speculativeLoadManager() { return m_speculativeLoadManager.get(); }
+#endif
 
 private:
     Cache() = default;

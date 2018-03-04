@@ -1,3 +1,285 @@
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        URLs with an invalid IPv4 address should be invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168260
+
+        Reviewed by Tim Horton.
+
+        * wtf/Expected.h:
+        (WTF::Expected::value):
+        Added missing WTFMove for rvalue Expected::value().
+
+2017-02-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The current frame of an image should not deleted if another frame is asynchronously being decoded
+        https://bugs.webkit.org/show_bug.cgi?id=167618
+
+        Reviewed by Simon Fraser.
+
+        Add ASSERT_IMPLIES() which should fire when a condition is true but the
+        assertion is false.
+
+        * wtf/Assertions.h:
+
+2017-02-13  Brady Eidson  <beidson@apple.com>
+
+        Followup to: Replace all WebKit Library Version checks in WK2 with SDK version checks.
+        https://bugs.webkit.org/show_bug.cgi?id=168124
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2017-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update custom line breaking iterators to the latest version of Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=168182
+
+        Reviewed by Zalan Bujtas.
+
+        ICU 55.1 supports loose / normal / strict line breaking rules. The oldest platform we ship
+        on has a version of ICU >= that one. Therefore, we don't need to compile our own rules;
+        we can just use ICU's rules.
+
+        * wtf/text/LineBreakIteratorPoolICU.h:
+        (WTF::LineBreakIteratorPool::makeLocaleWithBreakKeyword):
+        (WTF::LineBreakIteratorPool::take):
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::acquireLineBreakIterator):
+        (WTF::openLineBreakIterator):
+        (WTF::mapLineIteratorModeToRules): Deleted.
+        (WTF::isCJKLocale): Deleted.
+        * wtf/text/TextBreakIterator.h:
+        (WTF::LazyLineBreakIterator::LazyLineBreakIterator):
+        (WTF::LazyLineBreakIterator::mode):
+        (WTF::LazyLineBreakIterator::get):
+        (WTF::LazyLineBreakIterator::resetStringAndReleaseIterator):
+        (WTF::LazyLineBreakIterator::isLooseCJKMode): Deleted.
+
+2017-02-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WTF installs extra copies of two headers outside /usr/local/include/wtf
+        https://bugs.webkit.org/show_bug.cgi?id=168160
+
+        Reviewed by Sam Weinig.
+
+        * WTF.xcodeproj/project.pbxproj: Demoted OrdinalNumber.h MemoryFootprint.h from Private to
+          Project.
+
+2017-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212139.
+        https://bugs.webkit.org/show_bug.cgi?id=168152
+
+        Caused some assertions (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Fix misleading comment in RunLoop.h"
+        https://bugs.webkit.org/show_bug.cgi?id=167832
+        http://trac.webkit.org/changeset/212139
+
+2017-02-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix misleading comment in RunLoop.h
+        https://bugs.webkit.org/show_bug.cgi?id=167832
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RunLoop.h:
+        Mac initialization used to force using CFRunLoopGetMain(). Now however it just
+        uses RunLoop::current which uses CFRunLoopGetCurrent(). So this comment that
+        it can be done on any thread is misleading and can lead to incorrect behavior
+        if it is actually done on a non-main thread on Mac.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212040.
+
+        Broke build.  I'm not surprised
+
+        Reverted changeset:
+
+        "[WebRTC][Mac] Activate libwebrtc"
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        http://trac.webkit.org/changeset/212040
+
+2017-02-09  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Transition "WebKit Library Version" checks to SDK version checks.
+        <rdar://problem/30313696> and https://bugs.webkit.org/show_bug.cgi?id=168056
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/dyldSPI.h: Add entries for the iOS 10.3, macOS 10.11, and macOS 10.12.4 SDKs.
+
+2017-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211980 and r211987.
+        https://bugs.webkit.org/show_bug.cgi?id=168072
+
+        Caused API test WebKit2.DuplicateCompletionHandlerCalls to
+        fail (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Transition "WebKit Library Version" checks to SDK version
+        checks."
+        https://bugs.webkit.org/show_bug.cgi?id=168056
+        http://trac.webkit.org/changeset/211980
+
+        "Build fix for APPLE_INTERNAL_SDK builds after r211980."
+        http://trac.webkit.org/changeset/211987
+
+2017-02-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unused WebThreadRunSync
+        https://bugs.webkit.org/show_bug.cgi?id=168024
+
+        Reviewed by Tim Horton.
+
+        * wtf/ios/WebCoreThread.cpp:
+        * wtf/ios/WebCoreThread.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Build fix for APPLE_INTERNAL_SDK builds after r211980.
+
+        Unreviewed.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Transition "WebKit Library Version" checks to SDK version checks.
+        <rdar://problem/30313696> and https://bugs.webkit.org/show_bug.cgi?id=168056
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/dyldSPI.h: Add entries for the iOS 10.3, macOS 10.11, and macOS 10.12.4 SDKs.
+
+2017-02-06  Jer Noble  <jer.noble@apple.com>
+
+        Playback stalls when a SourceBuffer append causes frame eviction
+        https://bugs.webkit.org/show_bug.cgi?id=167834
+
+        Reviewed by Eric Carlson.
+
+        Optimize the MediaTime class; specifically the compare() method. The class only
+        needs 6 bits to store the TimeFlags, so make that a uint8_t rather than uint32_t.
+        The implementation is slightly simpler if the TimeScale is unsigned, so make that
+        a uint32_t rather than int32_t. Inline the comparison operators. Optimize the equality
+        comparison by bitwise-and'ing the flags together and masking the result. Optimize for
+        common comparison scenarios (equal timeScales, equal timeValues(), etc.). Attempt the
+        mathematically simpler simpler method for comparing ratios, and only fall back to the
+        complex method if the results of multiplying the timeScale by the timeValue overflows.
+
+        * wtf/MediaTime.cpp:
+        (WTF::greatestCommonDivisor):
+        (WTF::leastCommonMultiple):
+        (WTF::signum):
+        (WTF::MediaTime::MediaTime):
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+        (WTF::MediaTime::operator!):
+        (WTF::MediaTime::operator bool):
+        (WTF::MediaTime::compare):
+        (WTF::MediaTime::setTimeScale):
+        (WTF::abs):
+        (WTF::MediaTime::operator<): Deleted.
+        (WTF::MediaTime::operator>): Deleted.
+        (WTF::MediaTime::operator!=): Deleted.
+        (WTF::MediaTime::operator==): Deleted.
+        (WTF::MediaTime::operator>=): Deleted.
+        (WTF::MediaTime::operator<=): Deleted.
+        * wtf/MediaTime.h:
+
+2017-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix huge ENABLE_RESOURCE_USAGE warning spam
+
+        Unreviewed. We shouldn't redefine ENABLE_RESOURCE_USAGE in Platform.h as
+        it's already defined in cmakeconfig.h.
+
+        * wtf/Platform.h:
+
+2017-02-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Performance Timing: Convert WTF::MonotonicTime and WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=167768
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::elapsedTimeSince):
+        (WTF::Stopwatch::elapsedTimeSinceMonotonicTime): Deleted.
+
+2017-02-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial implementation of resource usage overlay
+        https://bugs.webkit.org/show_bug.cgi?id=167731
+
+        Reviewed by Michael Catanzaro.
+
+        Enable RESOURCE_USAGE for GTK+ port too.
+
+        * wtf/Platform.h:
+
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes AKA websam
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Add a WTF helper function for getting the current process's memory footprint.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryFootprint.cpp:
+        (WTF::memoryFootprint):
+        * wtf/MemoryFootprint.h:
+
+2017-02-02  Mark Lam  <mark.lam@apple.com>
+
+        Add a SIGILL crash analyzer to make debugging SIGILLs easier.
+        https://bugs.webkit.org/show_bug.cgi?id=167714
+        <rdar://problem/30318237>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/StdLibExtras.h:
+
+2017-02-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211571 and r211582.
+        https://bugs.webkit.org/show_bug.cgi?id=167751
+
+        This change caused API test WebKit1.MemoryPressureHandler to
+        fail with an assertion. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[Mac] In-process memory pressure monitor for WebContent
+        processes."
+        https://bugs.webkit.org/show_bug.cgi?id=167491
+        http://trac.webkit.org/changeset/211571
+
+        "Unreviewed attempt to fix the Windows build after r211571."
+        http://trac.webkit.org/changeset/211582
+
 2017-02-02  Andreas Kling  <akling@apple.com>
 
         [Mac] In-process memory pressure monitor for WebContent processes.

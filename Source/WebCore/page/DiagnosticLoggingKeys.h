@@ -50,13 +50,12 @@ public:
     static String diskCacheKey();
     static String diskCacheAfterValidationKey();
     static String documentLoaderStoppingKey();
+    static String domainVisitedKey();
     static String engineFailedToLoadKey();
     WEBCORE_EXPORT static String entryRightlyNotWarmedUpKey();
     WEBCORE_EXPORT static String entryWronglyNotWarmedUpKey();
     static String expiredKey();
     static String fontKey();
-    static String hasCalledWindowOpenKey();
-    static String hasOpenerKey();
     static String hasPluginsKey();
     static String httpsNoStoreKey();
     static String imageKey();

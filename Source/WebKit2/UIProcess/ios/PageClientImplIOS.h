@@ -97,7 +97,7 @@ private:
 #if ENABLE(CONTEXT_MENUS)
     std::unique_ptr<WebContextMenuProxy> createContextMenuProxy(WebPageProxy&, const ContextMenuContextData&, const UserData&) override;
 #endif
-    Ref<WebCore::ValidationBubble> createValidationBubble(const String& message) final;
+    Ref<WebCore::ValidationBubble> createValidationBubble(const String& message, const WebCore::ValidationBubble::Settings&) final;
 
     void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) override;
     void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) override;
@@ -203,7 +203,8 @@ private:
 
 #if ENABLE(DATA_INTERACTION)
     void didPerformDataInteractionControllerOperation() override;
-    void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, bool isLink) override;
+    void didHandleStartDataInteractionRequest(bool started) override;
+    void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, const WebCore::FloatPoint& anchorPoint, bool isLink) override;
 #endif
 
     WKContentView *m_contentView;

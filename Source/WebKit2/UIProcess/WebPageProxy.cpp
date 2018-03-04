@@ -343,6 +343,7 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_websiteDataStore(m_configuration->websiteDataStore()->websiteDataStore())
     , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
+    , m_overrideContentSecurityPolicy { m_configuration->overrideContentSecurityPolicy() }
     , m_treatsSHA1CertificatesAsInsecure(m_configuration->treatsSHA1SignedCertificatesAsInsecure())
 #if ENABLE(FULLSCREEN_API)
     , m_fullscreenClient(std::make_unique<API::FullscreenClient>())
@@ -1562,7 +1563,8 @@ void WebPageProxy::dispatchActivityStateChange()
         m_process->responsivenessTimer().stop();
 
 #if ENABLE(POINTER_LOCK)
-    if (((changed & ActivityState::IsVisible) && !isViewVisible()) || ((changed & ActivityState::WindowIsActive) && !m_pageClient.isViewWindowActive()))
+    if (((changed & ActivityState::IsVisible) && !isViewVisible()) || ((changed & ActivityState::WindowIsActive) && !m_pageClient.isViewWindowActive())
+        || ((changed & ActivityState::IsFocused) && !(m_activityState & ActivityState::IsFocused)))
         requestPointerUnlock();
 #endif
 
@@ -1818,6 +1820,12 @@ void WebPageProxy::dragEnded(const IntPoint& clientPosition, const IntPoint& glo
     if (!isValid())
         return;
     m_process->send(Messages::WebPage::DragEnded(clientPosition, globalPosition, operation), m_pageID);
+}
+    
+void WebPageProxy::dragCancelled()
+{
+    if (isValid())
+        m_process->send(Messages::WebPage::DragCancelled(), m_pageID);
 }
 #endif // ENABLE(DRAG_SUPPORT)
 
@@ -5193,6 +5201,14 @@ void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const St
     m_diagnosticLoggingClient->logDiagnosticMessageWithValue(this, message, description, String::number(value, significantFigures));
 }
 
+void WebPageProxy::logDiagnosticMessageWithEnhancedPrivacy(const String& message, const String& description, ShouldSample shouldSample)
+{
+    if (!DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample))
+        return;
+
+    m_diagnosticLoggingClient->logDiagnosticMessageWithEnhancedPrivacy(this, message, description);
+}
+
 void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const EditingRange& actualRange, uint64_t callbackID)
 {
     MESSAGE_CHECK(actualRange.isValid());
@@ -5402,6 +5418,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 #endif
 
 #if PLATFORM(IOS)
+    m_firstLayerTreeTransactionIdAfterDidCommitLoad = 0;
     m_lastVisibleContentRectUpdate = VisibleContentRectUpdateInfo();
     m_dynamicViewportSizeUpdateWaitingForTarget = false;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
@@ -5570,6 +5587,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.shouldScaleViewToFitDocument = m_shouldScaleViewToFitDocument;
     parameters.userInterfaceLayoutDirection = m_pageClient.userInterfaceLayoutDirection();
     parameters.observedLayoutMilestones = m_observedLayoutMilestones;
+    parameters.overrideContentSecurityPolicy = m_overrideContentSecurityPolicy;
 
     return parameters;
 }
@@ -6771,7 +6789,8 @@ void WebPageProxy::requestPointerLock()
     ASSERT(!m_isPointerLockPending);
     ASSERT(!m_isPointerLocked);
     m_isPointerLockPending = true;
-    if (!isViewVisible()) {
+
+    if (!isViewVisible() || !(m_activityState & ActivityState::IsFocused)) {
         didDenyPointerLock();
         return;
     }

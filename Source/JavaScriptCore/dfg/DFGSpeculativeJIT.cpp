@@ -1037,17 +1037,17 @@ void SpeculativeJIT::compileTryGetById(Node* node)
 
 void SpeculativeJIT::compileIn(Node* node)
 {
-    SpeculateCellOperand base(this, node->child2());
+    SpeculateCellOperand base(this, node->child1());
     GPRReg baseGPR = base.gpr();
     
-    if (JSString* string = node->child1()->dynamicCastConstant<JSString*>(*m_jit.vm())) {
+    if (JSString* string = node->child2()->dynamicCastConstant<JSString*>(*m_jit.vm())) {
         if (string->tryGetValueImpl() && string->tryGetValueImpl()->isAtomic()) {
             StructureStubInfo* stubInfo = m_jit.codeBlock()->addStubInfo(AccessType::In);
             
             GPRTemporary result(this);
             GPRReg resultGPR = result.gpr();
 
-            use(node->child1());
+            use(node->child2());
             
             MacroAssembler::PatchableJump jump = m_jit.patchableJump();
             MacroAssembler::Label done = m_jit.label();
@@ -1079,7 +1079,7 @@ void SpeculativeJIT::compileIn(Node* node)
         }
     }
 
-    JSValueOperand key(this, node->child1());
+    JSValueOperand key(this, node->child2());
     JSValueRegs regs = key.jsValueRegs();
         
     GPRFlushedCallResult result(this);
@@ -2208,7 +2208,8 @@ void SpeculativeJIT::compileValueToInt32(Node* node)
         GPRReg gpr = result.gpr();
         JITCompiler::Jump notTruncatedToInteger = m_jit.branchTruncateDoubleToInt32(fpr, gpr, JITCompiler::BranchIfTruncateFailed);
         
-        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this, operationToInt32, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded, gpr, fpr));
+        addSlowPathGenerator(slowPathCall(notTruncatedToInteger, this,
+            hasSensibleDoubleToInt() ? operationToInt32SensibleSlow : operationToInt32, NeedToSpill, ExceptionCheckRequirement::CheckNotNeeded, gpr, fpr));
         
         int32Result(gpr, node);
         return;

@@ -96,7 +96,7 @@ Dromaeo/jslib-modify-prototype.html
 # Still under development so skip it for now.
 MotionMark
 JSBench
-ES6SampleBench
+ARES-6
 
 # Used for iOS testing
 Animation/css-animation.html
@@ -107,6 +107,7 @@ Animation/svg-animation.html
 # Media tests take too long to run; require MSE, HLS which are not supported on all ports;
 # and require a webserver (run-webkit-httpd) which is not part of normal performance testing.
 Media/
+MediaTime/
 
 # Bugs 167622, 167637, 167638 and 167640 - Some IndexedDB test deadlock on the GTK+ perf bot.
 [GTK] IndexedDB/index-get.html

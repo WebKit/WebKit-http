@@ -310,6 +310,9 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         if (element.treeElement.isEventWithinDisclosureTriangle(event))
             return;
 
+        if (element.treeElement.dispatchEventToListeners(WebInspector.TreeElement.Event.DoubleClick))
+            return;
+
         if (element.treeElement.ondblclick)
             element.treeElement.ondblclick.call(element.treeElement, event);
         else if (element.treeElement.hasChildren && !element.treeElement.expanded)
@@ -508,6 +511,12 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
         }
 
         treeOutline.processingSelectionChange = false;
+
+        let treeOutlineGroup = WebInspector.TreeOutlineGroup.groupForTreeOutline(treeOutline);
+        if (!treeOutlineGroup)
+            return;
+
+        treeOutlineGroup.didSelectTreeElement(this);
     }
 
     revealAndSelect(omitFocus, selectedByUser, suppressOnSelect, suppressOnDeselect)
@@ -619,4 +628,8 @@ WebInspector.TreeElement = class TreeElement extends WebInspector.Object
             contextMenu.appendItem(WebInspector.UIString("Collapse All"), this.collapseRecursively.bind(this));
         }
     }
+};
+
+WebInspector.TreeElement.Event = {
+    DoubleClick: "tree-element-double-click",
 };

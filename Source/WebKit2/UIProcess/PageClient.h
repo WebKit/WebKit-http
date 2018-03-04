@@ -32,6 +32,7 @@
 #include <WebCore/AlternativeTextClient.h>
 #include <WebCore/EditorClient.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
+#include <WebCore/ValidationBubble.h>
 #include <wtf/Forward.h>
 
 #if PLATFORM(COCOA)
@@ -48,7 +49,6 @@ OBJC_CLASS NSTextAlternatives;
 namespace WebCore {
 class Cursor;
 class TextIndicator;
-class ValidationBubble;
 class WebMediaSessionManager;
 enum class TextIndicatorWindowLifetime : uint8_t;
 enum class TextIndicatorWindowDismissalAnimation : uint8_t;
@@ -229,7 +229,7 @@ public:
 #endif
 
 #if PLATFORM(COCOA)
-    virtual Ref<WebCore::ValidationBubble> createValidationBubble(const String& message) = 0;
+    virtual Ref<WebCore::ValidationBubble> createValidationBubble(const String& message, const WebCore::ValidationBubble::Settings&) = 0;
 #endif
 
 #if PLATFORM(COCOA)
@@ -383,7 +383,8 @@ public:
 
 #if ENABLE(DATA_INTERACTION)
     virtual void didPerformDataInteractionControllerOperation() = 0;
-    virtual void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, bool isLink) = 0;
+    virtual void didHandleStartDataInteractionRequest(bool started) = 0;
+    virtual void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, const WebCore::FloatPoint& anchorPoint, bool isLink) = 0;
 #endif
 };
 

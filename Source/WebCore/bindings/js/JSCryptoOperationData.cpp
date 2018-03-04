@@ -28,7 +28,8 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "JSDOMBinding.h"
+#include "JSDOMConvertBufferSource.h"
+#include <heap/HeapInlines.h>
 
 using namespace JSC;
 

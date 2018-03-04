@@ -111,6 +111,8 @@ public:
     void clearPageCache();
     unsigned pageCacheSize() const;
 
+    void disableTileSizeUpdateDelay();
+
     Ref<CSSComputedStyleDeclaration> computedStyleIncludingVisitedInfo(Element&) const;
 
     Node* ensureUserAgentShadowRoot(Element& host);
@@ -250,6 +252,7 @@ public:
 
     InternalSettings* settings() const;
     unsigned workerThreadCount() const;
+    bool areSVGAnimationsPaused() const;
 
     ExceptionOr<void> setDeviceProximity(const String& eventType, double value, double min, double max);
 
@@ -259,7 +262,8 @@ public:
         LAYER_TREE_INCLUDES_TILE_CACHES = 2,
         LAYER_TREE_INCLUDES_REPAINT_RECTS = 4,
         LAYER_TREE_INCLUDES_PAINTING_PHASES = 8,
-        LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16
+        LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16,
+        LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32,
     };
     ExceptionOr<String> layerTreeAsText(Document&, unsigned short flags) const;
     ExceptionOr<String> repaintRectsAsText() const;
@@ -464,7 +468,7 @@ public:
 
     enum class PageOverlayType { View, Document };
     ExceptionOr<Ref<MockPageOverlay>> installMockPageOverlay(PageOverlayType);
-    ExceptionOr<String> pageOverlayLayerTreeAsText() const;
+    ExceptionOr<String> pageOverlayLayerTreeAsText(unsigned short flags) const;
 
     void setPageMuted(const String&);
     String pageMediaState();
@@ -524,6 +528,8 @@ public:
 #if PLATFORM(IOS)
     void setQuickLookPassword(const String&);
 #endif
+
+    void setAsRunningUserScripts(Document&);
 
 private:
     explicit Internals(Document&);

@@ -191,19 +191,6 @@ static bool canCachePage(Page& page)
 
     DiagnosticLoggingClient& diagnosticLoggingClient = page.diagnosticLoggingClient();
     bool isCacheable = canCacheFrame(page.mainFrame(), diagnosticLoggingClient, indentLevel + 1);
-
-    if (page.openedByWindowOpen() && !page.settings().allowsPageCacheWithWindowOpener()) {
-        PCLOG("   -Page has been opened via window.open()");
-        logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::hasOpenerKey());
-        isCacheable = false;
-    }
-
-    auto* topDocument = page.mainFrame().document();
-    if (topDocument && topDocument->hasEverCalledWindowOpen()) {
-        PCLOG("   -Page has called window.open()");
-        logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::hasCalledWindowOpenKey());
-        isCacheable = false;
-    }
     
     if (!page.settings().usesPageCache() || page.isResourceCachingDisabled()) {
         PCLOG("   -Page settings says b/f cache disabled");
@@ -469,7 +456,7 @@ std::unique_ptr<CachedPage> PageCache::take(HistoryItem& item, Page* page)
 void PageCache::removeAllItemsForPage(Page& page)
 {
     for (auto it = m_items.begin(); it != m_items.end();) {
-        // Increment iterator first so it stays invalid after the removal.
+        // Increment iterator first so it stays valid after the removal.
         auto current = it;
         ++it;
         if (&(*current)->m_cachedPage->page() == &page) {

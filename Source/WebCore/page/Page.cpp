@@ -22,10 +22,10 @@
 
 #include "ActivityStateChangeObserver.h"
 #include "AlternativeTextClient.h"
-#include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
+#include "CSSAnimationController.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClientRectList.h"
@@ -81,6 +81,7 @@
 #include "RenderWidget.h"
 #include "ResourceUsageOverlay.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGDocumentExtensions.h"
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "ScrollingCoordinator.h"
@@ -466,17 +467,6 @@ bool Page::openedByDOM() const
 void Page::setOpenedByDOM()
 {
     m_openedByDOM = true;
-}
-
-bool Page::openedByWindowOpen() const
-{
-    auto* document = m_mainFrame->document();
-    if (!document)
-        return false;
-    auto* window = document->domWindow();
-    if (!window)
-        return false;
-    return window->opener();
 }
 
 void Page::goToItem(HistoryItem& item, FrameLoadType type)
@@ -1504,6 +1494,10 @@ void Page::setActivityState(ActivityState::Flags activityState)
         setIsInWindowInternal(activityState & ActivityState::IsInWindow);
     if (changed & ActivityState::IsVisuallyIdle)
         setIsVisuallyIdleInternal(activityState & ActivityState::IsVisuallyIdle);
+    if (changed & ActivityState::WindowIsActive) {
+        if (auto* view = m_mainFrame->view())
+            view->updateTiledBackingAdaptiveSizing();
+    }
 
     if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading))
         updateTimerThrottlingState();
@@ -1523,12 +1517,35 @@ bool Page::isVisibleAndActive() const
     return (m_activityState & ActivityState::IsVisible) && (m_activityState & ActivityState::WindowIsActive);
 }
 
+bool Page::isWindowActive() const
+{
+    return m_activityState & ActivityState::WindowIsActive;
+}
+
 void Page::setIsVisible(bool isVisible)
 {
     if (isVisible)
         setActivityState((m_activityState & ~ActivityState::IsVisuallyIdle) | ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded);
     else
         setActivityState((m_activityState & ~(ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded)) | ActivityState::IsVisuallyIdle);
+}
+
+enum class SVGAnimationsState { Paused, Resumed };
+static inline void setSVGAnimationsState(Page& page, SVGAnimationsState state)
+{
+    for (Frame* frame = &page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        auto* document = frame->document();
+        if (!document)
+            continue;
+
+        if (!document->svgExtensions())
+            continue;
+
+        if (state == SVGAnimationsState::Paused)
+            document->accessSVGExtensions().pauseAnimations();
+        else
+            document->accessSVGExtensions().unpauseAnimations();
+    }
 }
 
 void Page::setIsVisibleInternal(bool isVisible)
@@ -1550,6 +1567,8 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().resumeAnimations();
 
+        setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
+
         resumeAnimatingImages();
     }
 
@@ -1563,6 +1582,8 @@ void Page::setIsVisibleInternal(bool isVisible)
     if (!isVisible) {
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().suspendAnimations();
+
+        setSVGAnimationsState(*this, SVGAnimationsState::Paused);
 
 #if PLATFORM(IOS)
         suspendDeviceMotionAndOrientationUpdates();
@@ -2123,7 +2144,7 @@ void Page::setResourceUsageOverlayVisible(bool visible)
         return;
     }
 
-    if (!m_resourceUsageOverlay)
+    if (!m_resourceUsageOverlay && m_settings->acceleratedCompositingEnabled())
         m_resourceUsageOverlay = std::make_unique<ResourceUsageOverlay>(*this);
 }
 #endif

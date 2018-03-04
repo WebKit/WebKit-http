@@ -27,16 +27,25 @@
 #if USE(LIBWEBRTC)
 
 #include "PeerConnectionBackend.h"
+#include <wtf/HashMap.h>
+
+namespace webrtc {
+class IceCandidateInterface;
+}
 
 namespace WebCore {
 
 class LibWebRTCMediaEndpoint;
 class RTCRtpReceiver;
 class RTCSessionDescription;
+class RTCstatsReport;
+class RealtimeOutgoingAudioSource;
+class RealtimeOutgoingVideoSource;
 
 class LibWebRTCPeerConnectionBackend final : public PeerConnectionBackend {
 public:
     explicit LibWebRTCPeerConnectionBackend(RTCPeerConnection&);
+    ~LibWebRTCPeerConnectionBackend();
 
 private:
     void doCreateOffer(RTCOfferOptions&&) final;
@@ -47,36 +56,40 @@ private:
     void doStop() final;
     std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) final;
     void setConfiguration(MediaEndpointConfiguration&&) final;
-    void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) final;
+    void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) final;
     Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) final;
 
+    RefPtr<RTCSessionDescription> localDescription() const final;
+    RefPtr<RTCSessionDescription> currentLocalDescription() const final { return localDescription(); }
+    RefPtr<RTCSessionDescription> pendingLocalDescription() const final { return localDescription(); }
+
+    RefPtr<RTCSessionDescription> remoteDescription() const final;
+    RefPtr<RTCSessionDescription> currentRemoteDescription() const final { return remoteDescription(); }
+    RefPtr<RTCSessionDescription> pendingRemoteDescription() const final { return remoteDescription(); }
+
     // FIXME: API to implement for real
-    RefPtr<RTCSessionDescription> localDescription() const final { return nullptr; }
-    RefPtr<RTCSessionDescription> currentLocalDescription() const final { return nullptr; }
-    RefPtr<RTCSessionDescription> pendingLocalDescription() const final { return nullptr; }
-
-    RefPtr<RTCSessionDescription> remoteDescription() const final { return nullptr; }
-    RefPtr<RTCSessionDescription> currentRemoteDescription() const final { return nullptr; }
-    RefPtr<RTCSessionDescription> pendingRemoteDescription() const final { return nullptr; }
-
-
     Vector<RefPtr<MediaStream>> getRemoteStreams() const final { return { }; }
-
     void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) final { }
-
-    bool isNegotiationNeeded() const final { return false; }
-    void markAsNeedingNegotiation() final;
-    void clearNegotiationNeededState() final { }
 
     void emulatePlatformEvent(const String&) final { }
 
     friend LibWebRTCMediaEndpoint;
     RTCPeerConnection& connection() { return m_peerConnection; }
+    void addAudioSource(Ref<RealtimeOutgoingAudioSource>&&);
+    void addVideoSource(Ref<RealtimeOutgoingVideoSource>&&);
+
+    void getStatsSucceeded(const DeferredPromise&, Ref<RTCStatsReport>&&);
+    void getStatsFailed(const DeferredPromise&, Exception&&);
 
 private:
     Ref<LibWebRTCMediaEndpoint> m_endpoint;
     bool m_isLocalDescriptionSet { false };
     bool m_isRemoteDescriptionSet { false };
+
+    Vector<std::unique_ptr<webrtc::IceCandidateInterface>> m_pendingCandidates;
+    Vector<Ref<RealtimeOutgoingAudioSource>> m_audioSources;
+    Vector<Ref<RealtimeOutgoingVideoSource>> m_videoSources;
+    HashMap<const DeferredPromise*, Ref<DeferredPromise>> m_statsPromises;
 };
 
 } // namespace WebCore

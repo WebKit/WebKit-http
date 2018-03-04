@@ -2154,11 +2154,22 @@ void BytecodeGenerator::hoistSloppyModeFunctionIfNecessary(const Identifier& fun
         
         ASSERT(m_varScopeLexicalScopeStackIndex);
         ASSERT(*m_varScopeLexicalScopeStackIndex < m_lexicalScopeStack.size());
-        auto& varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex];
+        LexicalScopeStackEntry varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex];
         SymbolTable* varSymbolTable = varScope.m_symbolTable;
         ASSERT(varSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope);
         SymbolTableEntry entry = varSymbolTable->get(NoLockingNecessary, functionName.impl());
-        ASSERT(!entry.isNull());
+        if (functionName == propertyNames().arguments && entry.isNull()) {
+            // "arguments" might be put in the parameter scope when we have a non-simple
+            // parameter list since "arguments" is visible to expressions inside the
+            // parameter evaluation list.
+            // e.g:
+            // function foo(x = arguments) { { function arguments() { } } }
+            RELEASE_ASSERT(*m_varScopeLexicalScopeStackIndex > 0);
+            varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex - 1];
+            SymbolTable* parameterSymbolTable = varScope.m_symbolTable;
+            entry = parameterSymbolTable->get(NoLockingNecessary, functionName.impl());
+        }
+        RELEASE_ASSERT(!entry.isNull());
         bool isLexicallyScoped = false;
         emitPutToScope(varScope.m_scope, variableForLocalEntry(functionName, entry, varScope.m_symbolTableConstantIndex, isLexicallyScoped), currentValue.get(), DoNotThrowIfNotFound, InitializationMode::NotInitialization);
     }
@@ -2568,6 +2579,17 @@ RegisterID* BytecodeGenerator::emitInstanceOfCustom(RegisterID* dst, RegisterID*
     instructions().append(value->index());
     instructions().append(constructor->index());
     instructions().append(hasInstanceValue->index());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitIn(RegisterID* dst, RegisterID* property, RegisterID* base)
+{
+    UnlinkedArrayProfile arrayProfile = newArrayProfile();
+    emitOpcode(op_in);
+    instructions().append(dst->index());
+    instructions().append(base->index());
+    instructions().append(property->index());
+    instructions().append(arrayProfile);
     return dst;
 }
 

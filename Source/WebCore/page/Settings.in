@@ -25,6 +25,8 @@ validationMessageTimerMagnification type=int, initial=50
 # draw canvas in software.
 minimumAccelerated2dCanvasSize type=int, initial=257*256
 
+maximumAccelerated2dCanvasSize type=unsigned, initial=5120*2880
+
 layoutFallbackWidth type=int, initial=980
 deviceWidth type=int, initial=0
 deviceHeight type=int, initial=0
@@ -106,7 +108,7 @@ experimentalNotificationsEnabled initial=false
 webGLEnabled initial=false
 webGLErrorsToConsoleEnabled initial=true
 forceSoftwareWebGLRendering initial=false
-preferLowPowerWebGLRendering initial=true
+forceWebGLUsesLowPower initial=true
 accelerated2dCanvasEnabled initial=false
 loadDeferringEnabled initial=true
 webAudioEnabled initial=false
@@ -285,5 +287,3 @@ animatedImageAsyncDecodingEnabled initial=true
 shouldSuppressKeyboardInputDuringProvisionalNavigation initial=false
 
 langAttributeAwareFormControlUIEnabled initial=false
-
-allowsPageCacheWithWindowOpener initial=false

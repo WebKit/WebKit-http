@@ -76,7 +76,7 @@ enum AvoidanceReason_ : uint64_t {
     FlowHasUnsupportedFloat               = 1LLU  << 10,
     FlowHasUnsupportedUnderlineDecoration = 1LLU  << 11,
     FlowHasJustifiedNonLatinText          = 1LLU  << 12,
-    FlowHasOverflowVisible                = 1LLU  << 13,
+    FlowHasOverflowNotVisible             = 1LLU  << 13,
     FlowHasWebKitNBSPMode                 = 1LLU  << 14,
     FlowIsNotLTR                          = 1LLU  << 15,
     FlowHasLineBoxContainProperty         = 1LLU  << 16,
@@ -100,20 +100,21 @@ enum AvoidanceReason_ : uint64_t {
     FlowTextHasSoftHyphen                 = 1LLU  << 34,
     FlowTextHasDirectionCharacter         = 1LLU  << 35,
     FlowIsMissingPrimaryFont              = 1LLU  << 36,
-    FlowFontIsMissingGlyph                = 1LLU  << 37,
+    FlowPrimaryFontIsInsufficient         = 1LLU  << 37,
     FlowTextIsCombineText                 = 1LLU  << 38,
     FlowTextIsRenderCounter               = 1LLU  << 39,
     FlowTextIsRenderQuote                 = 1LLU  << 40,
     FlowTextIsTextFragment                = 1LLU  << 41,
     FlowTextIsSVGInlineText               = 1LLU  << 42,
-    FlowFontIsNotSimple                   = 1LLU  << 43,
+    FlowHasComplexFontCodePath            = 1LLU  << 43,
     FeatureIsDisabled                     = 1LLU  << 44,
     FlowHasNoParent                       = 1LLU  << 45,
     FlowHasNoChild                        = 1LLU  << 46,
     FlowChildIsSelected                   = 1LLU  << 47,
     FlowHasHangingPunctuation             = 1LLU  << 48,
     FlowFontHasOverflowGlyph              = 1LLU  << 49,
-    EndOfReasons                          = 1LLU  << 50
+    FlowTextHasSurrogatePair              = 1LLU  << 50,
+    EndOfReasons                          = 1LLU  << 51
 };
 const unsigned NoReason = 0;
 
@@ -136,52 +137,71 @@ enum class IncludeReasons { First , All };
     }
 #endif
 
+
+template <typename CharacterType> AvoidanceReasonFlags canUseForCharacter(CharacterType, bool textIsJustified, IncludeReasons);
+
+template<> AvoidanceReasonFlags canUseForCharacter(UChar character, bool textIsJustified, IncludeReasons includeReasons)
+{
+    AvoidanceReasonFlags reasons = { };
+    if (textIsJustified) {
+        // Include characters up to Latin Extended-B and some punctuation range when text is justified.
+        bool isLatinIncludingExtendedB = character <= 0x01FF;
+        bool isPunctuationRange = character >= 0x2010 && character <= 0x2027;
+        if (!(isLatinIncludingExtendedB || isPunctuationRange))
+            SET_REASON_AND_RETURN_IF_NEEDED(FlowHasJustifiedNonLatinText, reasons, includeReasons);
+    }
+
+    if (U16_IS_SURROGATE(character))
+        SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasSurrogatePair, reasons, includeReasons);
+    
+    UCharDirection direction = u_charDirection(character);
+    if (direction == U_RIGHT_TO_LEFT || direction == U_RIGHT_TO_LEFT_ARABIC
+        || direction == U_RIGHT_TO_LEFT_EMBEDDING || direction == U_RIGHT_TO_LEFT_OVERRIDE
+        || direction == U_LEFT_TO_RIGHT_EMBEDDING || direction == U_LEFT_TO_RIGHT_OVERRIDE
+        || direction == U_POP_DIRECTIONAL_FORMAT || direction == U_BOUNDARY_NEUTRAL)
+        SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasDirectionCharacter, reasons, includeReasons);
+
+    return reasons;
+}
+
+template<> AvoidanceReasonFlags canUseForCharacter(LChar, bool, IncludeReasons)
+{
+    return { };
+}
+
 template <typename CharacterType>
-static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned length, const Font& font, std::optional<float> lineHeightConstraint,
+static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned length, const FontCascade& fontCascade, std::optional<float> lineHeightConstraint,
     bool textIsJustified, IncludeReasons includeReasons)
 {
     AvoidanceReasonFlags reasons = { };
-    // FIXME: <textarea maxlength=0> generates empty text node.
-    if (!length)
-        SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsEmpty, reasons, includeReasons);
-
+    auto& primaryFont = fontCascade.primaryFont();
     for (unsigned i = 0; i < length; ++i) {
-        UChar character = text[i];
-        if (character == ' ')
+        auto character = text[i];
+        if (FontCascade::treatAsSpace(character))
             continue;
-
-        if (textIsJustified) {
-            // Include characters up to Latin Extended-B and some punctuation range when text is justified.
-            bool isLatinIncludingExtendedB = character <= 0x01FF;
-            bool isPunctuationRange = character >= 0x2010 && character <= 0x2027;
-            if (!(isLatinIncludingExtendedB || isPunctuationRange))
-                SET_REASON_AND_RETURN_IF_NEEDED(FlowHasJustifiedNonLatinText, reasons, includeReasons);
-        }
 
         if (character == softHyphen)
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasSoftHyphen, reasons, includeReasons);
 
-        UCharDirection direction = u_charDirection(character);
-        if (direction == U_RIGHT_TO_LEFT || direction == U_RIGHT_TO_LEFT_ARABIC
-            || direction == U_RIGHT_TO_LEFT_EMBEDDING || direction == U_RIGHT_TO_LEFT_OVERRIDE
-            || direction == U_LEFT_TO_RIGHT_EMBEDDING || direction == U_LEFT_TO_RIGHT_OVERRIDE
-            || direction == U_POP_DIRECTIONAL_FORMAT || direction == U_BOUNDARY_NEUTRAL)
-            SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasDirectionCharacter, reasons, includeReasons);
+        auto characterReasons = canUseForCharacter(character, textIsJustified, includeReasons);
+        if (characterReasons != NoReason)
+            SET_REASON_AND_RETURN_IF_NEEDED(characterReasons, reasons, includeReasons);
 
-        auto glyph = font.glyphForCharacter(character);
-        if (!glyph)
-            SET_REASON_AND_RETURN_IF_NEEDED(FlowFontIsMissingGlyph, reasons, includeReasons);
-        if (lineHeightConstraint && font.boundsForGlyph(glyph).height() > *lineHeightConstraint)
+        auto glyphData = fontCascade.glyphDataForCharacter(character, false);
+        if (!glyphData.isValid() || glyphData.font != &primaryFont)
+            SET_REASON_AND_RETURN_IF_NEEDED(FlowPrimaryFontIsInsufficient, reasons, includeReasons);
+
+        if (lineHeightConstraint && primaryFont.boundsForGlyph(glyphData.glyph).height() > *lineHeightConstraint)
             SET_REASON_AND_RETURN_IF_NEEDED(FlowFontHasOverflowGlyph, reasons, includeReasons);
     }
     return reasons;
 }
 
-static AvoidanceReasonFlags canUseForText(const RenderText& textRenderer, const Font& font, std::optional<float> lineHeightConstraint, bool textIsJustified, IncludeReasons includeReasons)
+static AvoidanceReasonFlags canUseForText(StringView text, const FontCascade& fontCascade, std::optional<float> lineHeightConstraint, bool textIsJustified, IncludeReasons includeReasons)
 {
-    if (textRenderer.is8Bit())
-        return canUseForText(textRenderer.characters8(), textRenderer.textLength(), font, lineHeightConstraint, false, includeReasons);
-    return canUseForText(textRenderer.characters16(), textRenderer.textLength(), font, lineHeightConstraint, textIsJustified, includeReasons);
+    if (text.is8Bit())
+        return canUseForText(text.characters8(), text.length(), fontCascade, lineHeightConstraint, textIsJustified, includeReasons);
+    return canUseForText(text.characters16(), text.length(), fontCascade, lineHeightConstraint, textIsJustified, includeReasons);
 }
 
 static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, IncludeReasons includeReasons)
@@ -189,14 +209,17 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
     AvoidanceReasonFlags reasons = { };
     // We assume that all lines have metrics based purely on the primary font.
     const auto& style = flow.style();
-    auto& primaryFont = style.fontCascade().primaryFont();
-    if (primaryFont.isLoading())
+    auto& fontCascade = style.fontCascade();
+    if (fontCascade.primaryFont().isLoading())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsMissingPrimaryFont, reasons, includeReasons);
     std::optional<float> lineHeightConstraint;
     if (style.lineBoxContain() & LineBoxContainGlyphs)
         lineHeightConstraint = lineHeightFromFlow(flow).toFloat();
     bool flowIsJustified = style.textAlign() == JUSTIFY;
     for (const auto& textRenderer : childrenOfType<RenderText>(flow)) {
+        // FIXME: Do not return until after checking all children.
+        if (!textRenderer.textLength())
+            SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsEmpty, reasons, includeReasons);
         if (textRenderer.isCombineText())
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsCombineText, reasons, includeReasons);
         if (textRenderer.isCounter())
@@ -207,10 +230,17 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsTextFragment, reasons, includeReasons);
         if (textRenderer.isSVGInlineText())
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsSVGInlineText, reasons, includeReasons);
-        if (style.fontCascade().codePath(TextRun(textRenderer.text())) != FontCascade::Simple)
-            SET_REASON_AND_RETURN_IF_NEEDED(FlowFontIsNotSimple, reasons, includeReasons);
+        if (!textRenderer.canUseSimpleFontCodePath()) {
+            // No need to check the code path at this point. We already know it can't be simple.
+            SET_REASON_AND_RETURN_IF_NEEDED(FlowHasComplexFontCodePath, reasons, includeReasons);
+        } else {
+            TextRun run(textRenderer.text());
+            run.setCharacterScanForCodePath(false);
+            if (style.fontCascade().codePath(run) != FontCascade::Simple)
+                SET_REASON_AND_RETURN_IF_NEEDED(FlowHasComplexFontCodePath, reasons, includeReasons);
+        }
 
-        auto textReasons = canUseForText(textRenderer, primaryFont, lineHeightConstraint, flowIsJustified, includeReasons);
+        auto textReasons = canUseForText(textRenderer.stringView(), fontCascade, lineHeightConstraint, flowIsJustified, includeReasons);
         if (textReasons != NoReason)
             SET_REASON_AND_RETURN_IF_NEEDED(textReasons, reasons, includeReasons);
     }
@@ -226,7 +256,7 @@ static AvoidanceReasonFlags canUseForStyle(const RenderStyle& style, IncludeReas
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedUnderlineDecoration, reasons, includeReasons);
     // Non-visible overflow should be pretty easy to support.
     if (style.overflowX() != OVISIBLE || style.overflowY() != OVISIBLE)
-        SET_REASON_AND_RETURN_IF_NEEDED(FlowHasOverflowVisible, reasons, includeReasons);
+        SET_REASON_AND_RETURN_IF_NEEDED(FlowHasOverflowNotVisible, reasons, includeReasons);
     if (!style.isLeftToRightDirection())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsNotLTR, reasons, includeReasons);
     if (!(style.lineBoxContain() & LineBoxContainBlock))
@@ -383,20 +413,23 @@ static float computeLineLeft(ETextAlign textAlign, float availableWidth, float c
     return 0;
 }
 
-static void revertRuns(Layout::RunVector& runs, unsigned length, float width)
+static void revertRuns(Layout::RunVector& runs, unsigned positionToRevertTo, float width)
 {
-    while (length) {
-        ASSERT(runs.size());
-        Run& lastRun = runs.last();
-        unsigned lastRunLength = lastRun.end - lastRun.start;
-        if (lastRunLength > length) {
+    while (runs.size()) {
+        auto& lastRun = runs.last();
+        if (lastRun.end <= positionToRevertTo)
+            break;
+        if (lastRun.start >= positionToRevertTo) {
+            // Revert this run completely.
+            width -= (lastRun.logicalRight - lastRun.logicalLeft);
+            runs.removeLast();
+        } else {
             lastRun.logicalRight -= width;
-            lastRun.end -= length;
+            width = 0;
+            lastRun.end = positionToRevertTo;
+            // Partial removal.
             break;
         }
-        length -= lastRunLength;
-        width -= (lastRun.logicalRight - lastRun.logicalLeft);
-        runs.removeLast();
     }
 }
 
@@ -517,7 +550,7 @@ public:
         }
         ASSERT(m_lastFragment.isValid());
         m_runsWidth -= m_uncompletedWidth;
-        revertRuns(runs, endPositionForCollapsedFragment(m_lastFragment) - endPositionForCollapsedFragment(m_lastCompleteFragment), m_uncompletedWidth);
+        revertRuns(runs, endPositionForCollapsedFragment(m_lastCompleteFragment), m_uncompletedWidth);
         m_uncompletedWidth = 0;
         ASSERT(m_lastCompleteFragment.isValid());
         return m_lastCompleteFragment;
@@ -527,8 +560,7 @@ public:
     {
         if (m_lastFragment.type() != TextFragmentIterator::TextFragment::Whitespace || m_lastFragment.end() == m_lastNonWhitespaceFragment.end())
             return;
-        unsigned trailingWhitespaceLength = endPositionForCollapsedFragment(m_lastFragment) - m_lastNonWhitespaceFragment.end();
-        revertRuns(runs, trailingWhitespaceLength, m_trailingWhitespaceWidth);
+        revertRuns(runs, m_lastNonWhitespaceFragment.end(), m_trailingWhitespaceWidth);
         m_runsWidth -= m_trailingWhitespaceWidth;
         m_lastFragment = m_lastNonWhitespaceFragment;
     }
@@ -963,8 +995,8 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
     case FlowHasJustifiedNonLatinText:
         stream << "text-align: justify with non-latin text";
         break;
-    case FlowHasOverflowVisible:
-        stream << "overflow: visible";
+    case FlowHasOverflowNotVisible:
+        stream << "overflow: hidden | scroll | auto";
         break;
     case FlowHasWebKitNBSPMode:
         stream << "-webkit-nbsp-mode: space";
@@ -1029,8 +1061,8 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
     case FlowIsMissingPrimaryFont:
         stream << "missing primary font";
         break;
-    case FlowFontIsMissingGlyph:
-        stream << "missing glyph";
+    case FlowPrimaryFontIsInsufficient:
+        stream << "missing glyph or glyph needs another font";
         break;
     case FlowTextIsCombineText:
         stream << "text is combine";
@@ -1047,8 +1079,8 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
     case FlowTextIsSVGInlineText:
         stream << "unsupported SVGInlineText";
         break;
-    case FlowFontIsNotSimple:
-        stream << "complext font";
+    case FlowHasComplexFontCodePath:
+        stream << "text with complex font codepath";
         break;
     case FlowHasTextShadow:
         stream << "text-shadow";
@@ -1058,6 +1090,9 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
         break;
     case FlowFontHasOverflowGlyph:
         stream << "-webkit-line-box-contain: glyphs with overflowing text.";
+        break;
+    case FlowTextHasSurrogatePair:
+        stream << "surrogate pair";
         break;
     case FlowTextIsEmpty:
     case FlowHasNoChild:
@@ -1143,11 +1178,9 @@ static void collectNonEmptyLeafRenderBlockFlowsForCurrentPage(HashSet<const Rend
 
 void toggleSimpleLineLayout()
 {
-    for (const auto* document : Document::allDocuments()) {
-        auto* settings = document->settings();
-        if (!settings)
-            continue;
-        settings->setSimpleLineLayoutEnabled(!settings->simpleLineLayoutEnabled());
+    for (auto* document : Document::allDocuments()) {
+        auto& settings = document->mutableSettings();
+        settings.setSimpleLineLayoutEnabled(!settings.simpleLineLayoutEnabled());
     }
 }
 

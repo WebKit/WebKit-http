@@ -210,12 +210,51 @@ DragImageRef createDragImageForImage(Frame& frame, Node& node, IntRect& imageRec
     return createDragImageFromSnapshot(snapshotNode(frame, node), &node);
 }
 
+#if !ENABLE(DATA_INTERACTION)
+DragImageRef platformAdjustDragImageForDeviceScaleFactor(DragImageRef image, float deviceScaleFactor)
+{
+    // Later code expects the drag image to be scaled by device's scale factor.
+    return scaleDragImage(image, { deviceScaleFactor, deviceScaleFactor });
+}
+#endif
+
 #if !PLATFORM(COCOA) && !PLATFORM(WIN)
 DragImageRef createDragImageForLink(URL&, const String&, FontRenderingMode)
 {
     return nullptr;
 }
 #endif
+
+DragImage::DragImage()
+    : m_dragImageRef { nullptr }
+{
+}
+
+DragImage::DragImage(DragImageRef dragImageRef)
+    : m_dragImageRef { dragImageRef }
+{
+}
+
+DragImage::DragImage(DragImage&& other)
+    : m_dragImageRef { std::exchange(other.m_dragImageRef, nullptr) }
+{
+}
+
+DragImage& DragImage::operator=(DragImage&& other)
+{
+    if (m_dragImageRef)
+        deleteDragImage(m_dragImageRef);
+
+    m_dragImageRef = std::exchange(other.m_dragImageRef, nullptr);
+
+    return *this;
+}
+
+DragImage::~DragImage()
+{
+    if (m_dragImageRef)
+        deleteDragImage(m_dragImageRef);
+}
 
 } // namespace WebCore
 

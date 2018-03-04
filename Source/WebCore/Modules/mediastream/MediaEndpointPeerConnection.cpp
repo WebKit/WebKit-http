@@ -420,9 +420,7 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
     if (m_peerConnection.internalIceGatheringState() == IceGatheringState::New && mediaDescriptions.size())
         m_peerConnection.updateIceGatheringState(IceGatheringState::Gathering);
 
-    if (m_peerConnection.internalSignalingState() == SignalingState::Stable && m_negotiationNeeded)
-        m_peerConnection.scheduleNegotiationNeededEvent();
-
+    markAsNeedingNegotiation();
     setLocalDescriptionSucceeded();
 }
 
@@ -666,11 +664,9 @@ void MediaEndpointPeerConnection::addIceCandidateTask(RTCIceCandidate& rtcCandid
     addIceCandidateSucceeded();
 }
 
-void MediaEndpointPeerConnection::getStats(MediaStreamTrack*, PeerConnection::StatsPromise&& promise)
+void MediaEndpointPeerConnection::getStats(MediaStreamTrack* track, Ref<DeferredPromise>&& promise)
 {
-    notImplemented();
-
-    promise.reject(NOT_SUPPORTED_ERR);
+    m_mediaEndpoint->getStats(track, WTFMove(promise));
 }
 
 Vector<RefPtr<MediaStream>> MediaEndpointPeerConnection::getRemoteStreams() const
@@ -731,17 +727,6 @@ void MediaEndpointPeerConnection::replaceTrackTask(RTCRtpSender& sender, const S
 void MediaEndpointPeerConnection::doStop()
 {
     m_mediaEndpoint->stop();
-}
-
-void MediaEndpointPeerConnection::markAsNeedingNegotiation()
-{
-    if (m_negotiationNeeded)
-        return;
-
-    m_negotiationNeeded = true;
-
-    if (m_peerConnection.internalSignalingState() == SignalingState::Stable)
-        m_peerConnection.scheduleNegotiationNeededEvent();
 }
 
 void MediaEndpointPeerConnection::emulatePlatformEvent(const String& action)

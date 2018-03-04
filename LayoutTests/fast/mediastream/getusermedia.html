@@ -7,7 +7,7 @@
         <p id="description"></p>
         <div id="console"></div>
         <script>
-            description("Tests webkitGetUserMedia.");
+            description("Tests getUserMedia.");
 
             function setUserMediaPermission(isGranted) {
                 if (window.testRunner)
@@ -47,8 +47,8 @@
                 shouldBeEqualToString('errorArg.name', 'OverconstrainedError');
                 shouldBeEqualToString('errorArg.message', 'Invalid constraint');
 
-                shouldThrow("navigator.webkitGetUserMedia({audio:{volume:{exact:1}}, video:true}, gotStream5, 0);");
-                shouldNotThrow("navigator.webkitGetUserMedia({audio:{volume:{exact:1}}, video:true}, gotStream5, error);");
+                shouldThrow("navigator.getUserMedia({audio:{volume:{exact:1}}, video:true}, gotStream5, 0);");
+                shouldNotThrow("navigator.getUserMedia({audio:{volume:{exact:1}}, video:true}, gotStream5, error);");
             }
 
             function gotStream4(s) {
@@ -57,8 +57,8 @@
                 shouldBe('stream.getAudioTracks().length', '1');
                 shouldBe('stream.getVideoTracks().length', '1');
 
-                shouldThrow("navigator.webkitGetUserMedia({audio:true, video:{width:{exact:11}}}, gotStreamInError, null);");
-                shouldNotThrow("navigator.webkitGetUserMedia({audio:true, video:{width:{exact:11}}}, gotStreamInError, error1);");
+                shouldThrow("navigator.getUserMedia({audio:true, video:{width:{exact:11}}}, gotStreamInError, null);");
+                shouldNotThrow("navigator.getUserMedia({audio:true, video:{width:{exact:11}}}, gotStreamInError, error1);");
             }
 
             function gotStream3(s) {
@@ -67,8 +67,8 @@
                 shouldBe('stream.getAudioTracks().length', '1');
                 shouldBe('stream.getVideoTracks().length', '1');
 
-                shouldThrow("navigator.webkitGetUserMedia({audio:{}, video:true}, gotStream4, null);");
-                shouldNotThrow("navigator.webkitGetUserMedia({audio:{}, video:true}, gotStream4, error);");
+                shouldThrow("navigator.getUserMedia({audio:{}, video:true}, gotStream4, null);");
+                shouldNotThrow("navigator.getUserMedia({audio:{}, video:true}, gotStream4, error);");
             }
 
             function gotStream2(s) {
@@ -77,8 +77,8 @@
                 shouldBe('stream.getAudioTracks().length', '0');
                 shouldBe('stream.getVideoTracks().length', '1');
 
-                shouldThrow("navigator.webkitGetUserMedia({audio:true, video:true}, gotStream3, null);");
-                shouldNotThrow("navigator.webkitGetUserMedia({audio:true, video:true}, gotStream3, error);");
+                shouldThrow("navigator.getUserMedia({audio:true, video:true}, gotStream3, null);");
+                shouldNotThrow("navigator.getUserMedia({audio:true, video:true}, gotStream3, error);");
             }
 
             function gotStream1(s) {
@@ -87,15 +87,15 @@
                 shouldBe('stream.getAudioTracks().length', '1');
                 shouldBe('stream.getVideoTracks().length', '0');
 
-                shouldThrow("navigator.webkitGetUserMedia({video:true}, gotStream2, null);")
-                shouldNotThrow("navigator.webkitGetUserMedia({video:true}, gotStream2, error);")
+                shouldThrow("navigator.getUserMedia({video:true}, gotStream2, null);")
+                shouldNotThrow("navigator.getUserMedia({video:true}, gotStream2, error);")
             }
 
-            shouldNotThrow("navigator.webkitGetUserMedia({audio:false, video:false}, error, expectedError);")
-            shouldThrow("navigator.webkitGetUserMedia({audio:false, video:false}, error, null);")
+            shouldNotThrow("navigator.getUserMedia({audio:false, video:false}, error, expectedError);")
+            shouldThrow("navigator.getUserMedia({audio:false, video:false}, error, null);")
 
             setUserMediaPermission(true);
-            shouldNotThrow("navigator.webkitGetUserMedia({audio:true}, gotStream1, error);");
+            shouldNotThrow("navigator.getUserMedia({audio:true}, gotStream1, error);");
 
             window.jsTestIsAsync = true;
             window.successfullyParsed = true;

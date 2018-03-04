@@ -91,6 +91,9 @@ public:
     void makeWebViewFirstResponder();
     void setWindowIsKey(bool);
     bool windowIsKey() const { return m_windowIsKey; }
+    
+    void removeFromWindow();
+    void addToWindow();
 
     bool viewSupportsOptions(const TestOptions&) const;
 

@@ -24,6 +24,10 @@
 #include "AppendPipeline.h"
 #include "MediaPlayerPrivateGStreamerMSE.h"
 #include "WebKitMediaSourceGStreamer.h"
+#include <gst/gst.h>
+
+GST_DEBUG_CATEGORY_EXTERN(webkit_mse_debug);
+#define GST_CAT_DEFAULT webkit_mse_debug
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
@@ -133,7 +137,8 @@ bool MediaSourceClientGStreamerMSE::append(RefPtr<SourceBufferPrivateGStreamer> 
 
     ASSERT(appendPipeline);
 
-    GstBuffer* buffer = gst_buffer_new_and_alloc(length);
+    void* bufferData = fastMalloc(length);
+    GstBuffer* buffer = gst_buffer_new_wrapped_full(static_cast<GstMemoryFlags>(0), bufferData, length, 0, length, bufferData, fastFree);
     gst_buffer_fill(buffer, 0, data, length);
 
     return appendPipeline->pushNewBuffer(buffer) == GST_FLOW_OK;

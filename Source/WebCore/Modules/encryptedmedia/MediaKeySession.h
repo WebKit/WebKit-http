@@ -38,6 +38,7 @@
 #include "JSDOMPromise.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeySessionType.h"
+#include "MediaKeyStatus.h"
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
@@ -69,6 +70,11 @@ public:
     void close(Ref<DeferredPromise>&&);
     void remove(Ref<DeferredPromise>&&);
 
+    using ClosedPromise = DOMPromise<void>;
+    void registerClosedPromise(ClosedPromise&&);
+
+    const Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>>& statuses() const { return m_statuses; }
+
 private:
     MediaKeySession(ScriptExecutionContext&, MediaKeySessionType, bool useDistinctiveIdentifier, Ref<CDM>&&, Ref<CDMInstance>&&);
     void enqueueMessage(MediaKeyMessageType, const SharedBuffer&);
@@ -90,6 +96,7 @@ private:
 
     String m_sessionId;
     double m_expiration;
+    std::optional<ClosedPromise> m_closedPromise;
     Ref<MediaKeyStatusMap> m_keyStatuses;
     bool m_closed { false };
     bool m_uninitialized { true };
@@ -103,6 +110,7 @@ private:
     Vector<Ref<SharedBuffer>> m_recordOfKeyUsage;
     double m_firstDecryptTime { 0 };
     double m_latestDecryptTime { 0 };
+    Vector<std::pair<Ref<SharedBuffer>, MediaKeyStatus>> m_statuses;
     WeakPtrFactory<MediaKeySession> m_weakPtrFactory;
 };
 

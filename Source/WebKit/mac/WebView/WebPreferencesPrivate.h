@@ -251,8 +251,8 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)forceSoftwareWebGLRendering;
 - (void)setForceSoftwareWebGLRendering:(BOOL)forced;
 
-- (BOOL)preferLowPowerWebGLRendering;
-- (void)setPreferLowPowerWebGLRendering:(BOOL)preferLowPower;
+- (BOOL)forceLowPowerGPUForWebGL;
+- (void)setForceWebGLUsesLowPower:(BOOL)forceLowPower;
 
 - (BOOL)accelerated2dCanvasEnabled;
 - (void)setAccelerated2dCanvasEnabled:(BOOL)enabled;
@@ -297,9 +297,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (NSString *)pictographFontFamily;
 - (void)setPictographFontFamily:(NSString *)family;
-
-- (BOOL)allowsPageCacheWithWindowOpener;
-- (void)setAllowsPageCacheWithWindowOpener:(BOOL)flag;
 
 - (BOOL)pageCacheSupportsPlugins;
 - (void)setPageCacheSupportsPlugins:(BOOL)flag;
@@ -529,6 +526,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 @property (nonatomic) BOOL allowsInlineMediaPlaybackAfterFullscreen;
 @property (nonatomic) BOOL intersectionObserverEnabled;
 @property (nonatomic) BOOL userTimingEnabled;
+@property (nonatomic) BOOL resourceTimingEnabled;
 @property (nonatomic) BOOL linkPreloadEnabled;
 
 #if TARGET_OS_IPHONE

@@ -263,7 +263,6 @@
 #include "JSHTMLMarqueeElement.cpp"
 #include "JSHTMLMediaElement.cpp"
 #include "JSHTMLMediaElementMediaSession.cpp"
-#include "JSHTMLMediaElementMediaStream.cpp"
 #include "JSHTMLMenuElement.cpp"
 #include "JSHTMLMetaElement.cpp"
 #include "JSHTMLMeterElement.cpp"
@@ -403,7 +402,6 @@
 #include "JSRTCRtpSender.cpp"
 #include "JSRTCSessionDescription.cpp"
 #include "JSRTCStatsReport.cpp"
-#include "JSRTCStatsResponse.cpp"
 #include "JSRTCTrackEvent.cpp"
 #include "JSScreen.cpp"
 #include "JSScriptProcessorNode.cpp"
@@ -616,7 +614,6 @@
 #include "JSTreeWalker.cpp"
 #include "JSUIEvent.cpp"
 #include "JSUIEventInit.cpp"
-#include "JSURLUtils.cpp"
 #if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSUserMessageHandler.cpp"
 #include "JSUserMessageHandlersNamespace.cpp"

@@ -95,6 +95,7 @@
 #include "PluginDocument.h"
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
+#include "PublicSuffix.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadInfo.h"
 #include "ResourceLoadObserver.h"
@@ -1200,10 +1201,9 @@ void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String
         RefPtr<SecurityOrigin> referrerOrigin = SecurityOrigin::createFromString(referrer);
         addHTTPOriginIfNeeded(request, referrerOrigin->toString());
     }
-#if ENABLE(CACHE_PARTITIONING)
     if (&m_frame.tree().top() != &m_frame)
         request.setDomainForCachePartition(m_frame.tree().top().document()->securityOrigin().domainForCachePartition());
-#endif
+
     addExtraFieldsToRequest(request, newLoadType, true);
     if (newLoadType == FrameLoadType::Reload || newLoadType == FrameLoadType::ReloadFromOrigin)
         request.setCachePolicy(ReloadIgnoringCacheData);
@@ -1368,7 +1368,7 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
     loadWithDocumentLoader(newDocumentLoader, type, 0, AllowNavigationToInvalidURL::Yes);
 }
 
-static void logNavigation(MainFrame& frame, FrameLoadType type)
+static void logNavigation(MainFrame& frame, const URL& destinationURL, FrameLoadType type)
 {
     if (!frame.page())
         return;
@@ -1402,6 +1402,11 @@ static void logNavigation(MainFrame& frame, FrameLoadType type)
         return;
     }
     frame.page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    String domain = topPrivatelyControlledDomain(destinationURL.host());
+    if (!domain.isEmpty())
+        frame.page()->diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), domain, ShouldSample::No);
+#endif
 }
 
 void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType type, FormState* formState, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
@@ -1422,16 +1427,17 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
     if (m_frame.document())
         m_previousURL = m_frame.document()->url();
 
+    const URL& newURL = loader->request().url();
+
     // Log main frame navigation types.
     if (m_frame.isMainFrame()) {
-        logNavigation(static_cast<MainFrame&>(m_frame), type);
+        logNavigation(static_cast<MainFrame&>(m_frame), newURL, type);
         static_cast<MainFrame&>(m_frame).performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadStarted);
     }
 
     policyChecker().setLoadType(type);
     bool isFormSubmission = formState;
 
-    const URL& newURL = loader->request().url();
     const String& httpMethod = loader->request().httpMethod();
 
     if (shouldPerformFragmentNavigation(isFormSubmission, httpMethod, policyChecker().loadType(), newURL)) {
@@ -2490,25 +2496,31 @@ void FrameLoader::dispatchOnloadEvents()
 
 void FrameLoader::frameDetached()
 {
-    // Calling stopAllLoaders can cause the frame to be deallocated, including the frame loader.
+    // Calling stopAllLoaders() can cause the frame to be deallocated, including the frame loader.
     Ref<Frame> protectedFrame(m_frame);
 
-    stopAllLoaders();
-    m_frame.document()->stopActiveDOMObjects();
+    if (m_frame.document()->pageCacheState() != Document::InPageCache) {
+        stopAllLoaders();
+        m_frame.document()->stopActiveDOMObjects();
+    }
+
     detachFromParent();
 }
 
 void FrameLoader::detachFromParent()
 {
+    // Calling stopAllLoaders() can cause the frame to be deallocated, including the frame loader.
     Ref<Frame> protect(m_frame);
 
     closeURL();
     history().saveScrollPositionAndViewStateToItem(history().currentItem());
     detachChildren();
-    // stopAllLoaders() needs to be called after detachChildren(), because detachedChildren()
-    // will trigger the unload event handlers of any child frames, and those event
-    // handlers might start a new subresource load in this frame.
-    stopAllLoaders();
+    if (m_frame.document()->pageCacheState() != Document::InPageCache) {
+        // stopAllLoaders() needs to be called after detachChildren() if the document is not in the page cache,
+        // because detachedChildren() will trigger the unload event handlers of any child frames, and those event
+        // handlers might start a new subresource load in this frame.
+        stopAllLoaders();
+    }
 
     InspectorInstrumentation::frameDetachedFromParent(m_frame);
 

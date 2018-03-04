@@ -523,7 +523,7 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     ASSERT(!reachedTerminalState());
     ASSERT(!m_resource->resourceToRevalidate());
     // FIXME (129394): We should cancel the load when a decode error occurs instead of continuing the load to completion.
-    ASSERT(!m_resource->errorOccurred() || m_resource->status() == CachedResource::DecodeError);
+    ASSERT(!m_resource->errorOccurred() || m_resource->status() == CachedResource::DecodeError || !m_resource->isLoading());
     LOG(ResourceLoading, "Received '%s'.", m_resource->url().string().latin1().data());
     logResourceLoaded(m_frame.get(), m_resource->type());
 
@@ -535,7 +535,7 @@ void SubresourceLoader::didFinishLoading(double finishTime)
     // Mixing times from different processes can cause the finish time to be earlier than
     // the response received time due to inter-process communication lag.
     UNUSED_PARAM(finishTime);
-    double responseEndTime = monotonicallyIncreasingTime();
+    MonotonicTime responseEndTime = MonotonicTime::now();
     m_loadTiming.setResponseEnd(responseEndTime);
 
 #if ENABLE(WEB_TIMING)
@@ -546,14 +546,14 @@ void SubresourceLoader::didFinishLoading(double finishTime)
 #endif
 
     m_state = Finishing;
-    m_resource->setLoadFinishTime(responseEndTime); // FIXME: Users of the loadFinishTime should use the LoadTiming struct instead.
+    m_resource->setLoadFinishTime(responseEndTime.secondsSinceEpoch().seconds()); // FIXME: Users of the loadFinishTime should use the LoadTiming struct instead.
     m_resource->finishLoading(resourceData());
 
     if (wasCancelled())
         return;
     m_resource->finish();
     ASSERT(!reachedTerminalState());
-    didFinishLoadingOnePart(responseEndTime);
+    didFinishLoadingOnePart(responseEndTime.secondsSinceEpoch().seconds());
     notifyDone();
     if (reachedTerminalState())
         return;

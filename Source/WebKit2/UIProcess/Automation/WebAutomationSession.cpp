@@ -727,7 +727,7 @@ void WebAutomationSession::addSingleCookie(ErrorString& errorString, const Strin
         FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The parameter 'httpOnly' was not found.");
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->addCookie(cookie, activeURL.host());
+    cookieManager->addCookie(WebCore::SessionID::defaultSessionID(), cookie, activeURL.host());
 
     callback->sendSuccess();
 }
@@ -742,7 +742,7 @@ void WebAutomationSession::deleteAllCookies(ErrorString& errorString, const Stri
     ASSERT(activeURL.isValid());
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->deleteCookiesForHostname(activeURL.host());
+    cookieManager->deleteCookiesForHostname(WebCore::SessionID::defaultSessionID(), activeURL.host());
 }
 
 #if USE(APPKIT)
@@ -916,13 +916,13 @@ void WebAutomationSession::didTakeScreenshot(uint64_t callbackID, const Shareabl
         return;
     }
 
-    String base64EncodedData = platformGetBase64EncodedPNGData(imageDataHandle);
-    if (base64EncodedData.isEmpty()) {
+    std::optional<String> base64EncodedData = platformGetBase64EncodedPNGData(imageDataHandle);
+    if (!base64EncodedData) {
         callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(InternalError));
         return;
     }
 
-    callback->sendSuccess(base64EncodedData);
+    callback->sendSuccess(base64EncodedData.value());
 }
 
 // Platform-dependent Implementation Stubs.
@@ -942,7 +942,7 @@ void WebAutomationSession::platformSimulateKeySequence(WebPageProxy&, const Stri
 #endif // !PLATFORM(MAC)
 
 #if !PLATFORM(COCOA)
-String WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)
+std::optional<String> WebAutomationSession::platformGetBase64EncodedPNGData(const ShareableBitmap::Handle&)
 {
     return String();
 }

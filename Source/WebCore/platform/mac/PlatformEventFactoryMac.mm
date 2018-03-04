@@ -671,16 +671,7 @@ static inline OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *even
 
 static int typeForEvent(NSEvent *event)
 {
-    if ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)])
-        return static_cast<int>([NSMenu menuTypeForEvent:event]);
-
-    if (mouseButtonForEvent(event) == RightButton)
-        return static_cast<int>(NSMenuTypeContextMenu);
-
-    if (mouseButtonForEvent(event) == LeftButton && modifiersForEvent(event).contains(PlatformEvent::Modifier::CtrlKey))
-        return static_cast<int>(NSMenuTypeContextMenu);
-
-    return static_cast<int>(NSMenuTypeNone);
+    return static_cast<int>([NSMenu menuTypeForEvent:event]);
 }
     
 class PlatformMouseEventBuilder : public PlatformMouseEvent {
@@ -714,6 +705,9 @@ public:
         m_globalPosition = IntPoint(globalPointForEvent(event));
         m_button = mouseButtonForEvent(event);
         m_clickCount = clickCountForEvent(event);
+#if ENABLE(POINTER_LOCK)
+        m_movementDelta = IntPoint(event.deltaX, event.deltaY);
+#endif
 
         m_force = 0;
 #if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003

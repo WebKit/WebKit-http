@@ -28,8 +28,8 @@
 #include "FrameView.h"
 
 #include "AXObjectCache.h"
-#include "AnimationController.h"
 #include "BackForwardController.h"
+#include "CSSAnimationController.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "Chrome.h"
@@ -2335,8 +2335,10 @@ bool FrameView::scrollToFragment(const URL& url)
     // OTOH If CSS target was set previously, we want to set it to 0, recalc
     // and possibly repaint because :target pseudo class may have been
     // set (see bug 11321).
-    if (!url.hasFragmentIdentifier() && !frame().document()->cssTarget())
+    if (!url.hasFragmentIdentifier()) {
+        frame().document()->setCSSTarget(nullptr);
         return false;
+    }
 
     String fragmentIdentifier = url.fragmentIdentifier();
     if (scrollToAnchor(fragmentIdentifier))
@@ -2373,7 +2375,7 @@ bool FrameView::scrollToAnchor(const String& name)
                 return true;
         }
     }
-  
+
     // Implement the rule that "" and "top" both mean top of page as in other browsers.
     if (!anchorElement && !(name.isEmpty() || equalLettersIgnoringASCIICase(name, "top")))
         return false;
@@ -2437,9 +2439,9 @@ void FrameView::setScrollPosition(const ScrollPosition& scrollPosition)
 
 void FrameView::contentsResized()
 {
-    // For non-delegated scrolling, adjustTiledBackingScrollability() is called via addedOrRemovedScrollbar() which occurs less often.
+    // For non-delegated scrolling, updateTiledBackingAdaptiveSizing() is called via addedOrRemovedScrollbar() which occurs less often.
     if (delegatesScrolling())
-        adjustTiledBackingScrollability();
+        updateTiledBackingAdaptiveSizing();
 }
 
 void FrameView::delegatesScrollingDidChange()
@@ -2780,28 +2782,30 @@ void FrameView::addedOrRemovedScrollbar()
             renderView->compositor().frameViewDidAddOrRemoveScrollbars();
     }
 
-    adjustTiledBackingScrollability();
+    updateTiledBackingAdaptiveSizing();
 }
 
-void FrameView::adjustTiledBackingScrollability()
+TiledBacking::Scrollability FrameView::computeScrollability() const
 {
-    auto* tiledBacking = this->tiledBacking();
-    if (!tiledBacking)
-        return;
-    
+    auto* page = frame().page();
+
+    // Use smaller square tiles if the Window is not active to facilitate app napping.
+    if (!page || !page->isWindowActive())
+        return TiledBacking::HorizontallyScrollable | TiledBacking::VerticallyScrollable;
+
     bool horizontallyScrollable;
     bool verticallyScrollable;
     bool clippedByAncestorView = static_cast<bool>(m_viewExposedRect);
 
 #if PLATFORM(IOS)
-    if (Page* page = frame().page())
+    if (page)
         clippedByAncestorView |= page->enclosedInScrollableAncestorView();
 #endif
 
     if (delegatesScrolling()) {
         IntSize documentSize = contentsSize();
         IntSize visibleSize = this->visibleSize();
-        
+
         horizontallyScrollable = clippedByAncestorView || documentSize.width() > visibleSize.width();
         verticallyScrollable = clippedByAncestorView || documentSize.height() > visibleSize.height();
     } else {
@@ -2816,14 +2820,23 @@ void FrameView::adjustTiledBackingScrollability()
     if (verticallyScrollable)
         scrollability |= TiledBacking::VerticallyScrollable;
 
-    tiledBacking->setScrollability(scrollability);
+    return scrollability;
+}
+
+void FrameView::updateTiledBackingAdaptiveSizing()
+{
+    auto* tiledBacking = this->tiledBacking();
+    if (!tiledBacking)
+        return;
+
+    tiledBacking->setScrollability(computeScrollability());
 }
 
 #if PLATFORM(IOS)
 
 void FrameView::unobscuredContentSizeChanged()
 {
-    adjustTiledBackingScrollability();
+    updateTiledBackingAdaptiveSizing();
 }
 
 #endif
@@ -5244,7 +5257,7 @@ void FrameView::setViewExposedRect(std::optional<FloatRect> viewExposedRect)
 
     if (TiledBacking* tiledBacking = this->tiledBacking()) {
         if (hasRectChanged)
-            adjustTiledBackingScrollability();
+            updateTiledBackingAdaptiveSizing();
         adjustTiledBackingCoverage();
         tiledBacking->setTiledScrollingIndicatorPosition(m_viewExposedRect ? m_viewExposedRect.value().location() : FloatPoint());
     }

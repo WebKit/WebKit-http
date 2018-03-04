@@ -4,7 +4,8 @@ class TracksPanel extends LayoutNode
 
     constructor()
     {
-        super(`<div class="tracks-panel">`);
+        super(`<div class="tracks-panel"></div>`);
+        this._backgroundTint = new BackgroundTint;
         this._rightX = 0;
         this._bottomY = 0;
     }
@@ -45,7 +46,7 @@ class TracksPanel extends LayoutNode
         this.element.addEventListener("transitionend", this);
 
         // Ensure a transition will indeed happen by starting it only on the next frame.
-        window.requestAnimationFrame(() => { this.element.classList.add("fade-out") });
+        window.requestAnimationFrame(() => { this.element.classList.add("fade-out"); });
     }
 
     get bottomY()
@@ -132,33 +133,33 @@ class TracksPanel extends LayoutNode
 
     _childrenFromDataSource()
     {
-        const children = [];
+        const children = [this._backgroundTint];
 
         this._trackNodes = [];
-        
+
         const dataSource = this.dataSource;
         if (!dataSource)
             return children;
-        
+
         const numberOfSections = dataSource.tracksPanelNumberOfSections();
-        if (numberOfSections == 0)
+        if (numberOfSections === 0)
             return children;
 
         for (let sectionIndex = 0; sectionIndex < numberOfSections; ++sectionIndex) {
-            let sectionNode = new LayoutNode(`<div class="tracks-panel-section"></div>`);
+            let sectionNode = new LayoutNode(`<section></section>`);
             sectionNode.addChild(new LayoutNode(`<h3>${dataSource.tracksPanelTitleForSection(sectionIndex)}</h3>`));
 
             let tracksListNode = sectionNode.addChild(new LayoutNode(`<ul></ul>`));
             let numberOfTracks = dataSource.tracksPanelNumberOfTracksInSection(sectionIndex);
             for (let trackIndex = 0; trackIndex < numberOfTracks; ++trackIndex) {
                 let trackTitle = dataSource.tracksPanelTitleForTrackInSection(trackIndex, sectionIndex);
-                let trackSelected = dataSource.tracksPanelIsTrackInSectionSelected(trackIndex, sectionIndex)
+                let trackSelected = dataSource.tracksPanelIsTrackInSectionSelected(trackIndex, sectionIndex);
                 let trackNode = tracksListNode.addChild(new TrackNode(trackIndex, sectionIndex, trackTitle, trackSelected, this));
                 this._trackNodes.push(trackNode);
             }
             children.push(sectionNode);
         }
-        
+
         return children;
     }
 

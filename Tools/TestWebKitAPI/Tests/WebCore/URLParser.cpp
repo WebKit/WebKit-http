@@ -493,11 +493,22 @@ TEST_F(URLParserTest, Basic)
     checkURL("http://\t//\\///user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http:/\\user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http://127.0.0.1", {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"});
-    checkURL("http://127.0.0.1.", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://127.0.0.1./", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://0x100.0/", {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
-    checkURL("http://0.0.0x100.0/", {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
-    checkURL("http://0.0.0.0x100/", {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
+    checkURLDifferences("http://127.0.0.1.",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURLDifferences("http://127.0.0.1./",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURL("http://127.0.0.1../", {"http", "", "", "127.0.0.1..", 0, "/", "", "", "http://127.0.0.1../"});
+    checkURLDifferences("http://0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0x100.0/"},
+        {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
+    checkURLDifferences("http://0.0.0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0x100.0/"},
+        {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
+    checkURLDifferences("http://0.0.0.0x100/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0.0x100/"},
+        {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
     checkURL("http://host:123?", {"http", "", "", "host", 123, "/", "", "", "http://host:123/?"});
     checkURL("http://host:123?query", {"http", "", "", "host", 123, "/", "query", "", "http://host:123/?query"});
     checkURL("http://host:123#", {"http", "", "", "host", 123, "/", "", "", "http://host:123/#"});
@@ -1264,14 +1275,13 @@ TEST_F(URLParserTest, ParserFailures)
     shouldFail("http://[1234::ab@]");
     shouldFail("http://[1234::ab~]");
     shouldFail("http://[2001::1");
+    shouldFail("http://4:b\xE1");
     shouldFail("http://[1:2:3:4:5:6:7:8~]/");
     shouldFail("http://[a:b:c:d:e:f:g:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:g:h:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:127.0.0.0x11]"); // Chrome treats this as hex, Firefox and the spec fail
     shouldFail("http://[a:b:c:d:e:f:127.0.-0.1]");
-    checkURLDifferences("asdf://space In\aHost",
-        {"asdf", "", "", "space In%07Host", 0, "", "", "", "asdf://space In%07Host"},
-        {"", "", "", "", 0, "", "", "", "asdf://space In\aHost"});
+    shouldFail("asdf://space In\aHost");
     shouldFail("asdf://[0:0:0:0:a:b:c:d");
 }
 

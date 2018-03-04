@@ -757,9 +757,9 @@ WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirecti
     return ([UIView userInterfaceLayoutDirectionForSemanticContentAttribute:[m_webView semanticContentAttribute]] == UIUserInterfaceLayoutDirectionLeftToRight) ? WebCore::UserInterfaceLayoutDirection::LTR : WebCore::UserInterfaceLayoutDirection::RTL;
 }
 
-Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& message)
+Ref<ValidationBubble> PageClientImpl::createValidationBubble(const String& message, const ValidationBubble::Settings& settings)
 {
-    return ValidationBubble::create(m_contentView, message);
+    return ValidationBubble::create(m_contentView, message, settings);
 }
 
 #if ENABLE(DATA_INTERACTION)
@@ -768,9 +768,14 @@ void PageClientImpl::didPerformDataInteractionControllerOperation()
     [m_contentView _didPerformDataInteractionControllerOperation];
 }
 
-void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPosition, const ShareableBitmap::Handle& image, bool isLink)
+void PageClientImpl::didHandleStartDataInteractionRequest(bool started)
 {
-    [m_contentView _startDataInteractionWithImage:ShareableBitmap::create(image)->makeCGImageCopy() atClientPosition:CGPointMake(clientPosition.x(), clientPosition.y()) isLink:isLink];
+    [m_contentView _didHandleStartDataInteractionRequest:started];
+}
+
+void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPosition, const ShareableBitmap::Handle& image, const FloatPoint& anchorPoint, bool isLink)
+{
+    [m_contentView _startDataInteractionWithImage:ShareableBitmap::create(image)->makeCGImageCopy() atClientPosition:CGPointMake(clientPosition.x(), clientPosition.y()) anchorPoint:anchorPoint isLink:isLink];
 }
 #endif
 

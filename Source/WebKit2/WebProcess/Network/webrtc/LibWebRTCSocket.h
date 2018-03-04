@@ -27,8 +27,7 @@
 
 #if USE(LIBWEBRTC)
 
-#include <WebCore/LibWebRTCMacros.h>
-#include <WebCore/LibWebRTCUtils.h>
+#include <WebCore/LibWebRTCProvider.h>
 #include <webrtc/base/asyncpacketsocket.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
@@ -68,7 +67,6 @@ private:
     void signalReadPacket(const WebCore::SharedBuffer&, rtc::SocketAddress&&, int64_t);
     void signalSentPacket(int, int64_t);
     void signalAddressReady(const String&);
-    void signalAddressReady();
     void signalConnect();
     void signalClose(int);
 

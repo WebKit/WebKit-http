@@ -36,6 +36,7 @@ public:
     void setHref(const String& url) { static_cast<T*>(this)->setHref(url); }
 
     String toString() const;
+    String toJSON() const;
 
     String origin() const;
 
@@ -74,6 +75,12 @@ String URLUtils<T>::toString() const
 }
 
 template <typename T>
+String URLUtils<T>::toJSON() const
+{
+    return href().string();
+}
+
+template <typename T>
 String URLUtils<T>::origin() const
 {
     RefPtr<SecurityOrigin> origin = SecurityOrigin::create(href());
@@ -104,6 +111,8 @@ template <typename T>
 void URLUtils<T>::setUsername(const String& user)
 {
     URL url = href();
+    if (url.cannotBeABaseURL())
+        return;
     url.setUser(user);
     setHref(url);
 }
@@ -118,6 +127,8 @@ template <typename T>
 void URLUtils<T>::setPassword(const String& pass)
 {
     URL url = href();
+    if (url.cannotBeABaseURL())
+        return;
     url.setPass(pass);
     setHref(url);
 }
@@ -143,6 +154,8 @@ void URLUtils<T>::setHost(const String& value)
     if (value.isEmpty())
         return;
     URL url = href();
+    if (url.cannotBeABaseURL())
+        return;
     if (!url.canSetHostOrPort())
         return;
 
@@ -190,6 +203,8 @@ void URLUtils<T>::setHostname(const String& value)
         return;
 
     URL url = href();
+    if (url.cannotBeABaseURL())
+        return;
     if (!url.canSetHostOrPort())
         return;
 
@@ -210,6 +225,8 @@ template <typename T>
 void URLUtils<T>::setPort(const String& value)
 {
     URL url = href();
+    if (url.cannotBeABaseURL() || url.protocolIs("file"))
+        return;
     if (!url.canSetHostOrPort())
         return;
 
@@ -236,6 +253,8 @@ template <typename T>
 void URLUtils<T>::setPathname(const String& value)
 {
     URL url = href();
+    if (url.cannotBeABaseURL())
+        return;
     if (!url.canSetPathname())
         return;
 

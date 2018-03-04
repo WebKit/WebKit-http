@@ -131,4 +131,56 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
 #endif
 }
 
+void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
+{
+#if WK_API_ENABLED
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    WKPreferences *preferences = webView.configuration.preferences;
+
+    String preference = toWTFString(toWK(preferenceRef));
+    String value = toWTFString(toWK(valueRef));
+    if (preference == "WebKitMinimumFontSize")
+        preferences.minimumFontSize = value.toDouble();
+#else
+    UNUSED_PARAM(preferenceRef);
+    UNUSED_PARAM(valueRef);
+#endif
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* mainWebView = TestController::singleton().mainWebView();
+    mainWebView->removeFromWindow();
+
+    [mainWebView->platformView() _doAfterNextPresentationUpdate: ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(callback);
+#endif
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+#if WK_API_ENABLED
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    auto* mainWebView = TestController::singleton().mainWebView();
+    mainWebView->addToWindow();
+
+    [mainWebView->platformView() _doAfterNextPresentationUpdate: ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(callback);
+#endif
+}
+
 } // namespace WTR

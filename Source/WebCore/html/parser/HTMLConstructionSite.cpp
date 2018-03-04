@@ -105,9 +105,7 @@ static inline void insert(HTMLConstructionSiteTask& task)
     if (is<HTMLTemplateElement>(*task.parent))
         task.parent = &downcast<HTMLTemplateElement>(*task.parent).content();
 
-    if (ContainerNode* parent = task.child->parentNode())
-        parent->parserRemoveChild(*task.child);
-
+    ASSERT(!task.child->parentNode());
     if (task.nextChild)
         task.parent->parserInsertBefore(*task.child, *task.nextChild);
     else
@@ -140,16 +138,20 @@ static inline void executeInsertAlreadyParsedChildTask(HTMLConstructionSiteTask&
 {
     ASSERT(task.operation == HTMLConstructionSiteTask::InsertAlreadyParsedChild);
 
+    if (ContainerNode* parent = task.child->parentNode())
+        parent->parserRemoveChild(*task.child);
     insert(task);
 }
 
-static inline void executeTakeAllChildrenTask(HTMLConstructionSiteTask& task)
+static inline void executeTakeAllChildrenAndReparentTask(HTMLConstructionSiteTask& task)
 {
-    ASSERT(task.operation == HTMLConstructionSiteTask::TakeAllChildren);
+    ASSERT(task.operation == HTMLConstructionSiteTask::TakeAllChildrenAndReparent);
 
-    task.parent->takeAllChildrenFrom(task.oldParent());
-    // Notice that we don't need to manually attach the moved children
-    // because takeAllChildrenFrom does that work for us.
+    auto* furthestBlock = task.oldParent();
+    task.parent->takeAllChildrenFrom(furthestBlock);
+
+    RELEASE_ASSERT(!task.parent->parentNode());
+    furthestBlock->parserAppendChild(*task.parent);
 }
 
 static inline void executeTask(HTMLConstructionSiteTask& task)
@@ -165,8 +167,8 @@ static inline void executeTask(HTMLConstructionSiteTask& task)
     case HTMLConstructionSiteTask::Reparent:
         executeReparentTask(task);
         return;
-    case HTMLConstructionSiteTask::TakeAllChildren:
-        executeTakeAllChildrenTask(task);
+    case HTMLConstructionSiteTask::TakeAllChildrenAndReparent:
+        executeTakeAllChildrenAndReparentTask(task);
         return;
     }
     ASSERT_NOT_REACHED();
@@ -599,30 +601,21 @@ void HTMLConstructionSite::reparent(HTMLElementStack::ElementRecord& newParent, 
     m_taskQueue.append(WTFMove(task));
 }
 
-void HTMLConstructionSite::reparent(HTMLElementStack::ElementRecord& newParent, HTMLStackItem& child)
-{
-    HTMLConstructionSiteTask task(HTMLConstructionSiteTask::Reparent);
-    task.parent = &newParent.node();
-    task.child = &child.element();
-    m_taskQueue.append(WTFMove(task));
-}
-
 void HTMLConstructionSite::insertAlreadyParsedChild(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& child)
 {
-    if (causesFosterParenting(newParent)) {
-        fosterParent(child.element());
-        return;
-    }
-
     HTMLConstructionSiteTask task(HTMLConstructionSiteTask::InsertAlreadyParsedChild);
-    task.parent = &newParent.node();
+    if (causesFosterParenting(newParent)) {
+        findFosterSite(task);
+        ASSERT(task.parent);
+    } else
+        task.parent = &newParent.node();
     task.child = &child.element();
     m_taskQueue.append(WTFMove(task));
 }
 
-void HTMLConstructionSite::takeAllChildren(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& oldParent)
+void HTMLConstructionSite::takeAllChildrenAndReparent(HTMLStackItem& newParent, HTMLElementStack::ElementRecord& oldParent)
 {
-    HTMLConstructionSiteTask task(HTMLConstructionSiteTask::TakeAllChildren);
+    HTMLConstructionSiteTask task(HTMLConstructionSiteTask::TakeAllChildrenAndReparent);
     task.parent = &newParent.node();
     task.child = &oldParent.node();
     m_taskQueue.append(WTFMove(task));

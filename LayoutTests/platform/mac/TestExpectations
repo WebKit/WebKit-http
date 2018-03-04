@@ -280,7 +280,6 @@ fast/events/platform-wheelevent-paging-y-in-scrolling-page.html
 # Pointer Lock can only check some of the API at the moment.
 pointer-lock/bug90391-move-then-window-open-crash.html
 pointer-lock/locked-element-iframe-removed-from-dom.html
-pointer-lock/mouse-event-delivery.html
 pointer-lock/pointerlockchange-event-on-lock-lost.html
 pointer-lock/pointerlockchange-pointerlockerror-events.html
 pointer-lock/pointerlockelement-null-when-pending.html
@@ -1181,6 +1180,8 @@ webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
 webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
+webkit.org/b/164293 [ Debug ] inspector/debugger/breakpoint-scope.html [ Pass Timeout ]
+webkit.org/b/168090 [ Debug ] inspector/debugger/breakpoint-columns.html [ Pass Timeout ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
 webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
@@ -1189,6 +1190,7 @@ webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
+webkit.org/b/154610 inspector/dom-debugger/node-removed.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
 webkit.org/b/167408 [ Debug ] inspector/heap/gc.html [ Slow ]
 webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass Timeout ]
@@ -1197,7 +1199,7 @@ webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/167265 inspector/network/client-blocked-load.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
+webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Timeout Failure ]
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
 webkit.org/b/164278 inspector/storage/domStorage-events.html [ Pass Failure ]
 webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
@@ -1213,6 +1215,7 @@ webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
 webkit.org/b/158006 inspector/console/console-time.html [ Pass Timeout ]
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
+webkit.org/b/168091 [ Debug ] inspector/worker/resources-in-worker.html [ Pass Timeout ]
 
 # Colorspaces on CA OpenGL layers not available in Yosemite
 [ Yosemite ] fast/canvas/webgl/match-page-color-space.html [ Skip ]
@@ -1443,8 +1446,6 @@ webkit.org/b/116621 fast/replaced/preferred-widths.html [ Pass Failure ]
 
 webkit.org/b/164277 fast/preloader/image-srcset.html [ Pass Failure ]
 
-webkit.org/b/161650 http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html [ Pass Failure ]
-
 webkit.org/b/166038 http/tests/inspector/network/fetch-network-data.html [ Pass Timeout ]
 webkit.org/b/164033 http/tests/inspector/network/xhr-request-data-encoded-correctly.html [ Pass Timeout ]
 
@@ -1457,20 +1458,22 @@ webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled
 
 # picture-in-picture is not supported prior to Sierra.
 [ ElCapitan ] media/modern-media-controls/pip-support [ Skip ]
+[ ElCapitan ] http/tests/media/modern-media-controls/pip-support [ Skip ]
 [ ElCapitan ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
 [ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
 
-# iPad-specific tests
+# iOS or iPad-specific tests
 media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html [ Skip ]
 media/modern-media-controls/pip-support/ipad/pip-support-enabled.html [ Skip ]
 media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
 media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip ]
 media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-audio-background.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Skip ]
 
 # This one always times out on the bots, cannot reproduce locally.
 webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
-
-webkit.org/b/165290 media/modern-media-controls/tracks-panel/tracks-panel-hide-click-outside.html [ Pass Timeout ]
 
 webkit.org/b/167263 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
 
@@ -1484,9 +1487,9 @@ webkit.org/b/167373 media/modern-media-controls/tracks-support/tracks-support-sh
 
 webkit.org/b/167396 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Failure ]
 
-webkit.org/b/167442 [ ElCapitan ] media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
+webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
 
-webkit.org/b/167461 media/modern-media-controls/layout-node/addChild.html [ Pass Timeout ]
+webkit.org/b/167442 [ ElCapitan ] media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
 webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
 
@@ -1495,7 +1498,10 @@ media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
 media/encrypted-media/mock-MediaKeySystemAccess.html [ Skip ]
 media/encrypted-media/mock-MediaKeys-setServerCertificate.html [ Skip ]
 media/encrypted-media/mock-MediaKeys-createSession.html [ Skip ]
+media/encrypted-media/mock-MediaKeySession-close.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-generateRequest.html [ Skip ]
+media/encrypted-media/mock-MediaKeySession-load.html [ Skip ]
+media/encrypted-media/mock-MediaKeySession-remove.html [ Skip ]
 media/encrypted-media/mock-MediaKeySession-update.html [ Skip ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
@@ -1505,3 +1511,18 @@ webkit.org/b/166672 [ Sierra+ ] fast/text/variations/advances.html [ Failure ]
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/162510 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]
+
+webkit.org/b/167642 imported/w3c/web-platform-tests/shadow-dom/slotchange.html [ Pass Failure ]
+
+webkit.org/b/167757 [ Sierra Release ] workers/bomb.html [ Pass Timeout ]
+
+webkit.org/b/167749 http/tests/media/track-in-band-hls-metadata-crash.html [ Pass Timeout ]
+
+webkit.org/b/167186 fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
+
+# rdar://problem/23643423
+[ Debug ] fast/frames/exponential-frames.html [ Skip ]
+
+webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]

@@ -51,9 +51,10 @@
 
 namespace WebCore {
 
-Performance::Performance(ScriptExecutionContext& context, double timeOrigin)
+Performance::Performance(ScriptExecutionContext& context, MonotonicTime timeOrigin)
     : ContextDestructionObserver(&context)
     , m_timeOrigin(timeOrigin)
+    , m_performanceTimelineTaskQueue(context)
 {
     ASSERT(m_timeOrigin);
 }
@@ -62,16 +63,24 @@ Performance::~Performance()
 {
 }
 
-double Performance::now() const
+void Performance::contextDestroyed()
 {
-    double nowSeconds = monotonicallyIncreasingTime() - m_timeOrigin;
-    return 1000.0 * reduceTimeResolution(nowSeconds);
+    m_performanceTimelineTaskQueue.close();
+
+    ContextDestructionObserver::contextDestroyed();
 }
 
-double Performance::reduceTimeResolution(double seconds)
+double Performance::now() const
 {
-    const double resolutionSeconds = 0.0001;
-    return std::floor(seconds / resolutionSeconds) * resolutionSeconds;
+    Seconds now = MonotonicTime::now() - m_timeOrigin;
+    return reduceTimeResolution(now).milliseconds();
+}
+
+Seconds Performance::reduceTimeResolution(Seconds seconds)
+{
+    double resolution = (100_us).seconds();
+    double reduced = std::floor(seconds.seconds() / resolution) * resolution;
+    return Seconds(reduced);
 }
 
 PerformanceNavigation* Performance::navigation()
@@ -173,7 +182,7 @@ void Performance::addResourceTiming(const String& initiatorName, const URL& orig
     if (!securityOrigin)
         return;
 
-    RefPtr<PerformanceEntry> entry = PerformanceResourceTiming::create(initiatorName, originalURL, response, *securityOrigin, m_timeOrigin, loadTiming);
+    RefPtr<PerformanceEntry> entry = PerformanceResourceTiming::create(initiatorName, originalURL, m_timeOrigin, response, *securityOrigin, loadTiming);
 
     m_resourceTimingBuffer.append(entry);
 

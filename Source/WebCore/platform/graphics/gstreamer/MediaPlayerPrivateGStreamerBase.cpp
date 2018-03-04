@@ -613,6 +613,11 @@ void MediaPlayerPrivateGStreamerBase::muteChangedCallback(MediaPlayerPrivateGStr
     player->m_notifier.notify(MainThreadNotification::MuteChanged, [player] { player->notifyPlayerOfMute(); });
 }
 
+void MediaPlayerPrivateGStreamerBase::acceleratedRenderingStateChanged()
+{
+    m_renderingCanBeAccelerated = m_player && m_player->client().mediaPlayerAcceleratedCompositingEnabled() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player);
+}
+
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
 void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, GstVideoInfo& videoInfo)
 {
@@ -711,6 +716,7 @@ void MediaPlayerPrivateGStreamerBase::repaint()
     if (m_renderingCanBeAccelerated && client()) {
         client()->setPlatformLayerNeedsDisplay();
 #if USE(GSTREAMER_GL)
+        LockHolder lock(m_drawMutex);
         m_drawCondition.notifyOne();
 #endif
         return;
@@ -720,6 +726,7 @@ void MediaPlayerPrivateGStreamerBase::repaint()
     m_player->repaint();
 
 #if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    LockHolder lock(m_drawMutex);
     m_drawCondition.notifyOne();
 #endif
 }
@@ -1106,8 +1113,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
-    m_renderingCanBeAccelerated = supportsAcceleratedRendering() && m_player->client().mediaPlayerAcceleratedCompositingEnabled()
-        && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player);
+    acceleratedRenderingStateChanged();
 
 #if USE(GSTREAMER_GL)
     if (m_renderingCanBeAccelerated)

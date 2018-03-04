@@ -41,6 +41,7 @@
 #include "LoadableClassicScript.h"
 #include "LoadableModuleScript.h"
 #include "MIMETypeRegistry.h"
+#include "NoEventDispatchAssertion.h"
 #include "PendingScript.h"
 #include "SVGScriptElement.h"
 #include "ScriptController.h"
@@ -74,7 +75,7 @@ ScriptElement::ScriptElement(Element& element, bool parserInserted, bool already
 
 bool ScriptElement::shouldCallFinishedInsertingSubtree(ContainerNode& insertionPoint)
 {
-    return insertionPoint.inDocument() && !m_parserInserted;
+    return insertionPoint.isConnected() && !m_parserInserted;
 }
 
 void ScriptElement::finishedInsertingSubtree()
@@ -83,9 +84,9 @@ void ScriptElement::finishedInsertingSubtree()
     prepareScript(); // FIXME: Provide a real starting line number here.
 }
 
-void ScriptElement::childrenChanged()
+void ScriptElement::childrenChanged(const ContainerNode::ChildChange& childChange)
 {
-    if (!m_parserInserted && m_element.inDocument())
+    if (!m_parserInserted && childChange.isInsertion() && m_element.isConnected())
         prepareScript(); // FIXME: Provide a real starting line number here.
 }
 
@@ -193,7 +194,7 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     if (!hasSourceAttribute() && !m_element.firstChild())
         return false;
 
-    if (!m_element.inDocument())
+    if (!m_element.isConnected())
         return false;
 
     ScriptType scriptType = ScriptType::Classic;
@@ -285,7 +286,7 @@ bool ScriptElement::requestClassicScript(const String& sourceURL)
     Ref<Document> originalDocument(m_element.document());
     if (!m_element.dispatchBeforeLoadEvent(sourceURL))
         return false;
-    bool didEventListenerDisconnectThisElement = !m_element.inDocument() || &m_element.document() != originalDocument.ptr();
+    bool didEventListenerDisconnectThisElement = !m_element.isConnected() || &m_element.document() != originalDocument.ptr();
     if (didEventListenerDisconnectThisElement)
         return false;
 
@@ -325,7 +326,7 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
         if (!m_element.dispatchBeforeLoadEvent(sourceURL))
             return false;
 
-        bool didEventListenerDisconnectThisElement = !m_element.inDocument() || &m_element.document() != originalDocument.ptr();
+        bool didEventListenerDisconnectThisElement = !m_element.isConnected() || &m_element.document() != originalDocument.ptr();
         if (didEventListenerDisconnectThisElement)
             return false;
 
@@ -365,6 +366,7 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
 
 void ScriptElement::executeClassicScript(const ScriptSourceCode& sourceCode)
 {
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(m_alreadyStarted);
 
     if (sourceCode.isEmpty())
@@ -433,7 +435,7 @@ void ScriptElement::executePendingScript(PendingScript& pendingScript)
 
 bool ScriptElement::ignoresLoadRequest() const
 {
-    return m_alreadyStarted || m_isExternalScript || m_parserInserted || !m_element.inDocument();
+    return m_alreadyStarted || m_isExternalScript || m_parserInserted || !m_element.isConnected();
 }
 
 bool ScriptElement::isScriptForEventSupported() const

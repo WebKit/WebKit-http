@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2010, 2012-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1105,6 +1105,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_in: {
             printBinaryOp(out, exec, location, it, "in");
+            dumpArrayProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_try_get_by_id: {
@@ -1888,7 +1889,7 @@ void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
 }
 
 CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
-    JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
+    JSScope* scope, RefPtr<SourceProvider>&& sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
     : JSCell(*vm, structure)
     , m_globalObject(scope->globalObject()->vm(), this, scope->globalObject())
     , m_numCalleeLocals(unlinkedCodeBlock->m_numCalleeLocals)
@@ -1911,7 +1912,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_vm(unlinkedCodeBlock->vm())
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
     , m_scopeRegister(unlinkedCodeBlock->scopeRegister())
-    , m_source(sourceProvider)
+    , m_source(WTFMove(sourceProvider))
     , m_sourceOffset(sourceOffset)
     , m_firstLineColumnOffset(firstLineColumnOffset)
     , m_osrExitCounter(0)
@@ -2095,12 +2096,9 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             linkValueProfile(i, opLength);
             break;
         }
-        case op_put_by_val: {
-            int arrayProfileIndex = pc[opLength - 1].u.operand;
-            m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
-            instructions[i + opLength - 1] = &m_arrayProfiles[arrayProfileIndex];
-            break;
-        }
+
+        case op_in:
+        case op_put_by_val:
         case op_put_by_val_direct: {
             int arrayProfileIndex = pc[opLength - 1].u.operand;
             m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
@@ -2122,7 +2120,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
             instructions[i + opLength - 1] = objectAllocationProfile;
             objectAllocationProfile->initialize(vm,
-                this, m_globalObject->objectPrototype(), inferredInlineCapacity);
+                m_globalObject.get(), this, m_globalObject->objectPrototype(), inferredInlineCapacity);
             break;
         }
 
@@ -2306,7 +2304,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             }
 
             std::pair<TypeLocation*, bool> locationPair = vm.typeProfiler()->typeLocationCache()->getTypeLocation(globalVariableID,
-                ownerExecutable->sourceID(), divotStart, divotEnd, globalTypeSet, &vm);
+                ownerExecutable->sourceID(), divotStart, divotEnd, WTFMove(globalTypeSet), &vm);
             TypeLocation* location = locationPair.first;
             bool isNewLocation = locationPair.second;
 

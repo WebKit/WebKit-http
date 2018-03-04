@@ -28,23 +28,19 @@
 
 #if USE(APPLE_INTERNAL_SDK)
 
+#include <QuartzCore/CABackingStore.h>
 #include <QuartzCore/CAColorMatrix.h>
 #include <QuartzCore/CARenderServer.h>
 
 #ifdef __OBJC__
 
+#import <QuartzCore/CAContext.h>
 #import <QuartzCore/CALayerHost.h>
 #import <QuartzCore/CALayerPrivate.h>
 #import <QuartzCore/QuartzCorePrivate.h>
 
 #if PLATFORM(IOS)
 #import <QuartzCore/CADisplay.h>
-#endif
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
-@interface CAContext ()
-- (void)setCommitPriority:(uint32_t)commitPriority;
-@end
 #endif
 
 #endif // __OBJC__
@@ -62,6 +58,7 @@
 - (uint32_t)createImageSlot:(CGSize)size hasAlpha:(BOOL)flag;
 - (void)deleteSlot:(uint32_t)name;
 - (void)invalidate;
+- (void)invalidateFences;
 - (mach_port_t)createFencePort;
 - (void)setFencePort:(mach_port_t)port;
 - (void)setFencePort:(mach_port_t)port commitHandler:(void(^)(void))block;
@@ -196,14 +193,9 @@ CAMachPortRef CAMachPortCreate(mach_port_t);
 mach_port_t CAMachPortGetPort(CAMachPortRef);
 CFTypeID CAMachPortGetTypeID(void);
 
-WTF_EXTERN_C_END
+void CABackingStoreCollectBlocking(void);
 
-// FIXME: Move this into the APPLE_INTERNAL_SDK block once it's in an SDK.
-@interface CAContext (AdditionalDetails)
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
-- (void)invalidateFences;
-#endif
-@end
+WTF_EXTERN_C_END
 
 extern NSString * const kCATiledLayerRemoveImmediately;
 
@@ -246,4 +238,5 @@ extern NSString * const kCAContentsFormatRGBA10XR;
 
 @protocol CAAnimationDelegate <NSObject>
 @end
-#endif
+
+#endif // USE(APPLE_INTERNAL_SDK)

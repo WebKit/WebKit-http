@@ -246,12 +246,15 @@ enum EventThrottlingBehavior {
     readonly attribute InternalSettings settings;
     readonly attribute unsigned long workerThreadCount;
 
+    readonly attribute boolean areSVGAnimationsPaused;
+
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;
     const unsigned short LAYER_TREE_INCLUDES_TILE_CACHES = 2;
     const unsigned short LAYER_TREE_INCLUDES_REPAINT_RECTS = 4;
     const unsigned short LAYER_TREE_INCLUDES_PAINTING_PHASES = 8;
     const unsigned short LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16;
+    const unsigned short LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] DOMString scrollingStateTreeAsText();
@@ -443,7 +446,7 @@ enum EventThrottlingBehavior {
     [Conditional=VIDEO] boolean elementIsBlockingDisplaySleep(HTMLMediaElement element);
 
     [MayThrowException] MockPageOverlay installMockPageOverlay(PageOverlayType type);
-    [MayThrowException] DOMString pageOverlayLayerTreeAsText();
+    [MayThrowException] DOMString pageOverlayLayerTreeAsText(optional unsigned short flags = 0);
 
     void setPageMuted(DOMString mutedState);
     DOMString pageMediaState();
@@ -497,4 +500,8 @@ enum EventThrottlingBehavior {
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
     void setQuickLookPassword(DOMString password);
 #endif
+
+    [CallWith=Document] void setAsRunningUserScripts();
+
+    void disableTileSizeUpdateDelay();
 };

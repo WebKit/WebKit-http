@@ -262,7 +262,6 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebGrammarCheckingEnabledPreferenceKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(AllowContinuousSpellCheckingPreferenceKey), kCFBooleanTrue);
     CFDictionaryAddValue(defaults, CFSTR(WebKitUsesPageCachePreferenceKey), kCFBooleanTrue);
-    CFDictionaryAddValue(defaults, CFSTR(WebKitAllowsPageCacheWithWindowOpenerKey), kCFBooleanFalse);
     CFDictionaryAddValue(defaults, CFSTR(WebKitLocalStorageDatabasePathPreferenceKey), CFSTR(""));
 
     RetainPtr<CFStringRef> cacheModelRef = adoptCF(CFStringCreateWithFormat(0, 0, CFSTR("%d"), WebCacheModelDocumentViewer));
@@ -308,6 +307,8 @@ void WebPreferences::initializeDefaultSettings()
     CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitUserTimingEnabledPreferenceKey), kCFBooleanFalse);
+
+    CFDictionaryAddValue(defaults, CFSTR(WebKitResourceTimingEnabledPreferenceKey), kCFBooleanFalse);
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitLinkPreloadEnabledPreferenceKey), kCFBooleanFalse);
 
@@ -1611,20 +1612,6 @@ HRESULT WebPreferences::experimentalNotificationsEnabled(_Out_ BOOL* enabled)
     return S_OK;
 }
 
-HRESULT WebPreferences::setAllowsPageCacheWithWindowOpener(BOOL value)
-{
-    setBoolValue(WebKitAllowsPageCacheWithWindowOpenerKey, value);
-    return S_OK;
-}
-
-HRESULT WebPreferences::allowsPageCacheWithWindowOpener(_Out_ BOOL* enabled)
-{
-    if (!enabled)
-        return E_POINTER;
-    *enabled = boolValueForKey(WebKitAllowsPageCacheWithWindowOpenerKey);
-    return S_OK;
-}
-
 HRESULT WebPreferences::setZoomsTextOnly(BOOL zoomsTextOnly)
 {
     setBoolValue(WebKitZoomsTextOnlyPreferenceKey, zoomsTextOnly);
@@ -2055,5 +2042,19 @@ HRESULT WebPreferences::userTimingEnabled(_Out_ BOOL* enabled)
     if (!enabled)
         return E_POINTER;
     *enabled = boolValueForKey(WebKitUserTimingEnabledPreferenceKey);
+    return S_OK;
+}
+
+HRESULT WebPreferences::setResourceTimingEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitResourceTimingEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::resourceTimingEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitResourceTimingEnabledPreferenceKey);
     return S_OK;
 }

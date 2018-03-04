@@ -128,7 +128,6 @@ private:
     void platformTerminate();
 
     void lowMemoryHandler(WebCore::Critical);
-    void platformLowMemoryHandler(WebCore::Critical);
 
     // ChildProcess
     void initializeProcess(const ChildProcessInitializationParameters&) override;
@@ -141,7 +140,6 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // DownloadManager::Client
     void didCreateDownload() override;

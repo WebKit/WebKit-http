@@ -121,10 +121,10 @@
 #import <JavaScriptCore/Exception.h>
 #import <JavaScriptCore/JSValueRef.h>
 #import <WebCore/AlternativeTextUIController.h>
-#import <WebCore/AnimationController.h>
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/BackForwardController.h>
 #import <WebCore/CFNetworkSPI.h>
+#import <WebCore/CSSAnimationController.h>
 #import <WebCore/Chrome.h>
 #import <WebCore/ColorMac.h>
 #import <WebCore/DatabaseManager.h>
@@ -505,10 +505,6 @@ static const char webViewIsOpen[] = "At least one WebView is still open.";
 @interface WebView(WebViewPrivate)
 - (void)_preferencesChanged:(WebPreferences *)preferences;
 - (void)_updateScreenScaleFromWindow;
-@end
-
-@interface NSURLCache (WebPrivate)
-- (CFURLCacheRef)_CFURLCache;
 @end
 #endif
 
@@ -2671,7 +2667,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setTextDirectionSubmenuInclusionBehavior(core([preferences textDirectionSubmenuInclusionBehavior]));
     settings.setDOMPasteAllowed([preferences isDOMPasteAllowed]);
     settings.setUsesPageCache([self usesPageCache]);
-    settings.setAllowsPageCacheWithWindowOpener([preferences allowsPageCacheWithWindowOpener]);
     settings.setPageCacheSupportsPlugins([preferences pageCacheSupportsPlugins]);
     settings.setBackForwardCacheExpirationInterval([preferences _backForwardCacheExpirationInterval]);
 
@@ -2700,7 +2695,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setSubpixelCSSOMElementMetricsEnabled([preferences subpixelCSSOMElementMetricsEnabled]);
 
     settings.setForceSoftwareWebGLRendering([preferences forceSoftwareWebGLRendering]);
-    settings.setPreferLowPowerWebGLRendering([preferences preferLowPowerWebGLRendering]);
+    settings.setForceWebGLUsesLowPower([preferences forceLowPowerGPUForWebGL]);
     settings.setAccelerated2dCanvasEnabled([preferences accelerated2dCanvasEnabled]);
     settings.setLoadDeferringEnabled(shouldEnableLoadDeferring());
     settings.setWindowFocusRestricted(shouldRestrictWindowFocus());
@@ -2912,7 +2907,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
 
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
-
+    RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
@@ -3332,7 +3327,7 @@ static inline IMP getMethod(id o, SEL s)
     Document* document = core([frame DOMDocument]);
     if (Element* element = document ? document->webkitCurrentFullScreenElement() : 0) {
         SEL selector = @selector(webView:closeFullScreenWithListener:);
-        if (_private->UIDelegate && [_private->UIDelegate respondsToSelector:selector]) {
+        if ([_private->UIDelegate respondsToSelector:selector]) {
             WebKitFullScreenListener *listener = [[WebKitFullScreenListener alloc] initWithElement:element];
             CallUIDelegate(self, selector, listener);
             [listener release];
@@ -4346,7 +4341,8 @@ static inline IMP getMethod(id o, SEL s)
     if ([userInterfaceItem isEqualToString:@"validationBubble"]) {
         auto* validationBubble = _private->formValidationBubble.get();
         String message = validationBubble ? validationBubble->message() : emptyString();
-        return @{ userInterfaceItem: @{ @"message": (NSString *)message } };
+        double fontSize = validationBubble ? validationBubble->fontSize() : 0;
+        return @{ userInterfaceItem: @{ @"message": (NSString *)message, @"fontSize": [NSNumber numberWithDouble:fontSize] } };
     }
 
     return nil;
@@ -8584,7 +8580,7 @@ static WebFrameView *containingFrameView(NSView *view)
 #if PLATFORM(IOS)
     nsurlCacheMemoryCapacity = std::max(nsurlCacheMemoryCapacity, [nsurlCache memoryCapacity]);
     CFURLCacheRef cfCache;
-    if ([nsurlCache respondsToSelector:@selector(_CFURLCache)] && (cfCache = [nsurlCache _CFURLCache]))
+    if ((cfCache = [nsurlCache _CFURLCache]))
         CFURLCacheSetMemoryCapacity(cfCache, nsurlCacheMemoryCapacity);
     else
         [nsurlCache setMemoryCapacity:nsurlCacheMemoryCapacity];
@@ -9331,7 +9327,8 @@ bool LayerFlushController::flushLayers()
 {
     // FIXME: We should enable this on iOS as well.
 #if PLATFORM(MAC)
-    _private->formValidationBubble = ValidationBubble::create(self, message);
+    double minimumFontSize = _private->page ? _private->page->settings().minimumFontSize() : 0;
+    _private->formValidationBubble = ValidationBubble::create(self, message, { minimumFontSize });
     _private->formValidationBubble->showRelativeTo(enclosingIntRect([self _convertRectFromRootView:anchorRect]));
 #else
     UNUSED_PARAM(message);

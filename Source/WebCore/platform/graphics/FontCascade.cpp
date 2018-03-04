@@ -33,6 +33,9 @@
 #include "SurrogatePairAwareTextIterator.h"
 #include "TextRun.h"
 #include "WidthIterator.h"
+#if USE(CAIRO)
+#include <cairo.h>
+#endif
 #include <wtf/MainThread.h>
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
@@ -377,6 +380,45 @@ float FontCascade::width(const TextRun& run, HashSet<const Font*>* fallbackFonts
     return result;
 }
 
+float FontCascade::widthForSimpleText(StringView text) const
+{
+    ASSERT(codePath(TextRun(text)) != FontCascade::Complex);
+    float* cacheEntry = m_fonts->widthCache().add(text, std::numeric_limits<float>::quiet_NaN());
+    if (cacheEntry && !std::isnan(*cacheEntry))
+        return *cacheEntry;
+
+    Vector<GlyphBufferGlyph, 16> glyphs;
+    Vector<GlyphBufferAdvance, 16> advances;
+    bool hasKerningOrLigatures = enableKerning() || requiresShaping();
+    float runWidth = 0;
+    auto& font = primaryFont();
+    for (unsigned i = 0; i < text.length(); ++i) {
+        auto glyph = glyphDataForCharacter(text[i], false).glyph;
+        auto glyphWidth = font.widthForGlyph(glyph);
+        runWidth += glyphWidth;
+        if (!hasKerningOrLigatures)
+            continue;
+#if USE(CAIRO)
+        cairo_glyph_t cairoGlyph;
+        cairoGlyph.index = glyph;
+        glyphs.append(cairoGlyph);
+#else
+        glyphs.append(glyph);
+#endif
+        advances.append(FloatSize(glyphWidth, 0));
+    }
+    if (hasKerningOrLigatures) {
+        font.applyTransforms(&glyphs[0], &advances[0], glyphs.size(), enableKerning(), requiresShaping());
+        runWidth = 0;
+        for (auto& advance : advances)
+            runWidth += advance.width();
+    }
+
+    if (cacheEntry)
+        *cacheEntry = runWidth;
+    return runWidth;
+}
+
 GlyphData FontCascade::glyphDataForCharacter(UChar32 c, bool mirror, FontVariant variant) const
 {
     if (variant == AutoVariant) {
@@ -396,25 +438,6 @@ GlyphData FontCascade::glyphDataForCharacter(UChar32 c, bool mirror, FontVariant
 
     return m_fonts->glyphDataForCharacter(c, m_fontDescription, variant);
 }
-
-#if !PLATFORM(COCOA)
-
-std::unique_ptr<TextLayout, TextLayoutDeleter> FontCascade::createLayout(RenderText&, float, bool) const
-{
-    return nullptr;
-}
-
-void TextLayoutDeleter::operator()(TextLayout*) const
-{
-}
-
-float FontCascade::width(TextLayout&, unsigned, unsigned, HashSet<const Font*>*)
-{
-    ASSERT_NOT_REACHED();
-    return 0;
-}
-
-#endif
 
 static const char* fontFamiliesWithInvalidCharWidth[] = {
     "American Typewriter",
@@ -1434,5 +1457,30 @@ int FontCascade::offsetForPositionForSimpleText(const TextRun& run, float x, boo
     return offset;
 }
 
+#if !PLATFORM(COCOA)
+// FIXME: Unify this with the macOS and iOS implementation.
+const Font* FontCascade::fontForCombiningCharacterSequence(const UChar* characters, size_t length) const
+{
+    UChar32 baseCharacter;
+    size_t baseCharacterLength = 0;
+    U16_NEXT(characters, baseCharacterLength, length, baseCharacter);
+    GlyphData baseCharacterGlyphData = glyphDataForCharacter(baseCharacter, false, NormalVariant);
+
+    if (!baseCharacterGlyphData.glyph)
+        return nullptr;
+    return baseCharacterGlyphData.font;
+}
+#endif
+
+void FontCascade::drawEmphasisMarksForComplexText(GraphicsContext& context, const TextRun& run, const AtomicString& mark, const FloatPoint& point, unsigned from, unsigned to) const
+{
+    GlyphBuffer glyphBuffer;
+    float initialAdvance = getGlyphsAndAdvancesForComplexText(run, from, to, glyphBuffer, ForTextEmphasis);
+
+    if (glyphBuffer.isEmpty())
+        return;
+
+    drawEmphasisMarks(context, glyphBuffer, mark, FloatPoint(point.x() + initialAdvance, point.y()));
+}
 
 }

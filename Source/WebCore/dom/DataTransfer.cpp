@@ -256,7 +256,7 @@ void DataTransfer::setDragImage(Element* element, int x, int y)
         return;
 
     CachedImage* image = nullptr;
-    if (is<HTMLImageElement>(element) && !element->inDocument())
+    if (is<HTMLImageElement>(element) && !element->isConnected())
         image = downcast<HTMLImageElement>(*element).cachedImage();
 
     m_dragLocation = IntPoint(x, y);
@@ -283,11 +283,11 @@ void DataTransfer::updateDragImage()
         return;
 
     IntPoint computedHotSpot;
-    DragImageRef computedImage = createDragImage(computedHotSpot);
+    auto computedImage = DragImage { createDragImage(computedHotSpot) };
     if (!computedImage)
         return;
 
-    m_pasteboard->setDragImage(computedImage, computedHotSpot);
+    m_pasteboard->setDragImage(WTFMove(computedImage), computedHotSpot);
 }
 
 #if !PLATFORM(MAC)

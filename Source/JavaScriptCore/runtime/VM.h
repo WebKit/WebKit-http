@@ -61,6 +61,7 @@
 #include <wtf/BumpPointerAllocator.h>
 #include <wtf/DateMath.h>
 #include <wtf/Deque.h>
+#include <wtf/DoublyLinkedList.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
@@ -191,15 +192,15 @@ class QueuedTask {
 public:
     void run();
 
-    QueuedTask(VM& vm, JSGlobalObject* globalObject, PassRefPtr<Microtask> microtask)
+    QueuedTask(VM& vm, JSGlobalObject* globalObject, Ref<Microtask>&& microtask)
         : m_globalObject(vm, globalObject)
-        , m_microtask(microtask)
+        , m_microtask(WTFMove(microtask))
     {
     }
 
 private:
     Strong<JSGlobalObject> m_globalObject;
-    RefPtr<Microtask> m_microtask;
+    Ref<Microtask> m_microtask;
 };
 
 class ConservativeRoots;
@@ -241,7 +242,7 @@ struct ScratchBuffer {
 #pragma warning(pop)
 #endif
 
-class VM : public ThreadSafeRefCounted<VM> {
+class VM : public ThreadSafeRefCounted<VM>, public DoublyLinkedListNode<VM> {
 public:
     // WebCore has a one-to-one mapping of threads to VMs;
     // either create() or createLeaked() should only be called once
@@ -658,7 +659,7 @@ public:
     bool enableControlFlowProfiler();
     bool disableControlFlowProfiler();
 
-    JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
+    JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, Ref<Microtask>&&);
     JS_EXPORT_PRIVATE void drainMicrotasks();
     void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
     ALWAYS_INLINE bool globalConstRedeclarationShouldThrow() const { return m_globalConstRedeclarationShouldThrow; }
@@ -778,11 +779,15 @@ private:
     std::unique_ptr<ShadowChicken> m_shadowChicken;
     std::unique_ptr<BytecodeIntrinsicRegistry> m_bytecodeIntrinsicRegistry;
 
+    VM* m_prev; // Required by DoublyLinkedListNode.
+    VM* m_next; // Required by DoublyLinkedListNode.
+
     // Friends for exception checking purpose only.
     friend class Heap;
     friend class CatchScope;
     friend class ExceptionScope;
     friend class ThrowScope;
+    friend class WTF::DoublyLinkedListNode<VM>;
 };
 
 #if ENABLE(GC_VALIDATION)

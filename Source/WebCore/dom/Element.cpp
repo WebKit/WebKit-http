@@ -508,7 +508,7 @@ Vector<String> Element::getAttributeNames() const
 
 bool Element::isFocusable() const
 {
-    if (!inDocument() || !supportsFocus())
+    if (!isConnected() || !supportsFocus())
         return false;
 
     if (!renderer()) {
@@ -795,7 +795,7 @@ enum LegacyCSSOMElementMetricsRoundingStrategy { Round, Floor };
 
 static bool subpixelMetricsEnabled(const Document& document)
 {
-    return document.settings() && document.settings()->subpixelCSSOMElementMetricsEnabled();
+    return document.settings().subpixelCSSOMElementMetricsEnabled();
 }
 
 static double convertToNonSubpixelValueIfNeeded(double value, const Document& document, LegacyCSSOMElementMetricsRoundingStrategy roundStrategy = Round)
@@ -1326,7 +1326,7 @@ void Element::attributeChanged(const QualifiedName& name, const AtomicString& ol
         else if (name == HTMLNames::slotAttr) {
             if (auto* parent = parentElement()) {
                 if (auto* shadowRoot = parent->shadowRoot())
-                    shadowRoot->hostChildElementDidChangeSlotAttribute(oldValue, newValue);
+                    shadowRoot->hostChildElementDidChangeSlotAttribute(*this, oldValue, newValue);
             }
         }
     }
@@ -1510,7 +1510,7 @@ void Element::stripScriptingAttributes(Vector<Attribute>& attributeVector) const
 
 void Element::parserSetAttributes(const Vector<Attribute>& attributeVector)
 {
-    ASSERT(!inDocument());
+    ASSERT(!isConnected());
     ASSERT(!parentNode());
     ASSERT(!m_elementData);
 
@@ -1605,11 +1605,11 @@ RenderPtr<RenderElement> Element::createElementRenderer(RenderStyle&& style, con
 
 Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertionPoint)
 {
-    bool wasInDocument = inDocument();
-    // need to do superclass processing first so inDocument() is true
+    bool wasInDocument = isConnected();
+    // need to do superclass processing first so isConnected() is true
     // by the time we reach updateId
     ContainerNode::insertedInto(insertionPoint);
-    ASSERT(!wasInDocument || inDocument());
+    ASSERT(!wasInDocument || isConnected());
 
 #if ENABLE(FULLSCREEN_API)
     if (containsFullScreenElement() && parentElement() && !parentElement()->containsFullScreenElement())
@@ -1628,7 +1628,7 @@ Node::InsertionNotificationRequest Element::insertedInto(ContainerNode& insertio
     // This element is new to the shadow tree (and its tree scope) only if the parent into which this element
     // or its ancestor is inserted belongs to the same tree scope as this element's.
     TreeScope* newScope = &insertionPoint.treeScope();
-    bool becomeConnected = !wasInDocument && inDocument();
+    bool becomeConnected = !wasInDocument && isConnected();
     HTMLDocument* newDocument = becomeConnected && is<HTMLDocument>(newScope->documentScope()) ? &downcast<HTMLDocument>(newScope->documentScope()) : nullptr;
     if (newScope != &treeScope())
         newScope = nullptr;
@@ -1679,7 +1679,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 
     if (insertionPoint.isInTreeScope()) {
         TreeScope* oldScope = &insertionPoint.treeScope();
-        bool becomeDisconnected = inDocument();
+        bool becomeDisconnected = isConnected();
         HTMLDocument* oldDocument = becomeDisconnected && is<HTMLDocument>(oldScope->documentScope()) ? &downcast<HTMLDocument>(oldScope->documentScope()) : nullptr;
 
         // ContainerNode::removeBetween always sets the removed chid's tree scope to Document's but InTreeScope flag is unset in Node::removedFrom.
@@ -1743,6 +1743,9 @@ ShadowRoot* Element::shadowRoot() const
 void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
 {
     ASSERT(!shadowRoot());
+    
+    if (renderer())
+        RenderTreeUpdater::tearDownRenderers(*this);
 
     ShadowRoot& shadowRoot = newShadowRoot;
     ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
@@ -2043,7 +2046,8 @@ void Element::childrenChanged(const ChildChange& change)
         case TextChanged:
             shadowRoot->didChangeDefaultSlot();
             break;
-        case NonContentsChildChanged:
+        case NonContentsChildInserted:
+        case NonContentsChildRemoved:
             break;
         }
     }
@@ -2145,7 +2149,7 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
             setAttributeInternal(existingAttributeIndex, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
         else {
             removeAttributeInternal(existingAttributeIndex, NotInSynchronizationOfLazyAttribute);
-            setAttributeInternal(elementData.findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
+            setAttributeInternal(ensureUniqueElementData().findAttributeIndexByName(attrNode.qualifiedName()), attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
         }
     }
     if (attrNode.ownerElement() != this) {
@@ -2343,7 +2347,7 @@ CSSStyleDeclaration* Element::cssomStyle()
 
 void Element::focus(bool restorePreviousSelection, FocusDirection direction)
 {
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     if (document().focusedElement() == this) {
@@ -2449,14 +2453,14 @@ void Element::blur()
 
 void Element::dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(eventType == eventNames().focusinEvent || eventType == eventNames().DOMFocusInEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(eventType == eventNames().focusoutEvent || eventType == eventNames().DOMFocusOutEvent);
     dispatchScopedEvent(FocusEvent::create(eventType, true, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
@@ -2646,7 +2650,7 @@ const RenderStyle* Element::existingComputedStyle()
 
 const RenderStyle& Element::resolveComputedStyle()
 {
-    ASSERT(inDocument());
+    ASSERT(isConnected());
     ASSERT(!existingComputedStyle());
 
     Deque<Element*, 32> elementsRequiringComputedStyle({ this });
@@ -2675,7 +2679,7 @@ const RenderStyle& Element::resolveComputedStyle()
 
 const RenderStyle* Element::computedStyle(PseudoId pseudoElementSpecifier)
 {
-    if (!inDocument())
+    if (!isConnected())
         return nullptr;
 
     if (PseudoElement* pseudoElement = beforeOrAfterPseudoElement(*this, pseudoElementSpecifier))
@@ -3202,7 +3206,7 @@ inline void Element::updateName(const AtomicString& oldName, const AtomicString&
 
     updateNameForTreeScope(treeScope(), oldName, newName);
 
-    if (!inDocument())
+    if (!isConnected())
         return;
     if (!is<HTMLDocument>(document()))
         return;
@@ -3253,7 +3257,7 @@ inline void Element::updateId(const AtomicString& oldId, const AtomicString& new
 
     updateIdForTreeScope(treeScope(), oldId, newId, notifyObservers);
 
-    if (!inDocument())
+    if (!isConnected())
         return;
     if (!is<HTMLDocument>(document()))
         return;
@@ -3273,7 +3277,7 @@ void Element::updateIdForTreeScope(TreeScope& scope, const AtomicString& oldId, 
 
 void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition condition)
 {
-    ASSERT(inDocument());
+    ASSERT(isConnected());
     ASSERT(oldId != newId);
 
     if (isInShadowTree())
@@ -3300,7 +3304,7 @@ void Element::updateLabel(TreeScope& scope, const AtomicString& oldForAttributeV
 {
     ASSERT(hasTagName(labelTag));
 
-    if (!inDocument())
+    if (!isConnected())
         return;
 
     if (oldForAttributeValue == newForAttributeValue)
@@ -3510,7 +3514,7 @@ void Element::cloneAttributesFromElement(const Element& other)
 
     // We can't update window and document's named item maps since the presence of image and object elements depend on other attributes and children.
     // Fortunately, those named item maps are only updated when this element is in the document, which should never be the case.
-    ASSERT(!inDocument());
+    ASSERT(!isConnected());
 
     const AtomicString& oldID = getIdAttribute();
     const AtomicString& newID = other.getIdAttribute();

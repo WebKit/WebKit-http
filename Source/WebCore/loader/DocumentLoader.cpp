@@ -31,6 +31,7 @@
 #include "DocumentLoader.h"
 
 #include "ApplicationCacheHost.h"
+#include "Archive.h"
 #include "ArchiveResourceCollection.h"
 #include "CachedPage.h"
 #include "CachedRawResource.h"
@@ -394,11 +395,11 @@ void DocumentLoader::finishedLoading(double finishTime)
 
     maybeFinishLoadingMultipartContent();
 
-    double responseEndTime = finishTime;
+    MonotonicTime responseEndTime = MonotonicTime::fromRawSeconds(finishTime);
     if (!responseEndTime)
         responseEndTime = m_timeOfLastDataReceived;
     if (!responseEndTime)
-        responseEndTime = monotonicallyIncreasingTime();
+        responseEndTime = MonotonicTime::now();
     timing().setResponseEnd(responseEndTime);
 
     commitIfReady();
@@ -863,9 +864,11 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
 
         if (frameLoader()->stateMachine().creatingInitialEmptyDocument())
             return;
-        
+
+#if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
         if (m_archive && m_archive->shouldOverrideBaseURL())
             m_frame->document()->setBaseURLOverride(m_archive->mainResource()->url());
+#endif
 
         // Call receivedFirstData() exactly once per load. We should only reach this point multiple times
         // for multipart loads, and FrameLoader::isReplacing() will be true after the first time.
@@ -881,8 +884,10 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
         if (overrideEncoding().isNull()) {
             userChosen = false;
             encoding = response().textEncodingName();
+#if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
             if (m_archive && m_archive->shouldUseMainResourceEncoding())
                 encoding = m_archive->mainResource()->textEncoding();
+#endif
         } else {
             userChosen = true;
             encoding = overrideEncoding();
@@ -936,7 +941,7 @@ void DocumentLoader::dataReceived(const char* data, int length)
         frameLoader()->notifier().dispatchDidReceiveData(this, m_identifierForLoadWithoutResourceLoader, data, length, -1);
 
     m_applicationCacheHost->mainResourceDataReceived(data, length, -1, false);
-    m_timeOfLastDataReceived = monotonicallyIncreasingTime();
+    m_timeOfLastDataReceived = MonotonicTime::now();
 
     if (!isMultipartReplacingLoad())
         commitLoad(data, length);

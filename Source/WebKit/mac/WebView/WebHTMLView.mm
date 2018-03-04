@@ -3872,9 +3872,6 @@ static RetainPtr<NSArray> fixMenusReceivedFromOldClients(NSArray *delegateSuppli
 
 static RetainPtr<NSMenuItem> createShareMenuItem(const HitTestResult& hitTestResult)
 {
-    if (![[NSMenuItem class] respondsToSelector:@selector(standardShareMenuItemWithItems:)])
-        return nil;
-
     auto items = adoptNS([[NSMutableArray alloc] init]);
 
     if (!hitTestResult.absoluteLinkURL().isEmpty()) {
@@ -3900,7 +3897,7 @@ static RetainPtr<NSMenuItem> createShareMenuItem(const HitTestResult& hitTestRes
     if (![items count])
         return nil;
 
-    return [NSMenuItem standardShareMenuItemWithItems:items.get()];
+    return [NSMenuItem standardShareMenuItemForItems:items.get()];
 }
 
 static RetainPtr<NSMutableArray> createMenuItems(const HitTestResult&, const Vector<ContextMenuItem>&);
@@ -6104,8 +6101,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 #if !PLATFORM(IOS)
 - (void)otherMouseDown:(NSEvent *)event
 {
-    if ([event buttonNumber] != 2 || ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)]
-        && [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu)) {
+    if (event.buttonNumber != 2 || [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu) {
         [super otherMouseDown:event];
         return;
     }

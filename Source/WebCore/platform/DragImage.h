@@ -40,7 +40,7 @@ OBJC_CLASS NSImage;
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
 #elif PLATFORM(GTK)
-typedef struct _cairo_surface cairo_surface_t;
+#include "RefPtrCairo.h"
 #elif PLATFORM(HAIKU)
 class BBitmap;
 #endif
@@ -64,11 +64,15 @@ typedef RetainPtr<NSImage> DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
 #elif PLATFORM(GTK)
-typedef cairo_surface_t* DragImageRef;
+typedef RefPtr<cairo_surface_t> DragImageRef;
 #elif PLATFORM(HAIKU)
 typedef BBitmap* DragImageRef;
 #elif PLATFORM(EFL)
 typedef void* DragImageRef;
+#endif
+
+#if PLATFORM(COCOA)
+static const float SelectionDragImagePadding = 15;
 #endif
 
 IntSize dragImageSize(DragImageRef);
@@ -78,6 +82,7 @@ IntSize dragImageSize(DragImageRef);
 // the input image ref will still be valid after they have been called.
 DragImageRef fitDragImageToMaxSize(DragImageRef, const IntSize& srcSize, const IntSize& dstSize);
 DragImageRef scaleDragImage(DragImageRef, FloatSize scale);
+DragImageRef platformAdjustDragImageForDeviceScaleFactor(DragImageRef, float deviceScaleFactor);
 DragImageRef dissolveDragImageToFraction(DragImageRef, float delta);
 
 DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription);
@@ -89,5 +94,21 @@ WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, Range&, bool forceBl
 DragImageRef createDragImageForImage(Frame&, Node&, IntRect& imageRect, IntRect& elementRect);
 DragImageRef createDragImageForLink(URL&, const String& label, FontRenderingMode);
 void deleteDragImage(DragImageRef);
+
+class DragImage final {
+public:
+    DragImage();
+    explicit DragImage(DragImageRef);
+    DragImage(DragImage&&);
+    ~DragImage();
+
+    DragImage& operator=(DragImage&&);
+
+    explicit operator bool() const { return !!m_dragImageRef; }
+    DragImageRef get() const { return m_dragImageRef; }
+
+private:
+    DragImageRef m_dragImageRef;
+};
 
 }

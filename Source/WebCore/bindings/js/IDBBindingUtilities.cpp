@@ -28,6 +28,7 @@
 #include "config.h"
 
 #if ENABLE(INDEXED_DATABASE)
+
 #include "IDBBindingUtilities.h"
 
 #include "IDBIndexInfo.h"
@@ -151,8 +152,11 @@ static RefPtr<IDBKey> createIDBKeyFromValue(ExecState& exec, JSValue value, Vect
     if (value.isString())
         return IDBKey::createString(asString(value)->value(&exec));
 
-    if (value.inherits(vm, DateInstance::info()) && !std::isnan(valueToDate(&exec, value)))
-        return IDBKey::createDate(valueToDate(&exec, value));
+    if (value.inherits(vm, DateInstance::info())) {
+        auto dateValue = valueToDate(exec, value);
+        if (!std::isnan(dateValue))
+            return IDBKey::createDate(dateValue);
+    }
 
     if (value.isObject()) {
         JSObject* object = asObject(value);
@@ -341,7 +345,7 @@ static JSValue deserializeIDBValueToJSValue(ExecState& state, JSC::JSGlobalObjec
 
     state.vm().apiLock().lock();
     Vector<RefPtr<MessagePort>> messagePorts;
-    JSValue result = serializedValue->deserialize(state, &globalObject, messagePorts, value.blobURLs(), value.blobFilePaths(), NonThrowing);
+    JSValue result = serializedValue->deserialize(state, &globalObject, messagePorts, value.blobURLs(), value.blobFilePaths(), SerializationErrorMode::NonThrowing);
     state.vm().apiLock().unlock();
 
     return result;
@@ -361,12 +365,6 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, const 
 Ref<IDBKey> scriptValueToIDBKey(ExecState& exec, const JSValue& scriptValue)
 {
     return createIDBKeyFromValue(exec, scriptValue);
-}
-
-JSC::JSValue idbKeyDataToScriptValue(JSC::ExecState& exec, const IDBKeyData& keyData)
-{
-    RefPtr<IDBKey> key = keyData.maybeCreateIDBKey();
-    return toJS(exec, *exec.lexicalGlobalObject(), key.get());
 }
 
 JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, const IDBKeyData& keyData)
@@ -413,19 +411,6 @@ void generateIndexKeyForValue(ExecState& exec, const IDBIndexInfo& info, JSValue
         return;
 
     outKey = IndexKey(WTFMove(keyDatas));
-}
-
-JSValue toJS(ExecState& state, JSDOMGlobalObject& globalObject, const std::optional<IDBKeyPath>& keyPath)
-{
-    if (!keyPath)
-        return jsNull();
-
-    auto visitor = WTF::makeVisitor([&](const String& string) -> JSValue {
-        return toJS<IDLDOMString>(state, globalObject, string);
-    }, [&](const Vector<String>& vector) -> JSValue {
-        return toJS<IDLSequence<IDLDOMString>>(state, globalObject, vector);
-    });
-    return WTF::visit(visitor, keyPath.value());
 }
 
 } // namespace WebCore

@@ -64,6 +64,7 @@ http/tests/quicklook [ Skip ]
 # These tests are WebKit2-only
 http/tests/appcache/decide-navigation-policy-after-delay.html [ Skip ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Skip ]
+http/tests/loading/resourceLoadStatistics/ [ Skip ]
 
 # Only Mac and iOS have an implementation of UIScriptController::doAsyncTask().
 fast/harness/uiscriptcontroller [ Skip ]
@@ -855,6 +856,9 @@ storage/indexeddb/properties-disabled-at-runtime.html [ Failure ]
 # In debug builds, runs too slowly for the test timeout.
 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex-multientry-big.htm [ Failure ]
 
+# Test is crashing
+imported/w3c/web-platform-tests/IndexedDB/keypath-exceptions.htm [ Skip ]
+
 # SQLite backend tests that timeout
 storage/indexeddb/modern/transaction-scheduler-1.html [ Skip ]
 storage/indexeddb/modern/transaction-scheduler-2.html [ Skip ]
@@ -923,12 +927,22 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Sk
 workers/bomb-with-v8.html [ Skip ]
 
 # WebCryptoAPI tests that take too long to complete, need to scale down. webkit.org/b/159638
-imported/w3c/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes_RSASSA-PKCS1-v1_5.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/pbkdf2.worker.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSA-OAEP.worker.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes_RSASSA-PKCS1-v1_5.worker.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes_RSA-OAEP.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker.html [ Slow ]
+imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.html [ Slow ]
+
+# WebCryptoAPI tests that we haven't fully supported yet
+imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Skip ]
 
 # WebCryptoAPI superset tests
-imported/w3c/WebCryptoAPI/generateKey/test_failures.html [ Skip ]
-imported/w3c/WebCryptoAPI/generateKey/test_successes.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_failures.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/test_successes.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Skip ]
+imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/failures.worker.html [ Skip ]
 
 editing/deleting/delete-emoji.html [ Slow ]
 
@@ -1007,7 +1021,22 @@ webkit.org/b/166911 fast/dom/Window/window-properties-performance-resource-timin
 
 webkit.org/b/167428 fast/backgrounds/background-repeat-x-y-parse.html [ Failure ]
 
-webkit.org/b/1644041 imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent.html [ Pass Failure ]
+imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent.html [ Pass Failure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-skip-no-boxes.html [ ImageOnlyFailure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-menu.html [ ImageOnlyFailure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Pass Failure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/same-url.html [ Pass Failure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/browsers/offline/browser-state/navigator_online_online.html [ Pass Failure ]
+webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Timeout Pass ]
+
+webkit.org/b/168066 performance-api/performance-now-api.html [ Pass Failure ]
+webkit.org/b/168005 performance-api/performance-now-time-origin-in-worker.html [ Pass Failure ]
+
+fast/history/page-cache-after-window-open.html [ Skip ]
+fast/history/page-cache-back-navigation-crash.html [ Skip ]
+fast/history/page-cache-with-opener.html [ Skip ]
+
+webkit.org/b/168238 imported/w3c/web-platform-tests/dom/events/EventListener-invoke-legacy.html [ Pass Failure ]
 
 ########################################
 ### START OF -disabled tests

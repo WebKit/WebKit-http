@@ -91,9 +91,6 @@ interface IWebPreferencesPrivate : IUnknown
     HRESULT experimentalNotificationsEnabled([out, retval] BOOL *enabled);
     HRESULT setExperimentalNotificationsEnabled([in] BOOL enabled);
 
-    HRESULT allowsPageCacheWithWindowOpener([out, retval] BOOL* usesPageCache);
-    HRESULT setAllowsPageCacheWithWindowOpener([in] BOOL usesPageCache);
-
     HRESULT setShouldUseHighResolutionTimers([in] BOOL useHighResolutionTimers);
     HRESULT shouldUseHighResolutionTimers([out, retval] BOOL* useHighResolutionTimers);
 
@@ -196,6 +193,8 @@ interface IWebPreferencesPrivate4 : IWebPreferencesPrivate3
     HRESULT setWebAnimationsEnabled([in] BOOL enabled);
     HRESULT userTimingEnabled([out, retval] BOOL*);
     HRESULT setUserTimingEnabled([in] BOOL enabled);
+    HRESULT resourceTimingEnabled([out, retval] BOOL*);
+    HRESULT setResourceTimingEnabled([in] BOOL enabled);
     HRESULT linkPreloadEnabled([out, retval] BOOL*);
     HRESULT setLinkPreloadEnabled([in] BOOL enabled);
 }

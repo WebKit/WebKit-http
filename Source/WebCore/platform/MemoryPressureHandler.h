@@ -197,7 +197,7 @@ private:
     std::atomic<bool> m_underMemoryPressure;
     bool m_isSimulatingMemoryPressure { false };
 
-    RunLoop::Timer<MemoryPressureHandler> m_measurementTimer;
+    std::unique_ptr<RunLoop::Timer<MemoryPressureHandler>> m_measurementTimer;
     MemoryUsagePolicy m_memoryUsagePolicy { MemoryUsagePolicy::Unrestricted };
     WTF::Function<void()> m_memoryKillCallback;
     WTF::Function<bool()> m_processIsEligibleForMemoryKillCallback;

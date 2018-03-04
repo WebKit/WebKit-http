@@ -623,16 +623,6 @@ bool WKPreferencesGetPageCacheEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->usesPageCache();
 }
 
-void WKPreferencesSetAllowsPageCacheWithWindowOpener(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setAllowsPageCacheWithWindowOpener(enabled);
-}
-
-bool WKPreferencesGetAllowsPageCacheWithWindowOpener(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->allowsPageCacheWithWindowOpener();
-}
-
 void WKPreferencesSetPageCacheSupportsPlugins(WKPreferencesRef preferencesRef, bool pageCacheSupportsPlugins)
 {
     toImpl(preferencesRef)->setPageCacheSupportsPlugins(pageCacheSupportsPlugins);
@@ -1589,6 +1579,16 @@ void WKPreferencesSetUserTimingEnabled(WKPreferencesRef preferencesRef, bool fla
 bool WKPreferencesGetUserTimingEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->userTimingEnabled();
+}
+
+void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setResourceTimingEnabled(flag);
+}
+
+bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->resourceTimingEnabled();
 }
 
 void WKPreferencesSetSelectionPaintingWithoutSelectionGapsEnabled(WKPreferencesRef preferencesRef, bool flag)

@@ -53,6 +53,7 @@
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/LogInitialization.h>
+#include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
@@ -170,11 +171,6 @@ void NetworkProcess::didClose(IPC::Connection&)
     stopRunLoop();
 }
 
-void NetworkProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
-{
-    stopRunLoop();
-}
-
 void NetworkProcess::didCreateDownload()
 {
     disableTermination();
@@ -200,7 +196,6 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
     if (m_suppressMemoryPressureHandler)
         return;
 
-    platformLowMemoryHandler(critical);
     WTF::releaseFastMallocFreeMemory();
 }
 
@@ -518,7 +513,8 @@ void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTas
     downloadProxyConnection()->send(Messages::DownloadProxy::DidReceiveResponse(response), destinationID);
 
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, WTFMove(completionHandler));
-    downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
+    String suggestedFilename = MIMETypeRegistry::appendFileExtensionIfNecessary(networkDataTask.suggestedFilename(), response.mimeType());
+    downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), suggestedFilename), destinationID);
 }
 #endif
 
@@ -658,10 +654,6 @@ void NetworkProcess::initializeProcessName(const ChildProcessInitializationParam
 }
 
 void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameters&, SandboxInitializationParameters&)
-{
-}
-
-void NetworkProcess::platformLowMemoryHandler(Critical)
 {
 }
 #endif

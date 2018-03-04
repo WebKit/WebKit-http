@@ -84,6 +84,7 @@ public:
         , m_client(client)
         , m_firstRequest(request)
         , m_lastHTTPMethod(request.httpMethod())
+        , m_partition(request.cachePartition())
         , m_defersLoading(defersLoading)
         , m_shouldContentSniff(shouldContentSniff)
         , m_usesAsyncCallbacks(client && client->usesAsyncCallbacks())
@@ -115,6 +116,7 @@ public:
     ResourceHandleClient* m_client;
     ResourceRequest m_firstRequest;
     String m_lastHTTPMethod;
+    String m_partition;
 
     // Suggested credentials for the current redirection step.
     String m_user;

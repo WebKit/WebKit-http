@@ -29,15 +29,15 @@ PASS createElementNS test in XHTML document: null,"f}oo","INVALID_CHARACTER_ERR"
 PASS createElementNS test in HTML document: null,"foo}","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: null,"foo}","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: null,"foo}","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in HTML document: null,"￿foo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XML document: null,"￿foo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XHTML document: null,"￿foo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in HTML document: null,"f￿oo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XML document: null,"f￿oo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XHTML document: null,"f￿oo","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in HTML document: null,"foo￿","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XML document: null,"foo￿","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in XHTML document: null,"foo￿","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in HTML document: null,"\ufffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XML document: null,"\ufffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XHTML document: null,"\ufffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in HTML document: null,"f\uffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XML document: null,"f\uffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XHTML document: null,"f\uffffoo","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in HTML document: null,"foo\uffff","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XML document: null,"foo\uffff","INVALID_CHARACTER_ERR" 
+PASS createElementNS test in XHTML document: null,"foo\uffff","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in HTML document: null,"<foo","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: null,"<foo","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: null,"<foo","INVALID_CHARACTER_ERR" 
@@ -197,18 +197,18 @@ PASS createElementNS test in XHTML document: "http://example.com/","foo:","NAMES
 PASS createElementNS test in HTML document: "http://example.com/","f::oo","NAMESPACE_ERR" 
 PASS createElementNS test in XML document: "http://example.com/","f::oo","NAMESPACE_ERR" 
 PASS createElementNS test in XHTML document: "http://example.com/","f::oo","NAMESPACE_ERR" 
-FAIL createElementNS test in HTML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
-FAIL createElementNS test in XML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
-FAIL createElementNS test in XHTML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in HTML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in XML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in XHTML document: "http://example.com/","a:0","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
 PASS createElementNS test in HTML document: "http://example.com/","0:a","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: "http://example.com/","0:a","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: "http://example.com/","0:a","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in HTML document: "http://example.com/","a:_",null 
 PASS createElementNS test in XML document: "http://example.com/","a:_",null 
 PASS createElementNS test in XHTML document: "http://example.com/","a:_",null 
-FAIL createElementNS test in HTML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
-FAIL createElementNS test in XML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
-FAIL createElementNS test in XHTML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedNam..." threw object "InvalidCharacterError (DOM Exception 5): The string conta..." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in HTML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in XML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
+FAIL createElementNS test in XHTML document: "http://example.com/","a:ெ","NAMESPACE_ERR" assert_throws: function "function () { doc.createElementNS(namespace, qualifiedName) }" threw object "InvalidCharacterError (DOM Exception 5): The string contains invalid characters." that is not a DOMException NAMESPACE_ERR: property "code" is equal to 5, expected 14
 PASS createElementNS test in HTML document: "http://example.com/","ெ:a","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: "http://example.com/","ெ:a","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: "http://example.com/","ெ:a","INVALID_CHARACTER_ERR" 
@@ -260,9 +260,6 @@ PASS createElementNS test in XHTML document: "http://example.com/","a-b:c",null
 PASS createElementNS test in HTML document: "http://example.com/","xml",null 
 PASS createElementNS test in XML document: "http://example.com/","xml",null 
 PASS createElementNS test in XHTML document: "http://example.com/","xml",null 
-PASS createElementNS test in HTML document: "http://example.com/","xmlns","NAMESPACE_ERR" 
-PASS createElementNS test in XML document: "http://example.com/","xmlns","NAMESPACE_ERR" 
-PASS createElementNS test in XHTML document: "http://example.com/","xmlns","NAMESPACE_ERR" 
 PASS createElementNS test in HTML document: "http://example.com/","XMLNS",null 
 PASS createElementNS test in XML document: "http://example.com/","XMLNS",null 
 PASS createElementNS test in XHTML document: "http://example.com/","XMLNS",null 
@@ -536,15 +533,9 @@ PASS createElementNS test in XHTML document: "foo:","xmlfoo:bar",null
 PASS createElementNS test in HTML document: "","","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: "","","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: "","","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in HTML document: null,null,null 
-PASS createElementNS test in XML document: null,null,null 
-PASS createElementNS test in XHTML document: null,null,null 
 PASS createElementNS test in HTML document: null,"","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: null,"","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: null,"","INVALID_CHARACTER_ERR" 
-PASS createElementNS test in HTML document: undefined,null,null 
-PASS createElementNS test in XML document: undefined,null,null 
-PASS createElementNS test in XHTML document: undefined,null,null 
 PASS createElementNS test in HTML document: undefined,"","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XML document: undefined,"","INVALID_CHARACTER_ERR" 
 PASS createElementNS test in XHTML document: undefined,"","INVALID_CHARACTER_ERR" 

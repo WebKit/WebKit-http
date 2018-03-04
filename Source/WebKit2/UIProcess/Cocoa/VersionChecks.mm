@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,33 +26,33 @@
 #import "config.h"
 #import "VersionChecks.h"
 
-#import <mach-o/dyld.h>
-
-#if PLATFORM(IOS)
 #import <WebCore/RuntimeApplicationChecks.h>
-#endif
+#import <mach-o/dyld.h>
+#import <mutex>
 
 namespace WebKit {
 
-static int linkTimeVersion()
-{
-    return NSVersionOfLinkTimeLibrary("WebKit");
-}
+static NSString * const WebKitLinkedOnOrAfterEverythingKey = @"WebKitLinkedOnOrAfterEverything";
 
-bool linkedOnOrAfter(LibraryVersion version)
+bool linkedOnOrAfter(SDKVersion sdkVersion)
 {
+     static bool linkedOnOrAfterEverything;
+     static std::once_flag once;
+     std::call_once(once, [] {
+        bool isSafari = false;
 #if PLATFORM(IOS)
-    // Always make new features available for Safari.
-    if (WebCore::IOSApplication::isMobileSafari())
-        return true;
+        if (WebCore::IOSApplication::isMobileSafari())
+            isSafari = true;
+#elif PLATFORM(MAC)
+        if (WebCore::MacApplication::isSafari())
+            isSafari = true;
 #endif
 
-    int linkedVersion = linkTimeVersion();
-    if (linkedVersion == -1) {
-        // Not linked against WebKit.
-        return true;
-    }
-    return linkedVersion >= static_cast<int>(version);
+        if (isSafari || [[NSUserDefaults standardUserDefaults] boolForKey:WebKitLinkedOnOrAfterEverythingKey])
+            linkedOnOrAfterEverything = true;
+    });
+
+    return linkedOnOrAfterEverything ? true : dyld_get_program_sdk_version() >= static_cast<uint32_t>(sdkVersion);
 }
 
 }

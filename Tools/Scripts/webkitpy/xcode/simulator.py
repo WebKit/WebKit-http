@@ -263,7 +263,7 @@ class Device(object):
         except subprocess.CalledProcessError:
             raise RuntimeError('"xcrun simctl erase" failed: device state is {}'.format(Simulator.device_state(udid)))
 
-    def install_app(self, app_path):
+    def install_app(self, app_path, env=None):
         # FIXME: This is a workaround for <rdar://problem/30273973>, Racey failure of simctl install.
         for x in xrange(3):
             if self._host.executive.run_command(['xcrun', 'simctl', 'install', self.udid, app_path], return_exit_code=True):
@@ -275,7 +275,7 @@ class Device(object):
                     'Print CFBundleIdentifier',
                     self._host.filesystem.join(app_path, 'Info.plist'),
                 ]).rstrip()
-                self._host.executive.kill_process(self.launch_app(bundle_id, [], attempts=1))
+                self._host.executive.kill_process(self.launch_app(bundle_id, [], env=env, attempts=1))
                 return True
             except RuntimeError:
                 pass
@@ -308,9 +308,6 @@ class Device(object):
         if not match or match.group('bundle') != bundle_id:
             raise RuntimeError('Failed to find process id for {}: {}'.format(bundle_id, output))
         return int(match.group('pid'))
-
-    def terminate_app(self, bundle_id):
-        return not self._host.executive.run_command(['xcrun', 'simctl', 'terminate', self.udid, bundle_id], return_exit_code=True)
 
     def __eq__(self, other):
         return self.udid == other.udid

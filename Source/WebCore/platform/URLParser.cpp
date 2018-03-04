@@ -146,14 +146,14 @@ ALWAYS_INLINE static void appendCodePoint(Vector<UChar>& destination, UChar32 co
 enum URLCharacterClass {
     UserInfo = 0x1,
     Default = 0x2,
-    InvalidDomain = 0x4,
+    ForbiddenHost = 0x4,
     QueryPercent = 0x8,
     SlashQuestionOrHash = 0x10,
     ValidScheme = 0x20,
 };
 
 static const uint8_t characterClassTable[256] = {
-    UserInfo | Default | InvalidDomain | QueryPercent, // 0x0
+    UserInfo | Default | QueryPercent | ForbiddenHost, // 0x0
     UserInfo | Default | QueryPercent, // 0x1
     UserInfo | Default | QueryPercent, // 0x2
     UserInfo | Default | QueryPercent, // 0x3
@@ -162,11 +162,11 @@ static const uint8_t characterClassTable[256] = {
     UserInfo | Default | QueryPercent, // 0x6
     UserInfo | Default | QueryPercent, // 0x7
     UserInfo | Default | QueryPercent, // 0x8
-    UserInfo | Default | InvalidDomain | QueryPercent, // 0x9
-    UserInfo | Default | InvalidDomain | QueryPercent, // 0xA
+    UserInfo | Default | QueryPercent | ForbiddenHost, // 0x9
+    UserInfo | Default | QueryPercent | ForbiddenHost, // 0xA
     UserInfo | Default | QueryPercent, // 0xB
     UserInfo | Default | QueryPercent, // 0xC
-    UserInfo | Default | InvalidDomain | QueryPercent, // 0xD
+    UserInfo | Default | QueryPercent | ForbiddenHost, // 0xD
     UserInfo | Default | QueryPercent, // 0xE
     UserInfo | Default | QueryPercent, // 0xF
     UserInfo | Default | QueryPercent, // 0x10
@@ -185,12 +185,12 @@ static const uint8_t characterClassTable[256] = {
     UserInfo | Default | QueryPercent, // 0x1D
     UserInfo | Default | QueryPercent, // 0x1E
     UserInfo | Default | QueryPercent, // 0x1F
-    UserInfo | Default | InvalidDomain | QueryPercent, // ' '
+    UserInfo | Default | QueryPercent | ForbiddenHost, // ' '
     0, // '!'
     UserInfo | Default | QueryPercent, // '"'
-    UserInfo | Default | InvalidDomain | QueryPercent | SlashQuestionOrHash, // '#'
+    UserInfo | Default | QueryPercent | SlashQuestionOrHash | ForbiddenHost, // '#'
     0, // '$'
-    InvalidDomain, // '%'
+    ForbiddenHost, // '%'
     0, // '&'
     0, // '''
     0, // '('
@@ -200,7 +200,7 @@ static const uint8_t characterClassTable[256] = {
     0, // ','
     ValidScheme, // '-'
     ValidScheme, // '.'
-    UserInfo | InvalidDomain | SlashQuestionOrHash, // '/'
+    UserInfo | SlashQuestionOrHash | ForbiddenHost, // '/'
     ValidScheme, // '0'
     ValidScheme, // '1'
     ValidScheme, // '2'
@@ -211,13 +211,13 @@ static const uint8_t characterClassTable[256] = {
     ValidScheme, // '7'
     ValidScheme, // '8'
     ValidScheme, // '9'
-    UserInfo | InvalidDomain, // ':'
+    UserInfo | ForbiddenHost, // ':'
     UserInfo, // ';'
     UserInfo | Default | QueryPercent, // '<'
     UserInfo, // '='
     UserInfo | Default | QueryPercent, // '>'
-    UserInfo | Default | InvalidDomain | SlashQuestionOrHash, // '?'
-    UserInfo | InvalidDomain, // '@'
+    UserInfo | Default | SlashQuestionOrHash | ForbiddenHost, // '?'
+    UserInfo | ForbiddenHost, // '@'
     ValidScheme, // 'A'
     ValidScheme, // 'B'
     ValidScheme, // 'C'
@@ -244,9 +244,9 @@ static const uint8_t characterClassTable[256] = {
     ValidScheme, // 'X'
     ValidScheme, // 'Y'
     ValidScheme, // 'Z'
-    UserInfo | InvalidDomain, // '['
-    UserInfo | InvalidDomain | SlashQuestionOrHash, // '\\'
-    UserInfo | InvalidDomain, // ']'
+    UserInfo | ForbiddenHost, // '['
+    UserInfo | SlashQuestionOrHash | ForbiddenHost, // '\\'
+    UserInfo | ForbiddenHost, // ']'
     UserInfo, // '^'
     0, // '_'
     UserInfo | Default, // '`'
@@ -417,10 +417,10 @@ template<typename CharacterType> ALWAYS_INLINE static bool isTabOrNewline(Charac
 template<typename CharacterType> ALWAYS_INLINE static bool isInSimpleEncodeSet(CharacterType character) { return character > 0x7E || isC0Control(character); }
 template<typename CharacterType> ALWAYS_INLINE static bool isInDefaultEncodeSet(CharacterType character) { return character > 0x7E || characterClassTable[character] & Default; }
 template<typename CharacterType> ALWAYS_INLINE static bool isInUserInfoEncodeSet(CharacterType character) { return character > 0x7E || characterClassTable[character] & UserInfo; }
-template<typename CharacterType> ALWAYS_INLINE static bool isInvalidDomainCharacter(CharacterType character) { return character <= ']' && characterClassTable[character] & InvalidDomain; }
 template<typename CharacterType> ALWAYS_INLINE static bool isPercentOrNonASCII(CharacterType character) { return !isASCII(character) || character == '%'; }
 template<typename CharacterType> ALWAYS_INLINE static bool isSlashQuestionOrHash(CharacterType character) { return character <= '\\' && characterClassTable[character] & SlashQuestionOrHash; }
 template<typename CharacterType> ALWAYS_INLINE static bool isValidSchemeCharacter(CharacterType character) { return character <= 'z' && characterClassTable[character] & ValidScheme; }
+template<typename CharacterType> ALWAYS_INLINE static bool isForbiddenHostCodePoint(CharacterType character) { return character <= ']' && characterClassTable[character] & ForbiddenHost; }
 static bool shouldPercentEncodeQueryByte(uint8_t byte) { return characterClassTable[byte] & QueryPercent; }
 
 template<typename CharacterType, URLParser::ReportSyntaxViolation reportSyntaxViolation>
@@ -2130,8 +2130,13 @@ void URLParser::serializeIPv6(URLParser::IPv6Address address)
     appendToASCIIBuffer(']');
 }
 
+enum class URLParser::IPv4PieceParsingError {
+    Failure,
+    Overflow,
+};
+
 template<typename CharacterType>
-std::optional<uint32_t> URLParser::parseIPv4Piece(CodePointIterator<CharacterType>& iterator, bool& didSeeSyntaxViolation)
+Expected<uint32_t, URLParser::IPv4PieceParsingError> URLParser::parseIPv4Piece(CodePointIterator<CharacterType>& iterator, bool& didSeeSyntaxViolation)
 {
     enum class State : uint8_t {
         UnknownBase,
@@ -2143,7 +2148,7 @@ std::optional<uint32_t> URLParser::parseIPv4Piece(CodePointIterator<CharacterTyp
     State state = State::UnknownBase;
     Checked<uint32_t, RecordOverflow> value = 0;
     if (!iterator.atEnd() && *iterator == '.')
-        return std::nullopt;
+        return makeUnexpected(IPv4PieceParsingError::Failure);
     while (!iterator.atEnd()) {
         if (isTabOrNewline(*iterator)) {
             didSeeSyntaxViolation = true;
@@ -2174,31 +2179,31 @@ std::optional<uint32_t> URLParser::parseIPv4Piece(CodePointIterator<CharacterTyp
             break;
         case State::Decimal:
             if (!isASCIIDigit(*iterator))
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Failure);
             value *= 10;
             value += *iterator - '0';
             if (UNLIKELY(value.hasOverflowed()))
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;
             break;
         case State::Octal:
             ASSERT(didSeeSyntaxViolation);
             if (*iterator < '0' || *iterator > '7')
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Failure);
             value *= 8;
             value += *iterator - '0';
             if (UNLIKELY(value.hasOverflowed()))
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;
             break;
         case State::Hex:
             ASSERT(didSeeSyntaxViolation);
             if (!isASCIIHexDigit(*iterator))
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Failure);
             value *= 16;
             value += toASCIIHexValue(*iterator);
             if (UNLIKELY(value.hasOverflowed()))
-                return std::nullopt;
+                return makeUnexpected(IPv4PieceParsingError::Overflow);
             ++iterator;
             break;
         }
@@ -2214,14 +2219,18 @@ ALWAYS_INLINE static uint64_t pow256(size_t exponent)
     return values[exponent];
 }
 
-template<typename CharacterType>
-std::optional<URLParser::IPv4Address> URLParser::parseIPv4Host(CodePointIterator<CharacterType> iterator)
-{
-    auto hostBegin = iterator;
+enum class URLParser::IPv4ParsingError {
+    Failure,
+    NotIPv4,
+};
 
-    Vector<uint32_t, 4> items;
-    items.reserveInitialCapacity(4);
+template<typename CharacterTypeForSyntaxViolation, typename CharacterType>
+Expected<URLParser::IPv4Address, URLParser::IPv4ParsingError> URLParser::parseIPv4Host(const CodePointIterator<CharacterTypeForSyntaxViolation>& iteratorForSyntaxViolationPosition, CodePointIterator<CharacterType> iterator)
+{
+    Vector<Expected<uint32_t, URLParser::IPv4PieceParsingError>, 4> items;
     bool didSeeSyntaxViolation = false;
+    if (!iterator.atEnd() && *iterator == '.')
+        return makeUnexpected(IPv4ParsingError::NotIPv4);
     while (!iterator.atEnd()) {
         if (isTabOrNewline(*iterator)) {
             didSeeSyntaxViolation = true;
@@ -2229,44 +2238,48 @@ std::optional<URLParser::IPv4Address> URLParser::parseIPv4Host(CodePointIterator
             continue;
         }
         if (items.size() >= 4)
-            return std::nullopt;
-        if (auto item = parseIPv4Piece(iterator, didSeeSyntaxViolation))
-            items.append(item.value());
-        else
-            return std::nullopt;
-        if (!iterator.atEnd()) {
-            if (items.size() >= 4)
-                return std::nullopt;
-            if (*iterator == '.')
-                ++iterator;
-            else
-                return std::nullopt;
+            return makeUnexpected(IPv4ParsingError::NotIPv4);
+        items.append(parseIPv4Piece(iterator, didSeeSyntaxViolation));
+        if (!iterator.atEnd() && *iterator == '.') {
+            ++iterator;
+            if (iterator.atEnd())
+                syntaxViolation(iteratorForSyntaxViolationPosition);
+            else if (*iterator == '.')
+                return makeUnexpected(IPv4ParsingError::NotIPv4);
         }
     }
     if (!iterator.atEnd() || !items.size() || items.size() > 4)
-        return std::nullopt;
+        return makeUnexpected(IPv4ParsingError::NotIPv4);
+    for (const auto& item : items) {
+        if (!item.hasValue() && item.error() == IPv4PieceParsingError::Failure)
+            return makeUnexpected(IPv4ParsingError::NotIPv4);
+    }
+    for (const auto& item : items) {
+        if (!item.hasValue() && item.error() == IPv4PieceParsingError::Overflow)
+            return makeUnexpected(IPv4ParsingError::Failure);
+    }
     if (items.size() > 1) {
         for (size_t i = 0; i < items.size() - 1; i++) {
-            if (items[i] > 255)
-                return std::nullopt;
+            if (items[i].value() > 255)
+                return makeUnexpected(IPv4ParsingError::Failure);
         }
     }
-    if (items[items.size() - 1] >= pow256(5 - items.size()))
-        return std::nullopt;
+    if (items[items.size() - 1].value() >= pow256(5 - items.size()))
+        return makeUnexpected(IPv4ParsingError::Failure);
 
     if (didSeeSyntaxViolation)
-        syntaxViolation(hostBegin);
-    for (auto item : items) {
-        if (item > 255)
-            syntaxViolation(hostBegin);
+        syntaxViolation(iteratorForSyntaxViolationPosition);
+    for (const auto& item : items) {
+        if (item.value() > 255)
+            syntaxViolation(iteratorForSyntaxViolationPosition);
     }
 
     if (UNLIKELY(items.size() != 4))
-        syntaxViolation(hostBegin);
+        syntaxViolation(iteratorForSyntaxViolationPosition);
 
-    IPv4Address ipv4 = items.takeLast();
+    IPv4Address ipv4 = items.takeLast().value();
     for (size_t counter = 0; counter < items.size(); ++counter)
-        ipv4 += items[counter] * pow256(3 - counter);
+        ipv4 += items[counter].value() * pow256(3 - counter);
     return ipv4;
 }
 
@@ -2329,7 +2342,7 @@ template<typename CharacterType>
 std::optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<CharacterType> c)
 {
     ASSERT(*c == '[');
-    auto hostBegin = c;
+    const auto hostBegin = c;
     advance(c, hostBegin);
     if (c.atEnd())
         return std::nullopt;
@@ -2517,10 +2530,10 @@ std::optional<Vector<LChar, URLParser::defaultInlineBufferSize>> URLParser::doma
     return std::nullopt;
 }
 
-bool URLParser::hasInvalidDomainCharacter(const Vector<LChar, URLParser::defaultInlineBufferSize>& asciiDomain)
+bool URLParser::hasForbiddenHostCodePoint(const Vector<LChar, URLParser::defaultInlineBufferSize>& asciiDomain)
 {
     for (size_t i = 0; i < asciiDomain.size(); ++i) {
-        if (isInvalidDomainCharacter(asciiDomain[i]))
+        if (isForbiddenHostCodePoint(asciiDomain[i]))
             return true;
     }
     return false;
@@ -2614,6 +2627,8 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             }
             if (*iterator == ':')
                 break;
+            if (UNLIKELY(isForbiddenHostCodePoint(*iterator) && *iterator != '%'))
+                return false;
             utf8PercentEncode<isInSimpleEncodeSet>(iterator);
         }
         m_url.m_hostEnd = currentPosition(iterator);
@@ -2631,10 +2646,11 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
                 continue;
             if (*iterator == ':')
                 break;
-            if (isInvalidDomainCharacter(*iterator))
+            if (isForbiddenHostCodePoint(*iterator))
                 return false;
         }
-        if (auto address = parseIPv4Host(CodePointIterator<CharacterType>(hostIterator, iterator))) {
+        auto address = parseIPv4Host(hostIterator, CodePointIterator<CharacterType>(hostIterator, iterator));
+        if (address) {
             serializeIPv4(address.value());
             m_url.m_hostEnd = currentPosition(iterator);
             if (iterator.atEnd()) {
@@ -2643,6 +2659,8 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
             }
             return parsePort(iterator);
         }
+        if (address.error() == IPv4ParsingError::Failure)
+            return false;
         for (; hostIterator != iterator; ++hostIterator) {
             if (UNLIKELY(isTabOrNewline(*hostIterator))) {
                 syntaxViolation(hostIterator);
@@ -2659,7 +2677,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         return true;
     }
     
-    auto hostBegin = iterator;
+    const auto hostBegin = iterator;
     
     Vector<LChar, defaultInlineBufferSize> utf8Encoded;
     for (; !iterator.atEnd(); ++iterator) {
@@ -2687,12 +2705,13 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
     if (domain != StringView(percentDecoded.data(), percentDecoded.size()))
         syntaxViolation(hostBegin);
     auto asciiDomain = domainToASCII(domain, hostBegin);
-    if (!asciiDomain || hasInvalidDomainCharacter(asciiDomain.value()))
+    if (!asciiDomain || hasForbiddenHostCodePoint(asciiDomain.value()))
         return false;
     Vector<LChar, defaultInlineBufferSize>& asciiDomainValue = asciiDomain.value();
     const LChar* asciiDomainCharacters = asciiDomainValue.data();
 
-    if (auto address = parseIPv4Host(CodePointIterator<LChar>(asciiDomainValue.begin(), asciiDomainValue.end()))) {
+    auto address = parseIPv4Host(hostBegin, CodePointIterator<LChar>(asciiDomainValue.begin(), asciiDomainValue.end()));
+    if (address) {
         serializeIPv4(address.value());
         m_url.m_hostEnd = currentPosition(iterator);
         if (iterator.atEnd()) {
@@ -2701,6 +2720,8 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
         }
         return parsePort(iterator);
     }
+    if (address.error() == IPv4ParsingError::Failure)
+        return false;
 
     appendToASCIIBuffer(asciiDomainCharacters, asciiDomainValue.size());
     m_url.m_hostEnd = currentPosition(iterator);

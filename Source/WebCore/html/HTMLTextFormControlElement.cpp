@@ -40,6 +40,7 @@
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "Logging.h"
+#include "NoEventDispatchAssertion.h"
 #include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderTextControlSingleLine.h"
@@ -82,7 +83,7 @@ bool HTMLTextFormControlElement::childShouldCreateRenderer(const Node& child) co
 Node::InsertionNotificationRequest HTMLTextFormControlElement::insertedInto(ContainerNode& insertionPoint)
 {
     InsertionNotificationRequest insertionNotificationRequest = HTMLFormControlElementWithState::insertedInto(insertionPoint);
-    if (!insertionPoint.inDocument())
+    if (!insertionPoint.isConnected())
         return insertionNotificationRequest;
     String initialValue = value();
     setTextAsOfLastFormControlChangeEvent(initialValue.isNull() ? emptyString() : initialValue);
@@ -296,7 +297,12 @@ void HTMLTextFormControlElement::setSelectionRange(int start, int end, TextField
     if (!hasFocus && innerText) {
         // FIXME: Removing this synchronous layout requires fixing <https://webkit.org/b/128797>
         document().updateLayoutIgnorePendingStylesheets();
-        if (RenderElement* rendererTextControl = renderer()) {
+
+        // Double-check the state of innerTextElement after the layout.
+        innerText = innerTextElement();
+        auto* rendererTextControl = renderer();
+
+        if (innerText && rendererTextControl) {
             if (rendererTextControl->style().visibility() == HIDDEN || !innerText->renderBox()->height()) {
                 cacheSelection(start, end, direction);
                 return;
@@ -557,10 +563,16 @@ void HTMLTextFormControlElement::setInnerTextValue(const String& value)
                 cache->postNotification(this, AXObjectCache::AXValueChanged, TargetObservableParent);
         }
 #endif
-        innerText->setInnerText(value);
 
-        if (value.endsWith('\n') || value.endsWith('\r'))
-            innerText->appendChild(HTMLBRElement::create(document()));
+        {
+            // Events dispatched on the inner text element cannot execute arbitrary author scripts.
+            NoEventDispatchAssertion::EventAllowedScope allowedScope(*userAgentShadowRoot());
+
+            innerText->setInnerText(value);
+
+            if (value.endsWith('\n') || value.endsWith('\r'))
+                innerText->appendChild(HTMLBRElement::create(document()));
+        }
 
 #if HAVE(ACCESSIBILITY) && PLATFORM(COCOA)
         if (textIsChanged && renderer()) {

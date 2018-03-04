@@ -29,11 +29,11 @@
 
 #include "AXObjectCache.h"
 #include "ActiveDOMCallbackMicrotask.h"
-#include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "Autofill.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
+#include "CSSAnimationController.h"
 #include "CSSKeyframesRule.h"
 #include "CSSMediaRule.h"
 #include "CSSStyleRule.h"
@@ -86,7 +86,6 @@
 #include "InternalSettings.h"
 #include "Language.h"
 #include "LibWebRTCProvider.h"
-#include "LibWebRTCUtils.h"
 #include "MainFrame.h"
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
@@ -113,6 +112,7 @@
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "ResourceLoadObserver.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGPathStringBuilder.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
@@ -393,6 +393,8 @@ void Internals::resetToConsistentState(Page& page)
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
 #endif
+        if (auto* backing = mainFrameView->tiledBacking())
+            backing->setTileSizeUpdateDelayDisabledForTesting(false);
     }
 
     WebCore::clearDefaultPortForProtocolMapForTesting();
@@ -498,6 +500,18 @@ unsigned Internals::workerThreadCount() const
     return WorkerThread::workerThreadCount();
 }
 
+bool Internals::areSVGAnimationsPaused() const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return false;
+
+    if (!document->svgExtensions())
+        return false;
+
+    return document->accessSVGExtensions().areAnimationsPaused();
+}
+
 String Internals::address(Node& node)
 {
     return String::format("%p", &node);
@@ -548,9 +562,8 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
         return false;
 
     ResourceRequest request(contextDocument()->completeURL(url));
-#if ENABLE(CACHE_PARTITIONING)
     request.setDomainForCachePartition(contextDocument()->topOrigin().domainForCachePartition());
-#endif
+    
     CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
@@ -707,6 +720,20 @@ void Internals::clearPageCache()
 unsigned Internals::pageCacheSize() const
 {
     return PageCache::singleton().pageCount();
+}
+
+void Internals::disableTileSizeUpdateDelay()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return;
+
+    auto* view = document->frame()->view();
+    if (!view)
+        return;
+
+    if (auto* backing = view->tiledBacking())
+        backing->setTileSizeUpdateDelayDisabledForTesting(true);
 }
 
 Node* Internals::treeScopeRootNode(Node& node)
@@ -2003,6 +2030,25 @@ ExceptionOr<bool> Internals::isPageBoxVisible(int pageNumber)
     return document->isPageBoxVisible(pageNumber);
 }
 
+static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
+{
+    LayerTreeFlags layerTreeFlags = 0;
+    if (flags & Internals::LAYER_TREE_INCLUDES_VISIBLE_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
+    if (flags & Internals::LAYER_TREE_INCLUDES_TILE_CACHES)
+        layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
+    if (flags & Internals::LAYER_TREE_INCLUDES_REPAINT_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
+    if (flags & Internals::LAYER_TREE_INCLUDES_PAINTING_PHASES)
+        layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
+    if (flags & Internals::LAYER_TREE_INCLUDES_CONTENT_LAYERS)
+        layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
+    if (flags & Internals::LAYER_TREE_INCLUDES_ACCELERATES_DRAWING)
+        layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
+
+    return layerTreeFlags;
+}
+
 // FIXME: Remove the document argument. It is almost always the same as
 // contextDocument(), with the exception of a few tests that pass a
 // different document, and could just make the call through another Internals
@@ -2012,19 +2058,7 @@ ExceptionOr<String> Internals::layerTreeAsText(Document& document, unsigned shor
     if (!document.frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    LayerTreeFlags layerTreeFlags = 0;
-    if (flags & LAYER_TREE_INCLUDES_VISIBLE_RECTS)
-        layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
-    if (flags & LAYER_TREE_INCLUDES_TILE_CACHES)
-        layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
-    if (flags & LAYER_TREE_INCLUDES_REPAINT_RECTS)
-        layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
-    if (flags & LAYER_TREE_INCLUDES_PAINTING_PHASES)
-        layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
-    if (flags & LAYER_TREE_INCLUDES_CONTENT_LAYERS)
-        layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
-
-    return document.frame()->layerTreeAsText(layerTreeFlags);
+    return document.frame()->layerTreeAsText(toLayerTreeFlags(flags));
 }
 
 ExceptionOr<String> Internals::repaintRectsAsText() const
@@ -3237,7 +3271,7 @@ ExceptionOr<Ref<MockPageOverlay>> Internals::installMockPageOverlay(PageOverlayT
     return MockPageOverlayClient::singleton().installOverlay(document->frame()->mainFrame(), type == PageOverlayType::View ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
 }
 
-ExceptionOr<String> Internals::pageOverlayLayerTreeAsText() const
+ExceptionOr<String> Internals::pageOverlayLayerTreeAsText(unsigned short flags) const
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
@@ -3245,7 +3279,7 @@ ExceptionOr<String> Internals::pageOverlayLayerTreeAsText() const
 
     document->updateLayout();
 
-    return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame());
+    return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame(), toLayerTreeFlags(flags));
 }
 
 void Internals::setPageMuted(const String& states)
@@ -3671,5 +3705,11 @@ void Internals::setQuickLookPassword(const String& password)
 #endif
 }
 #endif
+
+void Internals::setAsRunningUserScripts(Document& document)
+{
+    if (document.page())
+        document.page()->setAsRunningUserScripts();
+}
 
 } // namespace WebCore

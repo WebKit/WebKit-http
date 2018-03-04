@@ -1920,6 +1920,9 @@ sub GenerateHeader
     push (@headerContent, "    static JSC::JSValue getPrototype(JSC::JSObject*, JSC::ExecState*);\n") if $interface->extendedAttributes->{CustomGetPrototype};
     push (@headerContent, "    static bool setPrototype(JSC::JSObject*, JSC::ExecState*, JSC::JSValue, bool shouldThrowIfCantSet);\n") if $interface->extendedAttributes->{CustomSetPrototype};
 
+    # Custom toStringName function.
+    push (@headerContent, "    static String toStringName(const JSC::JSObject*, JSC::ExecState*);\n") if $interface->extendedAttributes->{CustomToStringName};
+
     # Custom preventExtensions function.
     push(@headerContent, "    static bool preventExtensions(JSC::JSObject*, JSC::ExecState*);\n") if $interface->extendedAttributes->{CustomPreventExtensions};
     
@@ -1930,6 +1933,9 @@ sub GenerateHeader
         push(@headerContent, "    static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);\n");
         push(@headerContent, "    static JSC::JSValue getNamedConstructor(JSC::VM&, JSC::JSGlobalObject*);\n") if $interface->extendedAttributes->{NamedConstructor};
     }
+
+    # Serializer function.
+    push(@headerContent, "    static JSC::JSObject* serialize(JSC::ExecState*, JS${interfaceName}* thisObject, JSC::ThrowScope&);\n") if $interface->serializable;
 
     my $numCustomFunctions = 0;
     my $numCustomAttributes = 0;
@@ -2555,13 +2561,14 @@ sub GenerateOverloadedFunctionOrConstructor
     }
 
     my $generateOverloadCallIfNecessary = sub {
-        my ($overload, $condition) = @_;
+        my ($overload, $condition, $include) = @_;
         return unless $overload;
         my $conditionalString = $codeGenerator->GenerateConditionalString($overload);
         push(@implContent, "#if ${conditionalString}\n") if $conditionalString;
         push(@implContent, "        if ($condition)\n    ") if $condition;
         push(@implContent, "        return ${functionName}$overload->{overloadIndex}(state);\n");
         push(@implContent, "#endif\n") if $conditionalString;
+        AddToImplIncludes($include, $overload->extendedAttributes->{"Conditional"}) if $include;
     };
     my $isOptionalParameter = sub {
         my ($type, $optionality) = @_;
@@ -2692,7 +2699,7 @@ END
 
             # FIXME: Avoid invoking GetMethod(object, Symbol.iterator) again in convert<IDLSequence<T>>(...).
             $overload = GetOverloadThatMatches($S, $d, \&$isSequenceOrFrozenArrayParameter);
-            &$generateOverloadCallIfNecessary($overload, "hasIteratorMethod(*state, distinguishingArg)");
+            &$generateOverloadCallIfNecessary($overload, "hasIteratorMethod(*state, distinguishingArg)", "<runtime/IteratorOperations.h>");
 
             $overload = GetOverloadThatMatches($S, $d, \&$isDictionaryOrRecordOrObjectOrCallbackInterfaceParameter);
             &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && asObject(distinguishingArg)->type() != RegExpObjectType");
@@ -3420,6 +3427,11 @@ sub GenerateImplementation
         push(@implContent, "{\n");
         push(@implContent, "    Base::finishCreation(vm);\n");
         push(@implContent, "    ASSERT(inherits(vm, info()));\n\n");
+    }
+
+    if ($interfaceName eq "Location") {
+        push(@implContent, "    putDirect(vm, vm.propertyNames->valueOf, globalObject()->objectProtoValueOfFunction(), DontDelete | ReadOnly | DontEnum);\n");
+        push(@implContent, "    putDirect(vm, vm.propertyNames->toPrimitiveSymbol, jsUndefined(), DontDelete | ReadOnly | DontEnum);\n");
     }
 
     # Support for RuntimeEnabled attributes on instances.
@@ -4390,46 +4402,15 @@ sub GenerateSerializerFunction
 
     my $interfaceName = $interface->type->name;
 
-    my $serializerFunctionName = "toJSON";
-    my $serializerNativeFunctionName = $codeGenerator->WK_lcfirst($className) . "PrototypeFunction" . $codeGenerator->WK_ucfirst($serializerFunctionName);
-
-    AddToImplIncludes("<runtime/ObjectConstructor.h>");
-    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Caller(ExecState* state, JS$interfaceName* thisObject, JSC::ThrowScope& throwScope)\n");
-    push(@implContent, "{\n");
-    push(@implContent, "    auto& vm = state->vm();\n");
-    push(@implContent, "    auto* result = constructEmptyObject(state);\n");
-    push(@implContent, "\n");
-
-    GenerateSerializerAttributesForInterface($interface, $className);
-
-    push(@implContent, "    return JSValue::encode(result);\n");
-    push(@implContent, "}\n");
-    push(@implContent, "\n");
-    push(@implContent, "EncodedJSValue JSC_HOST_CALL ${serializerNativeFunctionName}(ExecState* state)\n");
-    push(@implContent, "{\n");
-    push(@implContent, "    return BindingCaller<JS$interfaceName>::callOperation<${serializerNativeFunctionName}Caller>(state, \"$serializerFunctionName\");\n");
-    push(@implContent, "}\n");
-    push(@implContent, "\n");
-}
-
-sub GenerateSerializerAttributesForInterface
-{
-    my ($interface, $className) = @_;
-
-    my $interfaceName = $interface->type->name;
-
+    my $parentSerializerInterface = 0;
     if ($interface->serializable->hasInherit) {
-        my $parentSerializerInterface = 0;
         $codeGenerator->ForAllParents($interface, sub {
             my $parentInterface = shift;
             if ($parentInterface->serializable && !$parentSerializerInterface) {
                 $parentSerializerInterface = $parentInterface;
             }
         }, 0);
-
         die "Failed to find parent interface with \"serializer\" for \"inherit\" serializer in $interfaceName\n" if !$parentSerializerInterface;
-
-        GenerateSerializerAttributesForInterface($parentSerializerInterface, $className);
     }
 
     my @serializedAttributes = ();
@@ -4447,19 +4428,49 @@ sub GenerateSerializerAttributesForInterface
                 last;
             }
         }
-        
         die "Failed to find \"serializer\" attribute \"$attributeName\" in $interfaceName\n" if !$foundAttribute;
     }
 
+    my $serializerFunctionName = "toJSON";
+    my $serializerNativeFunctionName = $codeGenerator->WK_lcfirst($className) . "PrototypeFunction" . $codeGenerator->WK_ucfirst($serializerFunctionName);
+
+    AddToImplIncludes("<runtime/ObjectConstructor.h>");
+
+    push(@implContent, "JSC::JSObject* JS${interfaceName}::serialize(ExecState* state, JS${interfaceName}* thisObject, ThrowScope& throwScope)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    auto& vm = state->vm();\n");
+
+    if ($interface->serializable->hasInherit) {
+        my $parentSerializerInterfaceName = $parentSerializerInterface->type->name;
+        push(@implContent, "    auto* result = JS${parentSerializerInterfaceName}::serialize(state, thisObject, throwScope);\n");
+    } else {
+        push(@implContent, "    auto* result = constructEmptyObject(state);\n");
+    }
+    push(@implContent, "\n");
+
     foreach my $attribute (@serializedAttributes) {
         my $name = $attribute->name;
-
         my $getFunctionName = GetAttributeGetterName($interface, $className, $attribute);
         push(@implContent, "    auto ${name}Value = ${getFunctionName}Getter(*state, *thisObject, throwScope);\n");
         push(@implContent, "    ASSERT(!throwScope.exception());\n");
         push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}Value);\n");
         push(@implContent, "\n");
     }
+
+    push(@implContent, "    return result;\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
+
+    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Caller(ExecState* state, JS${interfaceName}* thisObject, JSC::ThrowScope& throwScope)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    return JSValue::encode(JS${interfaceName}::serialize(state, thisObject, throwScope));\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
+    push(@implContent, "EncodedJSValue JSC_HOST_CALL ${serializerNativeFunctionName}(ExecState* state)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    return BindingCaller<JS$interfaceName>::callOperation<${serializerNativeFunctionName}Caller>(state, \"$serializerFunctionName\");\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
 }
 
 sub GenerateCallWithUsingReferences
@@ -4678,7 +4689,7 @@ sub GenerateParametersCheck
         my $value = $name;
 
         if ($argument->isVariadic) {
-            AddToImplIncludes("JSDOMConvert.h", $conditional);
+            AddToImplIncludes("JSDOMConvertVariadic.h", $conditional);
             AddToImplIncludesForIDLType($type, $conditional);
         
             my $IDLType = GetIDLType($interface, $type);
@@ -6009,7 +6020,7 @@ sub GetConstructorTemplateClassName
     my $interface = shift;
     return "JSDOMConstructorNotConstructable" if $interface->extendedAttributes->{NamedConstructor};
     return "JSDOMConstructorNotConstructable" unless IsConstructable($interface);
-    return "JSBuiltinConstructor" if IsJSBuiltinConstructor($interface);
+    return "JSDOMBuiltinConstructor" if IsJSBuiltinConstructor($interface);
     return "JSDOMConstructor";
 }
 
@@ -6021,7 +6032,8 @@ sub GenerateConstructorDeclaration
     my $constructorClassName = "${className}Constructor";
     my $templateClassName = GetConstructorTemplateClassName($interface);
 
-    $implIncludes{"JSDOMConstructor.h"} = 1;
+    AddToImplIncludes("${templateClassName}.h");
+    AddToImplIncludes("JSDOMNamedConstructor.h") if $interface->extendedAttributes->{NamedConstructor};
 
     push(@$outputArray, "using $constructorClassName = $templateClassName<$className>;\n");
     push(@$outputArray, "using JS${interfaceName}NamedConstructor = JSDOMNamedConstructor<$className>;\n") if $interface->extendedAttributes->{NamedConstructor};
@@ -6192,11 +6204,6 @@ sub GenerateConstructorHelperMethods
     if ($interface->parentType && !$codeGenerator->GetInterfaceExtendedAttributesFromName($interface->parentType->name)->{NoInterfaceObject}) {
         my $parentClassName = "JS" . $interface->parentType->name;
         push(@$outputArray, "    return ${parentClassName}::getConstructor(vm, &globalObject);\n");
-    } elsif ($interface->isCallback) {
-        # The internal [[Prototype]] property of an interface object for a callback interface must be the Object.prototype object.
-        AddToImplIncludes("<runtime/ObjectPrototype.h>");
-        push(@$outputArray, "    UNUSED_PARAM(vm);\n");
-        push(@$outputArray, "    return globalObject.objectPrototype();\n");
     } else {
         AddToImplIncludes("<runtime/FunctionPrototype.h>");
         push(@$outputArray, "    UNUSED_PARAM(vm);\n");

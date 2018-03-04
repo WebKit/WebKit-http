@@ -1,3 +1,411 @@
+2017-02-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: adjust padding of dashboard icons
+        https://bugs.webkit.org/show_bug.cgi?id=168340
+
+        Reviewed by Matt Baker.
+
+        Extract the direction-dependent padding into a "local" variable.
+        Use two rules to apply it to whichever is the leading side.
+
+        While we tend to use leading/trailing in Apple layout technologies,
+        I think the CSS logical properties specification sticks to using
+        -start and -end, so let's use that nomenclature where we can.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item > div):
+        (body[dir=ltr] .toolbar .dashboard.default > .item > div):
+        (body[dir=rtl] .toolbar .dashboard.default > .item > div):
+
+2017-02-14  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] add navigator.getUserMedia for compatibility with legacy content
+        https://bugs.webkit.org/show_bug.cgi?id=168324
+        <rdar://problem/30513125>
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-02-13  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: provide a way to show current value of CSS variables in style rules
+        https://bugs.webkit.org/show_bug.cgi?id=168172
+
+        Reviewed by Timothy Hatcher.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Images/CSSVariable.svg: Added.
+
+        * UserInterface/Models/TextMarker.js:
+        (WebInspector.TextMarker.Type):
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor._createInlineSwatches.update):
+
+        * UserInterface/Views/CodeMirrorTextMarkers.js:
+        (createCodeMirrorTextMarkers):
+        (createCodeMirrorVariableTextMarkers):
+
+        * UserInterface/Views/InlineSwatch.css:
+        (.inline-swatch.variable):
+        (.inline-swatch:matches(.bezier, .spring, .variable)):
+        (.inline-swatch:matches(.bezier, .spring, .variable):hover):
+        (.inline-swatch:matches(.bezier, .spring, .variable):active):
+        (.inline-swatch-variable-popover):
+        (.inline-swatch-variable-popover .CodeMirror):
+        (.inline-swatch-variable-popover .CodeMirror pre):
+        (.inline-swatch:matches(.bezier, .spring):hover): Deleted.
+        (.inline-swatch:matches(.bezier, .spring):active): Deleted.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WebInspector.InlineSwatch):
+        (WebInspector.InlineSwatch.prototype._fallbackValue):
+        (WebInspector.InlineSwatch.prototype._swatchElementClicked):
+        (WebInspector.InlineSwatch.prototype._valueEditorValueDidChange):
+        (WebInspector.InlineSwatch.Type):
+
+2017-02-13  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION(r188138): Web Inspector: cannot edit next/previous DOM attribute by using tab/shift-tab
+        https://bugs.webkit.org/show_bug.cgi?id=168120
+        <rdar://problem/30466065>
+
+        Reviewed by Joseph Pecoraro.
+
+        DOMTreeElement's attribute editing committed handler shouldn't early return
+        when a `moveDirection` has been specified.
+
+        * UserInterface/Views/DOMTreeElement.js:
+
+2017-02-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Assertion failed: !this._items.has(item) (at Collection.js:50)
+        https://bugs.webkit.org/show_bug.cgi?id=168212
+
+        Reviewed by Joseph Pecoraro.
+
+        When turning on DebugUI, WebKit-internal scripts were being added to the
+        Collection that is the represented object for the Extra Scripts folder.
+        This was not balanced out by removing the scripts when DebugUI is turned
+        off, so switching DebugUI on and off several times hit a multiple-add assertion.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._scriptWasRemoved):
+        Remove the script from its Collection if applicable.
+
+2017-02-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Debugger sidebar panel should not have multiple tree selections
+        https://bugs.webkit.org/show_bug.cgi?id=166000
+        <rdar://problem/29721988>
+
+        Reviewed by Timothy Hatcher.
+
+        The method for synchronizing tree element selection across a sidebar's
+        tree outlines fails for selections made during startup, because it depends
+        on events which are being suppressed.
+
+        This adds a new class, TreeOutlineGroup, which restricts tree element selection
+        inside a group of tree outlines by receiving messages directly from TreeElement.
+
+        * UserInterface/Main.html:
+        Add file for TreeOutlineGroup class.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype._revealAndSelectRepresentedObject):
+        (WebInspector.ContentBrowserTabContentView):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel):
+        (WebInspector.DebuggerSidebarPanel.prototype._updatePauseReasonSection):
+        Update `createContentTreeOutline` calls for new signature.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel):
+        Replace _visibleContentTreeOutlines with a TreeOutlineGroup, which
+        contains the single-selection behavior previously handled by the sidebar.
+
+        (WebInspector.NavigationSidebarPanel.prototype.get contentTreeOutlines):
+        (WebInspector.NavigationSidebarPanel.prototype.get hasSelectedElement):
+        Implement using the sidebar's tree outline group.
+        (WebInspector.NavigationSidebarPanel.prototype.createContentTreeOutline):
+        Remove first parameter, which is always true.
+        (WebInspector.NavigationSidebarPanel.prototype.treeElementForRepresentedObject):
+        (WebInspector.NavigationSidebarPanel.prototype.saveStateToCookie):
+        (WebInspector.NavigationSidebarPanel.prototype.pruneStaleResourceTreeElements):
+        (WebInspector.NavigationSidebarPanel.prototype._checkForEmptyFilterResults):
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype._checkOutlinesForPendingViewStateCookie):
+        (WebInspector.NavigationSidebarPanel.prototype.set contentTreeOutline): Deleted.
+        Remove unused setter.
+        (WebInspector.NavigationSidebarPanel.prototype.get visibleContentTreeOutlines): Deleted.
+        Renamed to contentTreeOutlines.
+        (WebInspector.NavigationSidebarPanel.prototype._contentTreeOutlineDidFocus): Deleted.
+        No longer needed.
+        (WebInspector.NavigationSidebarPanel.prototype._contentTreeOutlineTreeSelectionDidChange): Deleted.
+        Selection across trees handled by the tree outline group.
+
+        * UserInterface/Views/TreeElement.js:
+        (WebInspector.TreeElement.prototype.select):
+        Inform the element's tree outline group (if any), of the selection changed.
+
+        * UserInterface/Views/TreeOutlineGroup.js: Added.
+        (WebInspector.TreeOutlineGroup):
+        (WebInspector.TreeOutlineGroup.groupForTreeOutline):
+        (WebInspector.TreeOutlineGroup.prototype.get selectedTreeElement):
+        (WebInspector.TreeOutlineGroup.prototype.itemAdded):
+        Associate tree outline with the group and wrap tree elements. If the
+        incoming tree outline has a selection, deselect the group's currently
+        selected tree element.
+
+        (WebInspector.TreeOutlineGroup.prototype.itemRemoved):
+        Disassociate the tree outline from the group.
+        (WebInspector.TreeOutlineGroup.prototype.didSelectTreeElement):
+        Called by TreeElement when it becomes selected.
+        (WebInspector.TreeOutlineGroup.prototype._removeConflictingTreeSelections):
+        Deselect any selected items in all tree outlines belonging to the group,
+        except for the specified item.
+
+2017-02-10  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: ContentViewContainer can have redundant back-forward entries after ContentView close
+        https://bugs.webkit.org/show_bug.cgi?id=168105
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/BackForwardEntry.js:
+        (WebInspector.BackForwardEntry.prototype.isEqual):
+        Make check for equal ContentView/cookie reusable.
+
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype.showContentView):
+        Use BackForwardEntry.prototype.isEqual.
+        (WebInspector.ContentViewContainer.prototype.replaceContentView):
+        (WebInspector.ContentViewContainer.prototype.closeContentView):
+        Clean-up the BackForwardEntry list after changes that can cause
+        identical entries to become adjacent.
+
+        (WebInspector.ContentViewContainer.prototype._removeIdenticalAdjacentBackForwardEntries):
+        Remove consecutive entries with the same ContentView and cookie.
+        (WebInspector.ContentViewContainer):
+        (WebInspector.ContentViewContainer.closeAllContentViewsOfPrototype): Deleted.
+        Drive-by cleanup: removed dead code.
+
+2017-02-10  Matt Baker  <mattbaker@apple.com>
+
+        REGRESSION (r211829): Web Inspector: Elements tab is blank when added after page load
+        https://bugs.webkit.org/show_bug.cgi?id=168142
+
+        Reviewed by Brian Burg.
+
+        The Elements tab can be shown in two ways: by adding the Elements tab
+        from the "New Tab" tab, or via Inspect Element. In both cases we should
+        be checking that the ContentView exists, and create it if needed.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView.prototype.showRepresentedObject):
+        (WebInspector.ElementsTabContentView.prototype.shown):
+
+2017-02-09  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: changing dock side from windowed to bottom should cause split console to collapse on Timeline and Network tabs
+        https://bugs.webkit.org/show_bug.cgi?id=167841
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.updateDockedState):
+
+2017-02-09  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Option+hover on -webkit-transform in Styles sidebar underlines only half the property
+        https://bugs.webkit.org/show_bug.cgi?id=167949
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Controllers/CodeMirrorTokenTrackingController.js:
+        (WebInspector.CodeMirrorTokenTrackingController.prototype._updateHoveredTokenInfo):
+        Attempt to merge tokens (specifically the `text` and `start` values) if the either the 
+        previous or next token is of the type "meta".
+
+2017-02-09  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Remove legacy Navigator.webkitGetUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=168016
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-02-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211912.
+        https://bugs.webkit.org/show_bug.cgi?id=168034
+
+        http/tests/media/media-stream/disconnected-frame-permission-
+        denied.html should be updated (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Remove legacy Navigator.webkitGetUserMedia"
+        https://bugs.webkit.org/show_bug.cgi?id=168016
+        http://trac.webkit.org/changeset/211912
+
+2017-02-08  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Remove legacy Navigator.webkitGetUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=168016
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-02-08  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r211907.
+
+        Broke the build
+
+        Reverted changeset:
+
+        "[MediaStream] Remove legacy Navigator.webkitGetUserMedia"
+        https://bugs.webkit.org/show_bug.cgi?id=168016
+        http://trac.webkit.org/changeset/211907
+
+2017-02-08  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Remove legacy Navigator.webkitGetUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=168016
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-02-07  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: gradient editor should allow switching the units of the 'angle' parameter
+        https://bugs.webkit.org/show_bug.cgi?id=166938
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Test.html:
+        Add WebInspector.Gradient for new model object tests.
+
+        * UserInterface/Models/Gradient.js:
+        (WebInspector.Gradient.fromString):
+        (WebInspector.LinearGradient):
+        (WebInspector.LinearGradient.fromComponents):
+        (WebInspector.LinearGradient.prototype.set angleValue):
+        (WebInspector.LinearGradient.prototype.get angleValue):
+        (WebInspector.LinearGradient.prototype.set angleUnits):
+        (WebInspector.LinearGradient.prototype.get angleUnits):
+        (WebInspector.LinearGradient.prototype.copy):
+        (WebInspector.LinearGradient.prototype.toString):
+        (WebInspector.LinearGradient.prototype._angleValueForUnits):
+        Rework part of WebInspector.LinearGradient to support units other than "deg".
+
+        * UserInterface/Views/GradientEditor.css:
+        (.gradient-editor > .gradient-angle > input[type="range"]):
+        (.gradient-editor > .gradient-angle > input[type="number"]):
+
+        * UserInterface/Views/GradientEditor.js:
+        (WebInspector.GradientEditor):
+        (WebInspector.GradientEditor.prototype.set gradient):
+        (WebInspector.GradientEditor.prototype._gradientTypeChanged):
+        (WebInspector.GradientEditor.prototype._angleValueChanged):
+        (WebInspector.GradientEditor.prototype._angleUnitsChanged):
+        (WebInspector.GradientEditor.prototype._angleChanged): Deleted.
+        Add <select> for each unit type that will change the units of the gradient.
+
+2017-02-07  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: DOMTreeOutline becomes collapsed after switching back to Elements tab
+        https://bugs.webkit.org/show_bug.cgi?id=167924
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.update):
+        Drive-by fix: move variable initialization below the early return.
+
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView.prototype.shown): Deleted.
+        Calling this._showDOMTreeContentView isn't necessary. The base class
+        implementation will call `shown` on the content view.
+
+2017-02-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Web Inspector: sibling elements's disclosure triangles aren't vertically aligned in DOM tree outline in certain ports
+        https://bugs.webkit.org/show_bug.cgi?id=167568
+
+        Reviewed by Brian Burg.
+
+        The triangle has 13px height and has float:left. If the line-height
+        is smaller than 13px, the sibling element's triangles aren't
+        vertically aligned.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.tree-outline.dom li.parent): Set line-height 13px explicitly.
+
+2017-02-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Add stroke-linecap property values to CSS autocompletion
+        https://bugs.webkit.org/show_bug.cgi?id=167778
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+        Add autocompletion values for fill-rule and stroke-linecap.
+
+2017-02-02  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: can't jump from Search Tab result to see resource in other tabs (Resource, Debugger, Network)
+        https://bugs.webkit.org/show_bug.cgi?id=167072
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.tabContentViewForRepresentedObject):
+        (WebInspector.showRepresentedObject):
+        (WebInspector.showMainFrameDOMTree):
+        (WebInspector.showSourceCodeForFrame):
+        (WebInspector.showSourceCode):
+        (WebInspector.showSourceCodeLocation):
+        (WebInspector.showOriginalUnformattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeLocation):
+        (WebInspector.showOriginalOrFormattedSourceCodeTextRange):
+        (WebInspector.showResourceRequest):
+        Rework parameters to add optional `options` dictionary that can be used to indicate
+        additional functionality.
+
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype.bestTabContentViewForRepresentedObject):
+        Ignore instances of SearchTabContentView as it can display content views for all types of
+        searchable data.  Determined by a newly added optional `options` parameter.
+
+        * UserInterface/Base/Utilities.js:
+        (Object.shallowMerge):
+        Merges the keys of two objects into a new one.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype._goToRegionFlowArrowWasClicked):
+        (WebInspector.ComputedStyleDetailsPanel.prototype._goToContentFlowArrowWasClicked):
+
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.createTreeElementForMatchObject):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourceCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.resourcesCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.searchScripts.scriptCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.searchScripts):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.domSearchResults):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch.domCallback):
+        (WebInspector.SearchSidebarPanel.prototype.performSearch):
+        (WebInspector.SearchSidebarPanel.prototype._treeElementDoubleClick):
+        * UserInterface/Views/TreeElement.js:
+        (WebInspector.TreeElement.treeElementDoubleClicked):
+        Add an event dispatch whenever a TreeElement is double clicked via the `dblclick` event.
+
 2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Web Inspector: Upgrade Esprima to the latest one to support dynamic import

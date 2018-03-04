@@ -40,19 +40,19 @@ MemoryPressureHandler& MemoryPressureHandler::singleton()
 }
 
 MemoryPressureHandler::MemoryPressureHandler()
-    : m_measurementTimer(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired)
 #if OS(LINUX)
-    , m_holdOffTimer(RunLoop::main(), this, &MemoryPressureHandler::holdOffTimerFired)
+    : m_holdOffTimer(RunLoop::main(), this, &MemoryPressureHandler::holdOffTimerFired)
 #endif
 {
 }
 
 void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
 {
-    if (use)
-        m_measurementTimer.startRepeating(30);
-    else
-        m_measurementTimer.stop();
+    if (use) {
+        m_measurementTimer = std::make_unique<RunLoop::Timer<MemoryPressureHandler>>(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired);
+        m_measurementTimer->startRepeating(30);
+    } else
+        m_measurementTimer = nullptr;
 }
 
 #if !RELEASE_LOG_DISABLED
@@ -67,7 +67,7 @@ static const char* toString(MemoryUsagePolicy policy)
 }
 #endif
 
-static inline size_t thresholdForPolicy(MemoryUsagePolicy policy)
+static size_t thresholdForPolicy(MemoryUsagePolicy policy)
 {
     switch (policy) {
     case MemoryUsagePolicy::Conservative:
@@ -87,7 +87,7 @@ static inline size_t thresholdForPolicy(MemoryUsagePolicy policy)
     }
 }
 
-static inline MemoryUsagePolicy policyForFootprint(size_t footprint)
+static MemoryUsagePolicy policyForFootprint(size_t footprint)
 {
     if (footprint >= thresholdForPolicy(MemoryUsagePolicy::Panic))
         return MemoryUsagePolicy::Panic;
@@ -120,7 +120,7 @@ void MemoryPressureHandler::measurementTimerFired()
         return;
 
     if (newPolicy == MemoryUsagePolicy::Conservative) {
-        // FIXME: Implement this policy by choosing which caches should respect it, and hooking them up. 
+        // FIXME: Implement this policy by choosing which caches should respect it, and hooking them up.
         return;
     }
 

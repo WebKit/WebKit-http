@@ -56,7 +56,7 @@ typedef union _GdkEvent GdkEvent;
 
 #if PLATFORM(IOS)
 #include <wtf/RetainPtr.h>
-OBJC_CLASS WebIOSEvent;
+OBJC_CLASS WebEvent;
 #endif
 
 namespace WebKit {
@@ -72,7 +72,7 @@ public:
     NativeWebKeyboardEvent(const Evas_Event_Key_Down*, bool);
     NativeWebKeyboardEvent(const Evas_Event_Key_Up*);
 #elif PLATFORM(IOS)
-    NativeWebKeyboardEvent(WebIOSEvent *);
+    NativeWebKeyboardEvent(::WebEvent *);
 #endif
 
 #if USE(APPKIT)
@@ -87,7 +87,7 @@ public:
 #elif PLATFORM(HAIKU)
     const BMessage* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
-    WebIOSEvent* nativeEvent() const { return m_nativeEvent.get(); }
+    ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
 #endif
 
 private:
@@ -103,7 +103,7 @@ private:
 #elif PLATFORM(HAIKU)
     BMessage* m_nativeEvent;
 #elif PLATFORM(IOS)
-    RetainPtr<WebIOSEvent> m_nativeEvent;
+    RetainPtr<::WebEvent> m_nativeEvent;
 #endif
 };
 

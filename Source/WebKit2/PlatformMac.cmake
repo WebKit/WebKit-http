@@ -98,6 +98,7 @@ list(APPEND WebKit2_SOURCES
 
     Shared/Cocoa/APIDataCocoa.mm
     Shared/Cocoa/APIObject.mm
+    Shared/Cocoa/ChildProcessCocoa.mm
     Shared/Cocoa/CompletionHandlerCallChecker.mm
     Shared/Cocoa/DataDetectionResult.mm
     Shared/Cocoa/LoadParametersCocoa.mm
@@ -159,6 +160,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/HighPerformanceGraphicsUsageSampler.cpp
     UIProcess/PerActivityStateCPUUsageSampler.cpp
     UIProcess/WebContextMenuListenerProxy.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
 
     UIProcess/Automation/WebAutomationSession.cpp
@@ -170,6 +172,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
     UIProcess/API/APIWebsiteDataRecord.cpp
+
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 
     UIProcess/API/C/mac/WKContextPrivateMac.mm
     UIProcess/API/C/mac/WKPagePrivateMac.mm

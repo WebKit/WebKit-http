@@ -179,6 +179,7 @@ static const AtomicString& legacyType(const Event& event)
     if (event.type() == eventNames().transitionendEvent)
         return eventNames().webkitTransitionEndEvent;
 
+    // FIXME: This legacy name is not part of the specification (https://dom.spec.whatwg.org/#dispatching-events).
     if (event.type() == eventNames().wheelEvent)
         return eventNames().mousewheelEvent;
 
@@ -187,7 +188,7 @@ static const AtomicString& legacyType(const Event& event)
 
 bool EventTarget::fireEventListeners(Event& event)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(event.isInitialized());
 
     auto* data = eventTargetData();
@@ -200,6 +201,10 @@ bool EventTarget::fireEventListeners(Event& event)
         fireEventListeners(event, *listenersVector);
         return !event.defaultPrevented();
     }
+
+    // Only fall back to legacy types for trusted events.
+    if (!event.isTrusted())
+        return !event.defaultPrevented();
 
     const AtomicString& legacyTypeName = legacyType(event);
     if (!legacyTypeName.isNull()) {

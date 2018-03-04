@@ -19,101 +19,13 @@
 
 #pragma once
 
-#include "Document.h"
-#include "JSDOMExceptionHandling.h"
-#include "JSDOMWrapperCache.h"
+#include "JSDOMConstructorBase.h"
 
 namespace WebCore {
 
-// Base class for all constructor objects in the JSC bindings.
-class DOMConstructorObject : public JSDOMObject {
+template<typename JSClass> class JSDOMConstructor : public JSDOMConstructorBase {
 public:
-    typedef JSDOMObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | JSC::ImplementsHasInstance | JSC::ImplementsDefaultHasInstance | JSC::TypeOfShouldCallGetCallData;
-    static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject*, JSC::JSValue);
-
-protected:
-    DOMConstructorObject(JSC::Structure*, JSDOMGlobalObject&);
-
-    static String className(const JSObject*);
-    static JSC::CallType getCallData(JSCell*, JSC::CallData&);
-};
-
-// Constructors using this base class depend on being in a Document and
-// can never be used from a WorkerGlobalScope.
-class DOMConstructorWithDocument : public DOMConstructorObject {
-    typedef DOMConstructorObject Base;
-public:
-    Document* document() const
-    {
-        return downcast<Document>(scriptExecutionContext());
-    }
-
-protected:
-    DOMConstructorWithDocument(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-        : DOMConstructorObject(structure, globalObject)
-    {
-    }
-
-    void finishCreation(JSDOMGlobalObject& globalObject)
-    {
-        Base::finishCreation(globalObject.vm());
-        ASSERT(globalObject.scriptExecutionContext()->isDocument());
-    }
-};
-
-class DOMConstructorJSBuiltinObject : public DOMConstructorObject {
-public:
-    typedef DOMConstructorObject Base;
-
-protected:
-    DOMConstructorJSBuiltinObject(JSC::Structure*, JSDOMGlobalObject&);
-    static void visitChildren(JSC::JSCell*, JSC::SlotVisitor&);
-
-    JSC::JSFunction* initializeFunction();
-    void setInitializeFunction(JSC::VM&, JSC::JSFunction&);
-
-private:
-    JSC::WriteBarrier<JSC::JSFunction> m_initializeFunction;
-};
-
-template<typename JSClass> class JSDOMConstructorNotConstructable : public DOMConstructorObject {
-public:
-    typedef DOMConstructorObject Base;
-
-    static JSDOMConstructorNotConstructable* create(JSC::VM&, JSC::Structure*, JSDOMGlobalObject&);
-    static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject&, JSC::JSValue prototype);
-
-    DECLARE_INFO;
-
-    // Must be defined for each specialization class.
-    static JSC::JSValue prototypeForStructure(JSC::VM&, const JSDOMGlobalObject&);
-
-private:
-    JSDOMConstructorNotConstructable(JSC::Structure* structure, JSDOMGlobalObject& globalObject) : Base(structure, globalObject) { }
-    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
-
-    // Usually defined for each specialization class.
-    void initializeProperties(JSC::VM&, JSDOMGlobalObject&) { }
-
-    static JSC::EncodedJSValue JSC_HOST_CALL callThrowTypeError(JSC::ExecState* exec)
-    {
-        JSC::VM& vm = exec->vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        JSC::throwTypeError(exec, scope, ASCIILiteral("Illegal constructor"));
-        return JSC::JSValue::encode(JSC::jsNull());
-    }
-
-    static JSC::CallType getCallData(JSC::JSCell*, JSC::CallData& callData)
-    {
-        callData.native.function = callThrowTypeError;
-        return JSC::CallType::Host;
-    }
-};
-
-template<typename JSClass> class JSDOMConstructor : public DOMConstructorObject {
-public:
-    typedef DOMConstructorObject Base;
+    using Base = JSDOMConstructorBase;
 
     static JSDOMConstructor* create(JSC::VM&, JSC::Structure*, JSDOMGlobalObject&);
     static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject&, JSC::JSValue prototype);
@@ -124,7 +36,11 @@ public:
     static JSC::JSValue prototypeForStructure(JSC::VM&, const JSDOMGlobalObject&);
 
 private:
-    JSDOMConstructor(JSC::Structure* structure, JSDOMGlobalObject& globalObject) : Base(structure, globalObject) { }
+    JSDOMConstructor(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
+        : Base(structure, globalObject)
+    {
+    }
+
     void finishCreation(JSC::VM&, JSDOMGlobalObject&);
     static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
 
@@ -133,106 +49,6 @@ private:
     // Must be defined for each specialization class.
     static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
 };
-
-template<typename JSClass> class JSDOMNamedConstructor : public DOMConstructorWithDocument {
-public:
-    typedef DOMConstructorWithDocument Base;
-
-    static JSDOMNamedConstructor* create(JSC::VM&, JSC::Structure*, JSDOMGlobalObject&);
-    static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject&, JSC::JSValue prototype);
-
-    DECLARE_INFO;
-
-    // Must be defined for each specialization class.
-    static JSC::JSValue prototypeForStructure(JSC::VM&, const JSDOMGlobalObject&);
-
-private:
-    JSDOMNamedConstructor(JSC::Structure* structure, JSDOMGlobalObject& globalObject) : Base(structure, globalObject) { }
-    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
-    static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
-
-    // Usually defined for each specialization class.
-    void initializeProperties(JSC::VM&, JSDOMGlobalObject&) { }
-    // Must be defined for each specialization class.
-    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
-};
-
-template<typename JSClass> class JSBuiltinConstructor : public DOMConstructorJSBuiltinObject {
-public:
-    using Base = DOMConstructorJSBuiltinObject;
-
-    static JSBuiltinConstructor* create(JSC::VM&, JSC::Structure*, JSDOMGlobalObject&);
-    static JSC::Structure* createStructure(JSC::VM&, JSC::JSGlobalObject&, JSC::JSValue prototype);
-
-    DECLARE_INFO;
-
-    // Usually defined for each specialization class.
-    static JSC::JSValue prototypeForStructure(JSC::VM&, const JSDOMGlobalObject&);
-
-private:
-    JSBuiltinConstructor(JSC::Structure* structure, JSDOMGlobalObject& globalObject) : Base(structure, globalObject) { }
-    void finishCreation(JSC::VM&, JSDOMGlobalObject&);
-    static JSC::ConstructType getConstructData(JSC::JSCell*, JSC::ConstructData&);
-    static JSC::EncodedJSValue JSC_HOST_CALL construct(JSC::ExecState*);
-
-    JSC::EncodedJSValue callConstructor(JSC::ExecState&, JSC::JSObject&);
-    JSC::EncodedJSValue callConstructor(JSC::ExecState&, JSC::JSObject*);
-
-    // Usually defined for each specialization class.
-    void initializeProperties(JSC::VM&, JSDOMGlobalObject&) { }
-    // Must be defined for each specialization class.
-    JSC::FunctionExecutable* initializeExecutable(JSC::VM&);
-};
-
-inline JSC::Structure* DOMConstructorObject::createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
-{
-    return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-}
-
-inline DOMConstructorObject::DOMConstructorObject(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-    : JSDOMObject(structure, globalObject)
-{
-}
-
-inline String DOMConstructorObject::className(const JSObject*)
-{
-    return ASCIILiteral("Function");
-}
-
-inline DOMConstructorJSBuiltinObject::DOMConstructorJSBuiltinObject(JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-    : DOMConstructorObject(structure, globalObject)
-{
-}
-
-inline JSC::JSFunction* DOMConstructorJSBuiltinObject::initializeFunction()
-{
-    return m_initializeFunction.get();
-}
-
-inline void DOMConstructorJSBuiltinObject::setInitializeFunction(JSC::VM& vm, JSC::JSFunction& function)
-{
-    m_initializeFunction.set(vm, this, &function);
-}
-
-
-template<typename JSClass> inline JSDOMConstructorNotConstructable<JSClass>* JSDOMConstructorNotConstructable<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-{
-    JSDOMConstructorNotConstructable* constructor = new (NotNull, JSC::allocateCell<JSDOMConstructorNotConstructable>(vm.heap)) JSDOMConstructorNotConstructable(structure, globalObject);
-    constructor->finishCreation(vm, globalObject);
-    return constructor;
-}
-
-template<typename JSClass> inline JSC::Structure* JSDOMConstructorNotConstructable<JSClass>::createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
-{
-    return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-}
-
-template<typename JSClass> inline void JSDOMConstructorNotConstructable<JSClass>::finishCreation(JSC::VM& vm, JSDOMGlobalObject& globalObject)
-{
-    Base::finishCreation(vm);
-    ASSERT(inherits(vm, info()));
-    initializeProperties(vm, globalObject);
-}
 
 template<typename JSClass> inline JSDOMConstructor<JSClass>* JSDOMConstructor<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
 {
@@ -259,103 +75,5 @@ template<typename JSClass> inline JSC::ConstructType JSDOMConstructor<JSClass>::
     return JSC::ConstructType::Host;
 }
 
-template<typename JSClass> inline JSDOMNamedConstructor<JSClass>* JSDOMNamedConstructor<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-{
-    JSDOMNamedConstructor* constructor = new (NotNull, JSC::allocateCell<JSDOMNamedConstructor>(vm.heap)) JSDOMNamedConstructor(structure, globalObject);
-    constructor->finishCreation(vm, globalObject);
-    return constructor;
-}
-
-template<typename JSClass> inline JSC::Structure* JSDOMNamedConstructor<JSClass>::createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
-{
-    return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-}
-
-template<typename JSClass> inline void JSDOMNamedConstructor<JSClass>::finishCreation(JSC::VM& vm, JSDOMGlobalObject& globalObject)
-{
-    Base::finishCreation(globalObject);
-    ASSERT(inherits(vm, info()));
-    initializeProperties(vm, globalObject);
-}
-
-template<typename JSClass> inline JSC::ConstructType JSDOMNamedConstructor<JSClass>::getConstructData(JSC::JSCell*, JSC::ConstructData& constructData)
-{
-    constructData.native.function = construct;
-    return JSC::ConstructType::Host;
-}
-
-template<typename JSClass> inline JSBuiltinConstructor<JSClass>* JSBuiltinConstructor<JSClass>::create(JSC::VM& vm, JSC::Structure* structure, JSDOMGlobalObject& globalObject)
-{
-    JSBuiltinConstructor* constructor = new (NotNull, JSC::allocateCell<JSBuiltinConstructor>(vm.heap)) JSBuiltinConstructor(structure, globalObject);
-    constructor->finishCreation(vm, globalObject);
-    return constructor;
-}
-
-template<typename JSClass> inline JSC::Structure* JSBuiltinConstructor<JSClass>::createStructure(JSC::VM& vm, JSC::JSGlobalObject& globalObject, JSC::JSValue prototype)
-{
-    return JSC::Structure::create(vm, &globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
-}
-
-template<typename JSClass> inline void JSBuiltinConstructor<JSClass>::finishCreation(JSC::VM& vm, JSDOMGlobalObject& globalObject)
-{
-    Base::finishCreation(vm);
-    ASSERT(inherits(vm, info()));
-    setInitializeFunction(vm, *JSC::JSFunction::createBuiltinFunction(vm, initializeExecutable(vm), &globalObject));
-    initializeProperties(vm, globalObject);
-}
-
-void callFunctionWithCurrentArguments(JSC::ExecState&, JSC::JSObject& thisObject, JSC::JSFunction&);
-
-template<typename JSClass> inline JSC::EncodedJSValue JSBuiltinConstructor<JSClass>::callConstructor(JSC::ExecState& state, JSC::JSObject& object)
-{
-    callFunctionWithCurrentArguments(state, object, *initializeFunction());
-    return JSC::JSValue::encode(&object);
-}
-
-template<typename JSClass> inline JSC::EncodedJSValue JSBuiltinConstructor<JSClass>::callConstructor(JSC::ExecState& state, JSC::JSObject* object)
-{
-    JSC::VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-    if (!object)
-        return throwConstructorScriptExecutionContextUnavailableError(state, scope, info()->className);
-    return callConstructor(state, *object);
-}
-
-template<typename JSClass> inline
-typename std::enable_if<JSDOMObjectInspector<JSClass>::isSimpleWrapper, JSC::JSObject&>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
-{
-    auto& globalObject = *constructor.globalObject();
-    return *JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject, JSClass::DOMWrapped::create());
-}
-
-template<typename JSClass> inline
-typename std::enable_if<JSDOMObjectInspector<JSClass>::isBuiltin, JSC::JSObject&>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
-{
-    auto& globalObject = *constructor.globalObject();
-    return *JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject);
-}
-
-template<typename JSClass> inline
-typename std::enable_if<JSDOMObjectInspector<JSClass>::isComplexWrapper, JSC::JSObject*>::type createJSObject(JSBuiltinConstructor<JSClass>& constructor)
-{
-    ScriptExecutionContext* context = constructor.scriptExecutionContext();
-    if (!context)
-        return nullptr;
-    auto& globalObject = *constructor.globalObject();
-    return JSClass::create(getDOMStructure<JSClass>(globalObject.vm(), globalObject), &globalObject, JSClass::DOMWrapped::create(*context));
-}
-
-template<typename JSClass> inline JSC::EncodedJSValue JSC_HOST_CALL JSBuiltinConstructor<JSClass>::construct(JSC::ExecState* state)
-{
-    ASSERT(state);
-    auto* castedThis = JSC::jsCast<JSBuiltinConstructor*>(state->jsCallee());
-    return castedThis->callConstructor(*state, createJSObject(*castedThis));
-}
-
-template<typename JSClass> inline JSC::ConstructType JSBuiltinConstructor<JSClass>::getConstructData(JSC::JSCell*, JSC::ConstructData& constructData)
-{
-    constructData.native.function = construct;
-    return JSC::ConstructType::Host;
-}
 
 } // namespace WebCore

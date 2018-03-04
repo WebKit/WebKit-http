@@ -30,13 +30,16 @@
 
 #include "AVMediaCaptureSource.h"
 #include "AudioCaptureSourceProviderObjC.h"
+#include "CAAudioStreamDescription.h"
 #include <wtf/Lock.h>
 
+typedef struct AudioBufferList AudioBufferList;
 typedef struct AudioStreamBasicDescription AudioStreamBasicDescription;
 typedef const struct opaqueCMFormatDescription *CMFormatDescriptionRef;
 
 namespace WebCore {
 
+class WebAudioBufferList;
 class WebAudioSourceProviderAVFObjC;
 
 class AVAudioCaptureSource : public AVMediaCaptureSource, public AudioCaptureSourceProviderObjC {
@@ -64,9 +67,10 @@ private:
     AudioSourceProvider* audioSourceProvider() override;
 
     RetainPtr<AVCaptureConnection> m_audioConnection;
+    std::unique_ptr<WebAudioBufferList> m_list;
 
     RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;
-    std::unique_ptr<AudioStreamBasicDescription> m_inputDescription;
+    std::unique_ptr<CAAudioStreamDescription> m_inputDescription;
     Vector<AudioSourceObserverObjC*> m_observers;
     Lock m_lock;
 };

@@ -89,12 +89,10 @@ static inline ResourceRequest constructRevalidationRequest(const Key& key, const
     ResourceRequest revalidationRequest(key.identifier());
     revalidationRequest.setHTTPHeaderFields(subResourceInfo.requestHeaders());
     revalidationRequest.setFirstPartyForCookies(subResourceInfo.firstPartyForCookies());
-#if ENABLE(CACHE_PARTITIONING)
     if (!key.partition().isEmpty())
         revalidationRequest.setCachePartition(key.partition());
-#endif
     ASSERT_WITH_MESSAGE(key.range().isEmpty(), "range is not supported");
-
+    
     revalidationRequest.makeUnconditional();
     if (entry) {
         String eTag = entry->response().httpHeaderField(HTTPHeaderName::ETag);
@@ -345,7 +343,9 @@ bool SpeculativeLoadManager::canRetrieve(const Key& storageKey, const WebCore::R
 void SpeculativeLoadManager::retrieve(const Key& storageKey, RetrieveCompletionHandler&& completionHandler)
 {
     if (auto preloadedEntry = m_preloadedEntries.take(storageKey)) {
-        completionHandler(preloadedEntry->takeCacheEntry());
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), cacheEntry = preloadedEntry->takeCacheEntry()] () mutable {
+            completionHandler(WTFMove(cacheEntry));
+        });
         return;
     }
     ASSERT(m_pendingPreloads.contains(storageKey));

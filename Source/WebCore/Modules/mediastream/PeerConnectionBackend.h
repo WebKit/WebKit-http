@@ -46,7 +46,7 @@ class RTCPeerConnection;
 class RTCRtpReceiver;
 class RTCRtpSender;
 class RTCSessionDescription;
-class RTCStatsResponse;
+class RTCStatsReport;
 
 struct MediaEndpointConfiguration;
 struct RTCAnswerOptions;
@@ -55,7 +55,7 @@ struct RTCOfferOptions;
 
 namespace PeerConnection {
 using SessionDescriptionPromise = DOMPromise<IDLInterface<RTCSessionDescription>>;
-using StatsPromise = DOMPromise<IDLInterface<RTCStatsResponse>>;
+using StatsPromise = DOMPromise<IDLInterface<RTCStatsReport>>;
 }
 
 using CreatePeerConnectionBackend = std::unique_ptr<PeerConnectionBackend> (*)(RTCPeerConnection&);
@@ -88,16 +88,16 @@ public:
 
     virtual void setConfiguration(MediaEndpointConfiguration&&) = 0;
 
-    virtual void getStats(MediaStreamTrack*, PeerConnection::StatsPromise&&) = 0;
+    virtual void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) = 0;
 
     virtual Vector<RefPtr<MediaStream>> getRemoteStreams() const = 0;
 
     virtual Ref<RTCRtpReceiver> createReceiver(const String& transceiverMid, const String& trackKind, const String& trackId) = 0;
     virtual void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) = 0;
 
-    virtual bool isNegotiationNeeded() const = 0;
-    virtual void markAsNeedingNegotiation() = 0;
-    virtual void clearNegotiationNeededState() = 0;
+    void markAsNeedingNegotiation();
+    bool isNegotiationNeeded() const { return m_negotiationNeeded; };
+    void clearNegotiationNeededState() { m_negotiationNeeded = false; };
 
     virtual void emulatePlatformEvent(const String& action) = 0;
 
@@ -137,6 +137,8 @@ private:
     std::optional<PeerConnection::SessionDescriptionPromise> m_offerAnswerPromise;
     std::optional<DOMPromise<void>> m_setDescriptionPromise;
     std::optional<DOMPromise<void>> m_addIceCandidatePromise;
+    
+    bool m_negotiationNeeded { false };
 };
 
 } // namespace WebCore

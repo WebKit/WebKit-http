@@ -66,22 +66,18 @@ void PageOverlayController::createRootLayersIfNeeded()
 
     m_documentOverlayRootLayer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
     m_viewOverlayRootLayer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
-#ifndef NDEBUG
-    m_documentOverlayRootLayer->setName("Page Overlay container (document-relative)");
-    m_viewOverlayRootLayer->setName("Page Overlay container (view-relative)");
-#endif
+    m_documentOverlayRootLayer->setName("Document overlay Container");
+    m_viewOverlayRootLayer->setName("View overlay container");
 }
 
-GraphicsLayer& PageOverlayController::documentOverlayRootLayer()
+GraphicsLayer* PageOverlayController::documentOverlayRootLayer() const
 {
-    createRootLayersIfNeeded();
-    return *m_documentOverlayRootLayer;
+    return m_documentOverlayRootLayer.get();
 }
 
-GraphicsLayer& PageOverlayController::viewOverlayRootLayer()
+GraphicsLayer* PageOverlayController::viewOverlayRootLayer() const
 {
-    createRootLayersIfNeeded();
-    return *m_viewOverlayRootLayer;
+    return m_viewOverlayRootLayer.get();
 }
 
 static void updateOverlayGeometry(PageOverlay& overlay, GraphicsLayer& graphicsLayer)
@@ -93,6 +89,54 @@ static void updateOverlayGeometry(PageOverlay& overlay, GraphicsLayer& graphicsL
 
     graphicsLayer.setPosition(overlayFrame.location());
     graphicsLayer.setSize(overlayFrame.size());
+}
+
+GraphicsLayer& PageOverlayController::layerWithDocumentOverlays()
+{
+    createRootLayersIfNeeded();
+
+    bool inWindow = m_mainFrame.page() ? m_mainFrame.page()->isInWindow() : false;
+
+    for (auto& overlayAndLayer : m_overlayGraphicsLayers) {
+        PageOverlay& overlay = *overlayAndLayer.key;
+        if (overlay.overlayType() != PageOverlay::OverlayType::Document)
+            continue;
+
+        GraphicsLayer& layer = *overlayAndLayer.value;
+        GraphicsLayer::traverse(layer, [inWindow](GraphicsLayer& layer) {
+            layer.setIsInWindow(inWindow);
+        });
+        updateOverlayGeometry(overlay, layer);
+        
+        if (!layer.parent())
+            m_documentOverlayRootLayer->addChild(&layer);
+    }
+
+    return *m_documentOverlayRootLayer;
+}
+
+GraphicsLayer& PageOverlayController::layerWithViewOverlays()
+{
+    createRootLayersIfNeeded();
+
+    bool inWindow = m_mainFrame.page() ? m_mainFrame.page()->isInWindow() : false;
+
+    for (auto& overlayAndLayer : m_overlayGraphicsLayers) {
+        PageOverlay& overlay = *overlayAndLayer.key;
+        if (overlay.overlayType() != PageOverlay::OverlayType::View)
+            continue;
+
+        GraphicsLayer& layer = *overlayAndLayer.value;
+        GraphicsLayer::traverse(layer, [inWindow](GraphicsLayer& layer) {
+            layer.setIsInWindow(inWindow);
+        });
+        updateOverlayGeometry(overlay, layer);
+        
+        if (!layer.parent())
+            m_viewOverlayRootLayer->addChild(&layer);
+    }
+
+    return *m_viewOverlayRootLayer;
 }
 
 void PageOverlayController::installPageOverlay(PageOverlay& overlay, PageOverlay::FadeMode fadeMode)
@@ -107,9 +151,7 @@ void PageOverlayController::installPageOverlay(PageOverlay& overlay, PageOverlay
     std::unique_ptr<GraphicsLayer> layer = GraphicsLayer::create(m_mainFrame.page()->chrome().client().graphicsLayerFactory(), *this);
     layer->setAnchorPoint(FloatPoint3D());
     layer->setBackgroundColor(overlay.backgroundColor());
-#ifndef NDEBUG
-    layer->setName("Page Overlay content");
-#endif
+    layer->setName("Overlay content");
 
     updateSettingsForLayer(*layer);
 
@@ -201,12 +243,6 @@ GraphicsLayer& PageOverlayController::layerForOverlay(PageOverlay& overlay) cons
     return *m_overlayGraphicsLayers.get(&overlay);
 }
 
-void PageOverlayController::willAttachRootLayer()
-{
-    for (auto& overlayAndLayer : m_overlayGraphicsLayers)
-        updateOverlayGeometry(*overlayAndLayer.key, *overlayAndLayer.value);
-}
-
 void PageOverlayController::willDetachRootLayer()
 {
     m_documentOverlayRootLayer = nullptr;
@@ -239,7 +275,8 @@ void PageOverlayController::didChangeSettings()
 
 void PageOverlayController::didChangeDeviceScaleFactor()
 {
-    createRootLayersIfNeeded();
+    if (!m_initialized)
+        return;
 
     m_documentOverlayRootLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
     m_viewOverlayRootLayer->noteDeviceOrPageScaleFactorChangedIncludingDescendants();
@@ -365,6 +402,12 @@ void PageOverlayController::didChangeOverlayBackgroundColor(PageOverlay& overlay
 bool PageOverlayController::shouldSkipLayerInDump(const GraphicsLayer*, LayerTreeAsTextBehavior behavior) const
 {
     return !(behavior & LayerTreeAsTextIncludePageOverlayLayers);
+}
+
+void PageOverlayController::tiledBackingUsageChanged(const GraphicsLayer* graphicsLayer, bool usingTiledBacking)
+{
+    if (usingTiledBacking)
+        graphicsLayer->tiledBacking()->setIsInWindow(m_mainFrame.page()->isInWindow());
 }
 
 } // namespace WebKit

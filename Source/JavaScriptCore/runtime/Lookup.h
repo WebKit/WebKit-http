@@ -28,6 +28,7 @@
 #include "Identifier.h"
 #include "IdentifierInlines.h"
 #include "Intrinsic.h"
+#include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "LazyProperty.h"
 #include "PropertySlot.h"
@@ -385,6 +386,11 @@ inline void reifyStaticProperties(VM& vm, const HashTableValue (&values)[numberO
         auto key = Identifier::fromString(&vm, reinterpret_cast<const LChar*>(value.m_key), strlen(value.m_key));
         reifyStaticProperty(vm, key, value, thisObj);
     }
+}
+
+template<NativeFunction nativeFunction, int length> EncodedJSValue nonCachingStaticFunctionGetter(ExecState* state, EncodedJSValue, PropertyName propertyName)
+{
+    return JSValue::encode(JSFunction::create(state->vm(), state->lexicalGlobalObject(), length, propertyName.publicName(), nativeFunction));
 }
 
 } // namespace JSC
