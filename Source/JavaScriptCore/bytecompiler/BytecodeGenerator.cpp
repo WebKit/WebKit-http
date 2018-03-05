@@ -195,7 +195,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ProgramNode* programNode, UnlinkedP
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
 
     const FunctionStack& functionStack = programNode->functionStack();
 
@@ -270,7 +270,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
     bool shouldCaptureSomeOfTheThings = m_shouldEmitDebugHooks || functionNode->needsActivation() || containsArrowOrEvalButNotInArrowBlock;
 
     bool shouldCaptureAllOfTheThings = m_shouldEmitDebugHooks || codeBlock->usesEval();
-    bool needsArguments = (functionNode->usesArguments() || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
+    bool needsArguments = ((functionNode->usesArguments() && !codeBlock->isArrowFunction()) || codeBlock->usesEval() || (functionNode->usesArrowFunction() && !codeBlock->isArrowFunction() && isArgumentsUsedInInnerArrowFunction()));
 
     if (isGeneratorOrAsyncFunctionBodyParseMode(parseMode)) {
         // Generator and AsyncFunction never provides "arguments". "arguments" reference will be resolved in an upper generator function scope.
@@ -329,7 +329,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     if (functionNameIsInScope(functionNode->ident(), functionNode->functionMode())) {
         ASSERT(parseMode != SourceParseMode::GeneratorBodyMode);
@@ -761,7 +761,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, EvalNode* evalNode, UnlinkedEvalCod
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     const DeclarationStacks::FunctionStack& functionStack = evalNode->functionStack();
     for (size_t i = 0; i < functionStack.size(); ++i)
@@ -846,7 +846,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, ModuleProgramNode* moduleProgramNod
 
     allocateAndEmitScope();
 
-    emitWatchdog();
+    emitCheckTraps();
     
     m_calleeRegister.setIndex(CallFrameSlot::callee);
 
@@ -1269,13 +1269,13 @@ void BytecodeGenerator::emitEnter()
 void BytecodeGenerator::emitLoopHint()
 {
     emitOpcode(op_loop_hint);
-    emitWatchdog();
+    emitCheckTraps();
 }
 
-void BytecodeGenerator::emitWatchdog()
+void BytecodeGenerator::emitCheckTraps()
 {
-    if (vm()->watchdog())
-        emitOpcode(op_watchdog);
+    if (Options::alwaysCheckTraps() || vm()->watchdog() || vm()->needAsynchronousTerminationSupport())
+        emitOpcode(op_check_traps);
 }
 
 void BytecodeGenerator::retrieveLastBinaryOp(int& dstIndex, int& src1Index, int& src2Index)

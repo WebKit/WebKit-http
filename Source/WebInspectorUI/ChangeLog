@@ -1,3 +1,266 @@
+2017-03-01  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Annotators should not be enabled if the TextEditor is not visible
+        https://bugs.webkit.org/show_bug.cgi?id=169059
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._addResource):
+        (WebInspector.DebuggerSidebarPanel.prototype._addScript):
+        Only call `showDefaultContentViewForTreeElement` if the panel has been added to a sidebar.
+
+        It is not valid to simply check whether the panel is visible, as the sidebar can be collapsed.
+        In that case, we still want to display the content view, so we instead check that the panel
+        has been added to a sidebar, meaning that it is ready to be displayed in the current tab.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: expose the Layout Direction setting in Production builds, keep using LTR by default
+        https://bugs.webkit.org/show_bug.cgi?id=168999
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.layout):
+        Remove the WebInspector.isDebugUIEnabled() check around the Layout Direction setting.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: It is possible to get the New Tab button in addition to the seven expected tabs
+        https://bugs.webkit.org/show_bug.cgi?id=168976
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TabBar.css:
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.pinned):hover > .icon):
+        (.tab-bar.collapsed:not(.hide-titles) > .item:hover > .close):
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.pinned, .default-tab):hover > .icon): Deleted.
+        (.tab-bar.collapsed:not(.hide-titles) > .item:not(.default-tab):hover > .close): Deleted.
+
+2017-02-28  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: CSS variable uses that are unresolved should have an error or warning icon
+        https://bugs.webkit.org/show_bug.cgi?id=168352
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._createInlineSwatches.update):
+        Insert a warning icon if the variable is not found in the computed style.
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Color Picker
+        https://bugs.webkit.org/show_bug.cgi?id=168853
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ColorPicker.css:
+        (.color-picker):
+        (body[dir=ltr] .color-picker > .brightness):
+        (body[dir=rtl] .color-picker > .brightness):
+        (body[dir=ltr] .color-picker > .opacity):
+        (body[dir=rtl] .color-picker > .opacity):
+        (.color-picker > .brightness): Deleted.
+        (.color-picker > .opacity): Deleted.
+
+        * UserInterface/Views/ColorWheel.js:
+        (WebInspector.ColorWheel.prototype.set dimension):
+        Set the CSS width and height style of the container element to ensure that the element only
+        takes up the space it needs.
+
+        * UserInterface/Views/Slider.css:
+        (.slider):
+        * UserInterface/Views/Variables.css:
+        (:root):
+        Add `--slider-height` CSS variable for convenience.
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Bezier/Spring editor
+        https://bugs.webkit.org/show_bug.cgi?id=168854
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/BezierEditor.css:
+        (.bezier-editor):
+        (body[dir=ltr] .bezier-editor):
+        (body[dir=rtl] .bezier-editor):
+        (.bezier-editor > .bezier-preview-timing):
+        (body[dir=ltr] .bezier-editor > .bezier-preview-timing):
+        (body[dir=rtl] .bezier-editor > .bezier-preview-timing):
+        (@keyframes bezierPreview):
+        (body[dir=rtl] .bezier-editor > .bezier-container):
+        (.bezier-editor > .number-input-container > input):
+        (body[dir=ltr] .bezier-editor > .number-input-container > input):
+        (body[dir=rtl] .bezier-editor > .number-input-container > input):
+
+        * UserInterface/Views/SpringEditor.css:
+        (.spring-editor > .spring-timing):
+        (.spring-editor > .spring-timing::before):
+        (.spring-editor > .spring-timing::after):
+        (body[dir=ltr] .spring-editor > .spring-timing::before, body[dir=rtl] .spring-editor > .spring-timing::after):
+        (body[dir=ltr] .spring-editor > .spring-timing::after, body[dir=rtl] .spring-editor > .spring-timing::before):
+        (.spring-editor > .number-input-container > .number-input-row > input):
+
+        * UserInterface/Views/SpringEditor.js:
+        (WebInspector.SpringEditor.prototype._updatePreviewAnimation):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Elements tab Styles sidebar label/arrows need adjustment
+        https://bugs.webkit.org/show_bug.cgi?id=168746
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/ScopeRadioButtonNavigationItem.css:
+        (.scope-radio-button-navigation-item):
+        (.scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (body[dir=ltr] .scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (body[dir=rtl] .scope-radio-button-navigation-item > .scope-radio-button-item-select):
+        (.scope-radio-button-navigation-item > .scope-radio-button-item-select:focus):
+        (.scope-radio-button-navigation-item > .arrows):
+        (body[dir=ltr] .scope-radio-button-navigation-item > .arrows):
+        (body[dir=rtl] .scope-radio-button-navigation-item > .arrows):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: copying a search result out of Search Tab navigation sidebar does nothing
+        https://bugs.webkit.org/show_bug.cgi?id=167074
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector._copy):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView.prototype.handleCopyEvent):
+        Provide the container TabContentView with the opportunity to intercept the copy event.
+
+        * UserInterface/Models/SourceCodeTextRange.js:
+        (WebInspector.SourceCodeTextRange.prototype.get synthesizedTextValue):
+        * UserInterface/Views/SearchResultTreeElement.js:
+        (WebInspector.SearchResultTreeElement.prototype.get synthesizedTextValue):
+        Generate a string with the format `${url}:${lineNumber}:${resultLine}`.
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: Styles - Rules sidebar icons are misaligned
+        https://bugs.webkit.org/show_bug.cgi?id=168807
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header):
+        (body[dir=ltr] .style-declaration-section > .header):
+        (body[dir=rtl] .style-declaration-section > .header):
+        (.style-declaration-section.locked > .header > .locked-icon):
+        (body[dir=ltr] .style-declaration-section.locked > .header > .locked-icon):
+        (body[dir=rtl] .style-declaration-section.locked > .header > .locked-icon):
+        (.style-declaration-section > .header > .icon):
+        (body[dir=ltr] .style-declaration-section > .header > .icon):
+        (body[dir=rtl] .style-declaration-section > .header > .icon):
+        (.style-declaration-section > .header > textarea):
+        (body[dir=ltr] .style-declaration-section > .header > textarea):
+        (body[dir=rtl] .style-declaration-section > .header > textarea):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .new-rule):
+        (.sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .options-container > .toggle-class-toggle):
+        (.sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+        (body[dir=ltr] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+        (body[dir=rtl] .sidebar > .panel.details.css-style > .content ~ .class-list-container > .new-class > .class-name-input):
+
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2017-02-25  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: disclosure triangles in details section headers should be flipped and aligned right
+        https://bugs.webkit.org/show_bug.cgi?id=168283
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DetailsSection.css:
+        (.details-section):
+        (.details-section > .header):
+        (body[dir=ltr] .details-section > .header):
+        (body[dir=rtl] .details-section > .header):
+        (.details-section > .header > .options > .navigation-bar):
+        (body[dir=ltr] .details-section > .header > :matches(label, .node-link, .go-to-arrow, .options > .navigation-bar), body[dir=rtl] .details-section > .header::before):
+        (body[dir=ltr] .details-section > .header::before, body[dir=rtl] .details-section > .header > :matches(label, .node-link, .go-to-arrow, .options > .navigation-bar)):
+        (.details-section > .header::before):
+        (body[dir=rtl] .details-section > .header::before):
+        (.details-section > .header > label):
+        (.details-section > .header > label > input[type="checkbox"]):
+        (body[dir=ltr] .details-section > .header > label > input[type="checkbox"]):
+        (body[dir=rtl] .details-section > .header > label > input[type="checkbox"]):
+        (.details-section > .header .go-to-arrow):
+        (body[dir=ltr] .details-section > .header .go-to-arrow):
+        (body[dir=rtl] .details-section > .header .go-to-arrow):
+        (.details-section > .content > .group > .row.simple > .label):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .label):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .label):
+        (.details-section > .content > .group > .row.simple > .value):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .value):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .value):
+        (.details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (.details-section > .header > :matches(.node-link, .go-to-arrow)): Deleted.
+
+2017-02-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: RTL: add support for Error page
+        https://bugs.webkit.org/show_bug.cgi?id=168855
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Debug/UncaughtExceptionReporter.css:
+        (.uncaught-exception-sheet):
+        (body[dir=ltr] .uncaught-exception-sheet):
+        (body[dir=rtl] .uncaught-exception-sheet):
+        (.uncaught-exception-sheet h1 > img):
+        (body[dir=ltr] .uncaught-exception-sheet h1 > img):
+        (body[dir=rtl] .uncaught-exception-sheet h1 > img):
+        (.uncaught-exception-sheet h2 > img):
+        (body[dir=ltr] .uncaught-exception-sheet h2 > img):
+        (body[dir=rtl] .uncaught-exception-sheet h2 > img):
+        (.uncaught-exception-sheet dd):
+        (body[dir=ltr] .uncaught-exception-sheet dd):
+        (body[dir=rtl] .uncaught-exception-sheet dd):
+        (.uncaught-exception-sheet ul):
+        (body[dir=ltr] .uncaught-exception-sheet ul):
+        (body[dir=rtl] .uncaught-exception-sheet ul):
+
+2017-02-24  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Uncaught Exception: Unknown angle units "undefined"
+        https://bugs.webkit.org/show_bug.cgi?id=168851
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/GradientEditor.js:
+        (WebInspector.GradientEditor.prototype._gradientTypeChanged):
+
+2017-02-24  Jon Lee  <jonlee@apple.com>
+
+        Alias "system-ui" for the System font name
+        https://bugs.webkit.org/show_bug.cgi?id=151493
+
+        Reviewed by Tim Horton and Joseph Pecoraro.
+
+        * UserInterface/Models/CSSKeywordCompletions.js: Ditto.
+
 2017-02-23  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: RTL: DOM Tree spacing is wrong

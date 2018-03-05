@@ -1,3 +1,1388 @@
+2017-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Add WebKit2 hooks to notify the VM that the user has requested a debugger break.
+        https://bugs.webkit.org/show_bug.cgi?id=169089
+
+        Reviewed by Tim Horton and Joseph Pecoraro.
+
+        * runtime/VM.cpp:
+        (JSC::VM::handleTraps):
+        * runtime/VM.h:
+        (JSC::VM::notifyNeedDebuggerBreak):
+
+2017-03-02  Michael Saboff  <msaboff@apple.com>
+
+        Add JSC identity when code signing to allow debugging on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=169099
+
+        Reviewed by Filip Pizlo.
+
+        * Configurations/JSC.xcconfig:
+        * Configurations/ToolExecutable.xcconfig:
+
+2017-03-02  Keith Miller  <keith_miller@apple.com>
+
+        WebAssemblyFunction should have Function.prototype as its prototype
+        https://bugs.webkit.org/show_bug.cgi?id=169101
+
+        Reviewed by Filip Pizlo.
+
+        Per https://github.com/WebAssembly/design/blob/master/JS.md#exported-function-exotic-objects our JSWebAssemblyFunction
+        objects should have Function.prototype as their prototype.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2017-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Add Options::alwaysCheckTraps() and Options::usePollingTraps() options.
+        https://bugs.webkit.org/show_bug.cgi?id=169088
+
+        Reviewed by Keith Miller.
+
+        Options::alwaysCheckTraps() forces the op_check_traps bytecode to always be
+        generated.  This is useful for testing purposes until we have signal based
+        traps, at which point, we will always emit the op_check_traps bytecode and remove
+        this option.
+
+        Options::usePollingTraps() enables the use of polling VM traps all the time.
+        This will be useful for benchmark comparisons, (between polling and non-polling
+        traps), as well as for forcing polling traps later for ports that don't support
+        signal based traps.
+
+        Note: signal based traps are not fully implemented yet.  As a result, if the VM
+        watchdog is in use, we will force Options::usePollingTraps() to be true.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitCheckTraps):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckTraps):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckTraps):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2017-03-02  Keith Miller  <keith_miller@apple.com>
+
+        Fix addressing mode for B3WasmAddress
+        https://bugs.webkit.org/show_bug.cgi?id=169092
+
+        Reviewed by Filip Pizlo.
+
+        Fix the potential addressing modes for B3WasmAddress. ARM does not
+        support a base + index*1 + offset addressing mode. I think when I
+        read it the first time I assumed it would always work on both ARM
+        and X86. While true for X86 it's not true for ARM.
+
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+
+2017-03-02  Mark Lam  <mark.lam@apple.com>
+
+        Add support for selective handling of VM traps.
+        https://bugs.webkit.org/show_bug.cgi?id=169087
+
+        Reviewed by Keith Miller.
+
+        This is needed because there are some places in the VM where it's appropriate to
+        handle some types of VM traps but not others.
+
+        We implement this selection by using a VMTraps::Mask that allows the user to
+        specify which traps should be serviced.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::execute):
+        * runtime/VM.cpp:
+        (JSC::VM::handleTraps):
+        * runtime/VM.h:
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::takeTrap): Deleted.
+        * runtime/VMTraps.h:
+        (JSC::VMTraps::Mask::Mask):
+        (JSC::VMTraps::Mask::allEventTypes):
+        (JSC::VMTraps::Mask::bits):
+        (JSC::VMTraps::Mask::init):
+        (JSC::VMTraps::needTrapHandling):
+        (JSC::VMTraps::hasTrapForEvent):
+
+2017-03-02  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-02  Tomas Popela  <tpopela@redhat.com>
+
+        Incorrect RELEASE_ASSERT in JSGlobalObject::addStaticGlobals()
+        https://bugs.webkit.org/show_bug.cgi?id=169034
+
+        Reviewed by Mark Lam.
+
+        It should not assign to offset, but compare to offset.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::addStaticGlobals):
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r213259.
+
+        Broke an internal build
+
+        Reverted changeset:
+
+        "Continue enabling WebRTC"
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+        http://trac.webkit.org/changeset/213259
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-01  Michael Saboff  <msaboff@apple.com>
+
+        Source/JavaScriptCore/ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=169055
+
+        Reviewed by Mark Lam.
+
+        Made local copies of options strings for OptionRange and string typed options.
+
+        * runtime/Options.cpp:
+        (JSC::parse):
+        (JSC::OptionRange::init):
+
+2017-03-01  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] Change JSLock to stash PlatformThread instead of std::thread::id.
+        https://bugs.webkit.org/show_bug.cgi?id=168996
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        PlatformThread is more useful because it allows us to:
+        1. find the MachineThreads::Thread which is associated with it.
+        2. suspend / resume threads.
+        3. send a signal to a thread.
+
+        We can't do those with std::thread::id.  We will need one or more of these
+        capabilities to implement non-polling VM traps later.
+
+        Update: Since we don't have a canonical "uninitialized" value for PlatformThread,
+        we now have a JSLock::m_hasOwnerThread flag that is set to true if and only the
+        m_ownerThread value is valid.  JSLock::currentThreadIsHoldingLock() now checks
+        JSLock::m_hasOwnerThread before doing the thread identity comparison.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::Thread::createForCurrentThread):
+        (JSC::MachineThreads::machineThreadForCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::Thread::suspend):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        (JSC::getCurrentPlatformThread): Deleted.
+        * heap/MachineStackMarker.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::JSLock):
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock): Deleted.
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/PlatformThread.h: Added.
+        (JSC::currentPlatformThread):
+        * runtime/VM.cpp:
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::setTimeLimit):
+        (JSC::Watchdog::shouldTerminate):
+        (JSC::Watchdog::startTimer):
+        (JSC::Watchdog::stopTimer):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::currentThreadOwnsJSLock):
+        * tools/VMInspector.cpp:
+
+2017-03-01  Saam Barati  <sbarati@apple.com>
+
+        Implement a mega-disassembler that'll be used in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=168685
+
+        Reviewed by Mark Lam.
+
+        This patch extends the previous Air disassembler to print the
+        DFG and B3 nodes belonging to particular Air instructions.
+        The algorithm I'm using to do this is not perfect. For example,
+        it won't try to print the entire DFG/B3 graph. It'll just print
+        the related nodes for particular Air instructions. We can make the
+        algorithm more sophisticated as we get more experience looking at
+        these IR dumps and get a better feel for what we want out of them.
+
+        This is an example of the output:
+
+        ...
+        ...
+        200:<!0:->  InvalidationPoint(MustGen, W:SideState, Exits, bc#28, exit: bc#25 --> _getEntry#DlGw2r:<0x10276f980> bc#37)
+           Void @54 = Patchpoint(@29:ColdAny, @29:ColdAny, @53:ColdAny, DFG:@200, generator = 0x1015d6c18, earlyClobbered = [], lateClobbered = [], usedRegisters = [%r0, %r19, %r20, %r21, %r22, %fp], resultConstraint = WarmAny, ExitsSideways|WritesPinned|ReadsPinned|Reads:Top)
+               Patch &Patchpoint2, %r20, %r20, %r0, @54
+         76:< 6:->  GetByOffset(KnownCell:@44, KnownCell:@44, JS|UseAsOther, Array, id3{_elementData}, 2, inferredType = Object, R:NamedProperties(3), Exits, bc#37)  predicting Array
+           Int64 @57 = Load(@29, DFG:@76, offset = 32, ControlDependent|Reads:100...101)
+               Move 32(%r20), %r5, @57
+                      0x389cc9ac0:    ldur   x5, [x20, #32]
+        115:<!0:->  CheckStructure(Cell:@76, MustGen, [0x1027eae20:[Array, {}, ArrayWithContiguous, Proto:0x1027e0140]], R:JSCell_structureID, Exits, bc#46)
+           Int32 @58 = Load(@57, DFG:@115, ControlDependent|Reads:16...17)
+               Move32 (%r5), %r1, @58
+                      0x389cc9ac4:    ldur   w1, [x5]
+           Int32 @59 = Const32(DFG:@115, 92)
+           Int32 @60 = NotEqual(@58, $92(@59), DFG:@115)
+           Void @61 = Check(@60:WarmAny, @57:ColdAny, @29:ColdAny, @29:ColdAny, @53:ColdAny, @57:ColdAny, DFG:@115, generator = 0x1057991e0, earlyClobbered = [], lateClobbered = [], usedRegisters = [%r0, %r5, %r19, %r20, %r21, %r22, %fp], ExitsSideways|Reads:Top)
+               Patch &Branch32(3,SameAsRep)1, NotEqual, %r1, $92, %r5, %r20, %r20, %r0, %r5, @61
+                      0x389cc9ac8:    cmp    w1, #92
+                      0x389cc9acc:    b.ne   0x389cc9dac
+        117:< 2:->  GetButterfly(Cell:@76, Storage|PureInt, R:JSObject_butterfly, Exits, bc#46)
+           Int64 @64 = Load(@57, DFG:@117, offset = 8, ControlDependent|Reads:24...25)
+               Move 8(%r5), %r4, @64
+                      0x389cc9ad0:    ldur   x4, [x5, #8]
+         79:< 2:->  GetArrayLength(KnownCell:@76, Untyped:@117, JS|PureInt|UseAsInt, Nonboolint32, Contiguous+OriginalArray+InBounds+AsIs, R:Butterfly_publicLength, Exits, bc#46)
+           Int32 @67 = Load(@64, DFG:@79, offset = -8, ControlDependent|Reads:3...4)
+               Move32 -8(%r4), %r2, @67
+                      0x389cc9ad4:    ldur   w2, [x4, #-8]
+      192:< 1:->  JSConstant(JS|PureInt, Nonboolint32, Int32: -1, bc#0)
+           Int32 @68 = Const32(DFG:@192, -1)
+               Move $0xffffffffffffffff, %r1, $-1(@68)
+                      0x389cc9ad8:    mov    x1, #-1
+         83:<!2:->  ArithAdd(Int32:Kill:@79, Int32:Kill:@192, Number|MustGen|PureInt|UseAsInt, Int32, Unchecked, Exits, bc#55)
+           Int32 @69 = Add(@67, $-1(@68), DFG:@83)
+               Add32 %r2, %r1, %r1, @69
+                      0x389cc9adc:    add    w1, w2, w1
+         86:< 3:->  BitAnd(Check:Int32:@71, Int32:Kill:@83, Int32|UseAsOther|UseAsInt|ReallyWantsInt, Int32, Exits, bc#60)
+           Int32 @70 = Below(@53, $-281474976710656(@15), DFG:@86)
+           Void @71 = Check(@70:WarmAny, @53:ColdAny, @29:ColdAny, @29:ColdAny, @53:ColdAny, @69:ColdAny, DFG:@86, generator = 0x105799370, earlyClobbered = [], lateClobbered = [], usedRegisters = [%r0, %r1, %r2, %r4, %r5, %r19, %r20, %r21, %r22, %fp], ExitsSideways|Reads:Top)
+               Patch &Branch64(3,SameAsRep)0, Below, %r0, %r22, %r0, %r20, %r20, %r0, %r1, @71
+                      0x389cc9ae0:    cmp    x0, x22
+                      0x389cc9ae4:    b.lo   0x389cc9dc0
+           Int32 @72 = Trunc(@53, DFG:@86)
+           Int32 @73 = BitAnd(@69, @72, DFG:@86)
+               And32 %r1, %r0, %r1, @73
+                      0x389cc9ae8:    and    w1, w1, w0
+           16:<!0:->  PutStack(KnownInt32:@71, MustGen, loc27, machine:loc3, FlushedInt32, W:Stack(-28), bc#19)
+           Int32 @72 = Trunc(@53, DFG:@86)
+           Int64 @11 = SlotBase(stack0)
+           Void @76 = Store(@72, @11, DFG:@16, offset = 32, ControlDependent|Writes:94...95)
+               Move32 %r0, -64(%fp), @76
+                      0x389cc9aec:    stur   w0, [fp, #-64]
+           12:<!0:->  PutStack(Untyped:@86, MustGen, loc28, machine:loc4, FlushedJSValue, W:Stack(-29), bc#19)
+           Int64 @77 = ZExt32(@73, DFG:@12)
+           Int64 @78 = Add(@77, $-281474976710656(@15), DFG:@12)
+               Add64 %r1, %r22, %r3, @78
+                      0x389cc9af0:    add    x3, x1, x22
+           Int64 @11 = SlotBase(stack0)
+           Void @81 = Store(@78, @11, DFG:@12, offset = 24, ControlDependent|Writes:95...96)
+               Move %r3, -72(%fp), @81
+                      0x389cc9af4:    stur   x3, [fp, #-72]
+           10:<!0:->  PutStack(KnownInt32:@46, MustGen, loc29, machine:loc5, FlushedInt32, W:Stack(-30), bc#19)
+           Int32 @82 = Trunc(@24, DFG:@10)
+           Int64 @11 = SlotBase(stack0)
+           Void @85 = Store(@82, @11, DFG:@10, offset = 16, ControlDependent|Writes:96...97)
+               Move32 %r21, -80(%fp), @85
+                      0x389cc9af8:    stur   w21, [fp, #-80]
+          129:<!10:->  GetByVal(KnownCell:Kill:@76, Int32:Kill:@86, Untyped:Kill:@117, JS|MustGen|UseAsOther, FinalOther, Contiguous+OriginalArray+OutOfBounds+AsIs, R:World, W:Heap, Exits, ClobbersExit, bc#19)  predicting FinalOther
+           Int32 @89 = AboveEqual(@73, @67, DFG:@129)
+           Void @90 = Branch(@89, DFG:@129, Terminal)
+               Branch32 AboveOrEqual, %r1, %r2, @90
+                      0x389cc9afc:    cmp    w1, w2
+                      0x389cc9b00:    b.hs   0x389cc9bec
+        ...
+        ...
+
+        * b3/air/AirDisassembler.cpp:
+        (JSC::B3::Air::Disassembler::dump):
+        * b3/air/AirDisassembler.h:
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        (JSC::FTL::DFG::LowerDFGToB3::lowInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::lowCell):
+        (JSC::FTL::DFG::LowerDFGToB3::lowBoolean):
+        (JSC::FTL::DFG::LowerDFGToB3::lowJSValue):
+
+2017-03-01  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION (r213202?): Assertion failed: (!"initialized()"), function operator().
+        https://bugs.webkit.org/show_bug.cgi?id=169042
+
+        Not reviewed.
+
+        Rolling out r213229 and r213202.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/MachineStackMarker.cpp:
+        (JSC::getCurrentPlatformThread):
+        (JSC::MachineThreads::Thread::createForCurrentThread):
+        (JSC::MachineThreads::machineThreadForCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::Thread::suspend):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        * heap/MachineStackMarker.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::JSLock):
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::currentThreadIsHoldingLock): Deleted.
+        * runtime/PlatformThread.h: Removed.
+        * runtime/VM.cpp:
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::setTimeLimit):
+        (JSC::Watchdog::shouldTerminate):
+        (JSC::Watchdog::startTimer):
+        (JSC::Watchdog::stopTimer):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::currentThreadOwnsJSLock):
+        * tools/VMInspector.cpp:
+
+2017-03-01  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION (r213202?): Assertion failed: (!"initialized()"), function operator()
+        https://bugs.webkit.org/show_bug.cgi?id=169042
+
+        Reviewed by Filip Pizlo.
+
+        * runtime/JSLock.h:
+        (JSC::JSLock::currentThreadIsHoldingLock):
+
+2017-02-28  Brian Burg  <bburg@apple.com>
+
+        REGRESSION(r211344): Remote Inspector: listingForAutomationTarget() is called off-main-thread, causing assertions
+        https://bugs.webkit.org/show_bug.cgi?id=168695
+        <rdar://problem/30643899>
+
+        Reviewed by Joseph Pecoraro.
+
+        The aforementioned commit added some new calls to update target listings. This causes RemoteInspector
+        to update some listings underneath an incoming setup message on the XPC queue, which is not a safe place
+        to gather listing information for RemoteAutomationTargets.
+
+        Update the listing asynchronously since we don't need it immediately. Since this really only happens when
+        the connection to the target is set up and shut down, we can trigger listings to be refreshed from
+        the async block that's called on the target's queue inside RemoteConnectionToTarget::{setup,close}.
+
+        * inspector/remote/RemoteInspector.h:
+        Make updateListingForTarget(unsigned) usable from RemoteConnectionToTarget.
+
+        * inspector/remote/cocoa/RemoteConnectionToTargetCocoa.mm:
+        (Inspector::RemoteConnectionToTarget::setup):
+        (Inspector::RemoteConnectionToTarget::close):
+        Grab the target identifier while the RemoteControllableTarget pointer is still valid,
+        and use it inside the block later after it may have been destructed already. If that happens,
+        then updateTargetListing will bail out because the targetIdentifier cannot be found in the mapping.
+
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+        (Inspector::RemoteInspector::updateTargetListing):
+        We need to make sure to request a listing push after the target is updated, so implicitly call
+        pushListingsSoon() from here. That method doesn't require any particular queue or holding a lock.
+
+        (Inspector::RemoteInspector::receivedSetupMessage):
+        (Inspector::RemoteInspector::receivedDidCloseMessage):
+        (Inspector::RemoteInspector::receivedConnectionDiedMessage):
+        Remove calls to updateTargetListing() and pushListingsSoon(), as these happen implicitly
+        and asynchronously on the target's queue when the connection to target is opened or closed.
+
+2017-03-01  Tomas Popela  <tpopela@redhat.com>
+
+        Leak under Options::setOptions
+        https://bugs.webkit.org/show_bug.cgi?id=169029
+
+        Reviewed by Michael Saboff.
+
+        Don't leak the optionsStrCopy variable.
+
+        * runtime/Options.cpp:
+        (JSC::Options::setOptions):
+
+2017-03-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Allow UnlinkedCodeBlock to dump its bytecode sequence
+        https://bugs.webkit.org/show_bug.cgi?id=168968
+
+        Reviewed by Saam Barati.
+
+        This patch decouples dumping bytecode sequence from CodeBlock.
+        This change allows UnlinkedCodeBlock to dump its bytecode sequence.
+        It is useful because we now have complex phase between UnlinkedCodeBlock and CodeBlock,
+        called Generatorification.
+
+        We introduce BytecodeDumper<Block>. Both CodeBlock and UnlinkedCodeBlock can use
+        this class to dump bytecode sequence.
+
+        And this patch also adds Option::dumpBytecodesBeforeGeneratorification,
+        which dumps unlinked bytecode sequence before generatorification if it is enabled.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeDumper.cpp: Added.
+        (JSC::getStructureID):
+        (JSC::getSpecialPointer):
+        (JSC::getPutByIdFlags):
+        (JSC::getToThisStatus):
+        (JSC::getPointer):
+        (JSC::getStructureChain):
+        (JSC::getStructure):
+        (JSC::getCallLinkInfo):
+        (JSC::getBasicBlockLocation):
+        (JSC::BytecodeDumper<Block>::actualPointerFor):
+        (JSC::BytecodeDumper<CodeBlock>::actualPointerFor):
+        (JSC::beginDumpProfiling):
+        (JSC::BytecodeDumper<Block>::dumpValueProfiling):
+        (JSC::BytecodeDumper<CodeBlock>::dumpValueProfiling):
+        (JSC::BytecodeDumper<Block>::dumpArrayProfiling):
+        (JSC::BytecodeDumper<CodeBlock>::dumpArrayProfiling):
+        (JSC::BytecodeDumper<Block>::dumpProfilesForBytecodeOffset):
+        (JSC::dumpRareCaseProfile):
+        (JSC::dumpArithProfile):
+        (JSC::BytecodeDumper<CodeBlock>::dumpProfilesForBytecodeOffset):
+        (JSC::BytecodeDumper<Block>::vm):
+        (JSC::BytecodeDumper<Block>::identifier):
+        (JSC::regexpToSourceString):
+        (JSC::regexpName):
+        (JSC::printLocationAndOp):
+        (JSC::isConstantRegisterIndex):
+        (JSC::debugHookName):
+        (JSC::BytecodeDumper<Block>::registerName):
+        (JSC::idName):
+        (JSC::BytecodeDumper<Block>::constantName):
+        (JSC::BytecodeDumper<Block>::printUnaryOp):
+        (JSC::BytecodeDumper<Block>::printBinaryOp):
+        (JSC::BytecodeDumper<Block>::printConditionalJump):
+        (JSC::BytecodeDumper<Block>::printGetByIdOp):
+        (JSC::dumpStructure):
+        (JSC::dumpChain):
+        (JSC::BytecodeDumper<Block>::printGetByIdCacheStatus):
+        (JSC::BytecodeDumper<Block>::printPutByIdCacheStatus):
+        (JSC::BytecodeDumper<Block>::dumpCallLinkStatus):
+        (JSC::BytecodeDumper<CodeBlock>::dumpCallLinkStatus):
+        (JSC::BytecodeDumper<Block>::printCallOp):
+        (JSC::BytecodeDumper<Block>::printPutByIdOp):
+        (JSC::BytecodeDumper<Block>::printLocationOpAndRegisterOperand):
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        (JSC::BytecodeDumper<Block>::dumpIdentifiers):
+        (JSC::BytecodeDumper<Block>::dumpConstants):
+        (JSC::BytecodeDumper<Block>::dumpRegExps):
+        (JSC::BytecodeDumper<Block>::dumpExceptionHandlers):
+        (JSC::BytecodeDumper<Block>::dumpSwitchJumpTables):
+        (JSC::BytecodeDumper<Block>::dumpStringSwitchJumpTables):
+        (JSC::BytecodeDumper<Block>::dumpBlock):
+        * bytecode/BytecodeDumper.h: Added.
+        (JSC::BytecodeDumper::BytecodeDumper):
+        (JSC::BytecodeDumper::block):
+        (JSC::BytecodeDumper::instructionsBegin):
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::BytecodeGeneratorification::BytecodeGeneratorification):
+        (JSC::performGeneratorification):
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        (JSC::BytecodeLivenessAnalysis::dumpResults):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        (JSC::CodeBlock::finishCreation):
+        (JSC::CodeBlock::propagateTransitions):
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        (JSC::CodeBlock::hasOpDebugForLineAndColumn):
+        (JSC::CodeBlock::usesOpcode):
+        (JSC::CodeBlock::valueProfileForBytecodeOffset):
+        (JSC::CodeBlock::arithProfileForPC):
+        (JSC::CodeBlock::insertBasicBlockBoundariesForControlFlowProfiler):
+        (JSC::idName): Deleted.
+        (JSC::CodeBlock::registerName): Deleted.
+        (JSC::CodeBlock::constantName): Deleted.
+        (JSC::regexpToSourceString): Deleted.
+        (JSC::regexpName): Deleted.
+        (JSC::debugHookName): Deleted.
+        (JSC::CodeBlock::printUnaryOp): Deleted.
+        (JSC::CodeBlock::printBinaryOp): Deleted.
+        (JSC::CodeBlock::printConditionalJump): Deleted.
+        (JSC::CodeBlock::printGetByIdOp): Deleted.
+        (JSC::dumpStructure): Deleted.
+        (JSC::dumpChain): Deleted.
+        (JSC::CodeBlock::printGetByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printPutByIdCacheStatus): Deleted.
+        (JSC::CodeBlock::printCallOp): Deleted.
+        (JSC::CodeBlock::printPutByIdOp): Deleted.
+        (JSC::CodeBlock::dumpExceptionHandlers): Deleted.
+        (JSC::CodeBlock::beginDumpProfiling): Deleted.
+        (JSC::CodeBlock::dumpValueProfiling): Deleted.
+        (JSC::CodeBlock::dumpArrayProfiling): Deleted.
+        (JSC::CodeBlock::dumpRareCaseProfile): Deleted.
+        (JSC::CodeBlock::dumpArithProfile): Deleted.
+        (JSC::CodeBlock::printLocationAndOp): Deleted.
+        (JSC::CodeBlock::printLocationOpAndRegisterOperand): Deleted.
+        * bytecode/CodeBlock.h:
+        (JSC::CodeBlock::constantRegisters):
+        (JSC::CodeBlock::numberOfRegExps):
+        (JSC::CodeBlock::bitVectors):
+        (JSC::CodeBlock::bitVector):
+        * bytecode/HandlerInfo.h:
+        (JSC::HandlerInfoBase::typeName):
+        * bytecode/UnlinkedCodeBlock.cpp:
+        (JSC::UnlinkedCodeBlock::dump):
+        * bytecode/UnlinkedCodeBlock.h:
+        (JSC::UnlinkedCodeBlock::getConstant):
+        * bytecode/UnlinkedInstructionStream.cpp:
+        (JSC::UnlinkedInstructionStream::UnlinkedInstructionStream):
+        * bytecode/UnlinkedInstructionStream.h:
+        (JSC::UnlinkedInstructionStream::Reader::next):
+        * runtime/Options.h:
+
+2017-02-28  Mark Lam  <mark.lam@apple.com>
+
+        Change JSLock to stash PlatformThread instead of std::thread::id.
+        https://bugs.webkit.org/show_bug.cgi?id=168996
+
+        Reviewed by Filip Pizlo.
+
+        PlatformThread is more useful because it allows us to:
+        1. find the MachineThreads::Thread which is associated with it.
+        2. suspend / resume threads.
+        3. send a signal to a thread.
+
+        We can't do those with std::thread::id.  We will need one or more of these
+        capabilities to implement non-polling VM traps later.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::Thread::createForCurrentThread):
+        (JSC::MachineThreads::machineThreadForCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::Thread::suspend):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        (JSC::getCurrentPlatformThread): Deleted.
+        * heap/MachineStackMarker.h:
+        * runtime/JSCellInlines.h:
+        (JSC::JSCell::classInfo):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock): Deleted.
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/PlatformThread.h: Added.
+        (JSC::currentPlatformThread):
+        * runtime/VM.cpp:
+        (JSC::VM::~VM):
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::setTimeLimit):
+        (JSC::Watchdog::shouldTerminate):
+        (JSC::Watchdog::startTimer):
+        (JSC::Watchdog::stopTimer):
+        * tools/JSDollarVMPrototype.cpp:
+        (JSC::JSDollarVMPrototype::currentThreadOwnsJSLock):
+        * tools/VMInspector.cpp:
+
+2017-02-28  Mark Lam  <mark.lam@apple.com>
+
+        Enable the SigillCrashAnalyzer by default for iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=168989
+
+        Reviewed by Keith Miller.
+
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+
+2017-02-28  Mark Lam  <mark.lam@apple.com>
+
+        Remove setExclusiveThread() and peers from the JSLock.
+        https://bugs.webkit.org/show_bug.cgi?id=168977
+
+        Reviewed by Filip Pizlo.
+
+        JSLock::setExclusiveThread() was only used by WebCore.  Benchmarking with
+        Speedometer, we see that removal of exclusive thread status has no measurable
+        impact on performance.  So, let's remove the code for handling exclusive thread
+        status, and simplify the JSLock code.
+
+        For the records, exclusive thread status does improve JSLock locking/unlocking
+        time by up to 20%.  However, this difference is not measurable in the way WebCore
+        uses the JSLock as confirmed by Speedometer.
+
+        Also applied a minor optimization in JSLock::lock() to assume the initial lock
+        entry case (as opposed to the re-entry case).  This appears to shows a small
+        fractional improvement (about 5%) in JSLock cumulative locking and unlocking
+        time in a micro-benchmark.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::Heap):
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        * heap/MachineStackMarker.h:
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::JSLock):
+        (JSC::JSLock::lock):
+        (JSC::JSLock::unlock):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        (JSC::JSLock::dropAllLocks):
+        (JSC::JSLock::grabAllLocks):
+        (JSC::JSLock::setExclusiveThread): Deleted.
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::hasExclusiveThread): Deleted.
+        (JSC::JSLock::exclusiveThread): Deleted.
+        * runtime/VM.h:
+        (JSC::VM::hasExclusiveThread): Deleted.
+        (JSC::VM::exclusiveThread): Deleted.
+        (JSC::VM::setExclusiveThread): Deleted.
+
+2017-02-28  Saam Barati  <sbarati@apple.com>
+
+        Arm64 disassembler prints "ars" instead of "asr"
+        https://bugs.webkit.org/show_bug.cgi?id=168923
+
+        Rubber stamped by Michael Saboff.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        (JSC::ARM64Disassembler::A64DOpcodeBitfield::format):
+
+2017-02-28  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Use of arguments in arrow function is slow
+        https://bugs.webkit.org/show_bug.cgi?id=168829
+
+        Reviewed by Saam Barati.
+
+        Current patch improves performance access to arguments within arrow functuion
+        by preventing create arguments variable within arrow function, also allow to cache 
+        arguments variable. Before arguments variable always have Dynamic resolve type, after 
+        patch it can be ClosureVar, that increase performance of access to arguments variable
+        in 9 times inside of the arrow function. 
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * runtime/JSScope.cpp:
+        (JSC::abstractAccess):
+
+2017-02-28  Michael Saboff  <msaboff@apple.com>
+
+        Add ability to configure JSC options from a file
+        https://bugs.webkit.org/show_bug.cgi?id=168914
+
+        Reviewed by Filip Pizlo.
+
+        Added the ability to set options and DataLog file location via a configuration file.
+        The configuration file is specified with the --configFile option to JSC or the
+        JSC_configFile environment variable.
+
+        The file format allows for options conditionally dependent on various attributes.
+        Currently those attributes are the process name, parent process name and build
+        type (Release or Debug).  In this patch, the parent process type is not set.
+        That will be set up in WebKit code with a follow up patch.
+
+        Here is an example config file:
+
+            logFile = "/tmp/jscLog.%pid.txt"
+
+            jscOptions {
+                dumpOptions = 2
+            }
+
+            build == "Debug" {
+                jscOptions {
+                    useConcurrentJIT = false
+                    dumpDisassembly = true
+                }
+            }
+
+            build == "Release" && processName == "jsc" {
+                jscOptions {
+                    asyncDisassembly = true
+                }
+            }
+
+        Eliminated the prior options file code.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jsc.cpp:
+        (jscmain):
+        * runtime/ConfigFile.cpp: Added.
+        (JSC::ConfigFileScanner::ConfigFileScanner):
+        (JSC::ConfigFileScanner::start):
+        (JSC::ConfigFileScanner::lineNumber):
+        (JSC::ConfigFileScanner::currentBuffer):
+        (JSC::ConfigFileScanner::atFileEnd):
+        (JSC::ConfigFileScanner::tryConsume):
+        (JSC::ConfigFileScanner::tryConsumeString):
+        (JSC::ConfigFileScanner::tryConsumeUpto):
+        (JSC::ConfigFileScanner::fillBufferIfNeeded):
+        (JSC::ConfigFileScanner::fillBuffer):
+        (JSC::ConfigFile::ConfigFile):
+        (JSC::ConfigFile::setProcessName):
+        (JSC::ConfigFile::setParentProcessName):
+        (JSC::ConfigFile::parse):
+        * runtime/ConfigFile.h: Added.
+        * runtime/Options.cpp:
+        (JSC::Options::initialize):
+        (JSC::Options::setOptions):
+        * runtime/Options.h:
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Begin enabling WebRTC on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=168915
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Mark Lam  <mark.lam@apple.com>
+
+        Introduce a VM Traps mechanism and refactor Watchdog to use it.
+        https://bugs.webkit.org/show_bug.cgi?id=168842
+
+        Reviewed by Filip Pizlo.
+
+        Currently, the traps mechanism is only used for the JSC watchdog, and for
+        asynchronous termination requests (which is currently only used for worker
+        threads termination).
+
+        This first cut of the traps mechanism still relies on polling from DFG and FTL
+        code.  This is done to keep the patch as small as possible.  The work to do
+        a non-polling version of the traps mechanism for DFG and FTL code is deferred to
+        another patch.
+
+        In this patch, worker threads still need to set the VM::m_needAsynchronousTerminationSupport
+        flag to enable the traps polling in the DFG and FTL code.  When we have the
+        non-polling version of the DFG and FTL traps mechanism, we can remove the use of
+        the VM::m_needAsynchronousTerminationSupport flag.
+
+        Note: this patch also separates asynchronous termination support from the JSC
+        watchdog.  This separation allows us to significantly simplify the locking
+        requirements in the watchdog code, and make it easier to reason about its
+        correctness.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::dumpBytecode):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::emitLoopHint):
+        (JSC::BytecodeGenerator::emitCheckTraps):
+        (JSC::BytecodeGenerator::emitWatchdog): Deleted.
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileCheckTraps):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckTraps):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckWatchdogTimer): Deleted.
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::execute):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        (JSC::JIT::privateCompileSlowCases):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_check_traps):
+        (JSC::JIT::emitSlow_op_check_traps):
+        (JSC::JIT::emit_op_watchdog): Deleted.
+        (JSC::JIT::emitSlow_op_watchdog): Deleted.
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * llint/LLIntSlowPaths.h:
+        * llint/LowLevelInterpreter.asm:
+        * llint/LowLevelInterpreter32_64.asm:
+        * llint/LowLevelInterpreter64.asm:
+        * runtime/VM.cpp:
+        (JSC::VM::~VM):
+        (JSC::VM::ensureWatchdog):
+        (JSC::VM::handleTraps):
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        (JSC::VM::needTrapHandling):
+        (JSC::VM::needTrapHandlingAddress):
+        (JSC::VM::notifyNeedTermination):
+        (JSC::VM::notifyNeedWatchdogCheck):
+        (JSC::VM::needAsynchronousTerminationSupport):
+        (JSC::VM::setNeedAsynchronousTerminationSupport):
+        * runtime/VMInlines.h:
+        (JSC::VM::shouldTriggerTermination): Deleted.
+        * runtime/VMTraps.cpp: Added.
+        (JSC::VMTraps::fireTrap):
+        (JSC::VMTraps::takeTrap):
+        * runtime/VMTraps.h: Added.
+        (JSC::VMTraps::needTrapHandling):
+        (JSC::VMTraps::needTrapHandlingAddress):
+        (JSC::VMTraps::hasTrapForEvent):
+        (JSC::VMTraps::setTrapForEvent):
+        (JSC::VMTraps::clearTrapForEvent):
+        * runtime/Watchdog.cpp:
+        (JSC::Watchdog::Watchdog):
+        (JSC::Watchdog::setTimeLimit):
+        (JSC::Watchdog::shouldTerminate):
+        (JSC::Watchdog::enteredVM):
+        (JSC::Watchdog::exitedVM):
+        (JSC::Watchdog::startTimer):
+        (JSC::Watchdog::stopTimer):
+        (JSC::Watchdog::willDestroyVM):
+        (JSC::Watchdog::terminateSoon): Deleted.
+        (JSC::Watchdog::shouldTerminateSlow): Deleted.
+        * runtime/Watchdog.h:
+        (JSC::Watchdog::shouldTerminate): Deleted.
+        (JSC::Watchdog::timerDidFireAddress): Deleted.
+
+2017-02-27  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213019.
+        https://bugs.webkit.org/show_bug.cgi?id=168925
+
+        "It broke 32-bit jsc tests in debug builds" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "op_get_by_id_with_this should use inline caching"
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+        http://trac.webkit.org/changeset/213019
+
+2017-02-27  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: miscellaneous spec fixes part deux
+        https://bugs.webkit.org/show_bug.cgi?id=168861
+
+        Reviewed by Keith Miller.
+
+        * wasm/WasmFunctionParser.h: add some FIXME
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Enable WebRTC in some Production Builds
+        https://bugs.webkit.org/show_bug.cgi?id=168858
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-02-26  Caio Lima  <ticaiolima@gmail.com>
+
+        op_get_by_id_with_this should use inline caching
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+
+        Reviewed by Saam Barati.
+
+        This patch is enabling inline cache for op_get_by_id_with_this in all
+        tiers. It means that operations using ```super.member``` are going to
+        be able to be optimized by PIC. To enable it, we introduced a new
+        member of StructureStubInfo.patch named thisGPR, created a new class
+        to manage the IC named JITGetByIdWithThisGenerator and changed
+        PolymorphicAccess.regenerate that uses StructureStubInfo.patch.thisGPR
+        to decide the correct this value on inline caches.
+        With inline cached enabled, ```super.member``` are ~4.5x faster,
+        according microbenchmarks.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::reset):
+        * bytecode/StructureStubInfo.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addGetByIdWithThis):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetByIdWithThis):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetByIdWithThis):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByIdWithThis):
+        (JSC::FTL::DFG::LowerDFGToB3::compileIn):
+        (JSC::FTL::DFG::LowerDFGToB3::getByIdWithThis):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/ICStats.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+        (JSC::JIT::privateCompileSlowCases):
+        (JSC::JIT::link):
+        * jit/JIT.h:
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITByIdGenerator::JITByIdGenerator):
+        (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
+        (JSC::JITGetByIdWithThisGenerator::generateFastPath):
+        * jit/JITInlineCacheGenerator.h:
+        (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emitSlow_op_get_by_id_with_this):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emitSlow_op_get_by_id_with_this):
+        * jit/Repatch.cpp:
+        (JSC::appropriateOptimizingGetByIdFunction):
+        (JSC::appropriateGenericGetByIdFunction):
+        (JSC::tryCacheGetByID):
+        * jit/Repatch.h:
+        * jsc.cpp:
+        (WTF::CustomGetter::getOwnPropertySlot):
+        (WTF::CustomGetter::customGetterAcessor):
+
+2017-02-24  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: miscellaneous spec fixes
+        https://bugs.webkit.org/show_bug.cgi?id=168822
+
+        Reviewed by Saam Barati.
+
+        * wasm/WasmModuleParser.cpp: "unknown" sections are now called "custom" sections
+        * wasm/WasmSections.h:
+        (JSC::Wasm::validateOrder):
+        (JSC::Wasm::makeString): fix ASSERT_UNREACHABLE bug in printing
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance): disallow i64 import
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link): disallow i64 export
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2017-02-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Move Arg::Type and Arg::Width out into the B3 namespace, since they are general concepts
+        https://bugs.webkit.org/show_bug.cgi?id=168833
+
+        Reviewed by Saam Barati.
+        
+        I want to use the Air::Arg::Type and Air::Arg::Width concepts in B3. We are already
+        doing this a bit, and it's akward because of the namespacing. Throughout B3 we take the
+        approach that if something is not specific to Air, then it should be in the B3
+        namespace.
+        
+        This moves Air::Arg::Type to B3::Bank. This moves Air::Arg::Width to B3::Width.
+        
+        I renamed Arg::Type to Bank because there is already a B3::Type and because Arg::Type
+        was never really a type. Its purpose was always to identify register banks, and we use
+        this enum when the thing we care about is whether the value is most appropriate for
+        GPRs or FPRs.
+        
+        I kept both as non-enum classes because I think that we've learned that terse compiler
+        code is a good thing. I don't want to say Bank::GP when I can say GP. With Width, the
+        argument is even stronger, since you cannot say Width::8 but you can say Width8.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Bank.cpp: Added.
+        (WTF::printInternal):
+        * b3/B3Bank.h: Added.
+        (JSC::B3::forEachBank):
+        (JSC::B3::bankForType):
+        * b3/B3CheckSpecial.cpp:
+        (JSC::B3::CheckSpecial::forEachArg):
+        * b3/B3LegalizeMemoryOffsets.cpp:
+        * b3/B3LowerToAir.cpp:
+        (JSC::B3::Air::LowerToAir::run):
+        (JSC::B3::Air::LowerToAir::tmp):
+        (JSC::B3::Air::LowerToAir::scaleForShl):
+        (JSC::B3::Air::LowerToAir::effectiveAddr):
+        (JSC::B3::Air::LowerToAir::addr):
+        (JSC::B3::Air::LowerToAir::createGenericCompare):
+        (JSC::B3::Air::LowerToAir::createBranch):
+        (JSC::B3::Air::LowerToAir::createCompare):
+        (JSC::B3::Air::LowerToAir::createSelect):
+        (JSC::B3::Air::LowerToAir::lower):
+        * b3/B3MemoryValue.cpp:
+        (JSC::B3::MemoryValue::accessWidth):
+        * b3/B3MemoryValue.h:
+        * b3/B3MoveConstants.cpp:
+        * b3/B3PatchpointSpecial.cpp:
+        (JSC::B3::PatchpointSpecial::forEachArg):
+        * b3/B3StackmapSpecial.cpp:
+        (JSC::B3::StackmapSpecial::forEachArgImpl):
+        * b3/B3Value.h:
+        * b3/B3Variable.h:
+        (JSC::B3::Variable::width):
+        (JSC::B3::Variable::bank):
+        * b3/B3WasmAddressValue.h:
+        * b3/B3Width.cpp: Added.
+        (WTF::printInternal):
+        * b3/B3Width.h: Added.
+        (JSC::B3::pointerWidth):
+        (JSC::B3::widthForType):
+        (JSC::B3::conservativeWidth):
+        (JSC::B3::minimumWidth):
+        (JSC::B3::bytes):
+        (JSC::B3::widthForBytes):
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+        * b3/air/AirAllocateStack.cpp:
+        (JSC::B3::Air::allocateStack):
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::canRepresent):
+        (JSC::B3::Air::Arg::isCompatibleBank):
+        (JSC::B3::Air::Arg::isCompatibleType): Deleted.
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::hasBank):
+        (JSC::B3::Air::Arg::bank):
+        (JSC::B3::Air::Arg::isBank):
+        (JSC::B3::Air::Arg::forEachTmp):
+        (JSC::B3::Air::Arg::forEachType): Deleted.
+        (JSC::B3::Air::Arg::pointerWidth): Deleted.
+        (JSC::B3::Air::Arg::typeForB3Type): Deleted.
+        (JSC::B3::Air::Arg::widthForB3Type): Deleted.
+        (JSC::B3::Air::Arg::conservativeWidth): Deleted.
+        (JSC::B3::Air::Arg::minimumWidth): Deleted.
+        (JSC::B3::Air::Arg::bytes): Deleted.
+        (JSC::B3::Air::Arg::widthForBytes): Deleted.
+        (JSC::B3::Air::Arg::hasType): Deleted.
+        (JSC::B3::Air::Arg::type): Deleted.
+        (JSC::B3::Air::Arg::isType): Deleted.
+        * b3/air/AirArgInlines.h:
+        (JSC::B3::Air::ArgThingHelper<Tmp>::forEach):
+        (JSC::B3::Air::ArgThingHelper<Arg>::forEach):
+        (JSC::B3::Air::ArgThingHelper<Reg>::forEach):
+        (JSC::B3::Air::Arg::forEach):
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::forEachArg):
+        * b3/air/AirCCallingConvention.cpp:
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::setRegsInPriorityOrder):
+        (JSC::B3::Air::Code::pinRegister):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::regsInPriorityOrder):
+        (JSC::B3::Air::Code::newTmp):
+        (JSC::B3::Air::Code::numTmps):
+        (JSC::B3::Air::Code::regsInPriorityOrderImpl):
+        * b3/air/AirCustom.cpp:
+        (JSC::B3::Air::PatchCustom::isValidForm):
+        (JSC::B3::Air::ShuffleCustom::isValidForm):
+        * b3/air/AirCustom.h:
+        (JSC::B3::Air::PatchCustom::forEachArg):
+        (JSC::B3::Air::CCallCustom::forEachArg):
+        (JSC::B3::Air::ColdCCallCustom::forEachArg):
+        (JSC::B3::Air::ShuffleCustom::forEachArg):
+        (JSC::B3::Air::WasmBoundsCheckCustom::forEachArg):
+        * b3/air/AirDumpAsJS.cpp:
+        (JSC::B3::Air::dumpAsJS):
+        * b3/air/AirEliminateDeadCode.cpp:
+        (JSC::B3::Air::eliminateDeadCode):
+        * b3/air/AirEmitShuffle.cpp:
+        (JSC::B3::Air::emitShuffle):
+        * b3/air/AirEmitShuffle.h:
+        (JSC::B3::Air::ShufflePair::ShufflePair):
+        (JSC::B3::Air::ShufflePair::width):
+        * b3/air/AirFixObviousSpills.cpp:
+        * b3/air/AirFixPartialRegisterStalls.cpp:
+        (JSC::B3::Air::fixPartialRegisterStalls):
+        * b3/air/AirInst.cpp:
+        (JSC::B3::Air::Inst::hasArgEffects):
+        * b3/air/AirInst.h:
+        (JSC::B3::Air::Inst::forEachTmp):
+        * b3/air/AirInstInlines.h:
+        (JSC::B3::Air::Inst::forEach):
+        (JSC::B3::Air::Inst::forEachDef):
+        (JSC::B3::Air::Inst::forEachDefWithExtraClobberedRegs):
+        * b3/air/AirLiveness.h:
+        (JSC::B3::Air::TmpLivenessAdapter::numIndices):
+        (JSC::B3::Air::TmpLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::TmpLivenessAdapter::valueToIndex):
+        (JSC::B3::Air::TmpLivenessAdapter::indexToValue):
+        (JSC::B3::Air::StackSlotLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::RegLivenessAdapter::acceptsBank):
+        (JSC::B3::Air::AbstractLiveness::AbstractLiveness):
+        (JSC::B3::Air::AbstractLiveness::LocalCalc::execute):
+        (JSC::B3::Air::TmpLivenessAdapter::acceptsType): Deleted.
+        (JSC::B3::Air::StackSlotLivenessAdapter::acceptsType): Deleted.
+        (JSC::B3::Air::RegLivenessAdapter::acceptsType): Deleted.
+        * b3/air/AirLogRegisterPressure.cpp:
+        (JSC::B3::Air::logRegisterPressure):
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerMacros.cpp:
+        (JSC::B3::Air::lowerMacros):
+        * b3/air/AirPadInterference.cpp:
+        (JSC::B3::Air::padInterference):
+        * b3/air/AirReportUsedRegisters.cpp:
+        (JSC::B3::Air::reportUsedRegisters):
+        * b3/air/AirSpillEverything.cpp:
+        (JSC::B3::Air::spillEverything):
+        * b3/air/AirTmpInlines.h:
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::absoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::lastMachineRegisterIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::GP>::tmpFromAbsoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::absoluteIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::lastMachineRegisterIndex): Deleted.
+        (JSC::B3::Air::AbsoluteTmpMapper<Arg::FP>::tmpFromAbsoluteIndex): Deleted.
+        * b3/air/AirTmpWidth.cpp:
+        (JSC::B3::Air::TmpWidth::recompute):
+        * b3/air/AirTmpWidth.h:
+        (JSC::B3::Air::TmpWidth::width):
+        (JSC::B3::Air::TmpWidth::requiredWidth):
+        (JSC::B3::Air::TmpWidth::defWidth):
+        (JSC::B3::Air::TmpWidth::useWidth):
+        (JSC::B3::Air::TmpWidth::Widths::Widths):
+        * b3/air/AirUseCounts.h:
+        (JSC::B3::Air::UseCounts::UseCounts):
+        * b3/air/AirValidate.cpp:
+        * b3/air/opcode_generator.rb:
+        * b3/air/testair.cpp:
+        (JSC::B3::Air::compile): Deleted.
+        (JSC::B3::Air::invoke): Deleted.
+        (JSC::B3::Air::compileAndRun): Deleted.
+        (JSC::B3::Air::testSimple): Deleted.
+        (JSC::B3::Air::loadConstantImpl): Deleted.
+        (JSC::B3::Air::loadConstant): Deleted.
+        (JSC::B3::Air::loadDoubleConstant): Deleted.
+        (JSC::B3::Air::testShuffleSimpleSwap): Deleted.
+        (JSC::B3::Air::testShuffleSimpleShift): Deleted.
+        (JSC::B3::Air::testShuffleLongShift): Deleted.
+        (JSC::B3::Air::testShuffleLongShiftBackwards): Deleted.
+        (JSC::B3::Air::testShuffleSimpleRotate): Deleted.
+        (JSC::B3::Air::testShuffleSimpleBroadcast): Deleted.
+        (JSC::B3::Air::testShuffleBroadcastAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleTreeShift): Deleted.
+        (JSC::B3::Air::testShuffleTreeShiftBackward): Deleted.
+        (JSC::B3::Air::testShuffleTreeShiftOtherBackward): Deleted.
+        (JSC::B3::Air::testShuffleMultipleShifts): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithFringe): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithFringeInWeirdOrder): Deleted.
+        (JSC::B3::Air::testShuffleRotateWithLongFringe): Deleted.
+        (JSC::B3::Air::testShuffleMultipleRotates): Deleted.
+        (JSC::B3::Air::testShuffleShiftAndRotate): Deleted.
+        (JSC::B3::Air::testShuffleShiftAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleRotateAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleSimpleSwap64): Deleted.
+        (JSC::B3::Air::testShuffleSimpleShift64): Deleted.
+        (JSC::B3::Air::testShuffleSwapMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleShiftMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemory): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryLong): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegs64): Deleted.
+        (JSC::B3::Air::combineHiLo): Deleted.
+        (JSC::B3::Air::testShuffleShiftMemoryAllRegsMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemory): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemory64): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegs64): Deleted.
+        (JSC::B3::Air::testShuffleRotateMemoryAllRegsMixedWidth): Deleted.
+        (JSC::B3::Air::testShuffleSwapDouble): Deleted.
+        (JSC::B3::Air::testShuffleShiftDouble): Deleted.
+        (JSC::B3::Air::testX86VMULSD): Deleted.
+        (JSC::B3::Air::testX86VMULSDDestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOp1DestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOp2DestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDOpsDestRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddrOpRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDRegOpDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDAddrOpDestRexAddr): Deleted.
+        (JSC::B3::Air::testX86VMULSDBaseNeedsRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDIndexNeedsRex): Deleted.
+        (JSC::B3::Air::testX86VMULSDBaseIndexNeedRex): Deleted.
+        (JSC::B3::Air::run): Deleted.
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to use std::tuples as keys in HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=168805
+
+        Reviewed by Filip Pizlo.
+
+        Convert the mess of std::pairs we used as the keys in PrototypeMap
+        to a std::tuple. I also plan on using this for a HashMap in wasm.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * runtime/PrototypeMap.cpp:
+        (JSC::PrototypeMap::createEmptyStructure):
+        (JSC::PrototypeMap::clearEmptyObjectStructureForPrototype):
+        * runtime/PrototypeMap.h:
+
+2017-02-24  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Remove inaccurate copy-paste comment from r212939.
+
+        * dfg/DFGOperations.cpp:
+
+2017-02-23  Saam Barati  <sbarati@apple.com>
+
+        Intrinsicify parseInt
+        https://bugs.webkit.org/show_bug.cgi?id=168627
+
+        Reviewed by Filip Pizlo.
+
+        This patch makes parseInt an intrinsic in the DFG and FTL.
+        We do our best to eliminate this node. If we speculate that
+        the first operand to the operation is an int32, and that there
+        isn't a second operand, we convert to the identity of the first
+        operand. That's because parseInt(someInt) === someInt.
+        
+        If the first operand is proven to be an integer, and the second
+        operand is the integer 0 or the integer 10, we can eliminate the
+        node by making it an identity over its first operand. That's
+        because parseInt(someInt, 0) === someInt and parseInt(someInt, 10) === someInt.
+        
+        If we are not able to constant fold the node away, we try to remove
+        checks. The most common use case of parseInt is that its first operand
+        is a proven string. The DFG might be able to remove type checks in this
+        case. We also set up CSE rules for parseInt(someString, someIntRadix)
+        because it's a "pure" operation (modulo resolving a rope).
+
+        This looks to be a 4% Octane/Box2D progression.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasHeapPrediction):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        (JSC::DFG::parseIntResult):
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileParseInt):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        (JSC::DFG::SpeculativeJIT::appendCallSetResult):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileParseInt):
+        * jit/JITOperations.h:
+        * parser/Lexer.cpp:
+        * runtime/ErrorInstance.cpp:
+        * runtime/Intrinsic.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::toStringView): Deleted.
+        (JSC::isStrWhiteSpace): Deleted.
+        (JSC::parseDigit): Deleted.
+        (JSC::parseIntOverflow): Deleted.
+        (JSC::parseInt): Deleted.
+        * runtime/JSGlobalObjectFunctions.h:
+        * runtime/ParseInt.h: Added.
+        (JSC::parseDigit):
+        (JSC::parseIntOverflow):
+        (JSC::isStrWhiteSpace):
+        (JSC::parseInt):
+        (JSC::toStringView):
+        * runtime/StringPrototype.cpp:
+
+2017-02-23  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: support 0x1 version
+        https://bugs.webkit.org/show_bug.cgi?id=168672
+
+        Reviewed by Keith Miller.
+
+        * wasm/wasm.json: update the version number, everything is based
+        on its value
+
+2017-02-23  Saam Barati  <sbarati@apple.com>
+
+        Make Briggs fixpoint validation run only with validateGraphAtEachPhase
+        https://bugs.webkit.org/show_bug.cgi?id=168795
+
+        Rubber stamped by Keith Miller.
+
+        The Briggs allocator was running intensive validation
+        on each step of the fixpoint. Instead, it now will just
+        do it when shouldValidateIRAtEachPhase() is true because
+        doing this for all !ASSERT_DISABLED builds takes too long.
+
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+
 2017-02-23  Filip Pizlo  <fpizlo@apple.com>
 
         SpeculativeJIT::compilePutByValForIntTypedArray should only do the constant-folding optimization when the constant passes the type check

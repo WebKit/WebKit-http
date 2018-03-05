@@ -114,6 +114,7 @@ public:
     static bool convertOverflowScrolling(StyleResolver&, const CSSValue&);
 #endif
     static FontFeatureSettings convertFontFeatureSettings(StyleResolver&, const CSSValue&);
+    static FontSelectionValue convertFontStretch(StyleResolver&, const CSSValue&);
 #if ENABLE(VARIATION_FONTS)
     static FontVariationSettings convertFontVariationSettings(StyleResolver&, const CSSValue&);
 #endif
@@ -1151,6 +1152,46 @@ inline FontFeatureSettings StyleBuilderConverter::convertFontFeatureSettings(Sty
         settings.insert(FontFeature(feature.tag(), feature.value()));
     }
     return settings;
+}
+
+inline FontSelectionValue StyleBuilderConverter::convertFontStretch(StyleResolver&, const CSSValue& value)
+{
+    ASSERT(is<CSSPrimitiveValue>(value));
+    const auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
+    if (primitiveValue.isPercentage() || primitiveValue.isNumber()) {
+        auto value = primitiveValue.floatValue();
+        if (value <= static_cast<float>(FontSelectionValue::maximumValue())
+            && value >= static_cast<float>(FontSelectionValue::minimumValue()))
+            return FontSelectionValue(value);
+        if (value < static_cast<float>(FontSelectionValue::minimumValue()))
+            return FontSelectionValue::minimumValue();
+        ASSERT(value > static_cast<float>(FontSelectionValue::maximumValue()));
+        return FontSelectionValue::maximumValue();
+    }
+
+    switch (primitiveValue.valueID()) {
+    case CSSValueUltraCondensed:
+        return FontSelectionValue(50);
+    case CSSValueExtraCondensed:
+        return FontSelectionValue(62.5f);
+    case CSSValueCondensed:
+        return FontSelectionValue(75);
+    case CSSValueSemiCondensed:
+        return FontSelectionValue(87.5f);
+    case CSSValueNormal:
+        return FontSelectionValue(100);
+    case CSSValueSemiExpanded:
+        return FontSelectionValue(112.5f);
+    case CSSValueExpanded:
+        return FontSelectionValue(125);
+    case CSSValueExtraExpanded:
+        return FontSelectionValue(150);
+    case CSSValueUltraExpanded:
+        return FontSelectionValue(200);
+    default:
+        ASSERT_NOT_REACHED();
+        return FontSelectionValue(100);
+    }
 }
 
 #if ENABLE(VARIATION_FONTS)

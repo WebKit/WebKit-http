@@ -56,6 +56,7 @@
 #include "TemplateRegistryKeyTable.h"
 #include "ThunkGenerators.h"
 #include "VMEntryRecord.h"
+#include "VMTraps.h"
 #include "Watchpoint.h"
 #include <wtf/Bag.h>
 #include <wtf/BumpPointerAllocator.h>
@@ -610,10 +611,6 @@ public:
     RTTraceList* m_rtTraceList;
 #endif
 
-    bool hasExclusiveThread() const { return m_apiLock->hasExclusiveThread(); }
-    std::thread::id exclusiveThread() const { return m_apiLock->exclusiveThread(); }
-    void setExclusiveThread(std::thread::id threadId) { m_apiLock->setExclusiveThread(threadId); }
-
     JS_EXPORT_PRIVATE void resetDateCache();
 
     RegExpCache* regExpCache() { return m_regExpCache; }
@@ -664,8 +661,6 @@ public:
     void setGlobalConstRedeclarationShouldThrow(bool globalConstRedeclarationThrow) { m_globalConstRedeclarationShouldThrow = globalConstRedeclarationThrow; }
     ALWAYS_INLINE bool globalConstRedeclarationShouldThrow() const { return m_globalConstRedeclarationShouldThrow; }
 
-    inline bool shouldTriggerTermination(ExecState*);
-
     void setShouldBuildPCToCodeOriginMapping() { m_shouldBuildPCToCodeOriginMapping = true; }
     bool shouldBuilderPCToCodeOriginMapping() const { return m_shouldBuildPCToCodeOriginMapping; }
 
@@ -675,6 +670,18 @@ public:
     
     template<typename Func>
     void logEvent(CodeBlock*, const char* summary, const Func& func);
+
+    void handleTraps(ExecState*, VMTraps::Mask = VMTraps::Mask::allEventTypes());
+
+    bool needTrapHandling(VMTraps::Mask mask = VMTraps::Mask::allEventTypes()) { return m_traps.needTrapHandling(mask); }
+    void* needTrapHandlingAddress() { return m_traps.needTrapHandlingAddress(); }
+
+    void notifyNeedDebuggerBreak() { m_traps.fireTrap(VMTraps::NeedDebuggerBreak); }
+    void notifyNeedTermination() { m_traps.fireTrap(VMTraps::NeedTermination); }
+    void notifyNeedWatchdogCheck() { m_traps.fireTrap(VMTraps::NeedWatchdogCheck); }
+
+    bool needAsynchronousTerminationSupport() const { return m_needAsynchronousTerminationSupport; }
+    JS_EXPORT_PRIVATE void setNeedAsynchronousTerminationSupport();
 
 private:
     friend class LLIntOffsetsExtractor;
@@ -716,6 +723,8 @@ private:
     bool ensureStackCapacityForCLoop(Register* newTopOfStack);
     bool isSafeToRecurseSoftCLoop() const;
 #endif // !ENABLE(JIT)
+
+    std::optional<PlatformThread> ownerThread() const { return m_apiLock->ownerThread(); }
 
     JS_EXPORT_PRIVATE void throwException(ExecState*, Exception*);
     JS_EXPORT_PRIVATE JSValue throwException(ExecState*, JSValue);
@@ -760,6 +769,7 @@ private:
     DeletePropertyMode m_deletePropertyMode { DeletePropertyMode::Default };
     bool m_globalConstRedeclarationShouldThrow { true };
     bool m_shouldBuildPCToCodeOriginMapping { false };
+    bool m_needAsynchronousTerminationSupport { false };
     std::unique_ptr<CodeCache> m_codeCache;
     std::unique_ptr<BuiltinExecutables> m_builtinExecutables;
     HashMap<String, RefPtr<WatchpointSet>> m_impurePropertyWatchpointSets;
@@ -771,6 +781,7 @@ private:
     unsigned m_controlFlowProfilerEnabledCount;
     Deque<std::unique_ptr<QueuedTask>> m_microtaskQueue;
     MallocPtr<EncodedJSValue> m_exceptionFuzzBuffer;
+    VMTraps m_traps;
     RefPtr<Watchdog> m_watchdog;
     std::unique_ptr<HeapProfiler> m_heapProfiler;
 #if ENABLE(SAMPLING_PROFILER)

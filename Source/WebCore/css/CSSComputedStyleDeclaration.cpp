@@ -155,6 +155,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFloat,
     CSSPropertyFontFamily,
     CSSPropertyFontSize,
+    CSSPropertyFontStretch,
     CSSPropertyFontStyle,
     CSSPropertyFontSynthesis,
     CSSPropertyFontVariant,
@@ -320,6 +321,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyJustifyContent,
     CSSPropertyJustifySelf,
     CSSPropertyJustifyItems,
+    CSSPropertyPlaceContent,
 #if ENABLE(FILTERS_LEVEL_2)
     CSSPropertyWebkitBackdropFilter,
 #endif
@@ -354,7 +356,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitInitialLetter,
     CSSPropertyWebkitLineAlign,
     CSSPropertyWebkitLineBoxContain,
-    CSSPropertyWebkitLineBreak,
+    CSSPropertyLineBreak,
     CSSPropertyWebkitLineClamp,
     CSSPropertyWebkitLineGrid,
     CSSPropertyWebkitLineSnap,
@@ -1677,6 +1679,8 @@ static CSSValueID identifierForFamily(const AtomicString& family)
         return CSSValueSansSerif;
     if (family == serifFamily)
         return CSSValueSerif;
+    if (family == systemUiFamily)
+        return CSSValueSystemUi;
     return CSSValueInvalid;
 }
 
@@ -1913,6 +1917,30 @@ static Ref<CSSPrimitiveValue> fontStyleFromStyle(const RenderStyle& style)
     if (style.fontDescription().italic())
         return CSSValuePool::singleton().createIdentifierValue(CSSValueItalic);
     return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
+}
+
+static Ref<CSSPrimitiveValue> fontStretchFromStyle(const RenderStyle& style)
+{
+    auto stretch = style.fontDescription().stretch();
+    if (stretch == FontSelectionValue(50))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueUltraCondensed);
+    if (stretch == FontSelectionValue(62.5f))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueExtraCondensed);
+    if (stretch == FontSelectionValue(75))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueCondensed);
+    if (stretch == FontSelectionValue(87.5f))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueSemiCondensed);
+    if (stretch == FontSelectionValue(100))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
+    if (stretch == FontSelectionValue(112.5f))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueSemiExpanded);
+    if (stretch == FontSelectionValue(125))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueExpanded);
+    if (stretch == FontSelectionValue(150))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueExtraExpanded);
+    if (stretch == FontSelectionValue(200))
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueUltraExpanded);
+    return CSSValuePool::singleton().createValue(static_cast<float>(stretch), CSSPrimitiveValue::CSS_PERCENTAGE);
 }
 
 static Ref<CSSValue> fontVariantFromStyle(const RenderStyle& style)
@@ -2852,7 +2880,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         case CSSPropertyFlex:
             return getCSSPropertyValuesForShorthandProperties(flexShorthand());
         case CSSPropertyFlexBasis:
-            return cssValuePool.createValue(style->flexBasis());
+            return cssValuePool.createValue(style->flexBasis(), *style);
         case CSSPropertyFlexDirection:
             return cssValuePool.createValue(style->flexDirection());
         case CSSPropertyFlexFlow:
@@ -2869,6 +2897,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return valueForItemPositionWithOverflowAlignment(resolveJustifyItemsAuto(style->justifyItems(), styledElement->parentNode()));
         case CSSPropertyJustifySelf:
             return valueForItemPositionWithOverflowAlignment(resolveJustifySelfAuto(style->justifySelf(), styledElement->parentNode()));
+        case CSSPropertyPlaceContent:
+            return getCSSPropertyValuesForShorthandProperties(placeContentShorthand());
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -2883,6 +2913,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             else
                 computedFont->variant = CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
             computedFont->weight = fontWeightFromStyle(*style);
+            computedFont->stretch = fontStretchFromStyle(*style);
             computedFont->size = fontSizeFromStyle(*style);
             computedFont->lineHeight = lineHeightFromStyle(*style);
             computedFont->family = fontFamilyListFromStyle(*style);
@@ -2894,6 +2925,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return fontSizeFromStyle(*style);
         case CSSPropertyFontStyle:
             return fontStyleFromStyle(*style);
+        case CSSPropertyFontStretch:
+            return fontStretchFromStyle(*style);
         case CSSPropertyFontVariant:
             return fontVariantFromStyle(*style);
         case CSSPropertyFontWeight:
@@ -3312,7 +3345,7 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return zoomAdjustedPixelValue(style->fontCascade().wordSpacing(), *style);
         case CSSPropertyWordWrap:
             return cssValuePool.createValue(style->overflowWrap());
-        case CSSPropertyWebkitLineBreak:
+        case CSSPropertyLineBreak:
             return cssValuePool.createValue(style->lineBreak());
         case CSSPropertyWebkitNbspMode:
             return cssValuePool.createValue(style->nbspMode());
@@ -3895,7 +3928,6 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             break;
 
         /* Unimplemented @font-face properties */
-        case CSSPropertyFontStretch:
         case CSSPropertySrc:
         case CSSPropertyUnicodeRange:
             break;

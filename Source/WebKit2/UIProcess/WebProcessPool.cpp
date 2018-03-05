@@ -557,33 +557,44 @@ void WebProcessPool::resolvePathsForSandboxExtensions()
     platformResolvePathsForSandboxExtensions();
 }
 
-WebProcessProxy& WebProcessPool::createNewWebProcess()
+WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore* websiteDataStore)
 {
     ensureNetworkProcess();
 
-    Ref<WebProcessProxy> process = WebProcessProxy::create(*this);
+    Ref<WebProcessProxy> process = WebProcessProxy::create(*this, websiteDataStore);
 
     WebProcessCreationParameters parameters;
+
+    if (websiteDataStore)
+        websiteDataStore->resolveDirectoriesIfNecessary();
 
     parameters.injectedBundlePath = m_resolvedPaths.injectedBundlePath;
     if (!parameters.injectedBundlePath.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.injectedBundlePath, SandboxExtension::ReadOnly, parameters.injectedBundlePathExtensionHandle);
 
-    parameters.applicationCacheDirectory = m_resolvedPaths.applicationCacheDirectory;
+    parameters.applicationCacheDirectory = websiteDataStore ? websiteDataStore->resolvedApplicationCacheDirectory() : m_resolvedPaths.applicationCacheDirectory;
+    if (parameters.applicationCacheDirectory.isEmpty())
+        parameters.applicationCacheDirectory = m_resolvedPaths.applicationCacheDirectory;
     if (!parameters.applicationCacheDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.applicationCacheDirectory, SandboxExtension::ReadWrite, parameters.applicationCacheDirectoryExtensionHandle);
 
     parameters.applicationCacheFlatFileSubdirectoryName = m_configuration->applicationCacheFlatFileSubdirectoryName();
 
-    parameters.webSQLDatabaseDirectory = m_resolvedPaths.webSQLDatabaseDirectory;
+    parameters.webSQLDatabaseDirectory = websiteDataStore ? websiteDataStore->resolvedDatabaseDirectory() : m_resolvedPaths.webSQLDatabaseDirectory;
+    if (parameters.webSQLDatabaseDirectory.isEmpty())
+        parameters.webSQLDatabaseDirectory = m_resolvedPaths.webSQLDatabaseDirectory;
     if (!parameters.webSQLDatabaseDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.webSQLDatabaseDirectory, SandboxExtension::ReadWrite, parameters.webSQLDatabaseDirectoryExtensionHandle);
 
-    parameters.mediaCacheDirectory = m_resolvedPaths.mediaCacheDirectory;
+    parameters.mediaCacheDirectory = websiteDataStore ? websiteDataStore->resolvedMediaCacheDirectory() : m_resolvedPaths.mediaCacheDirectory;
+    if (parameters.mediaCacheDirectory.isEmpty())
+        parameters.mediaCacheDirectory = m_resolvedPaths.mediaCacheDirectory;
     if (!parameters.mediaCacheDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaCacheDirectory, SandboxExtension::ReadWrite, parameters.mediaCacheDirectoryExtensionHandle);
 
-    parameters.mediaKeyStorageDirectory = m_resolvedPaths.mediaKeyStorageDirectory;
+    parameters.mediaKeyStorageDirectory = websiteDataStore ? websiteDataStore->resolvedMediaKeysDirectory() : m_resolvedPaths.mediaKeyStorageDirectory;
+    if (parameters.mediaKeyStorageDirectory.isEmpty())
+        parameters.mediaKeyStorageDirectory = m_resolvedPaths.mediaKeyStorageDirectory;
     if (!parameters.mediaKeyStorageDirectory.isEmpty())
         SandboxExtension::createHandleWithoutResolvingPath(parameters.mediaKeyStorageDirectory, SandboxExtension::ReadWrite, parameters.mediaKeyStorageDirectoryExtensionHandle);
 
@@ -693,7 +704,7 @@ void WebProcessPool::warmInitialProcess()
     if (m_processes.size() >= maximumNumberOfProcesses())
         return;
 
-    createNewWebProcess();
+    createNewWebProcess(nullptr);
     m_haveInitialEmptyProcess = true;
 }
 
@@ -769,13 +780,35 @@ void WebProcessPool::disconnectProcess(WebProcessProxy* process)
 #endif
 }
 
-WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit()
+WebProcessProxy& WebProcessPool::createNewWebProcessRespectingProcessCountLimit(WebsiteDataStore* websiteDataStore)
 {
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=168676
+    // Once WebsiteDataStores are not per-process, remove this nonsense.
+
+#if PLATFORM(COCOA)
+    bool mustMatchDataStore = websiteDataStore && websiteDataStore != &API::WebsiteDataStore::defaultDataStore()->websiteDataStore();
+#else
+    bool mustMatchDataStore = false;
+#endif
+
     if (m_processes.size() < maximumNumberOfProcesses())
-        return createNewWebProcess();
+        return createNewWebProcess(websiteDataStore);
+
+    Vector<RefPtr<WebProcessProxy>> processesMatchingDataStore;
+    if (mustMatchDataStore) {
+        for (auto& process : m_processes) {
+            if (process->websiteDataStore() == websiteDataStore)
+                processesMatchingDataStore.append(process);
+        }
+
+        if (processesMatchingDataStore.isEmpty())
+            return createNewWebProcess(websiteDataStore);
+    }
 
     // Choose the process with fewest pages.
-    auto& process = *std::min_element(m_processes.begin(), m_processes.end(), [](const RefPtr<WebProcessProxy>& a, const RefPtr<WebProcessProxy>& b) {
+    auto* processes = mustMatchDataStore ? &processesMatchingDataStore : &m_processes;
+    ASSERT(!processes->isEmpty());
+    auto& process = *std::min_element(processes->begin(), processes->end(), [](const RefPtr<WebProcessProxy>& a, const RefPtr<WebProcessProxy>& b) {
         return a->pageCount() < b->pageCount();
     });
 
@@ -792,21 +825,23 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
         pageConfiguration->setUserContentController(&pageConfiguration->pageGroup()->userContentController());
     if (!pageConfiguration->visitedLinkStore())
         pageConfiguration->setVisitedLinkStore(m_visitedLinkStore.ptr());
-    if (!pageConfiguration->websiteDataStore()) {
+
+    bool pageHasWebsiteDataStore = pageConfiguration->websiteDataStore();
+    if (!pageHasWebsiteDataStore) {
         ASSERT(!pageConfiguration->sessionID().isValid());
         pageConfiguration->setWebsiteDataStore(m_websiteDataStore.get());
         pageConfiguration->setSessionID(pageConfiguration->preferences()->privateBrowsingEnabled() ? SessionID::legacyPrivateSessionID() : SessionID::defaultSessionID());
     }
 
     RefPtr<WebProcessProxy> process;
-    if (m_haveInitialEmptyProcess) {
+    if (m_haveInitialEmptyProcess && !pageHasWebsiteDataStore) {
         process = m_processes.last();
         m_haveInitialEmptyProcess = false;
     } else if (pageConfiguration->relatedPage()) {
         // Sharing processes, e.g. when creating the page via window.open().
         process = &pageConfiguration->relatedPage()->process();
     } else
-        process = &createNewWebProcessRespectingProcessCountLimit();
+        process = &createNewWebProcessRespectingProcessCountLimit(&pageConfiguration->websiteDataStore()->websiteDataStore());
 
     return process->createWebPage(pageClient, WTFMove(pageConfiguration));
 }

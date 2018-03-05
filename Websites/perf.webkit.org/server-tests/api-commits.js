@@ -30,11 +30,48 @@ describe("/api/commits/", () => {
             },
             {
                 "repository": "WebKit",
-                "parent": "210949",
+                "previousCommit": "210949",
                 "revision": "210950",
                 "time": "2017-01-20T03:49:37.887Z",
                 "author": {"name": "Commit Queue", "account": "commit-queue@webkit.org"},
                 "message": "another message",
+            }
+        ]
+    }
+
+    const systemVersionCommits = {
+        "slaveName": "someSlave",
+        "slavePassword": "somePassword",
+        "commits": [
+            {
+                "repository": "OSX",
+                "revision": "16D32",
+                "order": 6
+            },
+            {
+                "repository": "OSX",
+                "revision": "16C68",
+                "order": 5
+            },
+            {
+                "repository": "OSX",
+                "revision": "16C67",
+                "order": 4
+            },
+            {
+                "repository": "OSX",
+                "revision": "16B2657",
+                "order": 3
+            },
+            {
+                "repository": "OSX",
+                "revision": "16B2555",
+                "order": 2
+            },
+            {
+                "repository": "OSX",
+                "revision": "16A323",
+                "order": 1
             }
         ]
     }
@@ -51,6 +88,11 @@ describe("/api/commits/", () => {
         assert.equal(commit['message'], submitted['message']);
         assert.equal(commit['authorName'], submitted['author']['name']);
         assert.equal(commit['authorEmail'], submitted['author']['account']);
+        if(submitted['previousCommit']) {
+            assert.ok(commit['previousCommit']);
+        } else {
+            assert.equal(commit['previousCommit'], null);
+        }
     }
 
     describe('/api/commits/<repository>/', () => {
@@ -88,8 +130,29 @@ describe("/api/commits/", () => {
                 assertCommitIsSameAsOneSubmitted(commits[0], submittedCommits[0]);
                 assertCommitIsSameAsOneSubmitted(commits[1], submittedCommits[1]);
                 assertCommitIsSameAsOneSubmitted(commits[2], submittedCommits[2]);
+                assert.equal(commits[2]['previousCommit'], commits[1]['id']);
             });
-        });        
+        });
+
+        it("should return the list of ordered commits for a given repository", () => {
+            return addSlaveForReport(subversionCommits).then(() => {
+                return TestServer.remoteAPI().postJSON('/api/report-commits/', systemVersionCommits);
+            }).then(function (response) {
+                assert.equal(response['status'], 'OK');
+                return TestServer.remoteAPI().getJSON('/api/commits/OSX/');
+            }).then(function (result) {
+                assert.equal(result['status'], 'OK');
+                const commits = result['commits'];
+                const submittedCommits = systemVersionCommits['commits'];
+                assert.equal(commits.length, submittedCommits.length);
+                assert.equal(commits[0]['revision'], submittedCommits[5]['revision']);
+                assert.equal(commits[1]['revision'], submittedCommits[4]['revision']);
+                assert.equal(commits[2]['revision'], submittedCommits[3]['revision']);
+                assert.equal(commits[3]['revision'], submittedCommits[2]['revision']);
+                assert.equal(commits[4]['revision'], submittedCommits[1]['revision']);
+                assert.equal(commits[5]['revision'], submittedCommits[0]['revision']);
+            });
+        });
     });
 
     describe('/api/commits/<repository>/oldest', () => {
@@ -120,6 +183,19 @@ describe("/api/commits/", () => {
                 assertCommitIsSameAsOneSubmitted(result['commits'][0], subversionCommits['commits'][0]);
             });
         });
+
+        it("should return the oldest commit based on 'commit_order' when 'commit_time' is missing", () => {
+            const remote = TestServer.remoteAPI();
+            return addSlaveForReport(systemVersionCommits).then(() => {
+                return remote.postJSONWithStatus('/api/report-commits/', systemVersionCommits);
+            }).then(() => {
+                return remote.getJSON('/api/commits/OSX/oldest');
+            }).then(function (result) {
+                assert.equal(result['status'], 'OK');
+                assert.equal(result['commits'].length, 1);
+                assert.equal(result['commits'][0]['revision'], systemVersionCommits['commits'][5]['revision']);
+            });
+        });
     });
 
     describe('/api/commits/<repository>/latest', () => {
@@ -148,6 +224,19 @@ describe("/api/commits/", () => {
                 assert.equal(result['status'], 'OK');
                 assert.equal(result['commits'].length, 1);
                 assertCommitIsSameAsOneSubmitted(result['commits'][0], subversionCommits['commits'].slice().pop());
+            });
+        });
+
+        it("should return the latest commit based on 'commit_order' when 'commit_time' is missing", () => {
+            const remote = TestServer.remoteAPI();
+            return addSlaveForReport(systemVersionCommits).then(() => {
+                return remote.postJSONWithStatus('/api/report-commits/', systemVersionCommits);
+            }).then(() => {
+                return remote.getJSON('/api/commits/OSX/latest');
+            }).then(function (result) {
+                assert.equal(result['status'], 'OK');
+                assert.equal(result['commits'].length, 1);
+                assert.equal(result['commits'][0]['revision'], systemVersionCommits['commits'][0]['revision']);
             });
         });
     });
@@ -198,6 +287,19 @@ describe("/api/commits/", () => {
                 assertCommitIsSameAsOneSubmitted(result['commits'][0], subversionCommits['commits'].slice().pop());
             });
         });
+
+        it("should return the last reported commit based on 'commit_order' when 'commit_time' is missing", () => {
+            const remote = TestServer.remoteAPI();
+            return addSlaveForReport(systemVersionCommits).then(() => {
+                return remote.postJSONWithStatus('/api/report-commits/', systemVersionCommits);
+            }).then(() => {
+                return remote.getJSON('/api/commits/OSX/last-reported');
+            }).then(function (result) {
+                assert.equal(result['status'], 'OK');
+                assert.equal(result['commits'].length, 1);
+                assert.equal(result['commits'][0]['revision'], systemVersionCommits['commits'][0]['revision']);
+            });
+        });
     });
 
     describe('/api/commits/<repository>/<commit>', () => {
@@ -230,7 +332,7 @@ describe("/api/commits/", () => {
                 assert.equal(result['status'], 'OK');
                 assert.equal(result['commits'].length, 1);
                 assertCommitIsSameAsOneSubmitted(result['commits'][0], {
-                    parent: null,
+                    previousCommit: null,
                     revision: '210950',
                     time: '2017-01-20T03:49:37.887Z',
                     author: {name: null, account: null},
@@ -299,14 +401,14 @@ describe("/api/commits/", () => {
                 assert.equal(result['status'], 'OK');
                 assert.deepEqual(result['commits'].length, 2);
                 assertCommitIsSameAsOneSubmitted(result['commits'][0], {
-                    parent: null,
+                    previousCommit: null,
                     revision: '210949',
                     time: '2017-01-20T03:23:50.645Z',
                     author: {name: null, account: null},
                     message: null,
                 });
                 assertCommitIsSameAsOneSubmitted(result['commits'][1], {
-                    parent: null,
+                    previousCommit: null,
                     revision: '210950',
                     time: '2017-01-20T03:49:37.887Z',
                     author: {name: null, account: null},

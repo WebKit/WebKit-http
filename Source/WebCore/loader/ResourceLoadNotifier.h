@@ -37,11 +37,11 @@ class AuthenticationChallenge;
 class CertificateInfo;
 class DocumentLoader;
 class Frame;
-class Page;
+class NetworkLoadMetrics;
 class ResourceError;
 class ResourceLoader;
-class ResourceResponse;
 class ResourceRequest;
+class ResourceResponse;
 
 class ResourceLoadNotifier {
     WTF_MAKE_NONCOPYABLE(ResourceLoadNotifier);
@@ -56,7 +56,7 @@ public:
     void willSendRequest(ResourceLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     void didReceiveResponse(ResourceLoader*, const ResourceResponse&);
     void didReceiveData(ResourceLoader*, const char*, int dataLength, int encodedDataLength);
-    void didFinishLoad(ResourceLoader*, double finishTime);
+    void didFinishLoad(ResourceLoader*, const NetworkLoadMetrics&);
     void didFailToLoad(ResourceLoader*, const ResourceError&);
     void didCancelAuthenticationChallenge(long unsigned int, WebCore::DocumentLoader*, const WebCore::AuthenticationChallenge&);
     void didCancelAuthenticationChallenge(WebCore::ResourceLoader*, const WebCore::AuthenticationChallenge&);
@@ -65,7 +65,7 @@ public:
     void dispatchWillSendRequest(DocumentLoader*, unsigned long identifier, ResourceRequest&, const ResourceResponse& redirectResponse);
     void dispatchDidReceiveResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse&, ResourceLoader* = nullptr);
     void dispatchDidReceiveData(DocumentLoader*, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
-    void dispatchDidFinishLoading(DocumentLoader*, unsigned long identifier, double finishTime);
+    void dispatchDidFinishLoading(DocumentLoader*, unsigned long identifier);
     void dispatchDidFailLoading(DocumentLoader*, unsigned long identifier, const ResourceError&);
 
     void sendRemainingDelegateMessages(DocumentLoader*, unsigned long identifier, const ResourceRequest&, const ResourceResponse&, const char* data, int dataLength, int encodedDataLength, const ResourceError&);

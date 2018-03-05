@@ -860,8 +860,11 @@ failedJSONP:
         codeBlock = jsCast<ProgramCodeBlock*>(tempCodeBlock);
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(callFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     if (scope->structure()->isUncacheableDictionary())
         scope->flattenDictionaryObject(vm);
@@ -918,8 +921,11 @@ JSValue Interpreter::executeCall(CallFrame* callFrame, JSObject* function, CallT
     } else
         newCodeBlock = 0;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(callFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, function, thisValue, argsCount, args.data());
@@ -981,8 +987,11 @@ JSObject* Interpreter::executeConstruct(CallFrame* callFrame, JSObject* construc
     } else
         newCodeBlock = 0;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(callFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ProtoCallFrame protoCallFrame;
     protoCallFrame.init(newCodeBlock, constructor, newTarget, argsCount, args.data());
@@ -1043,8 +1052,11 @@ JSValue Interpreter::execute(CallFrameClosure& closure)
 
     StackStats::CheckPoint stackCheckPoint;
 
-    if (UNLIKELY(vm.shouldTriggerTermination(closure.oldCallFrame)))
-        return throwTerminatedExecutionException(closure.oldCallFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(closure.oldCallFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     // Execute the code:
     JSValue result = closure.functionExecutable->generatedJITCodeForCall()->execute(&vm, closure.protoCallFrame);
@@ -1144,8 +1156,11 @@ JSValue Interpreter::execute(EvalExecutable* eval, CallFrame* callFrame, JSValue
         }
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(callFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     ASSERT(codeBlock->numParameters() == 1); // 1 parameter for 'this'.
 
@@ -1183,8 +1198,11 @@ JSValue Interpreter::execute(ModuleProgramExecutable* executable, CallFrame* cal
         codeBlock = jsCast<ModuleProgramCodeBlock*>(tempCodeBlock);
     }
 
-    if (UNLIKELY(vm.shouldTriggerTermination(callFrame)))
-        return throwTerminatedExecutionException(callFrame, throwScope);
+    if (UNLIKELY(vm.needTrapHandling())) {
+        VMTraps::Mask mask(VMTraps::NeedTermination, VMTraps::NeedWatchdogCheck);
+        vm.handleTraps(callFrame, mask);
+        RETURN_IF_EXCEPTION(throwScope, throwScope.exception());
+    }
 
     if (scope->structure()->isUncacheableDictionary())
         scope->flattenDictionaryObject(vm);

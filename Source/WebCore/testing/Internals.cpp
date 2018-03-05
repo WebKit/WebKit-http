@@ -92,7 +92,6 @@
 #include "MediaProducer.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
-#include "MemoryPressureHandler.h"
 #include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
@@ -146,6 +145,7 @@
 #include <inspector/InspectorValues.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -436,6 +436,7 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     page.setShowAllPlugins(false);
+    page.setLowPowerModeEnabledOverrideForTesting(std::nullopt);
 
 #if USE(QUICK_LOOK)
     MockQuickLookHandleClient::singleton().setPassword("");
@@ -459,6 +460,12 @@ Internals::Internals(Document& document)
 #if ENABLE(WEB_RTC)
     enableMockMediaEndpoint();
     useMockRTCPeerConnectionFactory(String());
+#if USE(LIBWEBRTC)
+    if (document.page()) {
+        document.page()->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces();
+        document.page()->rtcController().disableICECandidateFiltering();
+    }
+#endif
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -1019,6 +1026,14 @@ bool Internals::isRequestAnimationFrameThrottled() const
     return scriptedAnimationController->isThrottled();
 }
 
+double Internals::requestAnimationFrameInterval() const
+{
+    auto* scriptedAnimationController = contextDocument()->scriptedAnimationController();
+    if (!scriptedAnimationController)
+        return INFINITY;
+    return scriptedAnimationController->interval().value();
+}
+
 bool Internals::areTimersThrottled() const
 {
     return contextDocument()->isTimerThrottlingEnabled();
@@ -1129,16 +1144,25 @@ void Internals::enableMockSpeechSynthesizer()
 
 void Internals::enableMockMediaEndpoint()
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
     MediaEndpoint::create = MockMediaEndpoint::create;
 }
 
 void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
     connection.emulatePlatformEvent(action);
 }
 
 void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 {
+    if (!LibWebRTCProvider::webRTCAvailable())
+        return;
+
 #if USE(LIBWEBRTC)
     Document* document = contextDocument();
     LibWebRTCProvider* provider = (document && document->page()) ? &document->page()->libWebRTCProvider() : nullptr;
@@ -1146,6 +1170,19 @@ void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
 #else
     UNUSED_PARAM(testCase);
 #endif
+}
+
+void Internals::setICECandidateFiltering(bool enabled)
+{
+    Document* document = contextDocument();
+    auto* page = document->page();
+    if (!page)
+        return;
+    auto& rtcController = page->rtcController();
+    if (enabled)
+        rtcController.enableICECandidateFiltering();
+    else
+        rtcController.disableICECandidateFiltering();
 }
 
 #endif
@@ -1288,6 +1325,19 @@ ExceptionOr<void> Internals::setMarkedTextMatchesAreHighlighted(bool flag)
 void Internals::invalidateFontCache()
 {
     FontCache::singleton().invalidate();
+}
+
+ExceptionOr<void> Internals::setLowPowerModeEnabled(bool isEnabled)
+{
+    auto* document = contextDocument();
+    if (!document)
+        return Exception { INVALID_ACCESS_ERR };
+    auto* page = document->page();
+    if (!page)
+        return Exception { INVALID_ACCESS_ERR };
+
+    page->setLowPowerModeEnabledOverrideForTesting(isEnabled);
+    return { };
 }
 
 ExceptionOr<void> Internals::setScrollViewPosition(int x, int y)

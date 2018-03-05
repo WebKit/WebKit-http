@@ -29,7 +29,6 @@
 
 #include "AudioSampleBufferList.h"
 #include <CoreAudio/CoreAudioTypes.h>
-#include <wtf/Lock.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -83,10 +82,12 @@ protected:
     MediaTime hostTime() const;
 
     uint64_t m_timeStamp { 0 };
+    uint64_t m_lastPushedSampleCount { 0 };
+    MediaTime m_expectedNextPushedSampleTime { MediaTime::invalidTime() };
     double m_hostTime { -1 };
 
     MediaTime m_inputSampleOffset;
-    uint64_t m_outputSampleOffset { 0 };
+    int64_t m_outputSampleOffset { 0 };
 
     AudioConverterRef m_converter;
     RefPtr<AudioSampleBufferList> m_scratchBuffer;
@@ -94,7 +95,6 @@ protected:
     std::unique_ptr<CARingBuffer> m_ringBuffer;
     size_t m_maximumSampleCount { 0 };
 
-    Lock m_lock;
     float m_volume { 1.0 };
     bool m_muted { false };
     bool m_paused { true };

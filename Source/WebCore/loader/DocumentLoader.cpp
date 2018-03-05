@@ -363,7 +363,7 @@ void DocumentLoader::notifyFinished(CachedResource& resource)
     ASSERT_UNUSED(resource, m_mainResource == &resource);
     ASSERT(m_mainResource);
     if (!m_mainResource->errorOccurred() && !m_mainResource->wasCanceled()) {
-        finishedLoading(m_mainResource->loadFinishTime());
+        finishedLoading();
         return;
     }
 
@@ -375,7 +375,7 @@ void DocumentLoader::notifyFinished(CachedResource& resource)
     mainReceivedError(m_mainResource->resourceError());
 }
 
-void DocumentLoader::finishedLoading(double finishTime)
+void DocumentLoader::finishedLoading()
 {
     // There is a bug in CFNetwork where callbacks can be dispatched even when loads are deferred.
     // See <rdar://problem/6304600> for more details.
@@ -392,16 +392,12 @@ void DocumentLoader::finishedLoading(double finishTime)
         // cancel the already-finished substitute load.
         unsigned long identifier = m_identifierForLoadWithoutResourceLoader;
         m_identifierForLoadWithoutResourceLoader = 0;
-        frameLoader()->notifier().dispatchDidFinishLoading(this, identifier, finishTime);
+        frameLoader()->notifier().dispatchDidFinishLoading(this, identifier);
     }
 
     maybeFinishLoadingMultipartContent();
 
-    MonotonicTime responseEndTime = MonotonicTime::fromRawSeconds(finishTime);
-    if (!responseEndTime)
-        responseEndTime = m_timeOfLastDataReceived;
-    if (!responseEndTime)
-        responseEndTime = MonotonicTime::now();
+    MonotonicTime responseEndTime = m_timeOfLastDataReceived ? m_timeOfLastDataReceived : MonotonicTime::now();
     timing().setResponseEnd(responseEndTime);
 
     commitIfReady();
@@ -731,7 +727,7 @@ static bool isRemoteWebArchive(const DocumentLoader& documentLoader)
         return false;
 
 #if USE(QUICK_LOOK)
-    if (response.url().protocolIs(QLPreviewProtocol()))
+    if (isQuickLookPreviewURL(response.url()))
         return false;
 #endif
 
@@ -812,7 +808,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         if (content && content->size())
             dataReceived(content->data(), content->size());
         if (isLoadingMainResource())
-            finishedLoading(0);
+            finishedLoading();
     }
 }
 
@@ -1425,7 +1421,7 @@ bool DocumentLoader::maybeLoadEmpty()
 
     String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client().generatedMIMETypeForURLScheme(m_request.url().protocol().toStringWithoutCopying());
     m_response = ResourceResponse(m_request.url(), mimeType, 0, String());
-    finishedLoading(monotonicallyIncreasingTime());
+    finishedLoading();
     return true;
 }
 
@@ -1483,7 +1479,16 @@ void DocumentLoader::startLoadingMainResource()
     RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Starting load (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
 
     static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, IncludeCertificateInfo, ContentSecurityPolicyImposition::SkipPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching);
-    m_mainResource = m_cachedResourceLoader->requestMainResource(CachedResourceRequest(ResourceRequest(request), mainResourceLoadOptions));
+    CachedResourceRequest mainResourceRequest(ResourceRequest(request), mainResourceLoadOptions);
+    if (!m_frame->isMainFrame() && m_frame->document()) {
+        // If we are loading the main resource of a subframe, use the cache partition of the main document.
+        mainResourceRequest.setDomainForCachePartition(*m_frame->document());
+    } else {
+        auto origin = SecurityOrigin::create(request.url());
+        origin->setStorageBlockingPolicy(frameLoader()->frame().settings().storageBlockingPolicy());
+        mainResourceRequest.setDomainForCachePartition(origin->domainForCachePartition());
+    }
+    m_mainResource = m_cachedResourceLoader->requestMainResource(WTFMove(mainResourceRequest));
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (m_mainResource && m_mainResource->errorOccurred() && m_frame->page() && m_mainResource->resourceError().domain() == ContentExtensions::WebKitContentBlockerDomain) {

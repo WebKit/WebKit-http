@@ -225,6 +225,14 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #endif
     m_notifier.cancelPendingNotifications();
 
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+    m_drawTimer.stop();
+    {
+        LockHolder locker(m_drawMutex);
+        m_drawCondition.notifyOne();
+    }
+#endif
+
     if (m_videoSink) {
         g_signal_handlers_disconnect_matched(m_videoSink.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
 #if USE(GSTREAMER_GL)
@@ -250,6 +258,9 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     m_cdmSession = nullptr;
 #endif
+
+    if (m_pipeline)
+        gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
 }
 
 void MediaPlayerPrivateGStreamerBase::setPipeline(GstElement* pipeline)
@@ -704,7 +715,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         if (UNLIKELY(!m_context3D))
             m_context3D = GraphicsContext3D::create(GraphicsContext3DAttributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
 
-        RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D));
+        auto texture = BitmapTextureGL::create(*m_context3D);
         texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }

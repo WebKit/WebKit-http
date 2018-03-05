@@ -16,22 +16,14 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         this._renderedAnnotation = null;
     }
 
-    currentPoint(diff)
+    currentIndicator()
     {
         var id = this._indicatorID;
         if (!id)
             return null;
 
-        if (!this._sampledTimeSeriesData) {
-            // FIXME: Why are we not using diff in this code path?
-            this._ensureFetchedTimeSeries();
-            for (var series of this._fetchedTimeSeries) {
-                var point = series.findById(id);
-                if (point)
-                    return point;
-            }
+        if (!this._sampledTimeSeriesData)
             return null;
-        }
 
         for (var view of this._sampledTimeSeriesData) {
             if (!view)
@@ -39,9 +31,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
             let point = view.findById(id);
             if (!point)
                 continue;
-            if (!diff)
-                return point;
-            return (point && diff > 0 ? view.nextPoint(point) : view.previousPoint(point)) || point;
+            return {view, point, isLocked: this._indicatorIsLocked};
         }
         return null;
     }
@@ -62,8 +52,26 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         return selection && data ? data.firstPointInTimeRange(selection[0], selection[1]) : null;
     }
 
-    lockedIndicator() { return this._indicatorIsLocked ? this.currentPoint() : null; }
-
+    referencePoints(type)
+    {
+        const selection = this.currentSelection();
+        if (selection) {
+            const view = this.selectedPoints('current');
+            if (!view)
+                return null;
+            const firstPoint = view.lastPoint();
+            const lastPoint = view.firstPoint();
+            if (!firstPoint)
+                return null;
+            return {view, currentPoint: firstPoint, previousPoint: firstPoint != lastPoint ? lastPoint : null};
+        } else  {
+            const indicator = this.currentIndicator();
+            if (!indicator)
+                return null;
+            return {view: indicator.view, currentPoint: indicator.point, previousPoint: indicator.view.previousPoint(indicator.point)};
+        }
+        return null;
+    }
 
     setIndicator(id, shouldLock)
     {
@@ -77,24 +85,26 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         this._forceRender = true;
 
         if (selectionDidChange)
-            this._notifySelectionChanged();
+            this._notifySelectionChanged(false);
     }
 
     moveLockedIndicatorWithNotification(forward)
     {
-        if (!this._indicatorID || !this._indicatorIsLocked)
+        const indicator = this.currentIndicator();
+        if (!indicator || !indicator.isLocked)
             return false;
-
         console.assert(!this._selectionTimeRange);
 
-        var point = this.currentPoint(forward ? 1 : -1);
-        if (!point || this._indicatorID == point.id)
+        const constrainedView = indicator.view.viewTimeRange(this._startTime, this._endTime);
+        const newPoint = forward ? constrainedView.nextPoint(indicator.point) : constrainedView.previousPoint(indicator.point);
+        if (!newPoint || this._indicatorID == newPoint.id)
             return false;
 
-        this._indicatorID = point.id;
+        this._indicatorID = newPoint.id;
         this._lastMouseDownLocation = null;
         this._forceRender = true;
 
+        this.enqueueToRender();
         this._notifyIndicatorChanged();
     }
 
@@ -121,14 +131,12 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         window.addEventListener('mouseup', this._mouseUp.bind(this));
         canvas.addEventListener('click', this._click.bind(this));
 
-        this._annotationLabel = this.content().querySelector('.time-series-chart-annotation-label');
-        this._zoomButton = this.content().querySelector('.time-series-chart-zoom-button');
+        this._annotationLabel = this.content('annotation-label');
+        this._zoomButton = this.content('zoom-button');
 
-        var self = this;
-        this._zoomButton.onclick = function (event) {
+        this._zoomButton.onclick = (event) => {
             event.preventDefault();
-            if (self._options.selection && self._options.selection.onzoom)
-                self._options.selection.onzoom(self._selectionTimeRange);
+            this.dispatchAction('zoom', this._selectionTimeRange);
         }
 
         return canvas;
@@ -137,7 +145,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
     static htmlTemplate()
     {
         return `
-            <a href="#" title="Zoom" class="time-series-chart-zoom-button" style="display:none;">
+            <a href="#" title="Zoom" id="zoom-button" style="display:none;">
                 <svg viewBox="0 0 100 100">
                     <g stroke-width="0" stroke="none">
                         <polygon points="25,25 5,50 25,75"/>
@@ -146,14 +154,14 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
                     <line x1="20" y1="50" x2="80" y2="50" stroke-width="10"></line>
                 </svg>
             </a>
-            <span class="time-series-chart-annotation-label" style="display:none;"></span>
+            <span id="annotation-label" style="display:none;"></span>
         `;
     }
 
     static cssTemplate()
     {
         return TimeSeriesChart.cssTemplate() + `
-            .time-series-chart-zoom-button {
+            #zoom-button {
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -169,7 +177,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
                 z-index: 20;
             }
 
-            .time-series-chart-annotation-label {
+            #annotation-label {
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -192,7 +200,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
     _mouseMove(event)
     {
         var cursorLocation = {x: event.offsetX, y: event.offsetY};
-        if (this._startOrContinueDragging(cursorLocation) || this._selectionTimeRange)
+        if (this._startOrContinueDragging(cursorLocation, false) || this._selectionTimeRange)
             return;
 
         if (this._indicatorIsLocked)
@@ -208,6 +216,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
             newIndicatorID = this._findClosestPoint(cursorLocation);
 
         this._forceRender = true;
+        this.enqueueToRender();
 
         if (this._currentAnnotation == newAnnotation && this._indicatorID == newIndicatorID)
             return;
@@ -225,6 +234,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
 
         this._indicatorID = null;
         this._forceRender = true;
+        this.enqueueToRender();
         this._notifyIndicatorChanged();
     }
 
@@ -245,7 +255,6 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
             if (!this._didEndDrag) {
                 this._lastMouseDownLocation = null;
                 this._selectionTimeRange = null;
-                this._forceRender = true;
                 this._notifySelectionChanged(true);
                 this._mouseMove(event);
             }
@@ -257,14 +266,14 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         var cursorLocation = {x: event.offsetX, y: event.offsetY};
         var annotation = this._findAnnotation(cursorLocation);
         if (annotation) {
-            if (this._options.annotations.onclick)
-                this._options.annotations.onclick(annotation);
+            this.dispatchAction('annotationClick', annotation);
             return;
         }
 
         this._indicatorIsLocked = !this._indicatorIsLocked;
         this._indicatorID = this._findClosestPoint(cursorLocation);
         this._forceRender = true;
+        this.enqueueToRender();
 
         this._notifyIndicatorChanged();
     }
@@ -294,6 +303,7 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
             this._selectionTimeRange = [metrics.xToTime(selectionStart), metrics.xToTime(selectionEnd)];
         }
         this._forceRender = true;
+        this.enqueueToRender();
 
         if (indicatorDidChange)
             this._notifyIndicatorChanged();
@@ -313,20 +323,17 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         this._dragStarted = false;
         this._lastMouseDownLocation = null;
         this._didEndDrag = true;
-        var self = this;
-        setTimeout(function () { self._didEndDrag = false; }, 0);
+        setTimeout(() => this._didEndDrag = false, 0);
     }
 
     _notifyIndicatorChanged()
     {
-        if (this._options.indicator && this._options.indicator.onchange)
-            this._options.indicator.onchange(this._indicatorID, this._indicatorIsLocked);
+        this.dispatchAction('indicatorChange', this._indicatorID, this._indicatorIsLocked);
     }
 
     _notifySelectionChanged(didEndDrag)
     {
-        if (this._options.selection && this._options.selection.onchange)
-            this._options.selection.onchange(this._selectionTimeRange, didEndDrag);
+        this.dispatchAction('selectionChange', this._selectionTimeRange, didEndDrag);
     }
 
     _findAnnotation(cursorLocation)
@@ -382,11 +389,10 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
         var metrics = super._layout();
         metrics.doneWork |= this._forceRender;
         this._forceRender = false;
-        this._lastRenderigMetrics = metrics;
         return metrics;
     }
 
-    _sampleTimeSeries(data, minimumTimeDiff, excludedPoints)
+    _sampleTimeSeries(data, maximumNumberOfPoints, excludedPoints)
     {
         if (this._indicatorID)
             excludedPoints.add(this._indicatorID);
@@ -429,24 +435,23 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
                 this._annotationLabel.style.display = 'none';
         }
 
-        var indicator = this._options.indicator;
-        if (this._indicatorID && indicator) {
-            context.fillStyle = indicator.lineStyle;
-            context.strokeStyle = indicator.lineStyle;
-            context.lineWidth = indicator.lineWidth;
+        const indicator = this.currentIndicator();
+        const indicatorOptions = (indicator && indicator.isLocked ? this._options.lockedIndicator : null) || this._options.indicator;
+        if (indicator && indicatorOptions) {
+            context.fillStyle = indicatorOptions.fillStyle || indicatorOptions.lineStyle;
+            context.strokeStyle = indicatorOptions.lineStyle;
+            context.lineWidth = indicatorOptions.lineWidth;
 
-            var point = this.currentPoint();
-            if (point) {
-                var x = metrics.timeToX(point.time);
-                var y = metrics.valueToY(point.value);
+            const x = metrics.timeToX(indicator.point.time);
+            const y = metrics.valueToY(indicator.point.value);
 
-                context.beginPath();
-                context.moveTo(x, metrics.chartY);
-                context.lineTo(x, metrics.chartY + metrics.chartHeight);
-                context.stroke();
+            context.beginPath();
+            context.moveTo(x, metrics.chartY);
+            context.lineTo(x, metrics.chartY + metrics.chartHeight);
+            context.stroke();
 
-                this._fillCircle(context, x, y, indicator.pointRadius);
-            }
+            this._fillCircle(context, x, y, indicatorOptions.pointRadius);
+            context.stroke();
         }
 
         var selectionOptions = this._options.selection;
@@ -467,10 +472,10 @@ class InteractiveTimeSeriesChart extends TimeSeriesChart {
             context.fill();
             context.stroke();
         }
-    
+
         if (this._renderedSelection != selectionX2) {
             this._renderedSelection = selectionX2;
-            if (this._renderedSelection && selectionOptions && selectionOptions.onzoom
+            if (this._renderedSelection && this._options.zoomButton
                 && selectionX2 > 0 && selectionX2 < metrics.chartX + metrics.chartWidth) {
                 if (this._zoomButton.style.display)
                     this._zoomButton.style.display = null;

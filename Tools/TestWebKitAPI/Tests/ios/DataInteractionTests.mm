@@ -30,8 +30,10 @@
 #import "DataInteractionSimulator.h"
 #import "PlatformUtilities.h"
 #import "TestWKWebView.h"
+#import "WKWebViewConfigurationExtras.h"
 #import <MobileCoreServices/MobileCoreServices.h>
 #import <UIKit/UIItemProvider_Private.h>
+#import <WebKit/WKWebViewConfigurationPrivate.h>
 
 @implementation TestWKWebView (DataInteractionTests)
 
@@ -81,7 +83,6 @@ TEST(DataInteractionTests, ImageToTextarea)
 
     NSURL *imageURL = [NSURL fileURLWithPath:[webView editorValue]];
     EXPECT_WK_STREQ("icon.png", imageURL.lastPathComponent);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -102,7 +103,6 @@ TEST(DataInteractionTests, ContentEditableToContentEditable)
 
     EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.textContent"].length, 0UL);
     EXPECT_WK_STREQ("Hello world", [webView stringByEvaluatingJavaScript:@"editor.textContent"].UTF8String);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -121,7 +121,6 @@ TEST(DataInteractionTests, ContentEditableToTextarea)
 
     EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.textContent"].length, 0UL);
     EXPECT_WK_STREQ("Hello world", [webView editorValue].UTF8String);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -139,7 +138,6 @@ TEST(DataInteractionTests, LinkToInput)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_WK_STREQ("https://www.daringfireball.net/", [webView editorValue].UTF8String);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -157,7 +155,6 @@ TEST(DataInteractionTests, BackgroundImageLinkToInput)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_WK_STREQ("https://www.daringfireball.net/", [webView editorValue].UTF8String);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -175,7 +172,6 @@ TEST(DataInteractionTests, CanPreventStart)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_FALSE([webView editorContainsImageElement]);
-    EXPECT_FALSE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_FALSE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -192,7 +188,6 @@ TEST(DataInteractionTests, CanPreventOperation)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
 
     EXPECT_FALSE([webView editorContainsImageElement]);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -209,7 +204,6 @@ TEST(DataInteractionTests, EnterAndLeaveEvents)
     [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 450)];
 
     EXPECT_WK_STREQ("", [webView editorValue].UTF8String);
-    EXPECT_TRUE([dataInteractionSimulator didTryToBeginDataInteraction]);
 
     NSArray *observedEventNames = [dataInteractionSimulator observedEventNames];
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionEnterEventName]);
@@ -217,22 +211,6 @@ TEST(DataInteractionTests, EnterAndLeaveEvents)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionLeaveEventName]);
     EXPECT_FALSE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
     EXPECT_TRUE([[dataInteractionSimulator finalSelectionRects] isEqualToArray:@[ ]]);
-}
-
-TEST(DataInteractionTests, HandlesDataInteractionFailureGracefully)
-{
-    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
-    [webView synchronouslyLoadTestPageNamed:@"link-and-input"];
-
-    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
-    [dataInteractionSimulator setForceRequestToFail:YES];
-    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
-    EXPECT_WK_STREQ("", [webView editorValue].UTF8String);
-
-    // Before r212266, starting a subsequent gesture would have caused a debug assertion in the web process.
-    [dataInteractionSimulator setForceRequestToFail:NO];
-    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
-    EXPECT_WK_STREQ("https://www.daringfireball.net/", [webView editorValue].UTF8String);
 }
 
 TEST(DataInteractionTests, ExternalSourceUTF8PlainTextOnly)
@@ -271,6 +249,33 @@ TEST(DataInteractionTests, ExternalSourceJPEGOnly)
     [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
     EXPECT_TRUE([webView editorContainsImageElement]);
     EXPECT_TRUE([[dataInteractionSimulator finalSelectionRects] isEqualToArray:@[ makeCGRectValue(1, 201, 215, 174) ]]);
+}
+
+TEST(DataInteractionTests, AttachmentElementItemProviders)
+{
+    RetainPtr<WKWebViewConfiguration> configuration = [WKWebViewConfiguration testwebkitapi_configurationWithTestPlugInClassName:@"BundleEditingDelegatePlugIn"];
+    [configuration _setAttachmentElementEnabled:YES];
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500) configuration:configuration.get()]);
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [webView synchronouslyLoadTestPageNamed:@"attachment-element"];
+
+    NSString *injectedTypeIdentifier = @"org.webkit.data";
+    __block RetainPtr<NSString> injectedString;
+    [dataInteractionSimulator setConvertItemProvidersBlock:^NSArray *(NSArray *originalItemProviders)
+    {
+        for (UIItemProvider *provider in originalItemProviders) {
+            NSData *injectedData = [provider copyDataRepresentationForTypeIdentifier:injectedTypeIdentifier error:nil];
+            if (!injectedData.length)
+                continue;
+            injectedString = adoptNS([[NSString alloc] initWithData:injectedData encoding:NSUTF8StringEncoding]);
+            break;
+        }
+        return originalItemProviders;
+    }];
+
+    [dataInteractionSimulator runFrom:CGPointMake(50, 50) to:CGPointMake(50, 400)];
+
+    EXPECT_WK_STREQ("hello", [injectedString UTF8String]);
 }
 
 } // namespace TestWebKitAPI

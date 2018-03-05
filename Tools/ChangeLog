@@ -1,3 +1,823 @@
+2017-03-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Migrate font-stretch to use fixed-point values
+        https://bugs.webkit.org/show_bug.cgi?id=169107
+
+        Reviewed by Dean Jackson.
+
+        Update to new types.
+
+        * TestWebKitAPI/Tests/WebCore/FontCache.cpp:
+        (TestWebKitAPI::createPlatformFont):
+
+2017-03-02  Brady Eidson  <beidson@apple.com>
+
+        Update WKWebsiteDatastoreConfiguration SPI.
+        https://bugs.webkit.org/show_bug.cgi?id=169102
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (-[WebsiteDataStoreCustomPathsMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
+2017-03-02  Jer Noble  <jer.noble@apple.com>
+
+        Sufficently large timeValue and timeScale arguments to MediaTime will cause wrapping in toTimeScale().
+        https://bugs.webkit.org/show_bug.cgi?id=169098
+
+        Reviewed by Keith Miller.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-03-02  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add ability to read bindings test results
+        https://bugs.webkit.org/show_bug.cgi?id=169063
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bindingstestresults.py: Added.
+        (BindingsTestResults): Conforms to the AbstractTestResults interface.
+        (BindingsTestResults.__init__): Constructor.
+        (BindingsTestResults.results_from_string): Generates BindingsTestResults object from JSON string.
+        (BindingsTestResults.is_subset): Compare failing tests in two BindingsTestResults objects.
+        (BindingsTestResults.equals): Checks if two BindingsTestResults objects contain the same failing test names.
+        (BindingsTestResults.all_passed): Return True if all bindings tests passed.
+        (BindingsTestResults.failing_tests): Returns a list of failing tests.
+        (BindingsTestResults.did_exceed_test_failure_limit): Always returns False, exists to conform to the interface.
+        * Scripts/webkitpy/common/net/bindingstestresults_unittest.py: Added.
+        (BindingsTestResultsTest): Class to test BindingsTestResults.
+        (BindingsTestResultsTest.test_results_from_string): Unit tests string -> BindingsTestResults conversion.
+        (BindingsTestResultsTest.test_results_from_string_success): Ditto, for success cases.
+        * Scripts/webkitpy/tool/bot/bindingstestresultsreader.py: Added.
+        (BindingsTestResultsReader): Conforms to the AbstractTestResultsReader interface.
+        (BindingsTestResultsReader.results): Reads the results file and returns a BindingsTestResults object.
+
+2017-03-02  Aakash Jain  <aakash_jain@apple.com>
+
+        Move stringMatchesWildcardString from WebKit2 to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=169065
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Moved StringUtilities.mm
+        * TestWebKitAPI/Tests/WebCore/StringUtilities.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit2/mac/StringUtilities.mm.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/mac/StringUtilities.mm: Removed.
+
+2017-02-28  Matt Rajca  <mrajca@apple.com>
+
+        Media: send "did interfere with playback" events when the user pauses an autoplaying element
+        https://bugs.webkit.org/show_bug.cgi?id=169006
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2/js-play-with-controls.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Added.
+
+2017-03-02  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Refactor test results classes in webkitpy to enable faster EWS iteration
+        https://bugs.webkit.org/show_bug.cgi?id=169053
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/abstracttestresults.py:
+        (AbstractTestResults): Import json for parse_json_string().
+        (AbstractTestResults.parse_json_string): Abstracted out from JSCTestResults.results_from_string().
+        * Scripts/webkitpy/common/net/abstracttestresults_unittest.py: Added.
+        (AbstractTestResultsTest): Class that tests AbstractTestResults.
+        (AbstractTestResultsTest.test_parse_json_string_invalid_inputs): Move unit tests from JSCTestResultsTest.
+        (AbstractTestResultsTest.test_parse_json_string_valid_input): Add a unit test for a success case.
+        * Scripts/webkitpy/common/net/jsctestresults.py:
+        (JSCTestResults.results_from_string): Call parse_json_string because it was abstracted out.
+        * Scripts/webkitpy/common/net/jsctestresults_unittest.py:
+        (JSCTestResultsTest.test_results_from_string): Remove JSON parsing unit tests, because they were moved.
+        * Scripts/webkitpy/tool/bot/abstracttestresultsreader.py: Added.
+        (AbstractTestResultsReader): Generic TestResultsReader with functions common to jsc, bindings etc.
+        (AbstractTestResultsReader.__init__): Moved from JSCTestResultsReader.__init__().
+        (AbstractTestResultsReader._read_file_contents): Moved from JSCTestResultsReader._read_file_contents().
+        (AbstractTestResultsReader.results): Stub.
+        * Scripts/webkitpy/tool/bot/jsctestresultsreader.py:
+        (JSCTestResultsReader): Now inherits from AbstractTestResultsReader.
+        (JSCTestResultsReader.__init__): Deleted.
+        (JSCTestResultsReader._read_file_contents): Deleted.
+        * Scripts/webkitpy/tool/bot/layouttestresultsreader.py:
+        (LayoutTestResultsReader): Now inherits from AbstractTestResultsReader.
+
+2017-03-02  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-03-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r213281.
+
+        This change caused API test WebKit2.UserMediaBasic to time
+        out.
+
+        Reverted changeset:
+
+        "[MediaStream] UIClient may not be notified of capture state
+        change when leaving a page"
+        https://bugs.webkit.org/show_bug.cgi?id=169014
+        http://trac.webkit.org/changeset/213281
+
+2017-03-02  Tomas Popela  <tpopela@redhat.com>
+
+        [WK2] Keyboard menu key should show context menu
+        https://bugs.webkit.org/show_bug.cgi?id=72099
+
+        Show the context menu when the GtkWidget::popup-menu signal is
+        emitted. This signal is triggered by pressing a key (usually
+        the Menu key or the Shift + F10 shortcut) or it could be emitted on
+        WebKitWebView.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.cpp:
+        (WebViewTest::emitPopupMenuSignal):
+        * TestWebKitAPI/gtk/WebKit2Gtk/WebViewTest.h:
+
+2017-03-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Replace -[WKWebView adjustedDataInteractionItemProviders:] with a UI delegate method
+        https://bugs.webkit.org/show_bug.cgi?id=169013
+
+        Reviewed by Dan Bernstein.
+
+        Adjusts TestWebKitAPI for changes in WebKit2. See Source/WebKit2/ChangeLog for more details.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        (-[CustomItemProviderWebView _adjustedDataInteractionItemProviders:]): Deleted.
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator initWithWebView:]):
+        (-[DataInteractionSimulator dealloc]):
+        (-[DataInteractionSimulator _webView:adjustedDataInteractionItemProviders:]):
+
+2017-03-01  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DRT should not dispatch messages after test is done.
+        https://bugs.webkit.org/show_bug.cgi?id=169026
+
+        Reviewed by Brent Fulgham.
+
+        Exiting the message loop with PostQuitMessage will leave room for
+        a few messages to be dispatched after the test is done.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dump):
+        (runTest):
+
+2017-03-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Implement font-stretch for installed fonts
+        https://bugs.webkit.org/show_bug.cgi?id=168888
+
+        Reviewed by Darin Adler and Dave Hyatt.
+
+        Update TestWebKitAPI tests to test font-stretch too.
+
+        * TestWebKitAPI/Tests/WebCore/FontCache.cpp:
+        (TestWebKitAPI::createPlatformFont):
+        (TestWebKitAPI::compareFonts):
+        (TestWebKitAPI::TEST_F):
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r213259.
+
+        Broke an internal build
+
+        Reverted changeset:
+
+        "Continue enabling WebRTC"
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+        http://trac.webkit.org/changeset/213259
+
+2017-03-01  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=169056
+
+        Reviewed by Jon Lee.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-02-28  Matt Rajca  <mrajca@apple.com>
+
+        Media: notify clients when autoplayed media is muted
+        https://bugs.webkit.org/show_bug.cgi?id=168987
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2/js-play-with-controls.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Added.
+
+2017-03-01  Brady Eidson  <beidson@apple.com>
+
+        Add SPI to create WebsiteDataStore objects pointing to custom paths.
+        https://bugs.webkit.org/show_bug.cgi?id=169044
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm: Added.
+        (-[WebsiteDataStoreCustomPathsMessageHandler userContentController:didReceiveScriptMessage:]):
+        (getNextMessage):
+        (TEST):
+
+2017-03-01  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a way to watch the CSSProperties.json file, and add me and Dan Bates to watch it.
+
+        * Scripts/webkitpy/common/config/watchlist:
+
+2017-03-01  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Move some device management from iOSSimulatorPort to iOSPort class
+        https://bugs.webkit.org/show_bug.cgi?id=168681
+
+        Reviewed by Daniel Bates.
+
+        This patch moves high-level device management into iOSPort and adds a new iOSDevicePort class
+        which inherits from iOSPort.  Additionally, this change renames device_id_for_worker_number to
+        device_for_worker_number and manages devices by object instead of by UDID.
+
+        * Scripts/webkitpy/port/factory.py:
+        (PortFactory): Correct import path for IOSSimulatorPort and IOSDevicePort.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.__init__): Define variables shared between iOS ports.
+        (IOSPort.driver_cmd_line_for_logging): From IOSSimulatorPort.
+        (IOSPort.driver_name): From IOSSimulatorPort.
+        (IOSPort.using_multiple_devices): Check if this port supports multiple devices.
+        (IOSPort._testing_device): Map worker number to device.
+        (IOSPort.device_for_worker_number): Return _testing_device() or _current_device based on using_multiple_devices. 
+        (IOSSimulatorPort): Moved to ios_simulator.py
+        * Scripts/webkitpy/port/ios_device.py: Added.
+        (IOSDevicePort): Moved functionality from IOSPort.
+        (IOSDevicePort.determine_full_port_name): Moved from IOSPort.
+        (IOSDevicePort._build_driver_flags): Ditto.
+        (IOSDevicePort.operating_system): Ditto.
+        * Scripts/webkitpy/port/ios_simulator.py: Added.
+        (IOSSimulatorPort): Moved from ios.py.
+        (IOSSimulatorPort.__init__): Init parent class, setup device map.
+        (IOSSimulatorPort._create_simulators): Use object over unbound methods.
+        (IOSSimulatorPort.setup_test_run): Ditto.
+        (IOSSimulatorPort.using_multiple_devices): True if we are managing the simulators.
+        (IOSSimulatorPort._create_device): Use object over unbound methods.
+        (IOSSimulatorPort._remove_device): Ditto.
+        (IOSSimulatorPort.driver_name): Moved to parent class.
+        (IOSSimulatorPort.driver_cmd_line_for_logging): Ditto.
+        (IOSSimulatorPort.child_processes): Ditto.
+        (IOSSimulatorPort._testing_device): Ditto.
+        (IOSSimulatorPort.device_id_for_worker_number): Renamed as device_for_worker_number.
+        (SimulatorProcess.__init__): Call find_device_by_udid, device_id_for_worker_number has been removed.
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Make _managed_devices public.
+        (Simulator.create_device): Ditto.
+        (Simulator.remove_device): Ditto.
+        (Simulator.device_number): Ditto.
+
+2017-03-01  Alexey Proskuryakov  <ap@apple.com>
+
+        IndexedDB.IndexedDBMultiProcess is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=160780
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm: Releasing the object
+        once doesn't necessarily deallocate the object, there can be other references.
+        We can use -[WKWebView _close] or -[WKWebView _killWebContentProcessAndResetState].
+        The latter seems more appropriate, because "kill" is what the comment says.
+
+2017-02-28  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add ability for webkitpy to run bindings tests
+        https://bugs.webkit.org/show_bug.cgi?id=168979
+
+        Reviewed by Alexey Proskuryakov.
+
+        This allows the below command to run bindings tests with json output, and is a required part
+        of adding an EWS for bindings tests. (Note: this won't build because --build is not passed).
+        webkit-patch build-and-test --no-clean --no-update  --test --non-interactive --group="bindings"
+
+        * Scripts/webkitpy/port/base.py:
+        (Port.bindings_results_directory): Return the directory to place JSON results for bindings tests.
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests.run): Checks if we should be running bindings tests.
+        (RunTests._run_bindings_tests): Generates the command for bindings tests, and executes it.
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (test_runtests_bindings): Unit test for the generated run-bindings-tests command.
+
+2017-02-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Test fix after r213163
+        https://bugs.webkit.org/show_bug.cgi?id=168678
+
+        Unreviewed.
+
+        Tests and builds are timing out because this file is gigantic.
+
+        * TestWebKitAPI/Tests/WebCore/FontCache.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-02-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Data interaction should support attachment elements
+        https://bugs.webkit.org/show_bug.cgi?id=168916
+        <rdar://problem/30664519>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds a new unit test verifying that a client injected bundle is able to augment UIItemProvider data vended to
+        the UI process.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/attachment-element.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (-[CustomItemProviderWebView _adjustedDataInteractionItemProviders:]):
+        (TestWebKitAPI::TEST):
+
+2017-02-28  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle requestAnimationFrame to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=168837
+        <rdar://problem/30700929>
+
+        Reviewed by Simon Fraser.
+
+        Add unit test for -= operator on WTF::OptionSet.
+
+        * TestWebKitAPI/Tests/WTF/OptionSet.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-02-28  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Regular expression for parsing simctl device information is wrong for iPad Pro
+        https://bugs.webkit.org/show_bug.cgi?id=168394
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Simulator): Allow for parenthesis in device name.
+        * Scripts/webkitpy/xcode/simulator_unittest.py: Add iPad Pro to test.
+
+2017-02-28  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] Migrate off of CTFontCreateForCSS
+        https://bugs.webkit.org/show_bug.cgi?id=168678
+
+        Reviewed by David Hyatt.
+
+        Exhaustively test the font matching algorithm on Sierra.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/FontCache.cpp: Added.
+        (TestWebKitAPI::FontCacheTest::SetUp):
+        (TestWebKitAPI::createPlatformFont):
+        (TestWebKitAPI::compareFonts):
+        (TestWebKitAPI::TEST_F):
+
+2017-02-28  Basuke Suzuki  <Basuke.Suzuki@am.sony.com>
+
+        Windows build doesn't start build if the git branch is not master
+        https://bugs.webkit.org/show_bug.cgi?id=168843
+
+        Reviewed by Myles C. Maxfield.
+
+        Use correct value for product base dir.
+
+        * Scripts/build-webkit:
+
+2017-02-24  Matt Rajca  <mrajca@apple.com>
+
+        Media: notify clients when autoplayed media ends without being paused
+        https://bugs.webkit.org/show_bug.cgi?id=168852
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2/js-play-with-controls.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Added.
+
+2017-02-28  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: jsc-ews should run when Makefiles and build scripts are changed
+        https://bugs.webkit.org/show_bug.cgi?id=168950
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance): Add makefiles and build scripts to jsc_paths.
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        Begin enabling WebRTC on 64-bit
+        https://bugs.webkit.org/show_bug.cgi?id=168915
+
+        Reviewed by Eric Carlson.
+
+        * Scripts/build-webkit:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Windows regression: webkitpy.tool.steps.steps_unittest.StepsTest.test_runtests_jsc[_debug]
+        https://bugs.webkit.org/show_bug.cgi?id=168628
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/steps/runtests.py:
+        (RunTests._run_javascriptcore_tests): Pass options to the Base instance.
+        * Scripts/webkitpy/tool/steps/steps_unittest.py:
+        (StepsTest._step_options): Add a new 'root' option that's passed through to the Base instance.
+        (test_runtests_jsc): Not running webkit-build-directory anymore, and changed json output directory.
+        (test_runtests_jsc_debug): Ditto
+
+2017-02-27  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add machine-readable results for bindings tests
+        https://bugs.webkit.org/show_bug.cgi?id=168626
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/run-bindings-tests:
+        (main): Add optional --json-output command-line parameter.
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.__init__): Add variables to store machine-readable results.
+        (BindingsTests.detect_changes): Store results in machine-readable form if applicable.
+        (BindingsTests.main): Write data to JSON file if applicable.
+
+2017-02-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, roll out r213065.
+
+        We need these temporary fixes to keep the perf bots running.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-02-27  Simon Fraser  <simon.fraser@apple.com>
+
+        Add specification and status metadata to CSSProperties.json, and validate it
+        https://bugs.webkit.org/show_bug.cgi?id=168901
+
+        Reviewed by Darin Adler.
+
+        Enhance check-webkit-style to validate the status and spec data in CSSProperties.json.
+        
+        Current validation is basic type validation and some cross-referencing, but could be
+        enhanced.
+
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONCSSPropertiesChecker.check):
+        (JSONCSSPropertiesChecker.check_category):
+        (JSONCSSPropertiesChecker):
+        (JSONCSSPropertiesChecker.check_categories):
+        (JSONCSSPropertiesChecker.validate_url):
+        (JSONCSSPropertiesChecker.validate_status_type):
+        (JSONCSSPropertiesChecker.validate_comment):
+        (JSONCSSPropertiesChecker.validate_status):
+        (JSONCSSPropertiesChecker.validate_property_category):
+        (JSONCSSPropertiesChecker.validate_property_specification):
+        (JSONCSSPropertiesChecker.check_property):
+
+2017-02-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix two GTK+ unit tests failing after r213062.
+
+        We were building wrong Content-Disposition headers that libsoup doesn't parse correctly.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (addContentDispositionHTTPHeaderToResponse):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestResources.cpp:
+        (serverCallback):
+
+2017-02-24  Jer Noble  <jer.noble@apple.com>
+
+        Add public method to MediaTime for doing timeScale conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=168860
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-02-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, revert all temporary build fixes for data interaction
+
+        Rolls out r212990, r212988 and r212984.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-02-27  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Enable WebRTC in some Production Builds
+        https://bugs.webkit.org/show_bug.cgi?id=168858
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        Add a way to test file input without relying on drag and drop
+        https://bugs.webkit.org/show_bug.cgi?id=168848
+        <rdar://problem/22258242>
+
+        Reviewed by Tim Horton.
+
+        Existing layout tests relied on drag and drop support in EventSender to configure a file
+        input element for testing. This had several problems:
+
+        1. WebKitTestRunner has no support for beginDragWithFiles(), and DumpRenderTree doesn't
+           support it on iOS.
+        2. We have no test coverage for selecting files via the runOpenPanel UI delegate, leading to
+           bugs like webkit.org/b/159686.
+
+        Even if we fixed (1), we'd still have a test coverage gap due to (2), so this patch
+        introduces a way for a test to specify the list of files that should be selected by the
+        runOpenPanel UI delegate: TestRunner.setOpenPanelFiles(). It also creates versions of a
+        number of existing file input tests using TestRunner.setOpenPanelFiles() instead of
+        EventSender.beginDragWithFiles().
+
+        * DumpRenderTree/ios/DumpRenderTreeBrowserView.mm:
+        (-[DumpRenderTreeBrowserView webView:runOpenPanelForFileButtonWithResultListener:configuration:]):
+        Overrode to call the corresponding method on UIDelegate.
+        * DumpRenderTree/TestRunner.cpp:
+        (setOpenPanelFilesCallback): Added to call TestRunner::setOpenPanelFiles().
+        (TestRunner::staticFunctions): Registered setOpenPanelFiles.
+        (TestRunner::setOpenPanelFiles): Added. Converts the JavaScript array of file paths to a
+        std::vector of std::strings.
+        * DumpRenderTree/TestRunner.h:
+        (TestRunner::openPanelFiles):
+        * DumpRenderTree/mac/UIDelegate.mm:
+        (-[UIDelegate webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+        Added. Converts the array of file paths to an NSArray of NSURLs, resolving the file paths
+        relative to the current test URL. Returns either the first item or all items depending on
+        the value of allowMultipleFiles.
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl: Defined setOpenPanelFiles.
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setOpenPanelFiles): Added. Converts the JavaScript array of file paths to
+        a WKArray of WKURLs, resolving the file paths relative to the current test URL, and sends
+        the WKArray to the UI process with the "SetOpenPanelFileURLs" message.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::runOpenPanel): Calls the WKOpenPanelResultListener with either the first item or all
+        items, depending on the value of WKOpenPanelParametersGetAllowsMultipleFiles().
+        (WTR::TestController::resetStateToConsistentValues): Clear m_openPanelFileURLs.
+        * WebKitTestRunner/TestController.h:
+        (WTR::TestController::openPanelFileURLs):
+        (WTR::TestController::setOpenPanelFileURLs):
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveMessageFromInjectedBundle): Added code to handle the
+        "SetOpenPanelFileURLs" message.
+
+2017-02-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        REGRESSION (r211312): Double-clicking a word selects it along with the space that follows it
+        https://bugs.webkit.org/show_bug.cgi?id=168821
+        <rdar://problem/30690431>
+
+        Reviewed by Tim Horton.
+
+        Adds the ability for TestWKWebView to send a sequence of clicks to its window, and uses this capability to
+        verify that double clicking to select a word in a WKWebView on Mac selects just the word, and not a trailing
+        space along with it.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/double-click-does-not-select-trailing-space.html: Added.
+        * TestWebKitAPI/Tests/mac/WKWebViewSelectionTests.mm: Copied from Tools/TestWebKitAPI/cocoa/TestWKWebView.h.
+        (TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebViewHostWindow _mouseDownAtPoint:simulatePressure:clickCount:]):
+        (-[TestWKWebViewHostWindow _mouseUpAtPoint:clickCount:]):
+        (-[TestWKWebView mouseDownAtPoint:simulatePressure:]):
+        (-[TestWKWebView mouseUpAtPoint:]):
+        (-[TestWKWebView sendClicksAtPoint:numberOfClicks:]):
+        (-[TestWKWebViewHostWindow _mouseDownAtPoint:simulatePressure:]): Deleted.
+        (-[TestWKWebViewHostWindow _mouseUpAtPoint:]): Deleted.
+
+2017-02-25  Simon Fraser  <simon.fraser@apple.com>
+
+        Make check-webkit-style do some basic validation for CSSProperties.json
+        https://bugs.webkit.org/show_bug.cgi?id=168874
+
+        Reviewed by Zalan Bujtas.
+
+        Do checking of the keys and the value types.
+        
+        Print exceptions if they occur; previously, coding errors caused silent failure.
+
+        * Scripts/webkitpy/style/checker.py:
+        (CheckerDispatcher._create_checker):
+        * Scripts/webkitpy/style/checkers/jsonchecker.py:
+        (JSONFeaturesChecker.check):
+        (JSONCSSPropertiesChecker):
+        (JSONCSSPropertiesChecker.check):
+        (JSONCSSPropertiesChecker.validate_comment):
+        (JSONCSSPropertiesChecker.validate_type):
+        (JSONCSSPropertiesChecker.validate_boolean):
+        (JSONCSSPropertiesChecker.validate_string):
+        (JSONCSSPropertiesChecker.validate_array):
+        (JSONCSSPropertiesChecker.validate_codegen_properties):
+        (JSONCSSPropertiesChecker.check_property):
+        (JSONCSSPropertiesChecker.check_codegen_properties):
+
+2017-02-26  Chris Dumez  <cdumez@apple.com>
+
+        HitTestResult's linkSuggestedFilename should sanitize download attribute
+        https://bugs.webkit.org/show_bug.cgi?id=168856
+        <rdar://problem/30683109>
+
+        Reviewed by Antti Koivisto.
+
+        Add test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/link-with-download-attribute-with-slashes.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/mac/ContextMenuDownload.mm:
+        (TestWebKitAPI::decideDestinationWithSuggestedFilenameContainingSlashes):
+        (TestWebKitAPI::TEST):
+
+2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Media elements initiated loads should set the initiatorType to their element name (video/audio)
+        https://bugs.webkit.org/show_bug.cgi?id=168680
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/Tests/WebCore/cocoa/WebCoreNSURLSession.mm:
+        (TestWebKitAPI::WebCoreNSURLSessionTest::SetUp):
+        Include a dummy HTMLVideoElement.
+
+2017-02-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, temporarily disable all data interaction tests.
+
+        They will be reenabled once the bots are ready to build and run them.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+
+2017-02-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the internal build.
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-02-24  Matt Rajca  <mrajca@apple.com>
+
+        Media: notify clients when autoplay is denied
+        https://bugs.webkit.org/show_bug.cgi?id=168840
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (handleAutoplayEvent):
+        (runUntilReceivesAutoplayEvent):
+        (TEST): Added.
+
+2017-02-23  Matt Rajca  <mrajca@apple.com>
+
+        API test WebKit2.WebsitePoliciesPlayAfterPreventedAutoplay is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=167466
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Use the correct API version.
+
+2017-02-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor data interaction to use new WKDataInteraction SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168602
+        Work towards <rdar://problem/30313681>
+
+        Reviewed by Tim Horton.
+
+        Update DataInteractionSimulator to simulate data interaction using updated SPI. See changes in WebKit2 for more details.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator _currentLocation]):
+        (-[DataInteractionSimulator _finishDataInteraction]): Deleted.
+        (-[DataInteractionSimulator webViewDidSendDataInteractionStartRequest:]): Deleted.
+        (-[DataInteractionSimulator webView:didReceiveDataInteractionStartResponse:]): Deleted.
+
+2017-02-20  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove the data interaction gesture recognizer
+        https://bugs.webkit.org/show_bug.cgi?id=168600
+        <rdar://problem/30313681>
+
+        Reviewed by Anders Carlsson.
+
+        Adjust TestWebKitAPI for changes in WebKit2.
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator initWithWebView:]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator _finishDataInteraction]):
+        (-[MockLongPressGestureRecognizer initWithWindow:]): Deleted.
+        (-[MockLongPressGestureRecognizer locationInView:]): Deleted.
+        (-[MockLongPressGestureRecognizer state]): Deleted.
+        (-[MockLongPressGestureRecognizer numberOfTouches]): Deleted.
+        (-[DataInteractionSimulator _recognizeGestureAtLocation:withState:]): Deleted.
+        (-[DataInteractionSimulator dataInteractionGestureRecognizer]): Deleted.
+        (-[DataInteractionSimulator webView:beginDataInteractionWithSourceIndex:gestureRecognizer:]): Deleted.
+
+2017-02-24  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add alternate classification method
+        https://bugs.webkit.org/show_bug.cgi?id=168347
+        <rdar://problem/30352793>
+        <rdar://problem/30646710>
+        <rdar://problem/30660708>
+
+        Reviewed by Alex Christensen.
+
+        Added three testRunner functions to facilitate layout tests:
+        - setStatisticsSubframeUnderTopFrameOrigin()
+        - setStatisticsSubresourceUnderTopFrameOrigin()
+        - setStatisticsSubresourceUniqueRedirectTo()
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsSubframeUnderTopFrameOrigin):
+        (WTR::TestRunner::setStatisticsSubresourceUnderTopFrameOrigin):
+        (WTR::TestRunner::setStatisticsSubresourceUniqueRedirectTo):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsSubframeUnderTopFrameOrigin):
+        (WTR::TestController::setStatisticsSubresourceUnderTopFrameOrigin):
+        (WTR::TestController::setStatisticsSubresourceUniqueRedirectTo):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-02-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Add Experimental Feature Flag
+        https://bugs.webkit.org/show_bug.cgi?id=167147
+
+        Reviewed by Ryosuke Niwa.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        Put experimental flags in the experimental section.
+
+2017-02-23  Beth Dakin  <bdakin@apple.com> + Dan Saunders  <dasau@microsoft.com>
+
+        No reliable way to get a snapshot of WKWebView (macOS)
+        https://bugs.webkit.org/show_bug.cgi?id=161450
+        -and corresponding-
+        <rdar://problem/23846039>
+
+        Reviewed by Tim Horton.
+
+        Test for WKWebView’s new API takeSnapshotWithConfiguration:completionHandler:
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewSnapshot.mm: Added.
+        (convertToCGImage):
+        (getPixelIndex):
+        (TEST):
+
 2017-02-23  Saam Barati  <sbarati@apple.com>
 
         Speculative fix for jsc timing out tests

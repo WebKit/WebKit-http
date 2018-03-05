@@ -1,3 +1,341 @@
+2017-03-02  Jer Noble  <jer.noble@apple.com>
+
+        Sufficently large timeValue and timeScale arguments to MediaTime will cause wrapping in toTimeScale().
+        https://bugs.webkit.org/show_bug.cgi?id=169098
+
+        Reviewed by Keith Miller.
+
+        Use a non-standard but Clang & GCC supported __int128_t type extension to do the 128-bit math rather than
+        rolling our own. Since this is only available in 64-bit builds, for 32-bit, just fix the underlying 128-bit
+        math.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+
+2017-03-01  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed unused WTF_COMPILER_SUPPORTS_CXX_USER_LITERALS macro
+        https://bugs.webkit.org/show_bug.cgi?id=168969
+
+        Reviewed by Darin Adler.
+
+        * wtf/Compiler.h:
+
+2017-03-01  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] va_list is not ended in StringPrintStream
+        https://bugs.webkit.org/show_bug.cgi?id=169035
+
+        Reviewed by Michael Saboff.
+
+        Also fix whitespace errors while touching this file.
+
+        * wtf/StringPrintStream.cpp:
+        (WTF::StringPrintStream::vprintf):
+        (WTF::StringPrintStream::increaseSize):
+
+2017-03-01  Andreas Kling  <akling@apple.com>
+
+        Move MemoryPressureHandler to WTF
+        <https://webkit.org/b/168908>
+
+        Reviewed by Sam Weinig.
+
+        Move MemoryPressureHandler down to WTF so it can be used from JavaScriptCore.
+
+        I had to do a blind rewrite of the Windows memory checking timer since it can
+        no longer use WebCore::Timer. I also moved the Win32Handle helper class to WTF.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryPressureHandler.cpp: Renamed from Source/WebCore/platform/MemoryPressureHandler.cpp.
+        (WTF::MemoryPressureHandler::singleton):
+        (WTF::MemoryPressureHandler::MemoryPressureHandler):
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+        (WTF::toString):
+        (WTF::thresholdForPolicy):
+        (WTF::policyForFootprint):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::beginSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::endSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::releaseMemory):
+        (WTF::MemoryPressureHandler::ReliefLogger::logMemoryUsageChange):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        (WTF::MemoryPressureHandler::platformInitialize):
+        * wtf/MemoryPressureHandler.h: Renamed from Source/WebCore/platform/MemoryPressureHandler.h.
+        (WTF::MemoryPressureHandler::setMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setProcessIsEligibleForMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setLowMemoryHandler):
+        (WTF::MemoryPressureHandler::isUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::ReliefLogger):
+        (WTF::MemoryPressureHandler::ReliefLogger::~ReliefLogger):
+        (WTF::MemoryPressureHandler::ReliefLogger::logString):
+        (WTF::MemoryPressureHandler::ReliefLogger::setLoggingEnabled):
+        (WTF::MemoryPressureHandler::ReliefLogger::loggingEnabled):
+        (WTF::MemoryPressureHandler::ReliefLogger::MemoryUsage::MemoryUsage):
+        * wtf/PlatformEfl.cmake:
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm: Renamed from Source/WebCore/platform/cocoa/MemoryPressureHandlerCocoa.mm.
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/linux/CurrentProcessMemoryStatus.cpp: Renamed from Source/WebCore/platform/linux/CurrentProcessMemoryStatus.cpp.
+        (WTF::systemPageSize):
+        (WTF::currentProcessMemoryStatus):
+        * wtf/linux/CurrentProcessMemoryStatus.h: Renamed from Source/WebCore/platform/linux/CurrentProcessMemoryStatus.h.
+        * wtf/linux/MemoryPressureHandlerLinux.cpp: Renamed from Source/WebCore/platform/linux/MemoryPressureHandlerLinux.cpp.
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        * wtf/win/MemoryPressureHandlerWin.cpp: Renamed from Source/WebCore/platform/win/MemoryPressureHandlerWin.cpp.
+        (WTF::MemoryPressureHandler::platformInitialize):
+        (WTF::MemoryPressureHandler::windowsMeasurementTimerFired):
+        (WTF::MemoryPressureHandler::platformReleaseMemory):
+        (WTF::MemoryPressureHandler::install):
+        (WTF::MemoryPressureHandler::uninstall):
+        (WTF::MemoryPressureHandler::holdOff):
+        (WTF::MemoryPressureHandler::respondToMemoryPressure):
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+        * wtf/win/Win32Handle.h: Renamed from Source/WebCore/platform/win/Win32Handle.h.
+        (WTF::Win32Handle::Win32Handle):
+        (WTF::Win32Handle::~Win32Handle):
+        (WTF::Win32Handle::clear):
+        (WTF::Win32Handle::isValid):
+        (WTF::Win32Handle::get):
+        (WTF::Win32Handle::release):
+        (WTF::Win32Handle::operator=):
+
+2017-02-28  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle requestAnimationFrame to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=168837
+        <rdar://problem/30700929>
+
+        Reviewed by Simon Fraser.
+
+        Add support for operator -= on WTF::OptionSet for convenience:
+            set -= Enum::A;
+        looks much better than:
+            set = set - Enum::A;
+
+        * wtf/OptionSet.h:
+        (WTF::OptionSet::operator-=):
+
+2017-02-28  Michael Saboff  <msaboff@apple.com>
+
+        Add ability to configure JSC options from a file
+        https://bugs.webkit.org/show_bug.cgi?id=168914
+
+        Reviewed by Filip Pizlo.
+
+        Added the ability to set options and DataLog file location via a configuration file.
+        The pathname can include the printf style "%pid", which will be replaced with the
+        current process id.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::setDataFile):
+        * wtf/DataLog.h:
+
+2017-02-27  Andy Estes  <aestes@apple.com>
+
+        [iOS] Enable file replacement
+        https://bugs.webkit.org/show_bug.cgi?id=168907
+        <rdar://problem/22258242>
+
+        Reviewed by David Kilzer.
+
+        * wtf/FeatureDefines.h: Set ENABLE_FILE_REPLACEMENT to 1 on all Cocoa platforms.
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Rename ICU cursor iterator to caret iterator
+        https://bugs.webkit.org/show_bug.cgi?id=168206
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::mapModeToBackingIterator):
+        * wtf/text/TextBreakIterator.h:
+        * wtf/text/cf/TextBreakIteratorCF.h:
+        (WTF::TextBreakIteratorCF::TextBreakIteratorCF):
+        * wtf/text/icu/TextBreakIteratorICU.h:
+        (WTF::caretRules):
+        (WTF::TextBreakIteratorICU::TextBreakIteratorICU):
+        (WTF::cursorRules): Deleted.
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WTF::mapModeToBackingIterator):
+
+2017-02-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Use RAII for ICU breaking iterators
+        https://bugs.webkit.org/show_bug.cgi?id=168203
+
+        Reviewed by Simon Fraser.
+
+        * wtf/text/TextBreakIterator.h:
+        (WTF::CachedTextBreakIterator::CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::~CachedTextBreakIterator):
+        (WTF::CachedTextBreakIterator::preceding):
+        (WTF::CachedTextBreakIterator::following):
+        (WTF::CachedTextBreakIterator::isBoundary):
+
+2017-02-24  Jer Noble  <jer.noble@apple.com>
+
+        Add public method to MediaTime for doing timeScale conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=168860
+
+        Reviewed by Eric Carlson.
+
+        The newly public method, modeled on CMTimeConvertScale, allows callers to specify what rounding technique
+        will be used when converting to a new time scale.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::toTimeScale):
+        (WTF::MediaTime::setTimeScale):
+        * wtf/MediaTime.h:
+
+2017-02-26  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Stop compiling our own cursorMovementIterator()
+        https://bugs.webkit.org/show_bug.cgi?id=168211
+
+        Reviewed by David Hyatt.
+
+        This patch creates a unified Text Breaking API, which can be backed by either ICU
+        or CoreFoundation (for ports which can use it). Rather than using inheritance and
+        virtual functions to implement this, because there are only two subclasses, the
+        simpler option of just using a Variant is used instead. There is also a cache which
+        allows you to reuse iterators without reconstructing them. This cache is better
+        than the previous method of having a single static iterator because the cache
+        lets you use two iterators simultaneously.
+
+        In the future, I will hook up all iterators to use this shared class. However, for
+        this patch, I've only hooked up the caret position iterator (backed by CoreFoundation
+        on Cocoa ports and UBRK_CHARACTER on other ports). 
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/spi/cf/CFStringSPI.h: Added.
+        * wtf/text/TextBreakIterator.cpp:
+        (WTF::initializeIteratorWithRules): Deleted.
+        (WTF::cursorMovementIterator): Deleted.
+        * wtf/text/TextBreakIterator.h:
+        (WTF::TextBreakIterator::preceding):
+        (WTF::TextBreakIterator::following):
+        (WTF::TextBreakIterator::isBoundary):
+        (WTF::TextBreakIterator::setText):
+        (WTF::TextBreakIterator::mode):
+        (WTF::TextBreakIterator::locale):
+        (WTF::TextBreakIteratorCache::singleton):
+        (WTF::TextBreakIteratorCache::take):
+        (WTF::TextBreakIteratorCache::put):
+        (WTF::TextBreakIteratorCache::TextBreakIteratorCache):
+        * wtf/text/cf/TextBreakIteratorCF.h: Added.
+        (WTF::TextBreakIteratorCF::TextBreakIteratorCF):
+        (WTF::TextBreakIteratorCF::setText):
+        (WTF::TextBreakIteratorCF::preceding):
+        (WTF::TextBreakIteratorCF::following):
+        (WTF::TextBreakIteratorCF::isBoundary):
+        * wtf/text/icu/TextBreakIteratorICU.h: Added.
+        (WTF::TextBreakIteratorICU::set8BitText):
+        (WTF::TextBreakIteratorICU::TextBreakIteratorICU):
+        (WTF::TextBreakIteratorICU::operator=):
+        (WTF::TextBreakIteratorICU::~TextBreakIteratorICU):
+        (WTF::TextBreakIteratorICU::setText):
+        (WTF::TextBreakIteratorICU::preceding):
+        (WTF::TextBreakIteratorICU::following):
+        (WTF::TextBreakIteratorICU::isBoundary):
+        * wtf/text/icu/UTextProviderLatin1.h:
+        * wtf/text/mac/TextBreakIteratorInternalICUMac.mm:
+        (WTF::mapModeToBackingIterator):
+        (WTF::TextBreakIterator::TextBreakIterator):
+
+2017-02-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Gather timing information with reliable responseEnd time
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+
+        Reviewed by Alex Christensen.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<Seconds>::encode):
+        (WTF::Persistence::Coder<Seconds>::decode):
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        Rubber-stamped by Chris Dumez.
+
+        Replace typename Bool with typename BoolType because X11 has
+        #define Bool int for some unknown reason...
+
+        * wtf/HashFunctions.h:
+        (WTF::TupleHash::allTrue):
+        * wtf/HashTraits.h:
+        (WTF::TupleHashTraits::allTrue):
+
+2017-02-24  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r212944.
+
+        Caused a lot of failures on the debug bots
+
+        Reverted changeset:
+
+        "[Resource Timing] Gather timing information with reliable
+        responseEnd time"
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+        http://trac.webkit.org/changeset/212944
+
+2017-02-24  Keith Miller  <keith_miller@apple.com>
+
+        We should be able to use std::tuples as keys in HashMap
+        https://bugs.webkit.org/show_bug.cgi?id=168805
+
+        Reviewed by Filip Pizlo.
+
+        This patch adds support for using std::tupeles as the key
+        type in HashMap. It is equivalent to doing a sequence of
+        std::pairs but has a nicer syntax.
+
+        * wtf/HashFunctions.h:
+        (WTF::TupleHash::hash):
+        (WTF::TupleHash::equal):
+        (WTF::TupleHash::allTrue):
+        * wtf/HashTraits.h:
+        (WTF::TupleHashTraits::allTrue):
+        (WTF::TupleHashTraits::emptyValue):
+        (WTF::TupleHashTraits::constructDeletedValue):
+        (WTF::TupleHashTraits::isDeletedValue):
+
+2017-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        Prepare to enable WebRTC on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=168811
+
+        Reviewed by Youenn Fablet.
+
+        * wtf/Platform.h:
+
+2017-02-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Gather timing information with reliable responseEnd time
+        https://bugs.webkit.org/show_bug.cgi?id=168351
+
+        Reviewed by Alex Christensen.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<Seconds>::encode):
+        (WTF::Persistence::Coder<Seconds>::decode):
+
 2017-02-22  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Better handle Thread and RunLoop initialization

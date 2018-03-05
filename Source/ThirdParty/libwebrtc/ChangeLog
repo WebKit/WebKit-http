@@ -1,3 +1,77 @@
+2017-03-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [WebRTC] Install libwebrtc.dylib inside of WebCore.framework
+        https://bugs.webkit.org/show_bug.cgi?id=168859
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+        Define some general configuration variables.
+
+        * Configurations/DebugRelease.xcconfig:
+        Define WK_RELOCATABLE_FRAMEWORKS for Debug/Release builds.
+
+        * Configurations/libwebrtc.xcconfig:
+        Set INSTALL_PATH to be inside WebCore.framework's sub-Frameworks directory
+        unless WK_USE_OVERRIDE_FRAMEWORKS_DIR. Set the install name of the dylib to
+        be relative to WebCore / WebKit when frameworks are relocatable, such as
+        WK_USE_OVERRIDE_FRAMEWORKS_DIR or WK_RELOCATABLE_FRAMEWORKS.
+
+2017-02-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] CPU Overuse libwebrtc detector is decreasing the quality of the video
+        https://bugs.webkit.org/show_bug.cgi?id=168990
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/video/vie_encoder.cc: Disabling temporarily overuse detector.
+
+2017-02-28  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Fix an internal production build
+        https://bugs.webkit.org/show_bug.cgi?id=168992
+
+        Reviewed by Youenn Fablet.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Link with Foundation and CoreFoundation frameworks.
+
+2017-02-28  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] LibWebRTC frame dropper is not working consistently
+        https://bugs.webkit.org/show_bug.cgi?id=168973
+
+        Reviewed by Eric Carlson.
+
+        * Source/webrtc/modules/video_coding/video_sender.cc: Disable temporarily the frame dropper as it is sometimes
+        dropping too many frames.
+
+2017-02-27  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] RealtimOutgoingVideoSource should not need to do image conversion
+        https://bugs.webkit.org/show_bug.cgi?id=168802
+
+        Reviewed by Jon Lee.
+
+        Exporting new symbols.
+        Including headers in the project file.
+
+        * Source/webrtc/common_video/include/corevideo_frame_buffer.h:
+        * Source/webrtc/common_video/include/i420_buffer_pool.h:
+        * Source/webrtc/common_video/include/video_frame_buffer.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unneeded protobuf tests directory.
+        
+        Rubber-stamped by Joe Pecoraro.
+        
+        This directory contained a swift file that was causing problems in an internal verification step.
+
+        * Source/third_party/protobuf/objectivec/Tests: Removed.
+        (And everything in this subdirectory)
+
 2017-02-22  Youenn Fablet  <youenn@apple.com>
 
         [WebRTC] Disable libwebrtc stderr logging in release mode

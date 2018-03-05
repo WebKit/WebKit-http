@@ -131,10 +131,23 @@ class TimeSeriesChart extends ComponentBase {
         return null;
     }
 
+    referencePoints(type)
+    {
+        const view = this.sampledTimeSeriesData(type);
+        if (!view || !this._startTime || !this._endTime)
+            return null;
+        const point = view.lastPointInTimeRange(this._startTime, this._endTime);
+        if (!point)
+            return null;
+        return {view, currentPoint: point, previousPoint: null};
+    }
+
     setAnnotations(annotations)
     {
         this._annotations = annotations;
         this._annotationRows = null;
+
+        this.enqueueToRender();
     }
 
     render()
@@ -488,9 +501,6 @@ class TimeSeriesChart extends ComponentBase {
             if (!timeSeries)
                 return null;
 
-            // A chart with X px width shouldn't have more than 2X / <radius-of-points> data points.
-            const maximumNumberOfPoints = 2 * metrics.chartWidth / (source.pointRadius || 2);
-
             const pointAfterStart = timeSeries.findPointAfterTime(startTime);
             const pointBeforeStart = (pointAfterStart ? timeSeries.previousPoint(pointAfterStart) : null) || timeSeries.firstPoint();
             const pointAfterEnd = timeSeries.findPointAfterTime(endTime) || timeSeries.lastPoint();
@@ -502,7 +512,11 @@ class TimeSeriesChart extends ComponentBase {
             if (!source.sampleData)
                 return view;
 
-            return this._sampleTimeSeries(view, (endTime - startTime) / maximumNumberOfPoints, new Set);
+            // A chart with X px width shouldn't have more than 2X / <radius-of-points> data points.
+            const viewWidth = Math.min(metrics.chartWidth, metrics.timeToX(pointAfterEnd.time) - metrics.timeToX(pointBeforeStart.time));
+            const maximumNumberOfPoints = 2 * viewWidth / (source.pointRadius || 2);
+
+            return this._sampleTimeSeries(view, maximumNumberOfPoints, new Set);
         });
 
         Instrumentation.endMeasuringTime('TimeSeriesChart', 'ensureSampledTimeSeries');
@@ -512,19 +526,27 @@ class TimeSeriesChart extends ComponentBase {
         return true;
     }
 
-    _sampleTimeSeries(view, minimumTimeDiff, excludedPoints)
+    _sampleTimeSeries(view, maximumNumberOfPoints, excludedPoints)
     {
-        if (view.length() < 2)
+
+        if (view.length() < 2 || maximumNumberOfPoints >= view.length() || maximumNumberOfPoints < 1)
             return view;
 
         Instrumentation.startMeasuringTime('TimeSeriesChart', 'sampleTimeSeries');
 
-        const sampledData = view.filter((point, i) => {
-            if (excludedPoints.has(point.id))
-                return true;
+        let ranks = new Array(view.length());
+        let i = 0;
+        for (let point of view) {
             let previousPoint = view.previousPoint(point) || point;
             let nextPoint = view.nextPoint(point) || point;
-            return nextPoint.time - previousPoint.time >= minimumTimeDiff;
+            ranks[i] = nextPoint.time - previousPoint.time;
+            i++;
+        }
+
+        const sortedRanks = ranks.slice(0).sort((a, b) => b - a);
+        const minimumRank = sortedRanks[Math.floor(maximumNumberOfPoints)];
+        const sampledData = view.filter((point, i) => {
+            return excludedPoints.has(point.id) || ranks[i] >= minimumRank;
         });
 
         Instrumentation.endMeasuringTime('TimeSeriesChart', 'sampleTimeSeries');
@@ -711,7 +733,38 @@ class TimeSeriesChart extends ComponentBase {
                 diff: 31 * DAY,
                 next: function (date) {
                     date.setUTCHours(0);
-                    date.setUTCMonth(date.getUTCMonth() + 1);
+                    const dayOfMonth = date.getUTCDate();
+                    if (dayOfMonth > 1 && dayOfMonth < 15)
+                        date.setUTCDate(15);
+                    else {
+                        if (dayOfMonth != 15)
+                            date.setUTCDate(1);
+                        date.setUTCMonth(date.getUTCMonth() + 1);
+                    }
+                }
+            },
+            {
+                diff: 60 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 2);
+                }
+            },
+            {
+                diff: 90 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 3);
+                }
+            },
+            {
+                diff: 120 * DAY,
+                next: function (date) {
+                    date.setUTCHours(0);
+                    date.setUTCDate(1);
+                    date.setUTCMonth(date.getUTCMonth() + 4);
                 }
             },
         ];

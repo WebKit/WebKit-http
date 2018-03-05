@@ -1,3 +1,480 @@
+2017-03-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make baseline data points selectable
+        https://bugs.webkit.org/show_bug.cgi?id=169069
+        <rdar://problem/29209427>
+
+        Reviewed by Antti Koivisto.
+
+        Add the capability to select data points other than "current" configuration type.
+
+        This patch refactors the way the "chart status" is computed. Before this patch, ChartStatusView was
+        responsible for determining two data points for which to compute the status, and computing the status
+        between two data points. ChartPaneStatusView which inherits from ChartStatusView and used in the charts
+        page relied upon ChartStatusView to compute these values, and computed the list of revision ranges for
+        each relevant repository between the data points. ChartPane then had callbacks on ChartPaneStatusView
+        to know whenever these values changed. Because of this entangled mess, ChartStatusView had to be aware
+        of InteractiveTimeSeriesChart even though only ChartPaneStatusView could be used with it.
+
+        This patch dramatically simplifies the situation by adding referencePoints() on TimeSeriesChart and
+        InteractiveTimeSeriesChart which returns the current point, the previous point if there is any, and
+        their time series view. It also extracts ChartStatusEvaluator which computes the current status values
+        and ChartRevisionRange which computes a list of revision differences both based on the referencePoints.
+        As a result, ChartPaneStatusView no longer inherits from ChartStatusView, and ChartStatusView has been
+        renamed to DashboardChartStatusView to reflect its purpose. Furthermore, ChartPane which used to rely on
+        ChartPaneStatusView's revisionCallback to update the commit log viewer simply uses another instance of
+        ChartRevisionRange, eliminating the need for the callback.
+
+        To implement these classes easily, this patch also introduces a new class, LazilyEvaluatedFunction to
+        memoize the return value of a function when called with the same arguments. Delaying the computation of
+        a value and avoiding the work when the values are the same is a very common pattern in the perf dashboard
+        so I expect this class would be used in a lot more places in the future.
+
+        * browser-tests/chart-revision-range-tests.js: Added. Tests for ChartRevisionRange.
+        * browser-tests/chart-status-evaluator-tests.js: Added. Tests for ChartStatusEvaluator.
+
+        * browser-tests/index.html:
+        (BrowsingContext):
+        (BrowsingContext.importScripts): Fixed the bug that calling importScripts twice results in MockRemoteAPI
+        being loaded twice.
+        (ChartTest.importChartScripts): Import more model objects.
+        (ChartTest.sampleCluster): Made this a getter.
+        (ChartTest.makeModelObjectsForSampleCluster):
+        (ChartTest.makeSampleCluster): Added. Cutomizes the valus of baseline / target based on options.
+        (ChartTest.respondWithSampleCluster): Now takes an options argument for makeSampleCluster.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase): Added _openRepository to keep track of the currently open repository instead of relying
+        on _mainChartStatus or _commitLogViewer to keep track of it.
+        (ChartPaneBase.prototype.configure):  The callback for when the user clicked on a repository name in
+        ChartPaneStatusView has been replaced by "openRepository" action.
+        (ChartPaneBase.prototype.setOpenRepository): Moved from ChartPane.
+        (ChartPaneBase.prototype._mainSelectionDidChange):
+        (ChartPaneBase.prototype._indicatorDidChange):
+        (ChartPaneBase.prototype._didFetchData):
+        (ChartPaneBase.prototype._updateCommitLogViewer): Renamed from _updateStatus.
+        (ChartPaneBase.prototype.openNewRepository): Renamed from _requestOpeningCommitViewer. Fixed a bug that
+        clicking on the repository name inside ChartPaneStatusView would not focus the pane, which resulted in
+        arrow keys to be ignored instead of moving the main chart's indicator or the currently open repository.
+        (ChartPaneBase.prototype._keyup):
+        (ChartPaneBase.prototype._moveOpenRepository): Moved from ChartPaneStatusView's
+        moveRepositoryWithNotification. Used when changing the open repository by up/down arrow keys.
+
+        * public/v3/components/chart-revision-range.js: Added. Extracted from ChartPaneStatusView.
+        (ChartRevisionRange): Added.
+        (ChartRevisionRange.prototype.revisionList): Added.
+        (ChartRevisionRange.prototype.rangeForRepository): Added.
+        (ChartRevisionRange._revisionForPoint): Added. Extracted from ChartPaneStatusView's
+        _updateRevisionListForNewCurrentRepository.
+        (ChartRevisionRange._computeRevisionList): Ditto from computeChartStatusLabels.
+
+        * public/v3/components/chart-status-evaluator.js: Added.
+        (ChartStatusEvaluator): Added.
+        (ChartStatusEvaluator.prototype.status): Added.
+        (ChartStatusEvaluator.computeChartStatus): Added. Extracted from ChartStatusView's updateStatusIfNeeded.
+
+        * public/v3/components/chart-status-view.js: Removed.
+        (ChartStatusView): Deleted. Split into ChartStatusEvaluator and DashboardChartStatusView.
+
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.baselineStyle): Make baseline data points interactive. This single line change is what
+        enables the user to interact with the data points. The rest of changes in this patch mostly deals with
+        the status text such as "5% worse than baseline" and the list of revisions shown in the commit log viewer
+        which would have shown the wrong range without these changes.
+
+        * public/v3/components/dashboard-chart-status-view.js: Added. Extracted from ChartStatusView.
+        (DashboardChartStatusView): Added.
+        (DashboardChartStatusView.prototype.render): Added.
+        (DashboardChartStatusView.htmlTemplate): Added.
+        (DashboardChartStatusView.cssTemplate): Added.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.referencePoints): Added. Return the first point and the last point
+        as the reference points when there is a selection. Only report the previous point if they are distinct as
+        showing a range of revisions from a data point to itself makes no sense. When there is a indicator simply
+        return it and its previous point as reference points. Otherwise return null unlike TimeSeriesChart's
+        referencePoints which always returns the latest point as the reference point.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype.referencePoints): Added. Return the latest point as the reference point. It
+        never returns the previous point even if there were more data points as there is no way for the user to
+        specify which data points to compare.
+
+        * public/v3/index.html: Include newly added files.
+
+        * public/v3/lazily-evaluated-function.js: Added.
+        (LazilyEvaluatedFunction): Added.
+        (LazilyEvaluatedFunction.prototype.evaluate): Added.
+
+        * public/v3/models/commit-log.js:
+        (CommitLog.prototype.diff): Fixed a bug that computing the diff of two Subversion-like revisions results
+        in "from" field to be unexpectedly an integer instead of a string.
+
+        * public/v3/models/metric.js:
+        (Metric): Moved the code to compute the unit from the metric name from v2's RunsData class. This makes
+        writing tests easier since it eliminates the need to load v2's data.js.
+        (Metric.prototype.unit):
+        (Metric.prototype.isSmallerBetter): Ditto for determining whether the unit is smaller-is-better.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskChartPane.prototype._updateStatus): Deleted the unused code.
+
+        * public/v3/pages/chart-pane-status-view.js:
+        (ChartPaneStatusView): No longer inherits from ChartStatusView. Uses ChartStatusEvaluator and
+        ChartRevisionRange to to compute the chart status and the list of revision changes.
+        (ChartPaneStatusView.prototype.pointsRangeForAnalysis): Deleted.
+        (ChartPaneStatusView.prototype.render): Split it into _renderStatus and _renderBuildRevisionTable using
+        LazilyEvaluatedFunction.
+        (ChartPaneStatusView.prototype._renderStatus): Added.
+        (ChartPaneStatusView.prototype._renderBuildRevisionTable): Added.
+        (ChartPaneStatusView.prototype.setCurrentRepository): _updateRevisionListForNewCurrentRepository has been
+        moved into ChartRevisionRange. Just enqueue itself to re-render.
+        (ChartPaneStatusView.prototype._setRevisionRange): Deleted.
+        (ChartPaneStatusView.prototype.moveRepositoryWithNotification): Deleted.
+        (ChartPaneStatusView.prototype.updateRevisionList): Deleted.
+        (ChartPaneStatusView.prototype._updateRevisionListForNewCurrentRepository): Deleted.
+        (ChartPaneStatusView.prototype.computeChartStatusLabels): Deleted.
+        (ChartPaneStatusView.htmlTemplate):
+        (ChartPaneStatusView.cssTemplate):
+
+        * public/v3/pages/chart-pane.js:
+        (ChartPane.prototype.openNewRepository): Overrides the one in ChartPaneBase, which has been renamed from
+        _requestOpeningCommitViewer.
+        (ChartPane.prototype._analyzeRange):
+        (ChartPane.prototype._renderActionToolbar): Use the main chart's selection directly to determine whether
+        an analysis task can be created for the currenty selected range.
+
+        * public/v3/pages/dashboard-page.js:
+        (DashboardPage.prototype._createChartForCell):
+
+        * unit-tests/lazily-evaluated-function-tests.js: Added. Tests for LazilyEvaluatedFunction.
+
+2017-03-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix after r212853. Make creating an analysis task work again.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.render):
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Fix tests after r213119 and r213120.
+
+        * browser-tests/time-series-chart-tests.js:
+        (return.ChartTest.importChartScripts.context.then):
+        (string_appeared_here.then): Deleted.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Removed the unused code that was supposed to be removed in the previous commit.
+
+        * browser-tests/time-series-chart-tests.js:
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Split tests for InteractiveTimeSeriesChart into a separate test file.
+        https://bugs.webkit.org/show_bug.cgi?id=168960
+
+        Reviewed by Joseph Pecoraro.
+
+        Extracted the test cases for InteractiveTimeSeriesChart charts from time-series-chart-tests.js
+        into interactive-time-series-chart-tests.js now that the former file has gotten really big over time.
+
+        Also extracted a bunch of helper functions time-series-chart-tests.js as ChartTest in index.html.
+        Any test which instantiates a time series chart can use this helper class.
+
+        * browser-tests/index.html:
+        (ChartTest.importChartScripts): Ditto.
+        (ChartTest.posixTime): Moved from time-series-chart-tests.js.
+        (ChartTest.sampleCluster): Ditto.
+        (ChartTest.createChartWithSampleCluster): Ditto.
+        (ChartTest.createInteractiveChartWithSampleCluster): Ditto.
+        (ChartTest.respondWithSampleCluster):
+        * browser-tests/interactive-time-series-chart-tests.js: Extracted from time-series-chart-tests.js.
+        * browser-tests/time-series-chart-tests.js:
+        (posixTime): Moved.
+        (dayInMilliseconds): Moved.
+        (sampleCluster): Moved.
+        (createChartWithSampleCluster): Moved.
+        (createInteractiveChartWithSampleCluster): Moved.
+        (respondWithSampleCluster): Moved.
+        * unit-tests/analysis-task-tests.js: Fixed a typo. s/adopter/adapter/.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Calling build() on a baseline point results in an exception
+        https://bugs.webkit.org/show_bug.cgi?id=168959
+
+        Reviewed by Joseph Pecoraro.
+
+        Some baseline points may lack the build information. e.g. A custom data point made by an user.
+        Only instantiate Build object in a point object returned by MeasurementAdaptor when the builder id
+        is available so that we don't hit an assertion inside Build's constructor.
+
+        * public/v3/models/measurement-adaptor.js:
+        (MeasurementAdaptor.prototype.applyTo..build): Only instantiate Build when builderId is set.
+        * unit-tests/measurement-adaptor-tests.js: Added a test case.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Arrow key shouldn't move the indicator beyond the visible points
+        https://bugs.webkit.org/show_bug.cgi?id=168956
+
+        Reviewed by Joseph Pecoraro.
+
+        The bug was caused by moveLockedIndicatorWithNotification using the full sampled time series view
+        instead of the one constrained by the domain. Since the time series chart expands the visible domain
+        to include at least one point before the start time and one point after the end tiem to draw lines
+        extending beyond the visible region (otherwise it looks as though the graph ends there), we need to
+        use a view constrained by the start time and the end time before looking for a next/previous point.
+
+        * browser-tests/time-series-chart-tests.js: Added test cases for moveLockedIndicatorWithNotification.
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.moveLockedIndicatorWithNotification): Fixed the bug. Also
+        enqueue itself to render instead of relying on a parent component to do it.
+
+2017-02-27  Ryosuke Niwa  <rniwa@webkit.org>
+
+        A Locked indicator should be visually distinct from an unlocked indicator
+        https://bugs.webkit.org/show_bug.cgi?id=168868
+        <rdar://problem/29666054>
+
+        Reviewed by Antti Koivisto.
+
+        Added the support for specifying options.lockedIndicator in addition to options.indicator to style
+        an locked indicator differently from an unlocked one.
+
+        * browser-tests/time-series-chart-tests.js: Added new test cases for indicators.
+        (createChartWithSampleCluster): Renamed and swapped the order of arguments to better match
+        TimeSeriesChart's constructor. Now the second argument is an array of source as is in the constructor.
+        (createInteractiveChartWithSampleCluster): Added.
+
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.overviewChartOptions): Changed the color of a selection to blue.
+        (ChartStyles.mainChartOptions): Ditto. Also use a different style for a locked indicator.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._layout): Removed the unused variable.
+        (InteractiveTimeSeriesChart.prototype._renderChartContent): Use options.lockedIndicator when rendering
+        a locked indicator. Also stroke the circle in addition to filling it so that we can use a blue circle
+        with a white hole for a locked indicator to make it even more visually distinctive from an unlocked one.
+
+2017-02-25  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Commit should order by 'commit_order' as secondary key.
+        https://bugs.webkit.org/show_bug.cgi?id=168866
+
+        Reviewed by Ryosuke Niwa.
+
+        Currently, commits are sorted by 'commit_time' only.
+        We should use 'commit_order' as secondary key when 'commit_time' is equal or null.
+
+        * public/include/commit-log-fetcher.php:
+        * public/include/db.php:
+        * server-tests/api-commits.js:
+        (return.addSlaveForReport.subversionCommits.then):
+        (then):
+
+2017-02-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r212853): Comparisons to baseline no longer shows up
+        https://bugs.webkit.org/show_bug.cgi?id=168863
+
+        Reviewed by Joseph Pecoraro.
+
+        The bug was caused by ChartStatusView's code not being updated to use TimeSeriesView's.
+        Updated the code to use TimeSeriesView's methods to fix the bug.
+
+        Also made InteractiveTimeSeriesChart's currentPoint to return a (TimeSeriesView, point, isLocked) tuple
+        to consolidate it with lockedIndicator() to work towards making the baseline data points selectable.
+
+        * browser-tests/time-series-chart-tests.js: Updated the test cases to use currentIndicator, and added
+        test cases for newly added lastPointInTimeRange.
+
+        * public/v3/components/chart-pane.js:
+        (ChartPane.prototype.serializeState): Updated to use currentIndicator.
+        (ChartPane.prototype._renderFilteringPopover): Ditto.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Use currentIndicator for an interative time series.
+        Fixed the non-interactive chart's code path for TimeSeriesView.
+        (ChartStatusView.prototype._computeChartStatus): Modernized the code.
+        (ChartStatusView.prototype._findLastPointPriorToTime): Deleted. Replaced by TimeSeriesView's
+        lastPointInTimeRange.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.currentIndicator):
+        (InteractiveTimeSeriesChart.prototype.moveLockedIndicatorWithNotification):
+        (InteractiveTimeSeriesChart.prototype._renderChartContent):
+        (InteractiveTimeSeriesChart):
+
+        * public/v3/models/time-series.js:
+        (TimeSeriesView.prototype.lastPointInTimeRange): Added.
+        (TimeSeriesView.prototype._reverse): Added. Traverses the view in the reverse order.
+        * unit-tests/time-series-tests.js:
+
+2017-02-23  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Rename 'commit_parent' in 'commits' table to 'commit_previous_commit'.
+        https://bugs.webkit.org/show_bug.cgi?id=168816
+
+        Reviewed by Ryosuke Niwa.
+
+        Rename 'commit_parent' to avoid ambiguity in the coming feature.
+        For exisiting database, run
+            "ALTER TABLE commits RENAME commit_parent TO commit_previous_commit;"
+        to update the database.
+
+        * init-database.sql:
+        * public/api/report-commits.php:
+        * public/include/commit-log-fetcher.php:
+        * server-tests/api-commits.js:
+        (then):
+        * server-tests/api-report-commits-tests.js:
+        (then):
+        * tools/sync-commits.py:
+        (main):
+        (Repository.fetch_commits_and_submit):
+        (GitRepository._revision_from_tokens):
+        * unit-tests/analysis-task-tests.js:
+        (sampleAnalysisTask):
+
+2017-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        New sampling algorithm shows very few points when zoomed out
+        https://bugs.webkit.org/show_bug.cgi?id=168813
+
+        Reviewed by Saam Barati.
+
+        When a chart is zoomed out to a large time interval, the new sampling algorithm introduced in r212853 can
+        hide most of the data points because the difference between the preceding point's time and the succeeding
+        point's time of most points will be below the threshold we computed.
+
+        Instead, rank each data point based on the aforementioned time interval difference, and pick the first M data
+        points when M data points are to be shown.
+
+        This makes the new algorithm behave like our old algorithm while keeping it stable still. Note that this
+        algorithm still biases data points without a close neighboring point but this seems to work out in practice
+        because such a point tends to be an important sample anyway, and we don't have a lot of space between
+        data points since we aim to show about one point per pixel.
+
+        * browser-tests/index.html:
+        (CanvasTest.canvasContainsColor): Extracted from one of the test cases and generalized. Returns true when
+        the specified region of the canvas contains a specified color (alpha is optional).
+        * browser-tests/time-series-chart-tests.js: Added a test case for sampling. It checks that sampling happens
+        and that we always show some data point even when zoomed out to a large time interval.
+        (createChartWithSampleCluster):
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype._sampleTimeSeries):
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype._ensureSampledTimeSeries): M, the number of data points we pick must be computed
+        based on the width of data points we're about to draw constrained by the canvas size. e.g. when the canvas
+        is only half filled, we shouldn't be showing two points per pixel in the filled region.
+        (TimeSeriesChart.prototype._sampleTimeSeries): Refined the algorithm. First, compute the time difference or
+        the rank for each N data points. Sort those ranks in descending order (in the order we prefer), and include
+        all data points above the M-th rank in the sample.
+        (TimeSeriesChart.prototype.computeTimeGrid): Revert the inadvertent change in r212935.
+
+        * public/v3/models/time-series.js:
+        (TimeSeriesView.prototype.filter): Fixed a bug that the indices passed onto the callback were shifted by the
+        starting index.
+        * unit-tests/time-series-tests.js: Added a test case to ensure callbacks are called with correct data points
+        and indices.
+
+2017-02-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r212542): Make TimeSeriesChart.computeTimeGrid stops x-axis grid prematurely
+        https://bugs.webkit.org/show_bug.cgi?id=168812
+
+        Reviewed by Joseph Pecoraro.
+
+        Add time iterator of two months, three months, and four months with some tests.
+
+        Also for one-month time iterator, round the day of month to 1 or 15 whichever is closer.
+
+        * browser-tests/time-series-chart-tests.js: Added more tests.
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart._timeIterators.next):
+        (TimeSeriesChart._timeIterators):
+
+2017-02-22  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add tests for InteractiveTimeSeriesChart and adopt actions
+        https://bugs.webkit.org/show_bug.cgi?id=168750
+
+        Reviewed by Chris Dumez.
+
+        Added tests for InteractiveTimeSeriesChart.
+
+        Also replaced selection.onchange, selection.onzoom, indicator.onchange, annotations.onclick callbacks
+        by "selectionChange", "zoom", "indicatorChange", and "annotationClick" actions respectively.
+
+        Also fixed various bugs and bad code I encountered while writing these tests.
+
+        * browser-tests/index.html:
+        (waitForComponentsToRender): Delay the call to enqueueToRender until the next run loop because there
+        might be outstanding promises that just got resolved. e.g. for fetching measurement sets JSONs. Let
+        all those promises get resolved first. Otherwise, some tests become racy.
+        (canvasImageData): Extracted from time-series-chart-tests.js.
+        (canvasRefTest): Ditto.
+        (CanvasTest): Ditto.
+        (CanvasTest.fillCanvasBeforeRedrawCheck): Ditto.
+        (CanvasTest.hasCanvasBeenRedrawn): Ditto.
+        (CanvasTest.canvasImageData): Ditto.
+        (CanvasTest.expectCanvasesMatch): Ditto.
+        (CanvasTest.expectCanvasesMismatch): Ditto.
+
+        * browser-tests/time-series-chart-tests.js: Fixed some test cases where dpr multipler was not doing
+        the right thing anymore in Safari under a high DPI screen. Also added a lot of test cases for interactive
+        time series chart and one for rendering annotations.
+        (scripts): Moved.
+        (posixTime): Added. A helper function for sampleCluster.
+        (dayInMilliseconds): Ditto.
+        (sampleCluster): Moved here. Made the same cluster more artifical for an easier testing.
+        (createChartWithSampleCluster): Moved out of one of the tests.
+        (respondWithSampleCluster): Ditto.
+
+        * public/v3/components/chart-pane-base.js:
+        (ChartPaneBase.prototype.configure): Adopted new actions in InteractiveTimeSeriesChart.
+
+        * public/v3/components/chart-status-view.js:
+        (ChartStatusView.prototype.updateStatusIfNeeded): Removed a superflous console.log.
+
+        * public/v3/components/chart-styles.js:
+        (ChartStyles.mainChartOptions): Set zoomButton to true. InteractiveTimeSeriesChart used to determine
+        whether to show the zoom button or not based on the precense of the zoom callback. We made it explicit.
+
+        * public/v3/components/interactive-time-series-chart.js:
+        (InteractiveTimeSeriesChart.prototype.setIndicator): Explicitly call _notifySelectionChanged with false
+        instead of relying on undefined to be treated as falsey.
+        (InteractiveTimeSeriesChart.prototype._createCanvas): Use id instead of selector to find elements.
+        (InteractiveTimeSeriesChart.htmlTemplate):
+        (InteractiveTimeSeriesChart.cssTemplate):
+        (InteractiveTimeSeriesChart.prototype._mouseMove): Explicitly call _startOrContinueDragging with false
+        instead of relying on undefined treated as falsey. Also added the missing call to enqueueToRender found
+        by new tests. This was working fine on the dashboard due to other components invoking enqueueToRender
+        but won't work in a standalone instance of InteractiveTimeSeriesChart.
+        (InteractiveTimeSeriesChart.prototype._mouseLeave): Ditto, adding the missing call to enqueueToRender.
+        (InteractiveTimeSeriesChart.prototype._click): Removed the assignment to _forceRender when calling
+        _mouseMove in an early exist, which does set this flag and invokes enqueueToRender, and added the missing
+        call to enqueueToRender in the other code path.
+        (InteractiveTimeSeriesChart.prototype._startOrContinueDragging): Replaced annotations.onclick callback
+        by the newly added "annotationClick" action, and added the missing call to enqueueToRender.
+        (InteractiveTimeSeriesChart.prototype._endDragging): Use arrow function.
+        (InteractiveTimeSeriesChart.prototype._notifyIndicatorChanged): Replaced indicator.onchange callback by
+        the newly added "indicatorChange" action.
+        (InteractiveTimeSeriesChart.prototype._notifySelectionChanged): Replaced selection.onchange callback by
+        the newly added "selectionChange" action.
+        (InteractiveTimeSeriesChart.prototype._renderChartContent): Show the zoom button when options.zoomButton
+        is set instead of relying on the presence of selection.onzoom especially now that the callback has been
+        replaced by the "zoom" action.
+
+        * public/v3/components/time-series-chart.js:
+        (TimeSeriesChart.prototype.setAnnotations): Added the missing call to enqueueToRender.
+
+        * public/v3/main.js:
+
 2017-02-21  Ryosuke Niwa  <rniwa@webkit.org>
 
         Make sampling algorithm more stable and introduce an abstraction for sampled data

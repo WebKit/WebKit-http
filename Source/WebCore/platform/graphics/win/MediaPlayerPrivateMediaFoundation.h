@@ -24,12 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaPlayerPrivateMediaFoundation_h
-#define MediaPlayerPrivateMediaFoundation_h
+#pragma once
 
 #include "COMPtr.h"
 #include "MediaPlayerPrivate.h"
-#include "Win32Handle.h"
 
 #include <D3D9.h>
 #include <Dxva2api.h>
@@ -44,6 +42,7 @@
 #include <wtf/Lock.h>
 #include <wtf/ThreadingPrimitives.h>
 #include <wtf/WeakPtr.h>
+#include <wtf/win/Win32Handle.h>
 
 namespace WebCore {
 
@@ -246,9 +245,9 @@ private:
         Direct3DPresenter* m_presenter { nullptr };
 
         DWORD m_threadID { 0 };
-        Win32Handle m_schedulerThread;
-        Win32Handle m_threadReadyEvent;
-        Win32Handle m_flushEvent;
+        WTF::Win32Handle m_schedulerThread;
+        WTF::Win32Handle m_threadReadyEvent;
+        WTF::Win32Handle m_flushEvent;
 
         float m_playbackRate { 1.0f };
         MFTIME m_frameDuration { 0 };
@@ -483,5 +482,3 @@ private:
 };
 
 }
-
-#endif

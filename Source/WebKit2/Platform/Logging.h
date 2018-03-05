@@ -63,6 +63,7 @@ extern "C" {
     M(ProcessSuspension) \
     M(RemoteLayerTree) \
     M(Resize) \
+    M(ResourceLoadStatistics) \
     M(Selection) \
     M(SessionState) \
     M(StorageAPI) \
@@ -71,6 +72,7 @@ extern "C" {
     M(ViewState) \
     M(VirtualMemory) \
     M(VisibleRects) \
+    M(WebRTC) \
 
 WEBKIT2_LOG_CHANNELS(DECLARE_LOG_CHANNEL)
 

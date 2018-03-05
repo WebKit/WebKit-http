@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -966,6 +966,14 @@ private:
             setPrediction(SpecString);
             break;
         }
+        case ParseInt: {
+            // We expect this node to almost always produce an int32. However,
+            // it's possible it produces NaN or integers out of int32 range. We
+            // rely on the heap prediction since the parseInt() call profiled
+            // its result.
+            setPrediction(m_currentNode->getHeapPrediction());
+            break;
+        }
 
         case GetLocal:
         case SetLocal:
@@ -1093,7 +1101,7 @@ private:
         case Phantom:
         case Check:
         case PutGlobalVariable:
-        case CheckWatchdogTimer:
+        case CheckTraps:
         case LogShadowChickenPrologue:
         case LogShadowChickenTail:
         case Unreachable:

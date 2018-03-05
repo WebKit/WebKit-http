@@ -743,7 +743,6 @@ void dump()
 
 fail:
     // This will exit from our message loop.
-    ::PostQuitMessage(0);
     done = true;
 }
 
@@ -774,12 +773,15 @@ static void enableExperimentalFeatures(IWebPreferences* preferences)
     // FIXME: CSSGridLayout
     // FIXME: SpringTimingFunction
     // FIXME: Gamepads
+    prefsPrivate4->setLinkPreloadEnabled(TRUE);
     // FIXME: ModernMediaControls
     // FIXME: InputEvents
+    prefsPrivate4->setResourceTimingEnabled(TRUE);
     // FIXME: SubtleCrypto
     prefsPrivate4->setUserTimingEnabled(TRUE);
     prefsPrivate4->setWebAnimationsEnabled(TRUE);
     // FIXME: WebGL2
+    // FIXME: WebRTC
 }
 
 static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
@@ -878,8 +880,6 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate4->setShadowDOMEnabled(TRUE);
     prefsPrivate4->setCustomElementsEnabled(TRUE);
     prefsPrivate4->setModernMediaControlsEnabled(FALSE);
-    prefsPrivate4->setResourceTimingEnabled(TRUE);
-    prefsPrivate4->setLinkPreloadEnabled(TRUE);
 
     setAlwaysAcceptCookies(false);
 }
@@ -1210,7 +1210,7 @@ static void runTest(const string& inputLine)
     request->setHTTPMethod(methodBStr);
     frame->loadRequest(request.get());
 
-    while (true) {
+    while (!done) {
 #if USE(CF)
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, true);
 #endif

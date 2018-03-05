@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StringUtilities_h
-#define StringUtilities_h
+#pragma once
 
 #import <WebKit/WKDeclarationSpecifiers.h>
 #import <wtf/Forward.h>
@@ -40,8 +39,4 @@ NSString *formattedPhoneNumberString(NSString *originalPhoneNumber);
 
 #endif // defined(__OBJC__)
 
-WK_EXPORT bool stringMatchesWildcardString(const String& stringToBeMatched, const String& wildcardString);
-
 }
-
-#endif // StringUtilities_h

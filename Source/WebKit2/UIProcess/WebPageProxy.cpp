@@ -715,7 +715,7 @@ void WebPageProxy::reattachToWebProcess()
     m_process->removeWebPage(m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
-    m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit();
+    m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.ptr());
 
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
     if (m_process->state() == ChildProcessProxy::State::Running)
@@ -2154,10 +2154,8 @@ void WebPageProxy::handleTouchEventSynchronously(NativeWebTouchEvent& event)
     if (!isValid())
         return;
 
-    if (event.type() == WebEvent::TouchStart) {
+    if (event.type() == WebEvent::TouchStart)
         updateTouchEventTracking(event);
-        m_layerTreeTransactionIdAtLastTouchStart = downcast<RemoteLayerTreeDrawingAreaProxy>(*drawingArea()).lastCommittedLayerTreeTransactionID();
-    }
 
     TrackingType touchEventsTrackingType = touchEventTrackingType(event);
     if (touchEventsTrackingType == TrackingType::NotTracking)
@@ -4656,6 +4654,11 @@ void WebPageProxy::contextMenuItemSelected(const WebContextMenuItemData& item)
 
     m_process->send(Messages::WebPage::DidSelectItemFromActiveContextMenu(item), m_pageID);
 }
+
+void WebPageProxy::handleContextMenuKeyEvent()
+{
+    m_process->send(Messages::WebPage::ContextMenuForKeyEvent(), m_pageID);
+}
 #endif // ENABLE(CONTEXT_MENUS)
 
 #if PLATFORM(IOS)
@@ -5401,7 +5404,6 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     m_dynamicViewportSizeUpdateWaitingForTarget = false;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
     m_dynamicViewportSizeUpdateLayerTreeTransactionID = 0;
-    m_layerTreeTransactionIdAtLastTouchStart = 0;
     m_hasNetworkRequestsOnSuspended = false;
     m_isKeyboardAnimatingIn = false;
     m_isScrollingOrZooming = false;
@@ -5569,11 +5571,9 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.overrideContentSecurityPolicy = m_overrideContentSecurityPolicy;
 
 #if ENABLE(WEB_RTC)
-    // FIXME: We should tie ICE filtering with getUserMedia permission.
-    parameters.disableICECandidateFiltering = true;
+    parameters.iceCandidateFilteringEnabled = m_preferences->iceCandidateFilteringEnabled();
 #if USE(LIBWEBRTC)
-    // FIXME: Turn down network interface enumeration by default.
-    parameters.enableEnumeratingAllNetworkInterfaces = true;
+    parameters.enumeratingAllNetworkInterfacesEnabled = m_preferences->enumeratingAllNetworkInterfacesEnabled();
 #endif
 #endif
 
@@ -6528,9 +6528,9 @@ void WebPageProxy::focusedContentMediaElementDidChange(uint64_t elementID)
 }
 #endif
 
-void WebPageProxy::didPlayMediaPreventedFromPlayingWithoutUserGesture()
+void WebPageProxy::handleAutoplayEvent(uint32_t event)
 {
-    m_uiClient->didPlayMediaPreventedFromPlayingWithoutUserGesture(*this);
+    m_uiClient->handleAutoplayEvent(*this, static_cast<AutoplayEvent>(event));
 }
 
 #if PLATFORM(MAC)

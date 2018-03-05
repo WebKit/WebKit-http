@@ -62,6 +62,7 @@
 #include "WebProcessLifetimeTracker.h"
 #include "WebsitePolicies.h"
 #include <WebCore/ActivityState.h>
+#include <WebCore/AutoplayEvent.h>
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
 #include <WebCore/EventTrackingRegions.h>
@@ -896,6 +897,7 @@ public:
 #if ENABLE(CONTEXT_MENUS)
     // Called by the WebContextMenuProxy.
     void contextMenuItemSelected(const WebContextMenuItemData&);
+    void handleContextMenuKeyEvent();
 #endif
 
     // Called by the WebOpenPanelResultListenerProxy.
@@ -989,10 +991,10 @@ public:
     void willStartUserTriggeredZooming();
 
     void potentialTapAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
-    void commitPotentialTap();
+    void commitPotentialTap(uint64_t layerTreeTransactionIdAtLastTouchStart);
     void cancelPotentialTap();
     void tapHighlightAtPosition(const WebCore::FloatPoint&, uint64_t& requestID);
-    void handleTap(const WebCore::FloatPoint&);
+    void handleTap(const WebCore::FloatPoint&, uint64_t layerTreeTransactionIdAtLastTouchStart);
 
     void inspectorNodeSearchMovedToPosition(const WebCore::FloatPoint&);
     void inspectorNodeSearchEndedAtPosition(const WebCore::FloatPoint&);
@@ -1062,7 +1064,7 @@ public:
     bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
     bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
-    void didPlayMediaPreventedFromPlayingWithoutUserGesture();
+    void handleAutoplayEvent(uint32_t);
 
 #if PLATFORM(MAC)
     void videoControlsManagerDidChange();
@@ -1663,7 +1665,6 @@ private:
     bool m_dynamicViewportSizeUpdateWaitingForTarget { false };
     bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit { false };
     uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID { 0 };
-    uint64_t m_layerTreeTransactionIdAtLastTouchStart { 0 };
     uint64_t m_currentDynamicViewportSizeUpdateID { 0 };
     bool m_hasNetworkRequestsOnSuspended { false };
     bool m_isKeyboardAnimatingIn { false };

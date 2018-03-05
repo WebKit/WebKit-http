@@ -21,15 +21,14 @@
 
 #pragma once
 
+#include "PlatformThread.h"
 #include "RegisterState.h"
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ScopedLambda.h>
 #include <wtf/ThreadSpecific.h>
 
-#if OS(DARWIN)
-#include <mach/thread_act.h>
-#elif OS(HAIKU)
+#if OS(HAIKU)
 #include <OS.h>
 #endif
 
@@ -44,16 +43,6 @@
 #include <ucontext.h>
 #endif
 #endif
-
-#if OS(DARWIN)
-typedef mach_port_t PlatformThread;
-#elif OS(WINDOWS)
-typedef DWORD PlatformThread;
-#elif OS(HAIKU)
-typedef thread_id PlatformThread;
-#elif USE(PTHREADS)
-typedef pthread_t PlatformThread;
-#endif // OS(DARWIN)
 
 namespace JSC {
 
@@ -71,7 +60,7 @@ struct CurrentThreadState {
 class MachineThreads {
     WTF_MAKE_NONCOPYABLE(MachineThreads);
 public:
-    MachineThreads(Heap*);
+    MachineThreads();
     ~MachineThreads();
 
     void gatherConservativeRoots(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, CurrentThreadState*);
@@ -169,9 +158,6 @@ private:
     Lock m_registeredThreadsMutex;
     Thread* m_registeredThreads;
     WTF::ThreadSpecificKey m_threadSpecificForMachineThreads;
-#if !ASSERT_DISABLED
-    Heap* m_heap;
-#endif
 };
 
 #define DECLARE_AND_COMPUTE_CURRENT_THREAD_STATE(stateName) \

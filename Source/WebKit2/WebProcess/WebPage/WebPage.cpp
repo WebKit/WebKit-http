@@ -553,10 +553,10 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #endif
 
 #if ENABLE(WEB_RTC)
-    if (parameters.disableICECandidateFiltering)
+    if (!parameters.iceCandidateFilteringEnabled)
         disableICECandidateFiltering();
 #if USE(LIBWEBRTC)
-    if (parameters.enableEnumeratingAllNetworkInterfaces)
+    if (parameters.enumeratingAllNetworkInterfacesEnabled)
         enableEnumeratingAllNetworkInterfaces();
 #endif
 #endif
@@ -2200,6 +2200,16 @@ static bool handleContextMenuEvent(const PlatformMouseEvent& platformMouseEvent,
         page->contextMenu()->show();
 
     return handled;
+}
+
+void WebPage::contextMenuForKeyEvent()
+{
+    corePage()->contextMenuController().clearContextMenu();
+
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    bool handled = frame.eventHandler().sendContextMenuEventForKey();
+    if (handled)
+        contextMenu()->show();
 }
 #endif
 

@@ -110,6 +110,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirValidate.cpp
 
     b3/B3ArgumentRegValue.cpp
+    b3/B3Bank.cpp
     b3/B3BasicBlock.cpp
     b3/B3BlockInsertionSet.cpp
     b3/B3BreakCriticalEdges.cpp
@@ -178,6 +179,7 @@ set(JavaScriptCore_SOURCES
     b3/B3VariableValue.cpp
     b3/B3WasmAddressValue.cpp
     b3/B3WasmBoundsCheckValue.cpp
+    b3/B3Width.cpp
 
     bindings/ScriptFunctionCall.cpp
     bindings/ScriptObject.cpp
@@ -192,6 +194,7 @@ set(JavaScriptCore_SOURCES
     bytecode/ArrayAllocationProfile.cpp
     bytecode/ArrayProfile.cpp
     bytecode/BytecodeBasicBlock.cpp
+    bytecode/BytecodeDumper.cpp
     bytecode/BytecodeGeneratorification.cpp
     bytecode/BytecodeIntrinsicRegistry.cpp
     bytecode/BytecodeLivenessAnalysis.cpp
@@ -688,6 +691,7 @@ set(JavaScriptCore_SOURCES
     runtime/CommonSlowPathsExceptions.cpp
     runtime/CompilationResult.cpp
     runtime/Completion.cpp
+    runtime/ConfigFile.cpp
     runtime/ConsoleClient.cpp
     runtime/ConsoleObject.cpp
     runtime/ConstantMode.cpp
@@ -902,6 +906,7 @@ set(JavaScriptCore_SOURCES
     runtime/TypeofType.cpp
     runtime/VM.cpp
     runtime/VMEntryScope.cpp
+    runtime/VMTraps.cpp
     runtime/VarOffset.cpp
     runtime/Watchdog.cpp
     runtime/WeakMapConstructor.cpp

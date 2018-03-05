@@ -63,7 +63,6 @@
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
-#include "MemoryPressureHandler.h"
 #include "OverflowEvent.h"
 #include "Page.h"
 #include "PageCache.h"
@@ -98,6 +97,7 @@
 #include "WheelEventTestTrigger.h"
 
 #include <wtf/CurrentTime.h>
+#include <wtf/MemoryPressureHandler.h>
 #include <wtf/Ref.h>
 #include <wtf/SetForScope.h>
 #include <wtf/SystemTracing.h>
@@ -2563,8 +2563,12 @@ void FrameView::updateScriptedAnimationsAndTimersThrottlingState(const IntRect& 
     // We don't throttle zero-size or display:none frames because those are usually utility frames.
     bool shouldThrottle = visibleRect.isEmpty() && !m_size.isEmpty() && frame().ownerRenderer();
 
-    if (auto* scriptedAnimationController = document->scriptedAnimationController())
-        scriptedAnimationController->setThrottled(shouldThrottle);
+    if (auto* scriptedAnimationController = document->scriptedAnimationController()) {
+        if (shouldThrottle)
+            scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
+        else
+            scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::OutsideViewport);
+    }
 
     document->setTimerThrottlingEnabled(shouldThrottle);
 }

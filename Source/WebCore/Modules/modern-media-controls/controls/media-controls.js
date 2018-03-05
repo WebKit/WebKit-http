@@ -31,6 +31,7 @@ class MediaControls extends LayoutNode
         super(`<div class="media-controls"></div>`);
 
         this._scaleFactor = 1;
+        this._shouldCenterControlsVertically = false;
 
         this.width = width;
         this.height = height;
@@ -57,6 +58,20 @@ class MediaControls extends LayoutNode
     }
 
     // Public
+
+    get layoutTraits()
+    {
+        return this._layoutTraits;
+    }
+
+    set layoutTraits(layoutTraits)
+    {
+        if (this._layoutTraits === layoutTraits)
+            return;
+
+        this._layoutTraits = layoutTraits;
+        this.layoutTraitsDidChange();
+    }
 
     get showsStartButton()
     {
@@ -96,6 +111,20 @@ class MediaControls extends LayoutNode
         this.markDirtyProperty("scaleFactor");
     }
 
+    get shouldCenterControlsVertically()
+    {
+        return this._shouldCenterControlsVertically;
+    }
+
+    set shouldCenterControlsVertically(flag)
+    {
+        if (this._shouldCenterControlsVertically === flag)
+            return;
+
+        this._shouldCenterControlsVertically = flag;
+        this.markDirtyProperty("scaleFactor");
+    }
+
     get showsPlacard()
     {
         return this.children[0] instanceof Placard;
@@ -126,13 +155,22 @@ class MediaControls extends LayoutNode
 
     commitProperty(propertyName)
     {
-        if (propertyName === "scaleFactor")
-            this.element.style.zoom = 1 / this._scaleFactor;
-        else
+        if (propertyName === "scaleFactor") {
+            const zoom = 1 / this._scaleFactor;
+            // We want to maintain the controls at a constant device height.
+            this.element.style.zoom = zoom;
+            // We also want to optionally center them vertically compared to their container.
+            this.element.style.top = this._shouldCenterControlsVertically ? `${(this.height / 2) * (zoom - 1)}px` : "auto"; 
+        } else
             super.commitProperty(propertyName);
     }
 
     controlsBarVisibilityDidChange(controlsBar)
+    {
+        // Implemented by subclasses as needed.
+    }
+
+    layoutTraitsDidChange()
     {
         // Implemented by subclasses as needed.
     }

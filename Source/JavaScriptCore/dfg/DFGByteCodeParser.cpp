@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -2358,6 +2358,27 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         default:
             return false;
         }
+    }
+
+    case ParseIntIntrinsic: {
+        if (argumentCountIncludingThis < 2)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell) || m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        VirtualRegister valueOperand = virtualRegisterForArgument(1, registerOffset);
+        Node* parseInt;
+        if (argumentCountIncludingThis == 2)
+            parseInt = addToGraph(ParseInt, OpInfo(), OpInfo(prediction), get(valueOperand));
+        else {
+            ASSERT(argumentCountIncludingThis > 2);
+            VirtualRegister radixOperand = virtualRegisterForArgument(2, registerOffset);
+            parseInt = addToGraph(ParseInt, OpInfo(), OpInfo(prediction), get(valueOperand), get(radixOperand));
+        }
+        set(VirtualRegister(resultOperand), parseInt);
+        return true;
     }
 
     case CharCodeAtIntrinsic: {
@@ -5362,9 +5383,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_loop_hint);
         }
         
-        case op_watchdog: {
-            addToGraph(CheckWatchdogTimer);
-            NEXT_OPCODE(op_watchdog); 
+        case op_check_traps: {
+            addToGraph(CheckTraps);
+            NEXT_OPCODE(op_check_traps);
         }
             
         case op_create_lexical_environment: {

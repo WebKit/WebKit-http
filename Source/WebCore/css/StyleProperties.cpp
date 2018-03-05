@@ -187,6 +187,8 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(gridColumnShorthand());
     case CSSPropertyGridRow:
         return getShorthandValue(gridRowShorthand());
+    case CSSPropertyPlaceContent:
+        return getShorthandValue(placeContentShorthand());
     case CSSPropertyFont:
         return fontValue();
     case CSSPropertyMargin:
@@ -280,6 +282,7 @@ void StyleProperties::appendFontLonghandValueIfExplicit(CSSPropertyID propertyID
     case CSSPropertyFontFamily:
     case CSSPropertyFontVariantCaps:
     case CSSPropertyFontWeight:
+    case CSSPropertyFontStretch:
         prefix = ' ';
         break;
     case CSSPropertyLineHeight:
@@ -314,6 +317,7 @@ String StyleProperties::fontValue() const
     appendFontLonghandValueIfExplicit(CSSPropertyFontStyle, result, commonValue);
     appendFontLonghandValueIfExplicit(CSSPropertyFontVariantCaps, result, commonValue);
     appendFontLonghandValueIfExplicit(CSSPropertyFontWeight, result, commonValue);
+    appendFontLonghandValueIfExplicit(CSSPropertyFontStretch, result, commonValue);
     if (!result.isEmpty())
         result.append(' ');
     result.append(fontSizeProperty.value()->cssText());

@@ -23,16 +23,17 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(DATA_INTERACTION)
+#if 0
 
 #import "TestWKWebView.h"
 #import <UIKit/UIItemProvider.h>
 #import <UIKit/UIKit.h>
+#import <WebKit/WKUIDelegatePrivate.h>
 #import <WebKit/_WKTestingDelegate.h>
 #import <wtf/BlockPtr.h>
 
-@class MockLongPressGestureRecognizer;
 @class MockDataInteractionInfo;
+@class MockDataInteractionSession;
 
 extern NSString * const DataInteractionEnterEventName;
 extern NSString * const DataInteractionOverEventName;
@@ -41,15 +42,16 @@ extern NSString * const DataInteractionLeaveEventName;
 extern NSString * const DataInteractionStartEventName;
 
 typedef NS_ENUM(NSInteger, DataInteractionPhase) {
-    DataInteractionUnrecognized = 1,
+    DataInteractionCancelled = 0,
+    DataInteractionBeginning = 1,
     DataInteractionBegan = 2,
     DataInteractionEntered = 3,
     DataInteractionPerforming = 4
 };
 
-@interface DataInteractionSimulator : NSObject<_WKTestingDelegate> {
+@interface DataInteractionSimulator : NSObject<_WKTestingDelegate, WKUIDelegatePrivate> {
     RetainPtr<TestWKWebView> _webView;
-    RetainPtr<MockLongPressGestureRecognizer> _gestureRecognizer;
+    RetainPtr<MockDataInteractionSession> _dataInteractionSession;
     RetainPtr<MockDataInteractionInfo> _dataInteractionInfo;
     RetainPtr<NSMutableArray> _observedEventNames;
     RetainPtr<UIItemProvider> _externalItemProvider;
@@ -57,7 +59,7 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
     CGPoint _startLocation;
     CGPoint _endLocation;
 
-    double _gestureProgress;
+    double _currentProgress;
     bool _isDoneWithCurrentRun;
     DataInteractionPhase _phase;
 }
@@ -65,9 +67,8 @@ typedef NS_ENUM(NSInteger, DataInteractionPhase) {
 - (instancetype)initWithWebView:(TestWKWebView *)webView;
 - (void)runFrom:(CGPoint)startLocation to:(CGPoint)endLocation;
 
-@property (nonatomic) BOOL forceRequestToFail;
+@property (nonatomic) BlockPtr<NSArray *(NSArray *)> convertItemProvidersBlock;
 @property (nonatomic, strong) UIItemProvider *externalItemProvider;
-@property (nonatomic, readonly) BOOL didTryToBeginDataInteraction;
 @property (nonatomic, readonly) NSArray *observedEventNames;
 @property (nonatomic, readonly) NSArray *finalSelectionRects;
 

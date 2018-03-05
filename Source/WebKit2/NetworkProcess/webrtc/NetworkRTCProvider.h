@@ -52,6 +52,7 @@ class NetworkRTCSocket;
 class NetworkRTCProvider : public ThreadSafeRefCounted<NetworkRTCProvider>, public rtc::MessageHandler {
 public:
     static Ref<NetworkRTCProvider> create(NetworkConnectionToWebProcess& connection) { return adoptRef(*new NetworkRTCProvider(connection)); }
+    ~NetworkRTCProvider();
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveNetworkRTCMonitorMessage(IPC::Connection& connection, IPC::Decoder& decoder) { m_rtcMonitor.didReceiveMessage(connection, decoder); }
@@ -66,12 +67,16 @@ public:
     void callOnRTCNetworkThread(Function<void()>&&);
     void sendFromMainThread(Function<void(IPC::Connection&)>&&);
 
+    void newConnection(LibWebRTCSocketClient&, std::unique_ptr<rtc::AsyncPacketSocket>&&);
+
 private:
     explicit NetworkRTCProvider(NetworkConnectionToWebProcess&);
 
     void createUDPSocket(uint64_t, const RTCNetwork::SocketAddress&, uint16_t, uint16_t);
     void createClientTCPSocket(uint64_t, const RTCNetwork::SocketAddress&, const RTCNetwork::SocketAddress&, int);
     void createServerTCPSocket(uint64_t, const RTCNetwork::SocketAddress&, uint16_t minPort, uint16_t maxPort, int);
+    void wrapNewTCPConnection(uint64_t identifier, uint64_t newConnectionSocketIdentifier);
+
     void createResolver(uint64_t, const String&);
     void stopResolver(uint64_t);
 
@@ -102,6 +107,9 @@ private:
 
     std::unique_ptr<rtc::Thread> m_rtcNetworkThread;
     UniqueRef<rtc::BasicPacketSocketFactory> m_packetSocketFactory;
+
+    HashMap<uint64_t, std::unique_ptr<rtc::AsyncPacketSocket>> m_pendingIncomingSockets;
+    uint64_t m_incomingSocketIdentifier { 0 };
 };
 
 } // namespace WebKit

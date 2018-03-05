@@ -130,6 +130,7 @@ public:
     // DOMTimers throttling testing.
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
+    double requestAnimationFrameInterval() const;
     bool areTimersThrottled() const;
 
     enum EventThrottlingBehavior { Responsive, Unresponsive };
@@ -174,6 +175,7 @@ public:
     ExceptionOr<void> setMarkedTextMatchesAreHighlighted(bool);
 
     void invalidateFontCache();
+    ExceptionOr<void> setLowPowerModeEnabled(bool);
 
     ExceptionOr<void> setScrollViewPosition(int x, int y);
     
@@ -394,9 +396,9 @@ public:
 
 #if ENABLE(WEB_RTC)
     void enableMockMediaEndpoint();
-    void enableMockRTCPeerConnectionHandler();
     void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection&, const String& action);
     void useMockRTCPeerConnectionFactory(const String&);
+    void setICECandidateFiltering(bool);
 #endif
 
     String getImageSourceURL(Element&);

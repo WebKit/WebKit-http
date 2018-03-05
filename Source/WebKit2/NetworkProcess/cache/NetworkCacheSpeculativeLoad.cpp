@@ -76,14 +76,8 @@ void SpeculativeLoad::willSendRedirectedRequest(ResourceRequest&& request, Resou
     if (!m_cacheEntry)
         m_cacheEntry = NetworkCache::singleton().makeRedirectEntry(request, redirectResponse, redirectRequest);
 
-    auto load = WTFMove(m_networkLoad);
-
     // Don't follow the redirect. The redirect target will be registered for speculative load when it is loaded.
     didComplete();
-
-    // This causes call to didFailLoading().
-    if (load)
-        load->continueWillSendRequest({ });
 }
 
 auto SpeculativeLoad::didReceiveResponse(ResourceResponse&& receivedResponse) -> ShouldContinueDidReceiveResponse
@@ -116,7 +110,7 @@ void SpeculativeLoad::didReceiveBuffer(Ref<SharedBuffer>&& buffer, int reportedE
     }
 }
 
-void SpeculativeLoad::didFinishLoading(double finishTime)
+void SpeculativeLoad::didFinishLoading(const WebCore::NetworkLoadMetrics&)
 {
     if (m_didComplete)
         return;

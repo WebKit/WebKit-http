@@ -31,8 +31,10 @@
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
 #include "Logging.h"
+#include "MainFrame.h"
 #include "Page.h"
 #include "PerformanceLogging.h"
+#include "PublicSuffix.h"
 #include "Settings.h"
 
 namespace WebCore {
@@ -45,6 +47,11 @@ static const std::chrono::minutes backgroundCPUUsageMeasurementDuration { 5 };
 static const std::chrono::minutes cpuUsageSamplingInterval { 10 };
 
 static const std::chrono::seconds memoryUsageMeasurementDelay { 10 };
+
+static const double postPageLoadCPUUsageDomainReportingThreshold { 20.0 }; // Reporting pages using over 20% CPU is roughly equivalent to reporting the 10% worst pages.
+#if !PLATFORM(IOS)
+static const uint64_t postPageLoadMemoryUsageDomainReportingThreshold { 2048 * MB };
+#endif
 
 static inline ActivityStateForCPUSampling activityStateForCPUSampling(ActivityState::Flags state)
 {
@@ -122,6 +129,32 @@ void PerformanceMonitor::activityStateChanged(ActivityState::Flags oldState, Act
     }
 }
 
+enum class ReportingReason { HighCPUUsage, HighMemoryUsage };
+static void reportPageOverPostLoadResourceThreshold(Page& page, ReportingReason reason)
+{
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    auto* document = page.mainFrame().document();
+    if (!document)
+        return;
+
+    String domain = topPrivatelyControlledDomain(document->url().host());
+    if (domain.isEmpty())
+        return;
+
+    switch (reason) {
+    case ReportingReason::HighCPUUsage:
+        page.diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainCausingEnergyDrainKey(), domain, ShouldSample::No);
+        break;
+    case ReportingReason::HighMemoryUsage:
+        page.diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainCausingJetsamKey(), domain, ShouldSample::No);
+        break;
+    }
+#else
+    UNUSED_PARAM(page);
+    UNUSED_PARAM(reason);
+#endif
+}
+
 void PerformanceMonitor::measurePostLoadCPUUsage()
 {
     if (!m_page.isOnlyNonUtilityPage()) {
@@ -142,6 +175,9 @@ void PerformanceMonitor::measurePostLoadCPUUsage()
     double cpuUsage = cpuTime.value().percentageCPUUsageSince(*m_postLoadCPUTime);
     RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "measurePostLoadCPUUsage: Process was using %.1f%% CPU after the page load.", cpuUsage);
     m_page.diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::postPageLoadCPUUsageKey(), DiagnosticLoggingKeys::foregroundCPUUsageToDiagnosticLoggingKey(cpuUsage), ShouldSample::No);
+
+    if (cpuUsage > postPageLoadCPUUsageDomainReportingThreshold)
+        reportPageOverPostLoadResourceThreshold(m_page, ReportingReason::HighCPUUsage);
 }
 
 void PerformanceMonitor::measurePostLoadMemoryUsage()
@@ -155,6 +191,12 @@ void PerformanceMonitor::measurePostLoadMemoryUsage()
 
     RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "measurePostLoadMemoryUsage: Process was using %llu bytes of memory after the page load.", memoryUsage.value());
     m_page.diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::postPageLoadMemoryUsageKey(), DiagnosticLoggingKeys::memoryUsageToDiagnosticLoggingKey(memoryUsage.value()), ShouldSample::No);
+
+    // On iOS, we report actual Jetsams instead.
+#if !PLATFORM(IOS)
+    if (memoryUsage.value() > postPageLoadMemoryUsageDomainReportingThreshold)
+        reportPageOverPostLoadResourceThreshold(m_page, ReportingReason::HighMemoryUsage);
+#endif
 }
 
 void PerformanceMonitor::measurePostBackgroundingMemoryUsage()

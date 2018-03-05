@@ -180,6 +180,7 @@ list(APPEND WebCore_SOURCES
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
     crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+    crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
     crypto/algorithms/CryptoAlgorithmAES_KW.cpp
     crypto/algorithms/CryptoAlgorithmHMAC.cpp
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
@@ -199,6 +200,8 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeySerializationRaw.cpp
 
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
+    crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
+    crypto/mac/CryptoAlgorithmAES_GCMMac.cpp
     crypto/mac/CryptoAlgorithmAES_KWMac.cpp
     crypto/mac/CryptoAlgorithmHMACMac.cpp
     crypto/mac/CryptoAlgorithmRSAES_PKCS1_v1_5Mac.cpp
@@ -226,7 +229,7 @@ list(APPEND WebCore_SOURCES
     editing/mac/TextAlternativeWithRange.mm
     editing/mac/TextUndoInsertionMarkupMac.mm
 
-    fileapi/FileMac.mm
+    fileapi/FileCocoa.mm
 
     html/HTMLSlotElement.cpp
 
@@ -323,7 +326,6 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/LocalizedStringsCocoa.mm
     platform/cocoa/MIMETypeRegistryCocoa.mm
     platform/cocoa/MachSendRight.cpp
-    platform/cocoa/MemoryPressureHandlerCocoa.mm
     platform/cocoa/NetworkExtensionContentFilter.mm
     platform/cocoa/ParentalControlsContentFilter.mm
     platform/cocoa/ScrollController.mm
@@ -484,6 +486,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/ScrollbarThemeMac.mm
     platform/mac/SerializedPlatformRepresentationMac.mm
     platform/mac/SoundMac.mm
+    platform/mac/StringUtilities.mm
     platform/mac/SuddenTermination.mm
     platform/mac/SystemSleepListenerMac.mm
     platform/mac/ThemeMac.mm
@@ -524,7 +527,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 
     platform/network/cocoa/CredentialCocoa.mm
-    platform/network/cocoa/NetworkLoadTiming.mm
+    platform/network/cocoa/NetworkLoadMetrics.mm
     platform/network/cocoa/ProtectionSpaceCocoa.mm
     platform/network/cocoa/ResourceRequestCocoa.mm
     platform/network/cocoa/ResourceResponseCocoa.mm

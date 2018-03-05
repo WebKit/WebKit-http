@@ -331,10 +331,11 @@ webrtc [ Pass ]
 # GTK uses OWR instead of libwebrtc
 webrtc/libwebrtc [ Skip ]
 # Some WebRTC features like datachannel are still not implemented
-webrtc/datachannel/basic.html [ Timeout ]
+webrtc/datachannel [ Skip ]
 webrtc/no-port-zero-in-upd-candidates.html [ Timeout ]
 webrtc/video-disabled-black.html [ Failure ]
 webrtc/video.html [ Failure ]
+webkit.org/b/169110 webrtc/audio-peer-connection-webaudio.html [ Timeout ]
 # The MediaStream implementation is also still not completed
 webkit.org/b/79203 fast/mediastream/mock-media-source-webaudio.html [ Timeout ]
 webkit.org/b/79203 fast/mediastream/getUserMedia-webaudio.html [ Failure ]
@@ -949,11 +950,7 @@ webkit.org/b/131546 media/track/track-in-band.html [ Crash Timeout Failure ]
 
 webkit.org/b/163782 media/video-played-ranges-1.html [ Crash Pass ]
 
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html [ Crash ]
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html [ Crash ]
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html [ Crash ]
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html [ Crash ]
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html [ Crash ]
+webkit.org/b/168171 http/tests/loading/resourceLoadStatistics [ Crash ]
 
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash ]
@@ -1475,6 +1472,7 @@ webkit.org/b/84773 ietestcenter/css3/multicolumn/column-width-applies-to-012.htm
 webkit.org/b/84777 ietestcenter/css3/multicolumn/column-width-applies-to-015.htm [ Pass ImageOnlyFailure ]
 
 webkit.org/b/160129 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/event_timeupdate_noautoplay.html [ Timeout Pass ]
+webkit.org/b/168799 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements/track/track-element/track-api-texttracks.html [ Failure Pass ]
 
 webkit.org/b/160130 imported/w3c/web-platform-tests/html/dom/elements/global-attributes/dir_auto-contained-textarea-L.html [ ImageOnlyFailure Pass ]
 
@@ -2293,9 +2291,13 @@ webkit.org/b/116153 fast/css/text-overflow-ellipsis-full-truncate-rtl.html [ Ima
 webkit.org/b/116806 fast/css/text-overflow-ellipsis-behind-floats.html [ ImageOnlyFailure ]
 
 webkit.org/b/117582 fast/flexbox/clear-overflow-before-scroll-update.html [ Failure ]
+webkit.org/b/169007 css3/flexbox/flex-item-contains-strict.html [ Failure ]
+webkit.org/b/169007 css3/flexbox/overflow-auto-resizes-correctly.html [ Failure ]
 
 webkit.org/b/118220 http/tests/cache/partitioned-cache.html [ Failure ]
 webkit.org/b/118220 http/tests/cache/partitioned-cache-iframe.html [ Failure ]
+
+webkit.org/b/169010 tables/mozilla/bugs/bug32205-5.html [ Failure ]
 
 webkit.org/b/118221 fast/text/complex-first-glyph-with-initial-advance.html [ ImageOnlyFailure ]
 
@@ -2843,6 +2845,9 @@ webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
 webkit.org/b/167999 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
 
+webkit.org/b/168543 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
+webkit.org/b/168543 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
 webkit.org/b/145260 media/audio-playback-restriction-play.html [ Failure ]
 
 webkit.org/b/168188 fast/events/ime-compositionend-on-selection-change.html [ Failure ]
@@ -2913,6 +2918,9 @@ webkit.org/b/168572 intersection-observer/intersection-observer-entry-interface.
 webkit.org/b/168572 js/dom/regress-157246.html [ Failure ]
 
 webkit.org/b/168719 fast/css/paint-order-shadow.html [ ImageOnlyFailure ]
+
+webkit.org/b/169075 editing/selection/regional-indicators.html [ Failure ]
+webkit.org/b/169075 editing/deleting/skip-virama-001.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing

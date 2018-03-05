@@ -98,6 +98,7 @@
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "StructureInlines.h"
+#include "ThrowScope.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
@@ -356,6 +357,8 @@ VM::VM(VMType vmType, HeapType heapType)
 
 VM::~VM()
 {
+    if (UNLIKELY(m_watchdog))
+        m_watchdog->willDestroyVM(this);
     VMInspector::instance().remove(this);
 
     // Never GC, ever again.
@@ -389,7 +392,7 @@ VM::~VM()
     // Clear this first to ensure that nobody tries to remove themselves from it.
     m_perBytecodeProfiler = nullptr;
 
-    ASSERT(m_apiLock->currentThreadIsHoldingLock());
+    ASSERT(currentThreadIsHoldingAPILock());
     m_apiLock->willDestroyVM(this);
     heap.lastChanceToFinalize();
 
@@ -459,7 +462,9 @@ VM*& VM::sharedInstanceInternal()
 Watchdog& VM::ensureWatchdog()
 {
     if (!m_watchdog) {
-        m_watchdog = adoptRef(new Watchdog());
+        Options::usePollingTraps() = true; // Force polling traps on until we have support for signal based traps.
+
+        m_watchdog = adoptRef(new Watchdog(this));
         
         // The LLINT peeks into the Watchdog object directly. In order to do that,
         // the LLINT assumes that the internal shape of a std::unique_ptr is the
@@ -942,5 +947,40 @@ void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionE
     }
 }
 #endif
+
+void VM::handleTraps(ExecState* exec, VMTraps::Mask mask)
+{
+    auto scope = DECLARE_THROW_SCOPE(*this);
+
+    ASSERT(needTrapHandling(mask));
+    while (needTrapHandling(mask)) {
+        auto trapEventType = m_traps.takeTopPriorityTrap(mask);
+        switch (trapEventType) {
+        case VMTraps::NeedDebuggerBreak:
+            if (Options::alwaysCheckTraps())
+                dataLog("VM ", RawPointer(this), " on pid ", getCurrentProcessID(), " received NeedDebuggerBreak trap\n");
+            return;
+
+        case VMTraps::NeedWatchdogCheck:
+            ASSERT(m_watchdog);
+            if (LIKELY(!m_watchdog->shouldTerminate(exec)))
+                continue;
+            FALLTHROUGH;
+
+        case VMTraps::NeedTermination:
+            JSC::throwException(exec, scope, createTerminatedExecutionException(this));
+            return;
+
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+        }
+    }
+}
+
+void VM::setNeedAsynchronousTerminationSupport()
+{
+    Options::usePollingTraps() = true; // Force polling traps on until we have support for signal based traps.
+    m_needAsynchronousTerminationSupport = true;
+}
 
 } // namespace JSC

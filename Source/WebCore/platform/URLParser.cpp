@@ -36,7 +36,6 @@
 namespace WebCore {
 
 #define URL_PARSER_DEBUGGING 0
-#define COMPARE_URLPARSERS 0
 
 #if URL_PARSER_DEBUGGING
 #define URL_PARSER_LOG(...) LOG(URLParser, __VA_ARGS__)
@@ -870,8 +869,11 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
     case Scheme::WS:
     case Scheme::WSS:
         isUTF8Encoding = true;
-        FALLTHROUGH;
+        m_urlIsSpecial = true;
+        return;
     case Scheme::File:
+        m_urlIsFile = true;
+        FALLTHROUGH;
     case Scheme::FTP:
     case Scheme::Gopher:
     case Scheme::HTTP:
@@ -981,16 +983,31 @@ void URLParser::consumeDoubleDotPathSegment(CodePointIterator<CharacterType>& c)
     consumeSingleDotPathSegment(c);
 }
 
+bool URLParser::shouldPopPath(unsigned newPathAfterLastSlash)
+{
+    ASSERT(m_didSeeSyntaxViolation);
+    if (!m_urlIsFile)
+        return true;
+
+    ASSERT(m_url.m_pathAfterLastSlash <= m_asciiBuffer.size());
+    CodePointIterator<LChar> componentToPop(&m_asciiBuffer[newPathAfterLastSlash], &m_asciiBuffer[0] + m_url.m_pathAfterLastSlash);
+    if (newPathAfterLastSlash == m_url.m_portEnd + 1 && isWindowsDriveLetter(componentToPop))
+        return false;
+    return true;
+}
+
 void URLParser::popPath()
 {
     ASSERT(m_didSeeSyntaxViolation);
     if (m_url.m_pathAfterLastSlash > m_url.m_portEnd + 1) {
-        m_url.m_pathAfterLastSlash--;
-        if (m_asciiBuffer[m_url.m_pathAfterLastSlash] == '/')
-            m_url.m_pathAfterLastSlash--;
-        while (m_url.m_pathAfterLastSlash > m_url.m_portEnd && m_asciiBuffer[m_url.m_pathAfterLastSlash] != '/')
-            m_url.m_pathAfterLastSlash--;
-        m_url.m_pathAfterLastSlash++;
+        auto newPathAfterLastSlash = m_url.m_pathAfterLastSlash - 1;
+        if (m_asciiBuffer[newPathAfterLastSlash] == '/')
+            newPathAfterLastSlash--;
+        while (newPathAfterLastSlash > m_url.m_portEnd && m_asciiBuffer[newPathAfterLastSlash] != '/')
+            newPathAfterLastSlash--;
+        newPathAfterLastSlash++;
+        if (shouldPopPath(newPathAfterLastSlash))
+            m_url.m_pathAfterLastSlash = newPathAfterLastSlash;
     }
     m_asciiBuffer.resize(m_url.m_pathAfterLastSlash);
 }
@@ -1207,6 +1224,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 switch (scheme(urlScheme)) {
                 case Scheme::File:
                     m_urlIsSpecial = true;
+                    m_urlIsFile = true;
                     state = State::File;
                     ++c;
                     break;
@@ -1370,7 +1388,13 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 ++c;
                 copyURLPartsUntil(base, URLPart::SchemeEnd, c, isUTF8Encoding);
                 appendToASCIIBuffer("://", 3);
-                state = State::SpecialAuthorityIgnoreSlashes;
+                if (m_urlIsSpecial)
+                    state = State::SpecialAuthorityIgnoreSlashes;
+                else {
+                    m_url.m_userStart = currentPosition(c);
+                    state = State::AuthorityOrHost;
+                    authorityOrHostBegin = c;
+                }
             } else {
                 copyURLPartsUntil(base, URLPart::PortEnd, c, isUTF8Encoding);
                 appendToASCIIBuffer('/');

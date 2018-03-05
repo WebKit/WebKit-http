@@ -391,11 +391,11 @@ PASS Parsing: <http://256.256.256.256.256> against <http://other.com/>
 PASS Parsing: <file:///C%3A/> against <about:blank> 
 PASS Parsing: <file:///C%7C/> against <about:blank> 
 PASS Parsing: <pix/submit.gif> against <file:///C:/Users/Domenic/Dropbox/GitHub/tmpvar/jsdom/test/level2/html/files/anchor.html> 
-FAIL Parsing: <..> against <file:///C:/> assert_equals: href expected "file:///C:/" but got "file:///"
+PASS Parsing: <..> against <file:///C:/> 
 PASS Parsing: <..> against <file:///> 
 FAIL Parsing: </> against <file:///C:/a/b> assert_equals: href expected "file:///C:/" but got "file:///"
 FAIL Parsing: <//d:> against <file:///C:/a/b> assert_equals: href expected "file:///d:" but got "file://d/"
-FAIL Parsing: <//d:/..> against <file:///C:/a/b> assert_equals: href expected "file:///d:/" but got "file:///"
+PASS Parsing: <//d:/..> against <file:///C:/a/b> 
 PASS Parsing: <..> against <file:///ab:/> 
 PASS Parsing: <..> against <file:///1:/> 
 PASS Parsing: <file:> against <about:blank> 
@@ -411,9 +411,9 @@ PASS Parsing: <#x> against <sc://ñ>
 PASS Parsing: <?x> against <sc://ñ> 
 PASS Parsing: <sc://?> against <about:blank> 
 PASS Parsing: <sc://#> against <about:blank> 
-FAIL Parsing: <///> against <sc://x/> Type error
-FAIL Parsing: <////> against <sc://x/> Type error
-FAIL Parsing: <////x/> against <sc://x/> assert_equals: href expected "sc:////x/" but got "sc://x/"
+PASS Parsing: <///> against <sc://x/> 
+PASS Parsing: <////> against <sc://x/> 
+PASS Parsing: <////x/> against <sc://x/> 
 PASS Parsing: <tftp://foobar.com/someconfig;mode=netascii> against <about:blank> 
 PASS Parsing: <telnet://user:pass@foobar.com:23/> against <about:blank> 
 PASS Parsing: <ut2004://10.10.10.10:7777/Index.ut2> against <about:blank> 

@@ -39,7 +39,9 @@
 #import "ResourceError.h"
 #import "ResourceLoader.h"
 #import "ResourceRequest.h"
+#import "SchemeRegistry.h"
 #import "SharedBuffer.h"
+#import <WebCore/NetworkLoadMetrics.h>
 #import <wtf/NeverDestroyed.h>
 #import <wtf/Vector.h>
 #import <wtf/text/WTFString.h>
@@ -120,6 +122,14 @@ const char* WebCore::QLPreviewProtocol()
 {
     static NeverDestroyed<Vector<char>> previewProtocol(createQLPreviewProtocol());
     return previewProtocol.get().data();
+}
+
+bool WebCore::isQuickLookPreviewURL(const URL& url)
+{
+    // Use some known protocols as a short-cut to avoid loading the QuickLook framework.
+    if (url.protocolIsInHTTPFamily() || url.isBlankURL() || url.protocolIsBlob() || url.protocolIsData() || SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toString()))
+        return false;
+    return url.protocolIs(QLPreviewProtocol());
 }
 
 static RefPtr<QuickLookHandleClient>& testingClient()
@@ -230,7 +240,9 @@ static QuickLookHandleClient& emptyClient()
 {
     ASSERT_UNUSED(connection, !connection);
     ASSERT(_hasSentDidReceiveResponse);
-    _resourceLoader->didFinishLoading(0);
+
+    NetworkLoadMetrics emptyMetrics;
+    _resourceLoader->didFinishLoading(emptyMetrics);
 }
 
 static inline bool isQuickLookPasswordError(NSError *error)

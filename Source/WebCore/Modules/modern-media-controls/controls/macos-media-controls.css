@@ -35,7 +35,8 @@
     mix-blend-mode: plus-lighter;
 }
 
-.media-controls.mac > .controls-bar .time-label {
+.media-controls.mac > .controls-bar .time-label,
+.media-controls.mac > .controls-bar .status-label {
     color: rgba(255, 255, 255, 0.45);
     mix-blend-mode: plus-lighter;
 }
@@ -48,4 +49,12 @@
     width: 3px !important;
     height: 100% !important;
     -webkit-appearance: none !important;
+}
+
+:host(audio) .media-controls.mac.inline > .controls-bar {
+    background-color: rgb(41, 41, 41);
+}
+
+:host(audio) .media-controls.mac.inline > .controls-bar > .background-tint {
+    display: none;
 }

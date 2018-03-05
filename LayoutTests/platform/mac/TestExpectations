@@ -1168,6 +1168,7 @@ webkit.org/b/148119 [ Yosemite ] fast/text/trak-optimizeLegibility.html [ Failur
 webkit.org/b/153460 [ Debug ] inspector/codemirror/prettyprinting-css-rules.html [ Pass Timeout ]
 webkit.org/b/160048 [ Debug ] inspector/codemirror/prettyprinting-javascript.html [ Pass Timeout ]
 webkit.org/b/152025 [ Debug ] inspector/console/messagesCleared.html [ Pass Timeout ]
+webkit.org/b/168926 inspector/controller/runtime-controller-import.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/createStyleSheet.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/get-system-fonts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
@@ -1178,6 +1179,7 @@ webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeo
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
 webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
 webkit.org/b/158742 [ Debug ] inspector/debugger/break-in-constructor-before-super.html [ Pass Timeout ]
+webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/165772 inspector/debugger/breakpoint-action-log.html [ Pass Failure ]
 webkit.org/b/161387 inspector/debugger/breakpoint-action-with-exception.html [ Pass Failure ]
 webkit.org/b/164293 [ Debug ] inspector/debugger/breakpoint-scope.html [ Pass Timeout ]
@@ -1196,6 +1198,7 @@ webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeou
 webkit.org/b/167408 [ Debug ] inspector/heap/gc.html [ Slow ]
 webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass Timeout ]
 webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
+webkit.org/b/153894 [ Debug ] inspector/model/color.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
 webkit.org/b/167265 inspector/network/client-blocked-load.html [ Pass Timeout ]
@@ -1231,6 +1234,8 @@ webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
 
 # Marking test as flaky in El Capitan
 webkit.org/b/149819 [ Debug ElCapitan+ ] compositing/video/video-poster.html [ Pass Crash ]
+
+webkit.org/b/168953 [ Release ] compositing/video/video-poster.html [ Pass Failure ]
 
 # Flaky on Mac
 webkit.org/b/148435 storage/domstorage/events/basic-body-attribute.html [ Pass Failure ]
@@ -1474,25 +1479,13 @@ media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ S
 media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-audio-background.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Skip ]
-
-# This one always times out on the bots, cannot reproduce locally.
-webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
-
-webkit.org/b/167263 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
+media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
 
 webkit.org/b/167275 media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html [ Pass Failure ]
-
-webkit.org/b/167347 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Failure ]
 
 webkit.org/b/167266 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Pass Failure ]
 
 webkit.org/b/167373 media/modern-media-controls/tracks-support/tracks-support-show-panel-fullscreen.html [ Pass Failure ]
-
-webkit.org/b/167396 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Failure ]
-
-webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
-
-webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
 webkit.org/b/165874 streams/pipe-to.html [ Pass Failure ]
 
@@ -1528,6 +1521,7 @@ webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
 # rdar://problem/23643423
 [ Debug ] fast/frames/exponential-frames.html [ Skip ]
 
+webkit.org/b/168094 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html [ Pass Failure ]
 webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]
 
 webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.html [ Skip ]
@@ -1535,4 +1529,23 @@ webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timin
 
 webkit.org/b/212466 [ ElCapitan ] js/dom/gc-slot-visitor-parallel-drain-pings-runloop-when-done.html [ Skip ]
 
+# Resource Timing networking data not yet available without Network Session.
+[ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
+[ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
+
+# <rdar://problem/30610988>
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-cross-origin.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location-worker.html [ Failure ]
+[ Sierra+ ] imported/w3c/web-platform-tests/fetch/api/redirect/redirect-location.html [ Failure ]
+
 webkit.org/b/168503 editing/pasteboard/drag-drop-copy-content.html [ Failure ]
+
+webkit.org/b/168936 imported/w3c/web-platform-tests/IndexedDB/idbdatabase-deleteObjectStore-exception-order.htm [ Pass Failure ]
+
+webkit.org/b/168927 fast/dom/timer-throttling-hidden-page.html [ Pass Failure ]
+
+# Skipped because Mac doesn't have a key to show the context menu
+fast/events/context-activated-by-key-event.html [ Skip ]
