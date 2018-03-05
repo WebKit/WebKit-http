@@ -246,7 +246,13 @@ include(GStreamerChecks)
 
 # Optimize binary size for release builds by removing dead sections on unix/gcc.
 if (COMPILER_IS_GCC_OR_CLANG AND UNIX AND NOT APPLE)
-    if (CMAKE_COMPILER_IS_GNUCC)
+    # Conditioned on ARM/ARM64 since those are the targets we know support section
+    # anchoring, for builds on X86 and X86-64 target, this option is not supported.
+    # It may be supported on several others aside from ARM*.
+    # The GCC documentation is poor in that it says the option is target dependent,
+    # but fails to decribe on which targets it is supported. I didn't fancy reading
+    # the source to find out.
+    if (CMAKE_COMPILER_IS_GNUCC AND (WTF_CPU_ARM64 OR WTF_CPU_ARM))
         set(CMAKE_COMPILER_SIZE_OPT_FLAGS " -finline-limit=90 -fsection-anchors")
     endif ()
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}${CMAKE_COMPILER_SIZE_OPT_FLAGS} -ffunction-sections -fdata-sections")
