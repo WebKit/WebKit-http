@@ -32,6 +32,7 @@
 #include <wtf/text/CString.h>
 
 #include <Url.h>
+#include "URLParser.h"
 
 namespace WebCore {
 
@@ -39,7 +40,8 @@ URL::URL(const BUrl& url)
 {
 	// The only way to fully initialize an URL is by parsing it from a string.
 	// So let's do just that.
-	parse(url.UrlString().String());
+	URLParser parser(url.UrlString().String());
+	*this = parser.result();
 }
 
 URL::operator BUrl() const

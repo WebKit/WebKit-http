@@ -72,6 +72,11 @@ Vector<String> FontCache::systemFontFamilies()
     return fontFamilies;
 }
 
+Ref<Font> FontCache::lastResortFallbackFontForEveryCharacter(const FontDescription& fontDescription)
+{
+    return lastResortFallbackFont(fontDescription);
+}
+
 Ref<Font> FontCache::lastResortFallbackFont(const FontDescription& fontDescription)
 {
     font_family family;

@@ -960,7 +960,7 @@ RefPtr<Widget> FrameLoaderClientHaiku::createPlugin(const IntSize&, HTMLPlugInEl
     return nullptr;
 }
 
-void FrameLoaderClientHaiku::redirectDataToPlugin(Widget* pluginWidget)
+void FrameLoaderClientHaiku::redirectDataToPlugin(Widget& pluginWidge)
 {
     CALLED();
     debugger("plugins are not implemented on Haiku!");
