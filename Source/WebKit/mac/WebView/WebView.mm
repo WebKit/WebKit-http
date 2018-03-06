@@ -133,6 +133,7 @@
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
@@ -202,7 +203,6 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreView.h>
 #import <WebCore/Widget.h>
-#import <WebCore/htmlediting.h>
 #import <WebKitLegacy/DOM.h>
 #import <WebKitLegacy/DOMExtensions.h>
 #import <WebKitLegacy/DOMPrivate.h>
@@ -1799,6 +1799,11 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     return _private->textIndicatorData;
 }
+
+#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebViewAdditions.mm>)
+#include <WebKitAdditions/WebViewAdditions.mm>
+#endif
+
 #else
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
@@ -1810,6 +1815,24 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 - (WebUITextIndicatorData *)_getDataInteractionData
 {
     return nil;
+}
+- (uint64_t)_enteredDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+
+- (uint64_t)_updatedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+    return 0;
+}
+- (void)_exitedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+{
+}
+- (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
+{
 }
 #endif // ENABLE(DATA_INTERACTION) && defined(__cplusplus)
 
@@ -2687,6 +2710,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setShowRepaintCounter([preferences showRepaintCounter]);
     settings.setWebGLEnabled([preferences webGLEnabled]);
     settings.setSubpixelCSSOMElementMetricsEnabled([preferences subpixelCSSOMElementMetricsEnabled]);
+    settings.setSubpixelAntialiasedLayerTextEnabled([preferences subpixelAntialiasedLayerTextEnabled]);
 
     settings.setForceSoftwareWebGLRendering([preferences forceSoftwareWebGLRendering]);
     settings.setForceWebGLUsesLowPower([preferences forceLowPowerGPUForWebGL]);
@@ -2752,7 +2776,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setPlugInSnapshottingEnabled([preferences plugInSnapshottingEnabled]);
     settings.setHttpEquivEnabled([preferences httpEquivEnabled]);
 
-    settings.setFixedPositionCreatesStackingContext(true);
 #if PLATFORM(MAC)
     settings.setAcceleratedCompositingForFixedPositionEnabled(true);
 #endif
@@ -2878,6 +2901,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled([preferences webGL2Enabled]);
+#endif
+
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled([preferences webGPUEnabled]);
 #endif
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
@@ -9614,8 +9641,8 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
         if (!selection.isNone()) {
             Node* nodeToRemove;
             if (auto* style = Editor::styleForSelectionStart(coreFrame, nodeToRemove)) {
-                [_private->_textTouchBarItemController setTextIsBold:(style->fontCascade().weight() >= FontWeightBold)];
-                [_private->_textTouchBarItemController setTextIsItalic:(style->fontCascade().italic() == FontItalicOn)];
+                [_private->_textTouchBarItemController setTextIsBold:isFontWeightBold(style->fontCascade().weight())];
+                [_private->_textTouchBarItemController setTextIsItalic:isItalic(style->fontCascade().italic())];
 
                 RefPtr<EditingStyle> typingStyle = coreFrame->selection().typingStyle();
                 if (typingStyle && typingStyle->style()) {

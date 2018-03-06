@@ -217,6 +217,13 @@ TEST(WebKit2, WebsitePoliciesAutoplayEnabled)
     [webView loadRequest:requestWithAudio];
     [webView waitForMessage:@"did-not-play"];
 
+    // Test updating website policies.
+    _WKWebsitePolicies *websitePolicies = [[[_WKWebsitePolicies alloc] init] autorelease];
+    websitePolicies.autoplayPolicy = _WKWebsiteAutoplayPolicyAllow;
+    [webView _updateWebsitePolicies:websitePolicies];
+    [webView stringByEvaluatingJavaScript:@"playVideo()"];
+    [webView waitForMessage:@"autoplayed"];
+
     [webView loadRequest:requestWithoutAudio];
     [webView waitForMessage:@"did-not-play"];
 
@@ -400,6 +407,35 @@ TEST(WebKit2, WebsitePoliciesUserInterferenceWithPlaying)
     [webView mouseDownAtPoint:playButtonClickPoint simulatePressure:NO];
     [webView mouseUpAtPoint:playButtonClickPoint];
     runUntilReceivesAutoplayEvent(kWKAutoplayEventUserDidInterfereWithPlayback);
+}
+
+TEST(WebKit2, WebsitePoliciesUserNeverPlayedMediaPreventedFromPlaying)
+{
+    auto configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:NSMakeRect(0, 0, 336, 276) configuration:configuration.get()]);
+
+    auto delegate = adoptNS([[AutoplayPoliciesDelegate alloc] init]);
+    [delegate setAutoplayPolicyForURL:^(NSURL *) {
+        return _WKWebsiteAutoplayPolicyDeny;
+    }];
+    [webView setNavigationDelegate:delegate.get()];
+
+    WKPageUIClientV9 uiClient;
+    memset(&uiClient, 0, sizeof(uiClient));
+
+    uiClient.base.version = 9;
+    uiClient.handleAutoplayEvent = handleAutoplayEvent;
+
+    WKPageSetPageUIClient([webView _pageForTesting], &uiClient.base);
+
+    receivedAutoplayEvent = std::nullopt;
+    NSURLRequest *jsPlayRequest = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"js-play-with-controls" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+    [webView loadRequest:jsPlayRequest];
+    [webView waitForMessage:@"loaded"];
+    runUntilReceivesAutoplayEvent(kWKAutoplayEventDidPreventFromAutoplaying);
+
+    [webView loadRequest:[NSURLRequest requestWithURL:[NSURL URLWithString:@"about:blank"]]];
+    runUntilReceivesAutoplayEvent(kWKAutoplayEventUserNeverPlayedMediaPreventedFromPlaying);
 }
 #endif
 

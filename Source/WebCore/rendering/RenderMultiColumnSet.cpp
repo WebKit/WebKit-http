@@ -319,7 +319,7 @@ bool RenderMultiColumnSet::requiresBalancing() const
         return false;
 
     if (RenderBox* next = RenderMultiColumnFlowThread::nextColumnSetOrSpannerSiblingOf(this)) {
-        if (!next->isRenderMultiColumnSet()) {
+        if (!next->isRenderMultiColumnSet() && !next->isLegend()) {
             // If we're followed by a spanner, we need to balance.
             ASSERT(multiColumnFlowThread()->findColumnSpannerPlaceholder(next));
             return true;
@@ -551,18 +551,19 @@ LayoutRect RenderMultiColumnSet::flowThreadPortionOverflowRect(const LayoutRect&
     // top/bottom unless it's the first/last column.
     LayoutRect overflowRect = overflowRectForFlowThreadPortion(portionRect, isFirstColumn && isFirstRegion(), isLastColumn && isLastRegion(), VisualOverflow);
 
-    // Avoid overflowing into neighboring columns, by clipping in the middle of adjacent column
-    // gaps. Also make sure that we avoid rounding errors.
-    if (isHorizontalWritingMode()) {
-        if (!isLeftmostColumn)
-            overflowRect.shiftXEdgeTo(portionRect.x() - colGap / 2);
-        if (!isRightmostColumn)
-            overflowRect.shiftMaxXEdgeTo(portionRect.maxX() + colGap - colGap / 2);
-    } else {
-        if (!isLeftmostColumn)
-            overflowRect.shiftYEdgeTo(portionRect.y() - colGap / 2);
-        if (!isRightmostColumn)
-            overflowRect.shiftMaxYEdgeTo(portionRect.maxY() + colGap - colGap / 2);
+    // For RenderViews only (i.e., iBooks), avoid overflowing into neighboring columns, by clipping in the middle of adjacent column gaps. Also make sure that we avoid rounding errors.
+    if (&view() == parent()) {
+        if (isHorizontalWritingMode()) {
+            if (!isLeftmostColumn)
+                overflowRect.shiftXEdgeTo(portionRect.x() - colGap / 2);
+            if (!isRightmostColumn)
+                overflowRect.shiftMaxXEdgeTo(portionRect.maxX() + colGap - colGap / 2);
+        } else {
+            if (!isLeftmostColumn)
+                overflowRect.shiftYEdgeTo(portionRect.y() - colGap / 2);
+            if (!isRightmostColumn)
+                overflowRect.shiftMaxYEdgeTo(portionRect.maxY() + colGap - colGap / 2);
+        }
     }
     return overflowRect;
 }

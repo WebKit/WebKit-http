@@ -1,3 +1,103 @@
+2017-03-07  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: DOM Tree broken if an element has a "debounce" attribute
+        https://bugs.webkit.org/show_bug.cgi?id=169336
+        <rdar://problem/30899430>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+        (WebInspector.DOMNode.prototype.getAttribute):
+        (WebInspector.DOMNode.prototype.removeAttribute.mycallback):
+        (WebInspector.DOMNode.prototype.removeAttribute):
+        Convert the attributes map to an actual Map to avoid name collisions
+        with Object.prototype properties.
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard MessageEvent.webkitInitMessageEvent()
+        https://bugs.webkit.org/show_bug.cgi?id=169295
+
+        Reviewed by Joseph Pecoraro.
+
+        Drop MessageEvent.webkitInitMessageEvent and update parameters for various
+        init*Event() operations to match the current implementation.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-03-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Show Web Socket connections in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=167520
+
+        Reviewed by Joseph Pecoraro.
+
+        Show Web Socket connections in Network and Resources tabs. Display HTTP headers
+        of Web Socket handshake request in the details sidebar.
+
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.initialize):
+        (WebInspector.FrameResourceManager.prototype.webSocketCreated):
+        (WebInspector.FrameResourceManager.prototype.webSocketWillSendHandshakeRequest):
+        webSocketWillSendHandshakeRequest doesn't receive a request URL as one of its parameters.
+        Store URLs received from webSocketCreated method in _webSocketIdentifierToURL map.
+
+        (WebInspector.FrameResourceManager.prototype.webSocketHandshakeResponseReceived):
+        (WebInspector.FrameResourceManager.prototype.webSocketFrameReceived):
+        (WebInspector.FrameResourceManager.prototype.webSocketFrameSent):
+        (WebInspector.FrameResourceManager.prototype.webSocketClosed):
+        Mark resource as finished when Web Socket handshake is complete or Web Socket is closed.
+        This may change in the future.
+
+        (WebInspector.FrameResourceManager.prototype._webSocketFrameReceivedOrSent):
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/WebSocketResource.js: Added.
+        (WebInspector.WebSocketResource):
+        (WebInspector.WebSocketResource.prototype.set readyState):
+        (WebInspector.WebSocketResource.prototype.get readyState):
+        (WebInspector.WebSocketResource.prototype.get frames):
+        (WebInspector.WebSocketResource.prototype.addFrame):
+        Introduce WebSocketResource model to store WebSocket frames (incoming and outgoing messages)
+        and readyState.
+
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.webSocketCreated):
+        (WebInspector.NetworkObserver.prototype.webSocketWillSendHandshakeRequest):
+        (WebInspector.NetworkObserver.prototype.webSocketHandshakeResponseReceived):
+        (WebInspector.NetworkObserver.prototype.webSocketClosed):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameReceived):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameError):
+        (WebInspector.NetworkObserver.prototype.webSocketFrameSent):
+        (WebInspector.NetworkObserver):
+        Add corresponding methods for the newly added FrameResourceManager methods.
+
+        * UserInterface/Test.html:
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.treeElementAddedOrChanged):
+        Don't show the go to arrow for WebSocket items since WebSocketContentView isn't implemented
+        yet.
+
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.prototype.get responseContentView):
+        Don't show any content views for WebSocket items.
+
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.prototype.ondblclick):
+        Don't open WebSocket URL in a new browser tab.
+
+2017-03-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Should be able to push nodes in an iframe subtree to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=169086
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WebInspector.DOMTreeContentView.prototype._selectedNodeDidChange):
+        Use the URL of the main frame instead of the content frame URL.
+
 2017-03-01  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: Annotators should not be enabled if the TextEditor is not visible

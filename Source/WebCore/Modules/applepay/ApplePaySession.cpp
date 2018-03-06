@@ -297,9 +297,6 @@ static ExceptionOr<PaymentRequest::ShippingMethod> convertAndValidate(ApplePaySh
 
 static ExceptionOr<Vector<PaymentRequest::ShippingMethod>> convertAndValidate(Vector<ApplePayShippingMethod>&& shippingMethods)
 {
-    if (shippingMethods.isEmpty())
-        return Exception { TypeError, "At least one shipping method must be provided." };
-
     Vector<PaymentRequest::ShippingMethod> result;
     result.reserveInitialCapacity(shippingMethods.size());
     
@@ -648,8 +645,12 @@ ExceptionOr<void> ApplePaySession::completeShippingMethodSelection(unsigned shor
 
     totalAndLineItems.lineItems = convertedNewLineItems.releaseReturnValue();
 
+    ShippingMethodUpdate update;
+    update.status = *authorizationStatus;
+    update.newTotalAndLineItems = WTFMove(totalAndLineItems);
+
     m_state = State::Active;
-    paymentCoordinator().completeShippingMethodSelection(*authorizationStatus, totalAndLineItems);
+    paymentCoordinator().completeShippingMethodSelection(WTFMove(update));
 
     return { };
 }
@@ -685,8 +686,13 @@ ExceptionOr<void> ApplePaySession::completeShippingContactSelection(unsigned sho
 
     totalAndLineItems.lineItems = convertedNewLineItems.releaseReturnValue();
 
+    ShippingContactUpdate update;
+    update.status = *authorizationStatus;
+    update.newShippingMethods = convertedNewShippingMethods.releaseReturnValue();
+    update.newTotalAndLineItems = WTFMove(totalAndLineItems);
+
     m_state = State::Active;
-    paymentCoordinator().completeShippingContactSelection(*authorizationStatus, convertedNewShippingMethods.releaseReturnValue(), totalAndLineItems);
+    paymentCoordinator().completeShippingContactSelection(WTFMove(update));
 
     return { };
 }
@@ -714,8 +720,12 @@ ExceptionOr<void> ApplePaySession::completePaymentMethodSelection(ApplePayLineIt
 
     totalAndLineItems.lineItems = convertedNewLineItems.releaseReturnValue();
 
+    PaymentMethodUpdate update;
+    update.status = PaymentAuthorizationStatus::Success;
+    update.newTotalAndLineItems = WTFMove(totalAndLineItems);
+
     m_state = State::Active;
-    paymentCoordinator().completePaymentMethodSelection(totalAndLineItems);
+    paymentCoordinator().completePaymentMethodSelection(WTFMove(update));
 
     return { };
 }
@@ -729,7 +739,10 @@ ExceptionOr<void> ApplePaySession::completePayment(unsigned short status)
     if (!authorizationStatus)
         return Exception { INVALID_ACCESS_ERR };
 
-    paymentCoordinator().completePaymentSession(*authorizationStatus);
+    PaymentAuthorizationResult result;
+    result.status = *authorizationStatus;
+
+    paymentCoordinator().completePaymentSession(WTFMove(result));
 
     if (!isFinalStateStatus(*authorizationStatus)) {
         m_state = State::Active;
@@ -778,7 +791,7 @@ void ApplePaySession::didSelectShippingMethod(const PaymentRequest::ShippingMeth
     ASSERT(m_state == State::Active);
 
     if (!hasEventListeners(eventNames().shippingmethodselectedEvent)) {
-        paymentCoordinator().completeShippingMethodSelection(PaymentAuthorizationStatus::Success, { });
+        paymentCoordinator().completeShippingMethodSelection({ });
         return;
     }
 
@@ -792,7 +805,7 @@ void ApplePaySession::didSelectShippingContact(const PaymentContact& shippingCon
     ASSERT(m_state == State::Active);
 
     if (!hasEventListeners(eventNames().shippingcontactselectedEvent)) {
-        paymentCoordinator().completeShippingContactSelection(PaymentAuthorizationStatus::Success, { }, { });
+        paymentCoordinator().completeShippingContactSelection({ });
         return;
     }
 

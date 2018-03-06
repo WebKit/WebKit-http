@@ -1,3 +1,120 @@
+2017-03-06  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement the WebAssembly.instantiate API
+        https://bugs.webkit.org/show_bug.cgi?id=165982
+        <rdar://problem/29760110>
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/web-assembly-instantiate.js: Added.
+        (assert.eq.async.test):
+        (assert.eq):
+        (assert.truthy.async.test):
+        (assert.truthy):
+
+2017-03-06  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Fix test expected error message.
+
+        * wasm/js-api/element.js:
+        (assert.throws):
+
+2017-03-06  Caio Lima  <ticaiolima@gmail.com>
+
+        op_get_by_id_with_this should use inline caching
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/super-getter.js: Added.
+        (A.prototype.get f):
+        (A):
+        (B.prototype.get f):
+        (B):
+        * stress/super-force-ic-fail.js: Added.
+        (let.assert):
+        (let.aObj.get foo):
+        (let.obj.jaz):
+        (let.bObj.get foo):
+        (let.obj2.foo):
+        * stress/super-get-by-id.js: Added.
+        (assert):
+        (Base):
+        (Base.prototype.get name):
+        (Base.prototype.set name):
+        (Subclass.prototype.get name):
+        (Subclass):
+        (getterName):
+        (getterValue):
+        (PolymorphicSubclass.prototype.get value):
+        (PolymorphicSubclass):
+        (i.let.BaseCode):
+        (i.get value):
+        (MegamorphicSubclass.prototype.get value):
+        (MegamorphicSubclass):
+        (let.subObj.get value):
+        (i.catch):
+        (subObj.get value):
+        (BaseException):
+        (BaseException.prototype.get name):
+        (SubclassException.prototype.get name):
+        (SubclassException):
+        (prototype.foo):
+        (prototype.get name):
+        (SubclassExceptionComplex.prototype.get name):
+        (SubclassExceptionComplex):
+        * stress/super-getter-reset-ic.js: Added.
+        (let.assert):
+        (let.B.f):
+
+2017-03-06  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement init_expr for Element
+        https://bugs.webkit.org/show_bug.cgi?id=165888
+        <rdar://problem/29760199>
+
+        Reviewed by Keith Miller.
+
+        * wasm/Builder_WebAssemblyBinary.js:
+        (const.emitters.Element):
+        * wasm/assert.js:
+        * wasm/js-api/element.js:
+        (assert.throws):
+        (badInstantiation.makeModule):
+        (badInstantiation.test):
+        (badInstantiation):
+        * wasm/js-api/global-error.js:
+
+2017-03-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSC] [Linux] Test stress/spread-forward-call-varargs-stack-overflow.js fails
+        https://bugs.webkit.org/show_bug.cgi?id=169206
+
+        Unreviewed test gardening.
+
+        * stress/spread-forward-call-varargs-stack-overflow.js: Skip on Linux platforms.
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Allow indexed module namespace object fields
+        https://bugs.webkit.org/show_bug.cgi?id=168870
+
+        Reviewed by Saam Barati.
+
+        * wasm/spec-tests/names.wast.js:
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Null pointer crash when loading module with unresolved import also as a script file
+        https://bugs.webkit.org/show_bug.cgi?id=168971
+
+        Reviewed by Saam Barati.
+
+        * stress/re-execute-error-module.js: Added.
+        (shouldBe):
+        (async):
+        * stress/resources/error-module.js: Added.
+
 2017-03-02  Keith Miller  <keith_miller@apple.com>
 
         WebAssemblyFunction should have Function.prototype as its prototype

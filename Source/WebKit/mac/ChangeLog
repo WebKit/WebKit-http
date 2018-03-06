@@ -1,3 +1,210 @@
+2017-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the PaymentCoordinator interface
+        https://bugs.webkit.org/show_bug.cgi?id=169382
+        Part of rdar://problem/28880714.
+
+        Reviewed by Tim Horton.
+
+        Update for PaymentCoordinatorClient changes.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::completeShippingMethodSelection):
+        (WebPaymentCoordinatorClient::completeShippingContactSelection):
+        (WebPaymentCoordinatorClient::completePaymentMethodSelection):
+        (WebPaymentCoordinatorClient::completePaymentSession):
+
+2017-03-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix for dependency fix
+        https://bugs.webkit.org/show_bug.cgi?id=169369
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix Project Dependency
+        https://bugs.webkit.org/show_bug.cgi?id=169340
+
+        Unreviewed Dependency Fix.
+
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Alexey Proskuryakov  <ap@apple.com>
+
+        WebKitLegacy should re-export symbols from WebCore on watchos and tvos
+        https://bugs.webkit.org/show_bug.cgi?id=169341
+        <rdar://problem/30913788>
+
+        Reviewed by Dan Bernstein.
+
+        * MigrateHeaders.make:
+
+2017-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Have fixedPositionCreatesStackingContext be on by default everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=169334
+
+        Reviewed by Zalan Bujtas.
+
+        It makes no sense to have web-exposed CSS functionality be different based on setting,
+        and other browser are now aligned with having position:fixed create stacking context.
+
+        So remove the fixedPositionCreatesStackingContext setting and have StyleResolver::adjustRenderStyle()
+        always force stacking context for position:fixed.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Initialize the subpixelAntialiasedLayerTextEnabled Setting in WebKit1
+        https://bugs.webkit.org/show_bug.cgi?id=169230
+
+        Reviewed by Tim Horton.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Enable SubpixelAntialiasedLayerTextEnabled by default on some versions of macOS
+        https://bugs.webkit.org/show_bug.cgi?id=169329
+
+        Reviewed by Tim Horton.
+
+        If the macOS version is > 101300, enable subpixelAntialiasedLayerTextEnabled.
+
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+
+2017-03-07  Megan Gardner  <megan_gardner@apple.com>
+
+        Additional DataInteraction Support
+        https://bugs.webkit.org/show_bug.cgi?id=169316
+        <rdar://problem/30884234>
+
+        Reviewed by Wenson Hsieh.
+
+        Add stub implementations to WebView for methods that handle data interaction
+
+        * WebView/WebView.mm:
+        (-[WebView _enteredDataInteraction:client:global:operation:]):
+        (-[WebView _updatedDataInteraction:client:global:operation:]):
+        (-[WebView _exitedDataInteraction:client:global:operation:]):
+        (-[WebView _performDataInteraction:client:global:operation:]):
+        (-[WebView _endedDataInteraction:global:]):
+        * WebView/WebViewPrivate.h:
+
+2017-03-07  Dean Jackson  <dino@apple.com>
+
+        Some platforms won't be able to create a GPUDevice
+        https://bugs.webkit.org/show_bug.cgi?id=169314
+        <rdar://problems/30907521>
+
+        Reviewed by Jon Lee.
+
+        Disable WEB_GPU on the iOS Simulator.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-07  Maureen Daum  <mdaum@apple.com>
+
+        Correctly check for an empty database file.
+        <rdar://problem/30542242> Removing Website Data not working (WebSQL directories being left behind)
+        https://bugs.webkit.org/show_bug.cgi?id=169256
+
+        Reviewed by Brady Eidson.
+
+        Check if the folder for an origin's WebSQL databases is empty after trying to delete
+        all of its files. Currently we check if the deletedDatabaseFileCount matches the number
+        of files that were in the folder. However, when we delete the actual database file in
+        DatabaseTracker::deleteDatabaseFileIfEmpty(), the shm and wal files get deleted along with
+        the database file, but deletedDatabaseFileCount only gets incremented once.
+
+        * Storage/WebDatabaseManager.mm:
+        (+[WebDatabaseManager removeEmptyDatabaseFiles]):
+        Delete the folder if it is empty.
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix to add
+        -isystem $(SDKROOT)/System/Library/Frameworks/System.framework/PrivateHeaders
+        for objective C++ files.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Take advantage of fast permissions switching of JIT memory for devices that support it
+        https://bugs.webkit.org/show_bug.cgi?id=169155
+
+        Reviewed by Saam Barati.
+
+        Updated the Xcode config files to match what is in the JavaScriptCore ones.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Expand font-weight and font-stretch to take any number
+        https://bugs.webkit.org/show_bug.cgi?id=168889
+
+        Reviewed by Simon Fraser.
+
+        Migrate off old enum types.
+
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        * WebView/WebHTMLView.mm:
+        (fontNameForDescription):
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+
+2017-03-03  Dean Jackson  <dino@apple.com>
+
+        Add WebGPU compile flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169161
+        <rdar://problem/30846689>
+
+        Reviewed by Tim Horton.
+
+        Add ENABLE_WEBGPU, an experimental feature flag, a RuntimeEnabledFeature,
+        and an InternalSetting.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences webGPUEnabled]):
+        (-[WebPreferences setWebGPUEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-03  Alexey Proskuryakov  <ap@apple.com>
+
+        Build fix
+        rdar://problem/30825660
+
+        Suggested by Dan Bernstein.
+
+        * Configurations/WebKitLegacy.xcconfig:
+
+2017-03-02  Sam Weinig  <sam@webkit.org>
+
+        Rename htmlediting.h/cpp to Editing.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169103
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMUIKitExtensions.mm:
+        * WebView/WebFrame.mm:
+        * WebView/WebView.mm:
+
 2017-03-02  Megan Gardner  <megan_gardner@apple.com>
 
         Fix 32-bit

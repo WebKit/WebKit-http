@@ -135,6 +135,7 @@ enum EventThrottlingBehavior {
     [MayThrowException] boolean animationsAreSuspended();
     [MayThrowException] boolean pauseAnimationAtTimeOnElement(DOMString animationName, unrestricted double pauseTime, Element element);
     [MayThrowException] boolean pauseAnimationAtTimeOnPseudoElement(DOMString animationName, unrestricted double pauseTime, Element element, DOMString pseudoId);
+    readonly attribute double animationsInterval;
 
     // CSS Transition testing.
     [MayThrowException] boolean pauseTransitionAtTimeOnElement(DOMString propertyName, unrestricted double pauseTime, Element element);
@@ -160,6 +161,7 @@ enum EventThrottlingBehavior {
     [MayThrowException] void setMarkedTextMatchesAreHighlighted(boolean flag);
 
     void invalidateFontCache();
+    void setFontSmoothingEnabled(boolean enabled);
 
     [MayThrowException] void setScrollViewPosition(long x, long y);
 
@@ -247,6 +249,7 @@ enum EventThrottlingBehavior {
     readonly attribute unsigned long workerThreadCount;
 
     readonly attribute boolean areSVGAnimationsPaused;
+    [MayThrowException] double svgAnimationsInterval(SVGSVGElement element);
 
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;

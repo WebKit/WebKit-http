@@ -484,6 +484,7 @@ public:
     CSSFontSelector& fontSelector() { return m_fontSelector; }
 
     WEBCORE_EXPORT bool haveStylesheetsLoaded() const;
+    bool isIgnoringPendingStylesheets() const { return m_ignorePendingStylesheets; }
 
     WEBCORE_EXPORT StyleSheetList& styleSheets();
 
@@ -552,7 +553,6 @@ public:
     void didBecomeCurrentDocumentInFrame();
     void destroyRenderTree();
     void prepareForDestruction();
-    void didBecomeCurrentDocumentInView();
 
     // Override ScriptExecutionContext methods to do additional work
     bool shouldBypassMainWorldContentSecurityPolicy() const final;
@@ -1326,9 +1326,9 @@ private:
 
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) final;
 
-    std::chrono::milliseconds minimumTimerInterval() const final;
+    Seconds minimumDOMTimerInterval() const final;
 
-    std::chrono::milliseconds timerAlignmentInterval(bool hasReachedMaxNestingLevel) const final;
+    Seconds domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) const final;
 
     void updateTitleFromTitleElement();
     void updateTitle(const StringWithDirection&);

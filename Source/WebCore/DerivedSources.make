@@ -156,6 +156,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediasource/TextTrackMediaSource.idl \
     $(WebCore)/Modules/mediasource/VideoPlaybackQuality.idl \
     $(WebCore)/Modules/mediasource/VideoTrackMediaSource.idl \
+    $(WebCore)/Modules/mediastream/CanvasCaptureMediaStreamTrack.idl \
     $(WebCore)/Modules/mediastream/DOMURLMediaStream.idl \
     $(WebCore)/Modules/mediastream/DoubleRange.idl \
     $(WebCore)/Modules/mediastream/LongRange.idl \
@@ -274,6 +275,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
     $(WebCore)/crypto/parameters/AesGcmParams.idl \
     $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/EcKeyParams.idl \
     $(WebCore)/crypto/parameters/HmacKeyParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \

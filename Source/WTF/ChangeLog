@@ -1,3 +1,71 @@
+2017-03-08  Anders Carlsson  <andersca@apple.com>
+
+        Simplify the PaymentCoordinator interface
+        https://bugs.webkit.org/show_bug.cgi?id=169382
+        Part of rdar://problem/28880714.
+
+        Reviewed by Tim Horton.
+
+        * wtf/EnumTraits.h:
+        Fix a build warning.
+
+2017-03-06  Andreas Kling  <akling@apple.com>
+
+        [iOS] Report domains crashing under memory pressure via enhanced privacy logging.
+        <https://webkit.org/b/169133>
+        <rdar://problem/29964017>
+
+        Reviewed by Antti Koivisto.
+
+        Add a mechanism for getting a callback when the memory pressure status changes.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::beginSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::endSimulatedMemoryPressure):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure):
+        (WTF::MemoryPressureHandler::memoryPressureStatusChanged):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setMemoryPressureStatusChangedCallback):
+        (WTF::MemoryPressureHandler::setUnderMemoryPressure): Deleted.
+
+2017-03-03  Jer Noble  <jer.noble@apple.com>
+
+        [Win64] '__int128_t': undeclared identifier in MediaTime.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169123
+
+        Reviewed by Alex Christensen.
+
+        Don't perform the 128-bit optimized path on Windows, where the __int128_t intrinsic isn't available.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+
+2017-03-03  Keith Miller  <keith_miller@apple.com>
+
+        WASM should support faster loads.
+        https://bugs.webkit.org/show_bug.cgi?id=162693
+
+        Reviewed by Saam Barati.
+
+        Add new forms of dataLog that take a boolean which describes if the log should happen. This makes cases where we have a static const bool for printing nicer since you can do:
+
+        dataLogIf(verbose, things, to, print);
+
+        instead of:
+
+        if (verbose)
+            dataLog(things, to, print);
+
+        Also, add a operator! to Ref that has the same semantics as C++ refs.
+
+        * wtf/DataLog.h:
+        (WTF::dataLogLn):
+        (WTF::dataLogIf):
+        (WTF::dataLogLnIf):
+        * wtf/Ref.h:
+        (WTF::Ref::operator!):
+
 2017-03-02  Jer Noble  <jer.noble@apple.com>
 
         Sufficently large timeValue and timeScale arguments to MediaTime will cause wrapping in toTimeScale().

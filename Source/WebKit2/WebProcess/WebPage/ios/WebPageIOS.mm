@@ -30,6 +30,7 @@
 
 #import "AccessibilityIOS.h"
 #import "AssistedNodeInformation.h"
+#import "CelestialSPI.h"
 #import "DataReference.h"
 #import "DrawingArea.h"
 #import "EditingRange.h"
@@ -56,6 +57,7 @@
 #import <WebCore/DataDetection.h>
 #import <WebCore/DiagnosticLoggingClient.h>
 #import <WebCore/DiagnosticLoggingKeys.h>
+#import <WebCore/Editing.h>
 #import <WebCore/Element.h>
 #import <WebCore/ElementAncestorIterator.h>
 #import <WebCore/EventHandler.h>
@@ -97,6 +99,7 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/Settings.h>
 #import <WebCore/SharedBuffer.h>
+#import <WebCore/SoftLinking.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
@@ -104,10 +107,17 @@
 #import <WebCore/VisibleUnits.h>
 #import <WebCore/WKContentObservation.h>
 #import <WebCore/WebEvent.h>
-#import <WebCore/htmlediting.h>
 #import <wtf/MathExtras.h>
 #import <wtf/MemoryPressureHandler.h>
 #import <wtf/SetForScope.h>
+
+SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(Celestial)
+
+SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
+
+SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
+
+#define AVSystemController_PIDToInheritApplicationStateFrom getAVSystemController_PIDToInheritApplicationStateFrom()
 
 using namespace WebCore;
 
@@ -119,6 +129,14 @@ const int blockSelectionStartHeight = 100;
 void WebPage::platformInitialize()
 {
     platformInitializeAccessibility();
+
+    if (canLoadAVSystemController_PIDToInheritApplicationStateFrom()) {
+        pid_t pid = WebProcess::singleton().presenterApplicationPid();
+        NSError *error = nil;
+        [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(pid) forKey:AVSystemController_PIDToInheritApplicationStateFrom error:&error];
+        if (error)
+            WTFLogAlways("Failed to set up PID proxying: %s", [[error localizedDescription] UTF8String]);
+    }
 }
 
 void WebPage::platformDetach()
@@ -294,9 +312,12 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
         float boundedScale = std::min<float>(m_viewportConfiguration.maximumScale(), std::max<float>(m_viewportConfiguration.minimumScale(), historyItem.pageScaleFactor()));
         scalePage(boundedScale, IntPoint());
 
-        m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
-
-        send(Messages::WebPageProxy::RestorePageState(historyItem.scrollPosition(), frameView.scrollOrigin(), historyItem.obscuredInset(), boundedScale));
+        std::optional<FloatPoint> scrollPosition;
+        if (historyItem.shouldRestoreScrollPosition()) {
+            m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
+            scrollPosition = FloatPoint(historyItem.scrollPosition());
+        }
+        send(Messages::WebPageProxy::RestorePageState(scrollPosition, frameView.scrollOrigin(), historyItem.obscuredInset(), boundedScale));
     } else {
         IntSize oldContentSize = historyItem.contentSize();
         IntSize newContentSize = frameView.contentsSize();
@@ -304,23 +325,15 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
 
         double newScale = scaleAfterViewportWidthChange(historyItem.pageScaleFactor(), !historyItem.scaleIsInitial(), m_viewportConfiguration, currentMinimumLayoutSizeInScrollViewCoordinates.width(), newContentSize, oldContentSize, visibleHorizontalFraction);
 
-        FloatPoint newCenter;
-        if (!oldContentSize.isEmpty() && !newContentSize.isEmpty() && newContentSize != oldContentSize)
-            newCenter = relativeCenterAfterContentSizeChange(historyItem.unobscuredContentRect(), oldContentSize, newContentSize);
-        else
-            newCenter = FloatRect(historyItem.unobscuredContentRect()).center();
-
-        FloatSize unobscuredRectAtNewScale = frameView.customSizeForResizeEvent();
-        unobscuredRectAtNewScale.scale(1 / newScale);
-
-        FloatRect oldExposedRect = frameView.exposedContentRect();
-        FloatRect adjustedExposedRect = adjustExposedRectForNewScale(oldExposedRect, m_page->pageScaleFactor(), newScale);
-
-        FloatPoint oldCenter = adjustedExposedRect.center();
-        adjustedExposedRect.move(newCenter - oldCenter);
+        std::optional<FloatPoint> newCenter;
+        if (historyItem.shouldRestoreScrollPosition()) {
+            if (!oldContentSize.isEmpty() && !newContentSize.isEmpty() && newContentSize != oldContentSize)
+                newCenter = relativeCenterAfterContentSizeChange(historyItem.unobscuredContentRect(), oldContentSize, newContentSize);
+            else
+                newCenter = FloatRect(historyItem.unobscuredContentRect()).center();
+        }
 
         scalePage(newScale, IntPoint());
-
         send(Messages::WebPageProxy::RestorePageCenterAndScale(newCenter, newScale));
     }
 }
@@ -603,6 +616,8 @@ void WebPage::completeSyntheticClick(Node* nodeRespondingToClick, const WebCore:
 
     if (!tapWasHandled || !nodeRespondingToClick || !nodeRespondingToClick->isElementNode())
         send(Messages::WebPageProxy::DidNotHandleTapAsClick(roundedIntPoint(location)));
+    
+    send(Messages::WebPageProxy::DidCompleteSyntheticClick());
 }
 
 void WebPage::handleTap(const IntPoint& point, uint64_t lastLayerTreeTransactionId)
@@ -3220,11 +3235,6 @@ WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const Stri
     return WebGLAllowCreation;
 }
 #endif
-
-void WebPage::zoomToRect(FloatRect rect, double minimumScale, double maximumScale)
-{
-    send(Messages::WebPageProxy::ZoomToRect(rect, minimumScale, maximumScale));
-}
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 void WebPage::dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue)

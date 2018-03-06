@@ -33,7 +33,7 @@
 #include <wtf/RetainPtr.h>
 #endif
 
-#if PLATFORM(GTK)
+#if USE(GLIB)
 typedef struct _GModule GModule;
 #endif
 
@@ -73,7 +73,7 @@ private:
 #if !defined(__LP64__)
     CFBundleRefNum m_bundleResourceMap;
 #endif
-#elif PLATFORM(GTK)
+#elif USE(GLIB)
     GModule* m_handle;
 #elif PLATFORM(HAIKU)
     image_id m_module;

@@ -30,6 +30,7 @@
 
 #include "APIArray.h"
 #include "APIGeometry.h"
+#include "APIWebsitePolicies.h"
 #include "AssistedNodeInformation.h"
 #include "DataReference.h"
 #include "DragControllerAction.h"
@@ -127,6 +128,7 @@
 #include <WebCore/DocumentMarkerController.h>
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
+#include <WebCore/Editing.h>
 #include <WebCore/ElementIterator.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/EventNames.h>
@@ -181,7 +183,6 @@
 #include <WebCore/VisiblePosition.h>
 #include <WebCore/VisibleUnits.h>
 #include <WebCore/WebGLStateTracker.h>
-#include <WebCore/htmlediting.h>
 #include <WebCore/markup.h>
 #include <bindings/ScriptValue.h>
 #include <profiler/ProfilerDatabase.h>
@@ -831,9 +832,9 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
         if (!selection.isNone()) {
             Node* nodeToRemove;
             if (auto* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
-                if (style->fontCascade().weight() >= FontWeightBold)
+                if (isFontWeightBold(style->fontCascade().weight()))
                     postLayoutData.typingAttributes |= AttributeBold;
-                if (style->fontCascade().italic() == FontItalicOn)
+                if (isItalic(style->fontCascade().italic()))
                     postLayoutData.typingAttributes |= AttributeItalics;
 
                 RefPtr<EditingStyle> typingStyle = frame.selection().typingStyle();
@@ -1681,7 +1682,6 @@ void WebPage::setUseFixedLayout(bool fixed)
 #endif
 #if USE(COORDINATED_GRAPHICS)
     m_page->settings().setAcceleratedCompositingForFixedPositionEnabled(fixed);
-    m_page->settings().setFixedPositionCreatesStackingContext(fixed);
     m_page->settings().setDelegatesPageScaling(fixed);
     m_page->settings().setScrollingCoordinatorEnabled(fixed);
 #endif
@@ -3234,6 +3234,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 
 #if ENABLE(WEBGL2)
     RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(store.getBoolValueForKey(WebPreferencesKey::webGL2EnabledKey()));
+#endif
+
+#if ENABLE(WEBGPU)
+    RuntimeEnabledFeatures::sharedFeatures().setWebGPUEnabled(store.getBoolValueForKey(WebPreferencesKey::webGPUEnabledKey()));
 #endif
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
@@ -5445,9 +5449,29 @@ void WebPage::reportUsedFeatures()
     m_loaderClient.featuresUsedInPage(this, namedFeatures);
 }
 
-void WebPage::updateWebsitePolicies(const WebsitePolicies&)
+void WebPage::updateWebsitePolicies(const WebsitePolicies& websitePolicies)
 {
-    // FIXME: Update the website policies in m_page.
+    if (!m_page)
+        return;
+
+    auto* documentLoader = m_page->mainFrame().loader().documentLoader();
+    if (!documentLoader)
+        return;
+
+    switch (websitePolicies.autoplayPolicy) {
+    case WebsiteAutoplayPolicy::Default:
+        documentLoader->setAutoplayPolicy(AutoplayPolicy::Default);
+        break;
+    case WebsiteAutoplayPolicy::Allow:
+        documentLoader->setAutoplayPolicy(AutoplayPolicy::Allow);
+        break;
+    case WebsiteAutoplayPolicy::AllowWithoutSound:
+        documentLoader->setAutoplayPolicy(AutoplayPolicy::AllowWithoutSound);
+        break;
+    case WebsiteAutoplayPolicy::Deny:
+        documentLoader->setAutoplayPolicy(AutoplayPolicy::Deny);
+        break;
+    }
 }
 
 unsigned WebPage::extendIncrementalRenderingSuppression()

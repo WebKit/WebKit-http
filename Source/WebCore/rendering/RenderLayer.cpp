@@ -89,6 +89,7 @@
 #include "RenderFlexibleBox.h"
 #include "RenderFlowThread.h"
 #include "RenderGeometryMap.h"
+#include "RenderImage.h"
 #include "RenderInline.h"
 #include "RenderIterator.h"
 #include "RenderLayerBacking.h"
@@ -6579,24 +6580,40 @@ static bool hasVisibleBoxDecorationsOrBackground(const RenderElement& renderer)
     return renderer.hasVisibleBoxDecorations() || renderer.style().hasOutline();
 }
 
-// Constrain the depth and breadth of the search for performance.
-static const int maxDescendentDepth = 3;
-static const int maxSiblingCount = 20;
-
-static bool hasPaintingNonLayerDescendants(const RenderElement& renderer, int depth)
+static bool styleHasSmoothingTextMode(const RenderStyle& style)
 {
-    if (depth > maxDescendentDepth)
-        return true;
-    
-    int siblingCount = 0;
+    FontSmoothingMode smoothingMode = style.fontDescription().fontSmoothing();
+    return smoothingMode == AutoSmoothing || smoothingMode == SubpixelAntialiased;
+}
+
+// Constrain the depth and breadth of the search for performance.
+static const unsigned maxRendererTraversalCount = 200;
+
+static void determineNonLayerDescendantsPaintedContent(const RenderElement& renderer, unsigned& renderersTraversed, RenderLayer::PaintedContentRequest& request)
+{
     for (const auto& child : childrenOfType<RenderObject>(renderer)) {
-        if (++siblingCount > maxSiblingCount)
-            return true;
-        
+        if (++renderersTraversed > maxRendererTraversalCount) {
+            request.makeStatesUndetermined();
+            return;
+        }
+
         if (is<RenderText>(child)) {
-            bool isSelectable = renderer.style().userSelect() != SELECT_NONE;
-            if (isSelectable || !downcast<RenderText>(child).isAllCollapsibleWhitespace())
-                return true;
+            const auto& renderText = downcast<RenderText>(child);
+            if (renderText.linesBoundingBox().isEmpty())
+                continue;
+
+            if (renderer.style().userSelect() != SELECT_NONE)
+                request.setHasPaintedContent();
+
+            if (!renderText.text()->containsOnlyWhitespace()) {
+                request.setHasPaintedContent();
+
+                if (request.needToDetermineSubpixelAntialiasedTextState() && styleHasSmoothingTextMode(child.style()))
+                    request.setHasSubpixelAntialiasedText();
+            }
+
+            if (request.isSatisfied())
+                return;
         }
         
         if (!is<RenderElement>(child))
@@ -6607,22 +6624,37 @@ static bool hasPaintingNonLayerDescendants(const RenderElement& renderer, int de
         if (is<RenderLayerModelObject>(renderElementChild) && downcast<RenderLayerModelObject>(renderElementChild).hasSelfPaintingLayer())
             continue;
 
-        if (hasVisibleBoxDecorationsOrBackground(renderElementChild))
-            return true;
+        if (hasVisibleBoxDecorationsOrBackground(renderElementChild)) {
+            request.setHasPaintedContent();
+            if (request.isSatisfied())
+                return;
+        }
         
-        if (is<RenderReplaced>(renderElementChild))
-            return true;
+        if (is<RenderReplaced>(renderElementChild)) {
+            request.setHasPaintedContent();
 
-        if (hasPaintingNonLayerDescendants(renderElementChild, depth + 1))
-            return true;
+            if (is<RenderImage>(renderElementChild) && request.needToDetermineSubpixelAntialiasedTextState()) {
+                auto& imageRenderer = downcast<RenderImage>(renderElementChild);
+                // May draw text if showing alt text, or image is an SVG image or PDF image.
+                if ((imageRenderer.isShowingAltText() || imageRenderer.hasNonBitmapImage()) && styleHasSmoothingTextMode(child.style()))
+                    request.setHasSubpixelAntialiasedText();
+            }
+
+            if (request.isSatisfied())
+                return;
+        }
+
+        determineNonLayerDescendantsPaintedContent(renderElementChild, renderersTraversed, request);
+        if (request.isSatisfied())
+            return;
     }
-
-    return false;
 }
 
-bool RenderLayer::hasNonEmptyChildRenderers() const
+bool RenderLayer::hasNonEmptyChildRenderers(PaintedContentRequest& request) const
 {
-    return hasPaintingNonLayerDescendants(renderer(), 0);
+    unsigned renderersTraversed = 0;
+    determineNonLayerDescendantsPaintedContent(renderer(), renderersTraversed, request);
+    return request.probablyHasPaintedContent();
 }
 
 bool RenderLayer::hasVisibleBoxDecorationsOrBackground() const
@@ -6638,23 +6670,29 @@ bool RenderLayer::hasVisibleBoxDecorations() const
     return hasVisibleBoxDecorationsOrBackground() || hasOverflowControls();
 }
 
-bool RenderLayer::isVisuallyNonEmpty() const
+bool RenderLayer::isVisuallyNonEmpty(PaintedContentRequest* request) const
 {
     ASSERT(!m_visibleDescendantStatusDirty);
 
     if (!hasVisibleContent() || !renderer().style().opacity())
         return false;
 
-    if (renderer().isRenderReplaced() || hasOverflowControls())
+    if (renderer().isRenderReplaced() || hasOverflowControls()) {
+        if (request)
+            request->setHasPaintedContent();
         return true;
+    }
 
-    if (hasVisibleBoxDecorationsOrBackground())
+    if (hasVisibleBoxDecorationsOrBackground()) {
+        if (request)
+            request->setHasPaintedContent();
         return true;
+    }
     
-    if (hasNonEmptyChildRenderers())
-        return true;
-
-    return false;
+    PaintedContentRequest localRequest;
+    if (!request)
+        request = &localRequest;
+    return hasNonEmptyChildRenderers(*request);
 }
 
 void RenderLayer::updateStackingContextsAfterStyleChange(const RenderStyle* oldStyle)

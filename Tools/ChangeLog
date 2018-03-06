@@ -1,3 +1,435 @@
+2017-03-08  Matt Rajca  <mrajca@apple.com>
+
+        Add support for updating autoplay policies after a page has been loaded.
+        https://bugs.webkit.org/show_bug.cgi?id=169360
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2/autoplay-check.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST):
+
+2017-03-08  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r213545.
+
+        iOS EWS broken by this change
+
+        Reverted changeset:
+
+        "Standardize device/simulator naming conventions"
+        https://bugs.webkit.org/show_bug.cgi?id=169083
+        http://trac.webkit.org/changeset/213545
+
+2017-03-07  Kocsen Chung  <kocsen_chung@apple.com>
+
+        Perf and layout test results should report using correct scm revision.
+        https://bugs.webkit.org/show_bug.cgi?id=169171
+
+        Reviewed by Ryosuke Niwa.
+
+        For accurate record keeping, perf test and layout test results should
+        report using the native scm revision as an identifier.
+        To do so we introduce a new scm functions:
+            `native_revision()` and `timestamp_of_native_revision()`.
+        The former is responsible for returning a git hash if scm.git or an
+        svn revision if scm.svn. The latter is responsible for retrieving the correct timestamp.
+        We also add the corresponding tests and a helper function `_most_recent_log_for_revision`.
+
+        * Scripts/webkitpy/common/checkout/scm/scm.py:
+        (SCM.run):
+        Drive-by indentation fix to adhere to WebKit style conventions.
+        (SCM.svn_revision):
+        Remove superfluous comment.
+        (SCM.native_revision):
+        Add new abstract function `native_revision` and make it a `_subclass_must_implement()`
+        as we want to closely mimic `svn_revision()` function due to their similar behavior.
+        (SCM.timestamp_of_native_revision):
+        Add new abstract function `timestamp_of_native_revision` to closely mimic `timestamp_of_revision`.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git._most_recent_log_for_revision):
+        New helper function similar to `_most_recent_log_matching` that is git hash friendly.
+        (Git.native_revision):
+        Implement new function `native_revision()`. Get the native_revision by running:
+
+            `git log -1 --pretty=format:%H`
+
+        and thus returning the latest git hash (in long format).
+        (Git.timestamp_of_native_revision):
+        Since perftestrunner and layout_test.controllers.manager use the new native_revision
+        function, we create a new native_revision timestamp retriever.
+        You will notice this uses a far more simplified way to retrieve UTC strict-ISO timestamp
+        than its non-native counterpart: `timestamp_of_revision()`.
+        * Scripts/webkitpy/common/checkout/scm/svn.py:
+        (SVN.native_revision):
+        Implement native_revision for SVN: simply return self.svn_revision()
+        (SVN.timestamp_of_native_revision):
+        Implement timestamp_of_native_revision for SVN: simply return self.timestamp_of_revision()
+
+        * Scripts/webkitpy/common/checkout/scm/scm_unittest.py:
+        (test_native_revision):
+        [SVN] Confirm that svn_revision == native_revision. And that native_revision returns 5.
+        Use '.' as the path parameter instead of svn_checkout_path to avoid violating pylint/E1101
+        and since we are guaranteed by test setUp to be in the correct SVN dir.
+        (GitTest.test_native_revision):
+        [Git] Confirm that `git rev-parse HEAD` is equal to newly implemented native_revision().
+        (GitSVNTest.test_native_revision):
+        [Git] Confirm that `git rev-parse HEAD` is equal to newly implemented native_revision().
+        (test_timestamp_of_native_revision):
+        Test new function `timestamp_of_native_revision`. Very similar fashion to
+        `test_timestamp_of_revision`.
+
+        * Scripts/webkitpy/common/checkout/scm/scm_mock.py:
+        (MockSCM.native_revision):
+        Add MockSCM.native_revision to behave like svn.py (default).
+        (MockSCM.test_native_revision):
+        Add MockSCM.test_native_revision to behave like its non-native counterpart.
+
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.upload_results):
+        When iterating through a list of projects, make sure we use the project's new native revision.
+        * Scripts/webkitpy/performance_tests/perftestsrunner.py:
+        (_generate_results_dict):
+        As per the FIXME in manager.py, we have duplicate code in perftestsrunner.py.
+        So make the same exact change here.
+
+2017-03-07  Tim Horton  <timothy_horton@apple.com>
+
+        Fix the TestWebKitAPI build
+
+        Rubber-stamped by Anders Carlsson.
+
+        * TestWebKitAPI/Tests/WTF/MetaAllocator.cpp:
+        (TestWebKitAPI::TEST_F):
+        Fix a new warning about default argument promotion and va_start by
+        making this a enum class.
+
+2017-03-07  Dean Jackson  <dino@apple.com>
+
+        Some platforms won't be able to create a GPUDevice
+        https://bugs.webkit.org/show_bug.cgi?id=169314
+        <rdar://problems/30907521>
+
+        Reviewed by Jon Lee.
+
+        Protect for the case where the hardware doesn't support Metal.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm:
+        (TestWebKitAPI::TEST):
+
+2017-03-07  Maureen Daum  <mdaum@apple.com>
+
+        Correctly check for an empty database file.
+        <rdar://problem/30542242> Removing Website Data not working (WebSQL directories being left behind)
+        https://bugs.webkit.org/show_bug.cgi?id=169256
+
+        Reviewed by Brady Eidson.
+
+        Add a test for DatabaseTracker::deleteDatabaseFileIfEmpty that verifies
+        that if we pass in an empty file it actually gets deleted.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        Add TestWebKitAPI/Tests/WebCore/DatabaseTrackerTest.cpp.
+        * TestWebKitAPI/Tests/WebCore/DatabaseTrackerTest.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2017-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        [URLParser] Fix file URLs that are just file:// and a Windows drive letter
+        https://bugs.webkit.org/show_bug.cgi?id=169242
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-03-07  Jonathan Bedard  <jbedard@apple.com>
+
+        Standardize device/simulator naming conventions
+        https://bugs.webkit.org/show_bug.cgi?id=169083
+        <rdar://problem/30810466>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/build-webkit: Document --ios-device and --simulator options.
+        * Scripts/package-root:
+        (usage): Ditto.
+        * Scripts/run-api-tests: Document --simulator option.
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration): Use --ios-device by default rather than --device.
+        (determineXcodeSDK): Parse --ios-device and --simulator options.
+        * Scripts/webkitpy/common/config/ews.json: Change port name from ios to ios-device.
+        * Scripts/webkitpy/common/config/ports.py: Ditto.
+        (DeprecatedPort.port):
+        (IOSPort): Change port name from ios to ios-device. 
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options): Add --simulator option.
+        (PortFactory): Update comment.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort): Change port name from ios to ios-device.
+        (IOSDevicePort.operating_system): Ditto.
+
+2017-03-07  Dean Jackson  <dino@apple.com>
+
+        Add GPUDevice implementation and WebGPULayer
+        https://bugs.webkit.org/show_bug.cgi?id=169219
+        <rdar://problem/30879048>
+
+        Reviewed by Sam Weinig.
+
+        Test for WebCore's GPUDevice class.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2017-03-07  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Rename "Domain" to "Condition" where appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=169297
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::create):
+        (TestWebKitAPI::TEST_F):
+
+2017-03-07  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Refactor setup_test_run for IOSPort and IOSSimulator
+        https://bugs.webkit.org/show_bug.cgi?id=169220
+        <rdar://problem/30879645>
+
+        Reviewed by Daniel Bates.
+
+        Provide more specific port setup functions for iOS ports to allow more sharing of common code.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        (IOSPort._create_devices): Added.
+        (IOSPort.setup_test_run): Shared iOS device setup code.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort._create_devices): Renamed from setup_test_run.
+        (IOSSimulatorPort.setup_test_run): Renamed as _create_devices.
+
+2017-03-07  Anders Carlsson  <andersca@apple.com>
+
+        Rewrite the DRT Pasteboard implementation to use UTIs and WTF types
+        https://bugs.webkit.org/show_bug.cgi?id=169289
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/DumpRenderTreePasteboard.mm:
+        (-[LocalPasteboard initWithName:]):
+        (-[LocalPasteboard name]):
+        (-[LocalPasteboard declareTypes:owner:]):
+        (isUTI):
+        (toUTI):
+        (-[LocalPasteboard addTypes:owner:]):
+        (-[LocalPasteboard changeCount]):
+        (-[LocalPasteboard types]):
+        (-[LocalPasteboard availableTypeFromArray:]):
+        (-[LocalPasteboard setData:forType:]):
+        (-[LocalPasteboard dataForType:]):
+        (-[LocalPasteboard writeObjects:]):
+        (-[LocalPasteboard dealloc]): Deleted.
+
+2017-03-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add David Jonathan Ross to contributors.json
+        https://bugs.webkit.org/show_bug.cgi?id=169265
+
+        Unreviewed.
+
+        David Jonathan Ross very kindly offered to create and contribute his Boxis font in r211060,
+        which is used for testing font variations.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-07  Youenn Fablet  <youennf@gmail.com>
+
+        W3C importer should be able to update the import expectations file
+        https://bugs.webkit.org/show_bug.cgi?id=168037
+
+        Reviewed by Ryosuke Niwa.
+
+        Changing import expectations from an array to a map.
+        Marking all test paths as import and updating import expectations file accordingly.
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader.__init__):
+        (TestDownloader._init_paths_from_expectations):
+        (TestDownloader):
+        (TestDownloader.update_import_expectations):
+        * Scripts/webkitpy/w3c/test_importer.py:
+        (TestImporter.do_import):
+        * Scripts/webkitpy/w3c/test_importer_unittest.py:
+
+2017-03-07  Philip Rogers  <pdr@google.com>
+
+        Add pdr to the rendering watchlist
+        https://bugs.webkit.org/show_bug.cgi?id=167298
+
+        Reviewed by Andreas Kling.
+
+        * Scripts/webkitpy/common/config/contributors.json: Switch to pdr+autocc@chromium.org
+        * Scripts/webkitpy/common/config/watchlist: Add pdr to the rendering watchlist.
+
+2017-03-07  Mario Sanchez Prada  <mario@webkit.org>
+
+        Unreviewed. Removed myself from the Accessibility watch list
+
+        * Scripts/webkitpy/common/config/watchlist: Removed myself.
+
+2017-03-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Add Fujii Hironori to contributor's list
+        https://bugs.webkit.org/show_bug.cgi?id=169261
+
+        Reviewed by Yusuke Suzuki.
+
+        Add myself to the contributor's lists so that my e-mail autocompletes for CC
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Mark WTF_Lock.ContendedLongSection and WTF_WordLock.ContendedLongSection as slow.
+
+        Unreviewed test gardening.
+
+        The ContendedShortSection version of this tests were already marked as slow.
+        And the ContendedLongSection version takes more or less the same time to run.
+        They cause time outs on the bot sometimes.
+
+        * Scripts/run-gtk-tests:
+        (TestRunner):
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Take advantage of fast permissions switching of JIT memory for devices that support it
+        https://bugs.webkit.org/show_bug.cgi?id=169155
+
+        Reviewed by Saam Barati.
+
+        Updated the Xcode config files to match what is in the JavaScriptCore ones.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-03-06  Lucas Forschler  <lforschler@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=169234
+        torchmobile.com.cn is no longer a registered domain. These email addresses will bounce, so clean them up.
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-03  Matt Rajca  <mrajca@apple.com>
+
+        Media: notify clients when the user never plays a media element that was prevented from auto-playing
+        https://bugs.webkit.org/show_bug.cgi?id=169150
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Added.
+
+2017-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix URLs relative to file URLs with paths beginning with Windows drive letters
+        https://bugs.webkit.org/show_bug.cgi?id=169178
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Expand font-weight and font-stretch to take any number
+        https://bugs.webkit.org/show_bug.cgi?id=168889
+
+        Reviewed by Simon Fraser.
+
+        Migrate off old enum types.
+
+        * TestWebKitAPI/Tests/WebCore/FontCache.cpp:
+        (TestWebKitAPI::createPlatformFont):
+        (TestWebKitAPI::compareFonts):
+        (TestWebKitAPI::TEST_F):
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][JSCOnly] Enable WebAssembly on Linux environment
+        https://bugs.webkit.org/show_bug.cgi?id=164032
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/run-jsc-stress-tests:
+        Enable WASM tests.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        Enable WebAssembly.
+
+2017-03-04  Lucas Forschler  <lforschler@apple.com>
+
+        Test commit against svn.webkit.org after SHA-1 cleanup.
+        
+        Unreviewed.
+
+2017-03-03  Dean Jackson  <dino@apple.com>
+
+        Add WebGPU compile flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169161
+        <rdar://problem/30846689>
+
+        Reviewed by Tim Horton.
+
+        Add ENABLE_WEBGPU, an experimental feature flag, a RuntimeEnabledFeature,
+        and an InternalSetting.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setWebGL2Enabled):
+        (WTR::TestRunner::setWebGPUEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-03-03  Dean Jackson  <dino@apple.com>
+
+        Add a script to synchronize FeatureDefines.xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=169151
+        <rdar://problem/30841856>
+
+        Reviewed by Simon Fraser.
+
+        I got sick of manually copying the FeatureDefines.xcconfig
+        files, so I added a script to do it. As long as you
+        run this after you've edited one, it will take the most
+        recently updated and copy it to all the others.
+
+        * Scripts/sync-feature-defines: Added.
+        * Scripts/webkitpy/style/checkers/featuredefines.py:
+        (FeatureDefinesChecker.check): Export the list of files,
+        and give a suggestion to use the sync script.
+
+2017-03-03  Alex Christensen  <achristensen@webkit.org>
+
+        [URLParser] Fix file: as a relative file URL
+        https://bugs.webkit.org/show_bug.cgi?id=169122
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
 2017-03-02  Myles C. Maxfield  <mmaxfield@apple.com>
 
         Migrate font-stretch to use fixed-point values

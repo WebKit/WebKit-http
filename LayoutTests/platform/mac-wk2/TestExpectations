@@ -287,6 +287,7 @@ webkit.org/b/139820 fast/frames/lots-of-iframes.html [ Pass Timeout ]
 webkit.org/b/145432 media/video-transformed-by-javascript.html [ Failure ]
 
 # A lot of the disk-cache tests are flaky on mac-wk2
+webkit.org/b/169359 http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html [ Pass Failure ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-back-navigation-policy.html [ Pass Failure Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation-no-body.html [ Pass Failure Timeout ]
 webkit.org/b/149087 http/tests/cache/disk-cache/disk-cache-validation.html [ Pass Failure Timeout ]
@@ -601,7 +602,7 @@ webkit.org/b/163136 http/tests/xmlhttprequest/auth-reject-protection-space.html 
 
 webkit.org/b/163139 http/tests/loading/basic-auth-load-URL-with-consecutive-slashes.html [ Pass Failure ]
 
-webkit.org/b/162975 [ Debug ] http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html [ Pass Failure ]
+webkit.org/b/162975 http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html [ Pass Failure ]
 
 webkit.org/b/161653 [ Debug ] storage/indexeddb/key-generator.html [ Pass Timeout ]
 
@@ -610,6 +611,7 @@ webkit.org/b/163453 [ Sierra Release ] http/tests/security/contentSecurityPolicy
 webkit.org/b/163702 platform/mac-wk2/plugins/muted-state.html [ Failure ]
 
 webkit.org/b/164870 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
+webkit.org/b/164870 [ ElCapitan Release ] imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm [ Pass Failure ]
 
 webkit.org/b/165352 fast/dom/Window/window-resize-contents.html [ Pass Timeout ]
 
@@ -672,3 +674,5 @@ fast/events/context-activated-by-key-event.html [ Skip ]
 [ Release ] js/dom/global-constructors-attributes.html [ Skip ]
 
 webkit.org/b/168933 fast/regions/inline-block-inside-anonymous-overflow-with-covered-controls.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/168346 [ Sierra Debug ] editing/selection/move-by-word-visually-multi-space.html [ Pass Timeout ]

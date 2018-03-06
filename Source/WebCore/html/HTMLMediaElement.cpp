@@ -456,6 +456,8 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     m_sendProgressEvents = false;
 #endif
 
+    auto* page = document.page();
+
     if (document.settings().invisibleAutoplayNotPermitted())
         m_mediaSession->addBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted);
 
@@ -469,6 +471,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
             if (document.settings().requiresUserGestureToLoadVideo())
                 m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForLoad);
         }
+
+        if (page && page->isLowPowerModeEnabled())
+            m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoDueToLowPowerMode);
 
         if (shouldAudioPlaybackRequireUserGesture)
             m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForAudioRateChange);
@@ -493,8 +498,8 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
 #endif
 
 #if ENABLE(VIDEO_TRACK)
-    if (document.page())
-        m_captionDisplayMode = document.page()->group().captionPreferences().captionDisplayMode();
+    if (page)
+        m_captionDisplayMode = page->group().captionPreferences().captionDisplayMode();
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -578,6 +583,16 @@ HTMLMediaElement::~HTMLMediaElement()
 
     m_mediaSession = nullptr;
     updatePlaybackControlsManager();
+}
+
+static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
+{
+    auto* page = document.page();
+    if (!page || !page->settings().needsSiteSpecificQuirks())
+        return false;
+
+    String host = document.url().host();
+    return equalLettersIgnoringASCIICase(host, "yahoo.com") || host.endsWithIgnoringASCIICase(".yahoo.com");
 }
 
 static bool needsPlaybackControlsManagerQuirk(Page& page)
@@ -2301,6 +2316,15 @@ SuccessOr<MediaPlaybackDenialReason> HTMLMediaElement::canTransitionFromAutoplay
     return MediaPlaybackDenialReason::PageConsentRequired;
 }
 
+void HTMLMediaElement::dispatchPlayPauseEventsIfNeedsQuirks()
+{
+    if (!needsAutoplayPlayPauseEventsQuirk(document().topDocument()))
+        return;
+
+    scheduleEvent(eventNames().playingEvent);
+    scheduleEvent(eventNames().pauseEvent);
+}
+
 void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
 {
     LOG(Media, "HTMLMediaElement::setReadyState(%p) - new state = %d, current state = %d,", this, static_cast<int>(state), static_cast<int>(m_readyState));
@@ -2422,6 +2446,7 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             scheduleNotifyAboutPlaying();
         } else if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_playbackWithoutUserGesture = PlaybackWithoutUserGesture::Prevented;
+            dispatchPlayPauseEventsIfNeedsQuirks();
 
             if (Page* page = document().page())
                 page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
@@ -3105,6 +3130,7 @@ void HTMLMediaElement::play(DOMPromise<void>&& promise)
     if (!success) {
         if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_playbackWithoutUserGesture = PlaybackWithoutUserGesture::Prevented;
+            dispatchPlayPauseEventsIfNeedsQuirks();
 
             if (Page* page = document().page())
                 page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
@@ -3137,6 +3163,7 @@ void HTMLMediaElement::play()
     if (!success) {
         if (success.value() == MediaPlaybackDenialReason::UserGestureRequired) {
             m_playbackWithoutUserGesture = PlaybackWithoutUserGesture::Prevented;
+            dispatchPlayPauseEventsIfNeedsQuirks();
 
             if (Page* page = document().page())
                 page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidPreventMediaFromPlaying);
@@ -5183,9 +5210,17 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     setPausedInternal(true);
     m_mediaSession->clientWillPausePlayback();
 
-    if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Started) {
-        if (Page* page = document().page())
+    if (Page* page = document().page()) {
+        switch (m_playbackWithoutUserGesture) {
+        case PlaybackWithoutUserGesture::Started:
             page->chrome().client().handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
+            break;
+        case PlaybackWithoutUserGesture::Prevented:
+            page->chrome().client().handleAutoplayEvent(AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying);
+            break;
+        case PlaybackWithoutUserGesture::None:
+            break;
+        }
     }
     m_playbackWithoutUserGesture = PlaybackWithoutUserGesture::None;
 
@@ -5930,12 +5965,21 @@ bool HTMLMediaElement::createMediaControls()
 #endif
 }
 
+bool HTMLMediaElement::shouldForceControlsDisplay() const
+{
+    // Always create controls for autoplay video that requires user gesture due to being in low power mode.
+    return isVideo() && autoplay() && m_mediaSession->hasBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoDueToLowPowerMode);
+}
+
 void HTMLMediaElement::configureMediaControls()
 {
     bool requireControls = controls();
 
     // Always create controls for video when fullscreen playback is required.
     if (isVideo() && m_mediaSession->requiresFullscreenForVideoPlayback(*this))
+        requireControls = true;
+
+    if (shouldForceControlsDisplay())
         requireControls = true;
 
     // Always create controls when in full screen mode.
@@ -6571,6 +6615,7 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaEle
         | MediaElementSession::RequireUserGestureForVideoRateChange
         | MediaElementSession::RequireUserGestureForAudioRateChange
         | MediaElementSession::RequireUserGestureForFullscreen
+        | MediaElementSession::RequireUserGestureForVideoDueToLowPowerMode
         | MediaElementSession::InvisibleAutoplayNotPermitted
         | MediaElementSession::RequireUserGestureToControlControlsManager);
 

@@ -303,9 +303,9 @@ public:
     bool isAlwaysOnLoggingAllowed() const;
     void setActivePopupMenu(WebPopupMenu*);
 
-    void setHiddenPageTimerThrottlingIncreaseLimit(std::chrono::milliseconds limit)
+    void setHiddenPageDOMTimerThrottlingIncreaseLimit(Seconds limit)
     {
-        m_page->setTimerAlignmentIntervalIncreaseLimit(limit);
+        m_page->setDOMTimerAlignmentIntervalIncreaseLimit(limit);
     }
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -830,7 +830,6 @@ public:
     void applicationDidFinishSnapshottingAfterEnteringBackground();
     void applicationWillEnterForeground(bool isSuspendedUnderLock);
     void applicationDidBecomeActive();
-    void zoomToRect(WebCore::FloatRect, double minimumScale, double maximumScale);
     void completePendingSyntheticClickForContentChangeObserver();
 #endif
 

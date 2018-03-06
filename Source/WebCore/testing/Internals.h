@@ -66,6 +66,7 @@ class Page;
 class Range;
 class RenderedDocumentMarker;
 class RTCPeerConnection;
+class SVGSVGElement;
 class SerializedScriptValue;
 class SourceBuffer;
 class StyleSheet;
@@ -147,6 +148,7 @@ public:
     ExceptionOr<void> resumeAnimations() const;
     ExceptionOr<bool> pauseAnimationAtTimeOnElement(const String& animationName, double pauseTime, Element&);
     ExceptionOr<bool> pauseAnimationAtTimeOnPseudoElement(const String& animationName, double pauseTime, Element&, const String& pseudoId);
+    double animationsInterval() const;
 
     // CSS Transition testing.
     ExceptionOr<bool> pauseTransitionAtTimeOnElement(const String& propertyName, double pauseTime, Element&);
@@ -175,6 +177,8 @@ public:
     ExceptionOr<void> setMarkedTextMatchesAreHighlighted(bool);
 
     void invalidateFontCache();
+    void setFontSmoothingEnabled(bool);
+    
     ExceptionOr<void> setLowPowerModeEnabled(bool);
 
     ExceptionOr<void> setScrollViewPosition(int x, int y);
@@ -256,6 +260,7 @@ public:
     InternalSettings* settings() const;
     unsigned workerThreadCount() const;
     bool areSVGAnimationsPaused() const;
+    ExceptionOr<double> svgAnimationsInterval(SVGSVGElement&) const;
 
     ExceptionOr<void> setDeviceProximity(const String& eventType, double value, double min, double max);
 

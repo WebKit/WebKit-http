@@ -1,3 +1,588 @@
+2017-03-08  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Make OOB for fast memory do an extra safety check by ensuring the faulting address is in the range we allocated for fast memory
+        https://bugs.webkit.org/show_bug.cgi?id=169290
+
+        Reviewed by Saam Barati.
+
+        This patch adds an extra sanity check by ensuring that the the memory address we faulting trying to load is in range
+        of some wasm fast memory.
+
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::activeFastMemories):
+        (JSC::Wasm::viewActiveFastMemories):
+        (JSC::Wasm::tryGetFastMemory):
+        (JSC::Wasm::releaseFastMemory):
+        * wasm/WasmMemory.h:
+
+2017-03-07  Dean Jackson  <dino@apple.com>
+
+        Some platforms won't be able to create a GPUDevice
+        https://bugs.webkit.org/show_bug.cgi?id=169314
+        <rdar://problems/30907521>
+
+        Reviewed by Jon Lee.
+
+        Disable WEB_GPU on the iOS Simulator.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-06  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: Implement the WebAssembly.instantiate API
+        https://bugs.webkit.org/show_bug.cgi?id=165982
+        <rdar://problem/29760110>
+
+        Reviewed by Keith Miller.
+
+        This patch is a straight forward implementation of the WebAssembly.instantiate
+        API: https://github.com/WebAssembly/design/blob/master/JS.md#webassemblyinstantiate
+        
+        I implemented the API in a synchronous manner. We should make it
+        asynchronous: https://bugs.webkit.org/show_bug.cgi?id=169187
+
+        * wasm/JSWebAssembly.cpp:
+        (JSC::webAssemblyCompileFunc):
+        (JSC::webAssemblyInstantiateFunc):
+        (JSC::JSWebAssembly::finishCreation):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        (JSC::WebAssemblyInstanceConstructor::createInstance):
+        * wasm/js/WebAssemblyInstanceConstructor.h:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::constructJSWebAssemblyModule):
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleConstructor.h:
+
+2017-03-06  Michael Saboff  <msaboff@apple.com>
+
+        Take advantage of fast permissions switching of JIT memory for devices that support it
+        https://bugs.webkit.org/show_bug.cgi?id=169155
+
+        Reviewed by Saam Barati.
+
+        Start using the os_thread_self_restrict_rwx_to_XX() SPIs when available to
+        control access to JIT memory.
+
+        Had to update the Xcode config files to handle various build variations of
+        public and internal SDKs.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::FixedVMPoolExecutableAllocator):
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        * jit/ExecutableAllocator.h:
+        (JSC::performJITMemcpy):
+
+2017-03-06  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r212778): It made 400 tests crash on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=168502
+
+        Reviewed by Filip Pizlo.
+
+        * heap/RegisterState.h: Use setjmp code path on AArch64 Linux too to fix crashes.
+
+2017-03-06  Caio Lima  <ticaiolima@gmail.com>
+
+        op_get_by_id_with_this should use inline caching
+        https://bugs.webkit.org/show_bug.cgi?id=162124
+
+        Reviewed by Saam Barati.
+
+        This patch is enabling inline cache for op_get_by_id_with_this in all
+        tiers. It means that operations using ```super.member``` are going to
+        be able to be optimized by PIC. To enable it, we introduced a new
+        member of StructureStubInfo.patch named thisGPR, created a new class
+        to manage the IC named JITGetByIdWithThisGenerator and changed
+        PolymorphicAccess.regenerate that uses StructureStubInfo.patch.thisGPR
+        to decide the correct this value on inline caches.
+        With inline cached enabled, ```super.member``` are ~4.5x faster,
+        according microbenchmarks.
+
+        * bytecode/AccessCase.cpp:
+        (JSC::AccessCase::generateImpl):
+        * bytecode/PolymorphicAccess.cpp:
+        (JSC::PolymorphicAccess::regenerate):
+        * bytecode/PolymorphicAccess.h:
+        * bytecode/StructureStubInfo.cpp:
+        (JSC::StructureStubInfo::reset):
+        * bytecode/StructureStubInfo.h:
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::link):
+        * dfg/DFGJITCompiler.h:
+        (JSC::DFG::JITCompiler::addGetByIdWithThis):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileIn):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetByIdWithThis):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::cachedGetByIdWithThis):
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetByIdWithThis):
+        (JSC::FTL::DFG::LowerDFGToB3::compileIn):
+        (JSC::FTL::DFG::LowerDFGToB3::getByIdWithThis):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/ICStats.h:
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+        (JSC::JIT::privateCompileSlowCases):
+        (JSC::JIT::link):
+        * jit/JIT.h:
+        * jit/JITInlineCacheGenerator.cpp:
+        (JSC::JITByIdGenerator::JITByIdGenerator):
+        (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
+        (JSC::JITGetByIdWithThisGenerator::generateFastPath):
+        * jit/JITInlineCacheGenerator.h:
+        (JSC::JITGetByIdWithThisGenerator::JITGetByIdWithThisGenerator):
+        * jit/JITInlines.h:
+        (JSC::JIT::callOperation):
+        * jit/JITOperations.cpp:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emitSlow_op_get_by_id_with_this):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_get_by_id_with_this):
+        (JSC::JIT::emitSlow_op_get_by_id_with_this):
+        * jit/Repatch.cpp:
+        (JSC::appropriateOptimizingGetByIdFunction):
+        (JSC::appropriateGenericGetByIdFunction):
+        (JSC::tryCacheGetByID):
+        * jit/Repatch.h:
+        * jsc.cpp:
+        (WTF::CustomGetter::getOwnPropertySlot):
+        (WTF::CustomGetter::customGetterAcessor):
+
+2017-03-06  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: implement init_expr for Element
+        https://bugs.webkit.org/show_bug.cgi?id=165888
+        <rdar://problem/29760199>
+
+        Reviewed by Keith Miller.
+
+        This patch fixes a few bugs. The main change is allowing init_expr
+        for the Element's offset. To do this, I had to fix a couple of
+        other bugs:
+        
+        - I removed our invalid early module-parse-time invalidation
+        of out of bound Element sections. This is not in the spec because
+        it can't be validated in the general case when the offset is a
+        get_global.
+        
+        - Our get_global validation inside our init_expr parsing code was simply wrong.
+        It thought that the index operand to get_global went into the pool of imports,
+        but it does not. It indexes into the pool of globals. I changed the code to
+        refer to the global pool instead.
+
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::Element::Element):
+        * wasm/WasmModuleParser.cpp:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Allow indexed module namespace object fields
+        https://bugs.webkit.org/show_bug.cgi?id=168870
+
+        Reviewed by Saam Barati.
+
+        While JS modules cannot expose any indexed bindings,
+        Wasm modules can expose them. However, module namespace
+        object currently does not support indexed properties.
+        This patch allows module namespace objects to offer
+        indexed binding accesses.
+
+        * runtime/JSModuleNamespaceObject.cpp:
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlotCommon):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlot):
+        (JSC::JSModuleNamespaceObject::getOwnPropertySlotByIndex):
+        * runtime/JSModuleNamespaceObject.h:
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Null pointer crash when loading module with unresolved import also as a script file
+        https://bugs.webkit.org/show_bug.cgi?id=168971
+
+        Reviewed by Saam Barati.
+
+        If linking throws an error, this error should be re-thrown
+        when requesting the same module.
+
+        * builtins/ModuleLoaderPrototype.js:
+        (globalPrivate.newRegistryEntry):
+        * runtime/JSModuleRecord.cpp:
+        (JSC::JSModuleRecord::link):
+
+2017-03-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][JSCOnly] Enable WebAssembly on Linux environment
+        https://bugs.webkit.org/show_bug.cgi?id=164032
+
+        Reviewed by Michael Catanzaro.
+
+        This patch enables WebAssembly on JSCOnly and GTK ports.
+        Basically, almost all the WASM code is portable to Linux.
+        One platform-dependent part is faster memory load using SIGBUS
+        signal handler. This patch ports this part to Linux.
+
+        * CMakeLists.txt:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+
+2017-03-06  Daniel Ehrenberg  <littledan@igalia.com>
+
+        Currency digits calculation in Intl.NumberFormat should call out to ICU
+        https://bugs.webkit.org/show_bug.cgi?id=169182
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/IntlNumberFormat.cpp:
+        (JSC::computeCurrencyDigits):
+        (JSC::computeCurrencySortKey): Deleted.
+        (JSC::extractCurrencySortKey): Deleted.
+
+2017-03-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly][GTK] Suppress warnings on return type in B3 and WASM
+        https://bugs.webkit.org/show_bug.cgi?id=168869
+
+        Reviewed by Keith Miller.
+
+        * b3/B3Width.h:
+        * wasm/WasmSections.h:
+
+2017-03-04  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Unreviewed buildfix after r213376.
+
+        * assembler/ARMAssembler.h:
+        (JSC::ARMAssembler::isBkpt): Typo fixed.
+
+2017-03-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [JSC] build fix after r213399
+        https://bugs.webkit.org/show_bug.cgi?id=169154
+
+        Unreviewed.
+
+        * runtime/ConfigFile.cpp: Include unistd.h since its where getcwd() is defined.
+
+2017-03-03  Dean Jackson  <dino@apple.com>
+
+        Add WebGPU compile flag and experimental feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169161
+        <rdar://problem/30846689>
+
+        Reviewed by Tim Horton.
+
+        Add ENABLE_WEBGPU, an experimental feature flag, a RuntimeEnabledFeature,
+        and an InternalSetting.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-03  Michael Saboff  <msaboff@apple.com>
+
+        Add support for relative pathnames to JSC config files
+        https://bugs.webkit.org/show_bug.cgi?id=169154
+
+        Reviewed by Saam Barati.
+
+        If the config file is a relative path, prepend the current working directory.
+        After canonicalizing the config file path, we extract its directory path and
+        use that for the directory for a relative log pathname.
+
+        * runtime/ConfigFile.cpp:
+        (JSC::ConfigFile::ConfigFile):
+        (JSC::ConfigFile::parse):
+        (JSC::ConfigFile::canonicalizePaths):
+        * runtime/ConfigFile.h:
+
+2017-03-03  Michael Saboff  <msaboff@apple.com>
+
+        Add load / store exclusive instruction group to ARM64 disassembler
+        https://bugs.webkit.org/show_bug.cgi?id=169152
+
+        Reviewed by Filip Pizlo.
+
+        * disassembler/ARM64/A64DOpcode.cpp:
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::format):
+        * disassembler/ARM64/A64DOpcode.h:
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::opName):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::rs):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::rt2):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::o0):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::o1):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::o2):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::loadBit):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::opNumber):
+        (JSC::ARM64Disassembler::A64DOpcodeLoadStoreExclusive::isPairOp):
+
+2017-03-03  Keith Miller  <keith_miller@apple.com>
+
+        WASM should support faster loads.
+        https://bugs.webkit.org/show_bug.cgi?id=162693
+
+        Reviewed by Saam Barati.
+
+        This patch adds support for WebAssembly using a 32-bit address
+        space for memory (along with some extra space for offset
+        overflow). With a 32-bit address space (we call them
+        Signaling/fast memories), we reserve the virtual address space for
+        2^32 + offset bytes of memory and only mark the usable section as
+        read/write. If wasm code would read/write out of bounds we use a
+        custom signal handler to catch the SIGBUS. The signal handler then
+        checks if the faulting instruction is wasm code and tells the
+        thread to resume executing from the wasm exception
+        handler. Otherwise, the signal handler crashes the process, as
+        usual.
+
+        All of the allocations of these memories are managed by the
+        Wasm::Memory class. In order to avoid TLB churn in the OS we cache
+        old Signaling memories that are no longer in use. Since getting
+        the wrong memory can cause recompiles, we try to reserve a memory
+        for modules that do not import a memory. If a module does import a
+        memory, we try to guess the type of memory we are going to get
+        based on the last one allocated.
+
+        This patch also changes how the wasm JS-api manages objects. Since
+        we can compile different versions of code, this patch adds a new
+        JSWebAssemblyCodeBlock class that holds all the information
+        specific to running a module in a particular bounds checking
+        mode. Additionally, the Wasm::Memory object is now a reference
+        counted class that is shared between the JSWebAssemblyMemory
+        object and the ArrayBuffer that also views it.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * jit/JITThunks.cpp:
+        (JSC::JITThunks::existingCTIStub):
+        * jit/JITThunks.h:
+        * jsc.cpp:
+        (jscmain):
+        * runtime/Options.h:
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+        * wasm/JSWebAssemblyCodeBlock.h: Copied from Source/JavaScriptCore/wasm/js/JSWebAssemblyModule.h.
+        (JSC::JSWebAssemblyCodeBlock::create):
+        (JSC::JSWebAssemblyCodeBlock::createStructure):
+        (JSC::JSWebAssemblyCodeBlock::functionImportCount):
+        (JSC::JSWebAssemblyCodeBlock::mode):
+        (JSC::JSWebAssemblyCodeBlock::module):
+        (JSC::JSWebAssemblyCodeBlock::jsEntrypointCalleeFromFunctionIndexSpace):
+        (JSC::JSWebAssemblyCodeBlock::wasmEntrypointCalleeFromFunctionIndexSpace):
+        (JSC::JSWebAssemblyCodeBlock::setJSEntrypointCallee):
+        (JSC::JSWebAssemblyCodeBlock::setWasmEntrypointCallee):
+        (JSC::JSWebAssemblyCodeBlock::callees):
+        (JSC::JSWebAssemblyCodeBlock::offsetOfCallees):
+        (JSC::JSWebAssemblyCodeBlock::allocationSize):
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::getMemoryBaseAndSize):
+        (JSC::Wasm::B3IRGenerator::emitCheckAndPreparePointer):
+        (JSC::Wasm::B3IRGenerator::emitLoadOp):
+        (JSC::Wasm::B3IRGenerator::emitStoreOp):
+        * wasm/WasmCallingConvention.h:
+        * wasm/WasmFaultSignalHandler.cpp: Added.
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::registerCode):
+        (JSC::Wasm::unregisterCode):
+        (JSC::Wasm::fastMemoryEnabled):
+        (JSC::Wasm::enableFastMemory):
+        * wasm/WasmFaultSignalHandler.h: Copied from Source/JavaScriptCore/wasm/js/JSWebAssemblyCallee.cpp.
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::ModuleInformation::importFunctionCount):
+        (JSC::Wasm::ModuleInformation::hasMemory): Deleted.
+        * wasm/WasmMemory.cpp:
+        (JSC::Wasm::mmapBytes):
+        (JSC::Wasm::Memory::lastAllocatedMode):
+        (JSC::Wasm::availableFastMemories):
+        (JSC::Wasm::tryGetFastMemory):
+        (JSC::Wasm::releaseFastMemory):
+        (JSC::Wasm::Memory::Memory):
+        (JSC::Wasm::Memory::createImpl):
+        (JSC::Wasm::Memory::create):
+        (JSC::Wasm::Memory::~Memory):
+        (JSC::Wasm::Memory::grow):
+        (JSC::Wasm::Memory::dump):
+        (JSC::Wasm::Memory::makeString):
+        * wasm/WasmMemory.h:
+        (JSC::Wasm::Memory::operator bool):
+        (JSC::Wasm::Memory::size):
+        (JSC::Wasm::Memory::check):
+        (JSC::Wasm::Memory::Memory): Deleted.
+        (JSC::Wasm::Memory::offsetOfMemory): Deleted.
+        (JSC::Wasm::Memory::offsetOfSize): Deleted.
+        * wasm/WasmMemoryInformation.cpp:
+        (JSC::Wasm::MemoryInformation::MemoryInformation):
+        * wasm/WasmMemoryInformation.h:
+        (JSC::Wasm::MemoryInformation::hasReservedMemory):
+        (JSC::Wasm::MemoryInformation::takeReservedMemory):
+        (JSC::Wasm::MemoryInformation::mode):
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmModuleParser.h:
+        (JSC::Wasm::ModuleParser::ModuleParser):
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::parseAndValidateModule):
+        (JSC::Wasm::Plan::run):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::mode):
+        * wasm/js/JSWebAssemblyCallee.cpp:
+        (JSC::JSWebAssemblyCallee::finishCreation):
+        (JSC::JSWebAssemblyCallee::destroy):
+        * wasm/js/JSWebAssemblyCodeBlock.cpp: Added.
+        (JSC::JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock):
+        (JSC::JSWebAssemblyCodeBlock::destroy):
+        (JSC::JSWebAssemblyCodeBlock::isSafeToRun):
+        (JSC::JSWebAssemblyCodeBlock::visitChildren):
+        (JSC::JSWebAssemblyCodeBlock::UnconditionalFinalizer::finalizeUnconditionally):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::setMemory):
+        (JSC::JSWebAssemblyInstance::finishCreation):
+        (JSC::JSWebAssemblyInstance::visitChildren):
+        * wasm/js/JSWebAssemblyInstance.h:
+        (JSC::JSWebAssemblyInstance::module):
+        (JSC::JSWebAssemblyInstance::codeBlock):
+        (JSC::JSWebAssemblyInstance::memoryMode):
+        (JSC::JSWebAssemblyInstance::setMemory): Deleted.
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::create):
+        (JSC::JSWebAssemblyMemory::JSWebAssemblyMemory):
+        (JSC::JSWebAssemblyMemory::buffer):
+        (JSC::JSWebAssemblyMemory::grow):
+        (JSC::JSWebAssemblyMemory::destroy):
+        * wasm/js/JSWebAssemblyMemory.h:
+        (JSC::JSWebAssemblyMemory::memory):
+        (JSC::JSWebAssemblyMemory::offsetOfMemory):
+        (JSC::JSWebAssemblyMemory::offsetOfSize):
+        * wasm/js/JSWebAssemblyModule.cpp:
+        (JSC::JSWebAssemblyModule::buildCodeBlock):
+        (JSC::JSWebAssemblyModule::create):
+        (JSC::JSWebAssemblyModule::JSWebAssemblyModule):
+        (JSC::JSWebAssemblyModule::codeBlock):
+        (JSC::JSWebAssemblyModule::finishCreation):
+        (JSC::JSWebAssemblyModule::visitChildren):
+        (JSC::JSWebAssemblyModule::UnconditionalFinalizer::finalizeUnconditionally): Deleted.
+        * wasm/js/JSWebAssemblyModule.h:
+        (JSC::JSWebAssemblyModule::takeReservedMemory):
+        (JSC::JSWebAssemblyModule::signatureIndexFromFunctionIndexSpace):
+        (JSC::JSWebAssemblyModule::codeBlock):
+        (JSC::JSWebAssemblyModule::functionImportCount): Deleted.
+        (JSC::JSWebAssemblyModule::jsEntrypointCalleeFromFunctionIndexSpace): Deleted.
+        (JSC::JSWebAssemblyModule::wasmEntrypointCalleeFromFunctionIndexSpace): Deleted.
+        (JSC::JSWebAssemblyModule::setJSEntrypointCallee): Deleted.
+        (JSC::JSWebAssemblyModule::setWasmEntrypointCallee): Deleted.
+        (JSC::JSWebAssemblyModule::callees): Deleted.
+        (JSC::JSWebAssemblyModule::offsetOfCallees): Deleted.
+        (JSC::JSWebAssemblyModule::allocationSize): Deleted.
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::callWebAssemblyFunction):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+
+2017-03-03  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix broken ARM64 build.
+        https://bugs.webkit.org/show_bug.cgi?id=169139
+
+        Not reviewed.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::excepnGenerationImmMask):
+
+2017-03-03  Mark Lam  <mark.lam@apple.com>
+
+        Add MacroAssembler::isBreakpoint() query function.
+        https://bugs.webkit.org/show_bug.cgi?id=169139
+
+        Reviewed by Michael Saboff.
+
+        This will be needed soon when we use breakpoint instructions to implement
+        non-polling VM traps, and need to discern between a VM trap signal and a genuine
+        assertion breakpoint.
+
+        * assembler/ARM64Assembler.h:
+        (JSC::ARM64Assembler::isBrk):
+        (JSC::ARM64Assembler::excepnGenerationImmMask):
+        * assembler/ARMAssembler.h:
+        (JSC::ARMAssembler::isBkpt):
+        * assembler/ARMv7Assembler.h:
+        (JSC::ARMv7Assembler::isBkpt):
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::isBkpt):
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::isBreakpoint):
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::isBreakpoint):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::isBreakpoint):
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::isBreakpoint):
+        * assembler/MacroAssemblerX86Common.h:
+        (JSC::MacroAssemblerX86Common::isBreakpoint):
+        * assembler/X86Assembler.h:
+        (JSC::X86Assembler::isInt3):
+
+2017-03-03  Mark Lam  <mark.lam@apple.com>
+
+        We should only check for traps that we're able to handle.
+        https://bugs.webkit.org/show_bug.cgi?id=169136
+
+        Reviewed by Michael Saboff.
+
+        The execute methods in interpreter were checking for the existence of any traps
+        (without masking) and only handling a subset of those via a mask.  This can
+        result in a failed assertion on debug builds.
+
+        This patch fixes this by applying the same mask for both the needTrapHandling()
+        check and the handleTraps() call.  Also added a few assertions.
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::executeProgram):
+        (JSC::Interpreter::executeCall):
+        (JSC::Interpreter::executeConstruct):
+        (JSC::Interpreter::execute):
+        * jit/JITOperations.cpp:
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2017-03-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remote Inspector: Move updateTargetListing() methods to RemoteInspector.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=169074
+
+        Reviewed by Joseph Pecoraro.
+
+        They are not actually cocoa specific.
+
+        * inspector/remote/RemoteInspector.cpp:
+        (Inspector::RemoteInspector::updateTargetListing):
+        * inspector/remote/RemoteInspector.h:
+        * inspector/remote/cocoa/RemoteInspectorCocoa.mm:
+
 2017-03-02  Mark Lam  <mark.lam@apple.com>
 
         Add WebKit2 hooks to notify the VM that the user has requested a debugger break.

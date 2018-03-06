@@ -1,3 +1,1169 @@
+2017-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop select.remove() / options.remove() overloads taking an option element in parameter
+        https://bugs.webkit.org/show_bug.cgi?id=169339
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLSelectElement/remove-option-element-expected.txt: Added.
+        * fast/dom/HTMLSelectElement/remove-option-element.html: Added.
+
+2017-03-08  Chris Dumez  <cdumez@apple.com>
+
+        Parameter to input.setCustomValidity() should not be nullable
+        https://bugs.webkit.org/show_bug.cgi?id=169332
+
+        Reviewed by Sam Weinig.
+
+        * fast/forms/ValidityState-customError-expected.txt:
+        * fast/forms/ValidityState-customError.html:
+        Rebaseline now that behavior has changed when passing null or undefined
+        to setCustomValidity().
+
+        * fast/forms/setCustomValidity-null-parameter-expected.txt: Added.
+        * fast/forms/setCustomValidity-null-parameter.html: Added.
+        Add layout test coverage.
+
+2017-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/airplay-button/airplay-button.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=168409
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Support transitions/animations of background-position with right/bottom-relative values
+        https://bugs.webkit.org/show_bug.cgi?id=162048
+
+        Reviewed by Dean Jackson.
+
+        Re-landing r206713.
+
+        * transitions/background-position-transitions-expected.txt: Added.
+        * transitions/background-position-transitions.html: Added.
+        * transitions/resources/transition-test-helpers.js:
+        * transitions/svg-transitions-expected.txt:
+
+2017-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Change determineNonLayerDescendantsPaintedContent to max out based on renderers traversed
+        https://bugs.webkit.org/show_bug.cgi?id=169384
+
+        Reviewed by Zalan Bujtas.
+
+        Rebaseline an existing test which changes behavior, and add a new test that generates divs
+        on both sides of the threshold, in depth and breadth.
+
+        * compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt: Added.
+        * compositing/contents-format/subpixel-antialiased-text-traversal.html: Added.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-traversal-expected.txt: Added.
+
+2017-03-08  Youenn Fablet  <youenn@apple.com>
+
+        Support canvas captureStream
+        https://bugs.webkit.org/show_bug.cgi?id=169192
+
+        Reviewed by Dean Jackson.
+
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-capture-out-of-DOM-element.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-clone-track-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-clone-track.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-creation-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-creation.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-exceptions-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-exceptions.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-framerate-0.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-imagebitmaprenderingcontext.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-offscreencanvas-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-offscreencanvas.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-webgl-events-expected.txt: Added.
+        * fast/mediacapturefromelement/CanvasCaptureMediaStream-webgl-events.html: Added.
+        * fast/mediacapturefromelement/resources/svg-with-image-with-foreignobject.svg: Added.
+        * fast/mediacapturefromelement/resources/webgl-test.js: Added.
+
+2017-03-08  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/airplay-button/airplay-button.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168409
+
+        Reviewed by Dean Jackson.
+
+        Adding more detailed assertions to try to understand where the timeouts might be coming from.
+
+        * media/modern-media-controls/airplay-button/airplay-button-expected.txt:
+        * media/modern-media-controls/airplay-button/airplay-button.html:
+
+2017-03-08  Dave Hyatt  <hyatt@apple.com>
+
+        CSS Multicolumn should not clip columns horizontally
+        https://bugs.webkit.org/show_bug.cgi?id=169363
+
+        Reviewed by Sam Weinig.
+
+        * fast/multicol/newmulticol/adjacent-spanners-expected.html:
+        * fast/multicol/newmulticol/adjacent-spanners.html:
+        * fast/multicol/newmulticol/clipping-expected.html:
+        * fast/multicol/newmulticol/clipping.html:
+        * fast/multicol/newmulticol/spanner-inline-block-expected.html:
+        * fast/multicol/newmulticol/spanner-inline-block.html:
+
+2017-03-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Add support for history.scrollRestoration
+        https://bugs.webkit.org/show_bug.cgi?id=147782
+        rdar://problem/22614568
+
+        Reviewed by Sam Weinig.
+
+        Sadly history-scroll-restoration.html needs to be cloned for iOS and to use uiController.doAfterPresentationUpdate()
+        there, since restoration involves a trip to the UI process, and this same test did not work for Mac WK1 (dispatch_async()
+        doesn't seem to give the right timing in DRT).
+
+        * TestExpectations:
+        * fast/dom/Window/window-appendages-cleared-expected.txt:
+        * fast/history/history-scroll-restoration-attribute-expected.txt: Added.
+        * fast/history/history-scroll-restoration-attribute.html: Added.
+        * fast/history/history-scroll-restoration-expected.txt: Added.
+        * fast/history/history-scroll-restoration.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-08  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle DOM timers to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=169213
+        <rdar://problem/30876965>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * fast/dom/timer-throttling-lowPowerMode-expected.txt: Added.
+        * fast/dom/timer-throttling-lowPowerMode.html: Added.
+
+2017-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark editing/selection/move-by-word-visually-multi-space.html as flaky on Sierra Debug WK2.
+        https://bugs.webkit.org/show_bug.cgi?id=168346
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/cache/disk-cache/disk-cache-remove-several-pending-writes.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=169359
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-08  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/track/media-element-enqueue-event-crash.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169324
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=167589
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/play-pause-button/play-pause-button.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=167447
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-08  Youenn Fablet  <youenn@apple.com>
+
+        [mac-wk2 Debug] LayoutTest webrtc/libwebrtc/descriptionGetters.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=169317
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations: Removing failure expectation.
+        * webrtc/libwebrtc/descriptionGetters.html: Fixing paths.
+
+2017-03-07  Simon Fraser  <simon.fraser@apple.com>
+
+        Have fixedPositionCreatesStackingContext be on by default everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=169334
+
+        Reviewed by Zalan Bujtas.
+
+        It makes no sense to have web-exposed CSS functionality be different based on setting,
+        and other browser are now aligned with having position:fixed create stacking context.
+
+        So remove the fixedPositionCreatesStackingContext setting and have StyleResolver::adjustRenderStyle()
+        always force stacking context for position:fixed.
+
+        * compositing/absolute-inside-out-of-view-fixed.html:
+        * compositing/geometry/fixed-position-composited-page-scale-smaller-than-viewport.html:
+        * compositing/layer-creation/fixed-overlap-extent-rtl.html:
+        * compositing/layer-creation/fixed-overlap-extent.html:
+        * compositing/layer-creation/fixed-position-change-out-of-view-in-view.html:
+        * compositing/layer-creation/fixed-position-in-view-dynamic.html:
+        * compositing/layer-creation/fixed-position-out-of-view-dynamic.html:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled-iframe-scroll.html:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled-iframe.html:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html:
+        * compositing/layer-creation/fixed-position-out-of-view-scaled.html:
+        * compositing/layer-creation/fixed-position-transformed-into-view.html:
+        * compositing/layer-creation/fixed-position-transformed-outside-view.html:
+        * compositing/layer-creation/no-compositing-for-fixed-position-under-transform.html:
+        * compositing/repaint/scroll-fixed-layer-no-content.html:
+        * compositing/repaint/scroll-fixed-layer-out-of-view.html:
+        * fast/block/positioning/fixed-position-stacking-context2.html:
+        * fullscreen/full-screen-fixed-pos-parent.html:
+
+2017-03-07  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH ImportKey/ExportKey operations
+        https://bugs.webkit.org/show_bug.cgi?id=169257
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/ec-export-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/ec-export-key-malformed-parameters.html: Added.
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-private-expected.txt: Added.
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-private.html: Added.
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-public-expected.txt: Added.
+        * crypto/subtle/ec-import-jwk-key-export-jwk-key-public.html: Added.
+        * crypto/subtle/ec-import-jwk-key-export-raw-key-expected.txt: Added.
+        * crypto/subtle/ec-import-jwk-key-export-raw-key.html: Added.
+        * crypto/subtle/ec-import-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/ec-import-key-malformed-parameters.html: Added.
+        * crypto/subtle/ec-import-raw-key-export-jwk-key-expected.txt: Added.
+        * crypto/subtle/ec-import-raw-key-export-jwk-key.html: Added.
+        * crypto/subtle/ec-import-raw-key-export-raw-key-expected.txt: Added.
+        * crypto/subtle/ec-import-raw-key-export-raw-key.html: Added.
+        * crypto/subtle/ecdh-generate-export-jwk-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-jwk-key-p256.html: Added.
+        * crypto/subtle/ecdh-generate-export-jwk-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-jwk-key-p384.html: Added.
+        * crypto/subtle/ecdh-generate-export-key-raw-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-key-raw-p256.html: Added.
+        * crypto/subtle/ecdh-generate-export-key-raw-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-export-key-raw-p384.html: Added.
+        * crypto/subtle/ecdh-import-jwk-key-minimum-expected.txt: Added.
+        * crypto/subtle/ecdh-import-jwk-key-minimum.html: Added.
+        * crypto/subtle/ecdh-import-jwk-private-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-import-jwk-private-key-p256.html: Added.
+        * crypto/subtle/ecdh-import-jwk-private-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-import-jwk-private-key-p384.html: Added.
+        * crypto/subtle/ecdh-import-jwk-public-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-import-jwk-public-key-p256.html: Added.
+        * crypto/subtle/ecdh-import-jwk-public-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-import-jwk-public-key-p384.html: Added.
+        * crypto/subtle/ecdh-import-raw-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-import-raw-key-p256.html: Added.
+        * crypto/subtle/ecdh-import-raw-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-import-raw-key-p384.html: Added.
+        * crypto/subtle/hmac-import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/hmac-import-key-malformed-parameters.html:
+        * crypto/subtle/rsa-import-key-malformed-parameters-expected.txt:
+        * crypto/subtle/rsa-import-key-malformed-parameters.html:
+        Fixed some minor bugs.
+        * crypto/workers/subtle/ec-generate-export-jwk-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-generate-export-jwk-key.html: Added.
+        * crypto/workers/subtle/ec-generate-export-raw-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-generate-export-raw-key.html: Added.
+        * crypto/workers/subtle/ec-import-jwk-key-private-expected.txt: Added.
+        * crypto/workers/subtle/ec-import-jwk-key-private.html: Added.
+        * crypto/workers/subtle/ec-import-jwk-key-public-expected.txt: Added.
+        * crypto/workers/subtle/ec-import-jwk-key-public.html: Added.
+        * crypto/workers/subtle/ec-import-raw-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-import-raw-key.html: Added.
+        * crypto/workers/subtle/resources/ec-generate-export-jwk-key.js: Added.
+        * crypto/workers/subtle/resources/ec-generate-export-raw-key.js: Added.
+        * crypto/workers/subtle/resources/ec-import-jwk-key-private.js: Added.
+        * crypto/workers/subtle/resources/ec-import-jwk-key-public.js: Added.
+        * crypto/workers/subtle/resources/ec-import-raw-key.js: Added.
+
+2017-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add Debug flag to TestExpectation for webrtc/libwebrtc/descriptionGetters.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webrtc/libwebrtc/descriptionGetters.html as failing.
+        https://bugs.webkit.org/show_bug.cgi?id=169317
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Add test case to check that MessageEvent.data returns the value it was initialized to
+        https://bugs.webkit.org/show_bug.cgi?id=169311
+
+        Reviewed by Sam Weinig.
+
+        * fast/events/constructors/message-event-constructor-data-identity-expected.txt: Added.
+        * fast/events/constructors/message-event-constructor-data-identity.html: Added.
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Label of an <option> element should not be displayed in quirks mode
+        https://bugs.webkit.org/show_bug.cgi?id=169296
+        <rdar://problem/30900751>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * fast/dom/HTMLOptionElement/option-label-quirksmode-expected.html: Added.
+        * fast/dom/HTMLOptionElement/option-label-quirksmode.html: Added.
+        * fast/dom/HTMLOptionElement/option-label-quirksmode2-expected.html: Added.
+        * fast/dom/HTMLOptionElement/option-label-quirksmode2.html: Added.
+        * fast/dom/HTMLOptionElement/option-label-strictmode-expected.html: Added.
+        * fast/dom/HTMLOptionElement/option-label-strictmode.html: Added.
+
+2017-03-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/seek-backward-support/seek-backward-support.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=165386
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-audio-background.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169117
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove Debug flag from flaky test http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html.
+        https://bugs.webkit.org/show_bug.cgi?id=162975
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-07  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Do not use invalid m_lastNonWhitespaceFragment while removing trailing whitespace.
+        https://bugs.webkit.org/show_bug.cgi?id=169288
+        rdar://problem/30576976
+
+        Reviewed by Antti Koivisto.
+
+        * fast/text/simple-line-layout-line-is-all-whitespace-expected.txt: Added.
+        * fast/text/simple-line-layout-line-is-all-whitespace.html: Added.
+
+2017-03-07  Antoine Quint  <graouts@apple.com>
+
+        Flaky Test: media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html
+        https://bugs.webkit.org/show_bug.cgi?id=169159
+
+        Reviewed by Dean Jackson.
+
+        Make this test more defensive to ensure it doesn't fail.
+
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html:
+        * platform/mac/TestExpectations:
+
+2017-03-07  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Parsing font descriptors inside @font-face needs to accept ranges
+        https://bugs.webkit.org/show_bug.cgi?id=168893
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/font-selection-font-face-parse-expected.txt:
+        * fast/text/font-selection-font-face-parse.html:
+        * platform/mac-elcapitan/fast/text/font-selection-font-face-parse-expected.txt:
+        Variations are off on El Capitan, so this platform needs explicit results.
+
+2017-03-07  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Move webrtc/descriptionGetters.html to webrtc/libwebrtc/descriptionGetters.html
+        https://bugs.webkit.org/show_bug.cgi?id=169216
+
+        Unreviewed test gardening.
+
+        Move the test webrtc/descriptionGetters.html under the directory webrtc/libwebrtc
+        because its still not testing the spec, but the current libwebrtc based implementation.
+
+        This way the test is skipped on the GTK+ port (The whole directory webrtc/libwebrtc is skipped).
+
+        * webrtc/libwebrtc/descriptionGetters-expected.txt: Renamed from LayoutTests/webrtc/descriptionGetters-expected.txt.
+        * webrtc/libwebrtc/descriptionGetters.html: Renamed from LayoutTests/webrtc/descriptionGetters.html.
+
+2017-03-07  Youenn Fablet  <youenn@apple.com>
+
+        Expose WebRTC current/pending description getters
+        https://bugs.webkit.org/show_bug.cgi?id=169216
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/descriptionGetters-expected.txt: Added.
+        * webrtc/descriptionGetters.html: Added.
+
+2017-03-07  Chris Dumez  <cdumez@apple.com>
+
+        Align initEvent / initCustomEvent / initMessageEvent with the latest specification
+        https://bugs.webkit.org/show_bug.cgi?id=169176
+
+        Reviewed by Alex Christensen.
+
+        Updated existing tests to reflect behavior change.
+
+        * fast/events/init-events-expected.txt:
+        * fast/events/script-tests/init-events.js:
+        * fast/eventsource/eventsource-attribute-listeners.html:
+
+2017-03-07  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][Wayland] Update list of test failing on the Wayland release test bot.
+
+        Unreviewed test gardening.
+
+        * platform/gtk-wayland/TestExpectations: Update list of test failing on the Wayland release test bot.
+        * platform/gtk/TestExpectations: media/video-played-collapse.html crashes sometimes.
+
+2017-03-07  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Setting a valid source after an invalid one retains the invalid placard
+        https://bugs.webkit.org/show_bug.cgi?id=169280
+        <rdar://problem/30876078>
+
+        Reviewed by Jon Lee.
+
+        Add a new test that checks that we know to remove the "invalid" placard if a new source is
+        set and media starts loading again.
+
+        * media/modern-media-controls/placard-support/placard-support-error-recover-expected.txt: Added.
+        * media/modern-media-controls/placard-support/placard-support-error-recover.html: Added.
+
+2017-03-07  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Mark media/video-buffered.html as flaky.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-07  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Mark a few tests from the W3C suite as pass after r213480
+        https://bugs.webkit.org/show_bug.cgi?id=169270
+
+        Unreviewed test gardening.
+
+        r213480 was porting some Blink patches that makes these tests to pass now.
+        Check the following bugs for more information:
+        - http://webkit.org/b/169197
+        - http://webkit.org/b/169198
+
+        * TestExpectations: Mark grid-minimum-size-grid-items-007.xht and
+        grid-minimum-size-grid-items-009.xht as passing.
+        Keep grid-items-sizing-alignment-001.html as failure but now for a different issue
+        (see http://webkit.org/b/169271).
+
+2017-03-07  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] ECDH tests from imported/w3c/web-platform-tests/WebCryptoAPI/generateKey fail.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Apply well-known-axis variation values at the right time in preparePlatformFont()
+        https://bugs.webkit.org/show_bug.cgi?id=168896
+
+        Reviewed by Jon Lee.
+
+        * fast/text/variations/font-selection-properties-expected.html: Added.
+        * fast/text/variations/font-selection-properties.html: Added.
+
+2017-03-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Validate DOM after potentially destructive actions during parser insert operations
+        https://bugs.webkit.org/show_bug.cgi?id=169222
+        <rdar://problem/30689729>
+
+        Reviewed by Ryosuke Niwa.
+
+        This change merges a Blink test case from:
+        <https://src.chromium.org/viewvc/blink?view=revision&revision=200690>        
+
+        * fast/parser/scriptexec-during-parserInsertBefore-expected.txt: Added.
+        * fast/parser/scriptexec-during-parserInsertBefore.html: Added.
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update isEmojiGroupCandidate() to the latest version of Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=168198
+
+        Reviewed by Jon Lee.
+
+        * platform/ios-simulator/editing/deleting/delete-emoji-expected.txt:
+        * platform/mac/editing/deleting/delete-emoji-expected.txt:
+        * editing/deleting/delete-emoji.html:
+
+2017-03-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Implement ECDH GenerateKey operation
+        https://bugs.webkit.org/show_bug.cgi?id=169093
+        <rdar://problem/23789585>
+
+        Reviewed by Brent Fulgham.
+
+        * crypto/subtle/ec-generate-key-malformed-parameters-expected.txt: Added.
+        * crypto/subtle/ec-generate-key-malformed-parameters.html: Added.
+        * crypto/subtle/ecdh-generate-key-extractable-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-key-extractable.html: Added.
+        * crypto/subtle/ecdh-generate-key-p256-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-key-p256.html: Added.
+        * crypto/subtle/ecdh-generate-key-p384-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-key-p384.html: Added.
+        * crypto/subtle/ecdh-generate-key-single-usage-expected.txt: Added.
+        * crypto/subtle/ecdh-generate-key-single-usage.html: Added.
+        * crypto/workers/subtle/ec-generate-key-expected.txt: Added.
+        * crypto/workers/subtle/ec-generate-key.html: Added.
+        * crypto/workers/subtle/resources/ec-generate-key.js: Added.
+
+2017-03-06  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION: Block no longer shrinks to preferred width in this flex box layout
+        https://bugs.webkit.org/show_bug.cgi?id=169203
+        <rdar://problem/30873895>
+
+        Reviewed by Simon Fraser.
+
+        * css3/flexbox/column-inside-normal-block-preferred-width-expected.html: Added.
+        * css3/flexbox/column-inside-normal-block-preferred-width.html: Added.
+        * fast/css-grid-layout/grid-align-stretching-replaced-items-expected.txt:
+        * fast/css-grid-layout/grid-align-stretching-replaced-items.html:
+        * fast/repaint/align-items-change-expected.txt:
+        * fast/repaint/align-items-overflow-change-expected.txt:
+        * fast/repaint/justify-items-change-expected.txt:
+        * fast/repaint/justify-items-legacy-change-expected.txt:
+        * fast/repaint/justify-items-overflow-change-expected.txt:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/worker/console-basic.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169228
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark scrollingcoordinator/ios/non-stable-viewport-scroll.html as flaky on ios-simulator.
+        https://bugs.webkit.org/show_bug.cgi?id=168924
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169159
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=169158
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-06  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle CSS animations to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=169138
+        <rdar://problem/30837805>
+
+        Reviewed by Said Abou-Hallawa.
+
+        Add layout test coverage.
+
+        * fast/animation/css-animation-throttling-lowPowerMode-expected.txt: Added.
+        * fast/animation/css-animation-throttling-lowPowerMode.html: Added.
+
+2017-03-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix URLs relative to file URLs with paths beginning with Windows drive letters
+        https://bugs.webkit.org/show_bug.cgi?id=169178
+
+        Reviewed by Tim Horton.
+
+        * fast/url/relative-win-expected.txt:
+        Some tests pass now.  localhost should indeed be removed according to the latest spec.
+
+2017-03-06  Simon Fraser  <simon.fraser@apple.com>
+
+        Only use layer backing store which supports subpixel antialiased text if we know subpixel antialiased will be painted into it
+        https://bugs.webkit.org/show_bug.cgi?id=169191
+
+        Reviewed by Zalan Bujtas.
+
+        Test lots of layer configs for subpixel antialiased text support. Only Mac results show the
+        "(supports subpixel antialiased text 1)" flag on layers now, since the patch makes this
+        dependent on platform support.
+
+        * compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt: Added.
+        * compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style.html: Added.
+        * compositing/contents-format/subpixel-antialiased-text-configs-expected.txt: Added.
+        * compositing/contents-format/subpixel-antialiased-text-configs.html: Added.
+        * compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt:
+        * compositing/contents-format/subpixel-antialiased-text-enabled.html:
+        * compositing/contents-format/subpixel-antialiased-text-images-expected.txt: Added.
+        * compositing/contents-format/subpixel-antialiased-text-images.html: Added.
+        * compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt: Added.
+        * compositing/contents-format/subpixel-antialiased-text-visibility.html: Added.
+        * compositing/resources/circle-with-text.svg: Added.
+        * compositing/resources/circle.svg: Added.
+        * platform/mac-wk1/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt:
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-antialiasing-style-expected.txt: Added.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-configs-expected.txt: Added.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt: Copied from LayoutTests/compositing/contents-format/subpixel-antialiased-text-enabled-expected.txt.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-images-expected.txt: Added.
+        * platform/mac/compositing/contents-format/subpixel-antialiased-text-visibility-expected.txt: Added.
+
+2017-03-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Expand font-weight and font-stretch to take any number
+        https://bugs.webkit.org/show_bug.cgi?id=168889
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-selection-font-face-parse-expected.txt: Added.
+        * fast/text/font-selection-font-face-parse.html: Added.
+        * fast/text/font-selection-font-loading-api-parse-expected.txt: Added.
+        * fast/text/font-selection-font-loading-api-parse.html: Added.
+        * fast/text/font-stretch-parse-expected.txt:
+        * fast/text/font-stretch-parse.html:
+        * fast/text/font-style-parse-expected.txt: Copied from LayoutTests/fast/text/font-stretch-parse-expected.txt.
+        * fast/text/font-style-parse.html: Added.
+        * fast/text/font-weight-parse-expected.txt: Copied from LayoutTests/fast/text/font-stretch-parse-expected.txt.
+        * fast/text/font-weight-parse.html: Added.
+
+2017-03-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Mark fast/parser/adoption-agency-unload-iframe-4.html as timing out on platform GTK.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-06  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Disable autoplay of silent videos in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=168985
+        <rdar://problem/30739051>
+
+        Reviewed by Jer Noble.
+
+        Add layout test coverage.
+
+        * media/modern-media-controls/start-support/start-support-lowPowerMode-expected.txt: Added.
+        * media/modern-media-controls/start-support/start-support-lowPowerMode.html: Added.
+
+2017-03-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/icon-button/icon-button-active-state.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=167752
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-03-06  Chris Dumez  <cdumez@apple.com>
+
+        LayoutTest fast/dom/timer-throttling-hidden-page.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=168927
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/nested-timer-visible-element-throttling.html:
+        * fast/dom/repeating-timer-element-overflow-throttling.html:
+        * fast/dom/repeating-timer-element-overflowing-child-own-layer-throttling.html:
+        * fast/dom/repeating-timer-mixed-visible-display-none-elements-throttling.html:
+        * fast/dom/repeating-timer-visible-element-throttling.html:
+        * fast/dom/timer-height-change-no-throttling.html:
+        * fast/frames/flattening/resources/iframe-to-resize.html:
+        Use 10 milliseconds interval for tests relying on internals.isTimerThrottled().
+        Using 0 is problematic because we always internally cap to 1ms and 4ms after
+        reaching the max nesting level. Therefore, a 0 delay timer is always considered
+        to be throttled.
+
+        * fast/dom/timer-throttling-hidden-page-expected.txt:
+        * fast/dom/timer-throttling-hidden-page-non-nested-expected.txt:
+        * fast/dom/timer-throttling-hidden-page-non-nested.html:
+        * fast/dom/timer-throttling-hidden-page.html:
+        Rewrite tests to stop measuring timer intervals as this is inherently
+        flaky and rely on internals.isTimerThrottled() instead.
+
+        * platform/mac/TestExpectations:
+        Unskip test that used to be flaky.
+
+2017-03-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Import W3C Test Suite
+        https://bugs.webkit.org/show_bug.cgi?id=169196
+
+        Reviewed by Youenn Fablet.
+
+        A few tests are not passing yet, so the TextExpectations file
+        has been updated accordingly linking the different bugs.
+
+        * TestExpectations:
+
+2017-03-06  Dave Hyatt  <hyatt@apple.com>
+
+        Enable fieldsets to be flexboxes, grids and multicolumn.
+        https://bugs.webkit.org/show_bug.cgi?id=169082
+
+        Reviewed by Simon Fraser.
+
+        * fast/forms/fieldset/abs-pos-child-sizing-expected.html: Added.
+        * fast/forms/fieldset/abs-pos-child-sizing.html: Added.
+        * fast/forms/fieldset/fieldset-deprecated-flexbox-expected.html: Added.
+        * fast/forms/fieldset/fieldset-deprecated-flexbox.html: Added.
+        * fast/forms/fieldset/fieldset-flexbox-expected.html: Added.
+        * fast/forms/fieldset/fieldset-flexbox.html: Added.
+        * fast/forms/fieldset/fieldset-grid-expected.html: Added.
+        * fast/forms/fieldset/fieldset-grid.html: Added.
+        * fast/forms/fieldset/fieldset-multicolumn-expected.html: Added.
+        * fast/forms/fieldset/fieldset-multicolumn.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-auto-expected.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-auto.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-hidden-expected.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-hidden.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-children-expected.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-children.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-legend-expected.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-legend.html: Added.
+        * fast/forms/fieldset/fieldset-self-painting-legend-expected.html: Added.
+        * fast/forms/fieldset/fieldset-self-painting-legend.html: Added.
+        * fast/forms/fieldset/fieldset-writing-modes-expected.html: Added.
+        * fast/forms/fieldset/fieldset-writing-modes.html: Added.
+
+2017-03-06  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Tracks panel should clip and scroll content when numerous tracks are available
+        https://bugs.webkit.org/show_bug.cgi?id=169201
+        <rdar://problem/30867979>
+
+        Reviewed by Eric Carlson.
+
+        Rebaseline a couple of existing tests to account for the DOM structure change in
+        the tracks panel and the fact that positioning is now dependent on the bounds of
+        the tracks button.
+
+        We also add a new test that checks that the tracks panel is positioned and sized
+        correctly to ensure that it can be scrolled when it has too many tracks to fit.
+
+        * media/modern-media-controls/tracks-panel/tracks-panel-population-expected.txt:
+        * media/modern-media-controls/tracks-panel/tracks-panel-population.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-position-and-size-expected.txt: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-position-and-size.html: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-mouse-expected.txt:
+        * media/modern-media-controls/tracks-panel/tracks-panel-select-track-with-mouse.html:
+
+2017-03-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] Stretch should grow and shrink items to fit its grid area
+        https://bugs.webkit.org/show_bug.cgi?id=163200
+
+        Reviewed by Darin Adler.
+
+        The tests have been updated according to the new expected behavior.
+
+        * fast/css-grid-layout/grid-container-percentage-columns.html:
+        * fast/css-grid-layout/min-width-height-auto-and-margins.html:
+        * fast/css-grid-layout/min-width-height-auto.html:
+
+2017-03-06  Antti Koivisto  <antti@apple.com>
+
+        Allow render tree building before loading stylesheet elements
+        https://bugs.webkit.org/show_bug.cgi?id=169079
+
+        Reviewed by Andreas Kling.
+
+        Ensure that style is synchronized after adding a stylesheet dynamically by doing an additional test.
+        Otherwise the class/attr invalidation test may as we don't know about the new stylesheet yet.
+        This is functionally fine (future synchronization would invalidate the style) but messes up the test
+        trying to verify class/attr change invalidation specifically.
+
+        * fast/css/style-invalidation-attribute-change-descendants-expected.txt:
+        * fast/css/style-invalidation-attribute-change-descendants.html:
+        * fast/css/style-invalidation-class-change-descendants-expected.txt:
+        * fast/css/style-invalidation-class-change-descendants.html:
+
+2017-03-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline fast/css/css2-system-fonts.html after r213267.
+
+        * platform/gtk/fast/css/css2-system-fonts-expected.txt:
+
+2017-03-05  Simon Fraser  <simon.fraser@apple.com>
+
+        Avoid backing store for layers with empty text nodes in a few more cases
+        https://bugs.webkit.org/show_bug.cgi?id=169185
+
+        Reviewed by Dan Bernstein.
+
+        inline-block-no-backing.html enhanced to have a layer with non-collapsible whitespace (an &nbsp;).
+
+        Rebaselined other tests.
+
+        * compositing/backing/inline-block-no-backing-expected.txt:
+        * compositing/backing/inline-block-no-backing.html:
+        * compositing/iframes/page-cache-layer-tree-expected.txt:
+        * css3/blending/blend-mode-clip-accelerated-blending-canvas-expected.txt:
+        * platform/ios-simulator-wk2/compositing/backing/inline-block-no-backing-expected.txt:
+        * platform/ios-simulator-wk2/compositing/iframes/page-cache-layer-tree-expected.txt:
+
+2017-03-05  Chris Dumez  <cdumez@apple.com>
+
+        Using <form> in <template> causes following <form> to get swallowed
+        https://bugs.webkit.org/show_bug.cgi?id=163552
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/parser/form-after-template-expected.html: Added.
+        * fast/parser/form-after-template.html: Added.
+
+2017-03-04  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update CSSFontSelector's matching algorithm to understand ranges
+        https://bugs.webkit.org/show_bug.cgi?id=168892
+
+        Reviewed by Jon Lee.
+
+        Update CSS Font Loading API test to accept font-stretch values.
+
+        * fast/text/font-face-javascript-expected.txt:
+        * fast/text/font-face-javascript.html:
+
+2017-03-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Two file reset tests are failing in the bots since they were added in r213042
+        https://bugs.webkit.org/show_bug.cgi?id=169126
+
+        Reviewed by Michael Catanzaro.
+
+        They are failing because the GTK+ event sender is not firing the second UIHelper.activateAt() after the change
+        event. In one case this causes that the reset button is not clicked, and in the other one the file input is not
+        unfocused. This is because the change event is emitted before the mouse up, and the GTK+ event sender ignores
+        mouse down events when the button is already down to not confuse Xvfb. So, we can easily fix theses tests by
+        using a timeout to ensure the next UIHelper.activateAt() happens in a different run loop iteration, after the
+        mouse up.
+
+        * fast/forms/file/file-input-reset-using-open-panel.html:
+        * fast/forms/file/file-reset-in-change-using-open-panel.html:
+
+2017-03-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213379.
+        https://bugs.webkit.org/show_bug.cgi?id=169169
+
+        broke GTK+ and Windows builds (Requested by mcatanzaro on
+        #webkit).
+
+        Reverted changeset:
+
+        "Enable fieldsets to be flexboxes, grids and multicolumn."
+        https://bugs.webkit.org/show_bug.cgi?id=169082
+        http://trac.webkit.org/changeset/213379
+
+2017-03-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Show Web Socket connections in Network tab
+        https://bugs.webkit.org/show_bug.cgi?id=167520
+
+        Reviewed by Joseph Pecoraro.
+
+        * http/tests/websocket/tests/hybi/inspector/client-close-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/inspector/client-close.html: Added.
+        * http/tests/websocket/tests/hybi/inspector/client-close_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+        * http/tests/websocket/tests/hybi/inspector/server-close-expected.txt: Added.
+        * http/tests/websocket/tests/hybi/inspector/server-close.html: Added.
+        * http/tests/websocket/tests/hybi/inspector/server-close_wsh.py: Added.
+        (web_socket_do_extra_handshake):
+        (web_socket_transfer_data):
+        * platform/ios-simulator/TestExpectations:
+
+2017-03-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213400.
+        https://bugs.webkit.org/show_bug.cgi?id=169163
+
+        Caused frequent assertion failures (Requested by ap on
+        #webkit).
+
+        Reverted changeset:
+
+        "[Modern Media Controls] Improve media documents across macOS,
+        iPhone and iPad"
+        https://bugs.webkit.org/show_bug.cgi?id=169145
+        http://trac.webkit.org/changeset/213400
+
+2017-03-03  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Improve media documents across macOS, iPhone and iPad
+        https://bugs.webkit.org/show_bug.cgi?id=169145
+        <rdar://problem/17048858>
+
+        Reviewed by Dean Jackson.
+
+        We add new tests for media documents and related features that cover the following cases:
+        
+            - checking <video> with only audio tracks does not show the fullscreen button
+            - checking <video> with only audio tracks does not show the picture-in-picture button
+            - checking the size used in media documents for audio and video across macOS, iPhone and iPad
+
+        * media/modern-media-controls/fullscreen-support/fullscreen-support-disabled-video-with-audio-tracks-only-expected.txt: Added.
+        * media/modern-media-controls/fullscreen-support/fullscreen-support-disabled-video-with-audio-tracks-only.html: Added.
+        * media/modern-media-controls/media-documents/ipad/media-document-audio-ios-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/ipad/media-document-audio-ios-sizing.html: Added.
+        * media/modern-media-controls/media-documents/ipad/media-document-video-ios-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/ipad/media-document-video-ios-sizing.html: Added.
+        * media/modern-media-controls/media-documents/media-document-audio-ios-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-audio-ios-sizing.html: Added.
+        * media/modern-media-controls/media-documents/media-document-audio-mac-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html: Added.
+        * media/modern-media-controls/media-documents/media-document-video-ios-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-video-ios-sizing.html: Added.
+        * media/modern-media-controls/media-documents/media-document-video-mac-sizing-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-video-mac-sizing.html: Added.
+        * media/modern-media-controls/pip-support/pip-support-disabled-video-with-audio-tracks-only-expected.txt: Added.
+        * media/modern-media-controls/pip-support/pip-support-disabled-video-with-audio-tracks-only.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-03-03  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Throttle SVG SMIL animations to 30fps in low power mode
+        https://bugs.webkit.org/show_bug.cgi?id=169137
+        <rdar://problem/30833754>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * svg/animations/animations-lowPowerMode-throttling-expected.txt: Added.
+        * svg/animations/animations-lowPowerMode-throttling.html: Added.
+
+2017-03-03  Sam Weinig  <sam@webkit.org>
+
+        REGRESSION (r209760): Apple Pay doesn't work on casper.com, shopspring.com, maybe other sites
+        <rdar://problem/30313445>
+        https://bugs.webkit.org/show_bug.cgi?id=169149
+
+        Reviewed by Simon Fraser.
+
+        * http/tests/ssl/applepay/ApplePaySession-expected.txt:
+        * http/tests/ssl/applepay/ApplePaySession.html:
+        Update test for relaxed ApplePayShippingMethod sequence requirements.
+
+2017-03-03  Alex Christensen  <achristensen@webkit.org>
+
+        [URLParser] Fix file: as a relative file URL
+        https://bugs.webkit.org/show_bug.cgi?id=169122
+
+        Reviewed by Tim Horton.
+
+        * TestExpectations:
+        We don't need to skip url-setters.html any more.  It used to assert before the new URLParser was enabled.
+        * fast/loader/url-parse-1-expected.txt:
+        * fast/url/file-expected.txt:
+        We used to add a strange and unnecessary :/// at the end of the URL.
+
+2017-03-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add Debug flag to TestExpectation for webrtc/audio-peer-connection-webaudio.html.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark performance-api/performance-observer-periodic.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168136
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-03-03  Dave Hyatt  <hyatt@apple.com>
+
+        Enable fieldsets to be flexboxes, grids and multicolumn.
+        https://bugs.webkit.org/show_bug.cgi?id=169082
+
+        Reviewed by Simon Fraser.
+
+        * fast/forms/fieldset/abs-pos-child-sizing-expected.html: Added.
+        * fast/forms/fieldset/abs-pos-child-sizing.html: Added.
+        * fast/forms/fieldset/fieldset-deprecated-flexbox-expected.html: Added.
+        * fast/forms/fieldset/fieldset-deprecated-flexbox.html: Added.
+        * fast/forms/fieldset/fieldset-flexbox-expected.html: Added.
+        * fast/forms/fieldset/fieldset-flexbox.html: Added.
+        * fast/forms/fieldset/fieldset-grid-expected.html: Added.
+        * fast/forms/fieldset/fieldset-grid.html: Added.
+        * fast/forms/fieldset/fieldset-multicolumn-expected.html: Added.
+        * fast/forms/fieldset/fieldset-multicolumn.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-auto-expected.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-auto.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-hidden-expected.html: Added.
+        * fast/forms/fieldset/fieldset-overflow-hidden.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-children-expected.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-children.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-legend-expected.html: Added.
+        * fast/forms/fieldset/fieldset-positioned-legend.html: Added.
+        * fast/forms/fieldset/fieldset-self-painting-legend-expected.html: Added.
+        * fast/forms/fieldset/fieldset-self-painting-legend.html: Added.
+        * fast/forms/fieldset/fieldset-writing-modes-expected.html: Added.
+        * fast/forms/fieldset/fieldset-writing-modes.html: Added.
+
+2017-03-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/IndexedDB/idbcursor_iterating.htm as flaky on El Capitan Release builds.
+        https://bugs.webkit.org/show_bug.cgi?id=164870
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-03  Javier Fernandez  <jfernandez@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=169127
+
+        Unreviewed GTK+ gardening. Removed duplicated TestExpectations entry.
+
+        * platform/gtk/TestExpectations:
+        - editing/selection/extend-by-character-007.html fails in GTK as well, so using the general TestExpectations entry.
+
+2017-03-03  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=167275
+        <rdar://problem/30824290>
+
+        Reviewed by Dean Jackson.
+
+        Ensure that we have metrics for buttons before attempting to click on them and let dragging interaction
+        apply changes to CSS on the next rAF before trying to pursue the next step.
+
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls-expected.txt:
+        * media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html:
+        * platform/mac/TestExpectations:
+
+2017-03-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest performance-api/performance-observer-basic.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=169097
+
+        Reviewed by Ryosuke Niwa.
+
+        * performance-api/performance-now-api.html:
+        * performance-api/performance-observer-basic.html:
+        Reorder the scripts so that testWorker is guarenteed
+        to be defined before code that uses it.
+
+2017-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Another reftest failing with 2 pixels in image diff.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark RAF throttling tests as failing.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes.html after r213284.
+
+        * platform/gtk/fast/dom/HTMLAnchorElement/anchor-file-blob-download-includes-slashes-expected.txt:
+
+2017-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Skip tests that require FILE_REPLACEMENT.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark several WebCryptoAPI tests as failing.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-02  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Should be able to push nodes in an iframe subtree to the frontend
+        https://bugs.webkit.org/show_bug.cgi?id=169086
+
+        Reviewed by Joseph Pecoraro.
+
+        Added test coverage for DOMTreeManager.prototype.pushNodeByPathToFrontend,
+        which now supports pushing iframe document nodes (#document) and their descendants.
+
+        * inspector/dom/push-node-by-path-to-frontend-expected.txt: Added.
+        * inspector/dom/push-node-by-path-to-frontend.html: Added.
+        * inspector/dom/resources/frameset-frame.html: Added.
+        * inspector/dom/resources/frameset-iframe.html: Added.
+
 2017-03-02  Antoine Quint  <graouts@apple.com>
 
         LayoutTest media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html is a flaky timeout

@@ -290,6 +290,8 @@ public:
 
     double percentLoaded() const;
 
+    bool shouldForceControlsDisplay() const;
+
 #if ENABLE(VIDEO_TRACK)
     ExceptionOr<TextTrack&> addTextTrack(const String& kind, const String& label, const String& language);
 
@@ -728,6 +730,7 @@ private:
     bool stoppedDueToErrors() const;
     bool pausedForUserInteraction() const;
     bool couldPlayIfEnoughData() const;
+    void dispatchPlayPauseEventsIfNeedsQuirks();
     SuccessOr<MediaPlaybackDenialReason> canTransitionFromAutoplayToPlay() const;
 
     MediaTime minTimeSeekable() const;

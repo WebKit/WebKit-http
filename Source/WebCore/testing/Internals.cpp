@@ -111,8 +111,10 @@
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "ResourceLoadObserver.h"
+#include "SMILTimeContainer.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGPathStringBuilder.h"
+#include "SVGSVGElement.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
 #include "ScrollingCoordinator.h"
@@ -522,6 +524,21 @@ bool Internals::areSVGAnimationsPaused() const
     return document->accessSVGExtensions().areAnimationsPaused();
 }
 
+ExceptionOr<double> Internals::svgAnimationsInterval(SVGSVGElement& element) const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return 0;
+
+    if (!document->svgExtensions())
+        return 0;
+
+    if (document->accessSVGExtensions().areAnimationsPaused())
+        return 0;
+
+    return element.timeContainer().animationFrameDelay().value();
+}
+
 String Internals::address(Node& node)
 {
     return String::format("%p", &node);
@@ -779,6 +796,15 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
     return document->frame()->animation().animationsAreSuspendedForDocument(document);
 }
 
+double Internals::animationsInterval() const
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return INFINITY;
+
+    return document->frame()->animation().animationInterval().value();
+}
+
 ExceptionOr<void> Internals::suspendAnimations() const
 {
     Document* document = contextDocument();
@@ -1012,10 +1038,14 @@ unsigned Internals::deferredKeyframesRulesCount(StyleSheet& styleSheet)
 
 ExceptionOr<bool> Internals::isTimerThrottled(int timeoutId)
 {
-    DOMTimer* timer = scriptExecutionContext()->findTimeout(timeoutId);
+    auto* timer = scriptExecutionContext()->findTimeout(timeoutId);
     if (!timer)
         return Exception { NOT_FOUND_ERR };
-    return timer->m_throttleState == DOMTimer::ShouldThrottle;
+
+    if (timer->intervalClampedToMinimum() > timer->m_originalInterval)
+        return true;
+
+    return !!timer->alignedFireTime(0_s);
 }
 
 bool Internals::isRequestAnimationFrameThrottled() const
@@ -1325,6 +1355,11 @@ ExceptionOr<void> Internals::setMarkedTextMatchesAreHighlighted(bool flag)
 void Internals::invalidateFontCache()
 {
     FontCache::singleton().invalidate();
+}
+
+void Internals::setFontSmoothingEnabled(bool enabled)
+{
+    WebCore::FontCascade::setShouldUseSmoothing(enabled);
 }
 
 ExceptionOr<void> Internals::setLowPowerModeEnabled(bool isEnabled)

@@ -107,6 +107,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/cocoa"
     "${WEBCORE_DIR}/platform/graphics/cg"
     "${WEBCORE_DIR}/platform/graphics/cv"
+    "${WEBCORE_DIR}/platform/graphics/gpu"
     "${WEBCORE_DIR}/platform/graphics/egl"
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/opengl"
@@ -182,6 +183,7 @@ list(APPEND WebCore_SOURCES
     crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
     crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
     crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+    crypto/algorithms/CryptoAlgorithmECDH.cpp
     crypto/algorithms/CryptoAlgorithmHMAC.cpp
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
     crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
@@ -195,6 +197,7 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyAES.cpp
     crypto/keys/CryptoKeyDataOctetSequence.cpp
     crypto/keys/CryptoKeyDataRSAComponents.cpp
+    crypto/keys/CryptoKeyEC.cpp
     crypto/keys/CryptoKeyHMAC.cpp
     crypto/keys/CryptoKeyRSA.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
@@ -208,6 +211,7 @@ list(APPEND WebCore_SOURCES
     crypto/mac/CryptoAlgorithmRSASSA_PKCS1_v1_5Mac.cpp
     crypto/mac/CryptoAlgorithmRSA_OAEPMac.cpp
     crypto/mac/CryptoAlgorithmRegistryMac.cpp
+    crypto/mac/CryptoKeyECDHMac.cpp
     crypto/mac/CryptoKeyMac.cpp
     crypto/mac/CryptoKeyRSAMac.cpp
     crypto/mac/SerializedCryptoKeyWrapMac.mm
@@ -411,6 +415,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/SubimageCacheWithTimer.cpp
     platform/graphics/cg/TransformationMatrixCG.cpp
 
+    platform/graphics/cocoa/GPUDeviceMetal.mm
     platform/graphics/cocoa/FontCacheCoreText.cpp
     platform/graphics/cocoa/FontCascadeCocoa.mm
     platform/graphics/cocoa/FontCocoa.mm
@@ -423,6 +428,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cv/PixelBufferConformerCV.cpp
     platform/graphics/cv/TextureCacheCV.mm
     platform/graphics/cv/VideoTextureCopierCV.cpp
+
+    platform/graphics/gpu/GPUDevice.cpp
 
     platform/graphics/mac/ColorMac.mm
     platform/graphics/mac/ComplexTextControllerCoreText.mm

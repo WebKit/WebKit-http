@@ -93,6 +93,7 @@
 		2EFF06D41D8AEDBB0004BB30 /* TestWKWebView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2EFF06D31D8AEDBB0004BB30 /* TestWKWebView.mm */; };
 		2EFF06D71D8AF34A0004BB30 /* WKWebViewCandidateTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2EFF06D61D8AF34A0004BB30 /* WKWebViewCandidateTests.mm */; };
 		315118101DB1AE4000176304 /* ExtendedColor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 3151180F1DB1ADD500176304 /* ExtendedColor.cpp */; };
+		3162AE9C1E6F2FF5000E4DBC /* GPUDevice.mm in Sources */ = {isa = PBXBuildFile; fileRef = 3162AE9B1E6F2FCE000E4DBC /* GPUDevice.mm */; };
 		33BE5AF9137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33BE5AF8137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp */; };
 		33DC8912141955FE00747EF7 /* simple-iframe.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 33DC890E1419539300747EF7 /* simple-iframe.html */; };
 		33DC89141419579F00747EF7 /* LoadCanceledNoServerRedirectCallback_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 33DC89131419579F00747EF7 /* LoadCanceledNoServerRedirectCallback_Bundle.cpp */; };
@@ -187,6 +188,7 @@
 		5C9E59431D3EB5AC00E3C62E /* ApplicationCache.db-wal in Copy Resources */ = {isa = PBXBuildFile; fileRef = 5C9E59401D3EB1DE00E3C62E /* ApplicationCache.db-wal */; };
 		5E4B1D2E1D404C6100053621 /* WKScrollViewDelegateCrash.mm in Sources */ = {isa = PBXBuildFile; fileRef = 5E4B1D2C1D404C6100053621 /* WKScrollViewDelegateCrash.mm */; };
 		6BFD294C1D5E6C1D008EC968 /* HashCountedSet.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A38D7E51C752D5F004F157D /* HashCountedSet.cpp */; };
+		755A20AF1E6E38630093C69F /* DatabaseTrackerTest.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 755A20AE1E6E38630093C69F /* DatabaseTrackerTest.cpp */; };
 		764322D71B61CCC30024F801 /* WordBoundaryTypingAttributes.mm in Sources */ = {isa = PBXBuildFile; fileRef = 764322D51B61CCA40024F801 /* WordBoundaryTypingAttributes.mm */; };
 		7673499D1930C5BB00E44DF9 /* StopLoadingDuringDidFailProvisionalLoad_bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7673499A1930182E00E44DF9 /* StopLoadingDuringDidFailProvisionalLoad_bundle.cpp */; };
 		76E182DD1547569100F1FADD /* WillSendSubmitEvent_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 76E182DC1547569100F1FADD /* WillSendSubmitEvent_Bundle.cpp */; };
@@ -946,6 +948,7 @@
 		2EFF06D31D8AEDBB0004BB30 /* TestWKWebView.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = TestWKWebView.mm; path = cocoa/TestWKWebView.mm; sourceTree = "<group>"; };
 		2EFF06D61D8AF34A0004BB30 /* WKWebViewCandidateTests.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKWebViewCandidateTests.mm; sourceTree = "<group>"; };
 		3151180F1DB1ADD500176304 /* ExtendedColor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ExtendedColor.cpp; sourceTree = "<group>"; };
+		3162AE9B1E6F2FCE000E4DBC /* GPUDevice.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = GPUDevice.mm; sourceTree = "<group>"; };
 		333B9CE11277F23100FEFCE3 /* PreventEmptyUserAgent.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PreventEmptyUserAgent.cpp; sourceTree = "<group>"; };
 		33BE5AF4137B5A6C00705813 /* MouseMoveAfterCrash.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MouseMoveAfterCrash.cpp; sourceTree = "<group>"; };
 		33BE5AF8137B5AAE00705813 /* MouseMoveAfterCrash_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MouseMoveAfterCrash_Bundle.cpp; sourceTree = "<group>"; };
@@ -1084,6 +1087,7 @@
 		5C9E593F1D3EB1DE00E3C62E /* ApplicationCache.db-shm */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ApplicationCache.db-shm"; sourceTree = "<group>"; };
 		5C9E59401D3EB1DE00E3C62E /* ApplicationCache.db-wal */ = {isa = PBXFileReference; lastKnownFileType = file; path = "ApplicationCache.db-wal"; sourceTree = "<group>"; };
 		5E4B1D2C1D404C6100053621 /* WKScrollViewDelegateCrash.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = WKScrollViewDelegateCrash.mm; path = ../ios/WKScrollViewDelegateCrash.mm; sourceTree = "<group>"; };
+		755A20AE1E6E38630093C69F /* DatabaseTrackerTest.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DatabaseTrackerTest.cpp; sourceTree = "<group>"; };
 		7560917719259C59009EF06E /* MemoryCacheAddImageToCacheIOS.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MemoryCacheAddImageToCacheIOS.mm; sourceTree = "<group>"; };
 		75F3133F18C171B70041CAEC /* EphemeralSessionPushStateNoHistoryCallback.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = EphemeralSessionPushStateNoHistoryCallback.cpp; sourceTree = "<group>"; };
 		764322D51B61CCA40024F801 /* WordBoundaryTypingAttributes.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WordBoundaryTypingAttributes.mm; sourceTree = "<group>"; };
@@ -1660,30 +1664,42 @@
 			path = ios;
 			sourceTree = "<group>";
 		};
+		3162AE9A1E6F2F8F000E4DBC /* mac */ = {
+			isa = PBXGroup;
+			children = (
+				3162AE9B1E6F2FCE000E4DBC /* GPUDevice.mm */,
+			);
+			path = mac;
+			sourceTree = "<group>";
+		};
 		440A1D3614A01000008A66F2 /* WebCore */ = {
 			isa = PBXGroup;
 			children = (
-				8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */,
-				CD89D0371C4EDB1300040A04 /* cocoa */,
 				7A909A6F1D877475007E10F8 /* AffineTransform.cpp */,
-				07C046C91E42573E007201E7 /* CARingBuffer.cpp */,
-				7A909A701D877475007E10F8 /* FloatPoint.cpp */,
-				7A909A711D877475007E10F8 /* FloatRect.cpp */,
-				7A909A721D877475007E10F8 /* FloatSize.cpp */,
-				7A909A731D877475007E10F8 /* IntPoint.cpp */,
-				7A909A741D877475007E10F8 /* IntRect.cpp */,
-				7A909A751D877475007E10F8 /* IntSize.cpp */,
 				93A720E518F1A0E800A848E1 /* CalculationValue.cpp */,
+				07C046C91E42573E007201E7 /* CARingBuffer.cpp */,
+				CD89D0371C4EDB1300040A04 /* cocoa */,
 				7C3965051CDD74F90094DBB8 /* Color.cpp */,
+				1C9EB8401E380DA1005C6442 /* ComplexTextController.cpp */,
 				7CB184C41AA3F2100066EDFD /* ContentExtensions.cpp */,
 				CD5451E919E41F9D0016936F /* CSSParser.cpp */,
+				755A20AE1E6E38630093C69F /* DatabaseTrackerTest.cpp */,
 				260BA5781B1D2E7B004FA07C /* DFACombiner.cpp */,
 				260BA57A1B1D2EE2004FA07C /* DFAHelpers.h */,
 				26F6E1EF1ADC749B00DE696B /* DFAMinimizer.cpp */,
 				3151180F1DB1ADD500176304 /* ExtendedColor.cpp */,
 				41973B5A1AF2286A006C7B36 /* FileSystem.cpp */,
+				7A909A701D877475007E10F8 /* FloatPoint.cpp */,
+				7A909A711D877475007E10F8 /* FloatRect.cpp */,
+				7A909A721D877475007E10F8 /* FloatSize.cpp */,
+				1CAD1F851E5CE7DA00AF2C2C /* FontCache.cpp */,
+				8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */,
 				83B88A331C80056D00BB2418 /* HTMLParserIdioms.cpp */,
+				7A909A731D877475007E10F8 /* IntPoint.cpp */,
+				7A909A741D877475007E10F8 /* IntRect.cpp */,
+				7A909A751D877475007E10F8 /* IntSize.cpp */,
 				14464012167A8305000BD218 /* LayoutUnit.cpp */,
+				3162AE9A1E6F2F8F000E4DBC /* mac */,
 				CD225C071C45A69200140761 /* ParsedContentRange.cpp */,
 				CDCFA7A91E45122F00C2433D /* SampleMap.cpp */,
 				CE06DF9A1E1851F200E570C9 /* SecurityOrigin.cpp */,
@@ -1696,8 +1712,6 @@
 				440A1D3814A0103A008A66F2 /* URL.cpp */,
 				5C6E65411D5CEF8500F7862E /* URLParser.cpp */,
 				9C64DC311D76198A004B598E /* YouTubePluginReplacement.cpp */,
-				1C9EB8401E380DA1005C6442 /* ComplexTextController.cpp */,
-				1CAD1F851E5CE7DA00AF2C2C /* FontCache.cpp */,
 			);
 			path = WebCore;
 			sourceTree = "<group>";
@@ -2768,6 +2782,7 @@
 				2DB0232F1E4E871800707123 /* InteractionDeadlockAfterCrash.mm in Sources */,
 				7CCE7F071A411AE600447C4C /* PageLoadBasic.cpp in Sources */,
 				7CCE7F081A411AE600447C4C /* PageLoadDidChangeLocationWithinPageForFrame.cpp in Sources */,
+				3162AE9C1E6F2FF5000E4DBC /* GPUDevice.mm in Sources */,
 				7CCE7EC71A411A7E00447C4C /* PageVisibilityStateWithWindowChanges.mm in Sources */,
 				7CCE7F091A411AE600447C4C /* ParentFrame.cpp in Sources */,
 				AD57AC211DA7465B00FF1BDE /* DidRemoveFrameFromHiearchyInPageCache.cpp in Sources */,
@@ -2787,6 +2802,7 @@
 				7C83E0C11D0A652F00FEBCF3 /* ProvisionalURLNotChange.mm in Sources */,
 				7CCE7EC81A411A7E00447C4C /* PublicSuffix.mm in Sources */,
 				7C83E0C21D0A653500FEBCF3 /* QuickLook.mm in Sources */,
+				755A20AF1E6E38630093C69F /* DatabaseTrackerTest.cpp in Sources */,
 				7CCE7F0D1A411AE600447C4C /* ReloadPageAfterCrash.cpp in Sources */,
 				7C83E0C31D0A653A00FEBCF3 /* RemoteObjectRegistry.mm in Sources */,
 				7CCE7EC91A411A7E00447C4C /* RenderedImageFromDOMNode.mm in Sources */,

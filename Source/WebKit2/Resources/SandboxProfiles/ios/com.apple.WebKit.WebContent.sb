@@ -34,6 +34,14 @@
 (play-media)
 (media-remote)
 
+(deny sysctl*)
+(allow sysctl-read
+    (sysctl-name
+        "hw.availcpu"
+        "hw.ncpu"
+        "hw.model"
+        "kern.memorystatus_level"))
+
 ;; Read-only preferences and data
 (mobile-preferences-read
     "com.apple.LaunchServices"
@@ -108,7 +116,8 @@
 
 ;; Media capture, camera access
 (with-filter (extension "com.apple.webkit.camera")
-    (shared-preferences-read "com.apple.coremedia")
+    (allow user-preference-read
+        (preference-domain "com.apple.coremedia"))
     (allow file-read* (subpath "/Library/CoreMediaIO/Plug-Ins/DAL"))
     (allow mach-lookup (extension "com.apple.app-sandbox.mach"))
     (allow mach-lookup

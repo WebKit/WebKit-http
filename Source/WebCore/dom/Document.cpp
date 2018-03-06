@@ -57,6 +57,7 @@
 #include "DocumentMarkerController.h"
 #include "DocumentSharedObjectPool.h"
 #include "DocumentType.h"
+#include "Editing.h"
 #include "Editor.h"
 #include "ElementIterator.h"
 #include "EventHandler.h"
@@ -193,7 +194,6 @@
 #include "XPathExpression.h"
 #include "XPathNSResolver.h"
 #include "XPathResult.h"
-#include "htmlediting.h"
 #include <ctime>
 #include <inspector/ScriptCallStack.h>
 #include <wtf/CurrentTime.h>
@@ -1854,7 +1854,20 @@ bool Document::needsStyleRecalc() const
     if (pageCacheState() != NotInPageCache)
         return false;
 
-    return m_pendingStyleRecalcShouldForce || childNeedsStyleRecalc() || styleScope().hasPendingUpdate();
+    if (m_pendingStyleRecalcShouldForce)
+        return true;
+
+    if (childNeedsStyleRecalc())
+        return true;
+
+    if (styleScope().hasPendingUpdate())
+        return true;
+
+    // Ensure this happens eventually as it is currently in resolveStyle. This can be removed if the code moves.
+    if (m_gotoAnchorNeededAfterStylesheetsLoad && !styleScope().hasPendingSheets())
+        return true;
+
+    return false;
 }
 
 void Document::updateStyleIfNeeded()
@@ -2180,13 +2193,6 @@ void Document::frameDestroyed()
     // detachFromFrame() must be called before destroying the Frame.
     ASSERT_WITH_SECURITY_IMPLICATION(!m_frame);
     FrameDestructionObserver::frameDestroyed();
-}
-
-void Document::didBecomeCurrentDocumentInView()
-{
-    ASSERT(view());
-    if (!hasLivingRenderTree())
-        createRenderTree();
 }
 
 void Document::attachToCachedFrame(CachedFrameBase& cachedFrame)
@@ -2830,11 +2836,11 @@ void Document::writeln(const String& text, Document* ownerDocument)
     write(WTFMove(textWithNewline), ownerDocument);
 }
 
-std::chrono::milliseconds Document::minimumTimerInterval() const
+Seconds Document::minimumDOMTimerInterval() const
 {
     auto* page = this->page();
     if (!page)
-        return ScriptExecutionContext::minimumTimerInterval();
+        return ScriptExecutionContext::minimumDOMTimerInterval();
     return page->settings().minimumDOMTimerInterval();
 }
 
@@ -2847,9 +2853,9 @@ void Document::setTimerThrottlingEnabled(bool shouldThrottle)
     didChangeTimerAlignmentInterval();
 }
 
-std::chrono::milliseconds Document::timerAlignmentInterval(bool hasReachedMaxNestingLevel) const
+Seconds Document::domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) const
 {
-    auto alignmentInterval = ScriptExecutionContext::timerAlignmentInterval(hasReachedMaxNestingLevel);
+    auto alignmentInterval = ScriptExecutionContext::domTimerAlignmentInterval(hasReachedMaxNestingLevel);
     if (!hasReachedMaxNestingLevel)
         return alignmentInterval;
 

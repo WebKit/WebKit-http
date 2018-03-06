@@ -28,7 +28,7 @@
 #include <wtf/Forward.h>
 
 namespace WebKit {
-class CustomProtocolManagerProxy;
+class LegacyCustomProtocolManagerProxy;
 }
 
 namespace WebCore {
@@ -41,10 +41,10 @@ class CustomProtocolManagerClient {
 public:
     virtual ~CustomProtocolManagerClient() { }
 
-    virtual void startLoading(WebKit::CustomProtocolManagerProxy&, uint64_t /* customProtocolID */, const WebCore::ResourceRequest&) { }
-    virtual void stopLoading(WebKit::CustomProtocolManagerProxy&, uint64_t /* customProtocolID */) { }
+    virtual void startLoading(WebKit::LegacyCustomProtocolManagerProxy&, uint64_t /* customProtocolID */, const WebCore::ResourceRequest&) { }
+    virtual void stopLoading(WebKit::LegacyCustomProtocolManagerProxy&, uint64_t /* customProtocolID */) { }
 
-    virtual void invalidate(WebKit::CustomProtocolManagerProxy&) { }
+    virtual void invalidate(WebKit::LegacyCustomProtocolManagerProxy&) { }
 };
 
 } // namespace API

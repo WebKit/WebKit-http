@@ -71,7 +71,7 @@ LibWebRTCPeerConnectionBackend::~LibWebRTCPeerConnectionBackend()
 
 static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaEndpointConfiguration(MediaEndpointConfiguration&& configuration)
 {
-    webrtc::PeerConnectionInterface::RTCConfiguration rtcConfiguration(webrtc::PeerConnectionInterface::RTCConfigurationType::kAggressive);
+    webrtc::PeerConnectionInterface::RTCConfiguration rtcConfiguration;
 
     if (configuration.iceTransportPolicy == PeerConnectionStates::IceTransportPolicy::Relay)
         rtcConfiguration.type = webrtc::PeerConnectionInterface::kRelay;
@@ -216,6 +216,26 @@ Ref<RTCRtpReceiver> LibWebRTCPeerConnectionBackend::createReceiver(const String&
 std::unique_ptr<RTCDataChannelHandler> LibWebRTCPeerConnectionBackend::createDataChannelHandler(const String& label, const RTCDataChannelInit& options)
 {
     return m_endpoint->createDataChannel(label, options);
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentLocalDescription() const
+{
+    return m_endpoint->currentLocalDescription();
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentRemoteDescription() const
+{
+    return m_endpoint->currentRemoteDescription();
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingLocalDescription() const
+{
+    return m_endpoint->pendingLocalDescription();
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingRemoteDescription() const
+{
+    return m_endpoint->pendingRemoteDescription();
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::localDescription() const
