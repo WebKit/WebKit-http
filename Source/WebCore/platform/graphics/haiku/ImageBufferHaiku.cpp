@@ -404,11 +404,26 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
 }
 
 // TODO: quality
-String ImageBuffer::toDataURL(const String& mimeType, std::optional<double>, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, std::optional<double> quality, CoordinateSystem) const
 {
     if (!MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType))
         return "data:,";
 
+    Vector<uint8_t> binaryBuffer = toData(mimeType, quality);
+
+    if (binaryBuffer.size() == 0)
+        return "data:,";
+
+    Vector<char> encodedBuffer;
+    base64Encode(binaryBuffer, encodedBuffer);
+
+    return String::format("data:%s;base64,%.*s", mimeType.utf8().data(),
+        (int)encodedBuffer.size(), encodedBuffer.data());
+}
+
+
+Vector<uint8_t> ImageBuffer::toData(const String& mimeType, std::optional<double> /*quality*/) const
+{
     BString mimeTypeString(mimeType);
 
     uint32 translatorType = 0;
@@ -452,17 +467,18 @@ String ImageBuffer::toDataURL(const String& mimeType, std::optional<double>, Coo
     if (roster->Translate(&bitmapStream, 0, 0, &translatedStream, translatorType,
                           B_TRANSLATOR_BITMAP, mimeType.utf8().data()) != B_OK) {
         bitmapStream.DetachBitmap(&tmp);
-        return "data:,";
+        return Vector<uint8_t>();
     }
 
     bitmapStream.DetachBitmap(&tmp);
 
-    Vector<char> encodedBuffer;
-    base64Encode(reinterpret_cast<const char*>(translatedStream.Buffer()),
-                 translatedStream.BufferLength(), encodedBuffer);
+    // FIXME we could use a BVectorIO to avoid an extra copy here
+    Vector<uint8_t> result;
+    off_t size;
+    translatedStream.GetSize(&size);
+    result.append((uint8_t*)translatedStream.Buffer(), size);
 
-    return String::format("data:%s;base64,%.*s", mimeType.utf8().data(),
-        (int)encodedBuffer.size(), encodedBuffer.data());
+    return result;
 }
 
 } // namespace WebCore

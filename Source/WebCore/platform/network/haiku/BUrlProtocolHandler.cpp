@@ -374,9 +374,7 @@ void BUrlProtocolHandler::RequestCompleted(BUrlRequest* caller, bool success)
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
 
     if (success || (httpRequest && ignoreHttpError(httpRequest, m_responseDataSent))) {
-        client->didFinishLoading(m_resourceHandle, 0);
-            // TODO put the actual finish time instead of 0
-            // (this isn't done on other platforms either...)
+        client->didFinishLoading(m_resourceHandle);
         return;
     } else if(httpRequest) {
         const BHttpResult& result = static_cast<const BHttpResult&>(httpRequest->Result());
@@ -457,7 +455,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
     m_redirectionTries--;
     if(m_redirectionTries == 0)
     {
-        client->didFinishLoading(m_resourceHandle, 0);
+        client->didFinishLoading(m_resourceHandle);
         return;
     }
 

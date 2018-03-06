@@ -33,6 +33,8 @@
 #include <mach/thread_act.h>
 #elif OS(WINDOWS)
 #include <windows.h>
+#elif OS(HAIKU)
+#include <OS.h>
 #endif
 
 namespace JSC {
@@ -41,6 +43,8 @@ namespace JSC {
 typedef mach_port_t PlatformThread;
 #elif OS(WINDOWS)
 typedef DWORD PlatformThread;
+#elif OS(HAIKU)
+typedef thread_id PlatformThread;
 #elif USE(PTHREADS)
 typedef pthread_t PlatformThread;
 #endif // OS(DARWIN)
@@ -51,6 +55,8 @@ inline PlatformThread currentPlatformThread()
     return pthread_mach_thread_np(pthread_self());
 #elif OS(WINDOWS)
     return GetCurrentThreadId();
+#elif OS(HAIKU)
+    return find_thread(NULL);
 #elif USE(PTHREADS)
     return pthread_self();
 #endif

@@ -132,7 +132,7 @@ void WebDownloadPrivate::didReceiveData(ResourceHandle*, const char* data, unsig
     m_progressListener.SendMessage(&message);
 }
 
-void WebDownloadPrivate::didFinishLoading(ResourceHandle* handle, double /*finishTime*/)
+void WebDownloadPrivate::didFinishLoading(ResourceHandle* handle)
 {
     handleFinished(handle, B_DOWNLOAD_FINISHED);
 }

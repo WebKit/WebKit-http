@@ -52,7 +52,7 @@ public:
 
     void didReceiveResponse(ResourceHandle*, ResourceResponse&&) override;
     void didReceiveData(ResourceHandle*, const char*, unsigned, int encodedDataLength) override;
-    void didFinishLoading(ResourceHandle*, double /*finishTime*/) override;
+    void didFinishLoading(ResourceHandle*) override;
     void didFail(ResourceHandle*, const ResourceError&) override;
 
     ResourceResponse resourceResponse() const { return m_response; }
@@ -82,7 +82,7 @@ void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char* data,
     m_data.append(data, length);
 }
 
-void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*, double)
+void WebCoreSynchronousLoader::didFinishLoading(ResourceHandle*)
 {
 	fFinished = true;
 }
