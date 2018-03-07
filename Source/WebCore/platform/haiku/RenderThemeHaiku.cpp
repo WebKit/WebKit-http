@@ -206,7 +206,7 @@ void RenderThemeHaiku::updateCachedSystemFontDescription(CSSValueID, FontCascade
     fontDescription.setOneFamily("Sans");
     fontDescription.setSpecifiedSize(14);
     fontDescription.setIsAbsoluteSize(true);
-    fontDescription.setWeight(FontWeightNormal);
+    fontDescription.setWeight(normalWeightValue());
     fontDescription.setIsItalic(false);
 }
 

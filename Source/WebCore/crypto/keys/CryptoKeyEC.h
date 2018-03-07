@@ -36,7 +36,7 @@ typedef struct _CCECCryptor *CCECCryptorRef;
 typedef CCECCryptorRef PlatformECKey;
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(HAIKU)
 typedef struct _PlatformECKeyGnuTLS PlatformECKeyGnuTLS;
 typedef PlatformECKeyGnuTLS *PlatformECKey;
 #endif

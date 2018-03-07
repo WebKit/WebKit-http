@@ -93,7 +93,7 @@ FontPlatformData::FontPlatformData(const FontDescription& fontDescription, const
     findMatchingFontFamily(familyName, &fontFamily);
 
     font_style fontStyle;
-    findMatchingFontStyle(fontFamily, fontDescription.weight() == FontWeightBold, fontDescription.italic(), &fontStyle);
+    findMatchingFontStyle(fontFamily, fontDescription.weight() == boldWeightValue(), fontDescription.italic(), &fontStyle);
 
     m_font->SetFamilyAndStyle(fontFamily, fontStyle);
 

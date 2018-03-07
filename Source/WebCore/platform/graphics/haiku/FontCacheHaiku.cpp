@@ -93,10 +93,25 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(
     return std::make_unique<FontPlatformData>(fontDescription, family);
 }
 
-WTF::Vector<WebCore::FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyName)
+
+Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamily(const AtomicString& familyName)
 {
-    // notImplemented(); also by fretype, must not be that important
-    return WTF::Vector<WebCore::FontTraitsMask>();
+    Vector<FontSelectionCapabilities> result;
+
+#if 0
+    int32 count = count_font_styles(familyName);
+
+    result.reserveInitialCapacity(count);
+
+    font_style nativeStyle;
+
+    for (int index = 0; index < count; index++)
+    {
+	get_font_style(familyName, index, &nativeStyle);
+        result.uncheckedAppend(nativeStyle);
+    }
+#endif
+    return result;
 }
 
 
