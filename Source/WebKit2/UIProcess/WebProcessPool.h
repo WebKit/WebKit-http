@@ -76,6 +76,7 @@ namespace API {
 class AutomationClient;
 class CustomProtocolManagerClient;
 class DownloadClient;
+class HTTPCookieStorage;
 class LegacyContextHistoryClient;
 class PageConfiguration;
 }
@@ -274,8 +275,14 @@ public:
     void setHTTPPipeliningEnabled(bool);
     bool httpPipeliningEnabled() const;
 
-    void getStatistics(uint32_t statisticsMask, std::function<void (API::Dictionary*, CallbackBase::Error)>);
+    void getStatistics(uint32_t statisticsMask, Function<void (API::Dictionary*, CallbackBase::Error)>&&);
     
+    bool javaScriptConfigurationFileEnabled() { return m_javaScriptConfigurationFileEnabled; }
+    void setJavaScriptConfigurationFileEnabled(bool flag);
+#if PLATFORM(IOS)
+    void setJavaScriptConfigurationFileEnabledFromDefaults();
+#endif
+
     void garbageCollectJavaScriptObjects();
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
@@ -372,6 +379,7 @@ public:
     static String legacyPlatformDefaultMediaCacheDirectory();
     static String legacyPlatformDefaultApplicationCacheDirectory();
     static String legacyPlatformDefaultNetworkCacheDirectory();
+    static String legacyPlatformDefaultJavaScriptConfigurationDirectory();
     static bool isNetworkCacheEnabled();
 
     bool resourceLoadStatisticsEnabled() { return m_resourceLoadStatisticsEnabled; }
@@ -552,7 +560,14 @@ private:
 
     bool m_memoryCacheDisabled;
     bool m_resourceLoadStatisticsEnabled { false };
-
+    bool m_javaScriptConfigurationFileEnabled {
+#ifndef NDEBUG
+        // Enable JavaScript configuration file processing by default for Debug builds.
+        true
+#else
+        false
+#endif
+    };
     bool m_alwaysRunsAtBackgroundPriority;
 
     UserObservablePageCounter m_userObservablePageCounter;

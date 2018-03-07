@@ -472,6 +472,33 @@ String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
     return stringByResolvingSymlinksInPath([cachePath stringByStandardizingPath]);
 }
 
+String WebProcessPool::legacyPlatformDefaultJavaScriptConfigurationDirectory()
+{
+#if PLATFORM(IOS)
+    String path = pathForProcessContainer();
+    if (path.isEmpty())
+        path = NSHomeDirectory();
+    
+    path = path + "/Library/WebKit/JavaScriptCoreDebug";
+    path = stringByResolvingSymlinksInPath(path);
+
+    return path;
+#else
+    RetainPtr<NSString> javaScriptConfigPath = @"~/Library/WebKit/JavaScriptCoreDebug";
+    
+    return stringByResolvingSymlinksInPath([javaScriptConfigPath stringByStandardizingPath]);
+#endif
+}
+
+#if PLATFORM(IOS)
+void WebProcessPool::setJavaScriptConfigurationFileEnabledFromDefaults()
+{
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+
+    setJavaScriptConfigurationFileEnabled([defaults boolForKey:@"WebKitJavaScriptCoreUseConfigFile"]);
+}
+#endif
+
 bool WebProcessPool::isNetworkCacheEnabled()
 {
 #if ENABLE(NETWORK_CACHE)

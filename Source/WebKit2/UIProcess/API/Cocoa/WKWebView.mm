@@ -78,6 +78,7 @@
 #import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebProcessProxy.h"
+#import "WebURLSchemeHandlerCocoa.h"
 #import "WebViewImpl.h"
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
@@ -100,6 +101,7 @@
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextStream.h>
+#import <WebCore/URLParser.h>
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/WritingMode.h>
 #import <wtf/HashMap.h>
@@ -506,6 +508,10 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    [_scrollView _setEdgesScrollingContentIntoSafeArea:UIRectEdgeAll];
+#endif
+
     [self addSubview:_scrollView.get()];
 
     static uint32_t programSDKVersion = dyld_get_program_sdk_version();
@@ -572,6 +578,10 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 #if PLATFORM(IOS)
     [self _setUpSQLiteDatabaseTrackerClient];
 #endif
+
+    auto *handlers = _configuration.get()._urlSchemeHandlers;
+    for (NSString *key in handlers)
+        _page->setURLSchemeHandlerForScheme(WebKit::WebURLSchemeHandlerCocoa::create(handlers[key]), key);
 
     pageToViewMap().add(_page.get(), self);
 }
@@ -1341,7 +1351,17 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     if (_haveSetObscuredInsets)
         return _obscuredInsets;
 
-    return [_scrollView contentInset];
+    UIEdgeInsets insets = [_scrollView contentInset];
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    UIEdgeInsets systemInsets = [_scrollView _systemContentInset];
+    insets.top += systemInsets.top;
+    insets.bottom += systemInsets.bottom;
+    insets.left += systemInsets.left;
+    insets.right += systemInsets.right;
+#endif
+
+    return insets;
 }
 
 - (void)_processDidExit
@@ -2191,6 +2211,19 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     _enclosingScrollViewScrollTimer = nil;
 }
 
+static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRect& bounds)
+{
+    if (webView->_overridesMinimumLayoutSize)
+        return WebCore::FloatSize(webView->_minimumLayoutSizeOverride);
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    UIEdgeInsets systemContentInset = [webView->_scrollView _systemContentInset];
+    return WebCore::FloatSize(UIEdgeInsetsInsetRect(CGRectMake(0, 0, bounds.size.width, bounds.size.height), systemContentInset).size);
+#else
+    return WebCore::FloatSize(bounds.size);
+#endif
+}
+
 - (void)_frameOrBoundsChanged
 {
     CGRect bounds = self.bounds;
@@ -2198,7 +2231,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     if (_dynamicViewportUpdateMode == DynamicViewportUpdateMode::NotResizing) {
         if (!_overridesMinimumLayoutSize)
-            _page->setViewportConfigurationMinimumLayoutSize(WebCore::FloatSize(bounds.size));
+            _page->setViewportConfigurationMinimumLayoutSize(activeMinimumLayoutSize(self, self.bounds));
         if (!_overridesMaximumUnobscuredSize)
             _page->setMaximumUnobscuredSize(WebCore::FloatSize(bounds.size));
         
@@ -2233,6 +2266,15 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     CGPoint boundedOffset = contentOffsetBoundedInValidRange(_scrollView.get(), contentOffset);
     return !pointsEqualInDevicePixels(contentOffset, boundedOffset, deviceScaleFactor);
 }
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+- (void)safeAreaInsetsDidChange
+{
+    [super safeAreaInsetsDidChange];
+
+    [self _scheduleVisibleContentRectUpdate];
+}
+#endif
 
 - (void)_scheduleVisibleContentRectUpdate
 {
@@ -3496,6 +3538,17 @@ WEBCORE_COMMAND(yankAndSelect)
 
 #endif // HAVE(TOUCH_BAR)
 
+- (id <WKURLSchemeHandler>)urlSchemeHandlerForURLScheme:(NSString *)urlScheme
+{
+    auto* handler = static_cast<WebKit::WebURLSchemeHandlerCocoa*>(_page->urlSchemeHandlerForScheme(urlScheme));
+    return handler ? handler->apiHandler() : nil;
+}
+
++ (BOOL)handlesURLScheme:(NSString *)urlScheme
+{
+    return WebCore::URLParser::isSpecialScheme(urlScheme);
+}
+
 @end
 
 @implementation WKWebView (WKPrivate)
@@ -3654,11 +3707,6 @@ WEBCORE_COMMAND(yankAndSelect)
 }
 
 #if PLATFORM(IOS)
-static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRect& bounds)
-{
-    return WebCore::FloatSize(webView->_overridesMinimumLayoutSize ? webView->_minimumLayoutSizeOverride : bounds.size);
-}
-
 static WebCore::FloatSize activeMaximumUnobscuredSize(WKWebView *webView, const CGRect& bounds)
 {
     return WebCore::FloatSize(webView->_overridesMaximumUnobscuredSize ? webView->_maximumUnobscuredSizeOverride : bounds.size);
@@ -4309,7 +4357,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (BOOL)_webProcessIsResponsive
 {
-    return _page->process().responsivenessTimer().isResponsive();
+    return _page->process().isResponsive();
 }
 
 - (void)_setFullscreenDelegate:(id<_WKFullscreenDelegate>)delegate
@@ -5106,6 +5154,83 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
         if ([strongSelf->_stableStatePresentationUpdateCallbacks count])
             [strongSelf _firePresentationUpdateForPendingStableStatePresentationCallbacks];
     }];
+}
+
+- (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID
+{
+    CALayer* layer = asLayer(downcast<WebKit::RemoteLayerTreeDrawingAreaProxy>(*_page->drawingArea()).layerWithIDForTesting(layerID));
+    if (!layer)
+        return nil;
+
+    return @{
+        @"bounds" : @{
+            @"x" : @(layer.bounds.origin.x),
+            @"y" : @(layer.bounds.origin.x),
+            @"width" : @(layer.bounds.size.width),
+            @"height" : @(layer.bounds.size.height),
+
+        },
+        @"position" : @{
+            @"x" : @(layer.position.x),
+            @"y" : @(layer.position.y),
+        },
+        @"zPosition" : @(layer.zPosition),
+        @"anchorPoint" : @{
+            @"x" : @(layer.anchorPoint.x),
+            @"y" : @(layer.anchorPoint.y),
+        },
+        @"anchorPointZ" : @(layer.anchorPointZ),
+        @"transform" : @{
+            @"m11" : @(layer.transform.m11),
+            @"m12" : @(layer.transform.m12),
+            @"m13" : @(layer.transform.m13),
+            @"m14" : @(layer.transform.m14),
+
+            @"m21" : @(layer.transform.m21),
+            @"m22" : @(layer.transform.m22),
+            @"m23" : @(layer.transform.m23),
+            @"m24" : @(layer.transform.m24),
+
+            @"m31" : @(layer.transform.m31),
+            @"m32" : @(layer.transform.m32),
+            @"m33" : @(layer.transform.m33),
+            @"m34" : @(layer.transform.m34),
+
+            @"m41" : @(layer.transform.m41),
+            @"m42" : @(layer.transform.m42),
+            @"m43" : @(layer.transform.m43),
+            @"m44" : @(layer.transform.m44),
+        },
+        @"sublayerTransform" : @{
+            @"m11" : @(layer.sublayerTransform.m11),
+            @"m12" : @(layer.sublayerTransform.m12),
+            @"m13" : @(layer.sublayerTransform.m13),
+            @"m14" : @(layer.sublayerTransform.m14),
+
+            @"m21" : @(layer.sublayerTransform.m21),
+            @"m22" : @(layer.sublayerTransform.m22),
+            @"m23" : @(layer.sublayerTransform.m23),
+            @"m24" : @(layer.sublayerTransform.m24),
+
+            @"m31" : @(layer.sublayerTransform.m31),
+            @"m32" : @(layer.sublayerTransform.m32),
+            @"m33" : @(layer.sublayerTransform.m33),
+            @"m34" : @(layer.sublayerTransform.m34),
+
+            @"m41" : @(layer.sublayerTransform.m41),
+            @"m42" : @(layer.sublayerTransform.m42),
+            @"m43" : @(layer.sublayerTransform.m43),
+            @"m44" : @(layer.sublayerTransform.m44),
+        },
+        
+        @"hidden" : @(layer.hidden),
+        @"doubleSided" : @(layer.doubleSided),
+        @"masksToBounds" : @(layer.masksToBounds),
+        @"contentsScale" : @(layer.contentsScale),
+        @"rasterizationScale" : @(layer.rasterizationScale),
+        @"opaque" : @(layer.opaque),
+        @"opacity" : @(layer.opacity),
+    };
 }
 
 #endif // PLATFORM(IOS)

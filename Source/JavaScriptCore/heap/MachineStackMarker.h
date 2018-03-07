@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "MachineContext.h"
 #include "PlatformThread.h"
 #include "RegisterState.h"
 #include <wtf/Lock.h>
@@ -84,31 +85,15 @@ public:
             void* llintPC() const;
 #endif // ENABLE(SAMPLING_PROFILER)
             
-#if OS(DARWIN)
-#if CPU(X86)
-            typedef i386_thread_state_t PlatformRegisters;
-#elif CPU(X86_64)
-            typedef x86_thread_state64_t PlatformRegisters;
-#elif CPU(PPC)
-            typedef ppc_thread_state_t PlatformRegisters;
-#elif CPU(PPC64)
-            typedef ppc_thread_state64_t PlatformRegisters;
-#elif CPU(ARM)
-            typedef arm_thread_state_t PlatformRegisters;
-#elif CPU(ARM64)
-            typedef arm_thread_state64_t PlatformRegisters;
-#else
-#error Unknown Architecture
-#endif
-            
-#elif OS(WINDOWS)
-            typedef CONTEXT PlatformRegisters;
+#if OS(DARWIN) || OS(WINDOWS)
+            using PlatformRegisters = MachineContext::PlatformRegisters;
 #elif OS(HAIKU)
             typedef thread_info PlatformRegisters;
+#elif (OS(FREEBSD) || defined(__GLIBC__)) && ENABLE(JIT)
+            using PlatformRegisters = mcontext_t;
 #elif USE(PTHREADS)
             struct PlatformRegisters {
                 pthread_attr_t attribute;
-                mcontext_t machineContext;
             };
 #else
 #error Need a thread register struct for this platform
@@ -141,14 +126,14 @@ public:
     };
 
     Lock& getLock() { return m_registeredThreadsMutex; }
-    Thread* threadsListHead(const LockHolder&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
+    Thread* threadsListHead(const AbstractLocker&) const { ASSERT(m_registeredThreadsMutex.isLocked()); return m_registeredThreads; }
     Thread* machineThreadForCurrentThread();
 
 private:
     void gatherFromCurrentThread(ConservativeRoots&, JITStubRoutineSet&, CodeBlockSet&, CurrentThreadState&);
 
     void tryCopyOtherThreadStack(Thread*, void*, size_t capacity, size_t*);
-    bool tryCopyOtherThreadStacks(LockHolder&, void*, size_t capacity, size_t*);
+    bool tryCopyOtherThreadStacks(const AbstractLocker&, void*, size_t capacity, size_t*);
 
     static void THREAD_SPECIFIC_CALL removeThread(void*);
 

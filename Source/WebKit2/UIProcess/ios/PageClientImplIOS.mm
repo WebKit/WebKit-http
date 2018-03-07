@@ -785,6 +785,11 @@ void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPositio
 {
     [m_contentView _startDataInteractionWithImage:ShareableBitmap::create(image)->makeCGImageCopy() withIndicatorData:indicatorData atClientPosition:CGPointMake(clientPosition.x(), clientPosition.y()) anchorPoint:anchorPoint action:action];
 }
+
+void PageClientImpl::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
+{
+    [m_contentView _didConcludeEditDataInteraction:data];
+}
 #endif
 
 void PageClientImpl::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime)
@@ -803,8 +808,11 @@ void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName,
         ASSERT(fileName == String { passwordView.documentName });
         [passwordView showPasswordFailureAlert];
         passwordView.userDidEnterPassword = passwordHandler;
-    } else
-        [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler];
+        return;
+    }
+
+    [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler];
+    NavigationState::fromWebPage(*m_webView->_page).didRequestPasswordForQuickLookDocument();
 }
 #endif
 

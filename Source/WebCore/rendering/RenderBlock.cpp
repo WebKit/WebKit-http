@@ -1569,10 +1569,10 @@ void RenderBlock::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 
 void RenderBlock::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
 {
-    // Avoid painting descendants of the root element when stylesheets haven't loaded.  This eliminates FOUC.
-    // It's ok not to draw, because later on, when all the stylesheets do load, styleResolverChanged() on the Document
-    // will do a full repaint.
-    if (document().didLayoutWithPendingStylesheets() && !isRenderView())
+    // Style is non-final if the element has a pending stylesheet before it. We end up with renderers with such styles if a script
+    // forces renderer construction by querying something layout dependent.
+    // Avoid FOUC by not painting. Switching to final style triggers repaint.
+    if (style().isNotFinal())
         return;
 
     if (childrenInline())
@@ -2878,9 +2878,34 @@ void RenderBlock::computeChildPreferredLogicalWidths(RenderObject& child, Layout
         minPreferredLogicalWidth = maxPreferredLogicalWidth = downcast<RenderBox>(child).computeLogicalHeightWithoutLayout();
         return;
     }
+    
+    // The preferred widths of flexbox children should never depend on override sizes. They should
+    // always be computed without regard for any overrides that are present.
+    std::optional<LayoutUnit> overrideHeight;
+    std::optional<LayoutUnit> overrideWidth;
+    
+    if (child.isBox()) {
+        auto& box = downcast<RenderBox>(child);
+        if (box.isFlexItem()) {
+            if (box.hasOverrideLogicalContentHeight())
+                overrideHeight = std::optional<LayoutUnit>(box.overrideLogicalContentHeight());
+            if (box.hasOverrideLogicalContentWidth())
+                overrideWidth = std::optional<LayoutUnit>(box.overrideLogicalContentWidth());
+            box.clearOverrideSize();
+        }
+    }
+    
     minPreferredLogicalWidth = child.minPreferredLogicalWidth();
     maxPreferredLogicalWidth = child.maxPreferredLogicalWidth();
     
+    if (child.isBox()) {
+        auto& box = downcast<RenderBox>(child);
+        if (overrideHeight)
+            box.setOverrideLogicalContentHeight(overrideHeight.value());
+        if (overrideWidth)
+            box.setOverrideLogicalContentWidth(overrideWidth.value());
+    }
+
     // For non-replaced blocks if the inline size is min|max-content or a definite
     // size the min|max-content contribution is that size plus border, padding and
     // margin https://drafts.csswg.org/css-sizing/#block-intrinsic

@@ -1097,13 +1097,13 @@ NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
         
     willStartCollection(scope);
         
-    if (m_verifier) {
+    if (UNLIKELY(m_verifier)) {
         // Verify that live objects from the last GC cycle haven't been corrupted by
         // mutators before we begin this new GC cycle.
         m_verifier->verify(HeapVerifier::Phase::BeforeGC);
             
-        m_verifier->initializeGCCycle();
-        m_verifier->gatherLiveObjects(HeapVerifier::Phase::BeforeMarking);
+        m_verifier->startGC();
+        m_verifier->gatherLiveCells(HeapVerifier::Phase::BeforeMarking);
     }
         
     prepareForMarking();
@@ -1332,8 +1332,8 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
     updateObjectCounts();
     endMarking();
         
-    if (m_verifier) {
-        m_verifier->gatherLiveObjects(HeapVerifier::Phase::AfterMarking);
+    if (UNLIKELY(m_verifier)) {
+        m_verifier->gatherLiveCells(HeapVerifier::Phase::AfterMarking);
         m_verifier->verify(HeapVerifier::Phase::AfterMarking);
     }
         
@@ -1357,12 +1357,12 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
     m_objectSpace.prepareForAllocation();
     updateAllocationLimits();
 
-    didFinishCollection();
-    
-    if (m_verifier) {
-        m_verifier->trimDeadObjects();
+    if (UNLIKELY(m_verifier)) {
+        m_verifier->trimDeadCells();
         m_verifier->verify(HeapVerifier::Phase::AfterGC);
     }
+
+    didFinishCollection();
 
     if (false) {
         dataLog("Heap state after GC:\n");
@@ -1853,9 +1853,10 @@ void Heap::handleNeedFinalize()
 void Heap::setGCDidJIT()
 {
     m_worldState.transaction(
-        [&] (unsigned& state) {
+        [&] (unsigned& state) -> bool {
             RELEASE_ASSERT(state & stoppedBit);
             state |= gcDidJITBit;
+            return true;
         });
 }
 
@@ -2161,6 +2162,9 @@ void Heap::didFinishCollection()
         removeDeadHeapSnapshotNodes(*heapProfiler);
     }
 
+    if (UNLIKELY(m_verifier))
+        m_verifier->endGC();
+
     RELEASE_ASSERT(m_collectionScope);
     m_lastCollectionScope = m_collectionScope;
     m_collectionScope = std::nullopt;
@@ -2329,9 +2333,9 @@ void Heap::forEachCodeBlockImpl(const ScopedLambda<bool(CodeBlock*)>& func)
     return m_codeBlocks->iterate(func);
 }
 
-void Heap::forEachCodeBlockIgnoringJITPlansImpl(const ScopedLambda<bool(CodeBlock*)>& func)
+void Heap::forEachCodeBlockIgnoringJITPlansImpl(const AbstractLocker& locker, const ScopedLambda<bool(CodeBlock*)>& func)
 {
-    return m_codeBlocks->iterate(func);
+    return m_codeBlocks->iterate(locker, func);
 }
 
 void Heap::writeBarrierSlowPath(const JSCell* from)

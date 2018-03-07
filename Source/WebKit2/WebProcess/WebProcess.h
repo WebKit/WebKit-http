@@ -62,6 +62,7 @@ class Object;
 
 namespace WebCore {
 class ApplicationCacheStorage;
+class CPUMonitor;
 class CertificateInfo;
 class PageGroup;
 class ResourceRequest;
@@ -194,6 +195,7 @@ public:
 #endif
 
     void updateActivePages();
+    void pageActivityStateDidChange(uint64_t pageID, WebCore::ActivityState::Flags changed);
 
     void setHiddenPageDOMTimerThrottlingIncreaseLimit(int milliseconds);
 
@@ -283,6 +285,7 @@ private:
     void setJavaScriptGarbageCollectorTimerEnabled(bool flag);
 
     void mainThreadPing();
+    void backgroundResponsivenessPing();
 
 #if ENABLE(GAMEPAD)
     void setInitialGamepads(const Vector<GamepadData>&);
@@ -317,6 +320,9 @@ private:
     void destroyAutomationSessionProxy();
 
     void logDiagnosticMessageForNetworkProcessCrash();
+    bool hasVisibleWebPage() const;
+    void updateBackgroundCPULimit();
+    void updateBackgroundCPUMonitorState();
 
     // ChildProcess
     void initializeProcess(const ChildProcessInitializationParameters&) override;
@@ -418,6 +424,10 @@ private:
 
     unsigned m_pagesMarkingLayersAsVolatile { 0 };
     bool m_suppressMemoryPressureHandler { false };
+#if PLATFORM(MAC)
+    std::unique_ptr<WebCore::CPUMonitor> m_backgroundCPUMonitor;
+    std::optional<double> m_backgroundCPULimit;
+#endif
 
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;
 

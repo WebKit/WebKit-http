@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2012-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -136,6 +136,7 @@ public:
     static const double twoToThe32; // This is super useful for some double code.
 
     // Utilities used by the DFG JIT.
+    using AbstractMacroAssemblerBase::invert;
     using MacroAssemblerBase::invert;
     
     static DoubleCondition invert(DoubleCondition cond)
@@ -626,6 +627,13 @@ public:
         load32(address, dest);
     }
 
+#if ENABLE(FAST_TLS_JIT)
+    void loadFromTLSPtr(uint32_t offset, RegisterID dst)
+    {
+        loadFromTLS32(offset, dst);
+    }
+#endif
+
     DataLabel32 loadPtrWithAddressOffsetPatch(Address address, RegisterID dest)
     {
         return load32WithAddressOffsetPatch(address, dest);
@@ -932,6 +940,13 @@ public:
     {
         load64(address, dest);
     }
+
+#if ENABLE(FAST_TLS_JIT)
+    void loadFromTLSPtr(uint32_t offset, RegisterID dst)
+    {
+        loadFromTLS64(offset, dst);
+    }
+#endif
 
     DataLabel32 loadPtrWithAddressOffsetPatch(Address address, RegisterID dest)
     {

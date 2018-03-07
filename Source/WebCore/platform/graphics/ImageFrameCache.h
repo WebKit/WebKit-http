@@ -55,8 +55,8 @@ public:
 
     ~ImageFrameCache();
 
-    void setDecoder(ImageDecoder* decoder) { m_decoder = decoder; }
-    ImageDecoder* decoder() const { return m_decoder; }
+    void setDecoder(ImageDecoder*);
+    ImageDecoder* decoder() const;
 
     unsigned decodedSize() const { return m_decodedSize; }
     void destroyAllDecodedData() { destroyDecodedData(frameCount(), frameCount()); }
@@ -71,7 +71,8 @@ public:
     void startAsyncDecodingQueue();
     bool requestFrameAsyncDecodingAtIndex(size_t, SubsamplingLevel, const IntSize&);
     void stopAsyncDecodingQueue();
-    bool hasDecodingQueue() { return m_decodingQueue; }
+    bool hasAsyncDecodingQueue() const { return m_decodingQueue; }
+    bool isAsyncDecodingQueueIdle() const;
 
     // Image metadata which is calculated either by the ImageDecoder or directly
     // from the NativeImage if this class was created for a memory image.
@@ -135,7 +136,7 @@ private:
     const ImageFrame& frameAtIndexCacheIfNeeded(size_t, ImageFrame::Caching, const std::optional<SubsamplingLevel>& = { }, const std::optional<IntSize>& sizeForDrawing = { });
 
     Image* m_image { nullptr };
-    ImageDecoder* m_decoder { nullptr };
+    RefPtr<ImageDecoder> m_decoder;
     unsigned m_decodedSize { 0 };
     unsigned m_decodedPropertiesSize { 0 };
 

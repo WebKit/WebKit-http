@@ -65,10 +65,11 @@ static void paintDebugBorders(GraphicsContext& context, LayoutRect borderRect, c
     context.drawRect(snappedRect);
 }
 
-static FloatRect computeOverflow(const RenderBlockFlow& flow, const FloatRect& layoutRect)
+FloatRect computeOverflow(const RenderBlockFlow& flow, const FloatRect& layoutRect)
 {
     auto overflowRect = layoutRect;
-    auto strokeOverflow = std::ceil(flow.style().textStrokeWidth());
+    auto viewportSize = flow.frame().view() ? flow.frame().view()->size() : IntSize();
+    auto strokeOverflow = std::ceil(flow.style().computedStrokeWidth(viewportSize));
     overflowRect.inflate(strokeOverflow);
 
     auto letterSpacing = flow.style().fontCascade().letterSpacing();

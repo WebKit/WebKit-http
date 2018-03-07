@@ -71,6 +71,7 @@ class DocumentLoader;
 class HTTPHeaderMap;
 class InspectorTimelineAgent;
 class InstrumentingAgents;
+class NetworkLoadMetrics;
 class Node;
 class PseudoElement;
 class RenderLayer;
@@ -152,12 +153,11 @@ public:
     static void applyEmulatedMedia(Frame&, String&);
     static void willSendRequest(Frame*, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse& redirectResponse);
     static void continueAfterPingLoader(Frame&, unsigned long identifier, DocumentLoader*, ResourceRequest&, const ResourceResponse&);
-    static void markResourceAsCached(Page&, unsigned long identifier);
     static void didLoadResourceFromMemoryCache(Page&, DocumentLoader*, CachedResource*);
     static void didReceiveResourceResponse(Frame&, unsigned long identifier, DocumentLoader*, const ResourceResponse&, ResourceLoader*);
     static void didReceiveThreadableLoaderResponse(DocumentThreadableLoader&, unsigned long identifier);
     static void didReceiveData(Frame*, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
-    static void didFinishLoading(Frame*, DocumentLoader*, unsigned long identifier);
+    static void didFinishLoading(Frame*, DocumentLoader*, unsigned long identifier, const NetworkLoadMetrics&, ResourceLoader*);
     static void didFailLoading(Frame*, DocumentLoader*, unsigned long identifier, const ResourceError&);
     static void continueAfterXFrameOptionsDenied(Frame&, unsigned long identifier, DocumentLoader&, const ResourceResponse&);
     static void continueWithPolicyDownload(Frame&, unsigned long identifier, DocumentLoader&, const ResourceResponse&);
@@ -327,7 +327,7 @@ private:
     static void didReceiveResourceResponseImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const ResourceResponse&, ResourceLoader*);
     static void didReceiveThreadableLoaderResponseImpl(InstrumentingAgents&, DocumentThreadableLoader&, unsigned long identifier);
     static void didReceiveDataImpl(InstrumentingAgents&, unsigned long identifier, const char* data, int dataLength, int encodedDataLength);
-    static void didFinishLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*);
+    static void didFinishLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const NetworkLoadMetrics&, ResourceLoader*);
     static void didFailLoadingImpl(InstrumentingAgents&, unsigned long identifier, DocumentLoader*, const ResourceError&);
     static void didFinishXHRLoadingImpl(InstrumentingAgents&, unsigned long identifier, std::optional<String> decodedText, const String& url, const String& sendURL, unsigned sendLineNumber, unsigned sendColumnNumber);
     static void willLoadXHRSynchronouslyImpl(InstrumentingAgents&);
@@ -835,11 +835,6 @@ inline void InspectorInstrumentation::continueAfterPingLoader(Frame& frame, unsi
         InspectorInstrumentation::continueAfterPingLoaderImpl(*instrumentingAgents, identifier, loader, request, response);
 }
 
-inline void InspectorInstrumentation::markResourceAsCached(Page& page, unsigned long identifier)
-{
-    markResourceAsCachedImpl(instrumentingAgentsForPage(page), identifier);
-}
-
 inline void InspectorInstrumentation::didLoadResourceFromMemoryCache(Page& page, DocumentLoader* loader, CachedResource* resource)
 {
     didLoadResourceFromMemoryCacheImpl(instrumentingAgentsForPage(page), loader, resource);
@@ -863,10 +858,10 @@ inline void InspectorInstrumentation::didReceiveData(Frame* frame, unsigned long
         didReceiveDataImpl(*instrumentingAgents, identifier, data, dataLength, encodedDataLength);
 }
 
-inline void InspectorInstrumentation::didFinishLoading(Frame* frame, DocumentLoader* loader, unsigned long identifier)
+inline void InspectorInstrumentation::didFinishLoading(Frame* frame, DocumentLoader* loader, unsigned long identifier, const NetworkLoadMetrics& networkLoadMetrics, ResourceLoader* resourceLoader)
 {
     if (InstrumentingAgents* instrumentingAgents = instrumentingAgentsForFrame(frame))
-        didFinishLoadingImpl(*instrumentingAgents, identifier, loader);
+        didFinishLoadingImpl(*instrumentingAgents, identifier, loader, networkLoadMetrics, resourceLoader);
 }
 
 inline void InspectorInstrumentation::didFailLoading(Frame* frame, DocumentLoader* loader, unsigned long identifier, const ResourceError& error)

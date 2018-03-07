@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010, 2012-2017 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -58,6 +58,8 @@
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
+#include "JSSet.h"
+#include "JSString.h"
 #include "LLIntData.h"
 #include "LLIntEntrypoint.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
@@ -393,7 +395,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     setNumParameters(unlinkedCodeBlock->numParameters());
 }
 
-void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
+bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
     JSScope* scope)
 {
     Base::finishCreation(vm);
@@ -402,6 +404,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         vm.functionHasExecutedCache()->removeUnexecutedRange(ownerExecutable->sourceID(), ownerExecutable->typeProfilingStartOffset(), ownerExecutable->typeProfilingEndOffset());
 
     setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation());
+    if (!setConstantIdentifierSetRegisters(vm, unlinkedCodeBlock->constantIdentifierSets()))
+        return false;
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, this, m_globalObject.get());
 
@@ -822,6 +826,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     
     heap()->m_codeBlocks->add(this);
     heap()->reportExtraMemoryAllocated(m_instructions.size() * sizeof(Instruction));
+    
+    return true;
 }
 
 CodeBlock::~CodeBlock()
@@ -855,6 +861,31 @@ CodeBlock::~CodeBlock()
         stub->deref();
     }
 #endif // ENABLE(JIT)
+}
+
+bool CodeBlock::setConstantIdentifierSetRegisters(VM& vm, const Vector<ConstantIndentifierSetEntry>& constants)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSGlobalObject* globalObject = m_globalObject.get();
+    ExecState* exec = globalObject->globalExec();
+
+    for (const auto& entry : constants) {
+        Structure* setStructure = globalObject->setStructure();
+        RETURN_IF_EXCEPTION(scope, false);
+        JSSet* jsSet = JSSet::create(exec, vm, setStructure);
+        RETURN_IF_EXCEPTION(scope, false);
+
+        const HashSet<UniquedStringImpl*>& set = entry.first;
+        for (auto setEntry : set) {
+            JSString* jsString = jsOwnedString(&vm, setEntry);
+            jsSet->add(exec, JSValue(jsString));
+            RETURN_IF_EXCEPTION(scope, false);
+        }
+        m_constantRegisters[entry.second].set(vm, this, JSValue(jsSet));
+    }
+    
+    scope.release();
+    return true;
 }
 
 void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation)
@@ -1904,7 +1935,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
     if (alternative())
         alternative()->optimizeAfterWarmUp();
 
-    if (reason != Profiler::JettisonDueToOldAge)
+    if (reason != Profiler::JettisonDueToOldAge && reason != Profiler::JettisonDueToVMTraps)
         tallyFrequentExitSites();
 #endif // ENABLE(DFG_JIT)
 
@@ -2964,6 +2995,36 @@ void CodeBlock::jitAfterWarmUp()
 void CodeBlock::jitSoon()
 {
     m_llintExecuteCounter.setNewThreshold(thresholdForJIT(Options::thresholdForJITSoon()), this);
+}
+
+bool CodeBlock::hasInstalledVMTrapBreakpoints() const
+{
+#if ENABLE(SIGNAL_BASED_VM_TRAPS)
+    
+    // This function may be called from a signal handler. We need to be
+    // careful to not call anything that is not signal handler safe, e.g.
+    // we should not perturb the refCount of m_jitCode.
+    if (!JITCode::isOptimizingJIT(jitType()))
+        return false;
+    return m_jitCode->dfgCommon()->hasInstalledVMTrapsBreakpoints();
+#else
+    return false;
+#endif
+}
+
+bool CodeBlock::installVMTrapBreakpoints()
+{
+#if ENABLE(SIGNAL_BASED_VM_TRAPS)
+    // This function may be called from a signal handler. We need to be
+    // careful to not call anything that is not signal handler safe, e.g.
+    // we should not perturb the refCount of m_jitCode.
+    if (!JITCode::isOptimizingJIT(jitType()))
+        return false;
+    m_jitCode->dfgCommon()->installVMTrapBreakpoints();
+    return true;
+#else
+    return false;
+#endif
 }
 
 void CodeBlock::dumpMathICStats()

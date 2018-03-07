@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -121,7 +121,7 @@ protected:
     CodeBlock(VM*, Structure*, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*, RefPtr<SourceProvider>&&, unsigned sourceOffset, unsigned firstLineColumnOffset);
 
     void finishCreation(VM&, CopyParsedBlockTag, CodeBlock& other);
-    void finishCreation(VM&, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*);
+    bool finishCreation(VM&, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock*, JSScope*);
 
     WriteBarrier<JSGlobalObject> m_globalObject;
 
@@ -202,6 +202,9 @@ public:
 
     bool isStrictMode() const { return m_isStrictMode; }
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
+
+    bool hasInstalledVMTrapBreakpoints() const;
+    bool installVMTrapBreakpoints();
 
     inline bool isKnownNotImmediate(int index)
     {
@@ -913,6 +916,8 @@ private:
     double optimizationThresholdScalingFactor();
 
     void updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles);
+
+    bool setConstantIdentifierSetRegisters(VM&, const Vector<ConstantIndentifierSetEntry>& constants);
 
     void setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation);
 

@@ -66,7 +66,7 @@ RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const Strin
 #endif
 
 MockRealtimeVideoSource::MockRealtimeVideoSource(const String& name)
-    : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Video, name)
+    : MockRealtimeMediaSource(createCanonicalUUIDString(), RealtimeMediaSource::Type::Video, name)
     , m_timer(RunLoop::current(), this, &MockRealtimeVideoSource::generateFrame)
 {
     setFrameRate(30);
@@ -355,26 +355,6 @@ ImageBuffer* MockRealtimeVideoSource::imageBuffer() const
     m_imageBuffer->context().setStrokeThickness(1);
 
     return m_imageBuffer.get();
-}
-
-void MockRealtimeVideoSource::paintCurrentFrameInContext(GraphicsContext& context, const FloatRect& rect)
-{
-    if (context.paintingDisabled() || !imageBuffer())
-        return;
-
-    GraphicsContextStateSaver stateSaver(context);
-    context.setImageInterpolationQuality(InterpolationLow);
-    IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
-
-    context.drawImage(*m_imageBuffer->copyImage(DontCopyBackingStore), rect);
-}
-
-RefPtr<Image> MockRealtimeVideoSource::currentFrameImage()
-{
-    if (!imageBuffer())
-        return nullptr;
-
-    return m_imageBuffer->copyImage(DontCopyBackingStore);
 }
 
 } // namespace WebCore

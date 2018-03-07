@@ -39,6 +39,7 @@
 #import "InteractionInformationAtPosition.h"
 #import "Logging.h"
 #import "PluginView.h"
+#import "PrintInfo.h"
 #import "RemoteLayerTreeDrawingArea.h"
 #import "UserData.h"
 #import "VisibleContentRectUpdateInfo.h"
@@ -533,7 +534,7 @@ IntRect WebPage::rectForElementAtInteractionLocation()
 void WebPage::updateSelectionAppearance()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
-    if (!frame.editor().ignoreCompositionSelectionChange() && (frame.editor().hasComposition() || !frame.selection().selection().isNone()))
+    if (!frame.editor().ignoreSelectionChanges() && (frame.editor().hasComposition() || !frame.selection().selection().isNone()))
         didChangeSelection();
 }
 
@@ -642,6 +643,20 @@ void WebPage::requestStartDataInteraction(const IntPoint& clientPosition, const 
 {
     bool didStart = m_page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(clientPosition, globalPosition);
     send(Messages::WebPageProxy::DidHandleStartDataInteractionRequest(didStart));
+}
+
+void WebPage::didConcludeEditDataInteraction()
+{
+    std::optional<TextIndicatorData> textIndicatorData;
+
+    static auto defaultEditDragTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionDoNotClipToVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    if (auto range = frame.selection().selection().toNormalizedRange()) {
+        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDragTextIndicatorOptions, TextIndicatorPresentationTransition::None))
+            textIndicatorData = textIndicator->data();
+    }
+
+    send(Messages::WebPageProxy::DidConcludeEditDataInteraction(textIndicatorData));
 }
 #endif
 
@@ -2141,10 +2156,10 @@ void WebPage::replaceSelectedText(const String& oldText, const String& newText)
     if (plainTextReplacingNoBreakSpace(wordRange.get()) != oldText)
         return;
     
-    frame.editor().setIgnoreCompositionSelectionChange(true);
+    frame.editor().setIgnoreSelectionChanges(true);
     frame.selection().setSelectedRange(wordRange.get(), UPSTREAM, true);
     frame.editor().insertText(newText, 0);
-    frame.editor().setIgnoreCompositionSelectionChange(false);
+    frame.editor().setIgnoreSelectionChanges(false);
 }
 
 void WebPage::replaceDictatedText(const String& oldText, const String& newText)
@@ -2168,10 +2183,10 @@ void WebPage::replaceDictatedText(const String& oldText, const String& newText)
         return;
 
     // We don't want to notify the client that the selection has changed until we are done inserting the new text.
-    frame.editor().setIgnoreCompositionSelectionChange(true);
+    frame.editor().setIgnoreSelectionChanges(true);
     frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
     frame.editor().insertText(newText, 0);
-    frame.editor().setIgnoreCompositionSelectionChange(false);
+    frame.editor().setIgnoreSelectionChanges(false);
 }
 
 void WebPage::requestAutocorrectionData(const String& textForAutocorrection, uint64_t callbackID)
@@ -3251,7 +3266,8 @@ void WebPage::computePagesForPrintingAndDrawToPDF(uint64_t frameID, const PrintI
     double totalScaleFactor;
     computePagesForPrintingImpl(frameID, printInfo, pageRects, totalScaleFactor);
 
-    std::size_t pageCount = pageRects.size();
+    ASSERT(pageRects.size() >= 1);
+    std::size_t pageCount = printInfo.snapshotFirstPage ? 1 : pageRects.size();
     ASSERT(pageCount <= std::numeric_limits<uint32_t>::max());
     reply->send(pageCount);
 

@@ -101,19 +101,26 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     )
 endif ()
 
-set(NetworkProcess_COMMON_SOURCES
+set(WebKit2_SOURCES
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
+
+    NetworkProcess/Downloads/BlobDownloadClient.cpp
+    NetworkProcess/Downloads/Download.cpp
+    NetworkProcess/Downloads/DownloadManager.cpp
+    NetworkProcess/Downloads/PendingDownload.cpp
+
+    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/NetworkConnectionToWebProcess.cpp
     NetworkProcess/NetworkDataTask.cpp
     NetworkProcess/NetworkDataTaskBlob.cpp
     NetworkProcess/NetworkLoad.cpp
     NetworkProcess/NetworkProcess.cpp
+    NetworkProcess/NetworkProcessCreationParameters.cpp
     NetworkProcess/NetworkProcessPlatformStrategies.cpp
+    NetworkProcess/NetworkResourceLoadParameters.cpp
     NetworkProcess/NetworkResourceLoader.cpp
     NetworkProcess/NetworkSession.cpp
-
-    NetworkProcess/FileAPI/NetworkBlobRegistry.cpp
 
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp
@@ -134,21 +141,11 @@ set(NetworkProcess_COMMON_SOURCES
     NetworkProcess/capture/NetworkCaptureReplayer.cpp
     NetworkProcess/capture/NetworkCaptureResource.cpp
     NetworkProcess/capture/NetworkDataTaskReplay.cpp
-)
 
-set(WebKit2_SOURCES
     DatabaseProcess/DatabaseProcess.cpp
     DatabaseProcess/DatabaseToWebProcessConnection.cpp
 
     DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
-
-    NetworkProcess/NetworkProcessCreationParameters.cpp
-    NetworkProcess/NetworkResourceLoadParameters.cpp
-
-    NetworkProcess/Downloads/BlobDownloadClient.cpp
-    NetworkProcess/Downloads/Download.cpp
-    NetworkProcess/Downloads/DownloadManager.cpp
-    NetworkProcess/Downloads/PendingDownload.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -333,12 +330,17 @@ set(WebKit2_SOURCES
     UIProcess/WebProcessLifetimeTracker.cpp
     UIProcess/WebProcessPool.cpp
     UIProcess/WebProcessProxy.cpp
+    UIProcess/WebURLSchemeHandler.cpp
+    UIProcess/WebURLSchemeHandlerTask.cpp
     UIProcess/WebVibrationProvider.cpp
     UIProcess/WebVibrationProxy.cpp
     UIProcess/WebViewportAttributes.cpp
 
+    UIProcess/API/APIContentExtension.cpp
+    UIProcess/API/APIContentExtensionStore.cpp
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
+    UIProcess/API/APIHTTPCookieStorage.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp
@@ -346,8 +348,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIProcessPoolConfiguration.cpp
     UIProcess/API/APIOpenPanelParameters.cpp
     UIProcess/API/APISessionState.cpp
-    UIProcess/API/APIUserContentExtension.cpp
-    UIProcess/API/APIUserContentExtensionStore.cpp
+    UIProcess/API/APIURLSchemeHandlerTask.cpp
     UIProcess/API/APIUserContentWorld.cpp
     UIProcess/API/APIUserScript.cpp
     UIProcess/API/APIUserStyleSheet.cpp
@@ -586,11 +587,9 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebPage.cpp
     WebProcess/WebPage/WebPageGroupProxy.cpp
     WebProcess/WebPage/WebPageOverlay.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
+    WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp
     WebProcess/WebPage/WebUndoStep.cpp
-
-
-
-    ${NetworkProcess_COMMON_SOURCES}
 )
 
 set(WebKit2_MESSAGES_IN_FILES
@@ -810,12 +809,14 @@ WEBKIT_FRAMEWORK(WebKit2)
 add_dependencies(WebKit2 WebCore ${WEBKIT2_EXTRA_DEPENDENCIES})
 add_webkit2_prefix_header(WebKit2)
 
-if (NOT APPLE)
+if (COMPILER_IS_GCC_OR_CLANG AND NOT APPLE)
     target_link_libraries(WebKit2 -Wl,--start-group WebCore WebCoreDerivedSources -Wl,--end-group)
 endif ()
 
 # Suppress unused parameter warnings for sources in WebKit2.
-ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+if (COMPILER_IS_GCC_OR_CLANG)
+    ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+endif ()
 
 if (WebKit2_VERSION_SCRIPT)
     ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")

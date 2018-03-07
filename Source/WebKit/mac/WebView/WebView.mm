@@ -2928,6 +2928,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -9615,7 +9616,7 @@ static NSTextAlignment nsTextAlignmentFromRenderStyle(const RenderStyle* style)
     }
 
     if ([NSSpellChecker isAutomaticTextCompletionEnabled] && !_private->_isCustomizingTouchBar) {
-        BOOL shouldShowCandidateList = !coreFrame->selection().selection().isRange() || coreFrame->editor().ignoreCompositionSelectionChange();
+        BOOL shouldShowCandidateList = !coreFrame->selection().selection().isRange() || coreFrame->editor().ignoreSelectionChanges();
         [self.candidateList updateWithInsertionPointVisibility:shouldShowCandidateList];
     }
 

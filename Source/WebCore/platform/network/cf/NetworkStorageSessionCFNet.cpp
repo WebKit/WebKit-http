@@ -140,4 +140,38 @@ String cookieStoragePartition(const URL& firstPartyForCookies, const URL& resour
 
 #endif
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+
+bool NetworkStorageSession::shouldPartitionCookiesForHost(const String& host)
+{
+    if (host.isEmpty())
+        return false;
+
+    auto domain = topPrivatelyControlledDomain(host);
+    if (domain.isEmpty())
+        domain = host;
+
+    return m_topPrivatelyControlledDomainsForCookiePartitioning.contains(domain);
+}
+
+void NetworkStorageSession::setShouldPartitionCookiesForHosts(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+{
+    if (!domainsToRemove.isEmpty()) {
+        for (auto& domain : domainsToRemove)
+            m_topPrivatelyControlledDomainsForCookiePartitioning.remove(domain);
+    }
+        
+    if (!domainsToAdd.isEmpty())
+        m_topPrivatelyControlledDomainsForCookiePartitioning.add(domainsToAdd.begin(), domainsToAdd.end());
+}
+
+#endif // HAVE(CFNETWORK_STORAGE_PARTITIONING)
+
+#if !PLATFORM(COCOA)
+void NetworkStorageSession::setCookies(const Vector<Cookie>&, const URL&, const URL&)
+{
+    // FIXME: Implement this. <https://webkit.org/b/156298>
+}
+#endif
+
 }

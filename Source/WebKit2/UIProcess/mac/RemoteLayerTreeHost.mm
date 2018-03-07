@@ -204,6 +204,11 @@ void RemoteLayerTreeHost::clearLayers()
     m_rootLayer = nullptr;
 }
 
+LayerOrView* RemoteLayerTreeHost::layerWithIDForTesting(uint64_t layerID) const
+{
+    return getLayer(layerID);
+}
+
 static NSString* const WKLayerIDPropertyKey = @"WKLayerID";
 
 void RemoteLayerTreeHost::setLayerID(CALayer *layer, WebCore::GraphicsLayer::PlatformLayerID layerID)
@@ -249,6 +254,9 @@ LayerOrView *RemoteLayerTreeHost::createLayer(const RemoteLayerTreeTransaction::
         break;
     case PlatformCALayer::LayerTypeCustom:
     case PlatformCALayer::LayerTypeAVPlayerLayer:
+#if ENABLE(WEBGPU)
+    case PlatformCALayer::LayerTypeWebGPULayer:
+#endif
     case PlatformCALayer::LayerTypeWebGLLayer:
         if (!m_isDebugLayerTreeHost)
             layer = WKMakeRenderLayer(properties.hostingContextID);

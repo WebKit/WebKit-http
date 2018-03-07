@@ -202,6 +202,7 @@ class WebPlaybackSessionManagerProxy;
 class WebNavigationState;
 class WebVideoFullscreenManagerProxy;
 class WebKeyboardEvent;
+class WebURLSchemeHandler;
 class WebMouseEvent;
 class WebOpenPanelResultListenerProxy;
 class WebPageGroup;
@@ -562,6 +563,7 @@ public:
     void didPerformDataInteractionControllerOperation();
     void didHandleStartDataInteractionRequest(bool started);
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>);
 #endif
 #endif
 #if ENABLE(DATA_DETECTION)
@@ -678,7 +680,8 @@ public:
 
     double estimatedProgress() const;
 
-    void terminateProcess();
+    enum class TerminationReason { ResourceExhaustionWhileInBackground, Other };
+    void terminateProcess(TerminationReason = TerminationReason::Other);
 
     SessionState sessionState(const std::function<bool (WebBackForwardListItem&)>& = nullptr) const;
     RefPtr<API::Navigation> restoreFromSessionState(SessionState, bool navigate);
@@ -796,15 +799,15 @@ public:
     void isWebProcessResponsive(std::function<void (bool isWebProcessResponsive)>);
 
 #if ENABLE(MHTML)
-    void getContentsAsMHTMLData(std::function<void (API::Data*, CallbackBase::Error)>);
+    void getContentsAsMHTMLData(Function<void (API::Data*, CallbackBase::Error)>&&);
 #endif
-    void getMainResourceDataOfFrame(WebFrameProxy*, std::function<void (API::Data*, CallbackBase::Error)>);
-    void getResourceDataFromFrame(WebFrameProxy*, API::URL*, std::function<void (API::Data*, CallbackBase::Error)>);
+    void getMainResourceDataOfFrame(WebFrameProxy*, Function<void (API::Data*, CallbackBase::Error)>&&);
+    void getResourceDataFromFrame(WebFrameProxy*, API::URL*, Function<void (API::Data*, CallbackBase::Error)>&&);
     void getRenderTreeExternalRepresentation(std::function<void (const String&, CallbackBase::Error)>);
     void getSelectionOrContentsAsString(std::function<void (const String&, CallbackBase::Error)>);
-    void getSelectionAsWebArchiveData(std::function<void (API::Data*, CallbackBase::Error)>);
+    void getSelectionAsWebArchiveData(Function<void (API::Data*, CallbackBase::Error)>&&);
     void getSourceForFrame(WebFrameProxy*, std::function<void (const String&, CallbackBase::Error)>);
-    void getWebArchiveOfFrame(WebFrameProxy*, std::function<void (API::Data*, CallbackBase::Error)>);
+    void getWebArchiveOfFrame(WebFrameProxy*, Function<void (API::Data*, CallbackBase::Error)>&&);
     void runJavaScriptInMainFrame(const String&, std::function<void (API::SerializedScriptValue*, bool hadException, const WebCore::ExceptionDetails&, CallbackBase::Error)> callbackFunction);
     void forceRepaint(PassRefPtr<VoidCallback>);
 
@@ -830,7 +833,7 @@ public:
     void dragExited(WebCore::DragData&, const String& dragStorageName = String());
     void performDragOperation(WebCore::DragData&, const String& dragStorageName, const SandboxExtension::Handle&, const SandboxExtension::HandleArray&);
 
-    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted);
+    void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted, const WebCore::IntRect& insertionRect);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
     void dragCancelled();
 #if PLATFORM(COCOA)
@@ -886,12 +889,8 @@ public:
     WebCore::DragOperation currentDragOperation() const { return m_currentDragOperation; }
     bool currentDragIsOverFileInput() const { return m_currentDragIsOverFileInput; }
     unsigned currentDragNumberOfFilesToBeAccepted() const { return m_currentDragNumberOfFilesToBeAccepted; }
-    void resetCurrentDragInformation()
-    {
-        m_currentDragOperation = WebCore::DragOperationNone;
-        m_currentDragIsOverFileInput = false;
-        m_currentDragNumberOfFilesToBeAccepted = 0;
-    }
+    WebCore::IntRect currentDragCaretRect() const { return m_currentDragCaretRect; }
+    void resetCurrentDragInformation();
 #endif
 
     void preferencesDidChange();
@@ -1189,6 +1188,9 @@ public:
     void clearUserMediaState();
 
     void setShouldSkipWaitingForPaintAfterNextViewDidMoveToWindow(bool shouldSkip) { m_shouldSkipWaitingForPaintAfterNextViewDidMoveToWindow = shouldSkip; }
+
+    void setURLSchemeHandlerForScheme(Ref<WebURLSchemeHandler>&&, const String& scheme);
+    WebURLSchemeHandler* urlSchemeHandlerForScheme(const String& scheme);
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1593,6 +1595,9 @@ private:
 #endif
 #endif
 
+    void startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
+    void stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier);
+
     void handleAutoFillButtonClick(const UserData&);
 
     void finishInitializingWebPageAfterProcessLaunch();
@@ -1713,6 +1718,7 @@ private:
     ProcessThrottler::ForegroundActivityToken m_activityToken;
 #endif
     bool m_initialCapitalizationEnabled;
+    std::optional<double> m_backgroundCPULimit;
     Ref<WebBackForwardList> m_backForwardList;
         
     bool m_maintainsInactiveSelection;
@@ -1863,6 +1869,7 @@ private:
     WebCore::DragOperation m_currentDragOperation;
     bool m_currentDragIsOverFileInput;
     unsigned m_currentDragNumberOfFilesToBeAccepted;
+    WebCore::IntRect m_currentDragCaretRect;
 #endif
 
     PageLoadState m_pageLoadState;
@@ -1976,8 +1983,12 @@ private:
 #endif
 
     bool m_isUsingHighPerformanceWebGL { false };
+    bool m_wasTerminatedDueToResourceExhaustionWhileInBackground { false };
         
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
+
+    HashMap<String, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByScheme;
+    HashMap<uint64_t, Ref<WebURLSchemeHandler>> m_urlSchemeHandlersByIdentifier;
 };
 
 } // namespace WebKit

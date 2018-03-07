@@ -94,15 +94,15 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
     if (m_dataRecordsRemovalPending)
         return;
 
-    Vector<String> prevalentResourceDomains = coreStore().prevalentResourceDomainsWithoutUserInteraction();
-    if (!prevalentResourceDomains.size())
-        return;
-
     double now = currentTime();
     if (m_lastTimeDataRecordsWereRemoved
         && now < m_lastTimeDataRecordsWereRemoved + minimumTimeBetweeenDataRecordsRemoval)
         return;
 
+    Vector<String> prevalentResourceDomains = coreStore().prevalentResourceDomainsWithoutUserInteraction();
+    if (!prevalentResourceDomains.size())
+        return;
+    
     m_dataRecordsRemovalPending = true;
     m_lastTimeDataRecordsWereRemoved = now;
 
@@ -143,15 +143,14 @@ void WebResourceLoadStatisticsStore::processStatisticsAndDataRecords()
         });
     }
     removeDataRecords();
-    
-    auto encoder = coreStore().createEncoderFromData();
-    
-    writeEncoderToDisk(*encoder.get(), "full_browsing_session");
+
+    writeStoreToDisk();
 }
 
 void WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated(const Vector<WebCore::ResourceLoadStatistics>& origins)
 {
     coreStore().mergeStatistics(origins);
+    coreStore().fireShouldPartitionCookiesHandler();
     processStatisticsAndDataRecords();
 }
 
@@ -170,7 +169,6 @@ bool WebResourceLoadStatisticsStore::resourceLoadStatisticsEnabled() const
     return m_resourceLoadStatisticsEnabled;
 }
 
-
 void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
 {
     ResourceLoadObserver::sharedObserver().setStatisticsStore(m_resourceLoadStatisticsStore.copyRef());
@@ -178,6 +176,17 @@ void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
         if (m_resourceLoadStatisticsStore->isEmpty())
             return;
         processStatisticsAndDataRecords();
+    });
+}
+    
+void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver(std::function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)>&& shouldPartitionCookiesForDomainsHandler)
+{
+    registerSharedResourceLoadObserver();
+    m_resourceLoadStatisticsStore->setShouldPartitionCookiesCallback([this, shouldPartitionCookiesForDomainsHandler = WTFMove(shouldPartitionCookiesForDomainsHandler)] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd) {
+        shouldPartitionCookiesForDomainsHandler(domainsToRemove, domainsToAdd);
+    });
+    m_resourceLoadStatisticsStore->setWritePersistentStoreCallback([this]() {
+        writeStoreToDisk();
     });
 }
 
@@ -224,6 +233,12 @@ String WebResourceLoadStatisticsStore::persistentStoragePath(const String& label
 
     // TODO Decide what to call this file
     return pathByAppendingComponent(m_statisticsStoragePath, label + "_resourceLog.plist");
+}
+
+void WebResourceLoadStatisticsStore::writeStoreToDisk()
+{
+    auto encoder = coreStore().createEncoderFromData();
+    writeEncoderToDisk(*encoder.get(), "full_browsing_session");
 }
 
 void WebResourceLoadStatisticsStore::writeEncoderToDisk(KeyedEncoder& encoder, const String& label) const

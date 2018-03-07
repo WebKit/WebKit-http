@@ -694,6 +694,21 @@ private:
         LdrLiteralOp_LDRSW = 2,
         LdrLiteralOp_128BIT = 2
     };
+    
+    enum ExoticLoadFence {
+        ExoticLoadFence_None,
+        ExoticLoadFence_Acquire
+    };
+    
+    enum ExoticLoadAtomic {
+        ExoticLoadAtomic_Link,
+        ExoticLoadAtomic_None
+    };
+
+    enum ExoticStoreFence {
+        ExoticStoreFence_None,
+        ExoticStoreFence_Release,
+    };
 
     static unsigned memPairOffsetShift(bool V, MemPairOpSize size)
     {
@@ -1531,6 +1546,55 @@ public:
     {
         insn(0xd5033abf);
     }
+    
+    template<int datasize>
+    void ldar(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_Acquire, ExoticLoadAtomic_None, dst, src));
+    }
+
+    template<int datasize>
+    void ldxr(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_None, ExoticLoadAtomic_Link, dst, src));
+    }
+
+    template<int datasize>
+    void ldaxr(RegisterID dst, RegisterID src)
+    {
+        CHECK_DATASIZE();
+        insn(exoticLoad(MEMOPSIZE, ExoticLoadFence_Acquire, ExoticLoadAtomic_Link, dst, src));
+    }
+    
+    template<int datasize>
+    void stxr(RegisterID result, RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(exoticStore(MEMOPSIZE, ExoticStoreFence_None, result, src, dst));
+    }
+
+    template<int datasize>
+    void stlr(RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(storeRelease(MEMOPSIZE, src, dst));
+    }
+
+    template<int datasize>
+    void stlxr(RegisterID result, RegisterID src, RegisterID dst)
+    {
+        CHECK_DATASIZE();
+        insn(exoticStore(MEMOPSIZE, ExoticStoreFence_Release, result, src, dst));
+    }
+    
+#if ENABLE(FAST_TLS_JIT)
+    void mrs_TPIDRRO_EL0(RegisterID dst)
+    {
+        insn(0xd53bd060 | dst); // Thanks, otool -t!
+    }
+#endif
 
     template<int datasize>
     ALWAYS_INLINE void orn(RegisterID rd, RegisterID rn, RegisterID rm)
@@ -2534,6 +2598,13 @@ public:
     static void linkPointer(void* code, AssemblerLabel where, void* valuePtr)
     {
         linkPointer(addressOf(code, where), valuePtr);
+    }
+
+    static void replaceWithBkpt(void* where)
+    {
+        int insn = excepnGeneration(ExcepnOp_BREAKPOINT, 0, 0);
+        performJITMemcpy(where, &insn, sizeof(int));
+        cacheFlush(where, sizeof(int));
     }
 
     static void replaceWithJump(void* where, void* to)
@@ -3601,7 +3672,22 @@ private:
         const int op4 = 0;
         return (0xd6000000 | opc << 21 | op2 << 16 | op3 << 10 | xOrZr(rn) << 5 | op4);
     }
-
+    
+    static int exoticLoad(MemOpSize size, ExoticLoadFence fence, ExoticLoadAtomic atomic, RegisterID dst, RegisterID src)
+    {
+        return 0x085f7c00 | size << 30 | fence << 15 | atomic << 23 | src << 5 | dst;
+    }
+    
+    static int storeRelease(MemOpSize size, RegisterID src, RegisterID dst)
+    {
+        return 0x089ffc00 | size << 30 | dst << 5 | src;
+    }
+    
+    static int exoticStore(MemOpSize size, ExoticStoreFence fence, RegisterID result, RegisterID src, RegisterID dst)
+    {
+        return 0x08007c00 | size << 30 | result << 16 | fence << 15 | dst << 5 | src;
+    }
+    
     // Workaround for Cortex-A53 erratum (835769). Emit an extra nop if the
     // last instruction in the buffer is a load, store or prefetch. Needed
     // before 64-bit multiply-accumulate instructions.

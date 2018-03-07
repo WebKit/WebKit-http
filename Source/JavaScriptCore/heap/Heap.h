@@ -226,7 +226,7 @@ public:
     
     template<typename Functor> void forEachProtectedCell(const Functor&);
     template<typename Functor> void forEachCodeBlock(const Functor&);
-    template<typename Functor> void forEachCodeBlockIgnoringJITPlans(const Functor&);
+    template<typename Functor> void forEachCodeBlockIgnoringJITPlans(const AbstractLocker& codeBlockSetLocker, const Functor&);
 
     HandleSet* handleSet() { return &m_handleSet; }
     HandleStack* handleStack() { return &m_handleStack; }
@@ -351,7 +351,9 @@ public:
     CFRunLoopRef runLoop() const { return m_runLoop.get(); }
     JS_EXPORT_PRIVATE void setRunLoop(CFRunLoopRef);
 #endif // USE(CF)
-    
+
+    HeapVerifier* verifier() const { return m_verifier.get(); }
+
 private:
     friend class AllocatingScope;
     friend class CodeBlock;
@@ -499,7 +501,7 @@ private:
     size_t bytesVisited();
     
     void forEachCodeBlockImpl(const ScopedLambda<bool(CodeBlock*)>&);
-    void forEachCodeBlockIgnoringJITPlansImpl(const ScopedLambda<bool(CodeBlock*)>&);
+    void forEachCodeBlockIgnoringJITPlansImpl(const AbstractLocker& codeBlockSetLocker, const ScopedLambda<bool(CodeBlock*)>&);
     
     void setMutatorShouldBeFenced(bool value);
     

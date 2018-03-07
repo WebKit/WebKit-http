@@ -1,3 +1,104 @@
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Data interaction tests occasionally hit assertions in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=169002
+        <rdar://problem/30994806>
+
+        Reviewed by Tim Horton.
+
+        Renames setIgnoreCompositionSelectionChange to setIgnoreSelectionChanges. See WebCore ChangeLog for more details.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _updateSelectionForInputManager]):
+        * WebView/WebView.mm:
+        (-[WebView updateTextTouchBar]):
+
+2017-03-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix build warnings.
+
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::save):
+        (-[WebInspectorWindowController webView:runOpenPanelForFileButtonWithResultListener:allowMultipleFiles:]):
+
+2017-03-11  Brady Eidson  <beidson@apple.com>
+
+        Cleanup "addCookie" and its sole user.
+        https://bugs.webkit.org/show_bug.cgi?id=169486
+
+        Reviewed by Brian Burg.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::addCookie): Deleted.
+
+2017-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix watch and tv builds after r213294
+        https://bugs.webkit.org/show_bug.cgi?id=169508
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * WebView/WebNotification.h:
+        Don't assume we have already included something that includes NSObject.h.
+
+2017-03-09  Daniel Bates  <dabates@apple.com>
+
+        Guard Credential Management implementation behind a runtime enabled feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169364
+        <rdar://problem/30957425>
+
+        Reviewed by Brent Fulgham.
+
+        Add WebKit preference for Credential Management (disabled by default).
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences credentialManagementEnabled]): Added.
+        (-[WebPreferences setCredentialManagementEnabled:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-03-09  Anders Carlsson  <andersca@apple.com>
+
+        Add delegate support to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=169427
+        Part of rdar://problem/28880714.
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add feature define.
+
+2017-03-08  Megan Gardner  <megan_gardner@apple.com>
+
+        Fix DataInteraction guards
+        https://bugs.webkit.org/show_bug.cgi?id=169404
+
+        Reviewed by Wenson Hsieh.
+
+        * WebCoreSupport/WebDragClient.mm:
+
+2017-03-08  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add plumbing for WebCore to notify WebKit2 when an edit drag has concluded
+        https://bugs.webkit.org/show_bug.cgi?id=169392
+        <rdar://problem/30882974>
+
+        Reviewed by Tim Horton.
+
+        Add a stub implementation of WebDragClient::didConcludeEditDrag.
+
+        * WebCoreSupport/WebDragClient.h:
+
 2017-03-08  Anders Carlsson  <andersca@apple.com>
 
         Simplify the PaymentCoordinator interface

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2006, 2007, 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2010 Torch Mobile (Beijing) Co. Ltd. All rights reserved.
  *
@@ -44,6 +44,7 @@
 #include "ImageData.h"
 #include "MIMETypeRegistry.h"
 #include "RenderHTMLCanvas.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScriptController.h"
 #include "Settings.h"
 #include <math.h>
@@ -60,6 +61,10 @@
 #if ENABLE(WEBGL)
 #include "WebGLContextAttributes.h"
 #include "WebGLRenderingContextBase.h"
+#endif
+
+#if ENABLE(WEBGPU)
+#include "WebGPURenderingContext.h"
 #endif
 
 #if PLATFORM(COCOA)
@@ -195,6 +200,11 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type)
     if (HTMLCanvasElement::is2dType(type))
         return getContext2d(type);
 
+#if ENABLE(WEBGPU)
+    if (HTMLCanvasElement::isWebGPUType(type) && RuntimeEnabledFeatures::sharedFeatures().webGPUEnabled())
+        return getContextWebGPU(type);
+#endif
+
 #if ENABLE(WEBGL)
     if (HTMLCanvasElement::is3dType(type))
         return getContextWebGL(type);
@@ -298,6 +308,34 @@ CanvasRenderingContext* HTMLCanvasElement::getContextWebGL(const String& type, W
 }
 #endif
 
+#if ENABLE(WEBGPU)
+bool HTMLCanvasElement::isWebGPUType(const String& type)
+{
+    return type == "webgpu";
+}
+
+CanvasRenderingContext* HTMLCanvasElement::getContextWebGPU(const String& type)
+{
+    ASSERT_UNUSED(type, HTMLCanvasElement::isWebGPUType(type));
+
+    if (!RuntimeEnabledFeatures::sharedFeatures().webGPUEnabled())
+        return nullptr;
+
+    if (m_context && !m_context->isGPU())
+        return nullptr;
+
+    if (!m_context) {
+        m_context = WebGPURenderingContext::create(*this);
+        if (m_context) {
+            // Need to make sure a RenderLayer and compositing layer get created for the Canvas
+            invalidateStyleAndLayerComposition();
+        }
+    }
+
+    return m_context.get();
+}
+#endif
+
 void HTMLCanvasElement::didDraw(const FloatRect& rect)
 {
     clearCopiedImage();
@@ -354,6 +392,12 @@ void HTMLCanvasElement::reset()
     }
 
     setSurfaceSize(newSize);
+
+#if ENABLE(WEBGPU)
+    // FIXME: WebGPU needs something here too.
+    if (isGPU() && oldSize != size())
+        static_cast<WebGPURenderingContext*>(m_context.get())->reshape(width(), height());
+#endif
 
 #if ENABLE(WEBGL)
     if (is3D() && oldSize != size())
@@ -423,11 +467,23 @@ void HTMLCanvasElement::paint(GraphicsContext& context, const LayoutRect& r)
         }
     }
 
-#if ENABLE(WEBGL)    
+#if ENABLE(WEBGPU)
+    if (isGPU())
+        static_cast<WebGPURenderingContext*>(m_context.get())->markLayerComposited();
+#endif
+
+#if ENABLE(WEBGL)
     if (is3D())
         static_cast<WebGLRenderingContextBase*>(m_context.get())->markLayerComposited();
 #endif
 }
+
+#if ENABLE(WEBGPU)
+bool HTMLCanvasElement::isGPU() const
+{
+    return m_context && m_context->isGPU();
+}
+#endif
 
 #if ENABLE(WEBGL)
 bool HTMLCanvasElement::is3D() const

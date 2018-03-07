@@ -12,7 +12,8 @@
         ]
     },
     "iOS EWS": {
-        "port": "ios",
+        "port": "ios-device",
+        "name": "ios-ews",
         "architecture": "armv7s"
     },
     "iOS Simulator EWS": {
@@ -50,5 +51,12 @@
         "name": "jsc-ews",
         "group": "jsc",
         "runTests": true
+    },
+    "Bindings EWS": {
+        "port": "mac",
+        "name": "bindings-ews",
+        "group": "bindings",
+        "runTests": true,
+        "shouldBuild": false
     }
 }

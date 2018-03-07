@@ -68,6 +68,7 @@ public:
         String localStorageDirectory;
         String mediaKeysStorageDirectory;
         String resourceLoadStatisticsDirectory;
+        String javaScriptConfigurationDirectory;
     };
     static Ref<WebsiteDataStore> createNonPersistent();
     static Ref<WebsiteDataStore> create(Configuration);
@@ -90,13 +91,19 @@ public:
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, std::function<void ()> completionHandler);
     void removeDataForTopPrivatelyOwnedDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyOwnedDomains, std::function<void(Vector<String>)> completionHandler);
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+    void shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd);
+#endif
     void resolveDirectoriesIfNecessary();
     const String& resolvedApplicationCacheDirectory() const { return m_resolvedConfiguration.applicationCacheDirectory; }
     const String& resolvedMediaCacheDirectory() const { return m_resolvedConfiguration.mediaCacheDirectory; }
     const String& resolvedMediaKeysDirectory() const { return m_resolvedConfiguration.mediaKeysStorageDirectory; }
     const String& resolvedDatabaseDirectory() const { return m_resolvedConfiguration.webSQLDatabaseDirectory; }
+    const String& resolvedJavaScriptConfigurationDirectory() const { return m_resolvedConfiguration.javaScriptConfigurationDirectory; }
 
     StorageManager* storageManager() { return m_storageManager.get(); }
+
+    Ref<WebProcessPool> processPoolForCookieStorageOperations();
 
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
@@ -114,7 +121,7 @@ private:
     void platformDestroy();
     static void platformRemoveRecentSearches(std::chrono::system_clock::time_point);
 
-    HashSet<RefPtr<WebProcessPool>> processPools() const;
+    HashSet<RefPtr<WebProcessPool>> processPools(size_t count = std::numeric_limits<size_t>::max()) const;
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     Vector<PluginModuleInfo> plugins() const;

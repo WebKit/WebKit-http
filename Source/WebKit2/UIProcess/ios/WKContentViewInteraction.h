@@ -122,6 +122,7 @@ struct WKAutoCorrectionData {
 
     RetainPtr<UIWKTextInteractionAssistant> _textSelectionAssistant;
     RetainPtr<UIWKSelectionAssistant> _webSelectionAssistant;
+    BOOL _suppressAssistantSelectionView;
 
     RetainPtr<UITextInputTraits> _traits;
     RetainPtr<UIWebFormAccessory> _formAccessoryView;
@@ -194,8 +195,12 @@ struct WKAutoCorrectionData {
     BOOL _isPerformingDataInteractionOperation;
 #if HAS_DATA_INTERACTION_SPI
     RetainPtr<WKDataInteraction> _dataInteraction;
+    RetainPtr<WKDataOperation> _dataOperation;
 #endif
     CGPoint _deferredActionSheetRequestLocation;
+    RetainPtr<UIView> _visibleContentViewSnapshot;
+    RetainPtr<UIImageView> _dataInteractionUnselectedContentSnapshot;
+    BOOL _isRunningConcludeEditDataInteractionAnimation;
 #endif
 }
 
@@ -203,10 +208,7 @@ struct WKAutoCorrectionData {
 
 @interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate
 #if ENABLE(DATA_INTERACTION)
-    , WKDataInteractionItemVisualTarget, WKViewDataInteractionDestinationDelegate
-#if HAS_DATA_INTERACTION_SPI
-    , WKDataInteractionDelegate
-#endif
+    , WKDataInteractionDelegate, WKDataOperationDelegate
 #endif
 >
 
@@ -217,6 +219,7 @@ struct WKAutoCorrectionData {
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
 @property (nonatomic, readonly) UIWebFormAccessory *formAccessoryView;
+@property (nonatomic) BOOL suppressAssistantSelectionView;
 
 - (void)setupInteraction;
 - (void)cleanupInteraction;
@@ -281,6 +284,7 @@ struct WKAutoCorrectionData {
 - (void)_didPerformDataInteractionControllerOperation;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
 - (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image withIndicatorData:(std::optional<WebCore::TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action;
+- (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;
 - (void)_simulateDataInteractionEntered:(id)info;
 - (void)_simulateDataInteractionUpdated:(id)info;
 - (void)_simulateDataInteractionPerformOperation:(id)info;

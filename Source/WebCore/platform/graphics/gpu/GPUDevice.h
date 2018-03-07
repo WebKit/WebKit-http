@@ -46,9 +46,15 @@ typedef void PlatformGPUDevice;
 
 namespace WebCore {
 
+class GPUBuffer;
+class GPUCommandQueue;
+class GPUDrawable;
+class GPULibrary;
+class GPUTexture;
+class GPUTextureDescriptor;
+
 class GPUDevice : public RefCounted<GPUDevice> {
 public:
-
     WEBCORE_EXPORT static RefPtr<GPUDevice> create();
     WEBCORE_EXPORT ~GPUDevice();
 
@@ -60,6 +66,15 @@ public:
 #endif
 
     WebGPULayer* layer() { return m_layer.get(); }
+
+    WEBCORE_EXPORT RefPtr<GPUCommandQueue> createCommandQueue();
+    WEBCORE_EXPORT RefPtr<GPULibrary> createLibrary(const String& sourceCode);
+    WEBCORE_EXPORT RefPtr<GPUBuffer> createBufferFromData(ArrayBufferView* data);
+    WEBCORE_EXPORT RefPtr<GPUTexture> createTexture(GPUTextureDescriptor*);
+
+    RefPtr<GPUDrawable> getFramebuffer();
+
+    void markLayerComposited() { }
 
 private:
     GPUDevice();

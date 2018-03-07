@@ -121,6 +121,7 @@ private:
 RenderView::RenderView(Document& document, RenderStyle&& style)
     : RenderBlockFlow(document, WTFMove(style))
     , m_frameView(*document.view())
+    , m_weakFactory(this)
     , m_lazyRepaintTimer(*this, &RenderView::lazyRepaintTimerFired)
 #if ENABLE(SERVICE_CONTROLS)
     , m_selectionRectGatherer(*this)
@@ -1234,11 +1235,12 @@ void RenderView::pushLayoutState(RenderObject& root)
 
 void RenderView::pushLayoutStateForPagination(RenderBlockFlow& layoutRoot)
 {
-    pushLayoutState(layoutRoot);
-    ASSERT(m_layoutState);
+    ASSERT(!m_layoutState);
+    m_layoutState = std::make_unique<LayoutState>(layoutRoot);
     m_layoutState->m_isPaginated = true;
     // This is just a flag for known page height (see RenderBlockFlow::checkForPaginationLogicalHeightChange).
     m_layoutState->m_pageLogicalHeight = 1;
+    pushLayoutStateForCurrentFlowThread(layoutRoot);
 }
 
 IntSize RenderView::viewportSizeForCSSViewportUnits() const
@@ -1422,10 +1424,15 @@ void RenderView::resumePausedImageAnimationsIfNeeded(IntRect visibleRect)
 }
 
 RenderView::RepaintRegionAccumulator::RepaintRegionAccumulator(RenderView* view)
-    : m_rootView(view ? view->document().topDocument().renderView() : nullptr)
 {
-    if (!m_rootView)
+    if (!view)
         return;
+
+    auto* rootRenderView = view->document().topDocument().renderView();
+    if (!rootRenderView)
+        return;
+
+    m_rootView = rootRenderView->createWeakPtr();
     m_wasAccumulatingRepaintRegion = !!m_rootView->m_accumulatedRepaintRegion;
     if (!m_wasAccumulatingRepaintRegion)
         m_rootView->m_accumulatedRepaintRegion = std::make_unique<Region>();

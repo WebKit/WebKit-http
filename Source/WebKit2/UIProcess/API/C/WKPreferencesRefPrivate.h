@@ -465,6 +465,14 @@ WK_EXPORT bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef);
 WK_EXPORT void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef);
 
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetLargeImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetLargeImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef);
+
+// Defaults to true.
+WK_EXPORT void WKPreferencesSetAnimatedImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetAnimatedImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef);
+
 // Defaults to false
 WK_EXPORT void WKPreferencesSetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef);
@@ -472,6 +480,10 @@ WK_EXPORT bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavig
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetLinkPreloadEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetLinkPreloadEnabled(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetCredentialManagementEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetCredentialManagementEnabled(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

@@ -30,6 +30,7 @@
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IndexedDB.h>
+#include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
 
@@ -82,7 +83,6 @@ class UserStyleSheet;
 class UserScript;
 class URL;
 struct CompositionUnderline;
-struct Cookie;
 struct DictationAlternative;
 struct DictionaryPopupInfo;
 struct EventTrackingRegions;
@@ -404,11 +404,6 @@ template<> struct ArgumentCoder<WebCore::CompositionUnderline> {
     static bool decode(Decoder&, WebCore::CompositionUnderline&);
 };
 
-template<> struct ArgumentCoder<WebCore::Cookie> {
-    static void encode(Encoder&, const WebCore::Cookie&);
-    static bool decode(Decoder&, WebCore::Cookie&);
-};
-
 template<> struct ArgumentCoder<WebCore::DatabaseDetails> {
     static void encode(Encoder&, const WebCore::DatabaseDetails&);
     static bool decode(Decoder&, WebCore::DatabaseDetails&);
@@ -675,6 +670,15 @@ template<> struct EnumTraits<WebCore::ShouldSample> {
         WebCore::ShouldSample,
         WebCore::ShouldSample::No,
         WebCore::ShouldSample::Yes
+    >;
+};
+
+template<> struct EnumTraits<WebCore::NetworkLoadPriority> {
+    using values = EnumValues<
+        WebCore::NetworkLoadPriority,
+        WebCore::NetworkLoadPriority::Low,
+        WebCore::NetworkLoadPriority::Medium,
+        WebCore::NetworkLoadPriority::High
     >;
 };
 

@@ -23,12 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "config.h"
-#import "GPUDevice.h"
+#include "config.h"
+#include "GPUDevice.h"
 
 #if ENABLE(WEBGPU)
 
-#import "Logging.h"
+#include "GPUBuffer.h"
+#include "GPUCommandQueue.h"
+#include "GPUDrawable.h"
+#include "GPULibrary.h"
+#include "GPUTexture.h"
+#include "GPUTextureDescriptor.h"
+#include "Logging.h"
 
 namespace WebCore {
 
@@ -50,6 +56,31 @@ RefPtr<GPUDevice> GPUDevice::create()
 GPUDevice::~GPUDevice()
 {
     LOG(WebGPU, "GPUDevice::~GPUDevice()");
+}
+
+RefPtr<GPUCommandQueue> GPUDevice::createCommandQueue()
+{
+    return GPUCommandQueue::create(this);
+}
+
+RefPtr<GPULibrary> GPUDevice::createLibrary(const String& sourceCode)
+{
+    return GPULibrary::create(this, sourceCode);
+}
+
+RefPtr<GPUBuffer> GPUDevice::createBufferFromData(ArrayBufferView* data)
+{
+    return GPUBuffer::create(this, data);
+}
+
+RefPtr<GPUTexture> GPUDevice::createTexture(GPUTextureDescriptor* descriptor)
+{
+    return GPUTexture::create(this, descriptor);
+}
+
+RefPtr<GPUDrawable> GPUDevice::getFramebuffer()
+{
+    return GPUDrawable::create(this);
 }
 
 #if !PLATFORM(COCOA)

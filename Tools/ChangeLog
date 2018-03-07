@@ -1,3 +1,653 @@
+2017-03-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Nwtr ignores ImageDiff's errors for ref tests
+        https://bugs.webkit.org/show_bug.cgi?id=168033
+
+        Reviewed by Alexey Proskuryakov.
+
+        Nwtr checks ImageDiff's errors only for pixel tests, but for ref
+        tests. Those errors of ref tests also should be checked.
+
+        In the current implementation of expected mismatch ref tests,
+        diff_image was called if the image hashes match. This is useless
+        because two images are ensured identical in that case. Calling
+        image_hash is considered unnecessary for expected mismatch ref
+        tests. Do not call diff_image for them.
+
+        As the result, check the error only for expected match ref tests.
+
+        * Scripts/webkitpy/layout_tests/controllers/single_test_runner.py:
+        (SingleTestRunner._compare_image): Rename a variable 'err_str' to 'error_string'.
+        (SingleTestRunner._compare_output_with_reference): Do not call
+        diff_image for expected mismatch ref tests. Check the error and
+        marked the test failed for expected match ref tests.
+
+2017-03-14  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r213877): WebKit2.CookieManager fails.
+        https://bugs.webkit.org/show_bug.cgi?id=169581
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Reenable the test.
+
+2017-03-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Data interaction tests occasionally hit assertions in debug builds
+        https://bugs.webkit.org/show_bug.cgi?id=169002
+        <rdar://problem/30994806>
+
+        Reviewed by Tim Horton.
+
+        Reenables and refactors data interaction tests.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _advanceProgress]):
+
+2017-03-13  Brady Eidson  <beidson@apple.com>
+
+        REGRESSION (r213877): WebKit2.CookieManager fails.
+        https://bugs.webkit.org/show_bug.cgi?id=169581
+
+        Unreviewed gardening
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Skip for now until I can fix.
+
+2017-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Carlos Garcia Campos.
+
+        * TestWebKitAPI/Tests/WTF/Time.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-03-13  Brady Eidson  <beidson@apple.com>
+
+        WKWebView provides no access to cookies.
+        https://bugs.webkit.org/show_bug.cgi?id=140191
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2017-03-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] install-dependencies needs to install Perl CGI modules on Debian based distros
+        https://bugs.webkit.org/show_bug.cgi?id=169563
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/install-dependencies:
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, fix accidental comma.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-13  Devin Rousso  <webkit@devinrousso.com>
+
+        Unreviewed, change my email.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix build warnings.
+
+        * MiniBrowser/mac/AppDelegate.m:
+        (-[BrowserAppDelegate openDocument:]):
+        * MiniBrowser/mac/ExtensionManagerWindowController.m:
+        (-[ExtensionManagerWindowController add:]):
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:]):
+
+2017-03-13  Martin Robinson  <mrobinson@igalia.com>
+
+        Remove my email from some of the watchlists
+        https://bugs.webkit.org/show_bug.cgi?id=169541
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        * Scripts/webkitpy/common/config/watchlist: Remove my name from some lists.
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-03-13  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Remove dead code from previous autotools build in build-jsc
+        https://bugs.webkit.org/show_bug.cgi?id=169555
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/build-jsc:
+        (buildMyProject):
+
+2017-03-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        MiniBrowser: a tab closed from javascript always closes the window
+        https://bugs.webkit.org/show_bug.cgi?id=169415
+
+        Reviewed by Michael Catanzaro.
+
+        When I implemented tabs support in MiniBrowser I forgot about web view close. We connect to the signal (only for
+        the active tab) and close the window. That worked when we didn't have tabs, but now we should close the tab, or
+        the window if it's the last tab.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewClose): Destroy the window if therte's only one tab, otherwise search for the tab corresponding to the web
+        view and destroy it.
+        (browserWindowSwitchTab): Re-connect to close signal, we want to handle close on all tabs.
+
+2017-03-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Enable async image decoding for large images
+        https://bugs.webkit.org/show_bug.cgi?id=165039
+
+        Reviewed by Simon Fraser.
+
+        Disable LargeImageAsyncDecoding for DRT/WTR.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-03-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix watch and tv builds after r213294
+        https://bugs.webkit.org/show_bug.cgi?id=169508
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-03-10  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        checkpatchrelevance: Exception message is printed twice due to ScriptError handler
+        https://bugs.webkit.org/show_bug.cgi?id=169496
+
+        Unreviewed fix.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py: Add --quiet flag to expected logs.
+
+2017-03-10  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        checkpatchrelevance: Exception message is printed twice due to ScriptError handler
+        https://bugs.webkit.org/show_bug.cgi?id=169496
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchAnalysisTask._check_patch_relevance): Pass --quiet flag.
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance.options): Accept options.quiet to prevent duplicate output to stdout.
+
+2017-03-10  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Add new EWS queues to bot watcher's dashboard.
+        https://bugs.webkit.org/show_bug.cgi?id=169485
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer): Add Bindings and JSC EWS queues.
+
+2017-03-10  Andy Estes  <aestes@apple.com>
+
+        Skip an API test that isn't expected to pass on iOS 10.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/QuickLook.mm:
+
+2017-03-10  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add bindings-ews to queue status server
+        https://bugs.webkit.org/show_bug.cgi?id=169307
+
+        Reviewed by Alexey Proskuryakov.
+
+        * QueueStatusServer/config/queues.py: Add "bindings-ews" to the list of ewses.
+
+2017-03-10  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Add WKNavigationDelegate SPI to notify when a password is requested
+        https://bugs.webkit.org/show_bug.cgi?id=169459
+        <rdar://problem/30621913>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/QuickLook.mm:
+        (runTest):
+        (TEST):
+        (-[QuickLookPasswordNavigationDelegate _webViewDidRequestPasswordForQuickLookDocument:]):
+
+2017-03-10  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Add support for Bindings EWS
+        https://bugs.webkit.org/show_bug.cgi?id=169308
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/config/ews.json: Add bindings-ews. Can test without building; should_build = False.
+        * Scripts/webkitpy/common/net/bindingstestresults.py:
+        (BindingsTestResults.__init__): Removed 'errors'.
+        (BindingsTestResults.results_from_string): Ditto.
+        (BindingsTestResults.is_subset): Ditto.
+        (BindingsTestResults.equals): Ditto.
+        (BindingsTestResults.all_passed): Ditto.
+        (BindingsTestResults.failing_tests): Ditto.
+        * Scripts/webkitpy/common/net/bindingstestresults_unittest.py:
+        (BindingsTestResultsTest.test_results_from_string): Removed 'errors'.
+        (BindingsTestResultsTest.test_results_from_string_success): Removed 'errors'.
+        * Scripts/webkitpy/tool/bot/earlywarningsystemtask.py:
+        (EarlyWarningSystemTask.__init__): Add should_build parameter.
+        (EarlyWarningSystemTask.run): Check should_build before calling self._build().
+        * Scripts/webkitpy/tool/bot/retrylogic_unittest.py: Renamed from Tools/Scripts/webkitpy/tool/bot/jscews_unittest.py.
+        (MockBindingsEarlyWarningSystem): Based of MockJSCEarlyWarningSystem. Mocked so we can provide test results.
+        (MockBindingsEarlyWarningSystem.__init__): Sets attributes.
+        (MockBindingsEarlyWarningSystem.test_results): Returns test results provided by us, instead of JSON output.
+        (BindingsEarlyWarningSystemTest): Class to test retry logic in below situations.
+        (BindingsEarlyWarningSystemTest._results_indicate_all_passed): False if None or or has failures, else True.
+        (BindingsEarlyWarningSystemTest._create_task):
+        (BindingsEarlyWarningSystemTest.test_success_case): Clean patch on clean tree.
+        (BindingsEarlyWarningSystemTest.test_test_failure): Red patch on clean tree.
+        (BindingsEarlyWarningSystemTest.test_fix): Clean patch on red tree.
+        (BindingsEarlyWarningSystemTest.test_ineffective_patch): Red patch on red tree.
+        (BindingsEarlyWarningSystemTest.test_partially_effective_patch): Red patch on redder tree.
+        (BindingsEarlyWarningSystemTest.test_different_test_failures_in_patch_and_tree): Red patch on red tree.
+        * Scripts/webkitpy/tool/bot/patchanalysistask.py:
+        (PatchAnalysisTask._build_and_test_without_patch): Don't build if should_build is False (eg. on Bindings EWS).
+        (PatchAnalysisTask._retry_bindings_tests): Retry logic for Bindings tests.
+        (PatchAnalysisTask._test_patch): If tests failed on Bindings EWS, and call _retry_bindings_tests.
+        * Scripts/webkitpy/tool/commands/earlywarningsystem.py:
+        (AbstractEarlyWarningSystem.begin_work_queue): Use BindingsTestResultsReader on Bindings EWS.
+        (AbstractEarlyWarningSystem._create_task): Pass should_build argument.
+        (AbstractEarlyWarningSystem.load_ews_classes): Add should_build argument (True by default).
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (TestBindingsEWS): Bindings EWS class, derived from AbstractEarlyWarningSystem.
+        (AbstractEarlyWarningSystemTest.test_failing_bindings_tests_message): Unit test message posted to Bugzilla.
+        (EarlyWarningSystemTest._default_expected_logs): Not building on all ewses anymore; make build line optional.
+        (EarlyWarningSystemTest.test_ews_name): Add bindings-ews.
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance): Add bindings paths.
+        (CheckPatchRelevance._changes_are_relevant): Cleaner way to check if we should perform this step.
+        * Scripts/webkitpy/tool/steps/steps_unittest.py: Add unit tests for Bindings EWS patch relevance.
+        (test_patch_relevant_bindings): Test for patch relevant to bindings.
+        (test_patch_not_relevant_bindings): Test for patch not relevant to bindings.
+
+2017-03-09  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Layer content blurry with nested perspective and transforms
+        https://bugs.webkit.org/show_bug.cgi?id=169457
+        rdar://problem/29879484
+
+        Reviewed by Tim Horton.
+
+        We set rasterizationScale on CALayers to the same values as contentsScale, to
+        avoid blurry layers when CA rasterizes, which often happens with nested perspective
+        transforms.
+
+        However, in UI-side compositing, if the page is not zoomed, we never applied the
+        rasterizationScale in the UI process. This happened because the PlatformCALayerRemote
+        constructor set m_properties.contentsScale, but did not set the dirty bit that
+        triggers the application of contentsScale and rasterizationScale in RemoteLayerTreePropertyApplier.
+        The fix is to set this dirty bit.
+
+        The rest of the changes are for testing. Internals now exposes layerIDForElement()
+        for returns an internal (non-stable-across-loads) layerID, which can be passed
+        to UIScriptController.propertiesOfLayerWithID() in the UI process, which inspects
+        the built layer (UIView) hierarchy. propertiesOfLayerWithID() returns a dictionary
+        which the test can dump as JSON, or pull values out of.
+
+        A few #pragma once cleanups also.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::propertiesOfLayerWithID):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::propertiesOfLayerWithID):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::propertiesOfLayerWithID):
+
+2017-03-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r213618.
+        https://bugs.webkit.org/show_bug.cgi?id=169475
+
+        Suspect this is the cause of a large memory regression
+        (Requested by jonlee_ on #webkit).
+
+        Reverted changeset:
+
+        "Enable async image decoding for large images"
+        https://bugs.webkit.org/show_bug.cgi?id=165039
+        http://trac.webkit.org/changeset/213618
+
+2017-03-09  Brian Nicholson  <bnicholson@mozilla.com> and Alex Christensen  <achristensen@webkit.org>
+
+        Expose public APIs for content filters
+        https://bugs.webkit.org/show_bug.cgi?id=150479
+
+        Reviewed by Brady Eidson and Geoff Garen.
+
+        Keep the existing tests to verify that I made the wrapper classes for the old SPI work correctly.
+        Add new identical tests for the new API are added with the new names.
+        We should keep both until we migrate from and remove the old SPI.
+        Enum error code values and strings have changed, but the API is source compatible.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKUserContentExtensionStore.mm: Copied from Tools/TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentExtensionStore.mm.
+        (WKUserContentExtensionStoreTest::SetUp):
+        (TEST_F):
+        (checkDomain):
+        (_WKUserContentExtensionStoreTest::SetUp): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/_WKUserContentExtensionStore.mm:
+        (checkDomain):
+
+2017-03-09  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the WebKit2 test bots following <https://trac.webkit.org/changeset/213676>
+        (https://bugs.webkit.org/show_bug.cgi?id=169364)
+
+        Create new WebView with Credential Management enabled when the enableCredentialManagement
+        WebKitTestRunner option is specified.
+
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+        * WebKitTestRunner/mac/PlatformWebViewMac.mm:
+        (WTR::PlatformWebView::viewSupportsOptions):
+
+2017-03-09  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove statistics data as part of full website data removal
+        https://bugs.webkit.org/show_bug.cgi?id=169448
+
+        Reviewed by Alex Christensen.
+
+        This patch adds infrastructure for the new TestRunner function
+        statisticsClearInMemoryAndPersistentStore().
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsClearInMemoryAndPersistentStore):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStore):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-03-09  Dean Jackson  <dino@apple.com>
+
+        WebGPU: Backend - Buffers
+        https://bugs.webkit.org/show_bug.cgi?id=169451
+        <rdar://problem/30959168>
+
+        Reviewed by Tim Horton.
+
+        Test for GPUBuffer object.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUBuffer.mm: Added.
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/mac/GPUFunction.mm:
+        * TestWebKitAPI/Tests/WebCore/mac/GPULibrary.mm:
+
+2017-03-09  Daniel Bates  <dabates@apple.com>
+
+        Guard Credential Management implementation behind a runtime enabled feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=169364
+        <rdar://problem/30957425>
+
+        Reviewed by Brent Fulgham.
+
+        Add a new test option header, enableCredentialManagement, to DumpRenderTree/WebKitTestRunner
+        to enable Credential Management.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (setWebPreferencesForTestOptions):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+
+2017-03-09  Anders Carlsson  <andersca@apple.com>
+
+        Add delegate support to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=169427
+        Part of rdar://problem/28880714.
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-03-09  Alex Christensen  <achristensen@webkit.org>
+
+        [Content Extensions] Introduce if-top-url and unless-top-url
+        https://bugs.webkit.org/show_bug.cgi?id=169433
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::TEST_F):
+        Add tests for new functionality and new failure types.
+
+2017-03-09  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        JSC EWS repeat the log message thrice about patch not being relevant
+        https://bugs.webkit.org/show_bug.cgi?id=169330
+
+        Reviewed by Chris Dumez.
+
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance.run): Change log level to 'debug' to reduce stdout traffic.
+
+2017-03-08  Matt Rajca  <mrajca@apple.com>
+
+        Let clients control autoplay quirks with website policies.
+        https://bugs.webkit.org/show_bug.cgi?id=169390
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKit2/autoplay-check.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (-[AutoplayPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+
+2017-03-09  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Unreviewed, change my status to be a WebKit reviewer
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-03-09  Jonathan Bedard  <jbedard@apple.com>
+
+        Standardize device/simulator naming conventions
+        https://bugs.webkit.org/show_bug.cgi?id=169083
+        <rdar://problem/30810466>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/build-webkit: Document --ios-device and --simulator options.
+        * Scripts/package-root:
+        (usage): Ditto.
+        * Scripts/run-api-tests: Document --simulator option.
+        * Scripts/webkitdirs.pm:
+        (argumentsForConfiguration): Use --ios-device by default rather than --device.
+        (determineXcodeSDK): Parse --ios-device and --simulator options.
+        * Scripts/webkitpy/common/config/ews.json: Change port name from ios to ios-device.
+        * Scripts/webkitpy/common/config/ports.py: Ditto.
+        (DeprecatedPort.port):
+        (IOSPort): Change port name from ios to ios-device. 
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options): Add --simulator option.
+        (PortFactory): Update comment.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort): Change port name from ios to ios-device.
+        (IOSDevicePort.operating_system): Ditto.
+
+2017-03-09  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add unit test to prevent breakage of EWS
+        https://bugs.webkit.org/show_bug.cgi?id=169385
+
+        Reviewed by Alexey Proskuryakov.
+
+        Prevent <http://trac.webkit.org/changeset/213545> from happening in the future.
+
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name): Added.
+
+2017-03-08  Dean Jackson  <dino@apple.com>
+
+        WebGPU: Backend - Library and Functions
+        https://bugs.webkit.org/show_bug.cgi?id=169371
+        <rdar://problem/30928792>
+
+        Reviewed by Tim Horton.
+
+        Add tests for GPULibrary and GPUFunction.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm:
+        (TestWebKitAPI::TEST_F):
+        (TestWebKitAPI::TEST): Deleted.
+        * TestWebKitAPI/Tests/WebCore/mac/GPUFunction.mm: Copied from Tools/TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm.
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/mac/GPULibrary.mm: Copied from Tools/TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm.
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/mac/GPUTest.h: Copied from Tools/TestWebKitAPI/Tests/WebCore/mac/GPUDevice.mm.
+        (TestWebKitAPI::GPU::librarySourceCode):
+
+2017-03-08  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it super easy to do ARM concurrency tricks
+        https://bugs.webkit.org/show_bug.cgi?id=169300
+
+        Reviewed by Mark Lam.
+        
+        This vastly simplifies the consume API. The new API is thoroughly tested by being used
+        in the GC's guts. I think that unit tests are a pain to maintain, so we shouldn't have
+        them unless we are legitimately worried about coverage. We're not in this case.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/Consume.cpp: Removed.
+
+2017-03-08  Srinivasan Vijayaraghavan  <svijayaraghavan@apple.com>
+
+        Fix error/warning duplication in JSON bindings results
+        https://bugs.webkit.org/show_bug.cgi?id=169305
+
+        Reviewed by Alexey Proskuryakov.
+
+        The distinction between failures and errors is not meaningful, since all errors will also be failures.
+        As a result, we only need to keep track of failures.
+        
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.__init__): Remove errors.
+        (BindingsTests.detect_changes): Remove errors.
+        (BindingsTests.main): Remove errors.
+
+2017-03-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add helpers to run Six Speed to run-jsc-benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=169351
+
+        Reviewed by Saam Barati.
+
+        This patch adds an ability to run six-speed microbenchmarks
+        from run-jsc-benchmarks by specifying six-speed directory in
+        arewefastyet repository.
+
+        While it is a collection of microbenchmarks, it is useful
+        to ensure that our ES6 optimization covers major use cases.
+        For the macrobenchmark, we already have ARES-6.
+
+        * Scripts/run-jsc-benchmarks:
+
+2017-03-08  Sam Weinig  <sam@webkit.org>
+
+        import-w3c-tests doesn't work with svn repositories.
+        https://bugs.webkit.org/show_bug.cgi?id=169190
+
+        Reviewed by Tim Horton.
+
+        The script assumed you had WebKit checked-out as a git repository, but
+        there was no reason for that.
+
+        * Scripts/webkitpy/common/checkout/scm/git.py:
+        (Git.clone):
+        Add a class method to clone a repository which does not require 
+        an existing checkout.
+
+        (Git.fetch):
+        (Git.checkout):
+        Add methods needed for test_downloader.py, so it doesn't have to use
+        the internal _run_git 
+
+        * Scripts/webkitpy/w3c/test_downloader.py:
+        (TestDownloader.checkout_test_repository):
+        Switch to using Git.clone(), which doesn't require an existing git
+        directory, and then also adopt non private methods to fetch/checkout.
+
+2017-03-08  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Communicate to the network process which domains to partition
+        https://bugs.webkit.org/show_bug.cgi?id=169322
+        <rdar://problem/30768921>
+
+        Reviewed by Alex Christensen.
+
+        These changes add support for two new TestRunner functions:
+        - setCookieStoragePartitioningEnabled()
+        - statisticsFireShouldPartitionCookiesHandler()
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setCookieStoragePartitioningEnabled):
+        (WTR::TestRunner::statisticsFireShouldPartitionCookiesHandler):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsFireShouldPartitionCookiesHandler):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-03-08  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Enable async image decoding for large images
+        https://bugs.webkit.org/show_bug.cgi?id=165039
+
+        Reviewed by Simon Fraser.
+
+        Disable LargeImageAsyncDecoding for DRT/WTR.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
 2017-03-08  Matt Rajca  <mrajca@apple.com>
 
         Add support for updating autoplay policies after a page has been loaded.

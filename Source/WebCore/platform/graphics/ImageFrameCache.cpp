@@ -67,7 +67,24 @@ ImageFrameCache::ImageFrameCache(NativeImagePtr&& nativeImage)
 
 ImageFrameCache::~ImageFrameCache()
 {
-    ASSERT(!hasDecodingQueue());
+    ASSERT(!hasAsyncDecodingQueue());
+}
+
+void ImageFrameCache::setDecoder(ImageDecoder* decoder)
+{
+    if (m_decoder == decoder)
+        return;
+
+    // Changing the decoder has to stop the decoding thread. The current frame will
+    // continue decoding safely because the decoding thread has its own
+    // reference of the old decoder.
+    stopAsyncDecodingQueue();
+    m_decoder = decoder;
+}
+
+ImageDecoder* ImageFrameCache::decoder() const
+{
+    return m_decoder.get();
 }
 
 void ImageFrameCache::destroyDecodedData(size_t frameCount, size_t excludeFrame)
@@ -256,28 +273,29 @@ void ImageFrameCache::cacheFrameNativeImageAtIndex(NativeImagePtr&& nativeImage,
 Ref<WorkQueue> ImageFrameCache::decodingQueue()
 {
     if (!m_decodingQueue)
-        m_decodingQueue = WorkQueue::create("org.webkit.ImageDecoder", WorkQueue::Type::Serial, WorkQueue::QOS::UserInteractive);
+        m_decodingQueue = WorkQueue::create("org.webkit.ImageDecoder", WorkQueue::Type::Serial, WorkQueue::QOS::Default);
     
     return *m_decodingQueue;
 }
 
 void ImageFrameCache::startAsyncDecodingQueue()
 {
-    if (hasDecodingQueue() || !isDecoderAvailable())
+    if (hasAsyncDecodingQueue() || !isDecoderAvailable())
         return;
 
     m_frameRequestQueue.open();
 
     Ref<ImageFrameCache> protectedThis = Ref<ImageFrameCache>(*this);
     Ref<WorkQueue> protectedQueue = decodingQueue();
+    Ref<ImageDecoder> protectedDecoder = Ref<ImageDecoder>(*m_decoder);
 
-    // We need to protect this and m_decodingQueue from being deleted while we are in the decoding loop.
-    decodingQueue()->dispatch([this, protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedQueue)] {
+    // We need to protect this, m_decodingQueue and m_decoder from being deleted while we are in the decoding loop.
+    decodingQueue()->dispatch([this, protectedThis = WTFMove(protectedThis), protectedQueue = WTFMove(protectedQueue), protectedDecoder = WTFMove(protectedDecoder)] {
         ImageFrameRequest frameRequest;
 
         while (m_frameRequestQueue.dequeue(frameRequest)) {
             // Get the frame NativeImage on the decoding thread.
-            NativeImagePtr nativeImage = m_decoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, frameRequest.sizeForDrawing);
+            NativeImagePtr nativeImage = protectedDecoder->createFrameImageAtIndex(frameRequest.index, frameRequest.subsamplingLevel, frameRequest.sizeForDrawing);
 
             // Update the cached frames on the main thread to avoid updating the MemoryCache from a different thread.
             callOnMainThread([this, protectedQueue = protectedQueue.copyRef(), nativeImage, frameRequest] () mutable {
@@ -306,7 +324,7 @@ bool ImageFrameCache::requestFrameAsyncDecodingAtIndex(size_t index, Subsampling
     if (frame.hasValidNativeImage(subsamplingLevel, sizeForDrawing))
         return false;
 
-    if (!hasDecodingQueue())
+    if (!hasAsyncDecodingQueue())
         startAsyncDecodingQueue();
     
     frame.enqueueSizeForDecoding(sizeForDrawing);
@@ -314,9 +332,18 @@ bool ImageFrameCache::requestFrameAsyncDecodingAtIndex(size_t index, Subsampling
     return true;
 }
 
+bool ImageFrameCache::isAsyncDecodingQueueIdle() const
+{
+    for (const ImageFrame& frame : m_frames) {
+        if (frame.isBeingDecoded())
+            return false;
+    }
+    return true;
+}
+    
 void ImageFrameCache::stopAsyncDecodingQueue()
 {
-    if (!hasDecodingQueue())
+    if (!hasAsyncDecodingQueue())
         return;
     
     m_frameRequestQueue.close();
@@ -376,9 +403,9 @@ T ImageFrameCache::metadata(const T& defaultValue, std::optional<T>* cachedValue
         return defaultValue;
 
     if (!cachedValue)
-        return (m_decoder->*functor)();
+        return (*m_decoder.*functor)();
 
-    *cachedValue = (m_decoder->*functor)();
+    *cachedValue = (*m_decoder.*functor)();
     didDecodeProperties(m_decoder->bytesDecodedToDetermineProperties());
     return cachedValue->value();
 }

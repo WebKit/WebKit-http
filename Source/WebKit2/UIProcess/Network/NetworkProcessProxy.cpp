@@ -292,6 +292,13 @@ void NetworkProcessProxy::grantSandboxExtensionsToDatabaseProcessForBlobs(uint64
 #endif
 }
 
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void NetworkProcessProxy::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+{
+    connection()->send(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd), 0);
+}
+#endif
+
 void NetworkProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);

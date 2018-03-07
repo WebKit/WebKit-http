@@ -23,10 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifdef ENABLE_WEBGPU
+#import "config.h"
 
-#include "config.h"
-#import "Test.h"
+#if ENABLE(WEBGPU)
+
+#import "GPUTest.h"
 #import <Metal/Metal.h>
 #import <WebCore/GPUDevice.h>
 
@@ -34,7 +35,7 @@ using namespace WebCore;
 
 namespace TestWebKitAPI {
 
-TEST(GPU, Basic)
+TEST_F(GPU, DeviceCreate)
 {
     auto device = GPUDevice::create();
     // Not all hardware supports Metal, so it is possible

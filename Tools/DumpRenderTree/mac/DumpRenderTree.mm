@@ -849,6 +849,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
     [preferences setPeerConnectionEnabled:YES];
+    [preferences setCredentialManagementEnabled:YES];
 }
 
 // Called before each test.
@@ -955,6 +956,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setHiddenPageCSSAnimationSuspensionEnabled:NO];
     
     [preferences setMediaStreamEnabled:YES];
+    
+    [preferences setLargeImageAsyncDecodingEnabled:NO];
 
     [WebPreferences _clearNetworkLoaderSession];
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];
@@ -966,6 +969,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
 
     preferences.intersectionObserverEnabled = options.enableIntersectionObserver;
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;
+    preferences.credentialManagementEnabled = options.enableCredentialManagement;
 }
 
 // Called once on DumpRenderTree startup.

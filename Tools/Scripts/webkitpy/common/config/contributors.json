@@ -1541,13 +1541,13 @@
    },
    "Devin Rousso" : {
       "emails" : [
-         "dcrousso+webkit@gmail.com"
+         "webkit@devinrousso.com"
       ],
       "expertise" : "Web Inspector",
       "nicks" : [
          "dcrousso"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Dewei Zhu" : {
       "emails" : [

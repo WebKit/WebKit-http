@@ -1,3 +1,293 @@
+2017-03-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Add secondsAs<T> methods to Seconds to convert it to integers with clamp
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Carlos Garcia Campos.
+
+        When using the usual static_cast, infinity becomes 0 accidentally.
+        It is not intended value when using Seconds for timeout value.
+        Instead, we use clampToAccepting64 to convert Seconds to
+        integer values to pass them to the system functions.
+
+        * wtf/MathExtras.h:
+        (clampToAccepting64):
+        * wtf/Seconds.h:
+        (WTF::Seconds::minutesAs):
+        (WTF::Seconds::secondsAs):
+        (WTF::Seconds::millisecondsAs):
+        (WTF::Seconds::microsecondsAs):
+        (WTF::Seconds::nanosecondsAs):
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][Linux] Implement VMTrap in Linux ports
+        https://bugs.webkit.org/show_bug.cgi?id=169436
+
+        Reviewed by Mark Lam.
+
+        Enable VMTrap mechanism for Linux and FreeBSD.
+
+        * wtf/Platform.h:
+
+2017-03-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up RunLoop and WorkQueue with Seconds and Function
+        https://bugs.webkit.org/show_bug.cgi?id=169537
+
+        Reviewed by Sam Weinig.
+
+        This patch modernizes RunLoop and WorkQueue.
+
+        1. Use Ref<> aggressively
+        2. Use Seconds instead of chrono times
+        3. Use Function<> instead of std::function
+
+        * wtf/MainThread.cpp:
+        (WTF::dispatchFunctionsFromMainThread):
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+        (WTF::WorkQueue::concurrentApply):
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::EarliestSchedule::operator()):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::runImpl):
+        (WTF::RunLoop::schedule):
+        (WTF::RunLoop::scheduleAndWakeUp):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::dispatch):
+        (WorkQueue::dispatchAfter):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::DispatchAfterContext::DispatchAfterContext):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::updateReadyTime):
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+        (WTF::WorkQueue::dispatch):
+        (WTF::WorkQueue::dispatchAfter):
+
+2017-03-13  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Only report background WebProcesses as unresponsive in the background after 90 seconds
+        https://bugs.webkit.org/show_bug.cgi?id=169425
+        <rdar://problem/30954003>
+
+        Reviewed by Andreas Kling.
+
+        * wtf/RunLoop.h:
+        (WTF::RunLoop::TimerBase::startRepeating):
+        (WTF::RunLoop::TimerBase::startOneShot):
+        Add overloads to RunLoop::Timer that take Seconds in parameter,
+        for convenience.
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::fromHours):
+        (WTF::seconds_literals::operator _h):
+        Allow _h suffix for initializing Seconds type to hours.
+
+2017-03-11  Csaba Osztrogonác  <ossy@webkit.org>
+
+        REGRESSION(r213645): It made JSC tests super slow and timeout on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=169510
+
+        Unreviewed, disable LL_SC on Linux to unbreak this platform.
+
+        * wtf/Atomics.h:
+        * wtf/Platform.h:
+
+2017-03-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The JITs should be able to emit fast TLS loads
+        https://bugs.webkit.org/show_bug.cgi?id=169483
+
+        Reviewed by Keith Miller.
+
+        Consolidated what we know about fast TLS in FastTLS.h.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/FastTLS.h: Added.
+        (WTF::loadFastTLS):
+        (WTF::fastTLSOffsetForKey):
+        * wtf/Platform.h:
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::createAndRegisterForGetspecificDirect):
+        * wtf/WTFThreadData.h:
+        (WTF::wtfThreadData):
+
+2017-03-10  Mark Lam  <mark.lam@apple.com>
+
+        Turn ENABLE(MASM_PROBE) on by default for OS(DARWIN) release builds.
+        https://bugs.webkit.org/show_bug.cgi?id=169493
+
+        Reviewed by Saam Barati.
+
+        MASM_PROBE was already enabled for debug builds.  This change makes it so that we
+        don't have to rebuild the world every time we need to use it on a release build.
+
+        * wtf/Platform.h:
+
+2017-03-10  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed AArch64 Linux buildfix after r213645.
+        https://bugs.webkit.org/show_bug.cgi?id=169300
+
+        * wtf/Atomics.h: intptr_t and int64_t are typedefs for long int on Linux.
+        They are different types only on Darwin platforms.
+
+2017-03-09  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Keith Miller.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-03-09  Youenn Fablet  <youenn@apple.com>
+
+        Activate VideoToolbox when WebRTC is enabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=169423
+
+        Reviewed by Jon Lee.
+
+        * wtf/Platform.h: Activate VIDEOTOOLBOX if WEBRTC is enabled.
+
+2017-03-09  Filip Pizlo  <fpizlo@apple.com>
+
+        std::isnan/isinf/isfinite should work with WTF time classes
+        https://bugs.webkit.org/show_bug.cgi?id=164991
+
+        Reviewed by Darin Adler.
+        
+        The consensus view (see comments in https://bugs.webkit.org/show_bug.cgi?id=152045) of how
+        to check if something is NaN is to use std::isnan(). To be able to do that for time
+        classes, they need to provide their own isnan() overhload. This also provides isinf()
+        overloads.
+
+        * wtf/MonotonicTime.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/Seconds.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/TimeWithDynamicClockType.h:
+        (std::isnan):
+        (std::isinf):
+        * wtf/WallTime.h:
+        (std::isnan):
+        (std::isinf):
+
+2017-03-09  Mark Lam  <mark.lam@apple.com>
+
+        Use const AbstractLocker& (instead of const LockHolder&) in more places.
+        https://bugs.webkit.org/show_bug.cgi?id=169424
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/RunLoop.h:
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::wakeUp):
+        (WTF::RunLoop::schedule):
+
+2017-03-09  Mark Lam  <mark.lam@apple.com>
+
+        Make the VM Traps mechanism non-polling for the DFG and FTL.
+        https://bugs.webkit.org/show_bug.cgi?id=168920
+        <rdar://problem/30738588>
+
+        Reviewed by Filip Pizlo.
+
+        Make StackBounds more useful for checking if a pointer is within stack bounds.
+
+        * wtf/MetaAllocator.cpp:
+        (WTF::MetaAllocator::isInAllocatedMemory):
+        * wtf/MetaAllocator.h:
+        * wtf/Platform.h:
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        (WTF::StackBounds::isEmpty):
+        (WTF::StackBounds::contains):
+
+2017-03-07  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it super easy to do ARM concurrency tricks
+        https://bugs.webkit.org/show_bug.cgi?id=169300
+
+        Reviewed by Mark Lam.
+        
+        This adds Atomic<>::loadLink and Atomic<>::storeCond, available only when HAVE(LL_SC).
+        
+        It abstracts loadLink/storeCond behind prepare/attempt. You can write prepare/attempt
+        loops whenever your loop fits into the least common denominator of LL/SC and CAS.
+        
+        This modifies Atomic<>::transaction to use prepare/attempt. So, if you write your loop
+        using Atomic<>::transaction, then you get LL/SC for free.
+
+        Depending on the kind of transaction you are doing, you may not want to perform an LL
+        until you have a chance to just load the current value. Atomic<>::transaction() assumes
+        that you do not care to have any ordering guarantees in that case. If you think that
+        the transaction has a good chance of aborting this way, you want
+        Atomic<>::transaction() to first do a plain load. But if you don't think that such an
+        abort is likely, then you want to go straight to the LL. The API supports this concept
+        via TransactionAbortLikelihood.
+        
+        Additionally, this redoes the depend/consume API to be dead simple. Dependency is
+        unsigned. You get a dependency on a loaded value by just saying
+        dependency(loadedValue). You consume the dependency by using it as a bonus index to
+        some pointer dereference. This is made easy with the consume<T*>(ptr, dependency)
+        helper. In those cases where you want to pass around both a computed value and a
+        dependency, there's DependencyWith<T>. But you won't need it in most cases. The loaded
+        value or any value computed from the loaded value is a fine input to dependency()!
+        
+        This change updates a bunch of hot paths to use the new APIs. Using transaction() gives
+        us optimal LL/SC loops for object marking and lock acquisition.
+        
+        This change also updates a bunch of hot paths to use dependency()/consume().
+        
+        This is a significant Octane/splay speed-up on ARM.
+
+        * wtf/Atomics.h:
+        (WTF::hasFence):
+        (WTF::Atomic::prepare):
+        (WTF::Atomic::attempt):
+        (WTF::Atomic::transaction):
+        (WTF::Atomic::transactionRelaxed):
+        (WTF::nullDependency):
+        (WTF::dependency):
+        (WTF::DependencyWith::DependencyWith):
+        (WTF::dependencyWith):
+        (WTF::consume):
+        (WTF::Atomic::tryTransactionRelaxed): Deleted.
+        (WTF::Atomic::tryTransaction): Deleted.
+        (WTF::zeroWithConsumeDependency): Deleted.
+        (WTF::consumeLoad): Deleted.
+        * wtf/Bitmap.h:
+        (WTF::WordType>::get):
+        (WTF::WordType>::concurrentTestAndSet):
+        (WTF::WordType>::concurrentTestAndClear):
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::lockFast):
+        (WTF::LockAlgorithm::unlockFast):
+        (WTF::LockAlgorithm::unlockSlow):
+        * wtf/Platform.h:
+
 2017-03-08  Anders Carlsson  <andersca@apple.com>
 
         Simplify the PaymentCoordinator interface

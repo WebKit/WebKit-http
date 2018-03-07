@@ -89,7 +89,7 @@ public:
     const String& persistentID() const { return m_persistentID; }
     virtual void setPersistentID(const String& persistentID) { m_persistentID = persistentID; }
 
-    enum Type { None, Audio, Video };
+    enum class Type { None, Audio, Video };
     Type type() const { return m_type; }
 
     virtual const String& name() const { return m_name; }
@@ -140,9 +140,6 @@ public:
     virtual void reset();
 
     virtual AudioSourceProvider* audioSourceProvider() { return nullptr; }
-
-    virtual RefPtr<Image> currentFrameImage() { return nullptr; }
-    virtual void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&) { }
 
     void setWidth(int);
     void setHeight(int);

@@ -22,7 +22,7 @@ endif ()
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/mac/DatabaseProcessMac.mm
 
-    NetworkProcess/CustomProtocols/Cocoa/CustomProtocolManagerCocoa.mm
+    NetworkProcess/CustomProtocols/Cocoa/LegacyCustomProtocolManagerCocoa.mm
 
     NetworkProcess/Downloads/PendingDownload.cpp
 
@@ -190,6 +190,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKBrowsingContextController.mm
     UIProcess/API/Cocoa/WKBrowsingContextGroup.mm
     UIProcess/API/Cocoa/WKConnection.mm
+    UIProcess/API/Cocoa/WKContentExtension.mm
+    UIProcess/API/Cocoa/WKContentExtensionStore.mm
     UIProcess/API/Cocoa/WKError.mm
     UIProcess/API/Cocoa/WKFrameInfo.mm
     UIProcess/API/Cocoa/WKMenuItemIdentifiers.mm
@@ -208,6 +210,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/Cocoa/WKScriptMessage.mm
     UIProcess/API/Cocoa/WKSecurityOrigin.mm
     UIProcess/API/Cocoa/WKTypeRefWrapper.mm
+    UIProcess/API/Cocoa/WKURLSchemeHandlerTask.mm
     UIProcess/API/Cocoa/WKUserContentController.mm
     UIProcess/API/Cocoa/WKUserScript.mm
     UIProcess/API/Cocoa/WKWebView.mm
@@ -242,12 +245,12 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/Cocoa/AutomationClient.mm
     UIProcess/Cocoa/AutomationSessionClient.mm
-    UIProcess/Cocoa/CustomProtocolManagerClient.mm
     UIProcess/Cocoa/DiagnosticLoggingClient.mm
     UIProcess/Cocoa/DownloadClient.mm
     UIProcess/Cocoa/FindClient.mm
     UIProcess/Cocoa/FullscreenClient.mm
     UIProcess/Cocoa/IconLoadingDelegate.mm
+    UIProcess/Cocoa/LegacyCustomProtocolManagerClient.mm
     UIProcess/Cocoa/NavigationState.mm
     UIProcess/Cocoa/RemoteLayerTreeScrollingPerformanceData.mm
     UIProcess/Cocoa/SessionStateCoding.mm
@@ -260,6 +263,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
     UIProcess/Cocoa/WebProcessPoolCocoa.mm
     UIProcess/Cocoa/WebProcessProxyCocoa.mm
+    UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
     UIProcess/Cocoa/WebViewImpl.mm
 
     UIProcess/Launcher/mac/ProcessLauncherMac.mm

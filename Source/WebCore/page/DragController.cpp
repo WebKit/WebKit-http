@@ -184,6 +184,7 @@ void DragController::dragEnded()
 {
     m_dragInitiator = nullptr;
     m_didInitiateDrag = false;
+    m_documentUnderMouse = nullptr;
     clearDragCaret();
     
     m_client.dragEnded();
@@ -246,6 +247,7 @@ bool DragController::performDragOperation(const DragData& dragData)
     }
 
     if ((m_dragDestinationAction & DragDestinationActionEdit) && concludeEditDrag(dragData)) {
+        m_client.didConcludeEditDrag();
         m_documentUnderMouse = nullptr;
         return true;
     }

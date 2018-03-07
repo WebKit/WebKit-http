@@ -67,9 +67,11 @@
 #include "WebsiteDataType.h"
 #include <JavaScriptCore/JSLock.h>
 #include <JavaScriptCore/MemoryStatistics.h>
+#include <JavaScriptCore/WasmFaultSignalHandler.h>
 #include <WebCore/AXObjectCache.h>
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/AuthenticationChallenge.h>
+#include <WebCore/CPUMonitor.h>
 #include <WebCore/CommonVM.h>
 #include <WebCore/CrossOriginPreflightResultCache.h>
 #include <WebCore/DNS.h>
@@ -394,6 +396,10 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #if ENABLE(GAMEPAD)
     GamepadProvider::singleton().setSharedProvider(WebGamepadProvider::singleton());
 #endif
+
+#if ENABLE(WEBASSEMBLY)
+    JSC::Wasm::enableFastMemory();
+#endif
 }
 
 void WebProcess::ensureNetworkProcessConnection()
@@ -575,6 +581,7 @@ void WebProcess::createWebPage(uint64_t pageID, WebPageCreationParameters&& para
 
         // Balanced by an enableTermination in removeWebPage.
         disableTermination();
+        updateBackgroundCPULimit();
     } else
         result.iterator->value->reinitializeWebPage(WTFMove(parameters));
 
@@ -589,6 +596,7 @@ void WebProcess::removeWebPage(uint64_t pageID)
     m_pageMap.remove(pageID);
 
     enableTermination();
+    updateBackgroundCPULimit();
 }
 
 bool WebProcess::shouldTerminate()
@@ -1015,6 +1023,11 @@ void WebProcess::mainThreadPing()
     parentProcessConnection()->send(Messages::WebProcessProxy::DidReceiveMainThreadPing(), 0);
 }
 
+void WebProcess::backgroundResponsivenessPing()
+{
+    parentProcessConnection()->send(Messages::WebProcessProxy::DidReceiveBackgroundResponsivenessPing(), 0);
+}
+
 #if ENABLE(GAMEPAD)
 
 void WebProcess::setInitialGamepads(const Vector<WebKit::GamepadData>& gamepadDatas)
@@ -1258,7 +1271,21 @@ void WebProcess::updateActivePages()
 {
 }
 
+void WebProcess::updateBackgroundCPULimit()
+{
+}
+
+void WebProcess::updateBackgroundCPUMonitorState()
+{
+}
+
 #endif
+
+void WebProcess::pageActivityStateDidChange(uint64_t, WebCore::ActivityState::Flags changed)
+{
+    if (changed & WebCore::ActivityState::IsVisible)
+        updateBackgroundCPUMonitorState();
+}
 
 #if PLATFORM(IOS)
 void WebProcess::resetAllGeolocationPermissions()
@@ -1549,6 +1576,15 @@ void WebProcess::prefetchDNS(const String& hostname)
     // in a very short period of time, producing a lot of IPC traffic. So we clear this cache after
     // some time of no DNS requests.
     m_dnsPrefetchHystereris.impulse();
+}
+
+bool WebProcess::hasVisibleWebPage() const
+{
+    for (auto& page : m_pageMap.values()) {
+        if (page->isVisible())
+            return true;
+    }
+    return false;
 }
 
 #if USE(LIBWEBRTC)

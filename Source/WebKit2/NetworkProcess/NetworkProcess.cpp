@@ -97,7 +97,6 @@ NetworkProcess::NetworkProcess()
     : m_hasSetCacheModel(false)
     , m_cacheModel(CacheModelDocumentViewer)
     , m_diskCacheIsDisabledForTesting(false)
-    , m_canHandleHTTPSServerTrustEvaluation(true)
 #if PLATFORM(COCOA)
     , m_clearCacheDispatchGroup(0)
 #endif
@@ -309,6 +308,13 @@ void NetworkProcess::didGrantSandboxExtensionsToDatabaseProcessForBlobs(uint64_t
     if (auto handler = m_sandboxExtensionForBlobsCompletionHandlers.take(requestID))
         handler();
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+{
+    NetworkStorageSession::defaultStorageSession().setShouldPartitionCookiesForHosts(domainsToRemove, domainsToAdd);
+}
+#endif
 
 static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void (Vector<WebsiteData::Entry>)>&& completionHandler)
 {

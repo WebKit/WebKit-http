@@ -32,6 +32,7 @@
 #include "JSCInlines.h"
 #include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
+#include "JSWebAssemblyHelpers.h"
 #include "JSWebAssemblyInstance.h"
 #include "JSWebAssemblyLinkError.h"
 #include "JSWebAssemblyMemory.h"
@@ -101,7 +102,6 @@ JSWebAssemblyInstance* WebAssemblyInstanceConstructor::createInstance(ExecState*
     JSWebAssemblyInstance* instance = JSWebAssemblyInstance::create(vm, instanceStructure, jsModule, moduleRecord->getModuleNamespace(exec));
     RETURN_IF_EXCEPTION(throwScope, nullptr);
 
-
     // Let funcs, memories and tables be initially-empty lists of callable JavaScript objects, WebAssembly.Memory objects and WebAssembly.Table objects, respectively.
     // Let imports be an initially-empty list of external values.
     unsigned numImportFunctions = 0;
@@ -130,22 +130,32 @@ JSWebAssemblyInstance* WebAssemblyInstanceConstructor::createInstance(ExecState*
             if (!value.isFunction())
                 return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("import function must be callable")));
 
-            JSCell* cell = value.asCell();
+            JSObject* function = jsCast<JSObject*>(value);
             // ii. If v is an Exported Function Exotic Object:
-            if (WebAssemblyFunction* importedExport = jsDynamicCast<WebAssemblyFunction*>(vm, cell)) {
+            WebAssemblyFunction* wasmFunction;
+            WebAssemblyWrapperFunction* wasmWrapperFunction;
+            if (isWebAssemblyHostFunction(vm, function, wasmFunction, wasmWrapperFunction)) {
                 // a. If the signature of v does not match the signature of i, throw a WebAssembly.LinkError.
-                Wasm::SignatureIndex importedSignatureIndex = importedExport->signatureIndex();
+                Wasm::SignatureIndex importedSignatureIndex;
+                if (wasmFunction)
+                    importedSignatureIndex = wasmFunction->signatureIndex();
+                else {
+                    importedSignatureIndex = wasmWrapperFunction->signatureIndex();
+                    // b. Let closure be v.[[Closure]].
+                    function = wasmWrapperFunction->function();
+                }
                 Wasm::SignatureIndex expectedSignatureIndex = moduleInformation.importFunctionSignatureIndices[import.kindIndex];
                 if (importedSignatureIndex != expectedSignatureIndex)
                     return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("imported function's signature doesn't match the provided WebAssembly function's signature")));
-                // b. Let closure be v.[[Closure]].
             }
             // iii. Otherwise:
             // a. Let closure be a new host function of the given signature which calls v by coercing WebAssembly arguments to JavaScript arguments via ToJSValue and returns the result, if any, by coercing via ToWebAssemblyValue.
             // Note: done as part of Plan compilation.
             // iv. Append v to funcs.
             // Note: adding the JSCell to the instance list fulfills closure requirements b. above (the WebAssembly.Instance wil be kept alive) and v. below (the JSFunction).
-            instance->setImportFunction(vm, cell, numImportFunctions++);
+
+            ASSERT(numImportFunctions == import.kindIndex);
+            instance->setImportFunction(vm, function, numImportFunctions++);
             // v. Append closure to imports.
             break;
         }
@@ -216,6 +226,7 @@ JSWebAssemblyInstance* WebAssemblyInstanceConstructor::createInstance(ExecState*
             if (!value.isNumber())
                 return exception(createJSWebAssemblyLinkError(exec, vm, ASCIILiteral("imported global must be a number")));
             // iii. Append ToWebAssemblyValue(v) to imports.
+            ASSERT(numImportGlobals == import.kindIndex);
             switch (moduleInformation.globals[import.kindIndex].type) {
             case Wasm::I32:
                 instance->setGlobal(numImportGlobals++, value.toInt32(exec));

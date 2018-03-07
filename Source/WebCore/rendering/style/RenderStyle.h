@@ -1257,6 +1257,11 @@ public:
     void setStrokeWidth(Length&& w) { SET_VAR(m_rareInheritedData, strokeWidth, WTFMove(w)); }
     bool hasVisibleStroke() const { return svgStyle().hasStroke() && !strokeWidth().isZero(); }
 
+    float computedStrokeWidth(const IntSize& viewportSize) const;
+    void setHasExplicitlySetStrokeWidth(bool v) { SET_VAR(m_rareInheritedData, hasSetStrokeWidth, static_cast<unsigned>(v)); }
+    bool hasExplicitlySetStrokeWidth() const { return m_rareInheritedData->hasSetStrokeWidth; };
+    bool hasPositiveStrokeWidth() const;
+    
     
     const SVGRenderStyle& svgStyle() const { return m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return m_svgStyle.access(); }
@@ -1648,8 +1653,9 @@ public:
     static Isolation initialIsolation() { return IsolationAuto; }
 #endif
 
-    bool isPlaceholderStyle() const { return m_rareNonInheritedData->isPlaceholderStyle; }
-    void setIsPlaceholderStyle() { SET_VAR(m_rareNonInheritedData, isPlaceholderStyle, true); }
+    // Indicates the style is likely to change due to a pending stylesheet load.
+    bool isNotFinal() const { return m_rareNonInheritedData->isNotFinal; }
+    void setIsNotFinal() { SET_VAR(m_rareNonInheritedData, isNotFinal, true); }
 
     void setVisitedLinkColor(const Color&);
     void setVisitedLinkBackgroundColor(const Color& v) { SET_VAR(m_rareNonInheritedData, visitedLinkBackgroundColor, v); }

@@ -37,6 +37,9 @@ webgl
 fast/canvas/webgl
 http/tests/webgl
 
+# WebGPU is not enabled on iOS Simulator.
+fast/canvas/webgpu
+
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
 fast/events/constructors/device-proximity-event-constructor.html
@@ -543,6 +546,8 @@ compositing/visibility/visibility-simple-video-layer.html
 compositing/layer-creation/animation-overlap-with-children.html
 compositing/overflow/ancestor-overflow.html
 compositing/tiling/huge-layer-img.html
+
+webkit.org/b/169457 compositing/regions/transformed-layer-inside-transformed-layer.html [ ImageOnlyFailure ]
 
 # <rdar://problem/19191637> compositing/layer-creation/deep-tree.html fails
 compositing/layer-creation/deep-tree.html
@@ -1529,6 +1534,7 @@ fast/multicol/single-line.html [ Failure ]
 fast/multicol/span/generated-child-split-flow-crash.html [ Failure ]
 fast/multicol/split-in-top-margin.html [ ImageOnlyFailure ]
 fast/multicol/vertical-rl/rule-style.html [ Failure ]
+fast/multicol/simple-line-layout-line-index-after-strut.html [ ImageOnlyFailure ]
 fast/overflow/horizontal-scroll-after-back.html [ Failure ]
 fast/overflow/overflow-y-scroll.html [ Failure ]
 fast/overflow/scroll-div-hide-show.html [ Failure ]
@@ -2800,6 +2806,10 @@ media/modern-media-controls/seek-forward-support [ Skip ]
 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 media/modern-media-controls/volume-down-support [ Skip ]
 media/modern-media-controls/volume-up-support [ Skip ]
+media/modern-media-controls/volume-up-support [ Skip ]
+media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Skip ]
+media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
+http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html [ Skip ]
 
 # These tests are macOS-specific or mouse-specific
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Skip ]
@@ -2896,3 +2906,7 @@ fast/table/003.html [ Skip ]
 # Bundle upload is not supported on iOS
 fast/files/filereader-zip-bundle-using-open-panel.html [ Skip ]
 http/tests/local/fileapi/upload-zip-bundle-as-blob-using-open-panel.html [ Skip ]
+
+# Results differ from desktop
+fast/hidpi/percent-height-image-nested.html [ Skip ]
+

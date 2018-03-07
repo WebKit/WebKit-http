@@ -5,6 +5,7 @@
 # Platform-specific tests. Skipped globally, then re-enabled here.
 #//////////////////////////////////////////////////////////////////////////////////////////
 
+editing/execCommand/execCommand-across-different-documents.html [ Pass ]
 fast/forms/attributed-strings.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -146,6 +147,7 @@ compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
+http/tests/inspector/network/resource-response-source-disk-cache.html
 
 [ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 
@@ -229,6 +231,8 @@ webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [
 webkit.org/b/156069 http/tests/download/anchor-download-no-value.html [ Skip ]
 webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
+
+webkit.org/b/169523 [ Debug ] imported/w3c/web-platform-tests/html/dom/interfaces.worker.html [ Failure ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]

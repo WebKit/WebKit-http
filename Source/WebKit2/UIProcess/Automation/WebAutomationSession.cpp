@@ -309,9 +309,11 @@ void WebAutomationSession::goBackInBrowsingContext(Inspector::ErrorString& error
 
     if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
         callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
-    m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
 
-    page->goBack();
+    if (page->goBack())
+        m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
+    else
+        callback->sendSuccess();
 }
 
 void WebAutomationSession::goForwardInBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<GoForwardInBrowsingContextCallback>&& callback)
@@ -322,9 +324,11 @@ void WebAutomationSession::goForwardInBrowsingContext(Inspector::ErrorString& er
 
     if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
         callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
-    m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
 
-    page->goForward();
+    if (page->goForward())
+        m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
+    else
+        callback->sendSuccess();
 }
 
 void WebAutomationSession::reloadBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<ReloadBrowsingContextCallback>&& callback)
@@ -727,7 +731,10 @@ void WebAutomationSession::addSingleCookie(ErrorString& errorString, const Strin
         FAIL_WITH_PREDEFINED_ERROR_AND_DETAILS(MissingParameter, "The parameter 'httpOnly' was not found.");
 
     WebCookieManagerProxy* cookieManager = m_processPool->supplement<WebCookieManagerProxy>();
-    cookieManager->addCookie(WebCore::SessionID::defaultSessionID(), cookie, activeURL.host());
+
+    // FIXME: Using activeURL here twice is basically saying "this is always in the context of the main document"
+    // which probably isn't accurate.
+    cookieManager->setCookies(WebCore::SessionID::defaultSessionID(), { cookie }, activeURL, activeURL, [](CallbackBase::Error){});
 
     callback->sendSuccess();
 }
