@@ -108,7 +108,7 @@ class AutoinstallImportHook(object):
             self.install_geckodriver()
 
     def _install_mechanize(self):
-        self._install("http://pypi.python.org/packages/source/m/mechanize/mechanize-0.2.5.tar.gz",
+        self._install("https://pypi.python.org/packages/source/m/mechanize/mechanize-0.2.5.tar.gz",
                              "mechanize-0.2.5/mechanize")
 
     def _install_keyring(self):
@@ -116,7 +116,7 @@ class AutoinstallImportHook(object):
                              "keyring-7.3.1/keyring")
 
     def _install_pep8(self):
-        self._install("http://pypi.python.org/packages/source/p/pep8/pep8-0.5.0.tar.gz#md5=512a818af9979290cd619cce8e9c2e2b",
+        self._install("https://pypi.python.org/packages/source/p/pep8/pep8-0.5.0.tar.gz#md5=512a818af9979290cd619cce8e9c2e2b",
                              "pep8-0.5.0/pep8.py")
 
     def _install_pylint(self):
