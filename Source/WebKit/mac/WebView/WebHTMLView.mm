@@ -138,6 +138,7 @@
 #import <wtf/MathExtras.h>
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/RunLoop.h>
+#import <wtf/SystemTracing.h>
 
 #if !PLATFORM(IOS)
 #import "WebNSEventExtras.h"
@@ -2553,7 +2554,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
             
         NSDictionary *documentAttributes = [[NSDictionary alloc] initWithObjectsAndKeys:
             [[self class] _excludedElementsForAttributedStringConversion], NSExcludedElementsDocumentAttribute,
-            self, @"WebResourceHandler", nil];
+            nil];
         NSArray *s;
         
         BOOL wasDeferringCallbacks = [[self _webView] defersCallbacks];
@@ -4194,6 +4195,8 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 - (void)drawRect:(NSRect)rect
 {
     LOG(View, "%@ drawing", self);
+    
+    TraceScope scope(WebHTMLViewPaintStart, WebHTMLViewPaintEnd);
 
 #if !PLATFORM(IOS)
     const NSRect *rects;

@@ -99,8 +99,8 @@ struct NetworkProcessCreationParameters {
 #if USE(SOUP)
     String cookiePersistentStoragePath;
     uint32_t cookiePersistentStorageType { 0 };
-    HTTPCookieAcceptPolicy cookieAcceptPolicy { 0 };
-    bool ignoreTLSErrors { true };
+    HTTPCookieAcceptPolicy cookieAcceptPolicy { HTTPCookieAcceptPolicyAlways };
+    bool ignoreTLSErrors { false };
     Vector<String> languages;
     WebCore::SoupNetworkProxySettings proxySettings;
 #endif

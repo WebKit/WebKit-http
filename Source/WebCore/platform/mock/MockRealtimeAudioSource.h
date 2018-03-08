@@ -45,6 +45,8 @@ public:
     static RefPtr<MockRealtimeAudioSource> create(const String&, const MediaConstraints*);
     static RefPtr<MockRealtimeAudioSource> createMuted(const String& name);
 
+    static CaptureFactory& factory();
+
     virtual ~MockRealtimeAudioSource() = default;
 
 protected:
@@ -70,6 +72,8 @@ private:
     void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) override;
 
     void tick();
+
+    bool isCaptureSource() const final { return true; }
 
     RunLoop::Timer<MockRealtimeAudioSource> m_timer;
     double m_startTime { NAN };

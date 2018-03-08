@@ -143,7 +143,13 @@ RenderImage::RenderImage(Document& document, RenderStyle&& style, StyleImage* st
 
 RenderImage::~RenderImage()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderImage::willBeDestroyed()
+{
     imageResource().shutdown();
+    RenderReplaced::willBeDestroyed();
 }
 
 // If we'll be displaying either alt text or an image, add some padding.
@@ -230,7 +236,7 @@ void RenderImage::styleDidChange(StyleDifference diff, const RenderStyle* oldSty
 
 void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     if (hasVisibleBoxDecorations() || hasMask() || hasShapeOutside())
@@ -337,7 +343,7 @@ void RenderImage::repaintOrMarkForLayout(ImageSizeChangeType imageSizeChange, co
 
 void RenderImage::notifyFinished(CachedResource& newImage)
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     invalidateBackgroundObscurationStatus();

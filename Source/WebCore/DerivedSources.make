@@ -177,6 +177,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCAnswerOptions.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFSender.idl \
     $(WebCore)/Modules/mediastream/RTCDTMFToneChangeEvent.idl \
@@ -184,12 +185,20 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCDataChannelEvent.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidate.idl \
     $(WebCore)/Modules/mediastream/RTCIceCandidateEvent.idl \
+    $(WebCore)/Modules/mediastream/RTCIceConnectionState.idl \
+    $(WebCore)/Modules/mediastream/RTCIceGatheringState.idl \
     $(WebCore)/Modules/mediastream/RTCIceServer.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransport.idl \
+    $(WebCore)/Modules/mediastream/RTCIceTransportState.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferAnswerOptions.idl \
+    $(WebCore)/Modules/mediastream/RTCOfferOptions.idl \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
     $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpTransceiverDirection.idl \
     $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
+    $(WebCore)/Modules/mediastream/RTCSignalingState.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
     $(WebCore)/Modules/mediastream/RTCTrackEvent.idl \
     $(WebCore)/Modules/notifications/DOMWindowNotifications.idl \

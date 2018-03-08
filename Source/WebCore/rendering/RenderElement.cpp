@@ -132,28 +132,7 @@ RenderElement::RenderElement(Document& document, RenderStyle&& style, BaseTypeFl
 
 RenderElement::~RenderElement()
 {
-    if (hasInitializedStyle()) {
-        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
-            if (auto* backgroundImage = bgLayer->image())
-                backgroundImage->removeClient(this);
-        }
-        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
-            if (auto* maskImage = maskLayer->image())
-                maskImage->removeClient(this);
-        }
-        if (auto* borderImage = m_style.borderImage().image())
-            borderImage->removeClient(this);
-        if (auto* maskBoxImage = m_style.maskBoxImage().image())
-            maskBoxImage->removeClient(this);
-        if (auto shapeValue = m_style.shapeOutside()) {
-            if (auto shapeImage = shapeValue->image())
-                shapeImage->removeClient(this);
-        }
-    }
-    if (m_hasPausedImageAnimations)
-        view().removeRendererWithPausedImageAnimations(*this);
-    if (isRegisteredForVisibleInViewportCallback())
-        view().unregisterForVisibleInViewportCallback(*this);
+    // Do not add any code here. Add it to willBeDestroyed() instead.
 }
 
 RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&& style, RendererCreationType creationType)
@@ -565,7 +544,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
     }
 
     newChild->initializeFlowThreadStateOnInsertion();
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         if (notifyChildren == NotifyChildren)
             newChild->insertedIntoTree();
         if (is<RenderElement>(*newChild))
@@ -596,7 +575,7 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     // So that we'll get the appropriate dirty bit set (either that a normal flow child got yanked or
     // that a positioned child got yanked). We also repaint, so that the area exposed when the child
     // disappears gets repainted properly.
-    if (!documentBeingDestroyed() && notifyChildren == NotifyChildren && oldChild.everHadLayout()) {
+    if (!renderTreeBeingDestroyed() && notifyChildren == NotifyChildren && oldChild.everHadLayout()) {
         oldChild.setNeedsLayoutAndPrefWidthsRecalc();
         // We only repaint |oldChild| if we have a RenderLayer as its visual overflow may not be tracked by its parent.
         if (oldChild.isBody())
@@ -611,15 +590,15 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     else if (is<RenderLineBreak>(oldChild))
         downcast<RenderLineBreak>(oldChild).deleteInlineBoxWrapper();
     
-    if (!documentBeingDestroyed() && is<RenderFlexibleBox>(this) && !oldChild.isFloatingOrOutOfFlowPositioned() && oldChild.isBox())
+    if (!renderTreeBeingDestroyed() && is<RenderFlexibleBox>(this) && !oldChild.isFloatingOrOutOfFlowPositioned() && oldChild.isBox())
         downcast<RenderFlexibleBox>(this)->clearCachedChildIntrinsicContentLogicalHeight(downcast<RenderBox>(oldChild));
 
     // If oldChild is the start or end of the selection, then clear the selection to
     // avoid problems of invalid pointers.
-    if (!documentBeingDestroyed() && oldChild.isSelectionBorder())
+    if (!renderTreeBeingDestroyed() && oldChild.isSelectionBorder())
         frame().selection().setNeedsSelectionUpdate();
 
-    if (!documentBeingDestroyed() && notifyChildren == NotifyChildren)
+    if (!renderTreeBeingDestroyed() && notifyChildren == NotifyChildren)
         oldChild.willBeRemovedFromTree();
 
     oldChild.resetFlowThreadStateOnRemoval();
@@ -646,7 +625,7 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
 
     // rendererRemovedFromTree walks the whole subtree. We can improve performance
     // by skipping this step when destroying the entire tree.
-    if (!documentBeingDestroyed() && is<RenderElement>(oldChild))
+    if (!renderTreeBeingDestroyed() && is<RenderElement>(oldChild))
         RenderCounter::rendererRemovedFromTree(downcast<RenderElement>(oldChild));
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
@@ -1013,13 +992,8 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
     if (s_affectsParentBlock)
         handleDynamicFloatPositionChange();
 
-    if (s_noLongerAffectsParentBlock) {
+    if (s_noLongerAffectsParentBlock)
         removeAnonymousWrappersForInlinesIfNecessary();
-        // Fresh floats need to be reparented if they actually belong to the previous anonymous block.
-        // It copies the logic of RenderBlock::addChildIgnoringContinuation
-        if (style().isFloating() && previousSibling() && previousSibling()->isAnonymousBlock())
-            downcast<RenderBoxModelObject>(*parent()).moveChildTo(&downcast<RenderBoxModelObject>(*previousSibling()), this);
-    }
 
     SVGRenderSupport::styleChanged(*this, oldStyle);
 
@@ -1107,7 +1081,7 @@ void RenderElement::willBeRemovedFromTree()
 
 inline void RenderElement::clearLayoutRootIfNeeded() const
 {
-    if (documentBeingDestroyed())
+    if (renderTreeBeingDestroyed())
         return;
 
     if (view().frameView().layoutRoot() != this)
@@ -1132,13 +1106,16 @@ void RenderElement::willBeDestroyed()
 
     destroyLeftoverChildren();
 
+    if (isRegisteredForVisibleInViewportCallback())
+        unregisterForVisibleInViewportCallback();
+
     if (hasCounterNodeMap())
         RenderCounter::destroyCounterNodes(*this);
 
     RenderObject::willBeDestroyed();
 
 #if !ASSERT_DISABLED
-    if (!documentBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
+    if (!renderTreeBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
         // After remove, the object and the associated information should not be in any flow thread.
         for (auto& flowThread : *view().flowThreadController().renderNamedFlowThreadList()) {
             ASSERT(!flowThread->hasChildInfo(this));
@@ -1147,6 +1124,30 @@ void RenderElement::willBeDestroyed()
 #endif
 
     clearLayoutRootIfNeeded();
+
+    if (hasInitializedStyle()) {
+        for (auto* bgLayer = &m_style.backgroundLayers(); bgLayer; bgLayer = bgLayer->next()) {
+            if (auto* backgroundImage = bgLayer->image())
+                backgroundImage->removeClient(this);
+        }
+        for (auto* maskLayer = &m_style.maskLayers(); maskLayer; maskLayer = maskLayer->next()) {
+            if (auto* maskImage = maskLayer->image())
+                maskImage->removeClient(this);
+        }
+        if (auto* borderImage = m_style.borderImage().image())
+            borderImage->removeClient(this);
+        if (auto* maskBoxImage = m_style.maskBoxImage().image())
+            maskBoxImage->removeClient(this);
+        if (auto shapeValue = m_style.shapeOutside()) {
+            if (auto shapeImage = shapeValue->image())
+                shapeImage->removeClient(this);
+        }
+    }
+    if (m_hasPausedImageAnimations)
+        view().removeRendererWithPausedImageAnimations(*this);
+
+    if (isRegisteredForVisibleInViewportCallback())
+        view().unregisterForVisibleInViewportCallback(*this);
 }
 
 void RenderElement::setNeedsPositionedMovementLayout(const RenderStyle* oldStyle)

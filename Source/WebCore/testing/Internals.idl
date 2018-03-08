@@ -244,6 +244,7 @@ enum EventThrottlingBehavior {
     unsigned long imageFrameIndex(HTMLImageElement element);
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
     void resetImageAnimation(HTMLImageElement element);
+    void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean value);
 
     readonly attribute InternalSettings settings;
     readonly attribute unsigned long workerThreadCount;
@@ -391,6 +392,7 @@ enum EventThrottlingBehavior {
     void setUsesMockScrollAnimator(boolean enabled);
 
     void forceReload(boolean endToEnd);
+    void reloadExpiredOnly();
 
     void enableAutoSizeMode(boolean enabled, long minimumWidth, long minimumHeight, long maximumWidth, long maximumHeight);
 
@@ -516,4 +518,8 @@ enum EventThrottlingBehavior {
     void disableTileSizeUpdateDelay();
 
     [Conditional=WEBGL] void simulateWebGLContextChanged(WebGLRenderingContextBase context);
+
+    [Conditional=MEDIA_STREAM] void observeMediaStreamTrack(MediaStreamTrack track);
+    [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackAudioSampleCount;
+    [Conditional=MEDIA_STREAM] readonly attribute unsigned long trackVideoSampleCount;
 };

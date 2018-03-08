@@ -30,7 +30,6 @@
 
 #import "AccessibilityIOS.h"
 #import "AssistedNodeInformation.h"
-#import "CelestialSPI.h"
 #import "DataReference.h"
 #import "DrawingArea.h"
 #import "EditingRange.h"
@@ -100,7 +99,6 @@
 #import <WebCore/RenderView.h>
 #import <WebCore/Settings.h>
 #import <WebCore/SharedBuffer.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/StyleProperties.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextIterator.h>
@@ -112,14 +110,6 @@
 #import <wtf/MemoryPressureHandler.h>
 #import <wtf/SetForScope.h>
 
-SOFT_LINK_PRIVATE_FRAMEWORK_OPTIONAL(Celestial)
-
-SOFT_LINK_CLASS_OPTIONAL(Celestial, AVSystemController)
-
-SOFT_LINK_CONSTANT_MAY_FAIL(Celestial, AVSystemController_PIDToInheritApplicationStateFrom, NSString *)
-
-#define AVSystemController_PIDToInheritApplicationStateFrom getAVSystemController_PIDToInheritApplicationStateFrom()
-
 using namespace WebCore;
 
 namespace WebKit {
@@ -130,14 +120,6 @@ const int blockSelectionStartHeight = 100;
 void WebPage::platformInitialize()
 {
     platformInitializeAccessibility();
-
-    if (canLoadAVSystemController_PIDToInheritApplicationStateFrom()) {
-        pid_t pid = WebProcess::singleton().presenterApplicationPid();
-        NSError *error = nil;
-        [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(pid) forKey:AVSystemController_PIDToInheritApplicationStateFrom error:&error];
-        if (error)
-            WTFLogAlways("Failed to set up PID proxying: %s", [[error localizedDescription] UTF8String]);
-    }
 }
 
 void WebPage::platformDetach()
@@ -649,7 +631,7 @@ void WebPage::didConcludeEditDataInteraction()
 {
     std::optional<TextIndicatorData> textIndicatorData;
 
-    static auto defaultEditDragTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionDoNotClipToVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    static auto defaultEditDragTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionDoNotClipToVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
     auto& frame = m_page->focusController().focusedOrMainFrame();
     if (auto range = frame.selection().selection().toNormalizedRange()) {
         if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDragTextIndicatorOptions, TextIndicatorPresentationTransition::None))
@@ -1310,8 +1292,16 @@ static inline RefPtr<Range> unionDOMRanges(Range* rangeA, Range* rangeB)
     if (!rangeA)
         return rangeB;
 
-    Range* start = rangeA->compareBoundaryPoints(Range::START_TO_START, *rangeB).releaseReturnValue() <= 0 ? rangeA : rangeB;
-    Range* end = rangeA->compareBoundaryPoints(Range::END_TO_END, *rangeB).releaseReturnValue() <= 0 ? rangeB : rangeA;
+    auto startToStartComparison = rangeA->compareBoundaryPoints(Range::START_TO_START, *rangeB);
+    if (startToStartComparison.hasException())
+        return nullptr;
+
+    auto endToEndComparison = rangeA->compareBoundaryPoints(Range::END_TO_END, *rangeB);
+    if (endToEndComparison.hasException())
+        return nullptr;
+
+    auto* start = startToStartComparison.releaseReturnValue() <= 0 ? rangeA : rangeB;
+    auto* end = endToEndComparison.releaseReturnValue() <= 0 ? rangeB : rangeA;
 
     return Range::create(rangeA->ownerDocument(), &start->startContainer(), start->startOffset(), &end->endContainer(), end->endOffset());
 }

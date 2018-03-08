@@ -3024,7 +3024,7 @@ void FrameView::scheduleRelayoutOfSubtree(RenderElement& newRelayoutRoot)
     const RenderView& renderView = *this->renderView();
 
     // Try to catch unnecessary work during render tree teardown.
-    ASSERT(!renderView.documentBeingDestroyed());
+    ASSERT(!renderView.renderTreeBeingDestroyed());
     ASSERT(frame().view() == this);
 
     // When m_layoutRoot is already set, ignore the renderView's needsLayout bit
@@ -4429,8 +4429,6 @@ void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect
 
     if (m_layoutPhase == InViewSizeAdjust)
         return;
-
-    TraceScope tracingScope(PaintViewStart, PaintViewEnd);
 
     ASSERT(m_layoutPhase == InPostLayerPositionsUpdatedAfterLayout || m_layoutPhase == OutsideLayout);
     

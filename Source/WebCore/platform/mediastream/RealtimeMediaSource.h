@@ -54,13 +54,14 @@ class MediaTime;
 namespace WebCore {
 
 class AudioStreamDescription;
+class CaptureDevice;
 class FloatRect;
 class GraphicsContext;
 class MediaStreamPrivate;
 class PlatformAudioData;
 class RealtimeMediaSourceSettings;
 
-class RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
+class WEBCORE_EXPORT RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
 public:
     class Observer {
     public:
@@ -80,6 +81,15 @@ public:
 
         // May be called on a background thread.
         virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
+    };
+
+    class CaptureFactory {
+    public:
+        virtual ~CaptureFactory() = default;
+        virtual RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice&, const MediaConstraints*, String&) = 0;
+
+    protected:
+        CaptureFactory() = default;
     };
 
     virtual ~RealtimeMediaSource() { }
@@ -124,11 +134,10 @@ public:
     virtual bool readonly() const;
     virtual void setReadonly(bool readonly) { m_readonly = readonly; }
 
-    virtual bool remote() const { return m_remote; }
-    virtual void setRemote(bool remote) { m_remote = remote; }
+    virtual bool isCaptureSource() const { return false; }
 
-    void addObserver(Observer&);
-    void removeObserver(Observer&);
+    WEBCORE_EXPORT void addObserver(Observer&);
+    WEBCORE_EXPORT void removeObserver(Observer&);
 
     virtual void startProducingData() { }
     virtual void stopProducingData() { }
@@ -190,6 +199,8 @@ protected:
     virtual void applyConstraints(const FlattenedConstraint&);
     virtual void applySizeAndFrameRate(std::optional<int> width, std::optional<int> height, std::optional<double>);
 
+    const Vector<Observer*> observers() const { return m_observers; }
+
     bool m_muted { false };
     bool m_enabled { true };
 
@@ -214,7 +225,6 @@ private:
     bool m_echoCancellation { false };
     bool m_stopped { false };
     bool m_readonly { false };
-    bool m_remote { false };
     bool m_pendingSettingsDidChangeNotification { false };
     bool m_suppressNotifications { true };
 };

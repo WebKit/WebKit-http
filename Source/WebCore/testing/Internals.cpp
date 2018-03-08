@@ -90,6 +90,7 @@
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaStreamTrack.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
 #include "MockLibWebRTCPeerConnection.h"
@@ -376,6 +377,10 @@ Ref<Internals> Internals::create(Document& document)
 
 Internals::~Internals()
 {
+#if ENABLE(MEDIA_STREAM)
+    if (m_track)
+        m_track->source().removeObserver(*this);
+#endif
 }
 
 void Internals::resetToConsistentState(Page& page)
@@ -737,6 +742,19 @@ void Internals::resetImageAnimation(HTMLImageElement& element)
         return;
 
     image->resetAnimation();
+}
+
+void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return;
+
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return;
+
+    downcast<BitmapImage>(*image).setClearDecoderAfterAsyncFrameRequestForTesting(value);
 }
 
 void Internals::clearPageCache()
@@ -2820,7 +2838,16 @@ void Internals::setUsesMockScrollAnimator(bool enabled)
 
 void Internals::forceReload(bool endToEnd)
 {
-    frame()->loader().reload(endToEnd);
+    OptionSet<ReloadOption> reloadOptions;
+    if (endToEnd)
+        reloadOptions |= ReloadOption::FromOrigin;
+
+    frame()->loader().reload(reloadOptions);
+}
+
+void Internals::reloadExpiredOnly()
+{
+    frame()->loader().reload(ReloadOption::ExpiredOnly);
 }
 
 void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHeight, int maximumWidth, int maximumHeight)
@@ -3824,5 +3851,13 @@ void Internals::simulateWebGLContextChanged(WebGLRenderingContextBase& context)
 }
 #endif
 
+
+#if ENABLE(MEDIA_STREAM)
+void Internals::observeMediaStreamTrack(MediaStreamTrack& track)
+{
+    m_track = &track;
+    m_track->source().addObserver(*this);
+}
+#endif
 
 } // namespace WebCore

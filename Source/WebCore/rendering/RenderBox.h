@@ -430,7 +430,7 @@ public:
     LayoutUnit computeReplacedLogicalHeightRespectingMinMaxHeight(LayoutUnit logicalHeight) const;
 
     virtual LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const;
-    virtual LayoutUnit computeReplacedLogicalHeight() const;
+    virtual LayoutUnit computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth = std::nullopt) const;
 
     std::optional<LayoutUnit> computePercentageLogicalHeight(const Length& height) const;
 
@@ -634,6 +634,7 @@ protected:
     void updateFromStyle() override;
 
     void willBeRemovedFromTree() override;
+    void willBeDestroyed() override;
 
     bool createsNewFormattingContext() const;
 

@@ -57,6 +57,7 @@
 #include "ValueProfile.h"
 #include <type_traits>
 #include <wtf/ListDump.h>
+#include <wtf/LoggingHashSet.h>
 
 namespace JSC {
 
@@ -246,6 +247,8 @@ struct CallDOMGetterData {
 // Node represents a single operation in the data flow graph.
 struct Node {
 public:
+    static const char HashSetTemplateInstantiationString[];
+    
     enum VarArgTag { VarArg };
     
     Node() { }
@@ -1905,9 +1908,11 @@ public:
         return m_refCount;
     }
     
+    // Return true if the execution of this Node does not affect our ability to OSR to the FTL.
+    // FIXME: Isn't this just like checking if the node has effects?
     bool isSemanticallySkippable()
     {
-        return op() == CountExecution;
+        return op() == CountExecution || op() == InvalidationPoint;
     }
 
     unsigned refCount()
@@ -2628,6 +2633,10 @@ public:
     BasicBlock* owner;
 };
 
+// Uncomment this to log NodeSet operations.
+// typedef LoggingHashSet<Node::HashSetTemplateInstantiationString, Node*> NodeSet;
+typedef HashSet<Node*> NodeSet;
+
 struct NodeComparator {
     template<typename NodePtrType>
     bool operator()(NodePtrType a, NodePtrType b) const
@@ -2682,6 +2691,14 @@ void printInternal(PrintStream&, JSC::DFG::SwitchKind);
 void printInternal(PrintStream&, JSC::DFG::Node*);
 
 inline JSC::DFG::Node* inContext(JSC::DFG::Node* node, JSC::DumpContext*) { return node; }
+
+template<>
+struct LoggingHashKeyTraits<JSC::DFG::Node*> {
+    static void print(PrintStream& out, JSC::DFG::Node* key)
+    {
+        out.print("bitwise_cast<::JSC::DFG::Node*>(", RawPointer(key), "lu)");
+    }
+};
 
 } // namespace WTF
 

@@ -537,11 +537,10 @@ void SocketStreamHandleImpl::readStreamCallback(CFStreamEventType type)
         if (!length)
             return;
 
-        std::optional<size_t> optionalLength;
-        if (length != -1)
-            optionalLength = length;
-        
-        m_client.didReceiveSocketStreamData(*this, reinterpret_cast<const char*>(ptr), optionalLength);
+        if (length == -1)
+            m_client.didFailToReceiveSocketStreamData(*this);
+        else
+            m_client.didReceiveSocketStreamData(*this, reinterpret_cast<const char*>(ptr), length);
 
         return;
     }
@@ -654,7 +653,7 @@ SocketStreamHandleImpl::~SocketStreamHandleImpl()
     ASSERT(!m_pacRunLoopSource);
 }
 
-std::optional<size_t> SocketStreamHandleImpl::platformSend(const char* data, size_t length)
+std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const char* data, size_t length)
 {
     if (!CFWriteStreamCanAcceptBytes(m_writeStream.get()))
         return std::nullopt;

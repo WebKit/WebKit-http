@@ -29,7 +29,25 @@
 
 #if WK_API_ENABLED
 
+#import "APIContentExtensionStore.h"
 #import "WKErrorInternal.h"
+
+static WKErrorCode toWKErrorCode(const std::error_code& error)
+{
+    ASSERT(error.category() == API::contentExtensionStoreErrorCategory());
+    switch (static_cast<API::ContentExtensionStore::Error>(error.value())) {
+    case API::ContentExtensionStore::Error::LookupFailed:
+        return WKErrorContentExtensionStoreLookUpFailed;
+    case API::ContentExtensionStore::Error::VersionMismatch:
+        return WKErrorContentExtensionStoreVersionMismatch;
+    case API::ContentExtensionStore::Error::CompileFailed:
+        return WKErrorContentExtensionStoreCompileFailed;
+    case API::ContentExtensionStore::Error::RemoveFailed:
+        return WKErrorContentExtensionStoreRemoveFailed;
+    }
+    ASSERT_NOT_REACHED();
+    return WKErrorUnknown;
+}
 
 @implementation WKContentExtensionStore
 
@@ -83,7 +101,7 @@
     });
 }
 
-- (void)lookupContentExtensionForIdentifier:(NSString *)identifier completionHandler:(void (^)(WKContentExtension *, NSError *))completionHandler
+- (void)lookUpContentExtensionForIdentifier:(NSString *)identifier completionHandler:(void (^)(WKContentExtension *, NSError *))completionHandler
 {
     auto handler = adoptNS([completionHandler copy]);
 
@@ -92,8 +110,9 @@
             auto rawHandler = (void (^)(WKContentExtension *, NSError *))handler.get();
 
             auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Extension lookup failed: %s", error.message().c_str()]};
-            ASSERT(error.value() == WKErrorContentExtensionStoreLookupFailed || error.value() == WKErrorContentExtensionStoreVersionMismatch);
-            rawHandler(nil, [NSError errorWithDomain:WKErrorDomain code:error.value() userInfo:userInfo]);
+            auto wkError = toWKErrorCode(error);
+            ASSERT(wkError == WKErrorContentExtensionStoreLookUpFailed || wkError == WKErrorContentExtensionStoreVersionMismatch);
+            rawHandler(nil, [NSError errorWithDomain:WKErrorDomain code:wkError userInfo:userInfo]);
             return;
         }
 
@@ -111,7 +130,7 @@
             auto rawHandler = (void (^)(NSError *))handler.get();
 
             auto userInfo = @{NSHelpAnchorErrorKey: [NSString stringWithFormat:@"Extension removal failed: %s", error.message().c_str()]};
-            ASSERT(error.value() == WKErrorContentExtensionStoreRemoveFailed);
+            ASSERT(toWKErrorCode(error) == WKErrorContentExtensionStoreRemoveFailed);
             rawHandler([NSError errorWithDomain:WKErrorDomain code:WKErrorContentExtensionStoreRemoveFailed userInfo:userInfo]);
             return;
         }
@@ -142,6 +161,18 @@
 - (void)_invalidateContentExtensionVersionForIdentifier:(NSString *)identifier
 {
     _contentExtensionStore->invalidateContentExtensionVersion(identifier);
+}
+
+- (void)_getContentExtensionSourceForIdentifier:(NSString *)identifier completionHandler:(void (^)(NSString*))completionHandler
+{
+    auto handler = adoptNS([completionHandler copy]);
+    _contentExtensionStore->getContentExtensionSource(identifier, [handler](String source) {
+        auto rawHandler = (void (^)(NSString *))handler.get();
+        if (source.isNull())
+            rawHandler(nil);
+        else
+            rawHandler(source);
+    });
 }
 
 // NS_RELEASES_ARGUMENT to keep peak memory usage low.

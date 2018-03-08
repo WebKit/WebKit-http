@@ -40,11 +40,18 @@ RenderQuote::RenderQuote(Document& document, RenderStyle&& style, QuoteType quot
 
 RenderQuote::~RenderQuote()
 {
+    // Do not add any code here. Add it to willBeDestroyed() instead.
+}
+
+void RenderQuote::willBeDestroyed()
+{
     detachQuote();
 
     ASSERT(!m_isAttached);
     ASSERT(!m_next);
     ASSERT(!m_previous);
+
+    RenderInline::willBeDestroyed();
 }
 
 void RenderQuote::insertedIntoTree()
@@ -446,7 +453,7 @@ void RenderQuote::detachQuote()
         view().setRenderQuoteHead(m_next);
     if (m_next)
         m_next->m_previous = m_previous;
-    if (!documentBeingDestroyed()) {
+    if (!renderTreeBeingDestroyed()) {
         for (RenderQuote* quote = m_next; quote; quote = quote->m_next)
             quote->updateDepth();
     }

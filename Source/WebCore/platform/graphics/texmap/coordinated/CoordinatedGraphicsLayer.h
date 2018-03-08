@@ -233,7 +233,7 @@ private:
     PlatformLayer* m_platformLayer;
     Timer m_animationStartedTimer;
     TextureMapperAnimations m_animations;
-    double m_lastAnimationStartTime;
+    double m_lastAnimationStartTime { 0.0 };
 
     ScrollableArea* m_scrollableArea;
 };

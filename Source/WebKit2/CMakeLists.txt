@@ -102,6 +102,11 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
 endif ()
 
 set(WebKit2_SOURCES
+    DatabaseProcess/DatabaseProcess.cpp
+    DatabaseProcess/DatabaseToWebProcessConnection.cpp
+
+    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
+
     NetworkProcess/CustomProtocols/LegacyCustomProtocolManager.cpp
 
     NetworkProcess/Downloads/BlobDownloadClient.cpp
@@ -141,11 +146,6 @@ set(WebKit2_SOURCES
     NetworkProcess/capture/NetworkCaptureReplayer.cpp
     NetworkProcess/capture/NetworkCaptureResource.cpp
     NetworkProcess/capture/NetworkDataTaskReplay.cpp
-
-    DatabaseProcess/DatabaseProcess.cpp
-    DatabaseProcess/DatabaseToWebProcessConnection.cpp
-
-    DatabaseProcess/IndexedDB/WebIDBConnectionToClient.cpp
 
     Platform/Logging.cpp
     Platform/Module.cpp
@@ -340,7 +340,7 @@ set(WebKit2_SOURCES
     UIProcess/API/APIContentExtensionStore.cpp
     UIProcess/API/APIExperimentalFeature.cpp
     UIProcess/API/APIFrameInfo.cpp
-    UIProcess/API/APIHTTPCookieStorage.cpp
+    UIProcess/API/APIHTTPCookieStore.cpp
     UIProcess/API/APIHitTestResult.cpp
     UIProcess/API/APINavigation.cpp
     UIProcess/API/APINavigationData.cpp

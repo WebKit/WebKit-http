@@ -136,6 +136,7 @@ public:
     void setSubtleCryptoEnabled(bool);
     void setMediaStreamEnabled(bool);
     void setPeerConnectionEnabled(bool);
+    void setWebRTCLegacyAPIEnabled(bool);
 
     // Special DOM functions.
     void clearBackForwardList();
