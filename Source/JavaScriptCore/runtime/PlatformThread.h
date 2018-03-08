@@ -73,6 +73,12 @@ inline bool platformThreadSignal(PlatformThread platformThread, int signalNumber
     int errNo = pthread_kill(pthreadID, signalNumber);
     return !errNo; // A 0 errNo means success.
 }
+#elif OS(HAIKU)
+inline bool platformThreadSignal(PlatformThread pthreadID, int signalNumber)
+{
+    int errNo = send_signal(pthreadID, signalNumber);
+    return !errNo; // A 0 errNo means success.
+}
 #elif USE(PTHREADS)
 inline bool platformThreadSignal(PlatformThread pthreadID, int signalNumber)
 {

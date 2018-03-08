@@ -186,9 +186,6 @@ void EditorClientHaiku::respondToChangedSelection(Frame* frame)
     if (!frame)
         return;
 
-    if (frame->editor().ignoreCompositionSelectionChange())
-        return;
-
     BMessage message(EDITOR_SELECTION_CHANGED);
     dispatchMessage(message);
 }

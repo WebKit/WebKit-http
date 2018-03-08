@@ -104,9 +104,3 @@ void PlatformStrategiesHaiku::deleteCookie(const NetworkStorageSession& session,
 {
     WebCore::deleteCookie(session, url, cookieName);
 }
-
-void PlatformStrategiesHaiku::addCookie(const NetworkStorageSession& session, const URL& url, const Cookie& cookie)
-{
-	WebCore::addCookie(session, url, cookie);
-}
-
