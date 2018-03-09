@@ -1308,19 +1308,6 @@ bool AppendPipeline::dispatchPendingDecryptionStructure()
     // gst_event_new_custom() takes over ownership of it.
     bool wasEventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
     GST_TRACE("dispatched key to append pipeline %p, handled %s", this, boolForPrinting(wasEventHandled));
-    if (wasEventHandled) {
-        if (WTF::isMainThread()) {
-            transitionTo(AppendState::Ongoing, true);
-        } else {
-            GstStructure* structure = gst_structure_new("transition-main-thread", "transition", G_TYPE_INT, AppendState::Ongoing, nullptr);
-            GstMessage* message = gst_message_new_application(GST_OBJECT(m_appsrc.get()), structure);
-            if (gst_bus_post(m_bus.get(), message)) {
-                GST_TRACE("transition-main-thread Ongoing sent to the bus");
-                LockHolder locker(m_appendStateTransitionLock);
-                m_appendStateTransitionCondition.wait(m_appendStateTransitionLock);
-            }
-        }
-    }
     return wasEventHandled;
 }
 
