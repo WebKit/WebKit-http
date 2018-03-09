@@ -55,6 +55,7 @@ if (USE_COORDINATED_GRAPHICS)
         platform/graphics/nicosia/NicosiaPaintingContext.cpp
         platform/graphics/nicosia/NicosiaPaintingEngine.cpp
         platform/graphics/nicosia/NicosiaPaintingEngineBasic.cpp
+        platform/graphics/nicosia/NicosiaPaintingEngineThreaded.cpp
 
         platform/graphics/nicosia/cairo/NicosiaPaintingContextCairo.cpp
     )
