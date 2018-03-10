@@ -42,6 +42,7 @@
 #include <set>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
+#include <wtf/StreamBuffer.h>
 
 namespace WebCore {
 
@@ -56,8 +57,11 @@ namespace WebCore {
         virtual 			~SocketStreamHandleImpl();
 
     protected:
-        std::optional<size_t>	platformSend(const char* data, size_t length) final;
-        virtual void 		platformClose() final;
+        void			platformSend(const char* data, size_t length, Function<void(bool)>&&) final;
+        std::optional<size_t>	platformSendInternal(const char* data, size_t length);
+        void 			platformClose() final;
+	size_t 			bufferedAmount() final;
+	bool			sendPendingData();
 
     private:
         					SocketStreamHandleImpl(const URL&, SocketStreamHandleClient&);
@@ -80,6 +84,9 @@ namespace WebCore {
         BSocket* 			socket;
 
         static std::set<void*> liveObjects;
+
+	StreamBuffer<char, 1024 * 1024> m_buffer;
+	static const unsigned maxBufferSize = 100 * 1024 * 1024;
     };
 
 }  // namespace WebCore
