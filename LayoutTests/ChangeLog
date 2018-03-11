@@ -1,3 +1,645 @@
+2017-03-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark webrtc/connection-state.html as failing.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Support RTCPeerConnectionState
+        https://bugs.webkit.org/show_bug.cgi?id=169978
+
+        Reviewed by Jon Lee.
+
+        * webrtc/connection-state-expected.txt: Added.
+        * webrtc/connection-state.html: Added.
+        * webrtc/rtcpeerconnection-error-messages-expected.txt:
+
+2017-03-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Enable CSS filters related tests.
+        https://bugs.webkit.org/show_bug.cgi?id=99026
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/css3/filters/composited-during-transition-layertree-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-blur-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-blur-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-blur-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-blur-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-combined-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-combined-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-combined-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-combined-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-contrast-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-contrast-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-contrast-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-contrast-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-grayscale-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-grayscale-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-grayscale-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-grayscale-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-hue-rotate-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-hue-rotate-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-hue-rotate-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-hue-rotate-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-invert-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-invert-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-invert-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-invert-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-opacity-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-opacity-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-opacity-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-opacity-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-composite-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-composite-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-composite-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-composite-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-ordering-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-ordering-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-ordering-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-reference-ordering-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-saturate-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-saturate-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-saturate-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-saturate-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-sepia-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-sepia-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-sepia-hw-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/effect-sepia-hw-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/filters/regions-expanding-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/filters/regions-expanding-expected.txt: Added. Rebaselined.
+
+2017-03-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        ASSERT_WITH_SECURITY_IMPLICATION hit when removing an <input type="range"> while dragging on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=165535
+        <rdar://problem/29559749>
+
+        Reviewed by Ryosuke Niwa.
+
+        This test case is only enabled in iOS simulator WK2.
+
+        * TestExpectations:
+        * fast/forms/range/range-remove-on-drag-expected.txt: Added.
+        * fast/forms/range/range-remove-on-drag.html: Added.
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-03-22  Antti Koivisto  <antti@apple.com>
+
+        Dynamically applied :empty pseudo class with display:none does not get unapplied
+        https://bugs.webkit.org/show_bug.cgi?id=169907
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/css/empty-display-none-invalidation-expected.html: Added.
+        * fast/css/empty-display-none-invalidation.html: Added.
+
+2017-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Add support for Error.stackTraceLimit.
+        https://bugs.webkit.org/show_bug.cgi?id=169904
+
+        Reviewed by Saam Barati.
+
+        Rebased test.
+
+        * js/Object-getOwnPropertyNames-expected.txt:
+        * js/script-tests/Object-getOwnPropertyNames.js:
+
+2017-03-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Update layout test expectations file.
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations: Update the list of expected failures.
+
+2017-03-22  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Controls size lags behind media size
+        https://bugs.webkit.org/show_bug.cgi?id=169962
+        <rdar://problem/30340293>
+
+        Reviewed by Dean Jackson.
+
+        Updating an existing test to use a "resize" event handler to check that a size change
+        on the element is reflected on the shadow root. This would have failed prior to this
+        patch. Also rebaselining a test which now reports correct values.
+
+        * media/modern-media-controls/media-controller/media-controller-resize-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-resize.html:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio-expected.txt:
+        * media/modern-media-controls/media-controller/media-controller-scale-factor-audio.html:
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Activate remaining webrtc tests
+        https://bugs.webkit.org/show_bug.cgi?id=169957
+
+        Unreviewed.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-03-22  Chris Dumez  <cdumez@apple.com>
+
+        WebKit should disallow beforeunload alerts from web pages users have never interacted with
+        https://bugs.webkit.org/show_bug.cgi?id=169936
+        <rdar://problem/23798897>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/events/before-unload-return-string-conversion-expected.txt:
+        * fast/events/before-unload-returnValue-expected.txt:
+        Rebaseline now that the CONFIRM MESSAGE is no longer shown. This is because there is
+        no user interaction with the page.
+
+        * fast/events/beforeunload-alert-no-user-interaction-expected.txt: Added.
+        * fast/events/beforeunload-alert-no-user-interaction.html: Added.
+        * fast/events/beforeunload-alert-user-interaction-expected.txt: Added.
+        * fast/events/beforeunload-alert-user-interaction.html: Added.
+        * fast/events/beforeunload-alert-user-interaction2-expected.txt: Added.
+        * fast/events/beforeunload-alert-user-interaction2.html: Added.
+        Add layout test coverage.
+
+        * fast/loader/form-submission-after-beforeunload-cancel.html:
+        * fast/loader/show-only-one-beforeunload-dialog.html:
+        * http/tests/misc/iframe-beforeunload-dialog-matching-ancestor-securityorigin.html:
+        * http/tests/misc/iframe-beforeunload-dialog-not-matching-ancestor-securityorigin.html:
+        Simulate user interaction with the page so that the CONFIRM MESSAGE log lines are still
+        shown.
+
+2017-03-22  Nan Wang  <n_wang@apple.com>
+
+        AX: WebKit is returning the wrong rangeForLine
+        https://bugs.webkit.org/show_bug.cgi?id=169940
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/range-for-contenteditable-newline-expected.txt:
+        * accessibility/mac/range-for-contenteditable-newline.html:
+
+2017-03-22  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Fix partitioning bug for client-side cookie access
+        https://bugs.webkit.org/show_bug.cgi?id=169906
+        <rdar://problem/31164456>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction-expected.txt:
+        * http/tests/loading/resourceLoadStatistics/resources/get-cookies.php:
+            Now also outputs document.cookie client-side.
+
+2017-03-22  Jer Noble  <jer.noble@apple.com>
+
+        Media files served without an extension will not load in <video> tag.
+        https://bugs.webkit.org/show_bug.cgi?id=169895
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/video-served-as-text-with-type-expected.txt: Added.
+        * http/tests/media/video-served-as-text-with-type.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-03-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove duplicate TestExpectations entry.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-03-22  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBRequest respond() (readable stream state)
+        https://bugs.webkit.org/show_bug.cgi?id=169759
+
+        Reviewed by Youenn Fablet.
+
+        Added new tests to check code that can currently be reached.
+
+        * streams/readable-stream-byob-request-expected.txt: Updated.
+        * streams/readable-stream-byob-request.js: Updated.
+
+2017-03-22  Youenn Fablet  <youenn@apple.com>
+
+        Move LayoutTests/webrtc/rtcconfiguration-icecandidatepoolsize.html to web-platform-tests
+        https://bugs.webkit.org/show_bug.cgi?id=169958
+
+        Reviewed by Jon Lee.
+
+        * webrtc/rtcconfiguration-icecandidatepoolsize-expected.txt: Removed.
+        * webrtc/rtcconfiguration-icecandidatepoolsize.html: Removed.
+
+2017-03-22  Antoine Quint  <graouts@webkit.org>
+
+        [Modern Media Controls] Rendering glitches for fullscreen controls while dragging
+        https://bugs.webkit.org/show_bug.cgi?id=169949
+        <rdar://problem/30687803>
+
+        Reviewed by Eric Carlson.
+
+        Add an assertion that checks that the controls bar is not clipped.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline fast/text/hyphenate-limit-lines.html.
+
+        * platform/gtk/fast/text/hyphenate-limit-lines-expected.txt:
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Remove platform expectation after r214246.
+
+        * platform/gtk/http/tests/loading/server-redirect-for-provisional-load-caching-expected.txt: Removed.
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several tests after r214244.
+
+        * platform/gtk/accessibility/file-upload-button-stringvalue-expected.txt:
+        * platform/gtk/fast/forms/box-shadow-override-expected.png:
+        * platform/gtk/fast/forms/box-shadow-override-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.png:
+        * platform/gtk/fast/forms/file/file-input-direction-expected.txt:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.png:
+        * platform/gtk/fast/forms/file/file-input-disabled-expected.txt:
+        * platform/gtk/fast/forms/form-element-geometry-expected.png:
+        * platform/gtk/fast/forms/form-element-geometry-expected.txt:
+        * platform/gtk/fast/forms/input-appearance-height-expected.png:
+        * platform/gtk/fast/forms/input-appearance-height-expected.txt:
+        * platform/gtk/fast/forms/input-value-expected.txt:
+        * platform/gtk/media/video-controls-captions-trackmenu-localized-expected.txt:
+        * platform/gtk/media/video-controls-captions-trackmenu-sorted-expected.txt:
+
+2017-03-21  Sergio Villar Senin  <svillar@igalia.com>
+
+        [Soup] "Only from websites I visit" cookie policy is broken
+        https://bugs.webkit.org/show_bug.cgi?id=168912
+
+        Reviewed by Carlos Garcia Campos.
+
+        * http/tests/security/cookies/third-party-cookie-blocking-redirect-expected.txt: Added.
+        * http/tests/security/cookies/third-party-cookie-blocking-redirect.html: Added.
+
+2017-03-21  Sergio Villar Senin  <svillar@igalia.com>
+
+        All http/ tests with PHP fail in Debian unstable with php7
+        https://bugs.webkit.org/show_bug.cgi?id=169913
+
+        Reviewed by Michael Catanzaro.
+
+        The problem is that the configuration file was still checking for php5 instead of php7.
+
+        * http/conf/debian-httpd-2.4-php7.conf:
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Several WPT tests are failing since they were added in the last update in r213882
+        https://bugs.webkit.org/show_bug.cgi?id=169915
+
+        Reviewed by Michael Catanzaro.
+
+        They fail because libsoup fails to load the requests because the response doesn't include the empty line after the
+        headers while other browsers allow that. Even with libsoup patched we still need platform specific expectations
+        for imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders.htm, because libsoup caches all header
+        names, so the first time foo-test header is cached and then always used no matter what case is used. The results
+        are still valid in any case.
+
+        * platform/gtk/imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-expected.txt: Added.
+
+2017-03-21  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Migrate off of CTFontCreateForCSS
+        https://bugs.webkit.org/show_bug.cgi?id=168894
+
+        Reviewed by Antti Koivisto.
+
+        * platform/ios-simulator/fast/text/font-weights-expected.txt:
+
+2017-03-21  Brady Eidson  <beidson@apple.com>
+
+        Disable all virtual tables.
+        <rdar://problem/31081972> and https://bugs.webkit.org/show_bug.cgi?id=169928
+
+        Reviewed by Jer Noble.
+
+        * storage/websql/test-authorizer-expected.txt:
+        * storage/websql/test-authorizer.js:
+        (createStatementsCallback):
+
+2017-03-21  Zalan Bujtas  <zalan@apple.com>
+
+        Tear down descendant renderers when <slot>'s display value is set to no "contents".
+        https://bugs.webkit.org/show_bug.cgi?id=169921
+        <rdar://problem/30336417>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/shadow-dom/slot-with-continuation-descendants-expected.txt: Added.
+        * fast/shadow-dom/slot-with-continuation-descendants.html: Added.
+
+2017-03-21  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][Wayland] Enable WebGL, 3D and compositing layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=71849
+
+        Unreviewed test gardening.
+
+        * platform/gtk-wayland/TestExpectations: Add the diff of native Wayland compared to Xvfb.
+        * platform/gtk/TestExpectations: This two tests seem flaky.
+
+2017-03-21  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Enable WebGL, 3D and compositing layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=71849
+
+        Unreviewed test gardeninng.
+
+        * http/tests/webgl/1.0.2/origin-clean-conformance-expected.txt: Rebaseline after r208049.
+        * platform/gtk/TestExpectations: Mark new expected failures.
+        * platform/gtk/compositing/animation/state-at-end-event-transform-layer-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/animation/state-at-end-event-transform-layer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/backface-visibility-in-3dtransformed-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/child-layer-no-backing-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/inline-block-no-backing-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/no-backing-for-clip-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/no-backing-for-clip-overhang-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/no-backing-for-clip-overlap-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/backing/replaced-child-no-backing-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/color-matching/image-color-matching-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/color-matching/image-color-matching-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/color-matching/pdf-image-match-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/color-matching/pdf-image-match-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/compositing-visible-descendant-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/compositing-visible-descendant-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/direct-image-compositing-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/direct-image-compositing-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/generated-content-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/generated-content-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/abs-position-inside-opacity-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/abs-position-inside-opacity-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/clipping-foreground-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/clipping-foreground-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/composited-html-size-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/composited-html-size-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/composited-in-columns-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/composited-in-columns-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/fixed-in-composited-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/fixed-in-composited-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/fixed-position-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/fixed-position-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/horizontal-scroll-composited-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/horizontal-scroll-composited-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/layer-due-to-layer-children-deep-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/layer-due-to-layer-children-deep-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/layer-due-to-layer-children-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/layer-due-to-layer-children-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/outline-change-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/outline-change-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/partial-layout-update-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/partial-layout-update-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/root-layer-update-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/root-layer-update-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/transfrom-origin-on-zero-size-layer-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/transfrom-origin-on-zero-size-layer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/vertical-scroll-composited-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/vertical-scroll-composited-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/video-fixed-scrolling-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/video-fixed-scrolling-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/video-opacity-overlay-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/geometry/video-opacity-overlay-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/composited-iframe-alignment-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/composited-iframe-alignment-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/iframe-copy-on-scroll-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/iframe-copy-on-scroll-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/iframe-in-composited-layer-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/iframe-in-composited-layer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/invisible-nested-iframe-show-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/iframes/resizer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/images/direct-image-background-color-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/images/direct-image-background-color-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/fixed-position-scroll-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/fixed-position-scroll-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/overlap-animation-container-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/overlap-animation-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/will-change-layer-creation-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layer-creation/will-change-on-normal-flow-content-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/layers-inside-overflow-scroll-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/layers-inside-overflow-scroll-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/masks/direct-image-mask-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/masks/direct-image-mask-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/masks/masked-ancestor-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/masks/masked-ancestor-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/masks/multiple-masks-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/masks/multiple-masks-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/masks/simple-composited-mask-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/masks/simple-composited-mask-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/media-controls-bar-appearance-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/composited-scrolling-creates-a-stacking-container-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/composited-scrolling-paint-phases-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/fixed-position-ancestor-clip-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/fixed-position-ancestor-clip-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/nested-scrolling-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/nested-scrolling-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-compositing-descendant-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-compositing-descendant-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-positioning-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-positioning-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-scroll-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/overflow-scroll-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/parent-overflow-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/parent-overflow-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/remove-overflow-crash2-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/remove-overflow-crash2-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/scroll-ancestor-update-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/scroll-ancestor-update-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/scrollbar-painting-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/scrollbar-painting-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/theme-affects-visual-overflow-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/overflow/theme-affects-visual-overflow-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/reflections/reflection-in-composited-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/reflections/reflection-in-composited-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/become-overlay-composited-layer-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/become-overlay-composited-layer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/composited-document-element-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/composited-document-element-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/content-into-overflow-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/content-into-overflow-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/layer-repaint-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/layer-repaint-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/layer-repaint-rects-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/layer-repaint-rects-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/newly-composited-on-scroll-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/newly-composited-on-scroll-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/opacity-between-absolute-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/opacity-between-absolute-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/opacity-between-absolute2-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/opacity-between-absolute2-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/overflow-into-content-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/repaint/overflow-into-content-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/rtl/rtl-iframe-absolute-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/rtl/rtl-iframe-relative-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/rtl/rtl-overflow-scrolling-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/rtl/rtl-scrolling-with-transformed-descendants-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/self-painting-layers-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/self-painting-layers-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/shadows/shadow-drawing-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/shadows/shadow-drawing-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/sibling-positioning-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/sibling-positioning-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/text-on-large-layer-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/text-on-large-layer-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/tiling/huge-layer-add-remove-child-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/tiling/visiblerect-accumulated-offset-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/tiling/visiblerect-accumulated-offset-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/visibility/layer-visible-content-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/webgl/webgl-background-color-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/webgl/webgl-background-color-expected.txt: Added. Rebaselined.
+        * platform/gtk/compositing/webgl/webgl-nonpremultiplied-blend-expected.png: Added. Rebaselined.
+        * platform/gtk/compositing/webgl/webgl-nonpremultiplied-blend-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-default-value-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-default-value-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-different-image-formats-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-different-image-formats-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-gif-color-2-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-gif-color-2-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-gif-color-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-gif-color-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-image-color-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-image-color-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-image-image-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-image-image-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-single-layer-no-blending-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/background-blend-mode-single-layer-no-blending-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-background-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-background-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-remove-non-stacking-context-blending-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/blend-mode-isolation-flags-remove-stacking-context-blending-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-blend-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-filter-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-mask-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-opacity-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-shadow-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-layer-shadow-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-multiply-alpha-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-multiply-alpha-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-normal-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-normal-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-plus-darker-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-plus-darker-expected.txt: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-plus-lighter-expected.png: Added. Rebaselined.
+        * platform/gtk/css3/blending/svg-blend-plus-lighter-expected.txt: Added. Rebaselined.
+        * platform/gtk/fast/canvas/webgl/css-webkit-canvas-expected.png: Added. Rebaselined.
+        * platform/gtk/fast/canvas/webgl/css-webkit-canvas-expected.txt: Added. Rebaselined.
+        * platform/gtk/fast/canvas/webgl/css-webkit-canvas-repaint-expected.png: Added. Rebaselined.
+        * platform/gtk/fast/canvas/webgl/css-webkit-canvas-repaint-expected.txt: Added. Rebaselined.
+
+2017-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Remove expectations for imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm.
+
+        It no longer works with current version of wptserve and it's already skipped globally.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Remove duplicated entry.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark more tests that are failing.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Mark several tests as failing and skip others.
+
+        * platform/gtk/TestExpectations:
+
+2017-03-20  Jon Lee  <jonlee@apple.com>
+
+        Add iceCandidatePoolSize to RTCConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=169866
+
+        Reviewed by Youenn Fablet.
+
+        * webrtc/rtcconfiguration-icecandidatepoolsize-expected.txt: Added.
+        * webrtc/rtcconfiguration-icecandidatepoolsize.html: Added.
+
+2017-03-20  Chris Dumez  <cdumez@apple.com>
+
+        Suspend media playback in background tabs
+        https://bugs.webkit.org/show_bug.cgi?id=169883
+        <rdar://problem/28056151>
+
+        Reviewed by Eric Carlson.
+
+        Add layout test coverage.
+
+        * media/media-playback-page-visibility-expected.txt: Added.
+        * media/media-playback-page-visibility.html: Added.
+
+2017-03-20  Daniel Bates  <dabates@apple.com>
+
+        Prevent new navigations from onbeforeunload handler
+        https://bugs.webkit.org/show_bug.cgi?id=169891
+        <rdar://problem/31155736>
+
+        Reviewed by Ryosuke Niwa.
+
+        Update test to ensure that we disallow navigation initiated via a DOM click event from
+        an onbeforeunload handler.
+
+        * fast/events/before-unload-forbidden-navigation.html:
+
+2017-03-20  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Subresources should be in the same origin as the main document
+        https://bugs.webkit.org/show_bug.cgi?id=169868
+        <rdar://problem/29898214>
+
+        Reviewed by Daniel Bates.
+
+        * http/tests/quicklook/resources/same-origin-xmlhttprequest-allowed.rtf: Added.
+        * http/tests/quicklook/resources/tap-run-test-hyperlink.js:
+        (runTest):
+        * http/tests/quicklook/same-origin-xmlhttprequest-allowed-expected.txt: Added.
+        * http/tests/quicklook/same-origin-xmlhttprequest-allowed.html: Added.
+
+2017-03-20  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Respect constraints passed to getUserMedia
+        https://bugs.webkit.org/show_bug.cgi?id=169870
+        <rdar://problem/31138936>
+
+        Reviewed by Youenn Fablet and Jer Noble.
+
+        * fast/mediastream/MediaDevices-enumerateDevices-expected.txt:
+        * fast/mediastream/MediaDevices-getUserMedia-expected.txt:
+        * fast/mediastream/MediaDevices-getUserMedia.html:
+        * fast/mediastream/MediaStream-video-element-expected.txt:
+        * fast/mediastream/MediaStreamTrack-getCapabilities-expected.txt:
+
 2017-03-20  Ryan Haddad  <ryanhaddad@apple.com>
 
         Mark imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multiple-fetches.html as flaky.

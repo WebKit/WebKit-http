@@ -83,7 +83,6 @@ class Frame;
 class URL;
 class NetworkingContext;
 class ProtectionSpace;
-class QuickLookHandle;
 class ResourceError;
 class ResourceHandleClient;
 class ResourceHandleInternal;

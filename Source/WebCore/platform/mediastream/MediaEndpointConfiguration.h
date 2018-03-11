@@ -33,7 +33,8 @@
 
 #if ENABLE(WEB_RTC)
 
-#include "RTCEnums.h"
+#include "RTCBundlePolicy.h"
+#include "RTCIceTransportPolicy.h"
 #include "URL.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -50,11 +51,12 @@ struct MediaEndpointConfiguration {
         IceServerInfo(Vector<URL>&&, const String&, const String&);
     };
 
-    MediaEndpointConfiguration(Vector<IceServerInfo>&&, RTCIceTransportPolicy, RTCBundlePolicy);
+    MediaEndpointConfiguration(Vector<IceServerInfo>&&, RTCIceTransportPolicy, RTCBundlePolicy, unsigned short);
 
     Vector<IceServerInfo> iceServers;
     RTCIceTransportPolicy iceTransportPolicy;
     RTCBundlePolicy bundlePolicy;
+    unsigned short iceCandidatePoolSize;
 };
 
 } // namespace WebCore

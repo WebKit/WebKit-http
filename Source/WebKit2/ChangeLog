@@ -1,3 +1,308 @@
+2017-03-23  Tim Horton  <timothy_horton@apple.com>
+
+        Test DataDetectors supported schemes in lowercase
+        https://bugs.webkit.org/show_bug.cgi?id=169994
+        <rdar://problem/30788920>
+
+        Reviewed by Wenson Hsieh.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _actionForLongPress]):
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        Lower-case the scheme before looking in tapAndHoldSchemes, which is
+        guaranteed to be in lower-case. WebCore already does this in places
+        that it confers with tapAndHoldSchemes.
+
+2017-03-22  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an option to exclude overflow when snapshotting a WKWebProcessPlugInNodeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=169991
+        <rdar://problem/30141083>
+
+        Reviewed by Tim Horton.
+
+        When snapshotting an element using -[WKWebProcessPlugInNodeHandle renderedImageWithOptions:],
+        the image is sized to encompass all descendants, even if the element is styled with
+        overflow:hidden. This patch adds a WKSnapshotOption to exclude overflow, resulting in an
+        image that's always sized to the node's bounding box.
+
+        * Shared/API/c/WKImage.h: Defined kWKSnapshotOptionsExcludeOverflow.
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]): Converted the
+        WKSnapshotOptions argument to a SnapshotOptions using toSnapshotOptions(), and called
+        InjectedBundleNodeHandle::renderedImage() with shouldExcludeOverflow set to true if the
+        WKSnapshotOptions included kWKSnapshotOptionsExcludeOverflow.
+        * WebProcess/InjectedBundle/API/c/WKBundleNodeHandle.cpp:
+        (WKBundleNodeHandleCopySnapshotWithOptions): Ditto.
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::InjectedBundleNodeHandle::renderedImage): If shouldExcludeOverflow is true, use
+        RenderObject::absoluteBoundingBoxRectIgnoringTransforms() as the paintingRect for
+        imageForRect().
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2017-03-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WKScrollView should not require data interaction gestures to fail before panning
+        https://bugs.webkit.org/show_bug.cgi?id=169986
+
+        Reviewed by Tim Horton.
+
+        This workaround is no longer needed.
+
+        * UIProcess/ios/WKScrollView.mm:
+
+2017-03-22  Andreas Kling  <akling@apple.com>
+
+        Let MemoryPressureHandler track whether the process is active or inactive.
+        <https://webkit.org/b/169990>
+
+        Reviewed by Antti Koivisto.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2017-03-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add support for showing the platform data interaction caret
+        https://bugs.webkit.org/show_bug.cgi?id=169898
+        <rdar://problem/31146295>
+
+        Reviewed by Beth Dakin.
+
+        Add support for showing the caret rect when data interacting over an editable target. To do this, we add
+        boilerplate plumbing to inform the WKContentView whenever the WebPageProxy's current caret rect changes.
+
+        * Platform/spi/ios/UIKitSPI.h:
+
+        Define IPI to retrieve the default insertion caret color.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didPerformDragControllerAction):
+        (WebKit::WebPageProxy::dragEnded):
+        (WebKit::WebPageProxy::didEndDragging):
+        (WebKit::WebPageProxy::resetCurrentDragInformation):
+        (WebKit::WebPageProxy::setDragCaretRect):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didChangeDataInteractionCaretRect):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView cleanupInteraction]):
+        (-[WKContentView insertionPointColor]):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::dragEnded):
+
+2017-03-22  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Fix partitioning bug for client-side cookie access
+        https://bugs.webkit.org/show_bug.cgi?id=169906
+        <rdar://problem/31164456>
+
+        Reviewed by Alex Christensen.
+
+        * NetworkProcess/cocoa/NetworkDataTaskCocoa.mm:
+        (WebKit::NetworkDataTaskCocoa::NetworkDataTaskCocoa):
+            This function no longer asks the NetworkStorageSession
+            whether it should partition or not. That decision is
+            now made as part of
+            WebCore::NetworkStorageSession::cookieStoragePartition().
+            The empty partition signals no partitioning.
+
+2017-03-22  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Rename QuickLookHandle to PreviewLoader
+        https://bugs.webkit.org/show_bug.cgi?id=169961
+
+        Reviewed by Andreas Kling.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * WebProcess/WebCoreSupport/ios/WebFrameLoaderClientIOS.mm:
+        (WebKit::WebFrameLoaderClient::createPreviewLoaderClient):
+        (WebKit::WebFrameLoaderClient::createQuickLookHandleClient): Deleted.
+        * WebProcess/WebCoreSupport/ios/WebPreviewLoaderClient.cpp: Renamed from Source/WebKit2/WebProcess/WebCoreSupport/ios/WebQuickLookHandleClient.cpp.
+        (WebKit::WebPreviewLoaderClient::WebPreviewLoaderClient):
+        (WebKit::WebPreviewLoaderClient::~WebPreviewLoaderClient):
+        (WebKit::WebPreviewLoaderClient::didReceiveDataArray):
+        (WebKit::WebPreviewLoaderClient::didFinishLoading):
+        (WebKit::WebPreviewLoaderClient::didFail):
+        (WebKit::WebPreviewLoaderClient::didRequestPassword):
+        (WebKit::WebPreviewLoaderClient::didReceivePassword):
+        * WebProcess/WebCoreSupport/ios/WebPreviewLoaderClient.h: Renamed from Source/WebKit2/WebProcess/WebCoreSupport/ios/WebQuickLookHandleClient.h.
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::didReceivePasswordForQuickLookDocument):
+
+2017-03-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add SPI to notify clients when data interaction is beginning or ending
+        https://bugs.webkit.org/show_bug.cgi?id=169952
+        <rdar://problem/31187804>
+
+        Reviewed by Beth Dakin.
+
+        Adds two new UI delegate SPI hooks.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+2017-03-21  Sergio Villar Senin  <svillar@igalia.com>
+
+        [Soup] "Only from websites I visit" cookie policy is broken
+        https://bugs.webkit.org/show_bug.cgi?id=168912
+
+        Reviewed by Carlos Garcia Campos.
+
+        Do not reset the first party for cookies on redirects. That's properly done for the main
+        resource in DocumentLoader::willSendRequest and, in the case of subresources, is absolutely
+        wrong (which is what we were doing since r143931).
+
+        The most notable effect was that subresources loaded via redirects were effectively
+        bypassing the "no third party" policy for cookies.
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::continueHTTPRedirection):
+
+2017-03-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Teach TextIndicator to estimate the background color of the given Range
+        https://bugs.webkit.org/show_bug.cgi?id=169869
+        <rdar://problem/31127272>
+
+        Reviewed by Anders Carlsson and Simon Fraser.
+
+        Send the estimated background color over XPC, and adopt TextIndicatorOptionComputeEstimatedBackgroundColor when
+        snapshotting after performing an edit data interaction.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<TextIndicatorData>::encode):
+        (IPC::ArgumentCoder<TextIndicatorData>::decode):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::didConcludeEditDataInteraction):
+
+2017-03-21  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Call processDidCrash() right away when terminating a process that exceeded background CPU limit
+        https://bugs.webkit.org/show_bug.cgi?id=169573
+        <rdar://problem/30960968>
+
+        Reviewed by Andreas Kling.
+
+        Call processDidCrash() right away when terminating a process that exceeded background CPU limit
+        and let the client decide when to reload the content.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::reattachToWebProcess):
+        (WebKit::WebPageProxy::dispatchActivityStateChange):
+        (WebKit::WebPageProxy::terminateProcess):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didExceedBackgroundCPULimit):
+
+2017-03-21  Aidan Holm  <aidanholm+webkit@gmail.com>
+
+        [GTK] Add function webkit_dom_element_get_bounding_client_rect
+        https://bugs.webkit.org/show_bug.cgi?id=163892
+
+        Reviewed by Carlos Garcia Campos.
+
+        Wrap WebCore::ClientRect as WebKitDOMClientRect.
+        Wrap WebCore::ClientRectList as WebKitDOMClientRectList.
+        Implement webkit_dom_element_get_bounding_client_rect().
+        Implement webkit_dom_element_get_client_rects().
+
+        * PlatformGTK.cmake:
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRect.cpp: Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectList.cpp: Added.
+        (WebKit::kit):
+        (WebKit::core):
+        (WebKit::wrapClientRect):
+        (webkit_dom_client_rect_finalize):
+        (webkit_dom_client_rect_get_property):
+        (webkit_dom_client_rect_constructed):
+        (webkit_dom_client_rect_class_init):
+        (webkit_dom_client_rect_init):
+        (webkit_dom_client_rect_get_top):
+        (webkit_dom_client_rect_get_right):
+        (webkit_dom_client_rect_get_bottom):
+        (webkit_dom_client_rect_get_left):
+        (webkit_dom_client_rect_get_width):
+        (webkit_dom_client_rect_get_height):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRect.h: Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectPrivate.h: Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectList.h: Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectListPrivate.h: Added.
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMElement.cpp:
+        (webkit_dom_element_get_property):
+        (webkit_dom_element_class_init):
+        (webkit_dom_element_get_scroll_height):
+        (webkit_dom_element_get_bounding_client_rect):
+        (webkit_dom_element_get_client_rects):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMElement.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMPrivate.cpp:
+        (WebKit::wrap):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMPrivate.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/docs/webkitdomgtk-4.0-sections.txt:
+        * WebProcess/InjectedBundle/API/gtk/DOM/webkitdom.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/webkitdomautocleanups.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/webkitdomdefines.h:
+
+2017-03-20  Alex Christensen  <achristensen@webkit.org>
+
+        WebPageProxy DecidePolicyForNavigationAction and DecidePolicyForResponseSync should be Delayed reply messages
+        https://bugs.webkit.org/show_bug.cgi?id=167183
+        <rdar://problem/30203539>
+
+        Reviewed by Andy Estes.
+
+        Before this patch, the WKNavigationDelegate's decidePolicyForNavigationAction must synchronously call the decisionHandler.
+        If it stores the decisionHandler and calls it after decidePolicyForNavigationAction returns, we can get incorrect behavior.
+        This can be seen when the _WKWebsitePolicies given to the decisionHandler had no effect.
+        Now, we will have the WebProcess waiting on the UIProcess to respond to the Delayed reply before continuing.
+        This will not be a regression because currently everybody is either calling the decisionHandler immediately or getting incorrect behavior,
+        and the behavior will be the same if the decisionHandler is called immediately. It is possible that we could make the WebProcess
+        not wait on the response, but we would need to make WebCore's loading truly asynchronous first
+        (getting rid of ResourceHandleClient's synchronous methods).
+
+        Covered by making an API test asynchronously call the decisionHandler.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::receivedPolicyDecision):
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+        (WebKit::WebPageProxy::decidePolicyForResponseSync):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2017-03-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix GTK build after r214190
+        https://bugs.webkit.org/show_bug.cgi?id=169885
+
+        * UIProcess/InspectorServer/WebSocketServerConnection.cpp:
+        (WebKit::WebSocketServerConnection::sendWebSocketMessage):
+        (WebKit::WebSocketServerConnection::sendHTTPResponseHeader):
+        (WebKit::WebSocketServerConnection::sendRawData):
+        Finish renaming send to sendData.
+
+2017-03-20  Anders Carlsson  <andersca@apple.com>
+
+        Fix a paste-o in WebPaymentCoordinatorProxy::platformCompletePaymentSession
+        https://bugs.webkit.org/show_bug.cgi?id=169881
+        rdar://problem/31030944
+
+        Reviewed by Dan Bernstein.
+
+        Don't always pass PKPaymentAuthorizationStatusFailure to the completion handler.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::WebPaymentCoordinatorProxy::platformCompletePaymentSession):
+
 2017-03-20  Wenson Hsieh  <wenson_hsieh@apple.com>
 
         TextIndicator should support a mode where selection rects are used to size the snapshot

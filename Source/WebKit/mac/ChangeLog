@@ -1,3 +1,81 @@
+2017-03-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add support for showing the platform data interaction caret
+        https://bugs.webkit.org/show_bug.cgi?id=169898
+        <rdar://problem/31146295>
+
+        Reviewed by Beth Dakin.
+
+        Plumb the dataInteractionCaretRect through WebView SPI to WebKit1 clients.
+
+        * WebView/WebView.mm:
+        (-[WebView _dataInteractionCaretRect]):
+        * WebView/WebViewPrivate.h:
+
+2017-03-22  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] downloadableBinaryFontsEnabled is set to false in -initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:
+        https://bugs.webkit.org/show_bug.cgi?id=169967
+        <rdar://problem/30406898>
+
+        Reviewed by Anders Carlsson.
+
+        * WebView/WebView.mm:
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]): Removed call to
+          Settings::downloadableBinaryFontsEnabled. The default is true.
+
+2017-03-22  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] Rename QuickLookHandle to PreviewLoader
+        https://bugs.webkit.org/show_bug.cgi?id=169961
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::createPreviewLoaderClient):
+        (WebFrameLoaderClient::createQuickLookHandleClient): Deleted.
+
+2017-03-21  Anders Carlsson  <andersca@apple.com>
+
+        Remove bogus availability annotations from DOM SPI headers.
+        rdar://problem/31015675
+
+        Rubber-stamped by Dan Bernstein.
+
+        * DOM/DOMHTMLMediaElement.h:
+        * DOM/DOMHTMLVideoElement.h:
+        * DOM/DOMMediaError.h:
+        * DOM/DOMTextEvent.h:
+        * DOM/DOMTimeRanges.h:
+        * DOM/DOMTokenList.h:
+
+2017-03-19  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Teach TextIndicator to estimate the background color of the given Range
+        https://bugs.webkit.org/show_bug.cgi?id=169869
+        <rdar://problem/31127272>
+
+        Reviewed by Anders Carlsson and Simon Fraser.
+
+        Plumb the estimated background color for WebKit1 clients through a new property in WebUITextIndicatorData.
+
+        * WebView/WebView.mm:
+        (-[WebUITextIndicatorData initWithImage:textIndicatorData:scale:]):
+        (-[WebUITextIndicatorData dealloc]):
+        * WebView/WebViewPrivate.h:
+
+2017-03-20  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] Incremental builds of WebKitLegacy are slow because of the Postprocess Headers phase
+        https://bugs.webkit.org/show_bug.cgi?id=169861
+
+        Reviewed by Sam Weinig.
+
+        * MigrateHeaders.make: Touch the PrivateHeaders directory when migrating a header into it.
+        * postprocess-headers.sh: Preserve the timestamp on the headers directories. Write out the
+          timestamp file used by the Xcode project to determine whether to run the script.
+
 2017-03-19  Alexey Proskuryakov  <ap@apple.com>
 
         WebHTMLView is useless as WebResourceHandler

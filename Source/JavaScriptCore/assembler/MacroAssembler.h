@@ -111,12 +111,13 @@ public:
     using MacroAssemblerBase::branch32;
     using MacroAssemblerBase::compare32;
     using MacroAssemblerBase::move;
+    using MacroAssemblerBase::moveDouble;
     using MacroAssemblerBase::add32;
     using MacroAssemblerBase::mul32;
     using MacroAssemblerBase::and32;
     using MacroAssemblerBase::branchAdd32;
     using MacroAssemblerBase::branchMul32;
-#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL) || CPU(X86_64)
+#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL) || CPU(X86_64) || CPU(MIPS)
     using MacroAssemblerBase::branchPtr;
 #endif
     using MacroAssemblerBase::branchSub32;
@@ -487,6 +488,30 @@ public:
         return !(random() & (BlindingModulus - 1));
     }
 
+    void move(Address src, Address dest, RegisterID scratch)
+    {
+        loadPtr(src, scratch);
+        storePtr(scratch, dest);
+    }
+    
+    void move32(Address src, Address dest, RegisterID scratch)
+    {
+        load32(src, scratch);
+        store32(scratch, dest);
+    }
+    
+    void moveFloat(Address src, Address dest, FPRegisterID scratch)
+    {
+        loadFloat(src, scratch);
+        storeFloat(scratch, dest);
+    }
+    
+    void moveDouble(Address src, Address dest, FPRegisterID scratch)
+    {
+        loadDouble(src, scratch);
+        storeDouble(scratch, dest);
+    }
+
     // Ptr methods
     // On 32-bit platforms (i.e. x86), these methods directly map onto their 32-bit equivalents.
     // FIXME: should this use a test for 32-bitness instead of this specific exception?
@@ -648,7 +673,7 @@ public:
     {
         move(Imm32(imm.asTrustedImmPtr()), dest);
     }
-
+    
     void comparePtr(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
     {
         compare32(cond, left, right, dest);

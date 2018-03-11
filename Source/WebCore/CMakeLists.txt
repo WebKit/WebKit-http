@@ -256,6 +256,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCOfferAnswerOptions.idl
     Modules/mediastream/RTCOfferOptions.idl
     Modules/mediastream/RTCPeerConnection.idl
+    Modules/mediastream/RTCPeerConnectionState.idl
     Modules/mediastream/RTCRtpReceiver.idl
     Modules/mediastream/RTCRtpSender.idl
     Modules/mediastream/RTCRtpTransceiver.idl
@@ -2170,6 +2171,7 @@ set(WebCore_SOURCES
     platform/LengthPoint.cpp
     platform/LengthSize.cpp
     platform/LinkHash.cpp
+    platform/LocalizedStrings.cpp
     platform/Logging.cpp
     platform/LowPowerModeNotifier.cpp
     platform/MIMETypeRegistry.cpp

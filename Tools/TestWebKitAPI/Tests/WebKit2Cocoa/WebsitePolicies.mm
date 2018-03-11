@@ -33,6 +33,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKUserContentExtensionStorePrivate.h>
 #import <WebKit/_WKWebsitePolicies.h>
+#import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -107,9 +108,18 @@ static size_t alertCount;
         // Verify the content blockers behave correctly with the default behavior.
         break;
     case 2:
-        // Verify disabling content blockers works correctly.
-        websitePolicies.contentBlockersEnabled = false;
-        break;
+        {
+            // Verify disabling content blockers works correctly.
+            websitePolicies.contentBlockersEnabled = false;
+            
+            // Verify calling the decisionHandler asynchronously works correctly.
+            auto decisionHandlerCopy = Block_copy(decisionHandler);
+            callOnMainThread([decisionHandlerCopy, websitePolicies = RetainPtr<_WKWebsitePolicies>(websitePolicies)] {
+                decisionHandlerCopy(WKNavigationActionPolicyAllow, websitePolicies.get());
+                Block_release(decisionHandlerCopy);
+            });
+        }
+        return;
     case 3:
         // Verify enabling content blockers has no effect when reloading without content blockers.
         websitePolicies.contentBlockersEnabled = true;
@@ -204,7 +214,12 @@ TEST(WebKit2, WebsitePoliciesAutoplayEnabled)
 
     NSURLRequest *requestWithAudio = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-check" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
     NSURLRequest *requestWithoutAudio = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-no-audio-check" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
-    
+
+    // iOS does not support volume changes to media elements.
+#if PLATFORM(MAC)
+    NSURLRequest *requestWithoutVolume = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-zero-volume-check" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
+#endif
+
     [delegate setAutoplayPolicyForURL:^(NSURL *) {
         return _WKWebsiteAutoplayPolicyAllowWithoutSound;
     }];
@@ -214,9 +229,20 @@ TEST(WebKit2, WebsitePoliciesAutoplayEnabled)
     [webView loadRequest:requestWithoutAudio];
     [webView waitForMessage:@"autoplayed"];
 
+#if PLATFORM(MAC)
+    [webView loadRequest:requestWithoutVolume];
+    [webView waitForMessage:@"autoplayed"];
+#endif
+
     [delegate setAutoplayPolicyForURL:^(NSURL *) {
         return _WKWebsiteAutoplayPolicyDeny;
     }];
+
+#if PLATFORM(MAC)
+    [webView loadRequest:requestWithoutVolume];
+    [webView waitForMessage:@"did-not-play"];
+#endif
+
     [webView loadRequest:requestWithAudio];
     [webView waitForMessage:@"did-not-play"];
 
@@ -238,6 +264,11 @@ TEST(WebKit2, WebsitePoliciesAutoplayEnabled)
 
     [webView loadRequest:requestWithoutAudio];
     [webView waitForMessage:@"autoplayed"];
+
+#if PLATFORM(MAC)
+    [webView loadRequest:requestWithoutVolume];
+    [webView waitForMessage:@"autoplayed"];
+#endif
 
     NSURLRequest *requestWithAudioInIFrame = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"autoplay-check-in-iframe" withExtension:@"html" subdirectory:@"TestWebKitAPI.resources"]];
 

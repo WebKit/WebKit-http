@@ -76,6 +76,10 @@ RTCPeerConnection::RTCPeerConnection(ScriptExecutionContext& context)
     : ActiveDOMObject(&context)
     , m_backend(PeerConnectionBackend::create(*this))
 {
+    if (!m_backend) {
+        m_signalingState = RTCSignalingState::Closed;
+        m_iceConnectionState = RTCIceConnectionState::Closed;
+    }
 }
 
 RTCPeerConnection::~RTCPeerConnection()
@@ -211,7 +215,7 @@ ExceptionOr<Ref<RTCRtpTransceiver>> RTCPeerConnection::addTransceiver(const Stri
 
 void RTCPeerConnection::completeAddTransceiver(RTCRtpTransceiver& transceiver, const RTCRtpTransceiverInit& init)
 {
-    transceiver.setDirection(static_cast<RTCRtpTransceiver::Direction>(init.direction));
+    transceiver.setDirection(init.direction);
 
     m_transceiverSet->append(transceiver);
     m_backend->markAsNeedingNegotiation();
@@ -326,7 +330,7 @@ ExceptionOr<void> RTCPeerConnection::setConfiguration(RTCConfiguration&& configu
         }
     }
 
-    m_backend->setConfiguration({ WTFMove(servers), configuration.iceTransportPolicy, configuration.bundlePolicy });
+    m_backend->setConfiguration({ WTFMove(servers), configuration.iceTransportPolicy, configuration.bundlePolicy, configuration.iceCandidatePoolSize });
     m_configuration = WTFMove(configuration);
     return { };
 }
@@ -349,21 +353,31 @@ ExceptionOr<Ref<RTCDataChannel>> RTCPeerConnection::createDataChannel(ScriptExec
     return RTCDataChannel::create(context, WTFMove(channelHandler), WTFMove(label), WTFMove(options));
 }
 
-void RTCPeerConnection::close()
+bool RTCPeerConnection::doClose()
 {
     if (m_signalingState == RTCSignalingState::Closed)
-        return;
-
-    m_backend->stop();
+        return false;
 
     m_iceConnectionState = RTCIceConnectionState::Closed;
     m_signalingState = RTCSignalingState::Closed;
 
+    m_backend->stop();
+
     for (RTCRtpSender& sender : m_transceiverSet->senders())
         sender.stop();
 
-    unregisterFromController();
-    unsetPendingActivity(this);
+    return true;
+}
+
+void RTCPeerConnection::close()
+{
+    if (!doClose())
+        return;
+
+    updateConnectionState();
+    scriptExecutionContext()->postTask([protectedThis = makeRef(*this)](ScriptExecutionContext&) {
+        protectedThis->doStop();
+    });
 }
 
 void RTCPeerConnection::emulatePlatformEvent(const String& action)
@@ -373,7 +387,20 @@ void RTCPeerConnection::emulatePlatformEvent(const String& action)
 
 void RTCPeerConnection::stop()
 {
-    close();
+    if (!doClose())
+        return;
+
+    doStop();
+}
+
+void RTCPeerConnection::doStop()
+{
+    if (m_isStopped)
+        return;
+
+    m_isStopped = true;
+    unregisterFromController();
+    unsetPendingActivity(this);
 }
 
 RTCController& RTCPeerConnection::rtcController()
@@ -423,6 +450,7 @@ void RTCPeerConnection::updateIceGatheringState(RTCIceGatheringState newState)
 
         protectedThis->m_iceGatheringState = newState;
         protectedThis->dispatchEvent(Event::create(eventNames().icegatheringstatechangeEvent, false, false));
+        protectedThis->updateConnectionState();
     });
 }
 
@@ -434,7 +462,34 @@ void RTCPeerConnection::updateIceConnectionState(RTCIceConnectionState newState)
 
         protectedThis->m_iceConnectionState = newState;
         protectedThis->dispatchEvent(Event::create(eventNames().iceconnectionstatechangeEvent, false, false));
+        protectedThis->updateConnectionState();
     });
+}
+
+void RTCPeerConnection::updateConnectionState()
+{
+    RTCPeerConnectionState state;
+
+    if (m_iceConnectionState == RTCIceConnectionState::New && m_iceGatheringState == RTCIceGatheringState::New)
+        state = RTCPeerConnectionState::New;
+    else if (m_iceConnectionState == RTCIceConnectionState::Checking || m_iceGatheringState == RTCIceGatheringState::Gathering)
+        state = RTCPeerConnectionState::Connecting;
+    else if ((m_iceConnectionState == RTCIceConnectionState::Completed || m_iceConnectionState == RTCIceConnectionState::Connected) && m_iceGatheringState == RTCIceGatheringState::Complete)
+        state = RTCPeerConnectionState::Connected;
+    else if (m_iceConnectionState == RTCIceConnectionState::Disconnected)
+        state = RTCPeerConnectionState::Disconnected;
+    else if (m_iceConnectionState == RTCIceConnectionState::Failed)
+        state = RTCPeerConnectionState::Failed;
+    else if (m_iceConnectionState == RTCIceConnectionState::Closed)
+        state = RTCPeerConnectionState::Closed;
+    else
+        return;
+
+    if (state == m_connectionState)
+        return;
+
+    m_connectionState = state;
+    dispatchEvent(Event::create(eventNames().connectionstatechangeEvent, false, false));
 }
 
 void RTCPeerConnection::scheduleNegotiationNeededEvent()

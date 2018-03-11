@@ -311,7 +311,6 @@ webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-origin.htm [ F
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/redirect-preflight-2.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
-webkit.org/b/169565 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-preflight.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/status-async.htm [ Failure ]
 webkit.org/b/169565 imported/w3c/web-platform-tests/cors/304.htm [ Failure ]
@@ -1225,6 +1224,9 @@ svg/custom/font-face-fallback.svg [ Skip ]
 
 # Test disabled until we can fix layout of orthogonal writing mode roots
 fast/table/colspanMinWidth-vertical.html [ Skip ]
+
+# Test only works on iOS WK2. webkit.org/b/165535
+fast/forms/range/range-remove-on-drag.html [ Skip ]
 
 ### END OF -disabled tests
 ########################################

@@ -1,3 +1,152 @@
+2017-03-22  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an option to exclude overflow when snapshotting a WKWebProcessPlugInNodeHandle
+        https://bugs.webkit.org/show_bug.cgi?id=169991
+        <rdar://problem/30141083>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptions.mm: Added.
+        (-[RenderedImageWithOptionsObject didRenderImageWithSize:]):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsPlugIn.mm: Added.
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugInBrowserContextController:didFinishLoadForFrame:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsProtocol.h: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/rendered-image-excluding-overflow.html: Added.
+
+2017-03-22  Matt Rajca  <mrajca@apple.com>
+
+        Only run volume-related autoplay policy tests on Mac.
+        https://bugs.webkit.org/show_bug.cgi?id=169969
+
+        Reviewed by Alex Christensen.
+
+        iOS does not support volume changes to media elements so these tests are timing out.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST):
+
+2017-03-22  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Linux] determineArchitecture is not cross-compile aware
+        https://bugs.webkit.org/show_bug.cgi?id=169886
+
+        Reviewed by Michael Catanzaro.
+
+        Try to detect the target architecture name from the GCC triplet
+        when cross-building.
+
+        The aarch64 architecture is renamed to arm64 (this is coherent with
+        the rest of the perl tooling that consults the architecture determined
+        in determineArchitecture(), the check for this arch is always done
+        with the arm64 name).
+
+        * Scripts/webkitdirs.pm: Remove the isARM() function: its dead code
+        and not cross-build aware.
+        (determineArchitecture): When crossbuilding, try to detect the target
+        architecture name from the GCC triplet.
+        Remove also the fallback option to run the arch command, because this
+        command doesn't print the expected on Mac/BSD, and on Linux is the
+        same than uname -m. See https://bugs.webkit.org/show_bug.cgi?id=152958#c6
+        (isCrossCompilation): Some cross-compilers (buildroot one for example)
+        don't define the --host option. Add another option to detect that
+        we are cross-building by building a dummy program and checking if
+        we can run it.
+
+2017-03-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Several WPT tests are failing since they were added in the last update in r213882
+        https://bugs.webkit.org/show_bug.cgi?id=169915
+
+        Reviewed by Michael Catanzaro.
+
+        Add libsoup patch to not fail loads when there's no empty line after the headers in responses with no body.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/libsoup-soup-message-io-Do-not-fail-when-there-s-no-empty-li.patch: Added.
+
+2017-03-20  Matt Rajca  <mrajca@apple.com>
+
+        Loosen audio playback restrictions when the volume is 0.
+        https://bugs.webkit.org/show_bug.cgi?id=169897
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/autoplay-zero-volume-check.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST):
+
+2017-03-21  Aakash Jain  <aakash_jain@apple.com>
+
+        EWS fails to parse_bug_id_from_attachment_page after bugzilla upgrade
+        https://bugs.webkit.org/show_bug.cgi?id=169937
+        <rdar://problem/31181859>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla._parse_bug_id_from_attachment_page): Since rel tag is no longer present, parsing the bug id from bug_title. 
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla_unittest.py: Fixed unit test.
+
+2017-03-21  Aakash Jain  <aakash_jain@apple.com>
+
+        ews should indicate in logs when it fails to parse_bug_id_from_attachment_page
+        https://bugs.webkit.org/show_bug.cgi?id=169927
+
+        Reviewed by  Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla._parse_bug_id_from_attachment_page): Added log statement.
+
+2017-03-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a system trace point for memory warning handling
+        https://bugs.webkit.org/show_bug.cgi?id=169893
+
+        Reviewed by Zalan Bujtas.
+
+        Describe the new trace points.
+
+        * Tracing/SystemTracePoints.plist:
+
+2017-03-20  Alex Christensen  <achristensen@webkit.org>
+
+        WebPageProxy DecidePolicyForNavigationAction and DecidePolicyForResponseSync should be Delayed reply messages
+        https://bugs.webkit.org/show_bug.cgi?id=167183
+        <rdar://problem/30203539>
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (-[WebsitePoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+
+2017-03-20  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Work around simctl launch returning dead processes
+        https://bugs.webkit.org/show_bug.cgi?id=169878
+
+        Reviewed by Daniel Bates.
+
+        simctl launch will sometimes give the PID of a process which has just been terminated.
+        To work around this, we will always check if the returned PID is of a process which is
+        still running.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.Popen.__init__): Accept device argument.
+        (SimulatorProcess.Popen.poll): Call device.poll().
+        (SimulatorProcess._start): Pass device into Popen object.
+        * Scripts/webkitpy/xcode/device.py:
+        (Device.poll): Added.
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice.install_app): Change attempts to timeout.
+        (SimulatedDevice.launch_app): Check that the process being returned is active, use a
+        timeout instead of attempts.
+        (SimulatedDevice):
+        (SimulatedDevice.poll): Added.
+
 2017-03-20  Jonathan Bedard  <jbedard@apple.com>
 
         buildbot: run-webkit-tests should display test failures and run exceptions differently

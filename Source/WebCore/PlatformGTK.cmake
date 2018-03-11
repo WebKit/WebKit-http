@@ -113,6 +113,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/freetype/FontCacheFreeType.cpp
     platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp
+    platform/graphics/freetype/FontPlatformDataFreeType.cpp
     platform/graphics/freetype/GlyphPageTreeNodeFreeType.cpp
     platform/graphics/freetype/SimpleFontDataFreeType.cpp
 
@@ -139,6 +140,7 @@ list(APPEND WebCore_SOURCES
 
     platform/gtk/DragDataGtk.cpp
     platform/gtk/ErrorsGtk.cpp
+    platform/gtk/LocalizedStringsGtk.cpp
     platform/gtk/MIMETypeRegistryGtk.cpp
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
@@ -187,8 +189,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
 
     platform/graphics/PlatformDisplay.cpp
 
-    platform/graphics/freetype/FontPlatformDataFreeType.cpp
-
     platform/graphics/gtk/ColorGtk.cpp
     platform/graphics/gtk/GdkCairoUtilities.cpp
     platform/graphics/gtk/IconGtk.cpp
@@ -200,7 +200,6 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/GRefPtrGtk.cpp
     platform/gtk/GtkUtilities.cpp
     platform/gtk/GtkVersioning.c
-    platform/gtk/LocalizedStringsGtk.cpp
     platform/gtk/PasteboardHelper.cpp
     platform/gtk/PlatformKeyboardEventGtk.cpp
     platform/gtk/PlatformMouseEventGtk.cpp

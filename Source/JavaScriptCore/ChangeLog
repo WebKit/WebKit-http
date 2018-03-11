@@ -1,3 +1,382 @@
+2017-03-23  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc] Add MacroAssemblerMIPS::storeFence()
+        https://bugs.webkit.org/show_bug.cgi?id=169705
+
+        Reviewed by Yusuke Suzuki.
+
+        There doesn't seem to be anything more fine grained than "sync" that
+        guarantees that all memory operations following it are going to happen
+        after all stores before it, so we just use sync.
+
+        * assembler/MIPSAssembler.h:
+        (JSC::MIPSAssembler::sync): Added a FIXME about SYNC_MB.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::storeFence): Added.
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG] Propagate AnyIntAsDouble information carefully to utilize it in fixup
+        https://bugs.webkit.org/show_bug.cgi?id=169914
+
+        Reviewed by Saam Barati.
+
+        In DFG prediction propagation phase, we pollute the prediction of GetByVal for Array::Double
+        as SpecDoubleReal even if the heap prediction says the proper prediction is SpecAnyIntAsDouble.
+        Thus, the following nodes just see the result of GetByVal(Array::Double) as double value,
+        and select suboptimal edge filters in fixup phase. For example, if the result of GetByVal is
+        SpecAnyIntAsDouble, we can see the node like ArithAdd(SpecAnyIntAsDouble, Int52) and we should
+        have a chance to make it ArithAdd(Check:Int52, Int52) instead of ArithAdd(Double, Double).
+
+        This patch propagates SpecAnyIntAsDouble in GetByVal(Array::Double) properly. And ValueAdd,
+        ArithAdd and ArithSub select AnyInt edge filters for SpecAnyIntAsDouble values. It finally
+        produces a Int52 specialized DFG node. And subsequent nodes using the produced one also
+        become Int52 specialized.
+
+        One considerable problem is that the heap prediction misses the non any int doubles. In that case,
+        if Int52 edge filter is used, BadType exit will occur. It updates the prediction of the value profile
+        of GetByVal. So, in the next time, GetByVal(Array::Double) produces more conservative predictions
+        and avoids exit-and-recompile loop correctly.
+
+        This change is very sensitive to the correct AI and appropriate predictions. Thus, this patch finds
+        and fixes some related issues. One is incorrect prediction of ToThis and another is incorrect
+        AI logic for Int52Rep.
+
+        This change dramatically improves kraken benchmarks' crypto-pbkdf2 and crypto-sha256-iterative
+        by 42.0% and 30.7%, respectively.
+
+                                                     baseline                  patched
+        Kraken:
+        ai-astar                                  158.851+-4.132      ?     159.433+-5.176         ?
+        audio-beat-detection                       53.193+-1.621      ?      53.391+-2.072         ?
+        audio-dft                                 103.589+-2.277      ?     104.902+-1.924         ? might be 1.0127x slower
+        audio-fft                                  40.491+-1.102             39.854+-0.755           might be 1.0160x faster
+        audio-oscillator                           68.504+-1.721      ?      68.957+-1.725         ?
+        imaging-darkroom                          118.367+-2.171      ?     119.581+-2.310         ? might be 1.0103x slower
+        imaging-desaturate                         71.443+-1.461      ?      72.398+-1.918         ? might be 1.0134x slower
+        imaging-gaussian-blur                     110.648+-4.035            109.184+-3.373           might be 1.0134x faster
+        json-parse-financial                       60.363+-1.628      ?      61.936+-1.585         ? might be 1.0261x slower
+        json-stringify-tinderbox                   37.903+-0.869      ?      39.559+-1.607         ? might be 1.0437x slower
+        stanford-crypto-aes                        56.313+-1.512      ?      56.675+-1.715         ?
+        stanford-crypto-ccm                        51.564+-1.900      ?      53.456+-2.548         ? might be 1.0367x slower
+        stanford-crypto-pbkdf2                    129.546+-2.738      ^      91.214+-2.027         ^ definitely 1.4202x faster
+        stanford-crypto-sha256-iterative           43.515+-0.730      ^      33.292+-0.653         ^ definitely 1.3071x faster
+
+        <arithmetic>                               78.878+-0.528      ^      75.988+-0.621         ^ definitely 1.0380x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::addShouldSpeculateAnyInt):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithNegate):
+
+2017-03-22  Mark Lam  <mark.lam@apple.com>
+
+        Add support for Error.stackTraceLimit.
+        https://bugs.webkit.org/show_bug.cgi?id=169904
+
+        Reviewed by Saam Barati.
+
+        Since there's no standard for this yet, we'll implement Error.stackTraceLimit
+        based on how Chrome does it.  This includes some idiosyncrasies like:
+        1. If we set Error.stackTraceLimit = 0, then new Error().stack yields an empty
+           stack trace (Chrome has a title with no stack frame entries).
+        2. If we set Error.stackTraceLimit = {] (i.e. to a non-number value), then
+           new Error().stack is undefined.
+
+        Chrome and IE defaults their Error.stackTraceLimit to 10.  We'll default ours to
+        100 because 10 may be a bit too skimpy and it is not that costly to allow up to
+        100 frames instead of 10.
+
+        The default value for Error.stackTraceLimit is specified by
+        Options::defaultErrorStackTraceLimit().
+
+        Also, the Exception object now limits the number of stack trace frames it captures
+        to the limit specified by Options::exceptionStackTraceLimit().
+
+        Note: the Exception object captures a stack trace that is not necessarily the
+        same as the one in an Error object being thrown:
+
+        - The Error object captures the stack trace at the point of object creation.
+
+        - The Exception object captures the stack trace at the point that the exception
+          is thrown.  This stack trace is captured even when throwing a value that is not
+          an Error object e.g. a primitive value.  The Exception object stack trace is
+          only used by WebInspector to identify where a value is thrown from.  Hence,
+          it does not necessary make sense the Exception object stack trace limited by
+          Error.stackTraceLimit.  Instead, we have it use own Options::exceptionStackTraceLimit().
+
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::unwind):
+        * jsc.cpp:
+        (dumpException):
+        * runtime/CommonIdentifiers.h:
+        * runtime/Error.cpp:
+        (JSC::addErrorInfoAndGetBytecodeOffset):
+        * runtime/ErrorConstructor.cpp:
+        (JSC::ErrorConstructor::finishCreation):
+        (JSC::ErrorConstructor::put):
+        (JSC::ErrorConstructor::deleteProperty):
+        * runtime/ErrorConstructor.h:
+        (JSC::ErrorConstructor::stackTraceLimit):
+        * runtime/Exception.cpp:
+        (JSC::Exception::finishCreation):
+        * runtime/Options.h:
+
+2017-03-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use jsNontrivialString for Number toString operations
+        https://bugs.webkit.org/show_bug.cgi?id=169965
+
+        Reviewed by Mark Lam.
+
+        After single character check, produced string is always longer than 1.
+        Thus, we can use jsNontrivialString.
+
+        * runtime/NumberPrototype.cpp:
+        (JSC::int32ToStringInternal):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: name ExecState consistently
+        https://bugs.webkit.org/show_bug.cgi?id=169954
+
+        Reviewed by Saam Barati.
+
+        No functional change.
+
+        * wasm/js/JSWebAssemblyCompileError.cpp:
+        (JSC::JSWebAssemblyCompileError::create):
+        (JSC::createJSWebAssemblyCompileError):
+        * wasm/js/JSWebAssemblyCompileError.h:
+        (JSC::JSWebAssemblyCompileError::create):
+        * wasm/js/JSWebAssemblyLinkError.cpp:
+        (JSC::JSWebAssemblyLinkError::create):
+        (JSC::createJSWebAssemblyLinkError):
+        * wasm/js/JSWebAssemblyLinkError.h:
+        (JSC::JSWebAssemblyLinkError::create):
+        * wasm/js/JSWebAssemblyRuntimeError.cpp:
+        (JSC::JSWebAssemblyRuntimeError::create):
+        * wasm/js/JSWebAssemblyRuntimeError.h:
+        (JSC::JSWebAssemblyRuntimeError::create):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::callJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::callJSWebAssemblyMemory):
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::callJSWebAssemblyModule):
+        (JSC::WebAssemblyModuleConstructor::createModule):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::link):
+        (JSC::dataSegmentFail):
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyFunctionValidate):
+        (JSC::webAssemblyFunctionCompile):
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::callJSWebAssemblyTable):
+
+2017-03-22  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: constructors without new don't throw
+        https://bugs.webkit.org/show_bug.cgi?id=165995
+
+        Reviewed by Saam Barati.
+
+        * wasm/js/WebAssemblyCompileErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyCompileError):
+        (JSC::callJSWebAssemblyCompileError):
+        * wasm/js/WebAssemblyLinkErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyLinkError):
+        (JSC::callJSWebAssemblyLinkError):
+        * wasm/js/WebAssemblyRuntimeErrorConstructor.cpp:
+        (JSC::constructJSWebAssemblyRuntimeError):
+        (JSC::callJSWebAssemblyRuntimeError):
+
+2017-03-22  Guillaume Emont  <guijemont@igalia.com>
+
+        [DFG] Don't use ArraySlice intrinsic on MIPS
+        https://bugs.webkit.org/show_bug.cgi?id=169721
+
+        Reviewed by Yusuke Suzuki.
+
+        Like on x86, we don't have enough registers available for this.
+
+        * assembler/CPU.h:
+        (JSC::isMIPS): Added.
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        Don't use the ArraySlice intrinsic on MIPS.
+
+2017-03-21  Mark Lam  <mark.lam@apple.com>
+
+        The DFG Integer Check Combining phase should force an OSR exit for CheckInBounds on a negative constant min bound.
+        https://bugs.webkit.org/show_bug.cgi?id=169933
+        <rdar://problem/31105125>
+
+        Reviewed by Filip Pizlo and Geoffrey Garen.
+
+        Also fixed the bit-rotted RangeKey::dump() function.
+
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        (JSC::DFG::IntegerCheckCombiningPhase::handleBlock):
+
+2017-03-21  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Add missing MacroAssembler functions after r214187
+        https://bugs.webkit.org/show_bug.cgi?id=169912
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::loadFloat):
+        (JSC::MacroAssemblerARM::storeFloat):
+
+2017-03-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number.prototype.toString on Int32 / Int52 / Double
+        https://bugs.webkit.org/show_bug.cgi?id=167454
+
+        Reviewed by Saam Barati.
+
+        This patch improves Number.toString(radix) performance
+        by introducing NumberToStringWithRadix DFG node. It directly
+        calls the operation and it always returns String.
+
+                                                       baseline                  patched
+
+            stanford-crypto-sha256-iterative        45.130+-0.928             44.032+-1.184           might be 1.0250x faster
+
+2017-03-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add JSPromiseDeferred::reject(ExecState*, Exception*) interface
+        https://bugs.webkit.org/show_bug.cgi?id=169908
+
+        Reviewed by Sam Weinig.
+
+        To avoid calling reject(ExecState*, JSValue) with Exception* accidentally,
+        we add a new interface reject(ExecState*, Exception*).
+        Such an interface is already added in DOMPromise in WebCore.
+
+        * runtime/JSInternalPromiseDeferred.cpp:
+        (JSC::JSInternalPromiseDeferred::reject):
+        * runtime/JSInternalPromiseDeferred.h:
+        * runtime/JSPromiseDeferred.cpp:
+        (JSC::JSPromiseDeferred::reject):
+        * runtime/JSPromiseDeferred.h:
+
+2017-03-21  Zan Dobersek  <zdobersek@igalia.com>
+
+        [jsc] MacroAssemblerMIPS: implement the branchPtr(RelationalCondition, BaseIndex, RegisterID) overload.
+        https://bugs.webkit.org/show_bug.cgi?id=169717
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssembler.h: Expose branchPtr() on MIPS as well.
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::branchPtr): Added.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        (JSC::DFG::FixupPhase::fixupToStringOrCallStringConstructor):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructor):
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnNumber):
+        (JSC::DFG::SpeculativeJIT::compileNumberToStringWithRadix):
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnCell): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileToStringOrCallStringConstructor):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNumberToStringWithRadix):
+        * jit/CCallHelpers.h:
+        (JSC::CCallHelpers::setupArgumentsWithExecState):
+        * jit/JITOperations.h:
+        * runtime/Intrinsic.h:
+        * runtime/NumberPrototype.cpp:
+        (JSC::int52ToStringWithRadix):
+        (JSC::int32ToStringInternal):
+        (JSC::numberToStringInternal):
+        (JSC::int32ToString):
+        (JSC::int52ToString):
+        (JSC::numberToString):
+        (JSC::numberProtoFuncToString):
+        (JSC::integerValueToString): Deleted.
+        * runtime/NumberPrototype.h:
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+
+2017-03-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Graph coloring should use coalescable moves when spilling
+        https://bugs.webkit.org/show_bug.cgi?id=169820
+
+        Reviewed by Michael Saboff.
+        
+        This makes our graph coloring register allocator use a new family of move instructions when
+        spilling both operands of the move. It's a three-operand move:
+        
+            Move (src), (dst), %scratch
+        
+        Previously, if both operands got spilled, we would emit a new instruction to load or store that
+        spill slot. But this made it hard for allocateStack to see that the two spill locations are
+        coalescable. This new kind of instruction makes it obvious that it's a coalescable move.
+        
+        This change implements the coalescing of spill slots inside allocateStack.
+        
+        This is an outrageous speed-up on the tsf_ir_speed benchmark from http://filpizlo.com/tsf/. This
+        is an interesting benchmark because it has a super ugly interpreter loop with ~20 live variables
+        carried around the loop back edge. This change makes that interpreter run 5x faster.
+        
+        This isn't a speed-up on any other benchmarks. It also doesn't regress anything. Compile time is
+        neither progressed or regressed, since the coalescing is super cheap, and this does not add any
+        significant new machinery to the register allocator (it's just a small change to spill codegen).
+        Overall on our wasm benchmarks, this is a 16% throughput progression.
+        
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::move):
+        (JSC::MacroAssembler::move32):
+        (JSC::MacroAssembler::moveFloat):
+        (JSC::MacroAssembler::moveDouble):
+        * b3/air/AirAllocateRegistersByGraphColoring.cpp:
+        (JSC::B3::Air::allocateRegistersByGraphColoring):
+        * b3/air/AirAllocateStack.cpp:
+        (JSC::B3::Air::allocateStack):
+        * b3/air/AirInst.cpp:
+        (JSC::B3::Air::Inst::hasEarlyDef):
+        (JSC::B3::Air::Inst::hasLateUseOrDef):
+        (JSC::B3::Air::Inst::needsPadding):
+        * b3/air/AirInst.h:
+        * b3/air/AirOpcode.opcodes:
+        * b3/air/AirPadInterference.cpp:
+        (JSC::B3::Air::padInterference):
+        * runtime/Options.h:
+
 2017-03-19  Chris Dumez  <cdumez@apple.com>
 
         `const location = "foo"` throws in a worker

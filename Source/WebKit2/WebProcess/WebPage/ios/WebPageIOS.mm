@@ -49,8 +49,8 @@
 #import "WebImage.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageProxyMessages.h"
+#import "WebPreviewLoaderClient.h"
 #import "WebProcess.h"
-#import "WebQuickLookHandleClient.h"
 #import <CoreText/CTFont.h>
 #import <WebCore/Autofill.h>
 #import <WebCore/Chrome.h>
@@ -631,10 +631,10 @@ void WebPage::didConcludeEditDataInteraction()
 {
     std::optional<TextIndicatorData> textIndicatorData;
 
-    static auto defaultEditDragTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionDoNotClipToVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
+    static auto defaultEditDataInteractionTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionDoNotClipToVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionComputeEstimatedBackgroundColor| TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
     auto& frame = m_page->focusController().focusedOrMainFrame();
     if (auto range = frame.selection().selection().toNormalizedRange()) {
-        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDragTextIndicatorOptions, TextIndicatorPresentationTransition::None))
+        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDataInteractionTextIndicatorOptions, TextIndicatorPresentationTransition::None))
             textIndicatorData = textIndicator->data();
     }
 
@@ -3282,7 +3282,7 @@ String WebPage::platformUserAgent(const URL&) const
 #if USE(QUICK_LOOK)
 void WebPage::didReceivePasswordForQuickLookDocument(const String& password)
 {
-    WebQuickLookHandleClient::didReceivePassword(password, m_pageID);
+    WebPreviewLoaderClient::didReceivePassword(password, m_pageID);
 }
 #endif
 

@@ -1,3 +1,116 @@
+2017-03-22  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Clicking DOM breakpoint marker should enable/disable breakpoints
+        https://bugs.webkit.org/show_bug.cgi?id=169856
+        <rdar://problem/31133090>
+
+        Reviewed by Joseph Pecoraro.
+
+        Clicking DOM breakpoint marker should enable/disable breakpoints,
+        matching the behavior of the marker's context menu:
+
+        - If one or more breakpoints are disabled, click enables all
+        - If all breakpoints are enabled, click disables all
+
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._updateBreakpointStatus):
+        (WebInspector.DOMTreeElement.prototype._statusImageClicked):
+
+2017-03-20  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: RTL: minor layout issues in Breakpoint Editor popover
+        https://bugs.webkit.org/show_bug.cgi?id=169765
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Controllers/BreakpointPopoverController.js:
+        (WebInspector.BreakpointPopoverController.prototype._createPopoverContent):
+        Fix typo.
+
+        * UserInterface/Views/BreakpointActionView.css:
+        (body[dir=ltr] .breakpoint-action-button-container):
+        (body[dir=rtl] .breakpoint-action-button-container):
+        (:matches(.breakpoint-action-append-button, .breakpoint-action-remove-button)):
+        (body[dir=ltr] :matches(.breakpoint-action-append-button, .breakpoint-action-remove-button)):
+        (body[dir=rtl] :matches(.breakpoint-action-append-button, .breakpoint-action-remove-button)):
+        (.breakpoint-action-block-body > .description):
+        (body[dir=ltr] .breakpoint-action-block-body > .description):
+        (body[dir=rtl] .breakpoint-action-block-body > .description):
+        (.breakpoint-action-block-body > input):
+        (.breakpoint-action-button-container): Deleted.
+        (.breakpoint-action-append-button, .breakpoint-action-remove-button): Deleted.
+
+        * UserInterface/Views/BreakpointActionView.js:
+        (WebInspector.BreakpointActionView.prototype._updateBody):
+        Manually apply `dir="ltr"` to the description element to force proper rendering.
+
+        * UserInterface/Views/BreakpointPopoverController.css:
+        (.popover .edit-breakpoint-popover-content):
+        (.popover .edit-breakpoint-popover-content > table > tr > th):
+        (#edit-breakpoint-popover-ignore):
+        (body[dir=ltr] :matches(#edit-breakpoint-popover-ignore, #edit-breakpoint-popover-auto-continue)):
+        (body[dir=rtl] :matches(#edit-breakpoint-popover-ignore, #edit-breakpoint-popover-auto-continue)):
+        (#edit-breakpoint-popoover-auto-continue): Deleted.
+
+2017-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Icon next to "An error occurred..." message changes size when Inspector window is resized
+        https://bugs.webkit.org/show_bug.cgi?id=169901
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/Main.css:
+        (.message-text-view.error::before):
+
+2017-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Clicking on Clear Network Items icon throws an exception if timing popover is visible
+        https://bugs.webkit.org/show_bug.cgi?id=169852
+        <rdar://problem/31132652>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceTimelineDataGridNode.js:
+        (WebInspector.ResourceTimelineDataGridNode.prototype._mouseoverRecordBar):
+        (WebInspector.ResourceTimelineDataGridNode):
+
+2017-03-20  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r187873): Web Inspector: When resizing, prevent DataGrid columns from collapsing entirely
+        https://bugs.webkit.org/show_bug.cgi?id=169899
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype.resizerDragging):
+        leftMinimum and rightMaximum variables were always NaN because this.ColumnResizePadding is undefined.
+
+2017-03-20  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Pseudo-class markers overlap DOM breakpoints and disclosure triangle
+        https://bugs.webkit.org/show_bug.cgi?id=169850
+        <rdar://problem/31132335>
+
+        Reviewed by Joseph Pecoraro.
+
+        DOMTreeContentView should always have at least 7px of gutter space to
+        accomodate pseudo-class markers. When DOM breakpoints are visible the
+        gutter size is increased so breakpoints and markers do not overlap.
+
+        * UserInterface/Views/DOMTreeContentView.css:
+        (.content-view.dom-tree .tree-outline.dom):
+        (.content-view.dom-tree.show-gutter .tree-outline.dom):
+        (body[dir=ltr] .content-view.dom-tree .tree-outline.dom):
+        (body[dir=rtl] .content-view.dom-tree .tree-outline.dom):
+        (body[dir=ltr] .content-view.dom-tree.show-gutter .tree-outline.dom): Deleted.
+        (body[dir=rtl] .content-view.dom-tree.show-gutter .tree-outline.dom): Deleted.
+
+        * UserInterface/Views/DOMTreeOutline.css:
+        (.content-view.dom-tree.show-gutter .tree-outline.dom):
+        Change pseudo-class marker indent when showing DOM breakpoint gutter.
+        (body[dir=ltr] .tree-outline.dom li.pseudo-class-enabled > .selection-area::before):
+        Drive-by fix: copy paste error.
+
 2017-03-19  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: REGRESSION (r212910): Active call frame status icon has incorrect left margin

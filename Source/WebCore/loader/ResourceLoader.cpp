@@ -57,7 +57,7 @@
 
 #if USE(QUICK_LOOK)
 #include "PreviewConverter.h"
-#include "QuickLook.h"
+#include "PreviewLoader.h"
 #endif
 
 namespace WebCore {
@@ -755,7 +755,7 @@ void ResourceLoader::unschedule(SchedulePair& pair)
 #if USE(QUICK_LOOK)
 bool ResourceLoader::isQuickLookResource() const
 {
-    return !!m_quickLookHandle;
+    return !!m_previewLoader;
 }
 #endif
 

@@ -84,8 +84,8 @@ class NavigationAction;
 class Page;
 class PluginViewBase;
 class PolicyChecker;
+class PreviewLoaderClient;
 class ProtectionSpace;
-class QuickLookHandleClient;
 class RTCPeerConnectionHandler;
 class ResourceError;
 class ResourceHandle;
@@ -344,7 +344,7 @@ public:
     virtual bool isEmptyFrameLoaderClient() { return false; }
 
 #if USE(QUICK_LOOK)
-    virtual RefPtr<QuickLookHandleClient> createQuickLookHandleClient(const String&, const String&) = 0;
+    virtual RefPtr<PreviewLoaderClient> createPreviewLoaderClient(const String&, const String&) = 0;
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
