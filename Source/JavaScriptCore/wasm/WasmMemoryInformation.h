@@ -28,6 +28,7 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "GPRInfo.h"
+#include "RegisterSet.h"
 #include "WasmMemory.h"
 #include "WasmPageCount.h"
 #include <wtf/Ref.h>
@@ -43,8 +44,20 @@ struct PinnedSizeRegisterInfo {
 struct PinnedRegisterInfo {
     Vector<PinnedSizeRegisterInfo> sizeRegisters;
     GPRReg baseMemoryPointer;
+    GPRReg wasmContextPointer;
     static const PinnedRegisterInfo& get();
-    PinnedRegisterInfo(Vector<PinnedSizeRegisterInfo>&&, GPRReg);
+    PinnedRegisterInfo(Vector<PinnedSizeRegisterInfo>&&, GPRReg, GPRReg);
+
+    RegisterSet toSave() const
+    {
+        RegisterSet result;
+        result.set(baseMemoryPointer);
+        if (wasmContextPointer != InvalidGPRReg)
+            result.set(wasmContextPointer);
+        for (const auto& info : sizeRegisters)
+            result.set(info.sizeRegister);
+        return result;
+    }
 };
 
 class MemoryInformation {
@@ -54,24 +67,33 @@ public:
         ASSERT(!*this);
     }
 
-    MemoryInformation(VM&, PageCount initial, PageCount maximum, std::optional<Memory::Mode>, bool isImport);
+    MemoryInformation(PageCount initial, PageCount maximum, bool isImport);
 
     PageCount initial() const { return m_initial; }
     PageCount maximum() const { return m_maximum; }
-    bool hasReservedMemory() const { return m_reservedMemory; }
-    RefPtr<Memory> takeReservedMemory() { ASSERT(hasReservedMemory()); return m_reservedMemory.release(); }
-    Memory::Mode mode() const { return m_mode; }
     bool isImport() const { return m_isImport; }
 
     explicit operator bool() const { return !!m_initial; }
 
 private:
-    RefPtr<Memory> m_reservedMemory;
     PageCount m_initial { };
     PageCount m_maximum { };
-    Memory::Mode m_mode { Memory::Mode::BoundsChecking };
     bool m_isImport { false };
 };
+
+inline bool useFastTLS()
+{
+#if ENABLE(FAST_TLS_JIT)
+    return Options::useWebAssemblyFastTLS();
+#else
+    return false;
+#endif
+}
+
+inline bool useFastTLSForWasmContext()
+{
+    return useFastTLS();
+}
 
 } } // namespace JSC::Wasm
 

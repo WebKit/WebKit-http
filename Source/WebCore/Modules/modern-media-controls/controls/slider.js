@@ -64,17 +64,6 @@ class Slider extends LayoutItem
         this.needsLayout = true;
     }
 
-    get width()
-    {
-        return super.width;
-    }
-
-    set width(width)
-    {
-        super.width = width;
-        this.needsLayout = true;
-    }
-
     // Protected
 
     handleEvent(event)
@@ -109,9 +98,9 @@ class Slider extends LayoutItem
         }
     }
 
-    layout()
+    commit()
     {
-        super.layout();
+        super.commit();
         this.draw(this._canvas.element.getContext("2d"));
     }
 

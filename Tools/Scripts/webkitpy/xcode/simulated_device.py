@@ -20,21 +20,18 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import errno
-import os
 import logging
 import re
 import signal
 import subprocess
 
-from webkitpy.xcode.device import Device
 from webkitpy.xcode.simulator import Simulator
 from webkitpy.common.host import Host
 
 _log = logging.getLogger(__name__)
 
 
-class SimulatedDevice(Device):
+class SimulatedDevice(object):
     """
     Represents a CoreSimulator device underneath a runtime
     """
@@ -52,9 +49,17 @@ class SimulatedDevice(Device):
         :param host: The host which can run command line commands
         :type host: Host
         """
-        super(SimulatedDevice, self).__init__(name, udid, host)
         self.available = available
         self.runtime = runtime
+        self._host = host
+        self.name = name
+        self.udid = udid
+
+        self.executive = host.executive
+        self.filesystem = host.filesystem
+        self.user = None
+        self.platform = host.platform
+        self.workspace = host.workspace
 
     @property
     def state(self):
@@ -151,7 +156,8 @@ class SimulatedDevice(Device):
                 pass
         return False
 
-    def launch_app(self, bundle_id, args, env=None, timeout=10):
+    # FIXME: Increase timeout for <rdar://problem/31331576>
+    def launch_app(self, bundle_id, args, env=None, timeout=300):
         environment_to_use = {}
         SIMCTL_ENV_PREFIX = 'SIMCTL_CHILD_'
         for value in (env or {}):
@@ -179,7 +185,7 @@ class SimulatedDevice(Device):
             )
             match = re.match(r'(?P<bundle>[^:]+): (?P<pid>\d+)\n', output)
             # FIXME: We shouldn't need to check the PID <rdar://problem/31154075>.
-            if match and self.poll(int(match.group('pid'))) is None:
+            if match and self.executive.check_running_pid(int(match.group('pid'))):
                 break
 
         signal.alarm(0)  # Cancel alarm
@@ -188,17 +194,16 @@ class SimulatedDevice(Device):
             raise RuntimeError('Failed to find process id for {}: {}'.format(bundle_id, output))
         return int(match.group('pid'))
 
-    def poll(self, pid):
-        try:
-            os.kill(pid, 0)
-        except OSError as err:
-            assert err.errno == errno.ESRCH
-            return 1
-        return None
+    def __eq__(self, other):
+        return self.udid == other.udid
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
     def __repr__(self):
-        return '<{device_info} State: {state}. Runtime: {runtime}, Available: {available}>'.format(
-            device_info=super(SimulatedDevice, self).__repr__(),
+        return '<Device "{name}": {udid}. State: {state}. Runtime: {runtime}, Available: {available}>'.format(
+            name=self.name,
+            udid=self.udid,
             state=self.state,
             available=self.available,
             runtime=self.runtime.identifier)

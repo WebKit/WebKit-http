@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2013-2016 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2013-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -349,22 +349,23 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
         cellElement.className = columnIdentifier + "-column";
         cellElement.__columnIdentifier = columnIdentifier;
 
-        var column = this.dataGrid.columns.get(columnIdentifier);
-
-        if (column["aligned"])
-            cellElement.classList.add(column["aligned"]);
-
-        if (column["group"])
-            cellElement.classList.add("column-group-" + column["group"]);
-
         var div = cellElement.createChild("div", "cell-content");
         var content = this.createCellContent(columnIdentifier, cellElement);
         div.append(content);
 
-        if (column["icon"]) {
-            let iconElement = document.createElement("div");
-            iconElement.classList.add("icon");
-            div.insertBefore(iconElement, div.firstChild);
+        let column = this.dataGrid.columns.get(columnIdentifier);
+        if (column) {
+            if (column["aligned"])
+                cellElement.classList.add(column["aligned"]);
+
+            if (column["group"])
+                cellElement.classList.add("column-group-" + column["group"]);
+
+            if (column["icon"]) {
+                let iconElement = document.createElement("div");
+                iconElement.classList.add("icon");
+                div.insertBefore(iconElement, div.firstChild);
+            }
         }
 
         if (columnIdentifier === this.dataGrid.disclosureColumnIdentifier) {
@@ -382,7 +383,11 @@ WebInspector.DataGridNode = class DataGridNode extends WebInspector.Object
 
     createCellContent(columnIdentifier)
     {
-        return this.data[columnIdentifier] || "\u200b"; // Zero width space to keep the cell from collapsing.
+        let data = this.data[columnIdentifier];
+        if (!data)
+            return zeroWidthSpace; // Zero width space to keep the cell from collapsing.
+
+        return (typeof data === "number") ? data.maxDecimals(2).toLocaleString() : data;
     }
 
     elementWithColumnIdentifier(columnIdentifier)

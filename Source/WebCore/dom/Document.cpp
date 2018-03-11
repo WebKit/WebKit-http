@@ -1726,6 +1726,7 @@ void Document::resolveStyle(ResolveStyleType type)
         if (type == ResolveStyleType::Rebuild) {
             // This may get set again during style resolve.
             m_hasNodesWithNonFinalStyle = false;
+            m_hasNodesWithMissingStyle = false;
 
             auto documentStyle = Style::resolveForDocument(*this);
 
@@ -1863,9 +1864,9 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
 
     if (!haveStylesheetsLoaded()) {
         m_ignorePendingStylesheets = true;
-        // FIXME: This should just invalidate elements with non-final styles.
-        if (m_hasNodesWithNonFinalStyle)
-            resolveStyle(ResolveStyleType::Rebuild);
+        // FIXME: This should just invalidate elements with missing styles.
+        if (m_hasNodesWithMissingStyle)
+            scheduleForcedStyleRecalc();
     }
 
     updateLayout();
@@ -2208,8 +2209,12 @@ void Document::prepareForDestruction()
             cache->clearTextMarkerNodesInUse(this);
     }
 #endif
-    
-    disconnectDescendantFrames();
+
+    {
+        NavigationDisabler navigationDisabler;
+        disconnectDescendantFrames();
+    }
+
     if (m_domWindow && m_frame)
         m_domWindow->willDetachDocumentFromFrame();
 
@@ -2260,9 +2265,16 @@ void Document::prepareForDestruction()
     }
 #endif
 
+    m_cachedResourceLoader->stopUnusedPreloadsTimer();
+
     detachFromFrame();
 
     m_hasPreparedForDestruction = true;
+
+    // Note that m_pageCacheState can be Document::AboutToEnterPageCache if our frame
+    // was removed in an onpagehide event handler fired when the top-level frame is
+    // about to enter the page cache.
+    ASSERT_WITH_SECURITY_IMPLICATION(m_pageCacheState != Document::InPageCache);
 }
 
 void Document::removeAllEventListeners()
@@ -2619,9 +2631,9 @@ void Document::implicitClose()
         accessSVGExtensions().dispatchSVGLoadEventToOutermostSVGElements();
 
     dispatchWindowLoadEvent();
-    enqueuePageshowEvent(PageshowEventNotPersisted);
+    dispatchPageshowEvent(PageshowEventNotPersisted);
     if (m_pendingStateObject)
-        enqueuePopstateEvent(WTFMove(m_pendingStateObject));
+        dispatchPopstateEvent(WTFMove(m_pendingStateObject));
 
     if (f)
         f->loader().dispatchOnloadEvents();
@@ -4873,7 +4885,7 @@ const SVGDocumentExtensions* Document::svgExtensions()
 SVGDocumentExtensions& Document::accessSVGExtensions()
 {
     if (!m_svgExtensions)
-        m_svgExtensions = std::make_unique<SVGDocumentExtensions>(this);
+        m_svgExtensions = std::make_unique<SVGDocumentExtensions>(*this);
     return *m_svgExtensions;
 }
 
@@ -5203,7 +5215,7 @@ void Document::statePopped(Ref<SerializedScriptValue>&& stateObject)
     // Per step 11 of section 6.5.9 (history traversal) of the HTML5 spec, we 
     // defer firing of popstate until we're in the complete state.
     if (m_readyState == Complete)
-        enqueuePopstateEvent(WTFMove(stateObject));
+        dispatchPopstateEvent(WTFMove(stateObject));
     else
         m_pendingStateObject = WTFMove(stateObject);
 }
@@ -5428,7 +5440,7 @@ String Document::displayStringModifiedByEncoding(const String& string) const
     return String { string }.replace('\\', m_decoder->encoding().backslashAsCurrencySymbol());
 }
 
-void Document::enqueuePageshowEvent(PageshowEventPersistence persisted)
+void Document::dispatchPageshowEvent(PageshowEventPersistence persisted)
 {
     // FIXME: https://bugs.webkit.org/show_bug.cgi?id=36334 Pageshow event needs to fire asynchronously.
     dispatchWindowEvent(PageTransitionEvent::create(eventNames().pageshowEvent, persisted), this);
@@ -5439,7 +5451,7 @@ void Document::enqueueHashchangeEvent(const String& oldURL, const String& newURL
     enqueueWindowEvent(HashChangeEvent::create(oldURL, newURL));
 }
 
-void Document::enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
+void Document::dispatchPopstateEvent(RefPtr<SerializedScriptValue>&& stateObject)
 {
     dispatchWindowEvent(PopStateEvent::create(WTFMove(stateObject), m_domWindow ? m_domWindow->history() : nullptr));
 }

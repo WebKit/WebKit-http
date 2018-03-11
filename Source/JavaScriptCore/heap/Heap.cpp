@@ -1499,6 +1499,30 @@ NEVER_INLINE void Heap::resumeThePeriphery()
     
     if (!m_collectorBelievesThatTheWorldIsStopped) {
         dataLog("Fatal: collector does not believe that the world is stopped.\n");
+#if OS(DARWIN)
+        // FIXME: Remove this when no longer needed.
+        // https://bugs.webkit.org/show_bug.cgi?id=170094
+#if CPU(X86_64)
+        unsigned worldState = m_worldState.load();
+        asm volatile(
+            "int3"
+            :
+            : "a"(m_currentPhase), "b"(m_nextPhase), "c"(worldState), "S"(m_lastServedTicket), "D"(m_lastGrantedTicket)
+            : "memory");
+#elif CPU(ARM64)
+        unsigned worldState = m_worldState.load();
+        asm volatile(
+            "ldrb w0, %0\n"
+            "ldrb w1, %1\n"
+            "ldr w2, %2\n"
+            "ldr x3, %3\n"
+            "ldr x4, %4\n"
+            "brk #0"
+            :
+            : "m"(m_currentPhase), "m"(m_nextPhase), "m"(worldState), "m"(m_lastServedTicket), "m"(m_lastGrantedTicket)
+            : "memory");
+#endif
+#endif // OS(DARWIN)
         RELEASE_ASSERT_NOT_REACHED();
     }
     m_collectorBelievesThatTheWorldIsStopped = false;
@@ -1937,7 +1961,7 @@ Heap::Ticket Heap::requestCollection(std::optional<CollectionScope> scope)
     // right now. This is an optimization that prevents the collector thread from ever starting in most
     // cases.
     ASSERT(m_lastServedTicket <= m_lastGrantedTicket);
-    if (m_lastServedTicket == m_lastGrantedTicket) {
+    if ((m_lastServedTicket == m_lastGrantedTicket) && (m_currentPhase == CollectorPhase::NotRunning)) {
         if (false)
             dataLog("Taking the conn.\n");
         m_worldState.exchangeOr(mutatorHasConnBit);

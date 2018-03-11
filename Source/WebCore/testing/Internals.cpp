@@ -517,14 +517,14 @@ unsigned Internals::workerThreadCount() const
     return WorkerThread::workerThreadCount();
 }
 
-bool Internals::areSVGAnimationsPaused() const
+ExceptionOr<bool> Internals::areSVGAnimationsPaused() const
 {
     auto* document = contextDocument();
     if (!document)
-        return false;
+        return Exception { INVALID_ACCESS_ERR, ASCIILiteral("No context document") };
 
     if (!document->svgExtensions())
-        return false;
+        return Exception { NOT_FOUND_ERR, ASCIILiteral("No SVG animations") };
 
     return document->accessSVGExtensions().areAnimationsPaused();
 }
@@ -742,6 +742,19 @@ void Internals::resetImageAnimation(HTMLImageElement& element)
         return;
 
     image->resetAnimation();
+}
+
+bool Internals::isImageAnimating(HTMLImageElement& element)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return false;
+
+    auto* image = cachedImage->image();
+    if (!image)
+        return false;
+
+    return image->isAnimating();
 }
 
 void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
@@ -1704,6 +1717,24 @@ ExceptionOr<unsigned> Internals::touchEventHandlerCount()
         return Exception { INVALID_ACCESS_ERR };
 
     return document->touchEventHandlerCount();
+}
+
+ExceptionOr<Ref<ClientRectList>> Internals::touchEventRectsForEvent(const String& eventName)
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { INVALID_ACCESS_ERR };
+
+    return document->page()->touchEventRectsForEvent(eventName);
+}
+
+ExceptionOr<Ref<ClientRectList>> Internals::passiveTouchEventListenerRects()
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return Exception { INVALID_ACCESS_ERR };
+
+    return document->page()->passiveTouchEventListenerRects();
 }
 
 // FIXME: Remove the document argument. It is almost always the same as

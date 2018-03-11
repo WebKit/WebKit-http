@@ -706,9 +706,11 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+webrtc/video-getParameters.html [ Failure ]
 webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute.html [ Pass Failure ]
+webkit.org/b/170178 webrtc/video-replace-track-to-null.html [ Pass Failure ]
 fast/mediastream/getUserMedia-webaudio.html [ Skip ]
 fast/mediastream/RTCPeerConnection-closed-state.html [ Skip ]
 fast/mediastream/RTCPeerConnection-iceconnectionstatechange-event.html [ Skip ]
@@ -716,6 +718,7 @@ fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-icecandidate-event.html [ Pass Failure ]
+fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
 
 # Need updating wptserve
 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
@@ -1086,6 +1089,8 @@ fast/history/page-cache-with-opener.html [ Skip ]
 
 webkit.org/b/168238 imported/w3c/web-platform-tests/dom/events/EventListener-invoke-legacy.html [ Pass Failure ]
 
+webkit.org/b/170122 http/tests/preload/single_download_preload_headers_charset.php [ Pass Failure ]
+
 ########################################
 ### START OF -disabled tests
 
@@ -1234,3 +1239,5 @@ fast/forms/range/range-remove-on-drag.html [ Skip ]
 webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Failure ]
 
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
+
+webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]

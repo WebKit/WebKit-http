@@ -169,7 +169,7 @@ static bool affectsRenderedSubtree(Element& element, const RenderStyle& newStyle
 ElementUpdate TreeResolver::resolveElement(Element& element)
 {
     if (m_didSeePendingStylesheet && !element.renderer() && !m_document.isIgnoringPendingStylesheets()) {
-        m_document.setHasNodesWithNonFinalStyle();
+        m_document.setHasNodesWithMissingStyle();
         return { };
     }
 

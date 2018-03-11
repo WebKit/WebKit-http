@@ -37,8 +37,8 @@
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
 #include "RTCIceCandidate.h"
-#include "RTCIceCandidateEvent.h"
 #include "RTCPeerConnection.h"
+#include "RTCPeerConnectionIceEvent.h"
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
@@ -225,16 +225,22 @@ void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
     m_setDescriptionPromise = std::nullopt;
 }
 
-void PeerConnectionBackend::addIceCandidate(RTCIceCandidate& iceCandidate, DOMPromise<void>&& promise)
+void PeerConnectionBackend::addIceCandidate(RTCIceCandidate* iceCandidate, DOMPromise<void>&& promise)
 {
     ASSERT(m_peerConnection.signalingState() != RTCSignalingState::Closed);
 
-    if (iceCandidate.sdpMid().isNull() && !iceCandidate.sdpMLineIndex()) {
+    if (!iceCandidate) {
+        endOfIceCandidates(WTFMove(promise));
+        return;
+    }
+
+    // FIXME: As per https://w3c.github.io/webrtc-pc/#dom-rtcpeerconnection-addicecandidate(), this check should be done before enqueuing the task.
+    if (iceCandidate->sdpMid().isNull() && !iceCandidate->sdpMLineIndex()) {
         promise.reject(Exception { TypeError, ASCIILiteral("Trying to add a candidate that is missing both sdpMid and sdpMLineIndex") });
         return;
     }
     m_addIceCandidatePromise = WTFMove(promise);
-    doAddIceCandidate(iceCandidate);
+    doAddIceCandidate(*iceCandidate);
 }
 
 void PeerConnectionBackend::addIceCandidateSucceeded()
@@ -267,7 +273,7 @@ void PeerConnectionBackend::fireICECandidateEvent(RefPtr<RTCIceCandidate>&& cand
 {
     ASSERT(isMainThread());
 
-    m_peerConnection.fireEvent(RTCIceCandidateEvent::create(false, false, WTFMove(candidate)));
+    m_peerConnection.fireEvent(RTCPeerConnectionIceEvent::create(false, false, WTFMove(candidate)));
 }
 
 void PeerConnectionBackend::enableICECandidateFiltering()
@@ -331,7 +337,7 @@ void PeerConnectionBackend::doneGatheringCandidates()
 {
     ASSERT(isMainThread());
 
-    m_peerConnection.fireEvent(RTCIceCandidateEvent::create(false, false, nullptr));
+    m_peerConnection.fireEvent(RTCPeerConnectionIceEvent::create(false, false, nullptr));
     m_peerConnection.updateIceGatheringState(RTCIceGatheringState::Complete);
 }
 

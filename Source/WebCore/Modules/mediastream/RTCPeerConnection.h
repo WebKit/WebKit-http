@@ -58,11 +58,12 @@ class RTCStatsCallback;
 
 struct RTCAnswerOptions;
 struct RTCOfferOptions;
+struct RTCRtpParameters;
 struct RTCRtpTransceiverInit {
     RTCRtpTransceiverDirection direction;
 };
 
-class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public RTCRtpSenderClient, public EventTargetWithInlineData, public ActiveDOMObject {
+class RTCPeerConnection final : public RefCounted<RTCPeerConnection>, public RTCRtpSender::Backend, public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     static Ref<RTCPeerConnection> create(ScriptExecutionContext&);
     virtual ~RTCPeerConnection();
@@ -85,7 +86,7 @@ public:
     RefPtr<RTCSessionDescription> currentRemoteDescription() const;
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
 
-    void queuedAddIceCandidate(RTCIceCandidate&, DOMPromise<void>&&);
+    void queuedAddIceCandidate(RTCIceCandidate*, DOMPromise<void>&&);
 
     RTCSignalingState signalingState() const { return m_signalingState; }
     RTCIceGatheringState iceGatheringState() const { return m_iceGatheringState; }
@@ -104,8 +105,8 @@ public:
     ExceptionOr<Ref<RTCRtpSender>> addTrack(Ref<MediaStreamTrack>&&, const Vector<std::reference_wrapper<MediaStream>>&);
     ExceptionOr<void> removeTrack(RTCRtpSender&);
 
-    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(Ref<MediaStreamTrack>&&, const RTCRtpTransceiverInit&);
-    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(const String& kind, const RTCRtpTransceiverInit&);
+    using AddTransceiverTrackOrKind = Variant<RefPtr<MediaStreamTrack>, String>;
+    ExceptionOr<Ref<RTCRtpTransceiver>> addTransceiver(AddTransceiverTrackOrKind&&, const RTCRtpTransceiverInit&);
 
     // 6.1 Peer-to-peer data API
     ExceptionOr<Ref<RTCDataChannel>> createDataChannel(ScriptExecutionContext&, String&&, RTCDataChannelInit&&);
@@ -134,16 +135,18 @@ public:
 
     void scheduleNegotiationNeededEvent();
 
-    RTCRtpSenderClient& senderClient() { return *this; }
+    RTCRtpSender::Backend& senderBackend() { return *this; }
     void fireEvent(Event&);
 
     void disableICECandidateFiltering() { m_backend->disableICECandidateFiltering(); }
     void enableICECandidateFiltering() { m_backend->enableICECandidateFiltering(); }
 
+    void enqueueReplaceTrackTask(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromise<void>&&);
+
 private:
     RTCPeerConnection(ScriptExecutionContext&);
 
-    void completeAddTransceiver(RTCRtpTransceiver&, const RTCRtpTransceiverInit&);
+    Ref<RTCRtpTransceiver> completeAddTransceiver(Ref<RTCRtpSender>&&, const RTCRtpTransceiverInit&, const String& trackId, const String& trackKind);
 
     RTCController& rtcController();
     void registerToController();
@@ -158,8 +161,10 @@ private:
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
 
-    // RTCRtpSenderClient
-    void replaceTrack(RTCRtpSender&, Ref<MediaStreamTrack>&&, DOMPromise<void>&&) final;
+    // FIXME: We might want PeerConnectionBackend to be the Backend
+    // RTCRtpSender::Backend
+    void replaceTrack(RTCRtpSender&, RefPtr<MediaStreamTrack>&&, DOMPromise<void>&&) final;
+    RTCRtpParameters getParameters(RTCRtpSender&) const final;
 
     void updateConnectionState();
     bool doClose();
@@ -172,8 +177,6 @@ private:
     RTCPeerConnectionState m_connectionState { RTCPeerConnectionState::New };
 
     std::unique_ptr<RtpTransceiverSet> m_transceiverSet { std::unique_ptr<RtpTransceiverSet>(new RtpTransceiverSet()) };
-
-    Vector<RefPtr<RTCDataChannel>> m_dataChannels;
 
     std::unique_ptr<PeerConnectionBackend> m_backend;
 

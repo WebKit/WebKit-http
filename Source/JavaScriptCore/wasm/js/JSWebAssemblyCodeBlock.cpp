@@ -29,22 +29,55 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSCInlines.h"
+#include "JSWebAssemblyLinkError.h"
 #include "JSWebAssemblyMemory.h"
 #include "JSWebAssemblyModule.h"
+#include "WasmPlanInlines.h"
 
 namespace JSC {
 
 const ClassInfo JSWebAssemblyCodeBlock::s_info = { "WebAssemblyCodeBlock", nullptr, 0, CREATE_METHOD_TABLE(JSWebAssemblyCodeBlock) };
 
-JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock(VM& vm, JSWebAssemblyModule* owner, Bag<CallLinkInfo>&& callLinkInfos, Vector<Wasm::WasmExitStubs>&& wasmExitStubs, Wasm::Memory::Mode mode, unsigned calleeCount)
+JSWebAssemblyCodeBlock::JSWebAssemblyCodeBlock(VM& vm, JSWebAssemblyModule* owner,  Wasm::MemoryMode mode, Ref<Wasm::Plan>&& plan, unsigned calleeCount)
     : Base(vm, vm.webAssemblyCodeBlockStructure.get())
-    , m_callLinkInfos(WTFMove(callLinkInfos))
-    , m_wasmExitStubs(WTFMove(wasmExitStubs))
+    , m_plan(WTFMove(plan))
     , m_mode(mode)
     , m_calleeCount(calleeCount)
 {
     m_module.set(vm, this, owner);
+    ASSERT(!module()->codeBlock(mode));
+    module()->setCodeBlock(vm, mode, this);
+
     memset(callees(), 0, m_calleeCount * sizeof(WriteBarrier<JSWebAssemblyCallee>) * 2);
+}
+
+void JSWebAssemblyCodeBlock::initialize()
+{
+    if (initialized())
+        return;
+
+    VM& vm = plan().vm();
+    ASSERT(vm.currentThreadIsHoldingAPILock());
+    RELEASE_ASSERT(!plan().hasWork());
+
+    if (plan().failed()) {
+        m_errorMessage = plan().errorMessage();
+        m_plan = nullptr;
+        return;
+    }
+
+    RELEASE_ASSERT(plan().mode() == mode());
+    ASSERT(plan().internalFunctionCount() == m_calleeCount);
+
+    m_callLinkInfos = plan().takeCallLinkInfos();
+    m_wasmExitStubs = plan().takeWasmExitStubs();
+
+    plan().initializeCallees([&] (unsigned calleeIndex, JSWebAssemblyCallee* jsEntrypointCallee, JSWebAssemblyCallee* wasmEntrypointCallee) {
+        setJSEntrypointCallee(vm, calleeIndex, jsEntrypointCallee);
+        setWasmEntrypointCallee(vm, calleeIndex, wasmEntrypointCallee);
+    });
+
+    m_plan = nullptr;
 }
 
 void JSWebAssemblyCodeBlock::destroy(JSCell* cell)
@@ -52,11 +85,26 @@ void JSWebAssemblyCodeBlock::destroy(JSCell* cell)
     static_cast<JSWebAssemblyCodeBlock*>(cell)->JSWebAssemblyCodeBlock::~JSWebAssemblyCodeBlock();
 }
 
-bool JSWebAssemblyCodeBlock::isSafeToRun(JSWebAssemblyMemory* memory)
+bool JSWebAssemblyCodeBlock::isSafeToRun(JSWebAssemblyMemory* memory) const
 {
-    if (mode() == Wasm::Memory::Signaling)
-        return memory->memory().mode() == mode();
-    return true;
+    if (!runnable())
+        return false;
+
+    Wasm::MemoryMode codeMode = mode();
+    Wasm::MemoryMode memoryMode = memory->memory().mode();
+    switch (codeMode) {
+    case Wasm::MemoryMode::BoundsChecking:
+        return true;
+    case Wasm::MemoryMode::Signaling:
+        // Code being in Signaling mode means that it performs no bounds checks.
+        // Its memory, even if empty, absolutely must also be in Signaling mode
+        // because the page protection detects out-of-bounds accesses.
+        return memoryMode == Wasm::MemoryMode::Signaling;
+    case Wasm::MemoryMode::NumberOfMemoryModes:
+        break;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+    return false;
 }
 
 void JSWebAssemblyCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)

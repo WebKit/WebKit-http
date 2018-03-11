@@ -26,8 +26,10 @@
 #include "config.h"
 #include "FontFace.h"
 
+#include "CSSComputedStyleDeclaration.h"
 #include "CSSFontFaceSource.h"
 #include "CSSFontFeatureValue.h"
+#include "CSSFontStyleValue.h"
 #include "CSSParser.h"
 #include "CSSUnicodeRangeValue.h"
 #include "CSSValueList.h"
@@ -39,6 +41,7 @@
 #include <runtime/ArrayBuffer.h>
 #include <runtime/ArrayBufferView.h>
 #include <runtime/JSCInlines.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -280,32 +283,34 @@ String FontFace::family() const
     return m_backing->families()->cssText();
 }
 
-static inline bool rangeIsSingleValue(FontSelectionRange range, FontSelectionValue value)
-{
-    return range.minimum == value && range.maximum == value;
-};
-
 String FontFace::style() const
 {
     m_backing->updateStyleIfNeeded();
     auto style = m_backing->italic();
 
-    if (rangeIsSingleValue(style, italicValue()))
-        return ASCIILiteral("italic");
-    if (rangeIsSingleValue(style, normalItalicValue()))
-        return ASCIILiteral("normal");
+    auto minimum = ComputedStyleExtractor::fontStyleFromStyleValue(style.minimum);
+    auto maximum = ComputedStyleExtractor::fontStyleFromStyleValue(style.maximum);
 
-    if (style.minimum == style.maximum) {
-        auto value = static_cast<float>(style.minimum);
-        if (value >= 0) {
-            auto floored = std::floor(value);
-            if (floored == value)
-                return String::format("oblique %ddeg", static_cast<int>(floored));
-        }
-        return String::format("oblique %fdeg", static_cast<float>(style.minimum));
+    if (minimum.get().equals(maximum.get()))
+        return minimum->cssText();
+
+    auto minimumNonKeyword = ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue(style.minimum);
+    auto maximumNonKeyword = ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue(style.maximum);
+
+    ASSERT(minimumNonKeyword->fontStyleValue->valueID() == CSSValueOblique);
+    ASSERT(maximumNonKeyword->fontStyleValue->valueID() == CSSValueOblique);
+
+    StringBuilder builder;
+    builder.append(minimumNonKeyword->fontStyleValue->cssText());
+    builder.append(' ');
+    if (minimum->obliqueValue.get() == maximum->obliqueValue.get())
+        builder.append(minimumNonKeyword->obliqueValue->cssText());
+    else {
+        builder.append(minimumNonKeyword->obliqueValue->cssText());
+        builder.append(' ');
+        builder.append(maximumNonKeyword->obliqueValue->cssText());
     }
-
-    return String::format("oblique %fdeg-%fdeg", static_cast<float>(style.minimum), static_cast<float>(style.maximum));
+    return builder.toString();
 }
 
 String FontFace::weight() const
@@ -313,22 +318,20 @@ String FontFace::weight() const
     m_backing->updateStyleIfNeeded();
     auto weight = m_backing->weight();
 
-    if (rangeIsSingleValue(weight, normalWeightValue()))
-        return ASCIILiteral("normal");
-    if (rangeIsSingleValue(weight, boldWeightValue()))
-        return ASCIILiteral("bold");
+    auto minimum = ComputedStyleExtractor::fontWeightFromStyleValue(weight.minimum);
+    auto maximum = ComputedStyleExtractor::fontWeightFromStyleValue(weight.maximum);
 
-    if (weight.minimum == weight.maximum) {
-        auto value = static_cast<float>(weight.minimum);
-        if (value >= 0) {
-            auto floored = std::floor(value);
-            if (floored == value)
-                return String::format("%d", static_cast<int>(floored));
-        }
-        return String::format("%f", static_cast<float>(weight.minimum));
-    }
+    if (minimum.get().equals(maximum.get()))
+        return minimum->cssText();
 
-    return String::format("%f-%f", static_cast<float>(weight.minimum), static_cast<float>(weight.maximum));
+    auto minimumNonKeyword = ComputedStyleExtractor::fontNonKeywordWeightFromStyleValue(weight.minimum);
+    auto maximumNonKeyword = ComputedStyleExtractor::fontNonKeywordWeightFromStyleValue(weight.maximum);
+
+    StringBuilder builder;
+    builder.append(minimumNonKeyword->cssText());
+    builder.append(' ');
+    builder.append(maximumNonKeyword->cssText());
+    return builder.toString();
 }
 
 String FontFace::stretch() const
@@ -336,36 +339,20 @@ String FontFace::stretch() const
     m_backing->updateStyleIfNeeded();
     auto stretch = m_backing->stretch();
 
-    if (rangeIsSingleValue(stretch, ultraCondensedStretchValue()))
-        return ASCIILiteral("ultra-condensed");
-    if (rangeIsSingleValue(stretch, extraCondensedStretchValue()))
-        return ASCIILiteral("extra-condensed");
-    if (rangeIsSingleValue(stretch, condensedStretchValue()))
-        return ASCIILiteral("condensed");
-    if (rangeIsSingleValue(stretch, semiCondensedStretchValue()))
-        return ASCIILiteral("semi-condensed");
-    if (rangeIsSingleValue(stretch, normalStretchValue()))
-        return ASCIILiteral("normal");
-    if (rangeIsSingleValue(stretch, semiExpandedStretchValue()))
-        return ASCIILiteral("semi-expanded");
-    if (rangeIsSingleValue(stretch, expandedStretchValue()))
-        return ASCIILiteral("expanded");
-    if (rangeIsSingleValue(stretch, extraExpandedStretchValue()))
-        return ASCIILiteral("extra-expanded");
-    if (rangeIsSingleValue(stretch, ultraExpandedStretchValue()))
-        return ASCIILiteral("ultra-expanded");
+    auto minimum = ComputedStyleExtractor::fontStretchFromStyleValue(stretch.minimum);
+    auto maximum = ComputedStyleExtractor::fontStretchFromStyleValue(stretch.maximum);
 
-    if (stretch.minimum == stretch.maximum) {
-        auto value = static_cast<float>(stretch.minimum);
-        if (value >= 0) {
-            auto floored = std::floor(value);
-            if (floored == value)
-                return String::format("%d%%", static_cast<int>(floored));
-        }
-        return String::format("%f%%", static_cast<float>(stretch.minimum));
-    }
+    if (minimum.get().equals(maximum.get()))
+        return minimum->cssText();
 
-    return String::format("%f%%-%f%%", static_cast<float>(stretch.minimum), static_cast<float>(stretch.maximum));
+    auto minimumNonKeyword = ComputedStyleExtractor::fontNonKeywordStretchFromStyleValue(stretch.minimum);
+    auto maximumNonKeyword = ComputedStyleExtractor::fontNonKeywordStretchFromStyleValue(stretch.maximum);
+
+    StringBuilder builder;
+    builder.append(minimumNonKeyword->cssText());
+    builder.append(' ');
+    builder.append(maximumNonKeyword->cssText());
+    return builder.toString();
 }
 
 String FontFace::unicodeRange() const

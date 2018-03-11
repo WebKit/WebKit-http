@@ -237,12 +237,15 @@ function setRemoteDescription()
     });
 }
 
-function addIceCandidate()
+function addIceCandidate(candidate)
 {
     "use strict";
 
     if (!@isRTCPeerConnection(this))
         return @Promise.@reject(@makeThisTypeError("RTCPeerConnection", "addIceCandidate"));
+
+    if (arguments.length < 1)
+        return @Promise.@reject(new @TypeError("Not enough arguments"));
 
     const peerConnection = this;
 
@@ -250,7 +253,8 @@ function addIceCandidate()
         "constructor": @RTCIceCandidate,
         "argName": "candidate",
         "argType": "RTCIceCandidate",
-        "maybeDictionary": "true"
+        "maybeDictionary": "true",
+        "defaultsToNull" : "true"
     };
     return @objectAndCallbacksOverload(arguments, "addIceCandidate", objectInfo, function (candidate) {
         // Promise mode

@@ -48,8 +48,10 @@ public:
     static Ref<RealtimeOutgoingAudioSource> create(Ref<RealtimeMediaSource>&& audioSource) { return adoptRef(*new RealtimeOutgoingAudioSource(WTFMove(audioSource))); }
     ~RealtimeOutgoingAudioSource() { stop(); }
 
-    void setTrack(rtc::scoped_refptr<webrtc::AudioTrackInterface>&& track) { m_track = WTFMove(track); }
     void stop();
+
+    bool setSource(Ref<RealtimeMediaSource>&&);
+    RealtimeMediaSource& source() const { return m_audioSource.get(); }
 
 private:
     explicit RealtimeOutgoingAudioSource(Ref<RealtimeMediaSource>&&);
@@ -73,7 +75,6 @@ private:
 
     Vector<webrtc::AudioTrackSinkInterface*> m_sinks;
     Ref<RealtimeMediaSource> m_audioSource;
-    rtc::scoped_refptr<webrtc::AudioTrackInterface> m_track;
     Ref<AudioSampleDataSource> m_sampleConverter;
     CAAudioStreamDescription m_inputStreamDescription;
     CAAudioStreamDescription m_outputStreamDescription;

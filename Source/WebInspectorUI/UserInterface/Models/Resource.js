@@ -270,8 +270,6 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         // Return the default MIME-types for the Resource.Type, since the current MIME-type
         // does not match what is expected for the Resource.Type.
         switch (this._type) {
-        case WebInspector.Resource.Type.Document:
-            return "text/html";
         case WebInspector.Resource.Type.Stylesheet:
             return "text/css";
         case WebInspector.Resource.Type.Script:
@@ -694,7 +692,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
         // See if we've already computed and cached the image size,
         // in which case we can provide them directly.
-        if (this._imageSize) {
+        if (this._imageSize !== undefined) {
             callback(this._imageSize);
             return;
         }
@@ -702,8 +700,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         var objectURL = null;
 
         // Event handler for the image "load" event.
-        function imageDidLoad()
-        {
+        function imageDidLoad() {
             URL.revokeObjectURL(objectURL);
 
             // Cache the image metrics.
@@ -715,6 +712,11 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
             callback(this._imageSize);
         }
 
+        function requestContentFailure() {
+            this._imageSize = null;
+            callback(this._imageSize);
+        }
+
         // Create an <img> element that we'll use to load the image resource
         // so that we can query its intrinsic size.
         var image = new Image;
@@ -723,7 +725,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         // Set the image source using an object URL once we've obtained its data.
         this.requestContent().then(function(content) {
             objectURL = image.src = content.sourceCode.createObjectURL();
-        });
+        }, requestContentFailure.bind(this));
     }
 
     requestContent()

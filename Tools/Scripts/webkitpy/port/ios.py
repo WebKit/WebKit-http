@@ -21,8 +21,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import traceback
 
 from webkitpy.common.memoized import memoized
+from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port.darwin import DarwinPort
 from webkitpy.port.simulator_process import SimulatorProcess
 
@@ -55,6 +57,13 @@ class IOSPort(DarwinPort):
             return 'WebKitTestRunnerApp.app'
         return 'DumpRenderTree.app'
 
+    def _generate_all_test_configurations(self):
+        configurations = []
+        for build_type in self.ALL_BUILD_TYPES:
+            for architecture in self.ARCHITECTURES:
+                configurations.append(TestConfiguration(version=self._version, architecture=architecture, build_type=build_type))
+        return configurations
+
     @memoized
     def child_processes(self):
         return int(self.get_option('child_processes'))
@@ -77,6 +86,24 @@ class IOSPort(DarwinPort):
             return self._testing_device(number)
         return self._current_device
 
+    def default_baseline_search_path(self):
+        wk_string = 'wk1'
+        if self.get_option('webkit_test_runner'):
+            wk_string = 'wk2'
+        fallback_names = [
+            '{}-{}'.format(self.port_name, wk_string),
+            self.port_name,
+            '{}-{}'.format(IOSPort.port_name, wk_string),
+            IOSPort.port_name,
+        ]
+        if self.get_option('webkit_test_runner'):
+            fallback_names.append('wk2')
+
+        return map(self._webkit_baseline_path, fallback_names)
+
+    def test_expectations_file_position(self):
+        return 3
+
     def _create_devices(self, device_class):
         raise NotImplementedError
 
@@ -91,3 +118,33 @@ class IOSPort(DarwinPort):
             # crash, but this crash will occur post-launch, after install_app has already killed the process.
             if not device.install_app(self._path_to_driver(), {'DYLD_LIBRARY_PATH': self._build_path()}):
                 raise RuntimeError('Failed to install app {} on device {}'.format(self._path_to_driver(), device.udid))
+
+        for i in xrange(self.child_processes()):
+            self.device_for_worker_number(i).prepare_for_testing()
+
+    def clean_up_test_run(self):
+        super(IOSPort, self).clean_up_test_run()
+
+        # Best effort to let every device teardown before throwing any exceptions here.
+        # Failure to teardown devices can leave things in a bad state.
+        exception_list = []
+        for i in xrange(self.child_processes()):
+            device = self.device_for_worker_number(i)
+            try:
+                self.device_for_worker_number(i).finished_testing()
+            except BaseException as e:
+                trace = traceback.format_exc()
+                if isinstance(e, Exception):
+                    exception_list.append([e, trace])
+                else:
+                    exception_list.append([Exception('Exception tearing down {}'.format(device)), trace])
+        if len(exception_list) == 1:
+            raise
+        elif len(exception_list) > 1:
+            print '\n'
+            for exception in exception_list:
+                _log.error('{} raised: {}'.format(exception[0].__class__.__name__, exception[0]))
+                _log.error(exception[1])
+                _log.error('--------------------------------------------------')
+
+            raise RuntimeError('Multiple failures when teardown devices')

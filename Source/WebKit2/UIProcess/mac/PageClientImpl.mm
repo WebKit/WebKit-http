@@ -123,7 +123,6 @@ void PageClientImpl::setViewNeedsDisplay(const WebCore::Region&)
 
 void PageClientImpl::requestScroll(const FloatPoint& scrollPosition, const IntPoint& scrollOrigin, bool isProgrammaticScroll)
 {
-    ASSERT_NOT_REACHED();
 }
 
 WebCore::FloatPoint PageClientImpl::viewScrollPosition()
@@ -769,12 +768,6 @@ void PageClientImpl::didSameDocumentNavigationForMainFrame(SameDocumentNavigatio
 {
     if (auto gestureController = m_impl->gestureController())
         gestureController->didSameDocumentNavigationForMainFrame(type);
-}
-
-void PageClientImpl::removeNavigationGestureSnapshot()
-{
-    if (auto gestureController = m_impl->gestureController())
-        gestureController->removeSwipeSnapshot();
 }
 
 void PageClientImpl::handleControlledElementIDResponse(const String& identifier)

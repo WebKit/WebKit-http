@@ -938,6 +938,8 @@ public:
 
     bool hasNodesWithNonFinalStyle() const { return m_hasNodesWithNonFinalStyle; }
     void setHasNodesWithNonFinalStyle() { m_hasNodesWithNonFinalStyle = true; }
+    bool hasNodesWithMissingStyle() const { return m_hasNodesWithMissingStyle; }
+    void setHasNodesWithMissingStyle() { m_hasNodesWithMissingStyle = true; }
 
     void updateFocusAppearanceSoon(SelectionRestorationMode);
     void cancelFocusAppearanceUpdate();
@@ -1054,9 +1056,9 @@ public:
     void enqueueWindowEvent(Ref<Event>&&);
     void enqueueDocumentEvent(Ref<Event>&&);
     void enqueueOverflowEvent(Ref<Event>&&);
-    void enqueuePageshowEvent(PageshowEventPersistence);
+    void dispatchPageshowEvent(PageshowEventPersistence);
     void enqueueHashchangeEvent(const String& oldURL, const String& newURL);
-    void enqueuePopstateEvent(RefPtr<SerializedScriptValue>&& stateObject);
+    void dispatchPopstateEvent(RefPtr<SerializedScriptValue>&& stateObject);
     DocumentEventQueue& eventQueue() const final { return m_eventQueue; }
 
     WEBCORE_EXPORT void addMediaCanStartListener(MediaCanStartListener*);
@@ -1675,6 +1677,7 @@ private:
     bool m_createRenderers { true };
 
     bool m_hasNodesWithNonFinalStyle { false };
+    bool m_hasNodesWithMissingStyle { false };
     // But sometimes you need to ignore pending stylesheet count to
     // force an immediate layout when requested by JS.
     bool m_ignorePendingStylesheets { false };

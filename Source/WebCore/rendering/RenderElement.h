@@ -185,9 +185,17 @@ public:
 
     void registerForVisibleInViewportCallback();
     void unregisterForVisibleInViewportCallback();
-    void visibleInViewportStateChanged(VisibleInViewportState);
 
-    bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect);
+    enum VisibleInViewportState {
+        VisibilityUnknown,
+        VisibleInViewport,
+        NotVisibleInViewport,
+    };
+    VisibleInViewportState visibleInViewportState() const { return static_cast<VisibleInViewportState>(m_visibleInViewportState); }
+    void setVisibleInViewportState(VisibleInViewportState);
+    virtual void visibleInViewportStateChanged();
+
+    bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect, CachedImage&);
     bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
     void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
 
@@ -309,7 +317,7 @@ private:
     std::unique_ptr<RenderStyle> computeFirstLineStyle() const;
     void invalidateCachedFirstLineStyle();
 
-    void newImageAnimationFrameAvailable(CachedImage&) final;
+    void newImageAnimationFrameAvailable(CachedImage&, bool& canPause) final;
 
     bool getLeadingCorner(FloatPoint& output, bool& insideFixed) const;
     bool getTrailingCorner(FloatPoint& output, bool& insideFixed) const;
@@ -336,6 +344,9 @@ private:
     unsigned m_renderBlockShouldForceRelayoutChildren : 1;
     unsigned m_renderBlockFlowHasMarkupTruncation : 1;
     unsigned m_renderBlockFlowLineLayoutPath : 2;
+
+    unsigned m_isRegisteredForVisibleInViewportCallback : 1;
+    unsigned m_visibleInViewportState : 2;
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;

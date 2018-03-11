@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,8 @@ export const notString = (v, msg) => isNotA(v, "string", msg);
 export const isString = (v, msg) => isA(v, "string", msg);
 export const notNumber = (v, msg) => isNotA(v, "number", msg);
 export const isNumber = (v, msg) => isA(v, "number", msg);
+export const notFunction = (v, msg) => isNotA(v, "function", msg);
+export const isFunction = (v, msg) => isA(v, "function", msg);
 
 export const hasObjectProperty = (o, p, msg) => {
     isObject(o, msg);
@@ -111,9 +113,6 @@ export const le = (lhs, rhs, msg) => {
         _fail(`Expected: "${lhs}" > "${rhs}"`, msg);
 };
 
-// Ignore source information at the end of the error message if the expected message didn't specify that information. Sometimes it changes, or it's tricky to get just right.
-const _sourceRe = new RegExp(/( \(evaluating '.*'\))|( \(In .*\))/);
-
 const _throws = (func, type, message, ...args) => {
     try {
         func(...args);
@@ -121,9 +120,15 @@ const _throws = (func, type, message, ...args) => {
         if (e instanceof type) {
             if (e.message === message)
                 return e;
-            const cleanMessage = e.message.replace(_sourceRe, '');
-            if (cleanMessage === message)
-                return e;
+            // Ignore source information at the end of the error message if the
+            // expected message didn't specify that information. Sometimes it
+            // changes, or it's tricky to get just right.
+            const evaluatingIndex = e.message.indexOf(" (evaluating '");
+            if (evaluatingIndex !== -1) {
+                const cleanMessage = e.message.substring(0, evaluatingIndex);
+                if (cleanMessage === message)
+                    return e;
+            }
         }
         _fail(`Expected to throw a ${type.name} with message "${message}", got ${e.name} with message "${e.message}"`);
     }
@@ -139,4 +144,25 @@ const _instanceof = (obj, type, msg) => {
 export {
     _throws as throws,
     _instanceof as instanceof,
+};
+
+const asyncTestImpl = (promise, thenFunc, catchFunc) => {
+    asyncTestStart(1);
+    promise.then(thenFunc).catch(catchFunc);
+};
+
+const printExn = (e) => {
+    print("Failed: ", e);
+    print(e.stack);
+};
+
+export const asyncTest = (promise) => asyncTestImpl(promise, asyncTestPassed, printExn);
+export const asyncTestEq = (promise, expected) => {
+    const thenCheck = (value) => {
+        if (value === expected)
+            return asyncTestPassed();
+        print("Failed: got ", value, " but expected ", expected);
+
+    }
+    asyncTestImpl(promise, thenCheck, printExn);
 };

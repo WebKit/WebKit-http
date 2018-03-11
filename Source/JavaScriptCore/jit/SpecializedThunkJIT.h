@@ -76,7 +76,7 @@ namespace JSC {
         void loadArgumentWithSpecificClass(const ClassInfo* classInfo, int argument, RegisterID dst, RegisterID scratch)
         {
             loadCellArgument(argument, dst);
-            emitLoadStructure(dst, scratch, dst);
+            emitLoadStructure(*vm(), dst, scratch, dst);
             appendFailure(branchPtr(NotEqual, Address(scratch, Structure::classInfoOffset()), TrustedImmPtr(classInfo)));
             // We have to reload the argument since emitLoadStructure clobbered it.
             loadCellArgument(argument, dst);
@@ -166,7 +166,7 @@ namespace JSC {
         
         MacroAssemblerCodeRef finalize(MacroAssemblerCodePtr fallback, const char* thunkKind)
         {
-            LinkBuffer patchBuffer(*m_vm, *this, GLOBAL_THUNK_ID);
+            LinkBuffer patchBuffer(*this, GLOBAL_THUNK_ID);
             patchBuffer.link(m_failures, CodeLocationLabel(fallback));
             for (unsigned i = 0; i < m_calls.size(); i++)
                 patchBuffer.link(m_calls[i].first, m_calls[i].second);

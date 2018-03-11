@@ -1,3 +1,392 @@
+2017-03-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: WebSockets: Messages log should remain being scrolled to the bottom when a new message is added
+        https://bugs.webkit.org/show_bug.cgi?id=170090
+
+        Reviewed by Matt Baker.
+
+        Adding many Web Socket messages quickly can create a performance bottleneck. Batch addition of DataGrid nodes
+        using requestAnimationFrame, and scroll to the bottom of the DataGrid at most once per a batch update.
+
+        * UserInterface/Views/WebSocketContentView.js:
+        (WebInspector.WebSocketContentView):
+        (WebInspector.WebSocketContentView.prototype.shown):
+        (WebInspector.WebSocketContentView.prototype.hidden):
+        (WebInspector.WebSocketContentView.prototype._updateFramesSoon):
+        Batch WebSocketContentView DOM modifications using requestAnimationFrame.
+
+        (WebInspector.WebSocketContentView.prototype._updateFrames):
+        (WebInspector.WebSocketContentView.prototype._addFrame):
+        (WebInspector.WebSocketContentView.prototype.addFrame): Deleted.
+        Make addFrame method private since it isn't used anywhere outside of this class.
+
+        (WebInspector.WebSocketContentView.prototype._updateState): Deleted.
+        Make _updateState a part of _updateFramesSoon.
+
+2017-03-29  Sam Brodkin  <isam@apple.com>
+
+        Web Inspector: Network tab content view is blank after reload
+        https://bugs.webkit.org/show_bug.cgi?id=168029
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype._networkTimelineReset):
+        showDefaultContentView() which shows networkGridView in the contentView was not being called
+        when the NetworkSidebarPanel was not visible. Removing the if statement always shows the
+        networkGridView which fixes the bug. This wouldn't be easy to regression test.
+
+2017-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: keyboard shortcuts with directionality need to be flipped (forward/back, etc)
+        https://bugs.webkit.org/show_bug.cgi?id=165761
+
+        Reviewed by Matt Baker.
+
+        Original patch by Devin Rousso.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser):
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser):
+        Flip the functionality of keyboard shortcuts when in RTL so that the action of
+        pressing the left or right arrows/curly braces matches what happens when the
+        corresponding left or right buttons are clicked.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._keyDown):
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype._keyDown):
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline.prototype._treeKeyDown):
+        Flip the Left and Right keyboard shortcuts to expand/collapse the selected item when in RTL.
+
+2017-03-28  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Add "Disable Caches" option that only applies to the inspected page while Web Inspector is open
+        https://bugs.webkit.org/show_bug.cgi?id=169865
+        <rdar://problem/31250573>
+
+        Reviewed by Joseph Pecoraro.
+
+        Hook up a button in the Network tab to WebCore::Page's resourceCachingDisabled flag.
+        If it is active, resource loads are subject to a cache policy that never uses a cached response.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Add localized strings.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Add a setting for whether to disable resource caching and inform the backend
+        of our preference. If someone changes the setting, tell the backend again.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView):
+        (WebInspector.NetworkGridContentView.prototype.get navigationItems):
+        (WebInspector.NetworkGridContentView.prototype._resourceCachingDisabledSettingChanged):
+        (WebInspector.NetworkGridContentView.prototype._toggleDisableResourceCache):
+        Add a new activatable navigation item that toggles disableResourceCaching for the inspected page.
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-10.0.json:
+        * Versions/Inspector-iOS-10.3.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+        * Versions/Inspector-iOS-9.3.json:
+        Update legacy backend commands to remove the old/broken Network.setCacheDisabled command.
+
+2017-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inspecting a Main Resource that is JS/JSON does not format / syntax highlight it properly
+        https://bugs.webkit.org/show_bug.cgi?id=166862
+        <rdar://problem/29835977>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.get syntheticMIMEType):
+        Don't override the mime type for Document resources. They should always
+        have a mime type and we should use whatever it is.
+
+2017-03-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Unable to Format JSON Request Data
+        https://bugs.webkit.org/show_bug.cgi?id=170189
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype._startWorkerPrettyPrint):
+        When we are viewing request data we are looking at a TextResourceContentView
+        which has a TextEditor without a delegate. In these cases we can just assume
+        a JavaScript Program. In the majority of cases this will typically be JSON
+        data, and either Program or Module will highlight and format as expected.
+
+2017-03-27  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Option-clicking the close tab button should close all other tabs
+        https://bugs.webkit.org/show_bug.cgi?id=169046
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar.prototype._handleClick):
+
+2017-03-27  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: The inspector sidebar has weird sub-column sizing issues
+        https://bugs.webkit.org/show_bug.cgi?id=161966
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype.resizerDragEnded):
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+        Ensure that the selected sidebar panel is notified of the size change (sizeDidChange) when
+        the resizer drag ends.
+
+        * UserInterface/Views/DetailsSectionDataGridRow.js:
+        (WebInspector.DetailsSectionDataGridRow.prototype.sizeDidChange):
+        * UserInterface/Views/ProbeSetDetailsSection.js:
+        (WebInspector.ProbeSetDetailsSection.prototype.sizeDidChange):
+        Add/update the sizeDidChange protected function.
+
+        * UserInterface/Views/ComputedStyleDetailsPanel.js:
+        (WebInspector.ComputedStyleDetailsPanel.prototype.initialLayout):
+        (WebInspector.ComputedStyleDetailsPanel.prototype.sizeDidChange):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype.sizeDidChange):
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        (WebInspector.LayerTreeDetailsSidebarPanel.prototype.sizeDidChange):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.sizeDidChange):
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WebInspector.ProbeDetailsSidebarPanel.prototype.sizeDidChange):
+        Update the contained DataGrid elements whenever the sidebar size changes so that the resizer
+        elements are positioned correctly.
+
+        * UserInterface/Views/View.js:
+        (WebInspector.View.prototype.updateLayoutIfNeeded):
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype.updateLayoutIfNeeded):
+        * UserInterface/Views/TimelineRuler.js:
+        (WebInspector.TimelineRuler.prototype.updateLayoutIfNeeded):
+        Ensure the layoutReason is also propagated.
+
+2017-03-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Resource Details Sidebar displays previous image metrics when viewing resource where content load failed
+        https://bugs.webkit.org/show_bug.cgi?id=170065
+        <rdar://problem/27081591>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource.prototype.getImageSize.imageDidLoad):
+        (WebInspector.Resource.prototype.getImageSize.requestContentFailure):
+        (WebInspector.Resource.prototype.getImageSize):
+        If the requestContent failed, return a null image size.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshImageSizeSection.hideImageSection):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshImageSizeSection):
+        If the callback is called with a null size, hide the image size section.
+
+2017-03-24  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: number scripts are used inconsistently throughout the UI
+        https://bugs.webkit.org/show_bug.cgi?id=168290
+
+        Reviewed by Joseph Pecoraro.
+
+        Original patch by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js: Add new string for FPS bars.
+        * UserInterface/Base/Utilities.js:
+        (value.d):
+        (value):
+        Localize %d formatted values by default. If that's not desired, then you need to stringify
+        the number outside of String.format and Number.abbreviate and pass it as %s instead.
+        Also add a global variable for zwsp (zero-width space) and use it in DataGridNode.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._renderRepeatCount): Abbreviate the repeat count,
+        and cause it to be localized.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WebInspector.DataGridNode.prototype.createCellContent):
+        If we don't know anything about a cell's data other than that it's a number,
+        run the number through toLocaleString().
+
+        * UserInterface/Views/HeapSnapshotInstanceDataGridNode.js:
+        Don't localize @%d tags for snapshot objects since this is not done elsewhere in the UI.
+
+        * UserInterface/Views/IndexedDatabaseDetailsSidebarPanel.js: Localize integer version number.
+        (WebInspector.IndexedDatabaseDetailsSidebarPanel.prototype.layout):
+
+        * UserInterface/Views/MemoryTimelineView.js:
+        (WebInspector.MemoryTimelineView.prototype._updateMaxComparisonLegend): Use Number.percentageString().
+
+        * UserInterface/Views/RenderingFrameTimelineOverviewGraph.js:
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._updateDividers.createDividerAtPosition):
+        (WebInspector.RenderingFrameTimelineOverviewGraph.prototype._updateDividers):
+        Localize "%d fps" markers.
+
+        * UserInterface/Views/TimelineOverview.js:
+        (WebInspector.TimelineOverview.prototype._viewModeDidChange):
+        Localize frame label numbers.
+
+2017-03-24  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Adding a WebSocket message may change the currently selected resource
+        https://bugs.webkit.org/show_bug.cgi?id=170036
+        <rdar://problem/31231463>
+
+        Reviewed by Joseph Pecoraro.
+
+        Calling increaseSize on a resource may cause a WebInspector.TimelineDataGrid#TimelineDataGrid#_refreshDirtyDataGridNodes call.
+        Make sure _refreshDirtyDataGridNodes preserves selection of a treeElement.
+
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._refreshDirtyDataGridNodes):
+        Re-attaching treeElement causes it to lose selection. Select it again after re-attaching.
+
+2017-03-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add context menu item to log content of WebSocket frame
+        https://bugs.webkit.org/show_bug.cgi?id=169945
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Views/WebSocketContentView.js:
+        (WebInspector.WebSocketContentView):
+        (WebInspector.WebSocketContentView.prototype.addFrame):
+        (WebInspector.WebSocketContentView.prototype._addRow):
+        Rework the way CSS classes are applied so the isOutgoing and isText flags can also be passed
+        to the WebSocketDataGridNode.  This is necessary because a non-text frame shouldn't be able
+        to be logged to the console.
+
+        * UserInterface/Views/WebSocketDataGridNode.js:
+        (WebInspector.WebSocketDataGridNode.prototype.appendContextMenuItems):
+
+2017-03-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: allow users to click links in inline/user-agent styles
+        https://bugs.webkit.org/show_bug.cgi?id=170054
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.set style):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._updateJumpToSymbolTrackingMode):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerHighlightedRangeWasClicked):
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype.tokenTrackingControllerNewHighlightCandidate):
+        Always enable the token tracking controller, but only act on hovered/clicked token if it is
+        a link or the owner style declaration has a source code location (for jumping to the Resource).
+
+2017-03-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Indicate whether a WebSocket connection is open or close
+        https://bugs.webkit.org/show_bug.cgi?id=168948
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        Added WebSocketResourceTreeElement.js and SpanningDataGridNode.js.
+
+        * UserInterface/Views/WebSocketContentView.js:
+        (WebInspector.WebSocketContentView):
+        (WebInspector.WebSocketContentView.prototype.shown):
+        (WebInspector.WebSocketContentView.prototype.hidden):
+        (WebInspector.WebSocketContentView.prototype._updateState):
+        Listen to changes in the readyState and add a SpanningDataGridNode when the current state
+        becomes Closed.
+
+        * UserInterface/Views/WebSocketResourceTreeElement.js: Added.
+        (WebInspector.WebSocketResourceTreeElement.prototype.onattach):
+        (WebInspector.WebSocketResourceTreeElement.prototype.ondetach):
+        (WebInspector.WebSocketResourceTreeElement.prototype._updateConnectionStatus):
+        Listen to changes in the readyState and add/remove the status element depending on the
+        current state:
+         - Closed: show no status indicator
+         - Connecting: show a small circle with a yellow color
+         - Open: show a small circle with a green color
+
+        * UserInterface/Views/ResourceTreeElement.css:
+        (.item.resource.resource-type-websocket .status > div):
+        (.item.resource.resource-type-websocket:not(.selected) .status .open):
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .open):
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .open):
+        (.item.resource.resource-type-websocket:not(.selected) .status .connecting):
+        (.tree-outline:not(:focus, .force-focus) .item.resource.resource-type-websocket.selected .status .connecting):
+        (body:matches(.window-inactive, .window-docked-inactive) .item.resource.resource-type-websocket.selected .status .connecting):
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement):
+        Use WebSocketResourceTreeElement as the constructor for WebSocket resources.
+
+        * UserInterface/Views/SpanningDataGridNode.js: Added.
+        (WebInspector.SpanningDataGridNode.prototype.createCells):
+        Creates a single cell that spans all the columns (via CSS colspan) of the parent DataGrid.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid td.spanning):
+        Center content of spanning nodes and prevent user interaction.
+
+        * UserInterface/Views/DataGridNode.js:
+        (WebInspector.DataGridNode.prototype.createCell):
+        Add additional checks so that a DataGridNode can be created with a column identifier that is
+        not in the DataGrid.  This is used by SpanningGridDataNode, as it shouldn't match one single
+        column in the DataGrid since it spans them all.
+
+        * UserInterface/Views/GeneralTreeElement.js:
+        (WebInspector.GeneralTreeElement.prototype.ondetach):
+        * UserInterface/Views/BreakpointTreeElement.js:
+        (WebInspector.BreakpointTreeElement.prototype.ondetach):
+        * UserInterface/Views/DOMBreakpointTreeElement.js:
+        (WebInspector.DOMBreakpointTreeElement.prototype.ondetach):
+        * UserInterface/Views/XHRBreakpointTreeElement.js:
+        (WebInspector.XHRBreakpointTreeElement.prototype.ondetach):
+        Add ondetach function (with super calls) for future use.
+
+2017-03-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cache type is not styled correctly in Timelines tab
+        https://bugs.webkit.org/show_bug.cgi?id=170032
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/NetworkGridContentView.css:
+        (.content-view:matches(.network, .network-grid) > .data-grid .cache-type):
+        (.content-view:matches(.network, .network-grid) > .data-grid:matches(:focus, .force-focus) tr.selected .cache-type):
+        (.content-view.network-grid > .data-grid .cache-type): Deleted.
+        (.content-view.network-grid > .data-grid:matches(:focus, .force-focus) tr.selected .cache-type): Deleted.
+        The different network grids have different class names. Handle both.
+
+2017-03-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Editing local storage keys/values starts with truncated strings
+        https://bugs.webkit.org/show_bug.cgi?id=169896
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/DataGrid.css:
+        (.data-grid td.editing > div):
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid.prototype._editingCancelled):
+        div.cell-content is removed because the <td> itself is contenteditable (using -webkit-user-modify:read-write-plaintext-only),
+        not the inner div.cell-content. Re-create div.cell-content after commiting (by pressing Enter) or canceling (by pressing Esc)
+        since it may get removed while editing.
+
 2017-03-22  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Clicking DOM breakpoint marker should enable/disable breakpoints

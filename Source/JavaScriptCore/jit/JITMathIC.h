@@ -128,10 +128,10 @@ public:
         return false;
     }
 
-    void generateOutOfLine(VM& vm, CodeBlock* codeBlock, FunctionPtr callReplacement)
+    void generateOutOfLine(CodeBlock* codeBlock, FunctionPtr callReplacement)
     {
         auto linkJumpToOutOfLineSnippet = [&] () {
-            CCallHelpers jit(&vm, codeBlock);
+            CCallHelpers jit(codeBlock);
             auto jump = jit.jump();
             // We don't need a nop sled here because nobody should be jumping into the middle of an IC.
             bool needsBranchCompaction = false;
@@ -150,7 +150,7 @@ public:
 
         if (m_generateFastPathOnRepatch) {
 
-            CCallHelpers jit(&vm, codeBlock);
+            CCallHelpers jit(codeBlock);
             MathICGenerationState generationState;
             bool generatedInline = generateInline(jit, generationState, shouldEmitProfiling);
 
@@ -160,7 +160,7 @@ public:
             if (generatedInline) {
                 auto jumpToDone = jit.jump();
 
-                LinkBuffer linkBuffer(vm, jit, codeBlock, JITCompilationCanFail);
+                LinkBuffer linkBuffer(jit, codeBlock, JITCompilationCanFail);
                 if (!linkBuffer.didFailToAllocate()) {
                     linkBuffer.link(generationState.slowPathJumps, slowPathStartLocation());
                     linkBuffer.link(jumpToDone, doneLocation());
@@ -190,7 +190,7 @@ public:
         replaceCall();
 
         {
-            CCallHelpers jit(&vm, codeBlock);
+            CCallHelpers jit(codeBlock);
 
             MacroAssembler::JumpList endJumpList; 
             MacroAssembler::JumpList slowPathJumpList; 
@@ -200,7 +200,7 @@ public:
                 return;
             endJumpList.append(jit.jump());
 
-            LinkBuffer linkBuffer(vm, jit, codeBlock, JITCompilationCanFail);
+            LinkBuffer linkBuffer(jit, codeBlock, JITCompilationCanFail);
             if (linkBuffer.didFailToAllocate())
                 return;
 

@@ -111,11 +111,11 @@ static Expected<std::pair<VM*, StackBounds>, VMTraps::Error> findActiveVMAndStac
         }
 
         for (MachineThreads::Thread* thread = machineThreads.threadsListHead(machineThreadsLocker); thread; thread = thread->next) {
-            RELEASE_ASSERT(thread->stackBase);
-            RELEASE_ASSERT(thread->stackEnd);
-            if (stackPointer <= thread->stackBase && stackPointer >= thread->stackEnd) {
+            RELEASE_ASSERT(thread->stackBase());
+            RELEASE_ASSERT(thread->stackEnd());
+            if (stackPointer <= thread->stackBase() && stackPointer >= thread->stackEnd()) {
                 activeVM = &vm;
-                stackBounds = StackBounds(thread->stackBase, thread->stackEnd);
+                stackBounds = StackBounds(thread->stackBase(), thread->stackEnd());
                 return VMInspector::FunctorStatus::Done;
             }
         }
@@ -250,7 +250,7 @@ void VMTraps::tryInstallTrapBreakpoints(SignalContext& context, StackBounds stac
         return; // Let the SignalSender try again later.
 
     {
-        auto allocator = vm.executableAllocator;
+        auto& allocator = ExecutableAllocator::singleton();
         auto allocatorLocker = tryHoldLock(allocator.getLock());
         if (!allocatorLocker)
             return; // Let the SignalSender try again later.
@@ -455,7 +455,7 @@ void VMTraps::SignalSender::send()
             VM& vm = *m_vm;
             auto optionalOwnerThread = vm.ownerThread();
             if (optionalOwnerThread) {
-                platformThreadSignal(optionalOwnerThread.value(), SIGUSR1);
+                signalThread(optionalOwnerThread.value(), SIGUSR1);
                 break;
             }
 

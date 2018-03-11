@@ -14,7 +14,6 @@ class TestGroup extends LabeledObject {
         this._repositories = null;
         this._requestedCommitSets = null;
         this._commitSetToLabel = new Map;
-        this._allCommitSets = null;
         console.assert(!object.platform || object.platform instanceof Platform);
         this._platform = object.platform;
     }
@@ -95,11 +94,6 @@ class TestGroup extends LabeledObject {
         this._requestsAreInOrder = true;
     }
 
-    didSetResult(request)
-    {
-        this._allCommitSets = null;
-    }
-
     hasFinished()
     {
         return this._buildRequests.every(function (request) { return request.hasFinished(); });
@@ -115,10 +109,8 @@ class TestGroup extends LabeledObject {
         return this._buildRequests.some(function (request) { return request.isPending(); });
     }
 
-    compareTestResults(commitSetA, commitSetB)
+    compareTestResults(beforeValues, afterValues)
     {
-        const beforeValues = this._valuesForCommitSet(commitSetA);
-        const afterValues = this._valuesForCommitSet(commitSetB);
         const beforeMean = Statistics.sum(beforeValues) / beforeValues.length;
         const afterMean = Statistics.sum(afterValues) / afterValues.length;
 
@@ -160,17 +152,6 @@ class TestGroup extends LabeledObject {
         return result;
     }
 
-    _valuesForCommitSet(commitSet)
-    {
-        const requests = this.requestsForCommitSet(commitSet);
-        const values = [];
-        for (let request of requests) {
-            if (request.result())
-                values.push(request.result().value);
-        }
-        return values;
-    }
-
     updateName(newName)
     {
         var self = this;
@@ -199,11 +180,21 @@ class TestGroup extends LabeledObject {
 
     static createAndRefetchTestGroups(task, name, repetitionCount, commitSets)
     {
+        console.assert(commitSets.length == 2);
+
+        const revisionSets = commitSets.map((commitSet) => {
+            console.assert(commitSet instanceof CustomCommitSet || commitSet instanceof CommitSet);
+            const revisionSet = {};
+            for (let repository of commitSet.repositories())
+                revisionSet[repository.id()] = commitSet.revisionForRepository(repository);
+            return revisionSet;
+        });
+
         return PrivilegedAPI.sendRequest('create-test-group', {
             task: task.id(),
             name: name,
             repetitionCount: repetitionCount,
-            commitSets: commitSets,
+            revisionSets: revisionSets,
         }).then((data) => {
             return this.cachedFetch('/api/test-groups', {task: task.id()}, true).then((data) => this._createModelsFromFetchedTestGroups(data));
         });

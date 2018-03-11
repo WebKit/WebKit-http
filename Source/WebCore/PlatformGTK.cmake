@@ -141,7 +141,6 @@ list(APPEND WebCore_SOURCES
     platform/gtk/DragDataGtk.cpp
     platform/gtk/ErrorsGtk.cpp
     platform/gtk/LocalizedStringsGtk.cpp
-    platform/gtk/MIMETypeRegistryGtk.cpp
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
     platform/gtk/SelectionData.cpp
@@ -179,6 +178,8 @@ list(APPEND WebCore_SOURCES
     platform/text/hyphen/HyphenationLibHyphen.cpp
 
     platform/unix/LoggingUnix.cpp
+
+    platform/xdg/MIMETypeRegistryXdg.cpp
 )
 
 list(APPEND WebCorePlatformGTK_SOURCES
@@ -397,21 +398,20 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
+        crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_CFBGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_GCMGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_KWGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp
-
-        crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmAES_CFBGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmAES_GCMGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmECDHGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmPBKDF2GnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmRegistryGnuTLS.cpp
-        crypto/gnutls/CryptoKeyECGnuTLS.cpp
-        crypto/gnutls/CryptoKeyRSAGnuTLS.cpp
-        crypto/gnutls/SerializedCryptoKeyWrapGnuTLS.cpp
+        crypto/gcrypt/CryptoAlgorithmPBKDF2GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp
+        crypto/gcrypt/CryptoKeyECGCrypt.cpp
+        crypto/gcrypt/CryptoKeyRSAGCrypt.cpp
+        crypto/gcrypt/SerializedCryptoKeyWrapGCrypt.cpp
 
         crypto/keys/CryptoKeyAES.cpp
         crypto/keys/CryptoKeyDataOctetSequence.cpp
