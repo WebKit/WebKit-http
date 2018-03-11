@@ -88,8 +88,12 @@ public:
     const RegisterSet& mutableRegs() const { return m_mutableRegs; }
     
     bool isPinned(Reg reg) const { return !mutableRegs().get(reg); }
-    
     void pinRegister(Reg);
+    
+    void setOptLevel(unsigned optLevel) { m_optLevel = optLevel; }
+    unsigned optLevel() const { return m_optLevel; }
+    
+    bool needsUsedRegisters() const;
 
     JS_EXPORT_PRIVATE BasicBlock* addBlock(double frequency = 1);
 
@@ -125,6 +129,17 @@ public:
             return m_numFPTmps;
         }
         ASSERT_NOT_REACHED();
+    }
+    
+    template<typename Func>
+    void forEachTmp(const Func& func)
+    {
+        for (unsigned bankIndex = 0; bankIndex < numBanks; ++bankIndex) {
+            Bank bank = static_cast<Bank>(bankIndex);
+            unsigned numTmps = this->numTmps(bank);
+            for (unsigned i = 0; i < numTmps; ++i)
+                func(Tmp::tmpForIndex(bank, i));
+        }
     }
 
     unsigned callArgAreaSizeInBytes() const { return m_callArgAreaSize; }
@@ -320,6 +335,7 @@ private:
     RefPtr<WasmBoundsCheckGenerator> m_wasmBoundsCheckGenerator;
     const char* m_lastPhaseName;
     std::unique_ptr<Disassembler> m_disassembler;
+    unsigned m_optLevel { defaultOptLevel() };
 };
 
 } } } // namespace JSC::B3::Air

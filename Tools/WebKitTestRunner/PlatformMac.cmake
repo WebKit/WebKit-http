@@ -1,6 +1,8 @@
 find_library(CARBON_LIBRARY Carbon)
 
+find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
 find_library(CORESERVICES_LIBRARY CoreServices)
+add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
 add_definitions(-iframework ${CORESERVICES_LIBRARY}/Versions/Current/Frameworks)
 
 if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
@@ -29,6 +31,8 @@ list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
     ${WEBKIT_TESTRUNNER_DIR}/cocoa
     ${WEBKIT_TESTRUNNER_DIR}/mac
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/mac
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/EventSerialization/mac
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/spi
     ${CMAKE_SOURCE_DIR}/WebKitLibraries
 )
 
@@ -46,6 +50,9 @@ list(APPEND WebKitTestRunnerInjectedBundle_SOURCES
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/mac/AccessibilityTextMarkerMac.mm
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/mac/AccessibilityUIElementMac.mm
     ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/mac/TestRunnerMac.mm
+
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/EventSerialization/mac/EventSerializerMac.mm
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/EventSerialization/mac/SharedEventStreamsMac.mm
 )
 
 list(APPEND WebKitTestRunner_SOURCES
@@ -64,6 +71,9 @@ list(APPEND WebKitTestRunner_SOURCES
     ${WEBKIT_TESTRUNNER_DIR}/mac/WebKitTestRunnerEvent.mm
     ${WEBKIT_TESTRUNNER_DIR}/mac/WebKitTestRunnerPasteboard.mm
     ${WEBKIT_TESTRUNNER_DIR}/mac/main.mm
+    
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/EventSerialization/mac/EventSerializerMac.mm
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/EventSerialization/mac/SharedEventStreamsMac.mm
 )
 
 link_directories(../../WebKitLibraries)

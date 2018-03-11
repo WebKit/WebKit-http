@@ -62,7 +62,7 @@ static void wssSocketClientEventCallback(GSocketClient*, GSocketClientEvent even
     g_signal_connect(connection, "accept-certificate", G_CALLBACK(wssConnectionAcceptCertificateCallback), nullptr);
 }
 
-Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&)
+Ref<SocketStreamHandleImpl> SocketStreamHandleImpl::create(const URL& url, SocketStreamHandleClient& client, SessionID, const String&, SourceApplicationAuditToken&&)
 {
     Ref<SocketStreamHandleImpl> socket = adoptRef(*new SocketStreamHandleImpl(url, client));
 
@@ -194,7 +194,7 @@ std::optional<size_t> SocketStreamHandleImpl::platformSendInternal(const char* d
 {
     LOG(Network, "SocketStreamHandle %p platformSend", this);
     if (!m_outputStream || !data)
-        return std::nullopt;
+        return 0;
 
     GUniqueOutPtr<GError> error;
     gssize written = g_pollable_output_stream_write_nonblocking(m_outputStream.get(), data, length, m_cancellable.get(), &error.outPtr());

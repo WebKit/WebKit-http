@@ -62,6 +62,7 @@
 #include "FrameLoader.h"
 #include "FrameView.h"
 #include "GCObservation.h"
+#include "GridPosition.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLImageElement.h"
@@ -84,6 +85,7 @@
 #include "InstrumentingAgents.h"
 #include "IntRect.h"
 #include "InternalSettings.h"
+#include "JSImageData.h"
 #include "Language.h"
 #include "LibWebRTCProvider.h"
 #include "MainFrame.h"
@@ -468,10 +470,8 @@ Internals::Internals(Document& document)
     enableMockMediaEndpoint();
     useMockRTCPeerConnectionFactory(String());
 #if USE(LIBWEBRTC)
-    if (document.page()) {
-        document.page()->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces();
+    if (document.page())
         document.page()->rtcController().disableICECandidateFiltering();
-    }
 #endif
 #endif
 
@@ -768,6 +768,11 @@ void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement
         return;
 
     downcast<BitmapImage>(*image).setClearDecoderAfterAsyncFrameRequestForTesting(value);
+}
+
+void Internals::setGridMaxTracksLimit(unsigned maxTrackLimit)
+{
+    GridPosition::setMaxPositionForTesting(maxTrackLimit);
 }
 
 void Internals::clearPageCache()
@@ -1244,6 +1249,23 @@ void Internals::setICECandidateFiltering(bool enabled)
         rtcController.enableICECandidateFiltering();
     else
         rtcController.disableICECandidateFiltering();
+}
+
+void Internals::setEnumeratingAllNetworkInterfacesEnabled(bool enabled)
+{
+#if USE(LIBWEBRTC)
+    Document* document = contextDocument();
+    auto* page = document->page();
+    if (!page)
+        return;
+    auto& rtcProvider = page->libWebRTCProvider();
+    if (enabled)
+        rtcProvider.enableEnumeratingAllNetworkInterfaces();
+    else
+        rtcProvider.disableEnumeratingAllNetworkInterfaces();
+#else
+    UNUSED_PARAM(enabled);
+#endif
 }
 
 #endif
@@ -3501,6 +3523,10 @@ String Internals::pageMediaState()
         string.append("HasActiveAudioCaptureDevice,");
     if (state & MediaProducer::HasActiveVideoCaptureDevice)
         string.append("HasActiveVideoCaptureDevice,");
+    if (state & MediaProducer::HasMutedAudioCaptureDevice)
+        string.append("HasMutedAudioCaptureDevice,");
+    if (state & MediaProducer::HasMutedVideoCaptureDevice)
+        string.append("HasMutedVideoCaptureDevice,");
 
     if (string.isEmpty())
         string.append("IsNotPlaying");
@@ -3747,6 +3773,15 @@ bool Internals::isProcessingUserGesture()
     return UserGestureIndicator::processingUserGesture();
 }
 
+double Internals::lastHandledUserGestureTimestamp()
+{
+    Document* document = contextDocument();
+    if (!document)
+        return 0;
+
+    return document->lastHandledUserGestureTimestamp().secondsSinceEpoch().value();
+}
+
 RefPtr<GCObservation> Internals::observeGC(JSC::JSValue value)
 {
     if (!value.isObject())
@@ -3889,6 +3924,33 @@ void Internals::observeMediaStreamTrack(MediaStreamTrack& track)
     m_track = &track;
     m_track->source().addObserver(*this);
 }
+
+void Internals::grabNextMediaStreamTrackFrame(TrackFramePromise&& promise)
+{
+    m_nextTrackFramePromise = WTFMove(promise);
+}
+
+void Internals::videoSampleAvailable(MediaSample& sample)
+{
+    m_trackVideoSampleCount++;
+    if (!m_nextTrackFramePromise)
+        return;
+
+    auto videoSettings = m_track->getSettings();
+    if (!videoSettings.width || !videoSettings.height)
+        return;
+
+    auto rgba = sample.getRGBAImageData();
+    if (!rgba)
+        return;
+    auto imageData = ImageData::create(rgba.releaseNonNull(), *videoSettings.width, *videoSettings.height);
+    if (!imageData.hasException())
+        m_nextTrackFramePromise->resolve(imageData.releaseReturnValue().releaseNonNull());
+    else
+        m_nextTrackFramePromise->reject(imageData.exception().code());
+    m_nextTrackFramePromise = std::nullopt;
+}
+
 #endif
 
 } // namespace WebCore

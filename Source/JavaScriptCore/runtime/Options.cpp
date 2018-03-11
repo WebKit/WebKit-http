@@ -89,9 +89,14 @@ static bool parse(const char* string, unsigned& value)
     return sscanf(string, "%u", &value) == 1;
 }
 
-static bool parse(const char* string, size_t& value)
+static bool parse(const char* string, unsigned long& value)
 {
-    return sscanf(string, "%zu", &value);
+    return sscanf(string, "%lu", &value);
+}
+
+static bool UNUSED_FUNCTION parse(const char* string, unsigned long long& value)
+{
+    return sscanf(string, "%llu", &value);
 }
 
 static bool parse(const char* string, double& value)

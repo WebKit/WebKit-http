@@ -30,8 +30,9 @@
 #include "CompilationResult.h"
 #include "VM.h"
 #include "WasmB3IRGenerator.h"
-#include "WasmFormat.h"
+#include "WasmModuleInformation.h"
 #include <wtf/Bag.h>
+#include <wtf/SharedTask.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
 
@@ -39,21 +40,27 @@ namespace JSC {
 
 class CallLinkInfo;
 class JSGlobalObject;
-class JSWebAssemblyCallee;
 class JSPromiseDeferred;
 
 namespace Wasm {
 
 class Plan : public ThreadSafeRefCounted<Plan> {
 public:
-    static void dontFinalize(Plan&) { }
-    typedef std::function<void(Plan&)> CompletionTask;
+    typedef void CallbackType(VM&, Plan&);
+    using CompletionTask = RefPtr<SharedTask<CallbackType>>;
+    static CompletionTask dontFinalize() { return createSharedTask<CallbackType>([](VM&, Plan&) { }); }
     enum AsyncWork : uint8_t { FullCompile, Validation };
     // Note: CompletionTask should not hold a reference to the Plan otherwise there will be a reference cycle.
-    Plan(VM&, ArrayBuffer&, AsyncWork, CompletionTask&&);
-    JS_EXPORT_PRIVATE Plan(VM&, Vector<uint8_t>&, AsyncWork, CompletionTask&&);
+    Plan(VM&, Ref<ModuleInformation>, AsyncWork, CompletionTask&&);
+    JS_EXPORT_PRIVATE Plan(VM&, Vector<uint8_t>&&, AsyncWork, CompletionTask&&);
+    // Note: This constructor should only be used if you are not actually building a module e.g. validation/function tests
+    // FIXME: When we get rid of function tests we should remove AsyncWork from this constructor.
     JS_EXPORT_PRIVATE Plan(VM&, const uint8_t*, size_t, AsyncWork, CompletionTask&&);
     JS_EXPORT_PRIVATE ~Plan();
+
+    // If you guarantee the ordering here, you can rely on FIFO of the
+    // completion tasks being called.
+    void addCompletionTask(VM&, CompletionTask&&);
 
     bool parseAndValidateModule();
 
@@ -73,10 +80,10 @@ public:
     size_t internalFunctionCount() const
     {
         RELEASE_ASSERT(!failed() && !hasWork());
-        return m_functionLocationInBinary.size();
+        return m_moduleInformation->internalFunctionCount();
     }
 
-    std::unique_ptr<ModuleInformation>&& takeModuleInformation()
+    Ref<ModuleInformation>&& takeModuleInformation()
     {
         RELEASE_ASSERT(!failed() && !hasWork());
         return WTFMove(m_moduleInformation);
@@ -88,20 +95,14 @@ public:
         return WTFMove(m_callLinkInfos);
     }
 
-    Vector<WasmExitStubs>&& takeWasmExitStubs()
+    Vector<MacroAssemblerCodeRef>&& takeWasmToWasmExitStubs()
     {
         RELEASE_ASSERT(!failed() && !hasWork());
-        return WTFMove(m_wasmExitStubs);
+        return WTFMove(m_wasmToWasmExitStubs);
     }
 
-    void setModeAndPromise(MemoryMode mode, JSPromiseDeferred* promise)
-    {
-        m_mode = mode;
-        m_pendingPromise = promise;
-    }
+    void setMode(MemoryMode mode) { m_mode = mode; }
     MemoryMode mode() const { return m_mode; }
-    JSPromiseDeferred* pendingPromise() { return m_pendingPromise; }
-    VM& vm() const { return m_vm; }
 
     enum class State : uint8_t {
         Initial,
@@ -118,7 +119,8 @@ public:
     bool hasBeenPrepared() const { return m_state >= State::Prepared; }
 
     void waitForCompletion();
-    void cancel();
+    // Returns true if it cancelled the plan.
+    bool tryRemoveVMAndCancelIfLast(VM&);
 
 private:
     class ThreadCountHolder;
@@ -131,17 +133,13 @@ private:
 
     const char* stateString(State);
 
-    std::unique_ptr<ModuleInformation> m_moduleInformation;
-    Vector<FunctionLocationInBinary> m_functionLocationInBinary;
-    Vector<SignatureIndex> m_moduleSignatureIndicesToUniquedSignatureIndices;
+    Ref<ModuleInformation> m_moduleInformation;
     Bag<CallLinkInfo> m_callLinkInfos;
-    Vector<WasmExitStubs> m_wasmExitStubs;
+    Vector<MacroAssemblerCodeRef> m_wasmToWasmExitStubs;
     Vector<std::unique_ptr<WasmInternalFunction>> m_wasmInternalFunctions;
     Vector<CompilationContext> m_compilationContexts;
 
-    VM& m_vm;
-    JSPromiseDeferred* m_pendingPromise { nullptr };
-    CompletionTask m_completionTask;
+    Vector<std::pair<VM*, CompletionTask>, 1> m_completionTasks;
 
     Vector<Vector<UnlinkedWasmToWasmCall>> m_unlinkedWasmToWasmCalls;
     const uint8_t* m_source;
@@ -150,7 +148,7 @@ private:
     MemoryMode m_mode { MemoryMode::BoundsChecking };
     Lock m_lock;
     Condition m_completed;
-    State m_state { State::Initial };
+    State m_state;
     const AsyncWork m_asyncWork;
     uint8_t m_numberOfActiveThreads { 0 };
     uint32_t m_currentIndex { 0 };

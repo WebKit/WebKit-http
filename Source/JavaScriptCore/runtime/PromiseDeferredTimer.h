@@ -55,25 +55,17 @@ public:
     typedef std::function<void()> Task;
     void scheduleWorkSoon(JSPromiseDeferred*, Task&&);
 
-    // Blocked tasks should only be registered while holding the JS API lock. If we didn't require holding the
-    // JS API lock then there might be a race where the promise you are waiting on is run before your task is
-    // registered.
-    void scheduleBlockedTask(JSPromiseDeferred*, Task&&);
-
     void stopRunningTasks() { m_runTasks = false; }
-#if USE(CF)
+
     JS_EXPORT_PRIVATE void runRunLoop();
-#endif
 
 private:
     HashMap<JSPromiseDeferred*, Vector<Strong<JSCell>>> m_pendingPromises;
     Lock m_taskLock;
     bool m_runTasks { true };
-#if USE(CF)
     bool m_shouldStopRunLoopWhenAllPromisesFinish { false };
-#endif
+    bool m_currentlyRunningTask { false };
     Vector<std::tuple<JSPromiseDeferred*, Task>> m_tasks;
-    HashMap<JSPromiseDeferred*, Vector<Task>> m_blockedTasks;
 };
 
 } // namespace JSC

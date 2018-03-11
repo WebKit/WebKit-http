@@ -99,6 +99,7 @@ public:
 
     bool hasCaptureVideoSource() const;
     bool hasCaptureAudioSource() const;
+    void setCaptureTracksMuted(bool);
 
     FloatSize intrinsicSize() const;
 

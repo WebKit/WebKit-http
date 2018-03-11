@@ -23,6 +23,8 @@
 /* Begin PBXBuildFile section */
 		0F0D85B417234CC100338210 /* NoLock.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F0D85B317234CB100338210 /* NoLock.h */; };
 		0F0FCDDE1DD167F900CCAB53 /* LockAlgorithm.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F0FCDDD1DD167F900CCAB53 /* LockAlgorithm.h */; };
+		0F2AC5611E89F70C0001EE3F /* Range.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2AC5601E89F70C0001EE3F /* Range.h */; };
+		0F2AC5631E8A01490001EE3F /* IndexKeyType.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2AC5621E8A01490001EE3F /* IndexKeyType.h */; };
 		0F2B66A617B6B4FB00A7AE3F /* DeferrableRefCounted.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */; };
 		0F2B66A717B6B4FD00A7AE3F /* FlipBytes.h in Headers */ = {isa = PBXBuildFile; fileRef = 0F2B66A517B6B4F700A7AE3F /* FlipBytes.h */; };
 		0F30BA901E78708E002CA847 /* GlobalVersion.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 0F30BA8A1E78708E002CA847 /* GlobalVersion.cpp */; };
@@ -386,6 +388,8 @@
 		FE8925B01D00DAEC0046907E /* Indenter.h in Headers */ = {isa = PBXBuildFile; fileRef = FE8925AF1D00DAEC0046907E /* Indenter.h */; };
 		FEDACD3D1630F83F00C69634 /* StackStats.cpp in Sources */ = {isa = PBXBuildFile; fileRef = FEDACD3B1630F83F00C69634 /* StackStats.cpp */; };
 		FEDACD3E1630F83F00C69634 /* StackStats.h in Headers */ = {isa = PBXBuildFile; fileRef = FEDACD3C1630F83F00C69634 /* StackStats.h */; };
+		FC6EC2BF20F849969C6A5BE1 /* RandomDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = 24F1B248619F412296D1C19C /* RandomDevice.h */; };
+		A3B725EC987446AD93F1A440 /* RandomDevice.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C8F597CA2A57417FBAB92FD6 /* RandomDevice.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -408,6 +412,8 @@
 /* Begin PBXFileReference section */
 		0F0D85B317234CB100338210 /* NoLock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NoLock.h; sourceTree = "<group>"; };
 		0F0FCDDD1DD167F900CCAB53 /* LockAlgorithm.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LockAlgorithm.h; sourceTree = "<group>"; };
+		0F2AC5601E89F70C0001EE3F /* Range.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Range.h; sourceTree = "<group>"; };
+		0F2AC5621E8A01490001EE3F /* IndexKeyType.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IndexKeyType.h; sourceTree = "<group>"; };
 		0F2B66A417B6B4F700A7AE3F /* DeferrableRefCounted.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = DeferrableRefCounted.h; sourceTree = "<group>"; };
 		0F2B66A517B6B4F700A7AE3F /* FlipBytes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FlipBytes.h; sourceTree = "<group>"; };
 		0F300B7D18AB48B400A6D72E /* HashMethod.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = HashMethod.h; sourceTree = "<group>"; };
@@ -784,6 +790,8 @@
 		FE8925AF1D00DAEC0046907E /* Indenter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Indenter.h; sourceTree = "<group>"; };
 		FEDACD3B1630F83F00C69634 /* StackStats.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StackStats.cpp; sourceTree = "<group>"; };
 		FEDACD3C1630F83F00C69634 /* StackStats.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StackStats.h; sourceTree = "<group>"; };
+		24F1B248619F412296D1C19C /* RandomDevice.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RandomDevice.h; path = RandomDevice.h; sourceTree = "<group>"; };
+		C8F597CA2A57417FBAB92FD6 /* RandomDevice.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RandomDevice.cpp; path = RandomDevice.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -1018,10 +1026,11 @@
 				A8A472BA151A825A004123FF /* HashTraits.h */,
 				A8A472BB151A825A004123FF /* HexNumber.h */,
 				FE8925AF1D00DAEC0046907E /* Indenter.h */,
-				9C67C542589348E285B49699 /* IndexedContainerIterator.h */,
+				0F2AC5621E8A01490001EE3F /* IndexKeyType.h */,
 				5B43383A5D0B463C9433D933 /* IndexMap.h */,
 				3137E1D7DBD84AC38FAE4D34 /* IndexSet.h */,
 				2684D4351C000D400081D663 /* IndexSparseSet.h */,
+				9C67C542589348E285B49699 /* IndexedContainerIterator.h */,
 				A8A472BC151A825A004123FF /* InlineASM.h */,
 				A70DA0821799F04D00529A9B /* Insertion.h */,
 				7CDD7FF7186D291E007433CD /* IteratorAdaptors.h */,
@@ -1097,9 +1106,12 @@
 				0FC4488216FE9FE100844BE9 /* ProcessID.h */,
 				143F611D1565F0F900DB514A /* RAMSize.cpp */,
 				143F611E1565F0F900DB514A /* RAMSize.h */,
+				24F1B248619F412296D1C19C /* RandomDevice.h */,
+				C8F597CA2A57417FBAB92FD6 /* RandomDevice.cpp */,
 				A8A472FB151A825B004123FF /* RandomNumber.cpp */,
 				A8A472FC151A825B004123FF /* RandomNumber.h */,
 				A8A472FD151A825B004123FF /* RandomNumberSeed.h */,
+				0F2AC5601E89F70C0001EE3F /* Range.h */,
 				0F725CAB1C50461600AD943A /* RangeSet.h */,
 				0F87105916643F190090B0AD /* RawPointer.h */,
 				0FDE87F61DFD07CC0064C390 /* RecursiveLockAdapter.h */,
@@ -1485,6 +1497,7 @@
 				C916B975F02F4F7E8B4AB12D /* IndexMap.h in Headers */,
 				C8B0E1A1E01A486EB95E0D11 /* IndexSet.h in Headers */,
 				2684D4361C000D400081D663 /* IndexSparseSet.h in Headers */,
+				0F2AC5631E8A01490001EE3F /* IndexKeyType.h in Headers */,
 				A8A473DC151A825B004123FF /* InlineASM.h in Headers */,
 				A70DA0841799F04D00529A9B /* Insertion.h in Headers */,
 				26147B0A15DDCCDC00DDB907 /* IntegerToStringConversion.h in Headers */,
@@ -1543,6 +1556,7 @@
 				0F9D3363165DBA73005AD387 /* PrintStream.h in Headers */,
 				0FC4488316FE9FE100844BE9 /* ProcessID.h in Headers */,
 				143F61201565F0F900DB514A /* RAMSize.h in Headers */,
+				FC6EC2BF20F849969C6A5BE1 /* RandomDevice.h in Headers */,
 				A8A47415151A825B004123FF /* RandomNumber.h in Headers */,
 				A8A47416151A825B004123FF /* RandomNumberSeed.h in Headers */,
 				0F725CAC1C50461600AD943A /* RangeSet.h in Headers */,
@@ -1586,6 +1600,7 @@
 				430B47891AAAAC1A001223DA /* StringCommon.h in Headers */,
 				A8A4743E151A825B004123FF /* StringConcatenate.h in Headers */,
 				7CD4C2701E2C82B900929470 /* StringConcatenateNumbers.h in Headers */,
+				0F2AC5611E89F70C0001EE3F /* Range.h in Headers */,
 				A8A4742C151A825B004123FF /* StringExtras.h in Headers */,
 				A8A4743F151A825B004123FF /* StringHash.h in Headers */,
 				A748745417A0BDAE00FA04CB /* StringHashDumpContext.h in Headers */,
@@ -1798,6 +1813,7 @@
 				DCEE22031CEA7551000C2396 /* PlatformUserPreferredLanguagesMac.mm in Sources */,
 				0F9D3362165DBA73005AD387 /* PrintStream.cpp in Sources */,
 				143F611F1565F0F900DB514A /* RAMSize.cpp in Sources */,
+				A3B725EC987446AD93F1A440 /* RandomDevice.cpp in Sources */,
 				A8A47414151A825B004123FF /* RandomNumber.cpp in Sources */,
 				A8A4741A151A825B004123FF /* RefCountedLeakCounter.cpp in Sources */,
 				2CDED0F318115C85004DBA70 /* RunLoop.cpp in Sources */,

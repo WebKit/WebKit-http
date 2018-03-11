@@ -29,63 +29,174 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoKeyPair.h"
+#include "JsonWebKey.h"
 #include "NotImplemented.h"
+#include <pal/crypto/gcrypt/Handle.h>
+#include <pal/crypto/gcrypt/Utilities.h>
+#include <wtf/text/Base64.h>
 
 namespace WebCore {
 
-struct _PlatformECKeyGnuTLS {
+static size_t curveSize(CryptoKeyEC::NamedCurve curve)
+{
+    switch (curve) {
+    case CryptoKeyEC::NamedCurve::P256:
+        return 256;
+    case CryptoKeyEC::NamedCurve::P384:
+        return 384;
+    }
+}
+
+static const char* curveName(CryptoKeyEC::NamedCurve curve)
+{
+    switch (curve) {
+    case CryptoKeyEC::NamedCurve::P256:
+        return "NIST P-256";
+    case CryptoKeyEC::NamedCurve::P384:
+        return "NIST P-384";
+    }
+}
+
+static unsigned uncompressedPointSizeForCurve(CryptoKeyEC::NamedCurve curve)
+{
+    switch (curve) {
+    case CryptoKeyEC::NamedCurve::P256:
+        return 65;
+    case CryptoKeyEC::NamedCurve::P384:
+        return 97;
+    }
+}
+
+static unsigned uncompressedFieldElementSizeForCurve(CryptoKeyEC::NamedCurve curve)
+{
+    switch (curve) {
+    case CryptoKeyEC::NamedCurve::P256:
+        return 32;
+    case CryptoKeyEC::NamedCurve::P384:
+        return 48;
+    }
+}
+
+static Vector<uint8_t> extractMPIData(gcry_mpi_t mpi)
+{
+    size_t dataLength = 0;
+    gcry_error_t error = gcry_mpi_print(GCRYMPI_FMT_USG, nullptr, 0, &dataLength, mpi);
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return { };
+    }
+
+    Vector<uint8_t> data(dataLength);
+    error = gcry_mpi_print(GCRYMPI_FMT_USG, data.data(), data.size(), nullptr, mpi);
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return { };
+    }
+
+    return data;
 };
 
 CryptoKeyEC::~CryptoKeyEC()
 {
-    notImplemented();
+    if (m_platformKey)
+        PAL::GCrypt::HandleDeleter<gcry_sexp_t>()(m_platformKey);
 }
 
 size_t CryptoKeyEC::keySizeInBits() const
 {
-    notImplemented();
-
-    return 0;
+    size_t size = curveSize(m_curve);
+    ASSERT(size == gcry_pk_get_nbits(m_platformKey));
+    return size;
 }
 
-Vector<uint8_t> CryptoKeyEC::platformExportRaw() const
+std::optional<CryptoKeyPair> CryptoKeyEC::platformGeneratePair(CryptoAlgorithmIdentifier identifier, NamedCurve curve, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    notImplemented();
+    PAL::GCrypt::Handle<gcry_sexp_t> genkeySexp;
+    gcry_error_t error = gcry_sexp_build(&genkeySexp, nullptr, "(genkey(ecc(curve %s)))", curveName(curve));
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return std::nullopt;
+    }
 
-    return { };
+    PAL::GCrypt::Handle<gcry_sexp_t> keyPairSexp;
+    error = gcry_pk_genkey(&keyPairSexp, genkeySexp);
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return std::nullopt;
+    }
+
+    PAL::GCrypt::Handle<gcry_sexp_t> publicKeySexp(gcry_sexp_find_token(keyPairSexp, "public-key", 0));
+    PAL::GCrypt::Handle<gcry_sexp_t> privateKeySexp(gcry_sexp_find_token(keyPairSexp, "private-key", 0));
+    if (!publicKeySexp || !privateKeySexp)
+        return std::nullopt;
+
+    auto publicKey = CryptoKeyEC::create(identifier, curve, CryptoKeyType::Public, publicKeySexp.release(), true, usages);
+    auto privateKey = CryptoKeyEC::create(identifier, curve, CryptoKeyType::Private, privateKeySexp.release(), extractable, usages);
+    return CryptoKeyPair { WTFMove(publicKey), WTFMove(privateKey) };
 }
 
-std::optional<CryptoKeyPair> CryptoKeyEC::platformGeneratePair(CryptoAlgorithmIdentifier, NamedCurve, bool, CryptoKeyUsageBitmap)
+RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportRaw(CryptoAlgorithmIdentifier identifier, NamedCurve curve, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    notImplemented();
+    if (keyData.size() != uncompressedPointSizeForCurve(curve))
+        return nullptr;
 
-    return std::nullopt;
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(ecc(curve %s)(q %b)))",
+        curveName(curve), keyData.size(), keyData.data());
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return nullptr;
+    }
+
+    return create(identifier, curve, CryptoKeyType::Public, platformKey.release(), extractable, usages);
 }
 
-RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportRaw(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
+RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportJWKPublic(CryptoAlgorithmIdentifier identifier, NamedCurve curve, Vector<uint8_t>&& x, Vector<uint8_t>&& y, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    notImplemented();
+    unsigned uncompressedFieldElementSize = uncompressedFieldElementSizeForCurve(curve);
+    if (x.size() != uncompressedFieldElementSize || y.size() != uncompressedFieldElementSize)
+        return nullptr;
 
-    return nullptr;
+    // Construct the Vector that represents the EC point in uncompressed format.
+    Vector<uint8_t> q;
+    q.reserveInitialCapacity(1 + 2 * uncompressedFieldElementSize);
+    q.append(0x04);
+    q.appendVector(x);
+    q.appendVector(y);
+
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(ecc(curve %s)(q %b)))",
+        curveName(curve), q.size(), q.data());
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return nullptr;
+    }
+
+    return create(identifier, curve, CryptoKeyType::Public, platformKey.release(), extractable, usages);
 }
 
-RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportJWKPublic(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&&, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
+RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportJWKPrivate(CryptoAlgorithmIdentifier identifier, NamedCurve curve, Vector<uint8_t>&& x, Vector<uint8_t>&& y, Vector<uint8_t>&& d, bool extractable, CryptoKeyUsageBitmap usages)
 {
-    notImplemented();
+    unsigned uncompressedFieldElementSize = uncompressedFieldElementSizeForCurve(curve);
+    if (x.size() != uncompressedFieldElementSize || y.size() != uncompressedFieldElementSize || d.size() != uncompressedFieldElementSize)
+        return nullptr;
 
-    return nullptr;
-}
+    // Construct the Vector that represents the EC point in uncompressed format.
+    Vector<uint8_t> q;
+    q.reserveInitialCapacity(1 + 2 * uncompressedFieldElementSize);
+    q.append(0x04);
+    q.appendVector(x);
+    q.appendVector(y);
 
-RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportJWKPrivate(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&&, Vector<uint8_t>&&, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
-{
-    notImplemented();
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(private-key(ecc(curve %s)(q %b)(d %b)))",
+        curveName(curve), q.size(), q.data(), d.size(), d.data());
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return nullptr;
+    }
 
-    return nullptr;
-}
-
-void CryptoKeyEC::platformAddFieldElements(JsonWebKey&) const
-{
-    notImplemented();
+    return create(identifier, curve, CryptoKeyType::Private, platformKey.release(), extractable, usages);
 }
 
 RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportSpki(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
@@ -95,18 +206,73 @@ RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportSpki(CryptoAlgorithmIdentifier, N
     return nullptr;
 }
 
-Vector<uint8_t> CryptoKeyEC::platformExportSpki() const
-{
-    notImplemented();
-
-    return { };
-}
-
 RefPtr<CryptoKeyEC> CryptoKeyEC::platformImportPkcs8(CryptoAlgorithmIdentifier, NamedCurve, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
 {
     notImplemented();
 
     return nullptr;
+}
+
+Vector<uint8_t> CryptoKeyEC::platformExportRaw() const
+{
+    PAL::GCrypt::Handle<gcry_ctx_t> context;
+    gcry_error_t error = gcry_mpi_ec_new(&context, m_platformKey, nullptr);
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return { };
+    }
+
+    PAL::GCrypt::Handle<gcry_mpi_t> qMPI(gcry_mpi_ec_get_mpi("q", context, 0));
+    if (!qMPI)
+        return { };
+
+    Vector<uint8_t> q = extractMPIData(qMPI);
+    if (q.size() != uncompressedPointSizeForCurve(m_curve))
+        return { };
+
+    return q;
+}
+
+void CryptoKeyEC::platformAddFieldElements(JsonWebKey& jwk) const
+{
+    PAL::GCrypt::Handle<gcry_ctx_t> context;
+    gcry_error_t error = gcry_mpi_ec_new(&context, m_platformKey, nullptr);
+    if (error != GPG_ERR_NO_ERROR) {
+        PAL::GCrypt::logError(error);
+        return;
+    }
+
+    unsigned uncompressedFieldElementSize = uncompressedFieldElementSizeForCurve(m_curve);
+
+    PAL::GCrypt::Handle<gcry_mpi_t> qMPI(gcry_mpi_ec_get_mpi("q", context, 0));
+    if (qMPI) {
+        Vector<uint8_t> q = extractMPIData(qMPI);
+        if (q.size() == uncompressedPointSizeForCurve(m_curve)) {
+            Vector<uint8_t> a;
+            a.append(q.data() + 1, uncompressedFieldElementSize);
+            jwk.x = base64URLEncode(a);
+
+            Vector<uint8_t> b;
+            b.append(q.data() + 1 + uncompressedFieldElementSize, uncompressedFieldElementSize);
+            jwk.y = base64URLEncode(b);
+        }
+    }
+
+    if (type() == Type::Private) {
+        PAL::GCrypt::Handle<gcry_mpi_t> dMPI(gcry_mpi_ec_get_mpi("d", context, 0));
+        if (dMPI) {
+            Vector<uint8_t> d = extractMPIData(dMPI);
+            if (d.size() == uncompressedFieldElementSize)
+                jwk.d = base64URLEncode(d);
+        }
+    }
+}
+
+Vector<uint8_t> CryptoKeyEC::platformExportSpki() const
+{
+    notImplemented();
+
+    return { };
 }
 
 Vector<uint8_t> CryptoKeyEC::platformExportPkcs8() const

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +36,7 @@
 namespace JSC { namespace B3 { namespace Air {
 
 class Arg;
+class Code;
 
 // A Tmp is a generalization of a register. It can be used to refer to any GPR or FPR. It can also
 // be used to refer to an unallocated register (i.e. a temporary). Like many Air classes, we use
@@ -73,6 +74,14 @@ public:
         Tmp result;
         result.m_value = encodeFPTmp(index);
         return result;
+    }
+    
+    static Tmp tmpForIndex(Bank bank, unsigned index)
+    {
+        if (bank == GP)
+            return gpTmpForIndex(index);
+        ASSERT(bank == FP);
+        return fpTmpForIndex(index);
     }
 
     explicit operator bool() const { return !!m_value; }
@@ -154,7 +163,23 @@ public:
             return gpTmpIndex();
         return fpTmpIndex();
     }
+    
+    template<Bank bank> class Indexed;
+    template<Bank bank> class AbsolutelyIndexed;
+    class LinearlyIndexed;
+    
+    template<Bank bank>
+    Indexed<bank> indexed() const;
+    
+    template<Bank bank>
+    AbsolutelyIndexed<bank> absolutelyIndexed() const;
+    
+    LinearlyIndexed linearlyIndexed(Code&) const;
 
+    static unsigned indexEnd(Code&, Bank);
+    static unsigned absoluteIndexEnd(Code&, Bank);
+    static unsigned linearIndexEnd(Code&);
+    
     bool isAlive() const
     {
         return !!*this;
@@ -195,7 +220,11 @@ public:
         result.m_value = static_cast<int>(index);
         return result;
     }
-
+    
+    static Tmp tmpForAbsoluteIndex(Bank, unsigned);
+    
+    static Tmp tmpForLinearIndex(Code&, unsigned);
+    
 private:
     static int encodeGP(unsigned index)
     {

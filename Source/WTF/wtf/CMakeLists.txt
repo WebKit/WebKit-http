@@ -98,8 +98,10 @@ set(WTF_HEADERS
     PrintStream.h
     ProcessID.h
     RAMSize.h
+    RandomDevice.h
     RandomNumber.h
     RandomNumberSeed.h
+    Range.h
     RangeSet.h
     RawPointer.h
     RecursiveLockAdapter.h
@@ -226,6 +228,7 @@ set(WTF_SOURCES
     ParkingLot.cpp
     PrintStream.cpp
     RAMSize.cpp
+    RandomDevice.cpp
     RandomNumber.cpp
     RefCountedLeakCounter.cpp
     RunLoop.cpp

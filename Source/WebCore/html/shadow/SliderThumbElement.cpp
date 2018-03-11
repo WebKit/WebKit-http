@@ -349,7 +349,6 @@ void SliderThumbElement::defaultEventHandler(Event& event)
     // Missing this kind of check is likely to occur elsewhere if adding it in each shadow element.
     HTMLInputElement* input = hostInput();
     if (!input || input->isDisabledFormControl()) {
-        stopDragging();
         HTMLDivElement::defaultEventHandler(event);
         return;
     }
@@ -549,7 +548,7 @@ void SliderThumbElement::registerForTouchEvents()
 
     ASSERT(shouldAcceptTouchEvents());
 
-    document().addTouchEventHandler(this);
+    document().addTouchEventHandler(*this);
     m_isRegisteredAsTouchEventListener = true;
 }
 
@@ -561,18 +560,23 @@ void SliderThumbElement::unregisterForTouchEvents()
     clearExclusiveTouchIdentifier();
     stopDragging();
 
-    document().removeTouchEventHandler(this);
+    document().removeTouchEventHandler(*this);
     m_isRegisteredAsTouchEventListener = false;
 }
+#endif // ENABLE(IOS_TOUCH_EVENTS)
 
 void SliderThumbElement::disabledAttributeChanged()
 {
+    if (isDisabledFormControl())
+        stopDragging();
+
+#if ENABLE(IOS_TOUCH_EVENTS)
     if (shouldAcceptTouchEvents())
         registerForTouchEvents();
     else
         unregisterForTouchEvents();
+#endif
 }
-#endif // ENABLE(IOS_TOUCH_EVENTS)
 
 HTMLInputElement* SliderThumbElement::hostInput() const
 {

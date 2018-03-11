@@ -30,6 +30,7 @@
 
 #include "VM.h"
 #include "WasmFaultSignalHandler.h"
+#include "WasmThunks.h"
 
 #include <wtf/HexNumber.h>
 #include <wtf/NeverDestroyed.h>
@@ -70,15 +71,6 @@ const char* makeString(MemoryMode mode)
     }
     RELEASE_ASSERT_NOT_REACHED();
     return "";
-}
-
-// We use this as a heuristic to guess what mode a memory import will be. Most of the time we expect users to
-// allocate the memory they are going to pass to all their modules right before compilation.
-static MemoryMode lastAllocatedMemoryMode { MemoryMode::Signaling };
-
-MemoryMode Memory::lastAllocatedMode()
-{
-    return lastAllocatedMemoryMode;
 }
 
 static const unsigned maxFastMemories = 4;
@@ -131,7 +123,7 @@ inline bool tryGetFastMemory(VM& vm, void*& memory, size_t& mappedCapacity, Memo
         return fail();
 
     // We need to be sure we have a stub prior to running code.
-    if (UNLIKELY(!vm.getCTIStub(throwExceptionFromWasmThunkGenerator).size()))
+    if (UNLIKELY(!Thunks::singleton().stub(throwExceptionFromWasmThunkGenerator)))
         return fail();
 
     ASSERT(allocatedFastMemories <= maxFastMemories);
@@ -215,7 +207,6 @@ RefPtr<Memory> Memory::createImpl(VM& vm, PageCount initial, PageCount maximum, 
         if (mode == MemoryMode::Signaling)
             return nullptr;
 
-        lastAllocatedMemoryMode = MemoryMode::BoundsChecking;
         return adoptRef(new Memory(initial, maximum));
     };
 
@@ -259,7 +250,6 @@ RefPtr<Memory> Memory::createImpl(VM& vm, PageCount initial, PageCount maximum, 
         return nullptr;
     }
 
-    lastAllocatedMemoryMode = mode;
     dataLogLnIf(verbose, "Memory::create mmap succeeded");
     return adoptRef(new Memory(memory, initial, maximum, mappedCapacity, mode));
 }

@@ -49,14 +49,14 @@ static void materializeImportJSCell(JIT& jit, unsigned importIndex, GPRReg resul
     jit.loadPtr(JIT::Address(result, JSWebAssemblyInstance::offsetOfImportFunction(importIndex)), result);
 }
 
-static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, SignatureIndex signatureIndex, unsigned importIndex)
+MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, SignatureIndex signatureIndex, unsigned importIndex)
 {
     // FIXME: This function doesn't properly abstract away the calling convention.
     // It'd be super easy to do so: https://bugs.webkit.org/show_bug.cgi?id=169401
     const WasmCallingConvention& wasmCC = wasmCallingConvention();
     const JSCCallingConvention& jsCC = jscCallingConvention();
-    const Signature* signature = SignatureInformation::get(vm, signatureIndex);
-    unsigned argCount = signature->argumentCount();
+    const Signature& signature = SignatureInformation::get(signatureIndex);
+    unsigned argCount = signature.argumentCount();
     JIT jit;
 
     // Below, we assume that the JS calling convention is always on the stack.
@@ -68,9 +68,9 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
 
     {
         bool hasBadI64Use = false;
-        hasBadI64Use |= signature->returnType() == I64;
+        hasBadI64Use |= signature.returnType() == I64;
         for (unsigned argNum = 0; argNum < argCount && !hasBadI64Use; ++argNum) {
-            Type argType = signature->argument(argNum);
+            Type argType = signature.argument(argNum);
             switch (argType) {
             case Void:
             case Func:
@@ -143,7 +143,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         unsigned calleeFrameOffset = CallFrameSlot::firstArgument * static_cast<int>(sizeof(Register));
         unsigned frOffset = CallFrame::headerSizeInRegisters * static_cast<int>(sizeof(Register));
         for (unsigned argNum = 0; argNum < argCount; ++argNum) {
-            Type argType = signature->argument(argNum);
+            Type argType = signature.argument(argNum);
             switch (argType) {
             case Void:
             case Func:
@@ -198,7 +198,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
         unsigned calleeFrameOffset = CallFrameSlot::firstArgument * static_cast<int>(sizeof(Register));
         unsigned frOffset = CallFrame::headerSizeInRegisters * static_cast<int>(sizeof(Register));
         for (unsigned argNum = 0; argNum < argCount; ++argNum) {
-            Type argType = signature->argument(argNum);
+            Type argType = signature.argument(argNum);
             switch (argType) {
             case Void:
             case Func:
@@ -285,7 +285,7 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
 
     CCallHelpers::JumpList exceptionChecks;
 
-    switch (signature->returnType()) {
+    switch (signature.returnType()) {
     case Void:
         // Discard.
         break;
@@ -418,15 +418,11 @@ static MacroAssemblerCodeRef wasmToJs(VM* vm, Bag<CallLinkInfo>& callLinkInfos, 
     CodeLocationLabel hotPathBegin(patchBuffer.locationOf(targetToCheck));
     CodeLocationNearCall hotPathOther = patchBuffer.locationOfNearCall(fastCall);
     callLinkInfo->setCallLocations(callReturnLocation, hotPathBegin, hotPathOther);
-#if !defined(NDEBUG)
-    String signatureDescription = SignatureInformation::get(vm, signatureIndex)->toString();
-#else
-    String signatureDescription;
-#endif
-    return FINALIZE_CODE(patchBuffer, ("WebAssembly->JavaScript import[%i] %s", importIndex, signatureDescription.ascii().data()));
+
+    return FINALIZE_CODE(patchBuffer, ("WebAssembly->JavaScript import[%i] %s", importIndex, signature.toString().ascii().data()));
 }
 
-static MacroAssemblerCodeRef wasmToWasm(unsigned importIndex)
+MacroAssemblerCodeRef wasmToWasm(unsigned importIndex)
 {
     const PinnedRegisterInfo& pinnedRegs = PinnedRegisterInfo::get();
     JIT jit;
@@ -459,19 +455,11 @@ static MacroAssemblerCodeRef wasmToWasm(unsigned importIndex)
     }
 
     // Tail call into the callee WebAssembly function.
-    jit.loadPtr(JIT::Address(scratch, WebAssemblyFunction::offsetOfWasmEntryPointCode()), scratch);
+    jit.loadPtr(JIT::Address(scratch, WebAssemblyFunction::offsetOfWasmEntrypoint()), scratch);
     jit.jump(scratch);
 
     LinkBuffer patchBuffer(jit, GLOBAL_THUNK_ID);
     return FINALIZE_CODE(patchBuffer, ("WebAssembly->WebAssembly import[%i]", importIndex));
-}
-
-WasmExitStubs exitStubGenerator(VM* vm, Bag<CallLinkInfo>& callLinkInfos, SignatureIndex signatureIndex, unsigned importIndex)
-{
-    WasmExitStubs stubs;
-    stubs.wasmToJs = wasmToJs(vm, callLinkInfos, signatureIndex, importIndex);
-    stubs.wasmToWasm = wasmToWasm(importIndex);
-    return stubs;
 }
 
 } } // namespace JSC::Wasm

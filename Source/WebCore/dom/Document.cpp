@@ -142,7 +142,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "RequestAnimationFrameCallback.h"
-#include "ResourceLoadObserver.h"
 #include "RuntimeEnabledFeatures.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGElement.h"
@@ -1530,21 +1529,21 @@ void Document::titleElementTextChanged(Element& titleElement)
     updateTitleFromTitleElement();
 }
 
-void Document::registerForVisibilityStateChangedCallbacks(Element* element)
+void Document::registerForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.add(element);
+    m_visibilityStateCallbackClients.add(client);
 }
 
-void Document::unregisterForVisibilityStateChangedCallbacks(Element* element)
+void Document::unregisterForVisibilityStateChangedCallbacks(VisibilityChangeClient* client)
 {
-    m_visibilityStateCallbackElements.remove(element);
+    m_visibilityStateCallbackClients.remove(client);
 }
 
 void Document::visibilityStateChanged()
 {
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
-    for (auto* element : m_visibilityStateCallbackElements)
-        element->visibilityStateChanged();
+    for (auto* client : m_visibilityStateCallbackClients)
+        client->visibilityStateChanged();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -2267,6 +2266,11 @@ void Document::prepareForDestruction()
 
     m_cachedResourceLoader->stopUnusedPreloadsTimer();
 
+    if (page() && m_mediaState != MediaProducer::IsNotPlaying) {
+        m_mediaState = MediaProducer::IsNotPlaying;
+        page()->updateIsPlayingMedia(HTMLMediaElementInvalidID);
+    }
+
     detachFromFrame();
 
     m_hasPreparedForDestruction = true;
@@ -2283,6 +2287,7 @@ void Document::removeAllEventListeners()
 
     if (m_domWindow)
         m_domWindow->removeAllEventListeners();
+
 #if ENABLE(IOS_TOUCH_EVENTS)
     clearTouchEventHandlersAndListeners();
 #endif
@@ -2806,6 +2811,9 @@ Seconds Document::domTimerAlignmentInterval(bool hasReachedMaxNestingLevel) cons
 
     if (Page* page = this->page())
         alignmentInterval = std::max(alignmentInterval, page->domTimerAlignmentInterval());
+
+    if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
+        alignmentInterval = std::max(alignmentInterval, DOMTimer::nonInteractedCrossOriginFrameAlignmentInterval());
 
     return alignmentInterval;
 }
@@ -3496,6 +3504,9 @@ void Document::removeFocusedNodeOfSubtree(Node& node, bool amongChildrenOnly)
         return;
     
     if (isNodeInSubtree(*focusedElement, node, amongChildrenOnly)) {
+        // FIXME: We should avoid synchronously updating the style inside setFocusedElement.
+        // FIXME: Object elements should avoid loading a frame synchronously in a post style recalc callback.
+        SubframeLoadingDisabler disabler(is<ContainerNode>(node) ? &downcast<ContainerNode>(node) : nullptr);
         setFocusedElement(nullptr, FocusDirectionNone, FocusRemovalEventsMode::DoNotDispatch);
         // Set the focus navigation starting node to the previous focused element so that
         // we can fallback to the siblings or parent node for the next search.
@@ -6002,6 +6013,19 @@ int Document::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callbac
         // controller on a background tab, for example.
         if (!page() || page()->scriptedAnimationsSuspended())
             m_scriptedAnimationController->suspend();
+
+        if (page() && page()->isLowPowerModeEnabled())
+            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::LowPowerMode);
+
+        if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
+            m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+
+        if (settings().shouldDispatchRequestAnimationFrameEvents()) {
+            if (!page())
+                dispatchEvent(Event::create("raf-no-page", false, false));
+            else if (page()->scriptedAnimationsSuspended())
+                dispatchEvent(Event::create("raf-scripted-animations-suspended-on-page", false, false));
+        }
     }
 
     return m_scriptedAnimationController->registerCallback(WTFMove(callback));
@@ -6297,10 +6321,20 @@ Document::RegionFixedPair Document::absoluteRegionForEventTargets(const EventTar
     return RegionFixedPair(targetRegion, insideFixedPosition);
 }
 
-void Document::updateLastHandledUserGestureTimestamp()
+void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
 {
-    m_lastHandledUserGestureTimestamp = monotonicallyIncreasingTime();
-    ResourceLoadObserver::sharedObserver().logUserInteractionWithReducedTimeResolution(*this);
+    m_lastHandledUserGestureTimestamp = time;
+
+    if (static_cast<bool>(time) && m_scriptedAnimationController) {
+        // It's OK to always remove NonInteractedCrossOriginFrame even if this frame isn't cross-origin.
+        m_scriptedAnimationController->removeThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
+    }
+
+    // DOM Timer alignment may depend on the user having interacted with the document.
+    didChangeTimerAlignmentInterval();
+    
+    if (HTMLFrameOwnerElement* element = ownerElement())
+        element->document().updateLastHandledUserGestureTimestamp(time);
 }
 
 void Document::startTrackingStyleRecalcs()

@@ -181,6 +181,14 @@ bool MediaStreamPrivate::isProducingData() const
     return false;
 }
 
+void MediaStreamPrivate::setCaptureTracksMuted(bool muted)
+{
+    for (auto& track : m_trackSet.values()) {
+        if (track->isCaptureTrack())
+            track->setMuted(muted);
+    }
+}
+
 bool MediaStreamPrivate::hasVideo() const
 {
     for (auto& track : m_trackSet.values()) {

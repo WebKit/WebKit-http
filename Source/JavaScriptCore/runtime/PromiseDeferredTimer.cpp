@@ -29,8 +29,8 @@
 #include "JSPromiseDeferred.h"
 #include "StrongInlines.h"
 #include "VM.h"
-
 #include <wtf/Locker.h>
+#include <wtf/RunLoop.h>
 
 namespace JSC {
 
@@ -44,10 +44,12 @@ PromiseDeferredTimer::PromiseDeferredTimer(VM& vm)
 void PromiseDeferredTimer::doWork()
 {
     ASSERT(m_vm->currentThreadIsHoldingAPILock());
-    LockHolder locker(m_taskLock);
+    m_taskLock.lock();
     cancelTimer();
-    if (!m_runTasks)
+    if (!m_runTasks) {
+        m_taskLock.unlock();
         return;
+    }
 
     while (!m_tasks.isEmpty()) {
         JSPromiseDeferred* ticket;
@@ -57,33 +59,43 @@ void PromiseDeferredTimer::doWork()
 
         // We may have already canceled these promises.
         if (m_pendingPromises.contains(ticket)) {
+            // Allow tasks we run now to schedule work.
+            m_currentlyRunningTask = true;
+            m_taskLock.unlock(); 
+
             task();
             m_vm->drainMicrotasks();
-        }
 
-        auto waitingTasks = m_blockedTasks.take(ticket);
-        for (const Task& unblockedTask : waitingTasks) {
-            unblockedTask();
-            m_vm->drainMicrotasks();
+            m_taskLock.lock();
+            m_currentlyRunningTask = false;
         }
     }
 
+    if (m_pendingPromises.isEmpty() && m_shouldStopRunLoopWhenAllPromisesFinish) {
 #if USE(CF)
-    if (m_pendingPromises.isEmpty() && m_shouldStopRunLoopWhenAllPromisesFinish)
         CFRunLoopStop(m_runLoop.get());
+#else
+        RunLoop::current().stop();
 #endif
+    }
+
+    m_taskLock.unlock();
 }
 
-#if USE(CF)
 void PromiseDeferredTimer::runRunLoop()
 {
     ASSERT(!m_vm->currentThreadIsHoldingAPILock());
+#if USE(CF)
     ASSERT(CFRunLoopGetCurrent() == m_runLoop.get());
+#endif
     m_shouldStopRunLoopWhenAllPromisesFinish = true;
     if (m_pendingPromises.size())
+#if USE(CF)
         CFRunLoopRun();
-}
+#else
+        RunLoop::run();
 #endif
+}
 
 void PromiseDeferredTimer::addPendingPromise(JSPromiseDeferred* ticket, Vector<Strong<JSCell>>&& dependencies)
 {
@@ -114,9 +126,6 @@ bool PromiseDeferredTimer::cancelPendingPromise(JSPromiseDeferred* ticket)
     if (result)
         dataLogLnIf(verbose, "Canceling promise: ", RawPointer(ticket));
 
-    auto blockedTasks = m_blockedTasks.take(ticket);
-    for (const Task& task : blockedTasks)
-        task();
     return result;
 }
 
@@ -124,16 +133,8 @@ void PromiseDeferredTimer::scheduleWorkSoon(JSPromiseDeferred* ticket, Task&& ta
 {
     LockHolder locker(m_taskLock);
     m_tasks.append(std::make_tuple(ticket, WTFMove(task)));
-    if (!isScheduled())
+    if (!isScheduled() && !m_currentlyRunningTask)
         scheduleTimer(0);
-}
-
-void PromiseDeferredTimer::scheduleBlockedTask(JSPromiseDeferred* blockingTicket, Task&& task)
-{
-    ASSERT(m_vm->currentThreadIsHoldingAPILock());
-    ASSERT(m_pendingPromises.contains(blockingTicket));
-    auto result = m_blockedTasks.add(blockingTicket, Vector<Task>());
-    result.iterator->value.append(WTFMove(task));
 }
 
 } // namespace JSC

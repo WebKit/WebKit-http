@@ -64,10 +64,6 @@ ScriptedAnimationController::ScriptedAnimationController(Document& document, Pla
 #endif
 {
     windowScreenDidChange(displayID);
-
-    auto* page = document.page();
-    if (page && page->isLowPowerModeEnabled())
-        addThrottlingReason(ThrottlingReason::LowPowerMode);
 }
 
 ScriptedAnimationController::~ScriptedAnimationController()
@@ -82,6 +78,8 @@ bool ScriptedAnimationController::requestAnimationFrameEnabled() const
 void ScriptedAnimationController::suspend()
 {
     dispatchLoggingEventIfRequired("raf-suspend");
+    if (m_document && m_document->frame() && m_document->frame()->settings().shouldDispatchRequestAnimationFrameEvents())
+        WTFReportBacktrace();
     ++m_suspendCount;
 }
 
@@ -108,6 +106,8 @@ static const char* throttlingReasonToString(ScriptedAnimationController::Throttl
         return "OutsideViewport";
     case ScriptedAnimationController::ThrottlingReason::LowPowerMode:
         return "LowPowerMode";
+    case ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame:
+        return "NonInteractiveCrossOriginFrame";
     }
 }
 
@@ -266,8 +266,13 @@ Seconds ScriptedAnimationController::interval() const
 #if USE(REQUEST_ANIMATION_FRAME_TIMER) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     if (m_throttlingReasons.contains(ThrottlingReason::VisuallyIdle) || m_throttlingReasons.contains(ThrottlingReason::OutsideViewport))
         return aggressiveThrottlingAnimationInterval;
+
     if (m_throttlingReasons.contains(ThrottlingReason::LowPowerMode))
         return halfSpeedThrottlingAnimationInterval;
+
+    if (m_throttlingReasons.contains(ThrottlingReason::NonInteractedCrossOriginFrame))
+        return halfSpeedThrottlingAnimationInterval;
+
     ASSERT(m_throttlingReasons.isEmpty());
 #endif
     return fullSpeedAnimationInterval;

@@ -55,6 +55,24 @@ void lowerAfterRegAlloc(Code& code)
 
     if (verbose)
         dataLog("Code before lowerAfterRegAlloc:\n", code);
+    
+    auto isRelevant = [] (Inst& inst) -> bool {
+        return inst.kind.opcode == Shuffle || inst.kind.opcode == ColdCCall;
+    };
+    
+    bool haveAnyRelevant = false;
+    for (BasicBlock* block : code) {
+        for (Inst& inst : *block) {
+            if (isRelevant(inst)) {
+                haveAnyRelevant = true;
+                break;
+            }
+        }
+        if (haveAnyRelevant)
+            break;
+    }
+    if (!haveAnyRelevant)
+        return;
 
     HashMap<Inst*, RegisterSet> usedRegisters;
 
@@ -67,16 +85,14 @@ void lowerAfterRegAlloc(Code& code)
             
             RegisterSet set;
 
-            bool isRelevant = inst.kind.opcode == Shuffle || inst.kind.opcode == ColdCCall;
-            
-            if (isRelevant) {
+            if (isRelevant(inst)) {
                 for (Reg reg : localCalc.live())
                     set.set(reg);
             }
             
             localCalc.execute(instIndex);
 
-            if (isRelevant)
+            if (isRelevant(inst))
                 usedRegisters.add(&inst, set);
         }
     }

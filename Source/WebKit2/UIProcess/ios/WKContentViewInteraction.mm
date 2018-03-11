@@ -1481,13 +1481,18 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 
 - (BOOL)pointIsInAssistedNode:(CGPoint)point
 {
+    // This method is still implemented for backwards compatibility with older UIKit versions.
+    return [self textInteractionGesture:UIWKGestureLoupe shouldBeginAtPoint:point];
+}
+
+- (BOOL)textInteractionGesture:(UIWKGestureType)gesture shouldBeginAtPoint:(CGPoint)point
+{
     InteractionInformationRequest request(roundedIntPoint(point));
     [self ensurePositionInformationIsUpToDate:request];
 
 #if ENABLE(DATA_INTERACTION)
-    if (_positionInformation.hasSelectionAtPosition) {
+    if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe) {
         // If the position might initiate data interaction, we don't want to change the selection.
-        // FIXME: This should be renamed to something more precise, such as textInteractionShouldRecognizeGestureAtPoint:
         return NO;
     }
 #endif
@@ -2972,6 +2977,8 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 - (void)setSelectedTextRange:(UITextRange *)range
 {
+    if (_textSelectionAssistant && !range)
+        [self clearSelection];
 }
 
 - (BOOL)hasMarkedText
@@ -4045,8 +4052,15 @@ static bool isAssistableInputType(InputType type)
     
     if ([uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)]) {
         if ([uiDelegate _webView:_webView showCustomSheetForElement:element]) {
-            // Prevent tap-and-hold and drag.
-            [UIApp _cancelAllTouches];
+#if ENABLE(DATA_INTERACTION)
+            BOOL shouldCancelAllTouches = !_dataInteractionState.sourceAction;
+#else
+            BOOL shouldCancelAllTouches = YES;
+#endif
+            // Prevent tap-and-hold and panning.
+            if (shouldCancelAllTouches)
+                [UIApp _cancelAllTouches];
+
             return YES;
         }
     }

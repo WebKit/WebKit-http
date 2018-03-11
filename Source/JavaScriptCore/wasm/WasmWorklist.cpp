@@ -115,9 +115,8 @@ protected:
         // FIXME: this should check in occasionally to see if there are new, higher priority e.g. synchronous, plans that need to be run.
         // https://bugs.webkit.org/show_bug.cgi?id=170204
         plan->compileFunctions(Plan::Partial);
-        ASSERT(!plan->hasWork());
 
-        {
+        if (!plan->hasWork()) {
             LockHolder locker(*worklist.m_lock);
             auto queue = worklist.m_queue;
             // Another thread may have removed our plan from the queue already.
@@ -188,10 +187,8 @@ void Worklist::enqueue(Ref<Plan> plan)
         });
     }
 
-    // If we don't have a promise it must be synchronous so we should boost the priority.
-    Priority priority = plan->pendingPromise() ? Priority::Preparation : Priority::Synchronous;
-    dataLogLnIf(verbose, "Enqueuing plan with priority: ", priorityString(priority));
-    m_queue.push({ priority, nextTicket(),  WTFMove(plan) });
+    dataLogLnIf(verbose, "Enqueuing plan");
+    m_queue.push({ Priority::Preparation, nextTicket(),  WTFMove(plan) });
     m_planEnqueued->notifyOne(locker);
 }
 
@@ -220,18 +217,19 @@ void Worklist::stopAllPlansForVM(VM& vm)
 {
     LockHolder locker(*m_lock);
     iterate(locker, [&] (QueueElement& element) {
-        if (&element.plan->vm() == &vm) {
-            element.plan->cancel();
+        bool didCancel = element.plan->tryRemoveVMAndCancelIfLast(vm);
+        if (didCancel)
             return IterateResult::DropAndContinue;
-        }
         return IterateResult::Continue;
     });
 
     for (auto& thread : m_threads) {
-        if (thread->element.plan && &thread->element.plan->vm() == &vm) {
-            // We don't have to worry about the deadlocking since the thread can't block without clearing the plan and must hold the lock to do so.
-            thread->element.plan->cancel();
-            thread->synchronize.wait(*m_lock);
+        if (thread->element.plan) {
+            bool didCancel = thread->element.plan->tryRemoveVMAndCancelIfLast(vm);
+            if (didCancel) {
+                // We don't have to worry about the deadlocking since the thread can't block without clearing the plan and must hold the lock to do so.
+                thread->synchronize.wait(*m_lock);
+            }
         }
     }
 }

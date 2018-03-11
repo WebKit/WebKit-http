@@ -62,7 +62,7 @@ describe('/api/manifest', function () {
             db.insert('bug_trackers', bugzillaData),
             db.insert('bug_trackers', radarData),
             db.insert('repositories', {id: 11, name: 'WebKit', url: 'https://trac.webkit.org/$1'}),
-            db.insert('repositories', {id: 9, name: 'OS X'}),
+            db.insert('repositories', {id: 9, name: 'macOS'}),
             db.insert('repositories', {id: 22, name: 'iOS'}),
             db.insert('tracker_repositories', {tracker: bugzillaData.id, repository: 11}),
             db.insert('tracker_repositories', {tracker: radarData.id, repository: 9}),
@@ -77,9 +77,9 @@ describe('/api/manifest', function () {
             assert.equal(webkit.name(), 'WebKit');
             assert.equal(webkit.urlForRevision(123), 'https://trac.webkit.org/123');
 
-            let osx = Repository.findById(9);
-            assert(osx);
-            assert.equal(osx.name(), 'OS X');
+            let macos = Repository.findById(9);
+            assert(macos);
+            assert.equal(macos.name(), 'macOS');
 
             let ios = Repository.findById(22);
             assert(ios);
@@ -95,7 +95,7 @@ describe('/api/manifest', function () {
             tracker = BugTracker.findById(2);
             assert(tracker);
             assert.equal(tracker.name(), 'Radar');
-            assert.deepEqual(Repository.sortByName(tracker.repositories()), [osx, ios]);
+            assert.deepEqual(Repository.sortByName(tracker.repositories()), [ios, macos]);
         });
     });
 
@@ -264,15 +264,17 @@ describe('/api/manifest', function () {
         let db = TestServer.database();
         return Promise.all([
             db.insert('repositories', {id: 11, name: 'WebKit', url: 'https://trac.webkit.org/$1'}),
-            db.insert('repositories', {id: 9, name: 'OS X'}),
+            db.insert('repositories', {id: 9, name: 'macOS'}),
             db.insert('repositories', {id: 101, name: 'WebKit', owner: 9, url: 'https://trac.webkit.org/$1'}),
             db.insert('build_triggerables', {id: 200, name: 'build.webkit.org'}),
             db.insert('build_triggerables', {id: 201, name: 'ios-build.webkit.org'}),
+            db.insert('build_triggerables', {id: 202, name: 'mac-build.webkit.org', disabled: true}),
             db.insert('tests', {id: 1, name: 'SomeTest'}),
             db.insert('tests', {id: 2, name: 'SomeOtherTest'}),
             db.insert('tests', {id: 3, name: 'ChildTest', parent: 1}),
             db.insert('platforms', {id: 23, name: 'iOS 9 iPhone 5s'}),
             db.insert('platforms', {id: 46, name: 'Trunk Mavericks'}),
+            db.insert('platforms', {id: 104, name: 'Trunk Sierra MacBookPro11,2'}),
             db.insert('test_metrics', {id: 5, test: 1, name: 'Time'}),
             db.insert('test_metrics', {id: 8, test: 2, name: 'FrameRate'}),
             db.insert('test_metrics', {id: 9, test: 3, name: 'Time'}),
@@ -282,58 +284,107 @@ describe('/api/manifest', function () {
             db.insert('test_configurations', {id: 104, metric: 5, platform: 23, type: 'current'}),
             db.insert('test_configurations', {id: 105, metric: 8, platform: 23, type: 'current'}),
             db.insert('test_configurations', {id: 106, metric: 9, platform: 23, type: 'current'}),
-            db.insert('triggerable_repositories', {triggerable: 200, repository: 11}),
-            db.insert('triggerable_repositories', {triggerable: 201, repository: 11}),
+            db.insert('test_configurations', {id: 107, metric: 5, platform: 104, type: 'current'}),
+            db.insert('test_configurations', {id: 108, metric: 8, platform: 104, type: 'current'}),
+            db.insert('test_configurations', {id: 109, metric: 9, platform: 104, type: 'current'}),
+            db.insert('triggerable_repository_groups', {id: 300, triggerable: 200, name: 'default'}),
+            db.insert('triggerable_repository_groups', {id: 301, triggerable: 201, name: 'default'}),
+            db.insert('triggerable_repository_groups', {id: 302, triggerable: 202, name: 'system-and-webkit'}),
+            db.insert('triggerable_repository_groups', {id: 312, triggerable: 202, name: 'system-and-roots', accepts_roots: true}),
+            db.insert('triggerable_repositories', {group: 300, repository: 11}),
+            db.insert('triggerable_repositories', {group: 301, repository: 11}),
+            db.insert('triggerable_repositories', {group: 302, repository: 11}),
+            db.insert('triggerable_repositories', {group: 302, repository: 9}),
+            db.insert('triggerable_repositories', {group: 312, repository: 9}),
             db.insert('triggerable_configurations', {triggerable: 200, test: 1, platform: 46}),
             db.insert('triggerable_configurations', {triggerable: 200, test: 2, platform: 46}),
             db.insert('triggerable_configurations', {triggerable: 201, test: 1, platform: 23}),
             db.insert('triggerable_configurations', {triggerable: 201, test: 2, platform: 23}),
+            db.insert('triggerable_configurations', {triggerable: 202, test: 1, platform: 104}),
+            db.insert('triggerable_configurations', {triggerable: 202, test: 2, platform: 104}),
         ]).then(() => {
             return Manifest.fetch();
         }).then(() => {
-            let webkit = Repository.findById(11);
+            const webkit = Repository.findById(11);
             assert.equal(webkit.name(), 'WebKit');
             assert.equal(webkit.urlForRevision(123), 'https://trac.webkit.org/123');
 
-            let osWebkit1 = Repository.findById(101);
+            const osWebkit1 = Repository.findById(101);
             assert.equal(osWebkit1.name(), 'WebKit');
             assert.equal(osWebkit1.owner(), 9);
             assert.equal(osWebkit1.urlForRevision(123), 'https://trac.webkit.org/123');
 
-            let osx = Repository.findById(9);
-            assert.equal(osx.name(), 'OS X');
+            const macos = Repository.findById(9);
+            assert.equal(macos.name(), 'macOS');
 
-            let someTest = Test.findById(1);
+            const someTest = Test.findById(1);
             assert.equal(someTest.name(), 'SomeTest');
 
-            let someOtherTest = Test.findById(2);
+            const someOtherTest = Test.findById(2);
             assert.equal(someOtherTest.name(), 'SomeOtherTest');
 
-            let childTest = Test.findById(3);
+            const childTest = Test.findById(3);
             assert.equal(childTest.name(), 'ChildTest');
 
-            let ios9iphone5s = Platform.findById(23);
+            const ios9iphone5s = Platform.findById(23);
             assert.equal(ios9iphone5s.name(), 'iOS 9 iPhone 5s');
 
-            let mavericks = Platform.findById(46);
+            const mavericks = Platform.findById(46);
             assert.equal(mavericks.name(), 'Trunk Mavericks');
 
-            assert.equal(Triggerable.all().length, 2);
+            const sierra = Platform.findById(104);
+            assert.equal(sierra.name(), 'Trunk Sierra MacBookPro11,2');
 
-            let osxTriggerable = Triggerable.findByTestConfiguration(someTest, mavericks);
-            assert.equal(osxTriggerable.name(), 'build.webkit.org');
-            assert.deepEqual(osxTriggerable.acceptedRepositories(), [webkit]);
+            assert.equal(Triggerable.all().length, 3);
 
-            assert.equal(Triggerable.findByTestConfiguration(someOtherTest, mavericks), osxTriggerable);
-            assert.equal(Triggerable.findByTestConfiguration(childTest, mavericks), osxTriggerable);
+            const macosTriggerable = Triggerable.findByTestConfiguration(someTest, mavericks);
+            assert.equal(macosTriggerable.name(), 'build.webkit.org');
 
-            let iosTriggerable = Triggerable.findByTestConfiguration(someOtherTest, ios9iphone5s);
-            assert.notEqual(iosTriggerable, osxTriggerable);
+            assert.equal(Triggerable.findByTestConfiguration(someOtherTest, mavericks), macosTriggerable);
+            assert.equal(Triggerable.findByTestConfiguration(childTest, mavericks), macosTriggerable);
+
+            const iosTriggerable = Triggerable.findByTestConfiguration(someOtherTest, ios9iphone5s);
+            assert.notEqual(iosTriggerable, macosTriggerable);
             assert.equal(iosTriggerable.name(), 'ios-build.webkit.org');
-            assert.deepEqual(iosTriggerable.acceptedRepositories(), [webkit]);
 
             assert.equal(Triggerable.findByTestConfiguration(someOtherTest, ios9iphone5s), iosTriggerable);
             assert.equal(Triggerable.findByTestConfiguration(childTest, ios9iphone5s), iosTriggerable);
+
+            const macTriggerable = Triggerable.findByTestConfiguration(someTest, sierra);
+            assert.equal(macTriggerable.name(), 'mac-build.webkit.org');
+            assert(macTriggerable.acceptsTest(someTest));
+
+            const groups = macTriggerable.repositoryGroups();
+            assert.deepEqual(groups.length, 2);
+            TriggerableRepositoryGroup.sortByName(groups);
+
+            const emptyCustomSet = new CustomCommitSet;
+
+            const customSetWithOSX = new CustomCommitSet;
+            customSetWithOSX.setRevisionForRepository(macos, '10.11 15A284');
+
+            const cusomSetWithOSXAndWebKit = new CustomCommitSet;
+            cusomSetWithOSXAndWebKit.setRevisionForRepository(webkit, '191622');
+            cusomSetWithOSXAndWebKit.setRevisionForRepository(macos, '10.11 15A284');
+
+            const cusomSetWithWebKit = new CustomCommitSet;
+            cusomSetWithWebKit.setRevisionForRepository(webkit, '191622');
+
+            assert.equal(groups[0].name(), 'system-and-roots');
+            assert.equal(groups[0].acceptsCustomRoots(), true);
+            assert.deepEqual(Repository.sortByName(groups[0].repositories()), [macos]);
+            assert.equal(groups[0].accepts(emptyCustomSet), false);
+            assert.equal(groups[0].accepts(customSetWithOSX), true);
+            assert.equal(groups[0].accepts(cusomSetWithOSXAndWebKit), false);
+            assert.equal(groups[0].accepts(cusomSetWithWebKit), false);
+
+            assert.equal(groups[1].name(), 'system-and-webkit');
+            assert.equal(groups[1].acceptsCustomRoots(), false);
+            assert.deepEqual(Repository.sortByName(groups[1].repositories()), [webkit, macos]);
+            assert.equal(groups[1].accepts(emptyCustomSet), false);
+            assert.equal(groups[1].accepts(customSetWithOSX), false);
+            assert.equal(groups[1].accepts(cusomSetWithOSXAndWebKit), true);
+            assert.equal(groups[1].accepts(cusomSetWithWebKit), false);
         });
     });
 

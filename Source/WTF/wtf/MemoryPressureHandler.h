@@ -49,7 +49,6 @@ enum class MemoryUsagePolicy {
     Unrestricted, // Allocate as much as you want
     Conservative, // Maybe you don't cache every single thing
     Strict, // Time to start pinching pennies for real
-    Panic, // OH GOD WE'RE SINKING, THROW EVERYTHING OVERBOARD
 };
 
 enum class WebsamProcessState {
@@ -79,14 +78,7 @@ public:
         m_lowMemoryHandler = WTFMove(handler);
     }
 
-    bool isUnderMemoryPressure() const
-    {
-        return m_underMemoryPressure
-#if PLATFORM(MAC)
-            || m_memoryUsagePolicy >= MemoryUsagePolicy::Strict
-#endif
-            || m_isSimulatingMemoryPressure;
-    }
+    WTF_EXPORT_PRIVATE static bool isUnderMemoryPressure();
     void setUnderMemoryPressure(bool);
 
 #if OS(LINUX)
@@ -148,6 +140,7 @@ public:
     WebsamProcessState processState() const { return m_processState; }
 
 private:
+    size_t thresholdForMemoryKill();
     void memoryPressureStatusChanged();
 
     void uninstall();
@@ -161,8 +154,9 @@ private:
     void platformReleaseMemory(Critical);
     void platformInitialize();
 
-    NO_RETURN_DUE_TO_CRASH void didExceedMemoryLimitAndFailedToRecover();
     void measurementTimerFired();
+    void shrinkOrDie();
+    void setMemoryUsagePolicyBasedOnFootprint(size_t);
 
 #if OS(LINUX)
     class EventFDPoller {
@@ -184,7 +178,7 @@ private:
     };
 #endif
 
-    WebsamProcessState m_processState { WebsamProcessState::Inactive };
+    WebsamProcessState m_processState { WebsamProcessState::Active };
 
     bool m_installed { false };
     LowMemoryHandler m_lowMemoryHandler;

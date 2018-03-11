@@ -145,6 +145,8 @@ imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
 fast/events/touch [ Skip ]
 fast/shadow-dom/touch-event-ios.html [ Skip ]
 fast/shadow-dom/touch-event-on-text-assigned-to-slot.html [ Skip ]
+http/tests/frame-throttling/raf-throttle-in-cross-origin-subframe.html [ Skip ]
+http/tests/frame-throttling/timer-throttle-in-cross-origin-subframe.html [ Skip ]
 http/tests/quicklook/at-import-stylesheet-blocked.html [ Skip ]
 http/tests/quicklook/base-url-blocked.html [ Skip ]
 http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]
@@ -311,6 +313,7 @@ webkit.org/b/165799 media/media-playback-page-visibility.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-in-background-page-iframe.html [ Skip ]
 webkit.org/b/165799 svg/animations/animations-paused-in-background-page.html [ Skip ]
+webkit.org/b/165799 webaudio/silent-audio-interrupted-in-background.html [ Skip ]
 
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
@@ -363,7 +366,6 @@ fast/text/complex-small-caps-non-bmp-capitalize.html [ Skip ]
 fast/text/all-small-caps-whitespace.html [ Skip ]
 
 # This test relies on EventSender.keydown(), which is not supported on iOS
-editing/caret/emoji.html [ Skip ]
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/events/beforeunload-alert-user-interaction.html [ Skip ]
 fast/forms/validation-bubble-escape-key-dismiss.html [ Skip ]
@@ -379,8 +381,11 @@ fast/events/keyboardevent-code.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
 media/audio-dealloc-crash.html [ Skip ]
 
-# This test uses EventSender's mouseMoveTo, mouseUp and mouseDown
+# Tests that use EventSender's mouseMoveTo, mouseUp and mouseDown
+fast/forms/range/disabled-while-dragging.html [ Skip ]
+fast/forms/range/range-drag-when-toggled-disabled.html [ Skip ]
 fast/media/video-element-in-details-collapse.html [ Skip ]
+fast/frames/user-gesture-timestamp-propagation.html [ Failure ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -1421,7 +1426,6 @@ fast/forms/password-doubleclick-selection.html [ Failure ]
 fast/forms/password-placeholder-text-security.html [ Pass ImageOnlyFailure ]
 fast/forms/placeholder-position.html [ Failure ]
 fast/forms/radio/indeterminate-radio.html [ Pass Failure ]
-fast/forms/range/range-drag-when-toggled-disabled.html [ Failure ]
 fast/forms/range/range-drag.html [ Failure ]
 fast/forms/range/range-hit-test-with-padding.html [ Failure ]
 fast/forms/range/range-slow-drag-to-edge.html [ Failure ]
@@ -2817,7 +2821,6 @@ media/modern-media-controls/seek-forward-support [ Skip ]
 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
 media/modern-media-controls/volume-down-support [ Skip ]
 media/modern-media-controls/volume-up-support [ Skip ]
-media/modern-media-controls/volume-up-support [ Skip ]
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Skip ]
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
 http/tests/media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-live-broadcast.html [ Skip ]
@@ -2881,8 +2884,8 @@ media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
 
 webkit.org/b/166736 fast/scrolling/page-cache-back-overflow-scroll-restore.html [ Skip ]
 
-# editing/caret/ios/emoji.html is used instead.
-editing/caret/emoji.html [ Failure ]
+# This test relies on EventSender.keydown(), which is not supported on iOS. editing/caret/ios/emoji.html is used instead.
+editing/caret/emoji.html [ WontFix ]
 
 # Requires changes to QuickLook.framework tracked by rdar://problem/28544527
 quicklook/password-protected.html [ Skip ]
@@ -2932,3 +2935,5 @@ fast/css-generated-content/initial-letter-pagination-raised.html [ Skip ]
 fast/css-generated-content/initial-letter-pagination-sunken.html [ Skip ]
 fast/css-generated-content/initial-letter-pagination-raised-rl.html [ Skip ]
 fast/css-generated-content/initial-letter-pagination-sunken-rl.html [ Skip ]
+
+webkit.org/b/158420 http/tests/navigation/redirect-to-fragment2.html [ Failure ]

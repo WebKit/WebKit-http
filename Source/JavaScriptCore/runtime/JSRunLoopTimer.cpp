@@ -37,9 +37,29 @@
 
 #if USE(GLIB)
 #include <glib.h>
+#include <wtf/glib/RunLoopSourcePriority.h>
 #endif
 
 namespace JSC {
+
+void JSRunLoopTimer::timerDidFire()
+{
+    m_apiLock->lock();
+
+    RefPtr<VM> vm = m_apiLock->vm();
+    if (!vm) {
+        // The VM has been destroyed, so we should just give up.
+        m_apiLock->unlock();
+        return;
+    }
+
+    {
+        JSLockHolder locker(vm.get());
+        doWork();
+    }
+
+    m_apiLock->unlock();
+}
 
 #if USE(CF)
 
@@ -65,7 +85,7 @@ void JSRunLoopTimer::setRunLoop(CFRunLoopRef runLoop)
         m_runLoop = runLoop;
         memset(&m_context, 0, sizeof(CFRunLoopTimerContext));
         m_context.info = this;
-        m_timer = adoptCF(CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + s_decade, s_decade, 0, 0, JSRunLoopTimer::timerDidFire, &m_context));
+        m_timer = adoptCF(CFRunLoopTimerCreate(kCFAllocatorDefault, CFAbsoluteTimeGetCurrent() + s_decade, s_decade, 0, 0, JSRunLoopTimer::timerDidFireCallback, &m_context));
         CFRunLoopAddTimer(m_runLoop.get(), m_timer.get(), kCFRunLoopCommonModes);
     }
 }
@@ -75,24 +95,9 @@ JSRunLoopTimer::~JSRunLoopTimer()
     setRunLoop(0);
 }
 
-void JSRunLoopTimer::timerDidFire(CFRunLoopTimerRef, void* contextPtr)
+void JSRunLoopTimer::timerDidFireCallback(CFRunLoopTimerRef, void* contextPtr)
 {
-    JSRunLoopTimer* timer = static_cast<JSRunLoopTimer*>(contextPtr);
-    timer->m_apiLock->lock();
-
-    RefPtr<VM> vm = timer->m_apiLock->vm();
-    if (!vm) {
-        // The VM has been destroyed, so we should just give up.
-        timer->m_apiLock->unlock();
-        return;
-    }
-
-    {
-        JSLockHolder locker(vm.get());
-        timer->doWork();
-    }
-
-    timer->m_apiLock->unlock();
+    static_cast<JSRunLoopTimer*>(contextPtr)->timerDidFire();
 }
 
 void JSRunLoopTimer::scheduleTimer(double intervalInSeconds)
@@ -129,6 +134,7 @@ JSRunLoopTimer::JSRunLoopTimer(VM* vm)
     , m_apiLock(&vm->apiLock())
     , m_timer(adoptGRef(g_source_new(&JSRunLoopTimerSourceFunctions, sizeof(GSource))))
 {
+    g_source_set_priority(m_timer.get(), RunLoopSourcePriority::JavascriptTimer);
     g_source_set_name(m_timer.get(), "[JavaScriptCore] JSRunLoopTimer");
     g_source_set_callback(m_timer.get(), [](gpointer userData) -> gboolean {
         auto& runLoopTimer = *static_cast<JSRunLoopTimer*>(userData);
@@ -142,24 +148,6 @@ JSRunLoopTimer::JSRunLoopTimer(VM* vm)
 JSRunLoopTimer::~JSRunLoopTimer()
 {
     g_source_destroy(m_timer.get());
-}
-
-void JSRunLoopTimer::timerDidFire()
-{
-    m_apiLock->lock();
-
-    if (!m_apiLock->vm()) {
-        // The VM has been destroyed, so we should just give up.
-        m_apiLock->unlock();
-        return;
-    }
-
-    {
-        JSLockHolder locker(m_vm);
-        doWork();
-    }
-
-    m_apiLock->unlock();
 }
 
 void JSRunLoopTimer::scheduleTimer(double intervalInSeconds)
@@ -180,10 +168,6 @@ JSRunLoopTimer::JSRunLoopTimer(VM* vm)
 }
 
 JSRunLoopTimer::~JSRunLoopTimer()
-{
-}
-
-void JSRunLoopTimer::invalidate()
 {
 }
 

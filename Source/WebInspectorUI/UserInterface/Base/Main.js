@@ -1010,14 +1010,17 @@ WebInspector.showElementsTab = function()
     this.tabBrowser.showTabForContentView(tabContentView);
 };
 
-WebInspector.showDebuggerTab = function(breakpointToSelect)
+WebInspector.showDebuggerTab = function(options)
 {
     var tabContentView = this.tabBrowser.bestTabContentViewForClass(WebInspector.DebuggerTabContentView);
     if (!tabContentView)
         tabContentView = new WebInspector.DebuggerTabContentView;
 
-    if (breakpointToSelect instanceof WebInspector.Breakpoint)
-        tabContentView.revealAndSelectBreakpoint(breakpointToSelect);
+    if (options.breakpointToSelect instanceof WebInspector.Breakpoint)
+        tabContentView.revealAndSelectBreakpoint(options.breakpointToSelect);
+
+    if (options.showScopeChainSidebar)
+        tabContentView.showScopeChainDetailsSidebarPanel();
 
     this.tabBrowser.showTabForContentView(tabContentView);
 };
@@ -1062,33 +1065,6 @@ WebInspector.showTimelineTab = function()
     if (!tabContentView)
         tabContentView = new WebInspector.TimelineTabContentView;
     this.tabBrowser.showTabForContentView(tabContentView);
-};
-
-WebInspector.unlocalizedString = function(string)
-{
-    // Intentionally do nothing, since this is for engineering builds
-    // (such as in Debug UI) or in text that is standardized in English.
-    // For example, CSS property names and values are never localized.
-    return string;
-};
-
-WebInspector.UIString = function(string, vararg)
-{
-    if (WebInspector.dontLocalizeUserInterface)
-        return string;
-
-    if (window.localizedStrings && string in window.localizedStrings)
-        return window.localizedStrings[string];
-
-    if (!this._missingLocalizedStrings)
-        this._missingLocalizedStrings = {};
-
-    if (!(string in this._missingLocalizedStrings)) {
-        console.error("Localized string \"" + string + "\" was not found.");
-        this._missingLocalizedStrings[string] = true;
-    }
-
-    return "LOCALIZED STRING NOT FOUND";
 };
 
 WebInspector.indentString = function()
@@ -1335,8 +1311,14 @@ WebInspector._focusChanged = function(event)
         if (codeMirrorEditorElement && codeMirrorEditorElement !== this.currentFocusElement) {
             this.previousFocusElement = this.currentFocusElement;
             this.currentFocusElement = codeMirrorEditorElement;
-            return;
         }
+
+        // Due to the change in WebInspector.isEventTargetAnEditableField (r196271), this return
+        // will also get run when WebInspector.startEditing is called on an element. We do not want
+        // to return early in this case, as WebInspector.EditingConfig handles its own editing
+        // completion, so only return early if the focus change target is not from WebInspector.startEditing.
+        if (!WebInspector.isBeingEdited(event.target))
+            return;
     }
 
     var selection = window.getSelection();
@@ -1388,8 +1370,7 @@ WebInspector._captureDidStart = function(event)
 
 WebInspector._debuggerDidPause = function(event)
 {
-    // FIXME: <webkit.org/b/###> Web Inspector: Preference for Auto Showing Scope Chain sidebar on pause
-    this.showDebuggerTab();
+    this.showDebuggerTab({showScopeChainSidebar: WebInspector.settings.showScopeChainOnPause.value});
 
     this._dashboardContainer.showDashboardViewForRepresentedObject(this.dashboardManager.dashboards.debugger);
 

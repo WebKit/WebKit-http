@@ -28,10 +28,12 @@
 #include "StorageAreaSync.h"
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
-#include <WebCore/page/Frame.h>
-#include <WebCore/page/SecurityOrigin.h>
-#include <WebCore/storage/StorageEventDispatcher.h>
-#include <WebCore/storage/StorageMap.h>
+#include <WebCore/Frame.h>
+#include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
+#include <WebCore/StorageEventDispatcher.h>
+#include <WebCore/StorageMap.h>
+#include <WebCore/StorageType.h>
 #include <wtf/MainThread.h>
 
 using namespace WebCore;
@@ -289,7 +291,7 @@ void StorageAreaImpl::closeDatabaseIfIdle()
 
 void StorageAreaImpl::dispatchStorageEvent(const String& key, const String& oldValue, const String& newValue, Frame* sourceFrame)
 {
-    if (m_storageType == LocalStorage)
+    if (isLocalStorage(m_storageType))
         StorageEventDispatcher::dispatchLocalStorageEvents(key, oldValue, newValue, m_securityOrigin, sourceFrame);
     else
         StorageEventDispatcher::dispatchSessionStorageEvents(key, oldValue, newValue, m_securityOrigin, sourceFrame);

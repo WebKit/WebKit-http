@@ -139,7 +139,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/x11/XUniqueResource.cpp
 
     platform/gtk/DragDataGtk.cpp
-    platform/gtk/ErrorsGtk.cpp
     platform/gtk/LocalizedStringsGtk.cpp
     platform/gtk/PasteboardGtk.cpp
     platform/gtk/ScrollAnimatorGtk.cpp
@@ -384,6 +383,7 @@ if (ENABLE_SUBTLE_CRYPTO)
 
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+        crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
         crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
         crypto/algorithms/CryptoAlgorithmAES_KW.cpp
         crypto/algorithms/CryptoAlgorithmECDH.cpp
@@ -400,6 +400,7 @@ if (ENABLE_SUBTLE_CRYPTO)
 
         crypto/gcrypt/CryptoAlgorithmAES_CBCGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmAES_CFBGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmAES_CTRGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmAES_GCMGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmAES_KWGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp

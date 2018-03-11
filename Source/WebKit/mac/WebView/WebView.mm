@@ -649,7 +649,7 @@ private:
     if (!(self = [super init]))
         return nil;
     
-    _dataInteractionImage = [[[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored] retain];
+    _dataInteractionImage = [[getUIImageClass() alloc] initWithCGImage:image scale:scale orientation:UIImageOrientationDownMirrored];
     _selectionRectInRootViewCoordinates = indicatorData.selectionRectInRootViewCoordinates;
     _textBoundingRectInRootViewCoordinates = indicatorData.textBoundingRectInRootViewCoordinates;
     
@@ -659,20 +659,20 @@ private:
     _textRectsInBoundingRectCoordinates = [[NSArray arrayWithArray:textRectsInBoundingRectCoordinates] retain];
     _contentImageScaleFactor = indicatorData.contentImageScaleFactor;
     if (indicatorData.contentImageWithHighlight)
-        _contentImageWithHighlight = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored] retain];
+        _contentImageWithHighlight = [[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImageWithHighlight.get()->nativeImage().get() scale:scale orientation:UIImageOrientationDownMirrored];
     if (indicatorData.contentImage)
-        _contentImage = [[[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp] retain];
+        _contentImage = [[getUIImageClass() alloc] initWithCGImage:indicatorData.contentImage.get()->nativeImage().get() scale:scale orientation:UIImageOrientationUp];
 
     if (indicatorData.contentImageWithoutSelection) {
         auto nativeImage = indicatorData.contentImageWithoutSelection.get()->nativeImage();
         if (nativeImage) {
-            _contentImageWithoutSelection = [[[getUIImageClass() alloc] initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp] retain];
+            _contentImageWithoutSelection = [[getUIImageClass() alloc] initWithCGImage:nativeImage.get() scale:scale orientation:UIImageOrientationUp];
             _contentImageWithoutSelectionRectInRootViewCoordinates = indicatorData.contentImageWithoutSelectionRectInRootViewCoordinates;
         }
     }
 
     if (indicatorData.options & TextIndicatorOptionComputeEstimatedBackgroundColor)
-        _estimatedBackgroundColor = [[[getUIColorClass() alloc] initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)] retain];
+        _estimatedBackgroundColor = [[getUIColorClass() alloc] initWithCGColor:cachedCGColor(indicatorData.estimatedBackgroundColor)];
 
     return self;
 }
@@ -6796,9 +6796,10 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
     Frame* coreFrame = core(frame);
+    CanWrap canWrap = options & WebFindOptionsWrapAround ? CanWrap::Yes : CanWrap::No;
     return kit((options & WebFindOptionsBackwards)
-        ? coreFrame->tree().traversePreviousWithWrap(options & WebFindOptionsWrapAround)
-        : coreFrame->tree().traverseNextWithWrap(options & WebFindOptionsWrapAround));
+        ? coreFrame->tree().traversePrevious(canWrap)
+        : coreFrame->tree().traverseNext(canWrap));
 }
 
 - (BOOL)searchFor:(NSString *)string direction:(BOOL)forward caseSensitive:(BOOL)caseFlag wrap:(BOOL)wrapFlag

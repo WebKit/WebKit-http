@@ -39,8 +39,8 @@ class CFG {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef BasicBlock* Node;
-    typedef IndexSet<BasicBlock> Set;
-    template<typename T> using Map = IndexMap<BasicBlock, T>;
+    typedef IndexSet<BasicBlock*> Set;
+    template<typename T> using Map = IndexMap<BasicBlock*, T>;
     typedef Vector<BasicBlock*, 4> List;
 
     CFG(Code& code)
@@ -51,7 +51,7 @@ public:
     Node root() { return m_code[0]; }
 
     template<typename T>
-    Map<T> newMap() { return IndexMap<JSC::B3::Air::BasicBlock, T>(m_code.size()); }
+    Map<T> newMap() { return IndexMap<JSC::B3::Air::BasicBlock*, T>(m_code.size()); }
 
     SuccessorCollection<BasicBlock, BasicBlock::SuccessorList> successors(Node node) { return node->successorBlocks(); }
     BasicBlock::PredecessorList& predecessors(Node node) { return node->predecessors(); }

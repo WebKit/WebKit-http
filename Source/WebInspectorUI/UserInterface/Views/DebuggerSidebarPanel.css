@@ -67,7 +67,15 @@
 }
 
 .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
-    margin-left: -10px;
+    --tree-outline-single-thread-margin-start: -10px;
+}
+
+body[dir=ltr] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    margin-left: var(--tree-outline-single-thread-margin-start);
+}
+
+body[dir=rtl] .sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    margin-right: var(--tree-outline-single-thread-margin-start);
 }
 
 .sidebar > .panel.navigation.debugger .warning-banner > a {
@@ -77,6 +85,10 @@
 
 .sidebar > .panel.navigation.debugger .details-section {
     font-size: 11px;
+}
+
+.sidebar > .panel.navigation.debugger .details-section.paused-reason.collapsed > .header > .options {
+    display: block;
 }
 
 .sidebar > .panel.navigation.debugger .details-section > .content {
@@ -108,21 +120,6 @@
     display: none;
 }
 
-.sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle:before {
-    content: "";
-}
-
 .sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle {
-    padding-left: 5px;
     font-family: Menlo, monospace;
-
-    --subtitle-padding-start: 6px;
-}
-
-body[dir=ltr] .sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle {
-    padding-left: var(--subtitle-padding-start);
-}
-
-body[dir=rtl] .sidebar > .panel.navigation.debugger .details-section.xhr-breakpoints .item.breakpoint .subtitle {
-    padding-right: var(--subtitle-padding-start);
 }

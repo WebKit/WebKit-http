@@ -35,6 +35,8 @@ class JSObject;
 
 class StackFrame {
 public:
+    StackFrame() = default;
+
     StackFrame(VM& vm, JSCell* callee)
         : m_callee(vm, callee)
     { }
@@ -44,6 +46,13 @@ public:
         , m_codeBlock(vm, codeBlock)
         , m_bytecodeOffset(bytecodeOffset)
     { }
+
+    static StackFrame wasm()
+    {
+        StackFrame result;
+        result.m_isWasmFrame = true;
+        return result;
+    }
 
     bool hasLineAndColumnInfo() const { return !!m_codeBlock; }
     
@@ -65,7 +74,7 @@ private:
     Strong<JSCell> m_callee { };
     Strong<CodeBlock> m_codeBlock { };
     unsigned m_bytecodeOffset { UINT_MAX };
-    
+    bool m_isWasmFrame { false };
 };
 
 } // namespace JSC

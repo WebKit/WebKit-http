@@ -18,7 +18,7 @@ class ComponentBase {
         this._actionCallbacks = new Map;
 
         if (!ComponentBase.useNativeCustomElements)
-            this.enqueueToRender();
+            element.addEventListener('DOMNodeInsertedIntoDocument', () => this.enqueueToRender());
         if (!ComponentBase.useNativeCustomElements && new.target.enqueueToRenderOnResize)
             ComponentBase._connectedComponentToRenderOnResize(this);
     }

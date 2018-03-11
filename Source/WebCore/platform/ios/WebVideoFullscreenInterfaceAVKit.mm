@@ -536,6 +536,7 @@ void WebVideoFullscreenInterfaceAVKit::setWebVideoFullscreenChangeObserver(WebVi
 void WebVideoFullscreenInterfaceAVKit::hasVideoChanged(bool hasVideo)
 {
     [playerController() setHasEnabledVideo:hasVideo];
+    [playerController() setHasVideo:hasVideo];
 }
 
 void WebVideoFullscreenInterfaceAVKit::videoDimensionsChanged(const FloatSize& videoDimensions)
@@ -549,7 +550,7 @@ void WebVideoFullscreenInterfaceAVKit::videoDimensionsChanged(const FloatSize& v
     WebAVPictureInPicturePlayerLayerView *pipView = (WebAVPictureInPicturePlayerLayerView *)[m_playerLayerView pictureInPicturePlayerLayerView];
     WebAVPlayerLayer *pipPlayerLayer = (WebAVPlayerLayer *)[pipView layer];
     [pipPlayerLayer setVideoDimensions:playerLayer.videoDimensions];
-    [pipView setNeedsLayout];    
+    [pipView setNeedsLayout];
 }
 
 void WebVideoFullscreenInterfaceAVKit::externalPlaybackChanged(bool enabled, WebPlaybackSessionModel::ExternalPlaybackTargetType, const String&)
@@ -668,7 +669,6 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreen()
     m_exitRequested = false;
     m_enterRequested = true;
 
-    [m_playerLayerView setBackgroundColor:[getUIColorClass() blackColor]];
     if (mode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture)
         enterPictureInPicture();
     else if (mode() == HTMLMediaElementEnums::VideoFullscreenModeStandard)
@@ -699,7 +699,6 @@ void WebVideoFullscreenInterfaceAVKit::enterFullscreenStandard()
         return;
     }
 
-    [m_playerLayerView setBackgroundColor:[getUIColorClass() blackColor]];
     [m_playerViewController enterFullScreenAnimated:YES completionHandler:[this, protectedThis] (BOOL succeeded, NSError*) {
         UNUSED_PARAM(succeeded);
         LOG(Fullscreen, "WebVideoFullscreenInterfaceAVKit::enterFullscreenStandard - lambda(%p) - succeeded(%s)", this, boolString(succeeded));
