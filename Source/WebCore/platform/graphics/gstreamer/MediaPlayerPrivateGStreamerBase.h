@@ -152,8 +152,8 @@ public:
     void attemptToDecryptWithLocalInstance();
     void attemptToDecryptWithInstance(const CDMInstance&) override;
 
-#if USE(OPENCDM)
     using InitData = String;
+#if USE(OPENCDM)
     void mapProtectionEventToInitData(const InitData&, GstEventSeqNum);
     void unmapProtectionEventFromInitData(GstEventSeqNum);
     virtual bool dispatchDecryptionSessionToPipeline(const String&, GstEventSeqNum);
