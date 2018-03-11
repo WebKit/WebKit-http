@@ -35,7 +35,6 @@ namespace WebCore {
         DragClientHaiku(BWebView*);
         virtual void willPerformDragDestinationAction(DragDestinationAction, const DragData&) override;
         virtual void willPerformDragSourceAction(DragSourceAction, const IntPoint&, DataTransfer&) override;
-        virtual DragDestinationAction actionMaskForDrag(const DragData&) override;
 
         virtual DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) override;
 

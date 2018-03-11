@@ -66,7 +66,7 @@ NativeImagePtr StillImage::nativeImageForCurrentFrame(const GraphicsContext*)
 }
 
 void StillImage::draw(GraphicsContext& context, const FloatRect& destRect,
-                      const FloatRect& sourceRect, CompositeOperator op, BlendMode, ImageOrientationDescription)
+                      const FloatRect& sourceRect, CompositeOperator op, BlendMode, DecodingMode, ImageOrientationDescription)
 {
     if (!m_bitmap->IsValid())
         return;

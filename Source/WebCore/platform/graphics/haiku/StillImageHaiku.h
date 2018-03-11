@@ -50,7 +50,7 @@ public:
 
     virtual FloatSize size() const override;
     virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext*) override;
-    virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
+    virtual void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, DecodingMode, ImageOrientationDescription) override;
 
 private:
     StillImage(NativeImagePtr bitmap);
