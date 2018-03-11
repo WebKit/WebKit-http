@@ -52,7 +52,7 @@ namespace WebCore {
 
     class SocketStreamHandleImpl : public SocketStreamHandle {
     public:
-        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID id)
+        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID id, const String&, SourceApplicationAuditToken&&)
 								{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
         virtual 			~SocketStreamHandleImpl();
 

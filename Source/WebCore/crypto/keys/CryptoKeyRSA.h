@@ -31,12 +31,12 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#if OS(DARWIN) || OS(HAIKU) && !PLATFORM(GTK)
+#if OS(DARWIN) && !PLATFORM(GTK)
 typedef struct _CCRSACryptor *CCRSACryptorRef;
 typedef CCRSACryptorRef PlatformRSAKey;
 #endif
 
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(HAIKU)
 // gcry_sexp* equates gcry_sexp_t.
 struct gcry_sexp;
 typedef gcry_sexp* PlatformRSAKey;

@@ -34,8 +34,6 @@ list(APPEND WebCore_SOURCES
 
   editing/haiku/EditorHaiku.cpp
 
-  html/shadow/MediaControlsApple.cpp
-
   platform/Cursor.cpp
   platform/KillRingNone.cpp
 

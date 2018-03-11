@@ -64,6 +64,13 @@ void BitmapImage::invalidatePlatformData()
 {
 }
 
+FloatSize nativeImageDrawingScale(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect)
+{
+    auto transformedDestinationRect = context.getCTM().mapRect(destRect);
+    return { static_cast<float>(transformedDestinationRect.width() / srcRect.width()), static_cast<float>(transformedDestinationRect.height() / srcRect.height()) };
+}
+
+
 void drawNativeImage(WTF::RefPtr<WebCore::BitmapRef> const& image,
     WebCore::GraphicsContext& ctxt, WebCore::FloatRect const& dst,
     WebCore::FloatRect const& src, WebCore::IntSize const&,

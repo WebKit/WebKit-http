@@ -28,8 +28,8 @@
 #include "StorageAreaImpl.h"
 #include "StorageSyncManager.h"
 #include "StorageTracker.h"
-#include <WebCore/StorageMap.h>
-#include <WebCore/StorageType.h>
+#include <WebCore/storage/StorageMap.h>
+#include <WebCore/storage/StorageType.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringHash.h>

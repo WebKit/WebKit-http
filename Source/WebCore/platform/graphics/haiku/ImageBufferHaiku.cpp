@@ -350,7 +350,7 @@ inline Unit backingStoreUnit(const Unit& value, ImageBuffer::CoordinateSystem co
     return result;
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& rect, WebCore::IntSize*, CoordinateSystem coordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
@@ -360,7 +360,7 @@ RefPtr<Uint8ClampedArray> ImageBuffer::getUnmultipliedImageData(const IntRect& r
     return getImageData(backingStoreRect, m_data, m_size, false);
 }
 
-RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, CoordinateSystem coordinateSystem) const
+RefPtr<Uint8ClampedArray> ImageBuffer::getPremultipliedImageData(const IntRect& rect, WebCore::IntSize*, CoordinateSystem coordinateSystem) const
 {
     // Make sure all asynchronous drawing has finished
     m_data.m_view->Sync();
