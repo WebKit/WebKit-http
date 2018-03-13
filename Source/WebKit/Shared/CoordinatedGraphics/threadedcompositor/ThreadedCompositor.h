@@ -113,7 +113,7 @@ private:
     ShouldDoFrameSync m_doFrameSync;
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_inForceRepaint { false };
-    WebPage& m_webPage;
+    bool m_nonCompositedWebGLEnabled { false };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 

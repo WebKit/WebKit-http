@@ -57,7 +57,7 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
     : m_client(client)
     , m_doFrameSync(doFrameSync)
     , m_paintFlags(paintFlags)
-    , m_webPage(webPage)
+    , m_nonCompositedWebGLEnabled(webPage.corePage()->settings().nonCompositedWebGLEnabled())
     , m_compositingRunLoop(std::make_unique<CompositingRunLoop>([this] { renderLayerTree(); }))
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(ThreadedDisplayRefreshMonitor::create(*this))
@@ -89,6 +89,11 @@ ThreadedCompositor::~ThreadedCompositor()
 void ThreadedCompositor::createGLContext()
 {
     ASSERT(!RunLoop::isMain());
+
+    // If nonCompositedWebGL is enabled there will be a gl context created for the window to render webgl. We can't
+    // create another context for the same window as this breaks the rendering on some platforms.
+    if (m_nonCompositedWebGLEnabled)
+        return;
 
     ASSERT(m_nativeSurfaceHandle);
 
@@ -219,7 +224,7 @@ void ThreadedCompositor::renderNonCompositedWebGL()
 
 void ThreadedCompositor::renderLayerTree()
 {
-    if (m_webPage.corePage()->settings().nonCompositedWebGLEnabled()) {
+    if (m_nonCompositedWebGLEnabled) {
         renderNonCompositedWebGL();
         return;
     }
