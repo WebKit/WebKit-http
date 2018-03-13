@@ -38,6 +38,7 @@
 #include "Event.h"
 #include "EventNames.h"
 #include "Frame.h"
+#include "MemoryInfo.h"
 #include "PerformanceEntry.h"
 #include "PerformanceNavigation.h"
 #include "PerformanceObserver.h"
@@ -235,6 +236,11 @@ void Performance::clearMeasures(const String& measureName)
     if (!m_userTiming)
         m_userTiming = std::make_unique<UserTiming>(*this);
     m_userTiming->clearMeasures(measureName);
+}
+
+Ref<MemoryInfo> Performance::memory() const
+{
+    return MemoryInfo::create();
 }
 
 void Performance::removeAllObservers()
