@@ -1014,59 +1014,11 @@ MediaTime MediaPlayerPrivateGStreamerMSE::maxMediaTimeSeekable() const
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
+void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
 {
-    if (is<CDMInstanceClearKey>(instance)) {
-        GST_TRACE("instance is clear key, continuing");
-        auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
-        if (ckInstance.keys().isEmpty())
-            return;
-
-        GValue keyIDList = G_VALUE_INIT, keyValueList = G_VALUE_INIT;
-        g_value_init(&keyIDList, GST_TYPE_LIST);
-        g_value_init(&keyValueList, GST_TYPE_LIST);
-
-        auto appendBuffer =
-            [](GValue* valueList, const SharedBuffer& buffer)
-            {
-                GValue* bufferValue = g_new0(GValue, 1);
-                g_value_init(bufferValue, GST_TYPE_BUFFER);
-                gst_value_take_buffer(bufferValue,
-                    gst_buffer_new_wrapped(g_memdup(buffer.data(), buffer.size()), buffer.size()));
-                gst_value_list_append_and_take_value(valueList, bufferValue);
-            };
-
-        for (auto& key : ckInstance.keys()) {
-            appendBuffer(&keyIDList, *key.keyIDData);
-            appendBuffer(&keyValueList, *key.keyValueData);
-        }
-
-        GUniquePtr<GstStructure> structure(gst_structure_new_empty("drm-cipher-clearkey"));
-        gst_structure_set_value(structure.get(), "key-ids", &keyIDList);
-        gst_structure_set_value(structure.get(), "key-values", &keyValueList);
-
-        for (auto it : m_appendPipelinesMap)
-            it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
-    }
-#if USE(OPENCDM)
-    else if (is<CDMInstanceOpenCDM>(instance))
-        MediaPlayerPrivateGStreamer::attemptToDecryptWithInstance(instance);
-#endif // USE(OPENCDM)
+    for (const auto& it : m_appendPipelinesMap)
+        it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
 }
-
-#if USE(OPENCDM)
-bool MediaPlayerPrivateGStreamerMSE::dispatchDecryptionSessionToPipeline(const String& sessionId, GstEventSeqNum eventId)
-{
-    if (!m_appendPipelinesMap.isEmpty()) {
-        GUniquePtr<GstStructure> structure(gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), "protection-event", G_TYPE_UINT, eventId, nullptr));
-        for (const auto& it : m_appendPipelinesMap)
-            if (it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get()))))
-                return true;
-    }
-    return false;
-}
-#endif
-
 #endif
 
 } // namespace WebCore.

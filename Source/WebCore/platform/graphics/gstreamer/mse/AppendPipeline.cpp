@@ -417,11 +417,16 @@ void AppendPipeline::handleElementMessage(GstMessage* message)
 
     const GstStructure* structure = gst_message_get_structure(message);
     GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
-    if (m_playerPrivate && gst_structure_has_name(structure, "drm-key-needed")) {
-        GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
-        GRefPtr<GstEvent> event;
-        gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-        m_playerPrivate->handleProtectionEvent(event.get());
+    if (m_playerPrivate) {
+        if (gst_structure_has_name(structure, "drm-initialization-data-encountered")) {
+            GST_DEBUG("sending drm-initialization-data-encountered message from %s to the player", GST_MESSAGE_SRC_NAME(message));
+            GRefPtr<GstEvent> event;
+            gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
+            m_playerPrivate->handleProtectionEvent(event.get());
+        } else if (gst_structure_has_name(structure, "drm-cdm-instance-needed")) {
+            GST_DEBUG("sending drm-cdm-instance-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
+            m_playerPrivate->dispatchLocalCDMInstance();
+        }
     }
 }
 #endif
@@ -1159,9 +1164,9 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
         gst_element_sync_state_with_parent(m_appsink.get());
 
 #if ENABLE(ENCRYPTED_MEDIA)
-        if (m_pendingDecryptionStructure) {
-            GST_TRACE("dispatching pending decryption structure");
-            dispatchPendingDecryptionStructure();
+        if (!m_pendingDecryptionStructures.isEmpty()) {
+            GST_TRACE("dispatching pending decryption structures");
+            dispatchPendingDecryptionStructures();
         }
 #endif
         gst_element_set_state(m_pipeline.get(), GST_STATE_PAUSED);
@@ -1297,27 +1302,24 @@ void AppendPipeline::appendPipelineDemuxerNoMorePadsFromAnyThread()
 }
 
 #if ENABLE(ENCRYPTED_MEDIA)
-bool AppendPipeline::dispatchPendingDecryptionStructure()
+void AppendPipeline::dispatchPendingDecryptionStructures()
 {
     ASSERT(m_decryptor);
-    ASSERT(m_pendingDecryptionStructure);
 
-    // Release the m_pendingDecryptionStructure object since
-    // gst_event_new_custom() takes over ownership of it.
-    bool wasEventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, m_pendingDecryptionStructure.release()));
-    GST_TRACE("dispatched key to append pipeline %p, handled %s", this, boolForPrinting(wasEventHandled));
-    return wasEventHandled;
+    for (auto& structure : m_pendingDecryptionStructures) {
+        bool wasEventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB, structure.release()));
+        GST_TRACE("dispatched structure to append pipeline %p, handled %s", this, boolForPrinting(wasEventHandled));
+    }
+    m_pendingDecryptionStructures.clear();
 }
 
-bool AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
+void AppendPipeline::dispatchDecryptionStructure(GUniquePtr<GstStructure>&& structure)
 {
-    bool returnValue = false;
-    m_pendingDecryptionStructure = WTFMove(structure);
+    m_pendingDecryptionStructures.append(WTFMove(structure));
     if (m_decryptor)
-        returnValue = dispatchPendingDecryptionStructure();
+        dispatchPendingDecryptionStructures();
     else
         GST_TRACE("no decryptor yet, waiting for it");
-    return returnValue;
 }
 #endif
 

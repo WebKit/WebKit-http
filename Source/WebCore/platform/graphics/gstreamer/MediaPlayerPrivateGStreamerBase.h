@@ -146,19 +146,9 @@ public:
 #if ENABLE(ENCRYPTED_MEDIA)
     void cdmInstanceAttached(const CDMInstance&) override;
     void cdmInstanceDetached(const CDMInstance&) override;
-    void dispatchDecryptionKey(GstBuffer*);
+    void attemptToDecryptWithInstance(const CDMInstance&) final;
     void handleProtectionEvent(GstEvent*);
-    void attemptToDecryptWithLocalInstance();
-    void attemptToDecryptWithInstance(const CDMInstance&) override;
-
-    using InitData = String;
-#if USE(OPENCDM)
-    void mapProtectionEventToInitData(const InitData&, GstEventSeqNum);
-    void unmapProtectionEventFromInitData(GstEventSeqNum);
-    virtual bool dispatchDecryptionSessionToPipeline(const String&, GstEventSeqNum);
-    void dispatchDecryptionSession(const String&, GstEventSeqNum);
-    void dispatchDecryptionSession(const String&, const Vector<GstEventSeqNum>&);
-#endif
+    void dispatchLocalCDMInstance();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -224,6 +214,13 @@ protected:
     static void volumeChangedCallback(MediaPlayerPrivateGStreamerBase*);
     static void muteChangedCallback(MediaPlayerPrivateGStreamerBase*);
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    void dispatchDecryptionKey(GstBuffer*);
+    void attemptToDecryptWithLocalInstance();
+    virtual void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
+    void initializationDataEncountered(GstEvent*);
+#endif
+
     enum MainThreadNotification {
         VideoChanged = 1 << 0,
         VideoCapsChanged = 1 << 1,
@@ -286,11 +283,6 @@ protected:
     RefPtr<const CDMInstance> m_cdmInstance;
     Vector<GstEventSeqNum> m_reportedProtectionEvents;
     bool m_needToResendCredentials { false };
-
-#if USE(OPENCDM)
-    HashMap<GstEventSeqNum, InitData> m_protectionEventToInitDataMap;
-    HashMap<InitData, Vector<GstEventSeqNum>> m_initDataToProtectionEventsMap;
-#endif
 #endif
 
     WeakPtrFactory<MediaPlayerPrivateGStreamerBase> m_weakPtrFactory;

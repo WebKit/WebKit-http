@@ -23,6 +23,8 @@
 #include "GStreamerEMEUtilities.h"
 
 #include "GRefPtrGStreamer.h"
+#include <wtf/MD5.h>
+#include <wtf/text/Base64.h>
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
@@ -86,7 +88,7 @@ GstElement* GStreamerEMEUtilities::createDecryptor(const char* protectionSystem)
 #error "At least a GStreamer version 1.5.3 is required to enable ENCRYPTED_MEDIA."
 #endif
 
-std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(GstMessage* message)
+std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(GstMessage* message)
 {
     const GstStructure* structure = gst_message_get_structure(message);
 
@@ -108,6 +110,19 @@ std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  GStreamerEMEUtilities::ext
 
     return std::make_pair(streamEncryptionEventsVector, streamEncryptionAllowedSystemsVector);
 }
+
+#if (!defined(GST_DISABLE_GST_DEBUG))
+String GStreamerEMEUtilities::initDataMD5(const InitData& initData)
+{
+    WTF::MD5 md5;
+    md5.addBytes(static_cast<const uint8_t*>(initData.characters8()), initData.length());
+
+    WTF::MD5::Digest digest;
+    md5.checksum(digest);
+
+    return WTF::base64URLEncode(&digest[0], WTF::MD5::hashSize);
+}
+#endif
 
 }
 

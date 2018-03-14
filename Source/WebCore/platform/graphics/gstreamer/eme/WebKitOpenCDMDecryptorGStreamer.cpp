@@ -25,30 +25,37 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
+#include "CDMOpenCDM.h"
 #include "GUniquePtrGStreamer.h"
-
 #include <open_cdm.h>
 #include <wtf/text/WTFString.h>
+#include <wtf/Lock.h>
 #include <wtf/PrintStream.h>
 
 #define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptPrivate))
 
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
-    unsigned m_protectionEvent;
     std::unique_ptr<media::OpenCdm> m_openCdm;
+    Lock m_mutex;
 };
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
-static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt*, GstEvent*);
-static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
-static void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt*, unsigned);
+static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
+static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData);
+static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData&);
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
 
 #define webkit_media_opencdm_decrypt_parent_class parent_class
 G_DEFINE_TYPE(WebKitOpenCDMDecrypt, webkit_media_opencdm_decrypt, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
+
+enum SessionResult {
+    InvalidSession,
+    NewSession,
+    OldSession
+};
 
 static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* klass)
 {
@@ -67,9 +74,9 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
         "webkitopencdm", 0, "OpenCDM decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
-    cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyResponse);
+    cencClass->handleInitData = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleInitData);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
-    cencClass->receivedProtectionEvent = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorReceivedProtectionEvent);
+    cencClass->attemptToDecryptWithLocalInstance = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance);
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }
@@ -89,44 +96,47 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
-static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
+static SessionResult webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
 {
-    bool returnValue = false;
-    const GstStructure* structure = gst_event_get_structure(event);
-    if (!gst_structure_has_name(structure, "drm-session"))
-        return returnValue;
-
-    GUniqueOutPtr<char> session;
-    unsigned protectionEvent;
-    gst_structure_get(structure, "session", G_TYPE_STRING, &session.outPtr(), "protection-event", G_TYPE_UINT, &protectionEvent, nullptr);
     WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
-    ASSERT(session);
-    ASSERT(protectionEvent);
+    RefPtr<WebCore::CDMInstance> cdmInstance = webKitMediaCommonEncryptionDecryptCDMInstance(self);
+    ASSERT(cdmInstance && is<WebCore::CDMInstanceOpenCDM>(*cdmInstance));
+    auto& cdmInstanceOpenCDM = downcast<WebCore::CDMInstanceOpenCDM>(*cdmInstance);
 
-    GST_DEBUG_OBJECT(self, "handling session %s for event %u (ours %u)", session.get(), protectionEvent, priv->m_protectionEvent);
-    if (priv->m_protectionEvent == protectionEvent) {
-        if (priv->m_session != session.get()) {
-            priv->m_session = session.get();
-            priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
-            GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
-            returnValue = true;
-        } else
-            GST_DEBUG_OBJECT(self, "session already selected!");
-    } else
-        GST_TRACE_OBJECT(self, "session for another decryptor, discarding");
+    LockHolder locker(priv->m_mutex);
 
-    GST_TRACE_OBJECT(self, "session was handled: %s", boolForPrinting(returnValue));
+    SessionResult returnValue = InvalidSession;
+    String session = cdmInstanceOpenCDM.sessionIdByInitData(initData, false);
+    if (session.isEmpty() || !cdmInstanceOpenCDM.isSessionIdUsable(session)) {
+        GST_DEBUG_OBJECT(self, "session %s is empty or unusable, resetting", session.utf8().data());
+        priv->m_session = String();
+        priv->m_openCdm = nullptr;
+    } else if (session != priv->m_session) {
+        priv->m_session = session;
+        priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
+        GST_DEBUG_OBJECT(self, "new session %s is usable", session.utf8().data());
+        returnValue = NewSession;
+    } else {
+        GST_DEBUG_OBJECT(self, "same session %s", session.utf8().data());
+        returnValue = OldSession;
+    }
+
     return returnValue;
 }
 
-void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt* self, unsigned protectionEvent)
+static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
 {
-    WebKitOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
-    GST_TRACE_OBJECT(self, "considering only event %u", protectionEvent);
-    priv->m_protectionEvent = protectionEvent;
+    GST_TRACE_OBJECT(self, "handling init data of size %u and MD5 %s", initData.sizeInBytes(), WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+    return webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(self, initData) == InvalidSession;
 }
 
-static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
+static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData)
+{
+    GST_TRACE_OBJECT(self, "attempting to decrypt with local instance and init data of size %u and MD5 %s", initData.sizeInBytes(), WebCore::GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+    return webKitMediaOpenCDMDecryptorResetSessionFromInitDataIfNeeded(self, initData) != InvalidSession;
+}
+
+static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
 {
     GstMapInfo ivMap;
     if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
@@ -180,7 +190,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
-        GST_TRACE("decrypting");
+        GST_TRACE_OBJECT(self, "decrypting");
         if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
@@ -205,7 +215,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
         // Decrypt cipher.
-        GST_TRACE("decrypting");
+        GST_TRACE_OBJECT(self, "decrypting");
         if ((errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);

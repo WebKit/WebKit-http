@@ -235,7 +235,7 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
 {
     std::string sessionId;
 
-    GST_TRACE("Going to request a new session id, init data size %u", initData->size());
+    GST_TRACE("Going to request a new session id, init data size %u and MD5 %s", initData->size(), GStreamerEMEUtilities::initDataMD5(String(reinterpret_cast<const uint8_t*>(initData->data()), initData->size())).utf8().data());
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData->data()), initData->size());
 
     media::OpenCdm openCDM(m_openCDM);
@@ -255,11 +255,14 @@ void CDMInstanceOpenCDM::requestLicense(LicenseType licenseType, const AtomicStr
     const Session& newSession(newEntry.first->second);
 
     if (newSession.isValid()) {
+        GST_TRACE("created valid session %s", sessionIdValue.utf8().data());
         std::string message = newSession.message();
         Ref<SharedBuffer> licenseRequestMessage = SharedBuffer::create(message.c_str(), message.size());
         callback(WTFMove(licenseRequestMessage), sessionIdValue, newSession.needsIndividualization(), Succeeded);
-    } else
+    } else {
+        GST_TRACE("created invalid session %s", sessionIdValue.utf8().data());
         callback(WTFMove(initData), sessionIdValue, false, Failed);
+    }
 }
 
 void CDMInstanceOpenCDM::updateLicense(const String& sessionId, LicenseType, const SharedBuffer& response, LicenseUpdateCallback callback)
@@ -389,12 +392,15 @@ void CDMInstanceOpenCDM::closeSession(const String& session, CloseSessionCallbac
     callback();
 }
 
-String CDMInstanceOpenCDM::sessionIdByInitData(const String& initData, bool firstInLine) const
+String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData, bool firstInLine) const
 {
     if (!m_sessionsMap.size()) {
         GST_WARNING("no sessions");
         return { };
     }
+
+    GST_TRACE("init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+    GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.length());
 
     String result;
     for (auto iterator = m_sessionsMap.begin(); iterator != m_sessionsMap.end() && result.isEmpty(); ++iterator)

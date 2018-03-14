@@ -27,6 +27,7 @@
 #include "CDM.h"
 #include "CDMFactory.h"
 #include "CDMInstance.h"
+#include "GStreamerEMEUtilities.h"
 #include "MediaKeyStatus.h"
 #include <map>
 #include <open_cdm.h>
@@ -76,7 +77,7 @@ private:
         int remove(std::string& response) { return m_session.Remove(response); }
         int close() { return m_session.Close(); }
         media::OpenCdm::KeyStatus lastStatus() const { return m_lastStatus; }
-        bool operator==(const String& initData) const { return m_initData->size() == initData.sizeInBytes() && !memcmp(m_initData->data(), initData.latin1().data(), m_initData->size()); }
+        bool operator==(const String& initData) const { return m_initData->size() == initData.sizeInBytes() && !memcmp(m_initData->data(), initData.characters8(), m_initData->size()); }
         bool operator!=(const String& initData) const { return !operator==(initData); }
 
     private:
@@ -113,7 +114,7 @@ public:
     void storeRecordOfKeyUsage(const String&) final { }
 
     // The init data, is the only way to find a proper session id.
-    String sessionIdByInitData(const String&, bool firstInLine) const;
+    String sessionIdByInitData(const InitData&, bool firstInLine) const;
     bool isSessionIdUsable(const String&) const;
 
 private:

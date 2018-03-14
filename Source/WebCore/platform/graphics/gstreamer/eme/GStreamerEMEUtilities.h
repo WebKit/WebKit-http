@@ -37,6 +37,8 @@
 
 namespace WebCore {
 
+using InitData = String;
+
 class GStreamerEMEUtilities {
 
 public:
@@ -90,6 +92,10 @@ public:
 
     static GstElement* createDecryptor(const char* protectionSystem);
     static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage*);
+
+#if (!defined(GST_DISABLE_GST_DEBUG))
+    static String initDataMD5(const InitData&);
+#endif
 };
 
 }

@@ -90,11 +90,7 @@ public:
     static bool supportsAllCodecs(const Vector<String>& codecs);
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    void attemptToDecryptWithInstance(const CDMInstance&) final;
-
-#if USE(OPENCDM)
-    bool dispatchDecryptionSessionToPipeline(const String& sessionId, GstEventSeqNum eventId) final;
-#endif
+    void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&) final;
 #endif
 
 private:

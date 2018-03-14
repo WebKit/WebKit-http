@@ -1172,11 +1172,14 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 updateStates();
             }
 #if ENABLE(ENCRYPTED_MEDIA)
-            else if (gst_structure_has_name(structure, "drm-key-needed")) {
-                GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
+            else if (gst_structure_has_name(structure, "drm-initialization-data-encountered")) {
+                GST_DEBUG("drm-initialization-data-encountered message from %s", GST_MESSAGE_SRC_NAME(message));
                 GRefPtr<GstEvent> event;
                 gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
                 handleProtectionEvent(event.get());
+            } else if (gst_structure_has_name(structure, "drm-cdm-instance-needed")) {
+                GST_DEBUG("drm-cdm-instance-needed message from %s", GST_MESSAGE_SRC_NAME(message));
+                dispatchLocalCDMInstance();
             }
 #endif
         }

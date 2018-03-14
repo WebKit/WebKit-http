@@ -61,7 +61,7 @@ public:
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
 #if ENABLE(ENCRYPTED_MEDIA)
-    bool dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
+    void dispatchDecryptionStructure(GUniquePtr<GstStructure>&&);
 #endif
 
     // Takes ownership of caps.
@@ -104,7 +104,7 @@ private:
     void demuxerNoMorePads();
     void consumeAppSinkAvailableSamples();
 #if ENABLE(ENCRYPTED_MEDIA)
-    bool dispatchPendingDecryptionStructure();
+    void dispatchPendingDecryptionStructures();
 #endif
 
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
@@ -167,7 +167,7 @@ private:
 
     GRefPtr<GstBuffer> m_pendingBuffer;
 #if ENABLE(ENCRYPTED_MEDIA)
-    GUniquePtr<GstStructure> m_pendingDecryptionStructure;
+    Vector<GUniquePtr<GstStructure>> m_pendingDecryptionStructures;
 #endif
 };
 
