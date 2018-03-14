@@ -588,7 +588,6 @@ private:
 
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
-    void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle&, SandboxExtension::HandleArray& handles);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
@@ -714,6 +713,11 @@ private:
     bool m_requiresUserActionForEditingControlsManager { false };
     bool m_editableElementIsFocused { false };
     bool m_isTextInsertionReplacingSoftSpace { false };
+    
+#if ENABLE(DRAG_SUPPORT)
+    NSInteger m_initialNumberOfValidItemsForDrop { 0 };
+#endif
+
 };
     
 } // namespace WebKit

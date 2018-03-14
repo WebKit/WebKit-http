@@ -110,6 +110,9 @@ public:
     void setWebGL2Enabled(bool);
     void setWebGPUEnabled(bool);
     void setFetchAPIEnabled(bool);
+    void setWritableStreamAPIEnabled(bool);
+    void setReadableByteStreamAPIEnabled(bool);
+
     void setAllowUniversalAccessFromFileURLs(bool);
     void setAllowFileAccessFromFileURLs(bool);
     void setNeedsStorageAccessFromFileURLsQuirk(bool);

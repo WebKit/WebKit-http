@@ -25,6 +25,7 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
+#include "LengthBox.h"
 #include "MediaProducer.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
@@ -329,8 +330,8 @@ public:
     WEBCORE_EXPORT void setTopContentInset(float);
 
 #if PLATFORM(IOS)
-    FloatSize obscuredInset() const { return m_obscuredInset; }
-    void setObscuredInset(FloatSize inset) { m_obscuredInset = inset; }
+    const FloatBoxExtent& obscuredInsets() const { return m_obscuredInsets; }
+    void setObscuredInsets(FloatBoxExtent insets) { m_obscuredInsets = insets; }
     
     bool enclosedInScrollableAncestorView() const { return m_enclosedInScrollableAncestorView; }
     void setEnclosedInScrollableAncestorView(bool f) { m_enclosedInScrollableAncestorView = f; }
@@ -413,6 +414,9 @@ public:
 
     StorageNamespace* sessionStorage(bool optionalCreate = true);
     void setSessionStorage(RefPtr<StorageNamespace>&&);
+
+    StorageNamespace* ephemeralLocalStorage(bool optionalCreate = true);
+    void setEphemeralLocalStorage(RefPtr<StorageNamespace>&&);
 
     bool hasCustomHTMLTokenizerTimeDelay() const;
     double customHTMLTokenizerTimeDelay() const;
@@ -685,7 +689,7 @@ private:
 
 #if PLATFORM(IOS)
     // This is only used for history scroll position restoration.
-    FloatSize m_obscuredInset;
+    FloatBoxExtent m_obscuredInsets;
     bool m_enclosedInScrollableAncestorView { false };
 #endif
 
@@ -716,6 +720,7 @@ private:
     bool m_canStartMedia;
 
     RefPtr<StorageNamespace> m_sessionStorage;
+    RefPtr<StorageNamespace> m_ephemeralLocalStorage;
 
 #if ENABLE(VIEW_MODE_CSS_MEDIA)
     ViewMode m_viewMode;

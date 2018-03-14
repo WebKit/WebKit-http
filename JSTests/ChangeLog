@@ -1,3 +1,357 @@
+2017-04-18  Mark Lam  <mark.lam@apple.com>
+
+        r211670 broke double to int conversion.
+        https://bugs.webkit.org/show_bug.cgi?id=170961
+        <rdar://problem/31687696>
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/double-to-int32.js: Added.
+        * stress/to-int32-sensible2.js: Added.
+
+2017-04-18  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        * stress/eval-func-decl-block-scoping-reassign.js: Added.
+        (assert):
+        (throw.new.Error.f):
+        (throw.new.Error):
+        * stress/eval-func-decl-block-with-remove.js: Added.
+        (assert):
+        (foo.boo):
+        (foo):
+        * stress/eval-func-decl-block-with-var-and-remove.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-block-with-var-sinthesize.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (hoo):
+        (joo):
+        (koo):
+        * stress/eval-func-decl-in-block-scope-and-bind-to-top-eval-scope.js: Added.
+        * stress/eval-func-decl-in-eval-within-block-with-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/eval-func-decl-in-eval-within-with-scope.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (boo.let.val2):
+        (boo.let.val3):
+        * stress/eval-func-decl-in-frozen-global.js: Added.
+        (assert):
+        (assertThrow):
+        (throw.new.Error):
+        (Object.freeze):
+        * stress/eval-func-decl-in-global-of-eval.js: Added.
+        (assert):
+        (assertThrow):
+        (bar):
+        (baz):
+        (foobar):
+        * stress/eval-func-decl-in-global.js: Added.
+        (assert):
+        (assertThrow):
+        * stress/eval-func-decl-in-if.js: Added.
+        (assert):
+        * stress/eval-func-decl-within-eval-with-reassign-to-var.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (foobar):
+        (hoo):
+        (joo):
+        (koo):
+        (loo):
+        * stress/eval-func-decl-within-eval-without-reassign-to-let.js: Added.
+        (assert):
+        (assertThrow):
+        (foo):
+        (boo):
+        (goo):
+        * stress/variable-under-tdz-eval-tricky.js:
+        (assert):
+        * test262.yaml:
+
+2017-04-18  Filip Pizlo  <fpizlo@apple.com>
+
+        wasm/function-tests/memory-multiagent times out sometimes
+        https://bugs.webkit.org/show_bug.cgi?id=170958
+
+        Reviewed by Keith Miller.
+        
+        Add the ability to skip tests easily. Skip the test.
+
+        * wasm.yaml:
+        * wasm/function-tests/memory-multiagent.js:
+
+2017-04-18  Saam Barati  <sbarati@apple.com>
+
+        Follow up to debug build stack overflow in test after r215453
+
+        Rubber stamped by Mark Lam.
+
+        * stress/call-apply-exponential-bytecode-size.js: Decrease the call
+        size to prevent stack overflow errors on debug builds.
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Convert ValueAdd(Int32, String) => MakeRope(ToString(Int32), String)
+        https://bugs.webkit.org/show_bug.cgi?id=170943
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/number-to-string-with-add-empty.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add-in-loop.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * microbenchmarks/number-to-string-with-add.js: Added.
+        (toStringLeft):
+        (toStringRight):
+        * stress/number-to-string-with-add.js: Added.
+        (shouldBe):
+        (toStringRight):
+        (toStringLeftEmpty):
+        (toStringRightEmpty):
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Drop unknown use of CheckCell's child2 to work ObjectAllocationSinking for Array iterator object
+        https://bugs.webkit.org/show_bug.cgi?id=170940
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/for-of-array.js: Added.
+        (fn):
+
+2017-04-17  Saam Barati  <sbarati@apple.com>
+
+        BytecodeGenerator ".call" and ".apply" is exponential in nesting depth
+        https://bugs.webkit.org/show_bug.cgi?id=139847
+        <rdar://problem/19321122>
+
+        Reviewed by Oliver Hunt.
+
+        * stress/call-apply-exponential-bytecode-size.js: Added.
+        (assert):
+        (const.inc):
+        (const.inc2):
+        (bar):
+        (randomApplyOrCall):
+        (baz):
+        (jaz):
+        (haz):
+        (foo):
+
+2017-04-17  Mark Lam  <mark.lam@apple.com>
+
+        JSArray::appendMemcpy() needs to handle copying from Undecided indexing type too.
+        https://bugs.webkit.org/show_bug.cgi?id=170896
+        <rdar://problem/31651319>
+
+        Reviewed by JF Bastien and Keith Miller.
+
+        * stress/regress-170896.js: Added.
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/prototype/toLocaleString/primitive_this_value.js
+        https://bugs.webkit.org/show_bug.cgi?id=170882
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/isNaN/toprimitive-not-callable-throws.js
+        https://bugs.webkit.org/show_bug.cgi?id=170888
+
+        Reviewed by Saam Barati.
+
+        * stress/computed-accessor.js:
+        * stress/eval-in-arrow-function.js:
+        * stress/rest-elements.js:
+        * stress/string-object-define-own-property.js:
+        Remove unused shouldThrow.
+
+        * stress/symbol-toprimitive-errors.js: Added.
+        Check for ToPrimitive TypeErrors.
+
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/expressions/tagged-template/template-object.js
+        https://bugs.webkit.org/show_bug.cgi?id=170878
+
+        Reviewed by Saam Barati.
+
+        * stress/array-length-not-writable.js: Added.
+        (assert):
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Object/getOwnPropertyNames/15.2.3.4-4-44.js
+        https://bugs.webkit.org/show_bug.cgi?id=170879
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/es5/enumerable.baseline-jsc:
+        * test262.yaml:
+
+2017-04-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Date/prototype/Symbol.toPrimitive/name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170884
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2017-04-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/global-code/new.target-arrow.js
+        https://bugs.webkit.org/show_bug.cgi?id=170872
+
+        Reviewed by Saam Barati.
+
+        * stress/async-arrow-functions-lexical-new.target-binding.js:
+        (shouldThrowAsync): Deleted.
+        (shouldThrowAsync.async): Deleted.
+        This code should have thrown a SyntaxError. Instead it was throwing
+        a ReferenceError for the internal @newTargetLocal variable.
+
+        * stress/new-target-syntax-errors.js:
+        Cover the arrow function in global code cases.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/es6/globalLambdaNewTargetSyntaxError.baseline-jsc:
+        We now pass with an expected SyntaxError. Our error message is different.
+
+        * test262.yaml:
+
+2017-04-14  Saam Barati  <sbarati@apple.com>
+
+        ParseInt intrinsic in DFG backend doesn't properly flush its operands
+        https://bugs.webkit.org/show_bug.cgi?id=170865
+
+        Reviewed by Mark Lam and Geoffrey Garen.
+
+        * stress/parse-int-intrinsic-dfg-backend-flush.js: Added.
+        (assert):
+        (foo):
+
+2017-04-14  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] use ExpressionErrorClassifier for AwaitExpression operand
+        https://bugs.webkit.org/show_bug.cgi?id=170844
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-170732.js: Added.
+
+2017-04-14  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Safari 10.1 JSON.parse returns incorrect object for numeric keys with decimal values
+        https://bugs.webkit.org/show_bug.cgi?id=170442
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/object-number-properties.js:
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Date.parse should accept wider range of representation
+        https://bugs.webkit.org/show_bug.cgi?id=170720
+
+        Reviewed by Darin Adler.
+
+        * stress/date-relaxed.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+
+2017-04-13  Mark Lam  <mark.lam@apple.com>
+
+        Should use flushDirect() when flushing the scopeRegister due to needsScopeRegister().
+        https://bugs.webkit.org/show_bug.cgi?id=170661
+        <rdar://problem/31579046>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-170661.js: Added.
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        * wasm/Builder.js: move a helper out so tests can use it
+        (export.default.Builder.prototype._registerSectionBuilders.const.section.in.WASM.description.section.switch.section.case.string_appeared_here.this.section):
+        * wasm/WASM.js: add utilities to classify opcodes
+        (export.opcodes):
+        (export.const.memoryAccessInfo.op.const.sign):
+        * wasm/function-tests/memory-access-past-4gib.js: Added. This test
+        fails before this patch.
+        (const.op.of.WASM.opcodes):
+        * wasm/function-tests/memory-many.js: Added. This simple tests
+        just shouldn't crash. In verbose mode it's useful at determining
+        if the GC falls behind or not.
+        * wasm/function-tests/memory-multiagent.js: Added. Emulate postMessage.
+        (const.startAgents.numAgentsToStart.a.agent.receiveBroadcast):
+        (const.startAgents.numAgentsToStart.a.write.const.idx.Math.random):
+        (const.broadcastToAgents):
+        * wasm/js-api/extension-MemoryMode.js: verbose logging.
+        (testMemoryNoMax):
+        (testMemory):
+        (testInstanceNoMemory):
+        (testInstanceNoMax):
+        (testInstance):
+        * wasm/utilities.js: move a utility here.
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/NativeErrors/EvalError/proto.js
+        https://bugs.webkit.org/show_bug.cgi?id=170668
+
+        Reviewed by Keith Miller.
+
+        * ChakraCore.yaml:
+        * ChakraCore/test/Lib/error.baseline-jsc: Added.
+        This test does not match the spec.
+
+        * test262.yaml:
+
+2017-04-12  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/language/literals/regexp/u-dec-esc.js
+        https://bugs.webkit.org/show_bug.cgi?id=170687
+
+        Reviewed by Michael Saboff.
+
+        * test262.yaml:
+
 2017-04-11  Michael Saboff  <msaboff@apple.com>
 
         Implement Object.isFrozen() and Object.isSealed() per ECMA spec

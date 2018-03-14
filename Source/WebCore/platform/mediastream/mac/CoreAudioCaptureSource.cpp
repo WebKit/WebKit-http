@@ -30,6 +30,8 @@
 
 #include "AudioSampleBufferList.h"
 #include "AudioSampleDataSource.h"
+#include "CoreAudioCaptureDevice.h"
+#include "CoreAudioCaptureDeviceManager.h"
 #include "Logging.h"
 #include "MediaTimeAVFoundation.h"
 #include <AudioToolbox/AudioConverter.h>
@@ -78,10 +80,18 @@ CoreAudioCaptureSource::CoreAudioCaptureSource(const CaptureDevice& deviceInfo)
     : RealtimeMediaSource(emptyString(), RealtimeMediaSource::Type::Audio, deviceInfo.label())
     , m_captureDeviceID(0)
 {
-    // FIXME: use deviceInfo to set the m_captureDeviceID
+#if PLATFORM(MAC)
+    for (auto& platformDevice : CoreAudioCaptureDeviceManager::singleton().coreAudioCaptureDevices()) {
+        if (platformDevice->persistentId() == deviceInfo.persistentId()) {
+            m_captureDeviceID = platformDevice->deviceID();
+            break;
+        }
+    }
+    ASSERT(m_captureDeviceID);
+#endif
 
     setPersistentID(deviceInfo.persistentId());
-    setMuted(true);
+    m_muted = true;
 
     m_currentSettings.setVolume(1.0);
     m_currentSettings.setSampleRate(preferredSampleRate());
@@ -318,6 +328,26 @@ OSStatus CoreAudioCaptureSource::microphoneCallback(void *inRefCon, AudioUnitRen
     return dataSource->processMicrophoneSamples(*ioActionFlags, *inTimeStamp, inBusNumber, inNumberFrames, ioData);
 }
 
+void CoreAudioCaptureSource::cleanupAudioUnits()
+{
+    if (m_ioUnitInitialized) {
+        ASSERT(m_ioUnit);
+        auto err = AudioUnitUninitialize(m_ioUnit);
+        if (err)
+            LOG(Media, "CoreAudioCaptureSource::cleanupAudioUnits(%p) AudioUnitUninitialize failed with error %d (%.4s)", this, (int)err, (char*)&err);
+        m_ioUnitInitialized = false;
+    }
+
+    if (m_ioUnit) {
+        AudioComponentInstanceDispose(m_ioUnit);
+        m_ioUnit = nullptr;
+    }
+
+    m_ioUnitName = emptyString();
+    m_microphoneSampleBuffer = nullptr;
+    m_speakerSampleBuffer = nullptr;
+}
+
 OSStatus CoreAudioCaptureSource::defaultInputDevice(uint32_t* deviceID)
 {
     ASSERT(m_ioUnit);
@@ -408,24 +438,30 @@ OSStatus CoreAudioCaptureSource::setupAudioUnits()
 
 void CoreAudioCaptureSource::startProducingData()
 {
-    std::lock_guard<Lock> lock(m_internalStateLock);
-    if (m_ioUnitStarted)
-        return;
-
-    OSStatus err;
-    if (!m_ioUnit) {
-        err = setupAudioUnits();
-        if (err)
+    {
+        std::lock_guard<Lock> lock(m_internalStateLock);
+        if (m_ioUnitStarted)
             return;
-    }
 
-    err = AudioOutputUnitStart(m_ioUnit);
-    if (err) {
-        LOG(Media, "CoreAudioCaptureSource::start(%p) AudioOutputUnitStart failed with error %d (%.4s)", this, (int)err, (char*)&err);
-        return;
-    }
+        OSStatus err;
+        if (!m_ioUnit) {
+            err = setupAudioUnits();
+            if (err) {
+                cleanupAudioUnits();
+                ASSERT(!m_ioUnit);
+                return;
+            }
+            ASSERT(m_ioUnit);
+        }
 
-    m_ioUnitStarted = true;
+        err = AudioOutputUnitStart(m_ioUnit);
+        if (err) {
+            LOG(Media, "CoreAudioCaptureSource::start(%p) AudioOutputUnitStart failed with error %d (%.4s)", this, (int)err, (char*)&err);
+            return;
+        }
+
+        m_ioUnitStarted = true;
+    }
     setMuted(false);
 }
 
@@ -433,7 +469,8 @@ void CoreAudioCaptureSource::stopProducingData()
 {
     std::lock_guard<Lock> lock(m_internalStateLock);
 
-    ASSERT(m_ioUnit);
+    if (!m_ioUnit)
+        return;
 
     auto err = AudioOutputUnitStop(m_ioUnit);
     if (err) {
@@ -488,22 +525,22 @@ OSStatus CoreAudioCaptureSource::resume()
     return err;
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> CoreAudioCaptureSource::capabilities() const
+const RealtimeMediaSourceCapabilities& CoreAudioCaptureSource::capabilities() const
 {
     if (m_capabilities)
-        return m_capabilities;
+        return *m_capabilities;
 
     m_supportedConstraints.setSupportsDeviceId(true);
     m_supportedConstraints.setSupportsEchoCancellation(true);
     m_supportedConstraints.setSupportsVolume(true);
 
     // FIXME: finish this.
-    m_capabilities = RealtimeMediaSourceCapabilities::create(m_supportedConstraints);
+    m_capabilities = std::make_unique<RealtimeMediaSourceCapabilities>(m_supportedConstraints);
     m_capabilities->setDeviceId(id());
     m_capabilities->setEchoCancellation(RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite);
     m_capabilities->setVolume(CapabilityValueOrRange(0.0, 1.0));
 
-    return m_capabilities;
+    return *m_capabilities;
 }
 
 const RealtimeMediaSourceSettings& CoreAudioCaptureSource::settings() const

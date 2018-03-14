@@ -441,6 +441,8 @@ void RenderLayerCompositor::flushPendingLayerChanges(bool isFlushRoot)
 #if PLATFORM(IOS)
         FloatRect exposedRect = frameView.exposedContentRect();
         LOG_WITH_STREAM(Compositing, stream << "\nRenderLayerCompositor " << this << " flushPendingLayerChanges (root " << isFlushRoot << ") exposedRect " << exposedRect);
+
+        // FIXME: Use optimized flushes.
         rootLayer->flushCompositingState(exposedRect);
 #else
         // Having a m_clipLayer indicates that we're doing scrolling via GraphicsLayers.
@@ -924,15 +926,30 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
     if (diff == StyleDifferenceEqual)
         return;
 
-    m_layerNeedsCompositingUpdate = true;
-
     const RenderStyle& newStyle = layer.renderer().style();
-    if (updateLayerCompositingState(layer) || (oldStyle && styleChangeRequiresLayerRebuild(layer, *oldStyle, newStyle)))
+    if (updateLayerCompositingState(layer) || (oldStyle && styleChangeRequiresLayerRebuild(layer, *oldStyle, newStyle))) {
         setCompositingLayersNeedRebuild();
-    else if (layer.isComposited()) {
+        m_layerNeedsCompositingUpdate = true;
+        return;
+    }
+
+    if (layer.isComposited()) {
         // FIXME: updating geometry here is potentially harmful, because layout is not up-to-date.
         layer.backing()->updateGeometry();
         layer.backing()->updateAfterDescendants();
+        m_layerNeedsCompositingUpdate = true;
+        return;
+    }
+
+    // We don't have any direct reasons for this style change to affect layer composition. Test if it might affect things indirectly.
+    if (oldStyle && styleChangeMayAffectIndirectCompositingReasons(layer.renderer(), *oldStyle)) {
+        m_layerNeedsCompositingUpdate = true;
+        return;
+    }
+
+    if (layer.isRootLayer()) {
+        // Needed for scroll bars.
+        m_layerNeedsCompositingUpdate = true;
     }
 }
 
@@ -957,6 +974,11 @@ static RenderLayerModelObject& rendererForCompositingTests(const RenderLayer& la
         renderer = downcast<RenderLayerModelObject>(renderer->parent()); // The RenderReplica's parent is the object being reflected.
 
     return *renderer;
+}
+
+void RenderLayerCompositor::updateRootContentLayerClipping()
+{
+    m_rootContentLayer->setMasksToBounds(!m_renderView.settings().backgroundShouldExtendBeyondPage() && m_renderView.frameView().clipToSafeArea());
 }
 
 bool RenderLayerCompositor::updateBacking(RenderLayer& layer, CompositingChangeRepaint shouldRepaint, BackingRequired backingRequired)
@@ -990,8 +1012,7 @@ bool RenderLayerCompositor::updateBacking(RenderLayer& layer, CompositingChangeR
                 updateLayerForHeader(page().headerHeight());
                 updateLayerForFooter(page().footerHeight());
 #endif
-                if (m_renderView.settings().backgroundShouldExtendBeyondPage())
-                    m_rootContentLayer->setMasksToBounds(false);
+                updateRootContentLayerClipping();
 
                 if (TiledBacking* tiledBacking = layer.backing()->tiledBacking())
                     tiledBacking->setTopContentInset(m_renderView.frameView().topContentInset());
@@ -2600,6 +2621,28 @@ bool RenderLayerCompositor::requiresCompositingForIndirectReason(RenderLayerMode
     return false;
 }
 
+bool RenderLayerCompositor::styleChangeMayAffectIndirectCompositingReasons(const RenderLayerModelObject& renderer, const RenderStyle& oldStyle)
+{
+    if (renderer.isRenderNamedFlowFragmentContainer())
+        return true;
+
+    auto& style = renderer.style();
+    if (RenderElement::createsGroupForStyle(style) != RenderElement::createsGroupForStyle(oldStyle))
+        return true;
+    if (style.isolation() != oldStyle.isolation())
+        return true;
+    if (style.hasTransform() != oldStyle.hasTransform())
+        return true;
+    if (style.boxReflect() != oldStyle.boxReflect())
+        return true;
+    if (style.transformStyle3D() != oldStyle.transformStyle3D())
+        return true;
+    if (style.hasPerspective() != oldStyle.hasPerspective())
+        return true;
+
+    return false;
+}
+
 bool RenderLayerCompositor::requiresCompositingForFilters(RenderLayerModelObject& renderer) const
 {
 #if ENABLE(FILTERS_LEVEL_2)
@@ -3343,7 +3386,7 @@ void RenderLayerCompositor::ensureRootLayer()
 #endif
 
         // Need to clip to prevent transformed content showing outside this frame
-        m_rootContentLayer->setMasksToBounds(true);
+        updateRootContentLayerClipping();
     }
 
     if (requiresScrollLayer(expectedAttachment)) {

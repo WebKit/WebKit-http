@@ -895,8 +895,8 @@ public:
         auto folded = postScriptName.string().foldCase();
         return m_postScriptNameToFontDescriptors.ensure(folded, [&] {
             auto postScriptNameString = folded.createCFString();
-            CFTypeRef keys[] = { kCTFontNameAttribute };
-            CFTypeRef values[] = { postScriptNameString.get() };
+            CFTypeRef keys[] = { kCTFontEnabledAttribute, kCTFontNameAttribute };
+            CFTypeRef values[] = { kCFBooleanTrue, postScriptNameString.get() };
             auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
             auto fontDescriptorToMatch = adoptCF(CTFontDescriptorCreateWithAttributes(attributes.get()));
             auto match = adoptCF(static_cast<CTFontDescriptorRef>(CTFontDescriptorCreateMatchingFontDescriptor(fontDescriptorToMatch.get(), nullptr)));

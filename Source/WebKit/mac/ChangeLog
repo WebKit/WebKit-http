@@ -1,3 +1,92 @@
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support DataTransfer::files() when performing a DHTML data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=170880
+        <rdar://problem/31314689>
+
+        Reviewed by Tim Horton.
+
+        Adjust for a change in PasteboardStrategy. See WebCore ChangeLog for more details.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getFilenamesForDataInteraction):
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences readableByteStreamAPIEnabled]):
+        (-[WebPreferences setReadableByteStreamAPIEnabled:]):
+        (-[WebPreferences writableStreamAPIEnabled]):
+        (-[WebPreferences setWritableStreamAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-04-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support data interaction of files into file inputs
+        https://bugs.webkit.org/show_bug.cgi?id=170803
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Add boilerplate plumbing for fetching the number of files in the pasteboard.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::getNumberOfFiles):
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support Icon creation from file URLs on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170809
+        <rdar://problem/31286130>
+
+        Reviewed by Tim Horton.
+
+        Adjust for changes in the ChromeClient in WebCore.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::loadIconForFiles):
+        (WebChromeClient::createIconForFiles):
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
 2017-04-12  Beth Dakin  <bdakin@apple.com>
 
         Build fix.

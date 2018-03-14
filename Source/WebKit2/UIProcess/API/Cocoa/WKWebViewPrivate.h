@@ -47,6 +47,12 @@ typedef NS_OPTIONS(NSInteger, _WKMediaCaptureState) {
     _WKMediaCaptureStateMutedCamera = 1 << 3,
 } WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
+typedef NS_OPTIONS(NSInteger, _WKMediaMutedState) {
+    _WKMediaNoneMuted = 0,
+    _WKMediaAudioMuted = 1 << 0,
+    _WKMediaCaptureDevicesMuted = 1 << 1,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
 #if !TARGET_OS_IPHONE
 
 typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
@@ -143,6 +149,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 
 // Define the inset of the scrollview unusable by the web page.
 @property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;
+
+@property (nonatomic, readonly) BOOL _contentMayDrawInObscuredInsets;
 
 // Override the interface orientation. Clients using _beginAnimatedResizeWithUpdates: must update the interface orientation
 // in the update block.
@@ -277,6 +285,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly) BOOL _isInFullscreen WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 - (void)_muteMediaCapture;
+- (void)_setPageMuted:(_WKMediaMutedState)mutedState WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @end
 
@@ -319,7 +328,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (NSDictionary *)_propertiesOfLayerWithID:(unsigned long long)layerID WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 - (void)_simulateDataInteractionEntered:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
-- (void)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (BOOL)_simulateDataInteractionUpdated:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateDataInteractionPerformOperation:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateDataInteractionEnded:(id)info WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateDataInteractionSessionDidEnd:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));

@@ -1,3 +1,213 @@
+2017-04-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Define priorities also for async network IO tasks
+        https://bugs.webkit.org/show_bug.cgi?id=170905
+
+        Reviewed by Žan Doberšek.
+
+        Add AsyncIONetwork, DiskCacheRead and DiskCacheWrite priorities.
+
+        * wtf/glib/RunLoopSourcePriority.h:
+
+2017-04-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK] glib RunLoop does not accept negative start interval
+        https://bugs.webkit.org/show_bug.cgi?id=170775
+
+        Reviewed by Saam Barati.
+
+        RunLoop::Timer for glib does not accept negative start interval.
+        We use 0_s if the given value is negative.
+
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+
+2017-04-17  Alex Christensen  <achristensen@webkit.org>
+
+        Allow Variants of RetainPtrs
+        https://bugs.webkit.org/show_bug.cgi?id=170923
+
+        Reviewed by Tim Horton and Sam Weinig.
+
+        * wtf/RetainPtr.h:
+        (WTF::RetainPtr::operator&): Deleted.
+        Operator& was causing a compile error when making Variant<RetainPtr<T>, ...>
+        and because it is strange and only used once, let's just remove it.
+        * wtf/Variant.h:
+        (WTF::get):
+        (WTF::get_if):
+        Use std::addressof instead of operator& which could be overloaded to return any type with any meaning.
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * wtf/FeatureDefines.h:
+
+2017-04-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Move isNullFunctionPointer down into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=170892
+
+        Reviewed by Sam Weinig.
+
+        Test: TestWebKitAPI/Tests/WTF/darwin/WeakLinking.cpp
+
+        * WTF.xcodeproj/project.pbxproj: Added reference to new file.
+        * wtf/darwin: Added.
+        * wtf/darwin/WeakLinking.h: Added.
+        (WTF::isNullFunctionPointer): Copied from ResourceLoadStatisticsClassifierCocoa.cpp in
+          WebKit2 and changed into a function template that works with any function pointer.
+
+2017-04-17  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215366.
+
+        This test is failing on performance bots.
+
+        Reverted changeset:
+
+        "Add performance test for asking the platform for a font for
+        U+2060 WORD JOINER"
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+        http://trac.webkit.org/changeset/215366
+
+2017-04-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly] Fix build failures in macOS
+        https://bugs.webkit.org/show_bug.cgi?id=170887
+
+        Reviewed by Alex Christensen.
+
+        JSCOnly port does not use mac/MainThread.cpp.
+        We change the ifdef gurard to use generic implementaion in JSCOnly on macOS.
+
+        * wtf/MainThread.cpp:
+        * wtf/PlatformJSCOnly.cmake:
+
+2017-04-17  JF Bastien  <jfbastien@apple.com>
+
+        B3: don't allow unsigned offsets in Value
+        https://bugs.webkit.org/show_bug.cgi?id=170692
+
+        Reviewed by Filip Pizlo.
+
+        Add C++17's std::conjunction type trait, except for Microsoft VS
+        2015 update 2 and later because it adds the logical operator type
+        traits, event when C++ is pre-2017:
+        https://blogs.msdn.microsoft.com/vcblog/2016/01/22/vs-2015-update-2s-stl-is-c17-so-far-feature-complete/
+
+        * wtf/StdLibExtras.h:
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Configurations/Base.xcconfig:
+
+2017-04-14  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Add performance test for asking the platform for a font for U+2060 WORD JOINER
+        https://bugs.webkit.org/show_bug.cgi?id=170842
+
+        Reviewed by Tim Horton.
+
+        * wtf/unicode/CharacterNames.h:
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Date.parse should accept wider range of representation
+        https://bugs.webkit.org/show_bug.cgi?id=170720
+
+        Reviewed by Darin Adler.
+
+        We would like to relax Date.parse to accept the representation "May 8".
+        At that time, we choose `2000` as a default year. This is because of
+        the following reason.
+
+        1. According to the V8, this default value is compatible to the old KJS. While current V8 uses 2001,
+           SpiderMonkey does not have such a fallback path. So this reason is not big deal.
+
+        2. It is a leap year. When using `new Date("Feb 29")`, we assume that people want to save month and day.
+           Leap year can save user inputs if they is valid. If we use the current year instead, the current year
+           may not be a leap year. In that case, `new Date("Feb 29").getMonth()` becomes 2 (March).
+
+        * wtf/DateMath.cpp:
+        (WTF::parseDateFromNullTerminatedCharacters):
+
+2017-04-13  Dan Bernstein  <mitz@apple.com>
+
+        WTF installs an extra copy of a header outside /usr/local/include/wtf
+
+        * WTF.xcodeproj/project.pbxproj: Demoted PriorityQueue.h from Private to Project.
+
+2017-04-13  Oliver Hunt  <oliver@apple.com>
+
+        allocationSize should use safe arithmetic by default
+        https://bugs.webkit.org/show_bug.cgi?id=170804
+
+        Reviewed by JF Bastien.
+
+        Make all allocationSize() functions work in terms
+        of Checked<size_t>
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::allocationSize):
+        (WTF::StringImpl::tailOffset):
+
+2017-04-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: manage memory better
+        https://bugs.webkit.org/show_bug.cgi?id=170628
+
+        Reviewed by Keith Miller, Michael Saboff.
+
+        Re-use a VM tag which was intended for JavaScript core, was then
+        used by our GC, and is now unused. If I don't do this then
+        WebAssembly fast memories will make vmmap look super weird because
+        it'll look like multi-gigabyte of virtual memory are allocated as
+        part of our process' regular memory!
+
+        Separately I need to update vmmap and other tools to print the
+        right name. Right now this tag gets identified as "JS garbage
+        collector".
+
+        * wtf/OSAllocator.h:
+        * wtf/VMTags.h:
+
+2017-04-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use proper ifdef guard for code using MachineContext
+        https://bugs.webkit.org/show_bug.cgi?id=170800
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        SamplingProfiler and FastMemory rely on MachineContext feature.
+
+        * wtf/Platform.h:
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+
 2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         Use HAVE(MACHINE_CONTEXT) instead of USE(MACHINE_CONTEXT)

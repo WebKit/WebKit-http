@@ -35,6 +35,9 @@
 #import <UIKit/UIColor.h>
 #import <UIKit/UIImage.h>
 #import <UIKit/UIItemProviderWriting.h>
+#import <WebCore/FileSystemIOS.h>
+#import <wtf/BlockPtr.h>
+#import <wtf/OSObjectPtr.h>
 #import <wtf/RetainPtr.h>
 
 SOFT_LINK_FRAMEWORK(UIKit)
@@ -81,6 +84,7 @@ static BOOL isImageType(NSString *type)
 @implementation WebItemProviderPasteboard {
     RetainPtr<NSArray> _itemProviders;
     RetainPtr<NSArray> _cachedTypeIdentifiers;
+    RetainPtr<NSArray> _filenamesForDataInteraction;
 }
 
 + (instancetype)sharedInstance
@@ -99,6 +103,7 @@ static BOOL isImageType(NSString *type)
         _itemProviders = adoptNS([[NSArray alloc] init]);
         _changeCount = 0;
         _pendingOperationCount = 0;
+        _filenamesForDataInteraction = @[ ];
     }
     return self;
 }
@@ -137,6 +142,7 @@ static BOOL isImageType(NSString *type)
     _itemProviders = itemProviders;
     _changeCount++;
     _cachedTypeIdentifiers = nil;
+    _filenamesForDataInteraction = @[ ];
 }
 
 - (NSInteger)numberOfItems
@@ -249,6 +255,96 @@ static BOOL isImageType(NSString *type)
 - (NSInteger)changeCount
 {
     return _changeCount;
+}
+
+- (NSArray<NSURL *> *)filenamesForDataInteraction
+{
+    return _filenamesForDataInteraction.get();
+}
+
+- (NSInteger)numberOfFiles
+{
+    NSInteger numberOfFiles = 0;
+    for (UIItemProvider *itemProvider in _itemProviders.get()) {
+        for (NSString *identifier in itemProvider.registeredTypeIdentifiers) {
+            if (!UTTypeConformsTo((__bridge CFStringRef)identifier, kUTTypeContent))
+                continue;
+            ++numberOfFiles;
+            break;
+        }
+    }
+    return numberOfFiles;
+}
+
+static NSURL *temporaryFileURLForDataInteractionContent(NSString *fileExtension, NSString *suggestedName)
+{
+    static NSString *defaultDataInteractionFileName = @"file";
+    static NSString *dataInteractionDirectoryPrefix = @"data-interaction";
+    if (!fileExtension.length)
+        return nil;
+
+    NSString *temporaryDataInteractionDirectory = WebCore::createTemporaryDirectory(dataInteractionDirectoryPrefix);
+    if (!temporaryDataInteractionDirectory)
+        return nil;
+
+    NSString *filenameWithExtension = [suggestedName ?: defaultDataInteractionFileName stringByAppendingPathExtension:fileExtension];
+    return [NSURL fileURLWithPath:[temporaryDataInteractionDirectory stringByAppendingPathComponent:filenameWithExtension]];
+}
+
+- (void)doAfterLoadingProvidedContentIntoFileURLs:(WebItemProviderFileLoadBlock)action
+{
+    auto changeCountBeforeLoading = _changeCount;
+
+    auto itemProvidersWithFiles = adoptNS([[NSMutableArray alloc] init]);
+    auto contentTypeIdentifiersToLoad = adoptNS([[NSMutableArray alloc] init]);
+    auto loadedFileURLs = adoptNS([[NSMutableArray alloc] init]);
+    for (UIItemProvider *itemProvider in _itemProviders.get()) {
+        NSString *typeIdentifierOfContentToSave = nil;
+        for (NSString *identifier in itemProvider.registeredTypeIdentifiers) {
+            if (!UTTypeConformsTo((CFStringRef)identifier, kUTTypeContent))
+                continue;
+
+            typeIdentifierOfContentToSave = identifier;
+            break;
+        }
+
+        if (typeIdentifierOfContentToSave) {
+            [itemProvidersWithFiles addObject:itemProvider];
+            [contentTypeIdentifiersToLoad addObject:typeIdentifierOfContentToSave];
+        }
+    }
+
+    if (![itemProvidersWithFiles count]) {
+        action(@[ ]);
+        return;
+    }
+
+    auto fileLoadingGroup = adoptOSObject(dispatch_group_create());
+    for (NSUInteger index = 0; index < [itemProvidersWithFiles count]; ++index) {
+        RetainPtr<UIItemProvider> itemProvider = [itemProvidersWithFiles objectAtIndex:index];
+        RetainPtr<NSString> typeIdentifier = [contentTypeIdentifiersToLoad objectAtIndex:index];
+        RetainPtr<NSString> suggestedName = [itemProvider suggestedName];
+        dispatch_group_enter(fileLoadingGroup.get());
+        dispatch_group_async(fileLoadingGroup.get(), dispatch_get_main_queue(), [itemProvider, typeIdentifier, suggestedName, loadedFileURLs, fileLoadingGroup] {
+            [itemProvider loadFileRepresentationForTypeIdentifier:typeIdentifier.get() completionHandler:[suggestedName, loadedFileURLs, fileLoadingGroup] (NSURL *url, NSError *error) {
+                // After executing this completion block, UIKit removes the file at the given URL. However, we need this data to persist longer for the web content process.
+                // To address this, we hard link the given URL to a new temporary file in the temporary directory. This follows the same flow as regular file upload, in
+                // WKFileUploadPanel.mm. The temporary files are cleaned up by the system at a later time.
+                RetainPtr<NSURL> destinationURL = temporaryFileURLForDataInteractionContent(url.pathExtension, suggestedName.get());
+                if (destinationURL && !error && [[NSFileManager defaultManager] linkItemAtURL:url toURL:destinationURL.get() error:nil])
+                    [loadedFileURLs addObject:destinationURL.get()];
+                dispatch_group_leave(fileLoadingGroup.get());
+            }];
+        });
+    }
+
+    RetainPtr<WebItemProviderPasteboard> retainedSelf = self;
+    dispatch_group_notify(fileLoadingGroup.get(), dispatch_get_main_queue(), [retainedSelf, fileLoadingGroup, loadedFileURLs, completionBlock = makeBlockPtr(action), changeCountBeforeLoading] {
+        if (changeCountBeforeLoading == retainedSelf->_changeCount)
+            retainedSelf->_filenamesForDataInteraction = adoptNS([loadedFileURLs copy]);
+
+        completionBlock(loadedFileURLs.get());
+    });
 }
 
 - (UIItemProvider *)itemProviderAtIndex:(NSInteger)index

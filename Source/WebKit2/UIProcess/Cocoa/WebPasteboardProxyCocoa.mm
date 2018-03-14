@@ -134,6 +134,11 @@ void WebPasteboardProxy::setPasteboardBufferForType(const String& pasteboardName
     newChangeCount = PlatformPasteboard(pasteboardName).setBufferForType(buffer.get(), pasteboardType);
 }
 
+void WebPasteboardProxy::getNumberOfFiles(const String& pasteboardName, uint64_t& numberOfFiles)
+{
+    numberOfFiles = PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
 #if PLATFORM(IOS)
 void WebPasteboardProxy::writeWebContentToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
@@ -176,6 +181,11 @@ void WebPasteboardProxy::readBufferFromPasteboard(uint64_t index, const String& 
 void WebPasteboardProxy::getPasteboardItemsCount(const String& pasteboardName, uint64_t& itemsCount)
 {
     itemsCount = PlatformPasteboard(pasteboardName).count();
+}
+
+void WebPasteboardProxy::getFilenamesForDataInteraction(const String& pasteboardName, Vector<String>& filenames)
+{
+    filenames = PlatformPasteboard(pasteboardName).filenamesForDataInteraction();
 }
 
 #endif

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Options.h"
 
+#include "AssemblerCommon.h"
 #include "LLIntCommon.h"
 #include "LLIntData.h"
 #include "SigillCrashAnalyzer.h"
@@ -345,6 +346,10 @@ static void overrideDefaults()
 
 #if !ENABLE(SIGNAL_BASED_VM_TRAPS)
     Options::usePollingTraps() = true;
+#endif
+
+#if !ENABLE(WEBASSEMBLY_FAST_MEMORY)
+    Options::useWebAssemblyFastMemory() = false;
 #endif
 }
 

@@ -64,7 +64,7 @@ public:
     webrtc::PeerConnectionInterface& backend() const { ASSERT(m_backend); return *m_backend.get(); }
     void doSetLocalDescription(RTCSessionDescription&);
     void doSetRemoteDescription(RTCSessionDescription&);
-    void doCreateOffer();
+    void doCreateOffer(const RTCOfferOptions&);
     void doCreateAnswer();
     void getStats(MediaStreamTrack*, const DeferredPromise&);
     std::unique_ptr<RTCDataChannelHandler> createDataChannel(const String&, const RTCDataChannelInit&);
@@ -81,6 +81,7 @@ public:
     RefPtr<RTCSessionDescription> pendingRemoteDescription() const;
 
     void addTrack(RTCRtpSender&, MediaStreamTrack&, const Vector<String>&);
+    void removeTrack(RTCRtpSender&);
     RTCRtpParameters getRTCRtpSenderParameters(RTCRtpSender&);
 
 private:

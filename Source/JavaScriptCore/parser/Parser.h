@@ -172,6 +172,7 @@ public:
         , m_isAsyncFunction(isAsyncFunction)
         , m_isAsyncFunctionBoundary(false)
         , m_isLexicalScope(false)
+        , m_isGlobalCodeScope(false)
         , m_isFunctionBoundary(false)
         , m_isValidStrictMode(true)
         , m_hasArguments(false)
@@ -205,6 +206,7 @@ public:
         , m_isAsyncFunction(other.m_isAsyncFunction)
         , m_isAsyncFunctionBoundary(other.m_isAsyncFunctionBoundary)
         , m_isLexicalScope(other.m_isLexicalScope)
+        , m_isGlobalCodeScope(other.m_isGlobalCodeScope)
         , m_isFunctionBoundary(other.m_isFunctionBoundary)
         , m_isValidStrictMode(other.m_isValidStrictMode)
         , m_hasArguments(other.m_hasArguments)
@@ -312,6 +314,9 @@ public:
     bool isAsyncFunctionBoundary() const { return m_isAsyncFunctionBoundary; }
 
     bool hasArguments() const { return m_hasArguments; }
+
+    void setIsGlobalCodeScope() { m_isGlobalCodeScope = true; }
+    bool isGlobalCodeScope() const { return m_isGlobalCodeScope; }
 
     void setIsLexicalScope() 
     { 
@@ -642,6 +647,7 @@ public:
                 if (!isParameter) {
                     auto addResult = m_declaredVariables.add(function);
                     addResult.iterator->value.setIsVar();
+                    addResult.iterator->value.setIsSloppyModeHoistingCandidate();
                     sloppyModeHoistedFunctions.add(function);
                 }
             }
@@ -800,6 +806,7 @@ private:
     bool m_isAsyncFunction;
     bool m_isAsyncFunctionBoundary;
     bool m_isLexicalScope;
+    bool m_isGlobalCodeScope;
     bool m_isFunctionBoundary;
     bool m_isValidStrictMode;
     bool m_hasArguments;
@@ -880,6 +887,37 @@ public:
 
     JSTextPosition positionBeforeLastNewline() const { return m_lexer->positionBeforeLastNewline(); }
     JSTokenLocation locationBeforeLastToken() const { return m_lexer->lastTokenLocation(); }
+
+    struct CallOrApplyDepthScope {
+        CallOrApplyDepthScope(Parser* parser)
+            : m_parser(parser)
+            , m_parent(parser->m_callOrApplyDepthScope)
+            , m_depth(m_parent ? m_parent->m_depth + 1 : 0)
+            , m_depthOfInnermostChild(m_depth)
+        {
+            parser->m_callOrApplyDepthScope = this;
+        }
+
+        size_t distanceToInnermostChild() const
+        {
+            ASSERT(m_depthOfInnermostChild >= m_depth);
+            return m_depthOfInnermostChild - m_depth;
+        }
+
+        ~CallOrApplyDepthScope()
+        {
+            if (m_parent)
+                m_parent->m_depthOfInnermostChild = std::max(m_depthOfInnermostChild, m_parent->m_depthOfInnermostChild);
+            m_parser->m_callOrApplyDepthScope = m_parent;
+        }
+
+    private:
+
+        Parser* m_parser;
+        CallOrApplyDepthScope* m_parent;
+        size_t m_depth;
+        size_t m_depthOfInnermostChild;
+    };
 
 private:
     struct AllowInOverride {
@@ -1197,7 +1235,7 @@ private:
 
     std::pair<DeclarationResultMask, ScopeRef> declareFunction(const Identifier* ident)
     {
-        if (m_statementDepth == 1 || (!strictMode() && !currentScope()->isFunction())) {
+        if ((m_statementDepth == 1) || (!strictMode() && !currentScope()->isFunction() && !closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext())) {
             // Functions declared at the top-most scope (both in sloppy and strict mode) are declared as vars
             // for backwards compatibility. This allows us to declare functions with the same name more than once.
             // In sloppy mode, we always declare functions as vars.
@@ -1208,7 +1246,7 @@ private:
         }
 
         if (!strictMode()) {
-            ASSERT(currentScope()->isFunction());
+            ASSERT(currentScope()->isFunction() || closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext());
 
             // Functions declared inside a function inside a nested block scope in sloppy mode are subject to this
             // crazy rule defined inside Annex B.3.3 in the ES6 spec. It basically states that we will create
@@ -1774,6 +1812,7 @@ private:
     bool m_immediateParentAllowsFunctionDeclarationInStatement;
     RefPtr<ModuleScopeData> m_moduleScopeData;
     DebuggerParseData* m_debuggerParseData;
+    CallOrApplyDepthScope* m_callOrApplyDepthScope { nullptr };
 
     struct DepthManager {
         DepthManager(int* depth)

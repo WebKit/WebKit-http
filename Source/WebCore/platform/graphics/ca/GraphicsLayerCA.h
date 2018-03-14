@@ -75,9 +75,12 @@ public:
     WEBCORE_EXPORT void setReplicatedLayer(GraphicsLayer*) override;
 
     WEBCORE_EXPORT void setPosition(const FloatPoint&) override;
+    WEBCORE_EXPORT void syncPosition(const FloatPoint&) override;
+    WEBCORE_EXPORT void setApproximatePosition(const FloatPoint&) override;
     WEBCORE_EXPORT void setAnchorPoint(const FloatPoint3D&) override;
     WEBCORE_EXPORT void setSize(const FloatSize&) override;
     WEBCORE_EXPORT void setBoundsOrigin(const FloatPoint&) override;
+    WEBCORE_EXPORT void syncBoundsOrigin(const FloatPoint&) override;
 
     WEBCORE_EXPORT void setTransform(const TransformationMatrix&) override;
 
@@ -152,6 +155,7 @@ public:
 
     struct CommitState {
         int treeDepth { 0 };
+        bool ancestorHadChanges { false };
         bool ancestorHasTransformAnimation { false };
         bool ancestorIsViewportConstrained { false };
     };
@@ -494,8 +498,12 @@ private:
         ShapeChanged                            = 1LLU << 36,
         WindRuleChanged                         = 1LLU << 37,
         UserInteractionEnabledChanged           = 1LLU << 38,
+        NeedsComputeVisibleAndCoverageRect      = 1LLU << 39,
     };
     typedef uint64_t LayerChangeFlags;
+    void addUncommittedChanges(LayerChangeFlags);
+    bool hasDescendantsWithUncommittedChanges() const { return m_hasDescendantsWithUncommittedChanges; }
+    void setHasDescendantsWithUncommittedChanges(bool);
     enum ScheduleFlushOrNot { ScheduleFlush, DontScheduleFlush };
     void noteLayerPropertyChanged(LayerChangeFlags, ScheduleFlushOrNot = ScheduleFlush);
     void noteSublayersChanged(ScheduleFlushOrNot = ScheduleFlush);
@@ -585,7 +593,7 @@ private:
     AnimationsMap m_runningAnimations;
 
     Vector<FloatRect> m_dirtyRects;
-    
+
     std::unique_ptr<DisplayList::DisplayList> m_displayList;
 
     FloatSize m_pixelAlignmentOffset;
@@ -596,8 +604,10 @@ private:
 #else
     LayerChangeFlags m_uncommittedChanges { CoverageRectChanged };
 #endif
+    bool m_hasDescendantsWithUncommittedChanges { false };
 
     bool m_isCommittingChanges { false };
+    FloatRect m_previousCommittedVisibleRect;
 };
 
 } // namespace WebCore

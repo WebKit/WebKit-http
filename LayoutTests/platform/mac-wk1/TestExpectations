@@ -152,6 +152,7 @@ compositing/iframes/overlapped-nested-iframes.html [ Pass Failure ]
 # Disk cache is WK2 only
 http/tests/cache/disk-cache
 http/tests/inspector/network/resource-response-source-disk-cache.html
+http/tests/inspector/network/resource-sizes-disk-cache.html
 
 [ Yosemite+ ] fast/ruby/ruby-expansion-cjk-2.html [ ImageOnlyFailure ]
 
@@ -306,12 +307,12 @@ webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-fr
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
 webkit.org/b/163361 imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
 
-# Resource Timing networking data not yet available in WebKit1.
+# Resource Metrics data not available in WebKit1.
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.html [ Failure ]
 imported/w3c/web-platform-tests/resource-timing/rt-nextHopProtocol.worker.html [ Failure ]
-
-# Request Header information only available in WebKit2
 http/tests/inspector/network/resource-request-headers.html [ Failure ]
+
+webkit.org/b/170953 http/tests/inspector/network/resource-sizes-network.html [ Pass Failure ]
 
 webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
 
@@ -350,3 +351,12 @@ webkit.org/b/170682 [ Debug ] media/modern-media-controls/volume-up-support/volu
 
 # There is not NetworkProcess in WK1, so it can't crash.
 http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
+
+webkit.org/b/170830 inspector/sampling-profiler/named-function-expression.html [ Pass Failure ]
+
+# selectors4
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-001.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-002.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-003.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-004.html [ ImageOnlyFailure ]
+webkit.org/b/170935 imported/w3c/web-platform-tests/css/selectors4/focus-within-shadow-005.html [ ImageOnlyFailure ]

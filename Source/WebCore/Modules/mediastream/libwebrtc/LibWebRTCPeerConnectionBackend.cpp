@@ -151,9 +151,9 @@ void LibWebRTCPeerConnectionBackend::doSetRemoteDescription(RTCSessionDescriptio
     }
 }
 
-void LibWebRTCPeerConnectionBackend::doCreateOffer(RTCOfferOptions&&)
+void LibWebRTCPeerConnectionBackend::doCreateOffer(RTCOfferOptions&& options)
 {
-    m_endpoint->doCreateOffer();
+    m_endpoint->doCreateOffer(options);
 }
 
 void LibWebRTCPeerConnectionBackend::doCreateAnswer(RTCAnswerOptions&&)
@@ -309,6 +309,11 @@ void LibWebRTCPeerConnectionBackend::notifyAddedTrack(RTCRtpSender& sender)
 {
     ASSERT(sender.track());
     m_endpoint->addTrack(sender, *sender.track(), sender.mediaStreamIds());
+}
+
+void LibWebRTCPeerConnectionBackend::notifyRemovedTrack(RTCRtpSender& sender)
+{
+    m_endpoint->removeTrack(sender);
 }
 
 void LibWebRTCPeerConnectionBackend::removeRemoteStream(MediaStream* mediaStream)

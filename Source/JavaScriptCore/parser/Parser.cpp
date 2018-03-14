@@ -147,8 +147,11 @@ Parser<LexerType>::Parser(VM* vm, const SourceCode& source, JSParserBuiltinMode 
     if (strictMode == JSParserStrictMode::Strict)
         scope->setStrictMode();
 
-    if (parseMode == SourceParseMode::ModuleAnalyzeMode || parseMode == SourceParseMode::ModuleEvaluateMode)
+    if (isModuleParseMode(parseMode))
         m_moduleScopeData = ModuleScopeData::create();
+
+    if (isProgramOrModuleParseMode(parseMode))
+        scope->setIsGlobalCodeScope();
 
     next();
 }
@@ -1781,8 +1784,8 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseFunctionDecla
 {
     semanticFailIfTrue(strictMode(), "Function declarations are only allowed inside blocks or switch statements in strict mode");
     failIfFalse(parentAllowsFunctionDeclarationAsStatement, "Function declarations are only allowed inside block statements or at the top level of a program");
-    if (!currentScope()->isFunction()) {
-        // We only implement annex B.3.3 if we're in function mode. Otherwise, we fall back
+    if (!currentScope()->isFunction() && !closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext()) {
+        // We only implement annex B.3.3 if we're in function mode or eval mode. Otherwise, we fall back
         // to hoisting behavior.
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=155813
         DepthManager statementDepth(&m_statementDepth);
@@ -3555,6 +3558,7 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseAwaitExpress
     JSTextPosition divotStart = tokenStartPosition();
     next();
     JSTextPosition argumentStart = tokenStartPosition();
+    ExpressionErrorClassifier classifier(this);
     TreeExpression argument = parseUnaryExpression(context);
     failIfFalse(argument, "Failed to parse await expression");
     return context.createAwait(location, argument, divotStart, argumentStart, lastTokenEndPosition());
@@ -4380,6 +4384,22 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseArgument(Tre
     return parseAssignmentExpression(context);
 }
 
+template <typename TreeBuilder, typename ParserType, typename = typename std::enable_if<std::is_same<TreeBuilder, ASTBuilder>::value>::type>
+static inline void recordCallOrApplyDepth(ParserType* parser, VM& vm, std::optional<typename ParserType::CallOrApplyDepthScope>& callOrApplyDepthScope, ExpressionNode* expression)
+{
+    if (expression->isDotAccessorNode()) {
+        DotAccessorNode* dot = static_cast<DotAccessorNode*>(expression);
+        bool isCallOrApply = dot->identifier() == vm.propertyNames->builtinNames().callPublicName() || dot->identifier() == vm.propertyNames->builtinNames().applyPublicName();
+        if (isCallOrApply)
+            callOrApplyDepthScope.emplace(parser);
+    }
+}
+
+template <typename TreeBuilder, typename ParserType, typename = typename std::enable_if<std::is_same<TreeBuilder, SyntaxChecker>::value>::type>
+static inline void recordCallOrApplyDepth(ParserType*, VM&, std::optional<typename ParserType::CallOrApplyDepthScope>&, SyntaxChecker::Expression)
+{
+}
+
 template <typename LexerType>
 template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpression(TreeBuilder& context)
 {
@@ -4403,10 +4423,13 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
         if (match(IDENT)) {
             const Identifier* ident = m_token.m_data.ident;
             if (m_vm->propertyNames->target == *ident) {
-                semanticFailIfFalse(currentScope()->isFunction() || closestParentOrdinaryFunctionNonLexicalScope()->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is only valid inside functions");
+                ScopeRef closestOrdinaryFunctionScope = closestParentOrdinaryFunctionNonLexicalScope();
+                semanticFailIfFalse(currentScope()->isFunction() || closestOrdinaryFunctionScope->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is only valid inside functions");
                 baseIsNewTarget = true;
-                if (currentScope()->isArrowFunction())
+                if (currentScope()->isArrowFunction()) {
+                    semanticFailIfFalse(!closestOrdinaryFunctionScope->isGlobalCodeScope() || closestOrdinaryFunctionScope->evalContextType() == EvalContextType::FunctionEvalContext, "new.target is not valid inside arrow functions in global code");
                     currentScope()->setInnerArrowFunctionUsesNewTarget();
+                }
                 base = context.createNewTargetExpr(location);
                 newCount--;
                 next();
@@ -4491,6 +4514,9 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
             } else {
                 size_t usedVariablesSize = currentScope()->currentUsedVariablesSize();
                 JSTextPosition expressionEnd = lastTokenEndPosition();
+                std::optional<CallOrApplyDepthScope> callOrApplyDepthScope;
+                recordCallOrApplyDepth<TreeBuilder>(this, *m_vm, callOrApplyDepthScope, base);
+
                 TreeArguments arguments = parseArguments(context);
 
                 if (baseIsAsyncKeyword && (!arguments || match(ARROWFUNCTION))) {
@@ -4518,7 +4544,8 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parseMemberExpres
                     if (currentScope()->isArrowFunction())
                         functionScope->setInnerArrowFunctionUsesSuperCall();
                 }
-                base = context.makeFunctionCallNode(startLocation, base, arguments, expressionStart, expressionEnd, lastTokenEndPosition());
+                base = context.makeFunctionCallNode(startLocation, base, arguments, expressionStart,
+                    expressionEnd, lastTokenEndPosition(), callOrApplyDepthScope ? callOrApplyDepthScope->distanceToInnermostChild() : 0);
             }
             m_parserState.nonLHSCount = nonLHSCount;
             break;

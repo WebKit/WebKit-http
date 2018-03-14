@@ -36,7 +36,8 @@ class CaptureDeviceManager {
 public:
     virtual Vector<CaptureDevice>& captureDevices() = 0;
     virtual void refreshCaptureDevices() { }
-    virtual Vector<CaptureDevice> getSourcesInfo();
+    virtual Vector<CaptureDevice> getAudioSourcesInfo();
+    virtual Vector<CaptureDevice> getVideoSourcesInfo();
     virtual std::optional<CaptureDevice> deviceWithUID(const String&, RealtimeMediaSource::Type);
 
 protected:

@@ -66,6 +66,9 @@ WebInspector.DOMDebuggerManager = class DOMDebuggerManager extends WebInspector.
 
             this._restoringBreakpoints = false;
             this._speculativelyResolveBreakpoints();
+
+            if (!this._allRequestsBreakpoint.disabled)
+                this._updateXHRBreakpoint(this._allRequestsBreakpoint);
         }
     }
 
@@ -170,6 +173,11 @@ WebInspector.DOMDebuggerManager = class DOMDebuggerManager extends WebInspector.
         breakpoint.domNodeIdentifier = null;
 
         this._saveDOMBreakpoints();
+    }
+
+    xhrBreakpointForURL(url)
+    {
+        return this._xhrBreakpoints.find((breakpoint) => breakpoint.url === url) || null;
     }
 
     addXHRBreakpoint(breakpoint)
@@ -421,9 +429,6 @@ WebInspector.DOMDebuggerManager = class DOMDebuggerManager extends WebInspector.
                 breakpoints.forEach((breakpoint) => { breakpoint.domNodeIdentifier = null; });
 
             this._domBreakpointFrameIdentifierMap.clear();
-
-            for (let breakpoint of this._xhrBreakpoints)
-                this._detachXHRBreakpoint(breakpoint);
         } else
             this._detachBreakpointsForFrame(frame);
 

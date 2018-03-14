@@ -84,14 +84,15 @@ protected:
     static void destroy(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
 
-    static size_t allocationSize(unsigned numImportFunctions)
+    static size_t allocationSize(Checked<size_t> numImportFunctions)
     {
-        return offsetOfImportFunctions() + sizeof(WriteBarrier<JSCell>) * numImportFunctions;
+        return (offsetOfImportFunctions() + sizeof(WriteBarrier<JSCell>) * numImportFunctions).unsafeGet();
     }
 
 private:
     VM* m_vm;
     WriteBarrier<JSObject>* importFunctions() { return bitwise_cast<WriteBarrier<JSObject>*>(bitwise_cast<char*>(this) + offsetOfImportFunctions()); }
+    size_t globalMemoryByteSize() const;
 
     WriteBarrier<JSWebAssemblyModule> m_module;
     WriteBarrier<JSWebAssemblyCodeBlock> m_codeBlock;

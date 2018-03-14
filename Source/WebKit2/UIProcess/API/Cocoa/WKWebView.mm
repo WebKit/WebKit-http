@@ -258,7 +258,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     BOOL _commitDidRestoreScrollPosition;
     std::optional<WebCore::FloatPoint> _scrollOffsetToRestore;
-    WebCore::FloatSize _obscuredInsetWhenSaved;
+    WebCore::FloatBoxExtent _obscuredInsetsWhenSaved;
 
     std::optional<WebCore::FloatPoint> _unobscuredCenterToRestore;
     uint64_t _firstTransactionIDAfterPageRestore;
@@ -504,6 +504,11 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
+    
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    if ([_scrollView _contentInsetAdjustmentBehavior] == UIScrollViewContentInsetAdjustmentAutomatic)
+        [_scrollView _setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentAlways];
+#endif
 
     [self addSubview:_scrollView.get()];
 
@@ -1504,7 +1509,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
             if (areEssentiallyEqualAsFloat(contentZoomScale(self), _scaleToRestore)) {
                 scaledScrollOffset.scale(_scaleToRestore);
-                WebCore::FloatPoint contentOffsetInScrollViewCoordinates = scaledScrollOffset - _obscuredInsetWhenSaved;
+                WebCore::FloatPoint contentOffsetInScrollViewCoordinates = scaledScrollOffset - WebCore::FloatSize(_obscuredInsetsWhenSaved.left(), _obscuredInsetsWhenSaved.top());
 
                 changeContentOffsetBoundedInValidRange(_scrollView.get(), contentOffsetInScrollViewCoordinates);
                 _commitDidRestoreScrollPosition = YES;
@@ -1572,7 +1577,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         _gestureController->didRestoreScrollPosition();
 }
 
-- (void)_restorePageScrollPosition:(std::optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatSize)obscuredInset scale:(double)scale
+- (void)_restorePageScrollPosition:(std::optional<WebCore::FloatPoint>)scrollPosition scrollOrigin:(WebCore::FloatPoint)scrollOrigin previousObscuredInset:(WebCore::FloatBoxExtent)obscuredInsets scale:(double)scale
 {
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing)
         return;
@@ -1586,7 +1591,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     else
         _scrollOffsetToRestore = std::nullopt;
 
-    _obscuredInsetWhenSaved = obscuredInset;
+    _obscuredInsetsWhenSaved = obscuredInsets;
     _scaleToRestore = scale;
 }
 
@@ -2403,7 +2408,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
     [_contentView didUpdateVisibleRect:visibleRectInContentCoordinates
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
-        obscuredInset:CGSizeMake(_obscuredInsets.left, _obscuredInsets.top)
+        obscuredInsets:_obscuredInsets
         inputViewBounds:_inputViewBounds
         scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
         inStableState:inStableState
@@ -4260,6 +4265,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _page->isShowingNavigationGestureSnapshot();
 }
 
+- (BOOL)_contentMayDrawInObscuredInsets
+{
+    return !_page->clipToSafeArea();
+}
+
 - (_WKLayoutMode)_layoutMode
 {
 #if PLATFORM(MAC)
@@ -4403,6 +4413,18 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 - (void)_muteMediaCapture
 {
     _page->setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
+}
+
+- (void)_setPageMuted:(_WKMediaMutedState)mutedState
+{
+    WebCore::MediaProducer::MutedStateFlags coreState = WebCore::MediaProducer::NoneMuted;
+
+    if (mutedState & _WKMediaAudioMuted)
+        coreState |= WebCore::MediaProducer::AudioIsMuted;
+    if (coreState & _WKMediaCaptureDevicesMuted)
+        coreState |= WebCore::MediaProducer::CaptureDevicesAreMuted;
+
+    _page->setMuted(coreState);
 }
 
 #pragma mark iOS-specific methods
@@ -5387,10 +5409,12 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #endif
 }
 
-- (void)_simulateDataInteractionUpdated:(id)info
+- (BOOL)_simulateDataInteractionUpdated:(id)info
 {
 #if ENABLE(DATA_INTERACTION)
-    [_contentView _simulateDataInteractionUpdated:info];
+    return [_contentView _simulateDataInteractionUpdated:info];
+#else
+    return NO;
 #endif
 }
 

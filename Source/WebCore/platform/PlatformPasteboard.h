@@ -54,6 +54,7 @@ public:
     WEBCORE_EXPORT explicit PlatformPasteboard(const String& pasteboardName);
 #if PLATFORM(IOS)
     WEBCORE_EXPORT PlatformPasteboard();
+    WEBCORE_EXPORT Vector<String> filenamesForDataInteraction();
 #endif
     WEBCORE_EXPORT static String uniqueName();
 
@@ -81,6 +82,7 @@ public:
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
     WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
     WEBCORE_EXPORT int count();
+    WEBCORE_EXPORT int numberOfFiles();
 
 #if PLATFORM(GTK)
     WEBCORE_EXPORT void writeToClipboard(const SelectionData&, std::function<void()>&& primarySelectionCleared);

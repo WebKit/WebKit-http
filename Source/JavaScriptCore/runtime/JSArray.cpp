@@ -258,6 +258,8 @@ bool JSArray::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSVa
     }
 
     if (propertyName == exec->propertyNames().length) {
+        if (!thisObject->isLengthWritable())
+            return false;
         unsigned newLength = value.toUInt32(exec);
         RETURN_IF_EXCEPTION(scope, false);
         if (value.toNumber(exec) != static_cast<double>(newLength)) {
@@ -481,7 +483,8 @@ bool JSArray::appendMemcpy(ExecState* exec, VM& vm, unsigned startIndex, JSC::JS
         return false;
 
     IndexingType type = indexingType();
-    IndexingType copyType = mergeIndexingTypeForCopying(otherArray->indexingType());
+    IndexingType otherType = otherArray->indexingType();
+    IndexingType copyType = mergeIndexingTypeForCopying(otherType);
     if (type == ArrayWithUndecided && copyType != NonArray) {
         if (copyType == ArrayWithInt32)
             convertUndecidedToInt32(vm);
@@ -515,7 +518,16 @@ bool JSArray::appendMemcpy(ExecState* exec, VM& vm, unsigned startIndex, JSC::JS
     }
     ASSERT(copyType == indexingType());
 
-    if (type == ArrayWithDouble)
+    if (UNLIKELY(otherType == ArrayWithUndecided)) {
+        auto* butterfly = this->butterfly();
+        if (type == ArrayWithDouble) {
+            for (unsigned i = startIndex; i < newLength; ++i)
+                butterfly->contiguousDouble()[i] = PNaN;
+        } else {
+            for (unsigned i = startIndex; i < newLength; ++i)
+                butterfly->contiguousInt32()[i].setWithoutWriteBarrier(JSValue());
+        }
+    } else if (type == ArrayWithDouble)
         memcpy(butterfly()->contiguousDouble().data() + startIndex, otherArray->butterfly()->contiguousDouble().data(), sizeof(JSValue) * otherLength);
     else
         memcpy(butterfly()->contiguous().data() + startIndex, otherArray->butterfly()->contiguous().data(), sizeof(JSValue) * otherLength);

@@ -279,6 +279,13 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
     return newChangeCount;
 }
 
+int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
+{
+    uint64_t numberOfFiles;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetNumberOfFiles(pasteboardName), Messages::WebPasteboardProxy::GetNumberOfFiles::Reply(numberOfFiles), 0);
+    return numberOfFiles;
+}
+
 #if PLATFORM(IOS)
 void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
@@ -300,6 +307,11 @@ int WebPlatformStrategies::getPasteboardItemsCount(const String& pasteboardName)
     uint64_t itemsCount;
     WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetPasteboardItemsCount(pasteboardName), Messages::WebPasteboardProxy::GetPasteboardItemsCount::Reply(itemsCount), 0);
     return itemsCount;
+}
+
+void WebPlatformStrategies::getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName)
+{
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::GetFilenamesForDataInteraction(pasteboardName), Messages::WebPasteboardProxy::GetFilenamesForDataInteraction::Reply(filenames), 0);
 }
 
 RefPtr<WebCore::SharedBuffer> WebPlatformStrategies::readBufferFromPasteboard(int index, const String& pasteboardType, const String& pasteboardName)

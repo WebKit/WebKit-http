@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(READABLE_STREAM_API) && ENABLE(READABLE_BYTE_STREAM_API)
+// @conditional=ENABLE(STREAMS_API)
 // @internal
 
 function privateInitializeReadableByteStreamController(stream, underlyingByteSource, highWaterMark)
@@ -394,17 +394,6 @@ function readableByteStreamControllerRespondInternal(controller, bytesWritten)
         @assert(stream.@state === @streamReadable);
         @readableByteStreamControllerRespondInReadableState(controller, bytesWritten, firstDescriptor);
     }
-}
-
-function cloneArrayBuffer(srcBuffer, srcByteOffset, srcLength)
-{
-    "use strict";
-
-    // FIXME: Below implementation returns the appropriate data but does not perform
-    // exactly what is described by ECMAScript CloneArrayBuffer operation. This should
-    // be fixed in a follow up patch implementing cloneArrayBuffer in JSC (similarly to
-    // structuredCloneArrayBuffer implementation).
-    return srcBuffer.slice(srcByteOffset, srcByteOffset + srcLength);
 }
 
 function readableByteStreamControllerRespondInReadableState(controller, bytesWritten, pullIntoDescriptor)

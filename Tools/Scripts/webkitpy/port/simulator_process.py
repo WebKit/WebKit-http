@@ -94,7 +94,7 @@ class SimulatorProcess(ServerProcess):
 
         def handler(signum, frame):
             assert signum == signal.SIGALRM
-            raise Exception('Timed out waiting for pid {} to connect at port {}'.format(self._pid, self._target_host.listening_port()))
+            raise RuntimeError('Timed out waiting for pid {} to connect at port {}'.format(self._pid, self._target_host.listening_port()))
         signal.signal(signal.SIGALRM, handler)
         signal.alarm(6)  # In seconds
 

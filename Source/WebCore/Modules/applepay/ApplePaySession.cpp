@@ -444,11 +444,6 @@ static ExceptionOr<PaymentMethodUpdate> convertAndValidate(ApplePayPaymentMethod
 {
     PaymentMethodUpdate convertedUpdate;
 
-    auto authorizationStatus = toPaymentAuthorizationStatus(update.status);
-    if (!authorizationStatus)
-        return Exception { INVALID_ACCESS_ERR };
-    convertedUpdate.status = *authorizationStatus;
-
     auto convertedNewTotal = convertAndValidateTotal(WTFMove(update.newTotal));
     if (convertedNewTotal.hasException())
         return convertedNewTotal.releaseException();
@@ -472,21 +467,7 @@ static ExceptionOr<ShippingContactUpdate> convertAndValidate(ApplePayShippingCon
 {
     ShippingContactUpdate convertedUpdate;
 
-    if (!update.status) {
-        convertedUpdate.errors = convert(update.errors);
-        if (convertedUpdate.errors.isEmpty())
-            convertedUpdate.status = PaymentAuthorizationStatus::Success;
-        else
-            convertedUpdate.status = PaymentAuthorizationStatus::Failure;
-    } else {
-        ASSERT(update.errors.isEmpty());
-
-        auto authorizationStatus = toPaymentAuthorizationStatus(*update.status);
-        if (!authorizationStatus)
-            return Exception { INVALID_ACCESS_ERR };
-
-        convertedUpdate.status = *authorizationStatus;
-    }
+    convertedUpdate.errors = convert(update.errors);
 
     auto convertedNewShippingMethods = convertAndValidate(WTFMove(update.newShippingMethods));
     if (convertedNewShippingMethods.hasException())
@@ -834,7 +815,41 @@ ExceptionOr<void> ApplePaySession::completeShippingContactSelection(unsigned sho
 {
     ApplePayShippingContactUpdate update;
 
-    update.status = status;
+    auto authorizationStatus = toPaymentAuthorizationStatus(status);
+    if (!authorizationStatus)
+        return Exception { INVALID_ACCESS_ERR };
+
+    std::optional<ApplePayError::Code> errorCode;
+    std::optional<ApplePayError::ContactField> contactField;
+
+    switch (*authorizationStatus) {
+    case PaymentAuthorizationStatus::Success:
+        break;
+
+    case PaymentAuthorizationStatus::Failure:
+    case PaymentAuthorizationStatus::PINRequired:
+    case PaymentAuthorizationStatus::PINIncorrect:
+    case PaymentAuthorizationStatus::PINLockout:
+        errorCode = ApplePayError::Code::Unknown;
+        break;
+
+    case PaymentAuthorizationStatus::InvalidBillingPostalAddress:
+        errorCode = ApplePayError::Code::BillingContactInvalid;
+        break;
+
+    case PaymentAuthorizationStatus::InvalidShippingPostalAddress:
+        errorCode = ApplePayError::Code::ShippingContactInvalid;
+        contactField = ApplePayError::ContactField::PostalAddress;
+        break;
+
+    case PaymentAuthorizationStatus::InvalidShippingContact:
+        errorCode = ApplePayError::Code::ShippingContactInvalid;
+        break;
+    }
+
+    if (errorCode)
+        update.errors = { ApplePayError::create(*errorCode, contactField, { }) };
+
     update.newShippingMethods = WTFMove(newShippingMethods);
     update.newTotal = WTFMove(newTotal);
     update.newLineItems = WTFMove(newLineItems);
@@ -846,7 +861,6 @@ ExceptionOr<void> ApplePaySession::completePaymentMethodSelection(ApplePayLineIt
 {
     ApplePayPaymentMethodUpdate update;
 
-    update.status = STATUS_SUCCESS;
     update.newTotal = WTFMove(newTotal);
     update.newLineItems = WTFMove(newLineItems);
 

@@ -38,6 +38,7 @@
 #include "PlatformStrategies.h"
 #include "RTCDataChannel.h"
 #include "RTCDataChannelEvent.h"
+#include "RTCOfferOptions.h"
 #include "RTCPeerConnection.h"
 #include "RTCSessionDescription.h"
 #include "RTCStatsReport.h"
@@ -193,10 +194,21 @@ void LibWebRTCMediaEndpoint::addTrack(RTCRtpSender& sender, MediaStreamTrack& tr
     }
 }
 
-void LibWebRTCMediaEndpoint::doCreateOffer()
+void LibWebRTCMediaEndpoint::removeTrack(RTCRtpSender& sender)
+{
+    auto rtcSender = m_senders.get(&sender);
+    if (!rtcSender)
+        return;
+    m_backend->RemoveTrack(rtcSender.get());
+}
+
+void LibWebRTCMediaEndpoint::doCreateOffer(const RTCOfferOptions& options)
 {
     m_isInitiator = true;
-    m_backend->CreateOffer(&m_createSessionDescriptionObserver, nullptr);
+    webrtc::PeerConnectionInterface::RTCOfferAnswerOptions rtcOptions;
+    rtcOptions.ice_restart = options.iceRestart;
+    rtcOptions.voice_activity_detection = options.voiceActivityDetection;
+    m_backend->CreateOffer(&m_createSessionDescriptionObserver, rtcOptions);
 }
 
 void LibWebRTCMediaEndpoint::doCreateAnswer()
@@ -420,7 +432,7 @@ static RTCSignalingState signalingState(webrtc::PeerConnectionInterface::Signali
     case webrtc::PeerConnectionInterface::kHaveRemotePrAnswer:
         return RTCSignalingState::HaveRemotePranswer;
     case webrtc::PeerConnectionInterface::kClosed:
-        return RTCSignalingState::Closed;
+        return RTCSignalingState::Stable;
     }
 }
 

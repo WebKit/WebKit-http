@@ -180,6 +180,11 @@ long WebPlatformStrategies::setStringForType(const String& string, const String&
     return PlatformPasteboard(pasteboardName).setStringForType(string, pasteboardType);
 }
 
+int WebPlatformStrategies::getNumberOfFiles(const String& pasteboardName)
+{
+    return PlatformPasteboard(pasteboardName).numberOfFiles();
+}
+
 #if PLATFORM(IOS)
 void WebPlatformStrategies::writeToPasteboard(const WebCore::PasteboardWebContent& content, const String& pasteboardName)
 {
@@ -214,5 +219,10 @@ WebCore::URL WebPlatformStrategies::readURLFromPasteboard(int index, const Strin
 String WebPlatformStrategies::readStringFromPasteboard(int index, const String& type, const String& pasteboardName)
 {
     return PlatformPasteboard(pasteboardName).readString(index, type);
+}
+
+void WebPlatformStrategies::getFilenamesForDataInteraction(Vector<String>& filenames, const String& pasteboardName)
+{
+    filenames = PlatformPasteboard(pasteboardName).filenamesForDataInteraction();
 }
 #endif // PLATFORM(IOS)

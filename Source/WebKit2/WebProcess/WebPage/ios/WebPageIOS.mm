@@ -300,7 +300,7 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
             m_drawingArea->setExposedContentRect(historyItem.exposedContentRect());
             scrollPosition = FloatPoint(historyItem.scrollPosition());
         }
-        send(Messages::WebPageProxy::RestorePageState(scrollPosition, frameView.scrollOrigin(), historyItem.obscuredInset(), boundedScale));
+        send(Messages::WebPageProxy::RestorePageState(scrollPosition, frameView.scrollOrigin(), historyItem.obscuredInsets(), boundedScale));
     } else {
         IntSize oldContentSize = historyItem.contentSize();
         IntSize newContentSize = frameView.contentsSize();
@@ -3045,6 +3045,8 @@ void WebPage::viewportConfigurationChanged()
     updateViewportSizeForCSSViewportUnits();
 
     FrameView& frameView = *mainFrameView();
+    frameView.setClipToSafeArea(m_viewportConfiguration.clipToSafeArea());
+
     IntPoint scrollPosition = frameView.scrollPosition();
     if (!m_hasReceivedVisibleContentRectsAfterDidCommitLoad) {
         FloatSize minimumLayoutSizeInScrollViewCoordinates = m_viewportConfiguration.minimumLayoutSize();
@@ -3194,7 +3196,7 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
         viewportConfigurationChanged();
 
     frameView.setUnobscuredContentSize(visibleContentRectUpdateInfo.unobscuredContentRect().size());
-    m_page->setObscuredInset(visibleContentRectUpdateInfo.obscuredInset());
+    m_page->setObscuredInsets(visibleContentRectUpdateInfo.obscuredInsets());
     m_page->setEnclosedInScrollableAncestorView(visibleContentRectUpdateInfo.enclosedInScrollableAncestorView());
 
     double horizontalVelocity = visibleContentRectUpdateInfo.horizontalVelocity();

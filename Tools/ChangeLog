@@ -1,3 +1,439 @@
+2017-04-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add infrastructure and unit tests for file uploads using data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=170903
+        <rdar://problem/31314689>
+
+        Reviewed by Tim Horton.
+
+        Adds 5 new unit tests covering different cases of uploading files through data interaction, as well as
+        infrastructure for simulating UIItemProviders that load file data. Makes a few adjustments to the
+        DataInteractionSimulator along the way, detailed in the per-method annotations below. See
+        <https://bugs.webkit.org/show_bug.cgi?id=170880> for more details about the change this patch is testing.
+
+        New tests:
+        DataInteractionTests.ExternalSourceImageToFileInput
+        DataInteractionTests.ExternalSourceHTMLToUploadArea
+        DataInteractionTests.ExternalSourceImageAndHTMLToSingleFileInput
+        DataInteractionTests.ExternalSourceImageAndHTMLToMultipleFileInput
+        DataInteractionTests.ExternalSourceImageAndHTMLToUploadArea
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (testIconImage):
+        (temporaryURLForDataInteractionFileLoad):
+        (cleanUpDataInteractionTemporaryPath):
+
+        Creates and tears down temporary file directories for testing data interaction.
+
+        (-[UIItemProvider registerFileRepresentationForTypeIdentifier:withData:filename:]):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+
+        Make necessary changes to be able to test what happens when data interaction ends over an element with no
+        operation. Previously, we would always simulate performing a data interaction operation when ending the
+        simulation, but this causes us to wait indefinitely for a data operation response to arrive in the UI process.
+        Instead, we need to note whether or not the content view is allowing data interaction, and only perform an
+        operation and wait for the -didPerform call if the operation was allowed. Otherwise, we immediately transition
+        the phase to Cancelled and end the run.
+
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _concludeDataInteractionAndPerformOperationIfNecessary]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator externalItemProviders]):
+        (-[DataInteractionSimulator setExternalItemProviders:]):
+
+        Previously, we hard-coded DataInteractionSimulator to only support a single external item provider. In order to
+        test the scenario where multiple files are being "data interacted" into a file-type input, we generalize this to
+        take multiple item providers.
+
+        (-[DataInteractionSimulator externalItemProvider]): Deleted.
+        (-[DataInteractionSimulator setExternalItemProvider:]): Deleted.
+
+2017-04-18  John Wilander  <wilander@apple.com>
+
+        Make WebCore::topPrivatelyControlledDomain() return "localhost" for localhost
+        https://bugs.webkit.org/show_bug.cgi?id=170798
+        <rdar://problem/31595108>
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/mac/PublicSuffix.mm:
+        (TestWebKitAPI::TEST_F):
+            Added two negative test cases for WebCore::isPublicSuffix().
+            Added test cases with mixed case domains, localhost, and
+            non-ASCII for WebCore::topPrivatelyControlledDomain().
+
+2017-04-18  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r215346 and 215361.
+
+        The problem these changes were fixing was addressed in
+        <https://trac.webkit.org/changeset/215416/webkit>.
+
+        Reverted changesets:
+
+        "webkitpy: Ignore previously launched pid when system is under
+        stress"
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+        http://trac.webkit.org/changeset/215346
+        http://trac.webkit.org/changeset/215361
+
+2017-04-17  Alex Christensen  <achristensen@webkit.org>
+
+        Allow Variants of RetainPtrs
+        https://bugs.webkit.org/show_bug.cgi?id=170923
+
+        Reviewed by Tim Horton and Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/Variant.cpp:
+        (TestWebKitAPI::TEST):
+        Add tests for RetainPtr and for another class with overloaded operator& to verify such classes can
+        work in Variants.
+
+2017-04-17  Brady Eidson  <beidson@apple.com>
+
+        Make WKHTTPCookieStore public.
+        <rdar://problem/31024691> and https://bugs.webkit.org/show_bug.cgi?id=170920
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2017-04-17  Youenn Fablet  <youenn@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Alex Christensen.
+
+        Replacing READABLE_STREAM_API, READABLE_BYTE_STREAM_API and WRITABLE_STREAM_API compilation flag by:
+        - A STREAMS_API compilation flag.
+        - A ReadableByteStreamAPI and WritableStreamAPI runtime flags, turned off except for RWT and DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setFetchAPIEnabled):
+        (WTR::TestRunner::setWritableStreamAPIEnabled):
+        (WTR::TestRunner::setReadableByteStreamAPIEnabled):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-04-17  Tim Horton  <timothy_horton@apple.com>
+
+        Provide a viewport parameter to disable clipping to the safe area
+        https://bugs.webkit.org/show_bug.cgi?id=170766
+        <rdar://problem/31564634>
+
+        Reviewed by Beth Dakin.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setObscuredInsets):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setObscuredInsets):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setObscuredInsets):
+        Add a UIScriptController mechanism to install obscured insets
+        on the web view.
+
+2017-04-17  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Move isNullFunctionPointer down into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=170892
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/TestWTF.xcconfig:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/darwin/WeakLinking.cpp: Added.
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-iOS-v2.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-iOS.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-macOS-v2.tbd: Added.
+        * TestWebKitAPI/Tests/WTF/darwin/libTestWTFAlwaysMissing-macOS.tbd: Added.
+
+2017-04-17  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Correct poll when killing ServerProcess
+
+        Unreviewed infrastructure fix.
+
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._kill): A polled process equaling 'None' means the process is running.
+
+2017-04-17  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Enable getUserMedia API test
+        https://bugs.webkit.org/show_bug.cgi?id=170901
+        <rdar://problem/31656594>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj: Add test.
+
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::decidePolicyForUserMediaPermissionRequestCallBack):
+        (TestWebKitAPI::TEST): Enable capture with mock devices.
+        * TestWebKitAPI/Tests/WebKit2/getUserMedia.html: Update to mediaDevices.getUserMedia
+
+2017-04-17  Xan Lopez  <xan@igalia.com>
+
+        [GTK] Update the Fedora dependencies for WebKitGTK+
+        https://bugs.webkit.org/show_bug.cgi?id=170590
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * gtk/install-dependencies: add a bunch of modules necessary to
+        get a proper set of GStreamer codecs for WebRTC.
+
+2017-04-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Switch IDLAttributes.txt over to a more structured format so that more information can be added for each attribute
+        https://bugs.webkit.org/show_bug.cgi?id=170843
+
+        Reviewed by Chris Dumez.
+
+        * DumpRenderTree/DerivedSources.make:
+        * WebKitTestRunner/DerivedSources.make:
+        * Scripts/webkitpy/bindings/main.py:
+        (BindingsTests.generate_from_idl):
+        Pass IDLAttributes.json, as it is now mandatory to have one.
+
+2017-04-14  Mark Lam  <mark.lam@apple.com>
+
+        Update architectures in xcconfig files.
+        https://bugs.webkit.org/show_bug.cgi?id=170867
+        <rdar://problem/31628104>
+
+        Reviewed by Joseph Pecoraro.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MobileMiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-04-14  Brady Eidson  <beidson@apple.com>
+
+        Fix basic WKURLSchemeHandler bugs.
+        <rdar://problem/30647559> and https://bugs.webkit.org/show_bug.cgi?id=170862
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm: Added.
+        (-[SchemeHandler initWithData:mimeType:]):
+        (-[SchemeHandler dealloc]):
+        (-[SchemeHandler webView:startTask:]):
+        (-[SchemeHandler webView:stopTask:]):
+        (TEST):
+
+2017-04-14  Bill Ming  <mbbill@gmail.com>
+
+        webkit-patch failed to detect git repository
+        https://bugs.webkit.org/show_bug.cgi?id=170859
+
+        Reviewed by Daniel Bates.
+
+        Windows cmd does not accept single quoted path. So, using
+        double quotes here will provide better platform compatibility.
+
+        * Scripts/VCSUtils.pm:
+        (isGitDirectory):
+        (isGitSVNDirectory):
+        (svnRevisionForDirectory):
+        (svnInfoForPath):
+
+2017-04-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215374.
+
+        This change causes LayoutTests to exit early with crashes on
+        Sierra.
+
+        Reverted changeset:
+
+        "webkitpy: Ignore previously launched pid when system is under
+        stress"
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+        http://trac.webkit.org/changeset/215374
+
+2017-04-14  Dan Bernstein  <mitz@apple.com>
+
+        [ios-simulator] API test WebKit2.AdditionalReadAccessAllowedURLs is failing
+        https://bugs.webkit.org/show_bug.cgi?id=170856
+
+        Disabled the newly-added test in the Simulator, which doesn’t enforce sandboxing.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLs.mm:
+
+2017-04-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore previously launched pid when system is under stress
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+
+        Unreviewed infrastructure fix.
+
+        Drivers are destroyed between failing layout tests, which is not necessary and
+        prevents the work-around implemented in https://bugs.webkit.org/show_bug.cgi?id=170741.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (Worker._kill_driver): Do not destroy drivers when they are stopped.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.stop): Reset driver values set in initializer.
+
+2017-04-14  Andy Estes  <aestes@apple.com>
+
+        [ios-simulator] API test WebKit2.WKWebProcessPlugInRangeHandle timing out
+        https://bugs.webkit.org/show_bug.cgi?id=167594
+
+        Re-enabled this API test now that webkit.org/b/161967 is fixed.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleRangeHandle.mm:
+        (TEST):
+
+2017-04-14  Andy Estes  <aestes@apple.com>
+
+        [ios-simulator] API test WebKit2.DataDetectionReferenceDate timing out
+        https://bugs.webkit.org/show_bug.cgi?id=161967
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DataDetection.mm:
+        (TEST): Re-enabled WebKit2.DataDetectionReferenceDate.
+
+2017-04-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r215363.
+
+        This change causes LayoutTests to exit early with crashes.
+
+        Reverted changeset:
+
+        "webkitpy: Ignore previously launched pid when system is under
+        stress"
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+        http://trac.webkit.org/changeset/215363
+
+2017-04-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore previously launched pid when system is under stress
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+
+        Unreviewed infrastructure fix.
+
+        Drivers are destroyed between failing layout tests, which is not necessary and
+        prevents the work-around implemented in https://bugs.webkit.org/show_bug.cgi?id=170741.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (Worker._kill_driver): Do not destroy drivers when they are stopped.
+
+2017-04-14  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore previously launched pid when system is under stress
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+
+        Unreviewed infrastructure fix.
+
+        Server processes are destroyed in the driver, which is not necessary and prevents
+        the work-around implemented in https://bugs.webkit.org/show_bug.cgi?id=170741.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.run_test): Do not destroy server process.
+        (Driver._start): Only create the server process if it is None.
+        (Driver.stop): Do not destroy server process.
+
+2017-04-13  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Allow clients to specify in _WKProcessPoolConfiguration additional directory sandbox extensions
+        https://bugs.webkit.org/show_bug.cgi?id=170387
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLs.mm: Added.
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLsPlugin.mm: Added.
+        (-[AdditionalReadAccessAllowedURLsPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[AdditionalReadAccessAllowedURLsPlugIn dealloc]):
+        (-[AdditionalReadAccessAllowedURLsPlugIn readStringFromURL:completionHandler:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLsProtocol.h: Added.
+
+2017-04-13  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Ignore previously launched pid when system is under stress
+        https://bugs.webkit.org/show_bug.cgi?id=170741
+
+        Reviewed by David Kilzer.
+
+        We have seen cases where xcrun simctl launch will return a pid of a previous
+        process and the process will appear to be running even though it is crashing.
+        Ensure that the PID that simulator_process is receiving is not the pid of the
+        previously run process.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess._start): Check to make sure we aren't receiving an old PID.
+
+2017-04-13  Jonathan Bedard  <jbedard@apple.com>
+
+        Build ImageDiff with host SDK
+        https://bugs.webkit.org/show_bug.cgi?id=168531
+
+        Reviewed by David Kilzer.
+
+        ImageDiff should be built and run with the host SDK, not the target SDK.
+        Build ImageDiff twice, once for the target SDK and once for the host
+        as an intermediate step towards building for only the host SDK.
+
+        * ImageDiff/Makefile: Added.
+        * Makefile: Add ImageDiff to list of targets.
+        * Scripts/build-imagediff: Build bmalloc and WTF for the host.
+        * Scripts/build-webkit: Build ImageDiff for host.
+        * Scripts/webkitdirs.pm: Export extractNonMacOSHostConfiguration.
+        (extractNonMacOSHostConfiguration): Remove non-host configuration data from the array.
+        * Scripts/webkitperl/webkitdirs_unittest/extractNonMacOSHostConfiguration.pl: Added.
+        * Scripts/webkitpy/port/base.py:
+        (Port.check_build): Attempt to build image diff if not found.
+        (Port.check_image_diff): Enable logging flag.
+        (Port._build_image_diff): Allow webkitpy to build image-diff during testing.
+
+2017-04-12  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up SharedBuffer public functions
+        https://bugs.webkit.org/show_bug.cgi?id=170795
+
+        Reviewed by Andreas Kling.
+
+        * TestWebKitAPI/Tests/WebCore/SharedBuffer.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-04-12  Dan Bernstein  <mitz@apple.com>
+
+        [Mac] Future-proof .xcconfig files
+        https://bugs.webkit.org/show_bug.cgi?id=170802
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
 2017-04-12  Alex Christensen  <achristensen@webkit.org>
 
         Remove unused SharedBuffer::wrapCFDataArray

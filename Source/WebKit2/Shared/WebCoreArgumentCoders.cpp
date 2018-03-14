@@ -48,6 +48,7 @@
 #include <WebCore/Image.h>
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/Length.h>
+#include <WebCore/LengthBox.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
 #include <WebCore/ProtectionSpace.h>
@@ -388,6 +389,17 @@ bool ArgumentCoder<FloatRect>::decode(Decoder& decoder, FloatRect& floatRect)
     return SimpleArgumentCoder<FloatRect>::decode(decoder, floatRect);
 }
 
+
+void ArgumentCoder<FloatBoxExtent>::encode(Encoder& encoder, const FloatBoxExtent& floatBoxExtent)
+{
+    SimpleArgumentCoder<FloatBoxExtent>::encode(encoder, floatBoxExtent);
+}
+    
+bool ArgumentCoder<FloatBoxExtent>::decode(Decoder& decoder, FloatBoxExtent& floatBoxExtent)
+{
+    return SimpleArgumentCoder<FloatBoxExtent>::decode(decoder, floatBoxExtent);
+}
+    
 
 void ArgumentCoder<FloatSize>::encode(Encoder& encoder, const FloatSize& floatSize)
 {
@@ -1219,8 +1231,6 @@ void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
     encoder.encodeEnum(dragData.flags());
 #if PLATFORM(COCOA)
     encoder << dragData.pasteboardName();
-#endif
-#if PLATFORM(MAC)
     encoder << dragData.fileNames();
 #endif
     encoder.encodeEnum(dragData.dragDestinationAction());
@@ -1245,12 +1255,11 @@ bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
         return false;
 
     String pasteboardName;
+    Vector<String> fileNames;
 #if PLATFORM(COCOA)
     if (!decoder.decode(pasteboardName))
         return false;
-#endif
-    Vector<String> fileNames;
-#if PLATFORM(MAC)
+
     if (!decoder.decode(fileNames))
         return false;
 #endif

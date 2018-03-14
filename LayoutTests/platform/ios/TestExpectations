@@ -365,6 +365,8 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 
 # This test relies on EventSender.keydown(), which is not supported on iOS
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
+fast/events/beforeunload-alert-handled-keydown.html [ Skip ]
+fast/events/beforeunload-alert-unhandled-keydown.html [ Skip ]
 fast/events/beforeunload-alert-user-interaction.html [ Skip ]
 fast/forms/validation-bubble-escape-key-dismiss.html [ Skip ]
 fast/forms/validation-message-maxLength.html [ Skip ]
@@ -2891,8 +2893,6 @@ webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-lo
 
 webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]
 
-webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure ]
-
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
@@ -2933,3 +2933,10 @@ fast/css-generated-content/initial-letter-pagination-raised-rl.html [ Skip ]
 fast/css-generated-content/initial-letter-pagination-sunken-rl.html [ Skip ]
 
 webkit.org/b/158420 http/tests/navigation/redirect-to-fragment2.html [ Failure ]
+
+# These tests are not supported on ios-simulator
+workers/wasm-hashset-many-2.html [ Skip ]
+workers/wasm-hashset-many.html [ Skip ]
+workers/wasm-hashset.html [ Skip ]
+workers/wasm-long-compile-many.html [ Skip ]
+workers/wasm-long-compile.html [ Skip ]

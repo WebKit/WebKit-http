@@ -43,6 +43,8 @@ public:
         AesKeyParams,
         EcKeyParams,
         EcdhKeyDeriveParams,
+        EcdsaParams,
+        HkdfParams,
         HmacKeyParams,
         Pbkdf2Params,
         RsaHashedKeyGenParams,

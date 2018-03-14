@@ -39,6 +39,7 @@ namespace WebCore {
     macro(body) \
     macro(byobRequest) \
     macro(cancel) \
+    macro(cloneArrayBuffer) \
     macro(cloneForJS) \
     macro(closeRequested) \
     macro(closedPromiseCapability) \
@@ -79,6 +80,7 @@ namespace WebCore {
     macro(reader) \
     macro(readIntoRequests) \
     macro(readRequests) \
+    macro(readableByteStreamAPIEnabled) \
     macro(readableStreamController) \
     macro(readyPromiseCapability) \
     macro(removeTrack) \

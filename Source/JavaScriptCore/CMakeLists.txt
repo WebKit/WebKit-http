@@ -109,6 +109,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirReportUsedRegisters.cpp
     b3/air/AirSimplifyCFG.cpp
     b3/air/AirSpecial.cpp
+    b3/air/AirStackAllocation.cpp
     b3/air/AirStackSlot.cpp
     b3/air/AirStackSlotKind.cpp
     b3/air/AirTmp.cpp
@@ -1269,6 +1270,8 @@ set(JavaScriptCore_FORWARDING_HEADERS_DIRECTORIES
     inspector/agents
     inspector/augmentable
     inspector/remote
+
+    wasm/js
 )
 
 # GENERATOR 1-B: particular LUT creator (for 1 file only)

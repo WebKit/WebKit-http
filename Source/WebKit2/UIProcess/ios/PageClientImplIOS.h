@@ -122,7 +122,7 @@ private:
 
     void dynamicViewportUpdateChangedTarget(double newScale, const WebCore::FloatPoint& newScrollPosition, uint64_t transactionID) override;
     void couldNotRestorePageState() override;
-    void restorePageState(std::optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatSize&, double) override;
+    void restorePageState(std::optional<WebCore::FloatPoint>, const WebCore::FloatPoint&, const WebCore::FloatBoxExtent&, double) override;
     void restorePageCenterAndScale(std::optional<WebCore::FloatPoint>, double) override;
 
     void startAssistingNode(const AssistedNodeInformation&, bool userIsInteracting, bool blurPreviousNode, API::Object* userData) override;
@@ -197,6 +197,8 @@ private:
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
     void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
+
+    void didChangeClipToSafeArea(bool clipToSafeArea) override;
 
 #if USE(QUICK_LOOK)
     void requestPasswordForQuickLookDocument(const String& fileName, std::function<void(const String&)>&&) override;
