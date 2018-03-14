@@ -73,7 +73,6 @@ find_package(ICU REQUIRED)
 find_package(Threads REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(GLIB 2.38.0 REQUIRED COMPONENTS gio gio-unix gobject gthread gmodule)
-find_package(GnuTLS 2.12.23 REQUIRED)
 
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(Fontconfig 2.8.0 REQUIRED)
