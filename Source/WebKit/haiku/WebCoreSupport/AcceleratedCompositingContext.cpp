@@ -130,7 +130,7 @@ void AcceleratedCompositingContext::compositeLayers(BRect updateRect)
     m_textureMapper->endPainting();
 
     if (currentRootLayer.descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
-        m_syncTimer.startOneShot(1 / compositingFrameRate);
+        m_syncTimer.startOneShot(WTF::Seconds(1 / compositingFrameRate));
 #endif
 }
 
@@ -141,7 +141,7 @@ void AcceleratedCompositingContext::setRootGraphicsLayer(GraphicsLayer* rootLaye
 #endif
 
     if (!m_syncTimer.isActive())
-        m_syncTimer.startOneShot(0);
+        m_syncTimer.startOneShot(WTF::Seconds(0));
 }
 
 } // namespace WebCore

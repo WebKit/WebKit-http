@@ -9,7 +9,6 @@ LIST(APPEND WTF_SOURCES
     generic/WorkQueueGeneric.cpp
 
     OSAllocatorPosix.cpp
-    ThreadIdentifierDataPthreads.cpp
     ThreadingPthreads.cpp
 
     unicode/icu/CollatorICU.cpp
