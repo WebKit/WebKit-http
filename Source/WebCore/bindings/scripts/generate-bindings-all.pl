@@ -118,8 +118,8 @@ my @idlFilesToUpdate = grep &{sub {
                 implicitDependencies($depFile));
     needsUpdate(\@output, \@deps);
 }}, @idlFiles;
-my $abort = 0;
 
+my $abort = 0;
 my $totalCount = @idlFilesToUpdate;
 my $currentCount = 0;
 
@@ -164,11 +164,9 @@ sub spawnGenerateBindingsIfNeeded
     return if $abort;
     return unless @idlFilesToUpdate;
     my $file = shift @idlFilesToUpdate;
-
     $currentCount++;
     my $basename = basename($file);
     printProgress("[$currentCount/$totalCount] $basename");
-
     my $pid = spawnCommand($perl, @args, $file);
     $abort = 1 unless defined $pid;
 }

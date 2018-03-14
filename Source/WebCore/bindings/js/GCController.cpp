@@ -71,7 +71,7 @@ void GCController::garbageCollectSoon()
 void GCController::garbageCollectOnNextRunLoop()
 {
     if (!m_GCTimer.isActive())
-        m_GCTimer.startOneShot(0);
+        m_GCTimer.startOneShot(0_s);
 }
 
 void GCController::gcTimerFired()
@@ -101,14 +101,14 @@ void GCController::garbageCollectNowIfNotDoneRecently()
 
 void GCController::garbageCollectOnAlternateThreadForDebugging(bool waitUntilDone)
 {
-    ThreadIdentifier threadID = createThread(collect, 0, "WebCore: GCController");
+    RefPtr<Thread> thread = Thread::create(collect, 0, "WebCore: GCController");
 
     if (waitUntilDone) {
-        waitForThreadCompletion(threadID);
+        thread->waitForCompletion();
         return;
     }
 
-    detachThread(threadID);
+    thread->detach();
 }
 
 void GCController::setJavaScriptGarbageCollectorTimerEnabled(bool enable)

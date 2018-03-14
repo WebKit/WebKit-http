@@ -28,6 +28,7 @@
 
 #include <chrono>
 #include <functional>
+#include <wtf/MonotonicTime.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Optional.h>
 #include <wtf/Seconds.h>
@@ -47,39 +48,24 @@ class TimerHeapElement;
 class TimerBase {
     WTF_MAKE_NONCOPYABLE(TimerBase);
     WTF_MAKE_FAST_ALLOCATED;
-protected:
-    static inline double msToSeconds(std::chrono::milliseconds duration) { return duration.count() * 0.001; }
-    static inline std::chrono::milliseconds secondsToMS(double duration) { return std::chrono::milliseconds((std::chrono::milliseconds::rep)(duration * 1000)); }
-
 public:
     WEBCORE_EXPORT TimerBase();
     WEBCORE_EXPORT virtual ~TimerBase();
 
-    WEBCORE_EXPORT void start(double nextFireInterval, double repeatInterval);
+    WEBCORE_EXPORT void start(Seconds nextFireInterval, Seconds repeatInterval);
 
-    void startRepeating(double repeatInterval) { start(repeatInterval, repeatInterval); }
-    void startRepeating(std::chrono::milliseconds repeatInterval) { startRepeating(msToSeconds(repeatInterval)); }
-    void startRepeating(Seconds repeatInterval) { startRepeating(repeatInterval.value()); }
-
-    void startOneShot(double interval) { start(interval, 0); }
-    void startOneShot(std::chrono::milliseconds interval) { startOneShot(msToSeconds(interval)); }
-    void startOneShot(Seconds interval) { start(interval.value(), 0); }
+    void startRepeating(Seconds repeatInterval) { start(repeatInterval, repeatInterval); }
+    void startOneShot(Seconds interval) { start(interval, 0_s); }
 
     WEBCORE_EXPORT void stop();
     bool isActive() const;
 
-    double nextFireInterval() const;
-    double nextUnalignedFireInterval() const;
-    double repeatInterval() const { return m_repeatInterval; }
-    std::chrono::milliseconds repeatIntervalMS() const { return secondsToMS(repeatInterval()); }
+    Seconds nextFireInterval() const;
+    Seconds nextUnalignedFireInterval() const;
+    Seconds repeatInterval() const { return m_repeatInterval; }
 
-    void augmentFireInterval(double delta) { setNextFireTime(m_nextFireTime + delta); }
-    void augmentFireInterval(std::chrono::milliseconds delta) { augmentFireInterval(msToSeconds(delta)); }
-    void augmentFireInterval(Seconds delta) { augmentFireInterval(delta.value()); }
-
-    void augmentRepeatInterval(double delta) { augmentFireInterval(delta); m_repeatInterval += delta; }
-    void augmentRepeatInterval(std::chrono::milliseconds delta) { augmentRepeatInterval(msToSeconds(delta)); }
-    void augmentRepeatInterval(Seconds delta) { augmentRepeatInterval(delta.value()); }
+    void augmentFireInterval(Seconds delta) { setNextFireTime(m_nextFireTime + delta); }
+    void augmentRepeatInterval(Seconds delta) { augmentFireInterval(delta); m_repeatInterval += delta; }
 
     void didChangeAlignmentInterval();
 
@@ -88,17 +74,17 @@ public:
 private:
     virtual void fired() = 0;
 
-    virtual std::optional<Seconds> alignedFireTime(Seconds) const { return std::nullopt; }
+    virtual std::optional<MonotonicTime> alignedFireTime(MonotonicTime) const { return std::nullopt; }
 
     void checkConsistency() const;
     void checkHeapIndex() const;
 
-    void setNextFireTime(double);
+    void setNextFireTime(MonotonicTime);
 
     bool inHeap() const { return m_heapIndex != -1; }
 
     bool hasValidHeapPosition() const;
-    void updateHeapIfNeeded(double oldTime);
+    void updateHeapIfNeeded(MonotonicTime oldTime);
 
     void heapDecreaseKey();
     void heapDelete();
@@ -110,16 +96,16 @@ private:
 
     Vector<TimerBase*>& timerHeap() const { ASSERT(m_cachedThreadGlobalTimerHeap); return *m_cachedThreadGlobalTimerHeap; }
 
-    double m_nextFireTime; // 0 if inactive
-    double m_unalignedNextFireTime; // m_nextFireTime not considering alignment interval
-    double m_repeatInterval; // 0 if not repeating
-    int m_heapIndex; // -1 if not in heap
+    MonotonicTime m_nextFireTime; // 0 if inactive
+    MonotonicTime m_unalignedNextFireTime; // m_nextFireTime not considering alignment interval
+    Seconds m_repeatInterval; // 0 if not repeating
+    int m_heapIndex { -1 }; // -1 if not in heap
     unsigned m_heapInsertionOrder; // Used to keep order among equal-fire-time timers
-    Vector<TimerBase*>* m_cachedThreadGlobalTimerHeap;
+    Vector<TimerBase*>* m_cachedThreadGlobalTimerHeap { nullptr };
 
 #ifndef NDEBUG
     ThreadIdentifier m_thread;
-    bool m_wasDeleted;
+    bool m_wasDeleted { false };
 #endif
 
     friend class ThreadTimers;
@@ -159,18 +145,18 @@ inline bool TimerBase::isActive() const
 #else
     ASSERT(WebThreadIsCurrent() || pthread_main_np() || m_thread == currentThread());
 #endif // PLATFORM(IOS)
-    return m_nextFireTime;
+    return static_cast<bool>(m_nextFireTime);
 }
 
 class DeferrableOneShotTimer : protected TimerBase {
 public:
     template<typename TimerFiredClass>
-    DeferrableOneShotTimer(TimerFiredClass& object, void (TimerFiredClass::*function)(), std::chrono::milliseconds delay)
+    DeferrableOneShotTimer(TimerFiredClass& object, void (TimerFiredClass::*function)(), Seconds delay)
         : DeferrableOneShotTimer(std::bind(function, &object), delay)
     {
     }
 
-    DeferrableOneShotTimer(std::function<void ()> function, std::chrono::milliseconds delay)
+    DeferrableOneShotTimer(std::function<void ()> function, Seconds delay)
         : m_function(WTFMove(function))
         , m_delay(delay)
         , m_shouldRestartWhenTimerFires(false)
@@ -212,7 +198,7 @@ private:
 
     std::function<void ()> m_function;
 
-    std::chrono::milliseconds m_delay;
+    Seconds m_delay;
     bool m_shouldRestartWhenTimerFires;
 };
 

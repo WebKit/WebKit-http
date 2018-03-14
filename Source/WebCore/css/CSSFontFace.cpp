@@ -527,7 +527,7 @@ void CSSFontFace::setStatus(Status newStatus)
     }
 
     if (newStatus == Status::Loading)
-        m_timeoutTimer.startOneShot(webFontsShouldAlwaysFallBack() ? 0 : 3);
+        m_timeoutTimer.startOneShot(webFontsShouldAlwaysFallBack() ? 0_s : 3_s);
     else if (newStatus == Status::Success || newStatus == Status::Failure)
         m_timeoutTimer.stop();
 
@@ -629,7 +629,7 @@ RefPtr<Font> CSSFontFace::font(const FontDescription& fontDescription, bool synt
                 continue;
             return Font::create(FontCache::singleton().lastResortFallbackFontForEveryCharacter(fontDescription)->platformData(), true, true);
         case CSSFontFaceSource::Status::Success:
-            if (RefPtr<Font> result = source->font(fontDescription, syntheticBold, syntheticItalic, m_featureSettings, m_variantSettings))
+            if (RefPtr<Font> result = source->font(fontDescription, syntheticBold, syntheticItalic, m_featureSettings, m_variantSettings, m_fontSelectionCapabilities))
                 return result;
             break;
         case CSSFontFaceSource::Status::Failure:

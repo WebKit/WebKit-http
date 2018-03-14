@@ -92,6 +92,7 @@
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
 #include "MediaProducer.h"
+#include "MediaResourceLoader.h"
 #include "MediaStreamTrack.h"
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
@@ -151,6 +152,7 @@
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
 #include <wtf/MemoryPressureHandler.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -467,8 +469,9 @@ Internals::Internals(Document& document)
 #endif
 
 #if ENABLE(WEB_RTC)
+#if PLATFORM(GTK)
     enableMockMediaEndpoint();
-    useMockRTCPeerConnectionFactory(String());
+#endif
 #if USE(LIBWEBRTC)
     if (document.page())
         document.page()->rtcController().disableICECandidateFiltering();
@@ -600,11 +603,11 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
     return resource && resource->status() == CachedResource::Cached;
 }
 
-String Internals::xhrResponseSource(XMLHttpRequest& request)
+static String responseSourceToString(const ResourceResponse& response)
 {
-    if (request.resourceResponse().isNull())
+    if (response.isNull())
         return "Null response";
-    switch (request.resourceResponse().source()) {
+    switch (response.source()) {
     case ResourceResponse::Source::Unknown:
         return "Unknown";
     case ResourceResponse::Source::Network:
@@ -620,6 +623,35 @@ String Internals::xhrResponseSource(XMLHttpRequest& request)
     }
     ASSERT_NOT_REACHED();
     return "Error";
+}
+
+String Internals::xhrResponseSource(XMLHttpRequest& request)
+{
+    return responseSourceToString(request.resourceResponse());
+}
+
+Vector<String> Internals::mediaResponseSources(HTMLMediaElement& media)
+{
+    auto* resourceLoader = media.lastMediaResourceLoaderForTesting();
+    if (!resourceLoader)
+        return { };
+    Vector<String> result;
+    auto responses = resourceLoader->responsesForTesting();
+    for (auto& response : responses)
+        result.append(responseSourceToString(response));
+    return result;
+}
+
+Vector<String> Internals::mediaResponseContentRanges(HTMLMediaElement& media)
+{
+    auto* resourceLoader = media.lastMediaResourceLoaderForTesting();
+    if (!resourceLoader)
+        return { };
+    Vector<String> result;
+    auto responses = resourceLoader->responsesForTesting();
+    for (auto& response : responses)
+        result.append(response.httpHeaderField(HTTPHeaderName::ContentRange));
+    return result;
 }
 
 bool Internals::isSharingStyleSheetContents(HTMLLinkElement& a, HTMLLinkElement& b)
@@ -728,7 +760,7 @@ void Internals::setImageFrameDecodingDuration(HTMLImageElement& element, float d
     if (!is<BitmapImage>(image))
         return;
     
-    downcast<BitmapImage>(*image).setFrameDecodingDurationForTesting(duration);
+    downcast<BitmapImage>(*image).setFrameDecodingDurationForTesting(Seconds { duration });
 }
 
 void Internals::resetImageAnimation(HTMLImageElement& element)
@@ -798,6 +830,17 @@ void Internals::disableTileSizeUpdateDelay()
     if (auto* backing = view->tiledBacking())
         backing->setTileSizeUpdateDelayDisabledForTesting(true);
 }
+
+void Internals::setSpeculativeTilingDelayDisabledForTesting(bool disabled)
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return;
+
+    if (auto* frameView = document->frame()->view())
+        frameView->setSpeculativeTilingDelayDisabledForTesting(disabled);
+}
+
 
 Node* Internals::treeScopeRootNode(Node& node)
 {
@@ -1081,7 +1124,7 @@ ExceptionOr<bool> Internals::isTimerThrottled(int timeoutId)
     if (timer->intervalClampedToMinimum() > timer->m_originalInterval)
         return true;
 
-    return !!timer->alignedFireTime(0_s);
+    return !!timer->alignedFireTime(MonotonicTime { });
 }
 
 bool Internals::isRequestAnimationFrameThrottled() const
@@ -3188,6 +3231,8 @@ static PlatformMediaSession::MediaType mediaTypeFromString(const String& mediaTy
         return PlatformMediaSession::VideoAudio;
     if (equalLettersIgnoringASCIICase(mediaTypeString, "webaudio"))
         return PlatformMediaSession::WebAudio;
+    if (equalLettersIgnoringASCIICase(mediaTypeString, "mediastreamcapturingaudio"))
+        return PlatformMediaSession::MediaStreamCapturingAudio;
 
     return PlatformMediaSession::None;
 }

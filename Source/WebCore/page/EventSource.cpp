@@ -132,13 +132,13 @@ void EventSource::scheduleInitialConnect()
     ASSERT(m_state == CONNECTING);
     ASSERT(!m_requestInFlight);
 
-    m_connectTimer.startOneShot(0);
+    m_connectTimer.startOneShot(0_s);
 }
 
 void EventSource::scheduleReconnect()
 {
     m_state = CONNECTING;
-    m_connectTimer.startOneShot(m_reconnectDelay / 1000.0);
+    m_connectTimer.startOneShot(1_ms * m_reconnectDelay);
     dispatchEvent(Event::create(eventNames().errorEvent, false, false));
 }
 

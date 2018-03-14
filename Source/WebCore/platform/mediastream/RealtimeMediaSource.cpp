@@ -63,7 +63,6 @@ void RealtimeMediaSource::reset()
 {
     m_stopped = false;
     m_muted = false;
-    m_readonly = false;
 }
 
 void RealtimeMediaSource::addObserver(RealtimeMediaSource::Observer& observer)
@@ -88,9 +87,6 @@ void RealtimeMediaSource::setMuted(bool muted)
 
     m_muted = muted;
 
-    if (stopped())
-        return;
-
     if (muted) {
         // FIXME: We need to figure out how to guarantee that at least one black video frame is
         // emitted after being muted.
@@ -98,6 +94,11 @@ void RealtimeMediaSource::setMuted(bool muted)
     } else
         startProducingData();
 
+    notifyMutedObservers();
+}
+
+void RealtimeMediaSource::notifyMutedObservers() const
+{
     for (auto& observer : m_observers)
         observer->sourceMutedChanged();
 }
@@ -143,11 +144,6 @@ void RealtimeMediaSource::audioSamplesAvailable(const MediaTime& time, const Pla
 {
     for (const auto& observer : m_observers)
         observer->audioSamplesAvailable(time, audioData, description, numberOfFrames);
-}
-
-bool RealtimeMediaSource::readonly() const
-{
-    return m_readonly;
 }
 
 void RealtimeMediaSource::stop(Observer* callingObserver)

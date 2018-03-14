@@ -245,8 +245,8 @@ ExceptionOr<void> XMLHttpRequest::setTimeout(unsigned timeout)
         return { };
 
     // If timeout is zero, we should use the default network timeout. But we disabled it so let's mimic it with a 60 seconds timeout value.
-    std::chrono::duration<double> interval = std::chrono::milliseconds { m_timeoutMilliseconds ? m_timeoutMilliseconds : 60000 } - (std::chrono::steady_clock::now() - m_sendingTime);
-    m_timeoutTimer.startOneShot(std::max(0.0, interval.count()));
+    Seconds interval = Seconds { m_timeoutMilliseconds ? m_timeoutMilliseconds / 1000. : 60. } - (MonotonicTime::now() - m_sendingTime);
+    m_timeoutTimer.startOneShot(std::max(interval, 0_s));
     return { };
 }
 
@@ -491,7 +491,7 @@ std::optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
             return ExceptionOr<void> { Exception { NETWORK_ERR } };
         setPendingActivity(this);
         m_timeoutTimer.stop();
-        m_networkErrorTimer.startOneShot(0);
+        m_networkErrorTimer.startOneShot(0_s);
         return ExceptionOr<void> { };
     }
 
@@ -737,8 +737,8 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
             request.setTimeoutInterval(m_timeoutMilliseconds / 1000.0);
         else {
             request.setTimeoutInterval(std::numeric_limits<double>::infinity());
-            m_sendingTime = std::chrono::steady_clock::now();
-            m_timeoutTimer.startOneShot(std::chrono::milliseconds { m_timeoutMilliseconds });
+            m_sendingTime = MonotonicTime::now();
+            m_timeoutTimer.startOneShot(1_ms * m_timeoutMilliseconds);
         }
     }
 
@@ -1028,7 +1028,7 @@ void XMLHttpRequest::didFail(const ResourceError& error)
         m_sendFlag = false;
         setPendingActivity(this);
         m_timeoutTimer.stop();
-        m_networkErrorTimer.startOneShot(0);
+        m_networkErrorTimer.startOneShot(0_s);
         return;
     }
     m_exceptionCode = NETWORK_ERR;
@@ -1249,7 +1249,7 @@ void XMLHttpRequest::resume()
     // We are not allowed to execute arbitrary JS in resume() so dispatch
     // the error event in a timer.
     if (m_dispatchErrorOnResuming && !m_resumeTimer.isActive())
-        m_resumeTimer.startOneShot(0);
+        m_resumeTimer.startOneShot(0_s);
 }
 
 void XMLHttpRequest::resumeTimerFired()

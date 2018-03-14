@@ -100,9 +100,9 @@
 
 namespace WebCore {
 
-const double secondsBetweenRestoreAttempts = 1.0;
+static const Seconds secondsBetweenRestoreAttempts { 1_s };
 const int maxGLErrorsAllowedToConsole = 256;
-static const std::chrono::seconds checkContextLossHandlingDelay { 3 };
+static const Seconds checkContextLossHandlingDelay { 3_s };
 
 namespace {
     
@@ -4613,7 +4613,7 @@ void WebGLRenderingContextBase::loseContextImpl(WebGLRenderingContextBase::LostC
 
     // Always defer the dispatch of the context lost event, to implement
     // the spec behavior of queueing a task.
-    m_dispatchContextLostEventTimer.startOneShot(0);
+    m_dispatchContextLostEventTimer.startOneShot(0_s);
 }
 
 void WebGLRenderingContextBase::forceRestoreContext()
@@ -4630,7 +4630,7 @@ void WebGLRenderingContextBase::forceRestoreContext()
     }
 
     if (!m_restoreTimer.isActive())
-        m_restoreTimer.startOneShot(0);
+        m_restoreTimer.startOneShot(0_s);
 }
 
 PlatformLayer* WebGLRenderingContextBase::platformLayer() const
@@ -5565,7 +5565,7 @@ void WebGLRenderingContextBase::dispatchContextLostEvent()
     canvas().dispatchEvent(event);
     m_restoreAllowed = event->defaultPrevented();
     if (m_contextLostMode == RealLostContext && m_restoreAllowed)
-        m_restoreTimer.startOneShot(0);
+        m_restoreTimer.startOneShot(0_s);
 }
 
 void WebGLRenderingContextBase::maybeRestoreContext()

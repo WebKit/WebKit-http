@@ -256,10 +256,8 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
     
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (mediaStreamEnabled || webRTCEnabled)
+    if (!parameters.shouldCaptureAudioInUIProcess && (mediaStreamEnabled || webRTCEnabled))
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
-
-    parameters.shouldCaptureAudioInUIProcess = m_defaultPageGroup->preferences().shouldCaptureAudioInUIProcess();
 #endif
 }
 
@@ -292,7 +290,7 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 #endif
 
     parameters.shouldSuppressMemoryPressureHandler = [defaults boolForKey:WebKitSuppressMemoryPressureHandlerDefaultsKey];
-    parameters.loadThrottleLatency = std::chrono::milliseconds([defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey]);
+    parameters.loadThrottleLatency = Seconds { [defaults integerForKey:WebKitNetworkLoadThrottleLatencyMillisecondsDefaultsKey] / 1000. };
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     RetainPtr<CFDataRef> cookieStorageData = adoptCF(CFHTTPCookieStorageCreateIdentifyingData(kCFAllocatorDefault, [[NSHTTPCookieStorage sharedHTTPCookieStorage] _cookieStorage]));

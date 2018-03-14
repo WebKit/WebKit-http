@@ -708,7 +708,7 @@
 #endif
 
 #if !defined(USE_JSVALUE64) && !defined(USE_JSVALUE32_64)
-#if (CPU(X86_64) && (OS(UNIX) || OS(WINDOWS))) \
+#if (CPU(X86_64) && !defined(__ILP32__) && (OS(UNIX) || OS(WINDOWS))) \
     || (CPU(IA64) && !CPU(IA64_32)) \
     || CPU(ALPHA) \
     || CPU(ARM64) \
@@ -792,8 +792,7 @@
 #define ENABLE_CONCURRENT_JS 1
 #endif
 
-/* FIXME: Enable it on Linux once https://bugs.webkit.org/show_bug.cgi?id=169510 is fixed. */
-#if CPU(ARM64) && OS(DARWIN)
+#if CPU(ARM64)
 #define HAVE_LL_SC 1
 #endif // CPU(ARM64) && OS(DARWIN)
 
@@ -1084,7 +1083,7 @@
 #define USE_REQUEST_ANIMATION_FRAME_TIMER 1
 #endif
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
 #define USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR 1
 #endif
 
@@ -1248,6 +1247,10 @@
 
 #if PLATFORM(COCOA) && ENABLE(WEB_RTC)
 #define USE_LIBWEBRTC 1
+#endif
+
+#if OS(DARWIN) || ((OS(FREEBSD) || defined(__GLIBC__)) && (CPU(X86) || CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)))
+#define HAVE_MACHINE_CONTEXT 1
 #endif
 
 #endif /* WTF_Platform_h */

@@ -4400,7 +4400,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 #endif
 }
 
-- (void)_stopMediaCapture
+- (void)_muteMediaCapture
 {
     _page->setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
 }
@@ -5005,7 +5005,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #endif
 }
 
-- (AVFunctionBarScrubber *)_mediaPlaybackControlsView
+- (id)_mediaPlaybackControlsView
 {
 #if HAVE(TOUCH_BAR)
     return _impl->clientWantsMediaPlaybackControlsView() ? _impl->mediaPlaybackControlsView() : nil;
@@ -5015,7 +5015,7 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 // This method is for subclasses to override.
-- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView
+- (void)_addMediaPlaybackControlsView:(id)mediaPlaybackControlsView
 {
 }
 

@@ -135,7 +135,7 @@ protected:
         m_haveToldClient = true;
 
         UserGestureIndicator gestureIndicator(userGestureToForward());
-        frame.loader().clientRedirected(m_url, delay(), currentTime() + timer.nextFireInterval(), lockBackForwardList());
+        frame.loader().clientRedirected(m_url, delay(), currentTime() + timer.nextFireInterval().value(), lockBackForwardList());
     }
 
     void didStopTimer(Frame& frame, bool newLoadInProgress) override
@@ -278,7 +278,7 @@ public:
         m_haveToldClient = true;
 
         UserGestureIndicator gestureIndicator(userGestureToForward());
-        frame.loader().clientRedirected(m_submission->requestURL(), delay(), currentTime() + timer.nextFireInterval(), lockBackForwardList());
+        frame.loader().clientRedirected(m_submission->requestURL(), delay(), currentTime() + timer.nextFireInterval().value(), lockBackForwardList());
     }
 
     void didStopTimer(Frame& frame, bool newLoadInProgress) override
@@ -541,7 +541,7 @@ void NavigationScheduler::startTimer()
     if (!m_redirect->shouldStartTimer(m_frame))
         return;
 
-    double delay = m_redirect->delay();
+    Seconds delay = 1_s * m_redirect->delay();
     m_timer.startOneShot(delay);
     InspectorInstrumentation::frameScheduledNavigation(m_frame, delay);
     m_redirect->didStartTimer(m_frame, m_timer); // m_redirect may be null on return (e.g. the client canceled the load)

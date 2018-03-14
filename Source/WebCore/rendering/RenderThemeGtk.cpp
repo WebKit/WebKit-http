@@ -1802,7 +1802,7 @@ bool RenderThemeGtk::paintInnerSpinButton(const RenderObject& renderObject, cons
 }
 #endif // GTK_CHECK_VERSION(3, 20, 0)
 
-double RenderThemeGtk::caretBlinkInterval() const
+Seconds RenderThemeGtk::caretBlinkInterval() const
 {
     GtkSettings* settings = gtk_settings_get_default();
 
@@ -1812,9 +1812,9 @@ double RenderThemeGtk::caretBlinkInterval() const
     g_object_get(settings, "gtk-cursor-blink", &shouldBlink, "gtk-cursor-blink-time", &time, nullptr);
 
     if (!shouldBlink)
-        return 0;
+        return 0_s;
 
-    return time / 2000.;
+    return 500_us * time;
 }
 
 enum StyleColorType { StyleColorBackground, StyleColorForeground };
@@ -2111,15 +2111,15 @@ void RenderThemeGtk::adjustProgressBarStyle(StyleResolver&, RenderStyle& style, 
 // These values have been copied from RenderThemeChromiumSkia.cpp
 static const int progressActivityBlocks = 5;
 static const int progressAnimationFrames = 10;
-static const double progressAnimationInterval = 0.125;
-double RenderThemeGtk::animationRepeatIntervalForProgressBar(RenderProgress&) const
+static const Seconds progressAnimationInterval { 125_ms };
+Seconds RenderThemeGtk::animationRepeatIntervalForProgressBar(RenderProgress&) const
 {
     return progressAnimationInterval;
 }
 
 double RenderThemeGtk::animationDurationForProgressBar(RenderProgress&) const
 {
-    return progressAnimationInterval * progressAnimationFrames * 2; // "2" for back and forth;
+    return progressAnimationInterval.value() * progressAnimationFrames * 2; // "2" for back and forth;
 }
 
 IntRect RenderThemeGtk::calculateProgressRect(const RenderObject& renderObject, const IntRect& fullBarRect)

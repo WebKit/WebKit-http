@@ -157,14 +157,14 @@ using namespace SVGNames;
 // during a scroll. The short interval is used if the content responds to the mouse events
 // in fakeMouseMoveDurationThreshold or less, otherwise the long interval is used.
 const double fakeMouseMoveDurationThreshold = 0.01;
-const double fakeMouseMoveShortInterval = 0.1;
-const double fakeMouseMoveLongInterval = 0.25;
+const Seconds fakeMouseMoveShortInterval = { 100_ms };
+const Seconds fakeMouseMoveLongInterval = { 250_ms };
 #endif
 
 #if ENABLE(CURSOR_SUPPORT)
 // The amount of time to wait for a cursor update on style and layout changes
 // Set to 50Hz, no need to be faster than common screen refresh rate
-const double cursorUpdateInterval = 0.02;
+static const Seconds cursorUpdateInterval { 20_ms };
 
 const int maximumCursorSize = 128;
 #endif
@@ -1487,34 +1487,62 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
             return iBeam;
         return pointerCursor();
     }
-    case CursorCross:
-        return crossCursor();
+    case CursorDefault:
+        return pointerCursor();
+    case CursorNone:
+        return noneCursor();
+    case CursorContextMenu:
+        return contextMenuCursor();
+    case CursorHelp:
+        return helpCursor();
     case CursorPointer:
         return handCursor();
+    case CursorProgress:
+        return progressCursor();
+    case CursorWait:
+        return waitCursor();
+    case CursorCell:
+        return cellCursor();
+    case CursorCrosshair:
+        return crossCursor();
+    case CursorText:
+        return iBeamCursor();
+    case CursorVerticalText:
+        return verticalTextCursor();
+    case CursorAlias:
+        return aliasCursor();
+    case CursorCopy:
+        return copyCursor();
     case CursorMove:
         return moveCursor();
-    case CursorAllScroll:
-        return moveCursor();
+    case CursorNoDrop:
+        return noDropCursor();
+    case CursorNotAllowed:
+        return notAllowedCursor();
+    case CursorGrab:
+        return grabCursor();
+    case CursorGrabbing:
+        return grabbingCursor();
     case CursorEResize:
         return eastResizeCursor();
-    case CursorWResize:
-        return westResizeCursor();
     case CursorNResize:
         return northResizeCursor();
-    case CursorSResize:
-        return southResizeCursor();
     case CursorNeResize:
         return northEastResizeCursor();
-    case CursorSwResize:
-        return southWestResizeCursor();
     case CursorNwResize:
         return northWestResizeCursor();
+    case CursorSResize:
+        return southResizeCursor();
     case CursorSeResize:
         return southEastResizeCursor();
-    case CursorNsResize:
-        return northSouthResizeCursor();
+    case CursorSwResize:
+        return southWestResizeCursor();
+    case CursorWResize:
+        return westResizeCursor();
     case CursorEwResize:
         return eastWestResizeCursor();
+    case CursorNsResize:
+        return northSouthResizeCursor();
     case CursorNeswResize:
         return northEastSouthWestResizeCursor();
     case CursorNwseResize:
@@ -1523,40 +1551,12 @@ std::optional<Cursor> EventHandler::selectCursor(const HitTestResult& result, bo
         return columnResizeCursor();
     case CursorRowResize:
         return rowResizeCursor();
-    case CursorText:
-        return iBeamCursor();
-    case CursorWait:
-        return waitCursor();
-    case CursorHelp:
-        return helpCursor();
-    case CursorVerticalText:
-        return verticalTextCursor();
-    case CursorCell:
-        return cellCursor();
-    case CursorContextMenu:
-        return contextMenuCursor();
-    case CursorProgress:
-        return progressCursor();
-    case CursorNoDrop:
-        return noDropCursor();
-    case CursorAlias:
-        return aliasCursor();
-    case CursorCopy:
-        return copyCursor();
-    case CursorNone:
-        return noneCursor();
-    case CursorNotAllowed:
-        return notAllowedCursor();
-    case CursorDefault:
-        return pointerCursor();
+    case CursorAllScroll:
+        return moveCursor();
     case CursorZoomIn:
         return zoomInCursor();
     case CursorZoomOut:
         return zoomOutCursor();
-    case CursorWebkitGrab:
-        return grabCursor();
-    case CursorWebkitGrabbing:
-        return grabbingCursor();
     }
     return pointerCursor();
 }
@@ -2940,7 +2940,7 @@ bool EventHandler::sendContextMenuEventForKey()
 void EventHandler::scheduleHoverStateUpdate()
 {
     if (!m_hoverTimer.isActive())
-        m_hoverTimer.startOneShot(0);
+        m_hoverTimer.startOneShot(0_s);
 }
 
 #if ENABLE(CURSOR_SUPPORT)

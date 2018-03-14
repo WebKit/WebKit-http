@@ -143,7 +143,7 @@ using namespace WebCore;
 static const double plugInAutoStartExpirationTimeUpdateThreshold = 29 * 24 * 60 * 60;
 
 // This should be greater than tileRevalidationTimeout in TileController.
-static const double nonVisibleProcessCleanupDelay = 10;
+static const Seconds nonVisibleProcessCleanupDelay { 10_s };
 
 namespace WebKit {
 
@@ -200,7 +200,7 @@ WebProcess::WebProcess()
     m_resourceLoadStatisticsStore->setNotificationCallback([this] {
         if (m_statisticsChangedTimer.isActive())
             return;
-        m_statisticsChangedTimer.startOneShot(std::chrono::seconds(5));
+        m_statisticsChangedTimer.startOneShot(5_s);
     });
 }
 
@@ -258,7 +258,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     platformInitializeWebProcess(WTFMove(parameters));
 
     // Match the QoS of the UIProcess and the scrolling thread but use a slightly lower priority.
-    WTF::setCurrentThreadIsUserInteractive(-1);
+    WTF::Thread::setCurrentThreadIsUserInteractive(-1);
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
     if (!m_suppressMemoryPressureHandler) {
@@ -540,7 +540,7 @@ void WebProcess::setCacheModel(uint32_t cm)
     unsigned cacheTotalCapacity = 0;
     unsigned cacheMinDeadCapacity = 0;
     unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
+    Seconds deadDecodedDataDeletionInterval;
     unsigned pageCacheSize = 0;
     calculateMemoryCacheSizes(cacheModel, cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval, pageCacheSize);
 

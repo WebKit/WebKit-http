@@ -1,3 +1,601 @@
+2017-04-12  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 -O1 should not allocateStackByGraphColoring
+        https://bugs.webkit.org/show_bug.cgi?id=170742
+
+        Reviewed by Keith Miller.
+        
+        One of B3 -O1's longest running phases is allocateStackByGraphColoring. One approach to
+        this would be to make that phase cheaper. But it's weird that this phase reruns
+        liveness after register allocation already ran liveness. If only it could reuse the
+        liveness computed by register allocation then it would run a lot faster. At -O2, we do
+        not want this, since we run phases between register allocation and stack allocation,
+        and those phases are free to change the liveness of spill slots (in fact,
+        fixObviousSpills will both shorten and lengthen live ranges because of load and store
+        elimination, respectively). But at -O1, we don't really need to run any phases between
+        register and stack allocation.
+        
+        This changes Air's backend in the following ways:
+        
+        - Linear scan does stack allocation. This means that we don't need to run
+          allocateStackByGraphColoring at all. In reality, we reuse some of its innards, but
+          we don't run the expensive part of it (liveness->interference->coalescing->coloring).
+          This is a speed-up because we only run liveness once and reuse it for both register
+          and stack allocation.
+        
+        - Phases that previously ran between register and stack allocation are taken care of,
+          each in its own special way:
+          
+          -> handleCalleSaves: this is now a utility function called by both
+             allocateStackByGraphColoring and allocateRegistersAndStackByLinearScan.
+          
+          -> fixObviousSpills: we didn't run this at -O1, so nothing needs to be done.
+          
+          -> lowerAfterRegAlloc: this needed to be able to run before stack allocation because
+             it could change register usage (vis a vis callee saves) and it could introduce
+             spill slots. I changed this phase to have a secondary mode for when it runs after
+             stack allocation.
+        
+        - The part of allocateStackByGraphColoring that lowered stack addresses and took care
+          of the call arg area is now a separate phase called lowerStackArgs. We run this phase
+          regardless of optimization level. It's a cheap and general lowering.
+        
+        This also removes spillEverything, because we never use that phase, we never test it,
+        and it got in the way in this refactoring.
+        
+        This is a 21% speed-up on wasm -O1 compile times. This does not significantly change
+        -O1 throughput. We had already disabled allocateStack's most important optimization
+        (spill coalescing). This probably regresses average stack frame size, but I didn't
+        measure by how much. Stack frame size is really not that important. The algorithm in
+        allocateStackByGraphColoring is about much more than optimal frame size; it also
+        tries to avoid having to zero-extend 32-bit spills, it kills dead code, and of course
+        it coalesces.
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::calleeSaveRegisterAtOffsetList):
+        (JSC::B3::Procedure::calleeSaveRegisters): Deleted.
+        * b3/B3Procedure.h:
+        * b3/B3StackmapGenerationParams.cpp:
+        (JSC::B3::StackmapGenerationParams::unavailableRegisters):
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.cpp: Copied from Source/JavaScriptCore/b3/air/AirAllocateRegistersByLinearScan.cpp.
+        (JSC::B3::Air::allocateRegistersAndStackByLinearScan):
+        (JSC::B3::Air::allocateRegistersByLinearScan): Deleted.
+        * b3/air/AirAllocateRegistersAndStackByLinearScan.h: Copied from Source/JavaScriptCore/b3/air/AirAllocateRegistersByLinearScan.h.
+        * b3/air/AirAllocateRegistersByLinearScan.cpp: Removed.
+        * b3/air/AirAllocateRegistersByLinearScan.h: Removed.
+        * b3/air/AirAllocateStackByGraphColoring.cpp:
+        (JSC::B3::Air::allocateEscapedStackSlots):
+        (JSC::B3::Air::updateFrameSizeBasedOnStackSlots):
+        (JSC::B3::Air::allocateStackByGraphColoring):
+        * b3/air/AirAllocateStackByGraphColoring.h:
+        * b3/air/AirArg.cpp:
+        (JSC::B3::Air::Arg::stackAddr):
+        * b3/air/AirArg.h:
+        (JSC::B3::Air::Arg::stackAddr): Deleted.
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::addStackSlot):
+        (JSC::B3::Air::Code::setCalleeSaveRegisterAtOffsetList):
+        (JSC::B3::Air::Code::calleeSaveRegisterAtOffsetList):
+        (JSC::B3::Air::Code::dump):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setStackIsAllocated):
+        (JSC::B3::Air::Code::stackIsAllocated):
+        (JSC::B3::Air::Code::calleeSaveRegisters):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::prepareForGeneration):
+        (JSC::B3::Air::generate):
+        * b3/air/AirHandleCalleeSaves.cpp:
+        (JSC::B3::Air::handleCalleeSaves):
+        * b3/air/AirHandleCalleeSaves.h:
+        * b3/air/AirLowerAfterRegAlloc.cpp:
+        (JSC::B3::Air::lowerAfterRegAlloc):
+        * b3/air/AirLowerStackArgs.cpp: Added.
+        (JSC::B3::Air::lowerStackArgs):
+        * b3/air/AirLowerStackArgs.h: Added.
+        * b3/testb3.cpp:
+        (JSC::B3::testPinRegisters):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * jit/RegisterAtOffsetList.h:
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::parseAndCompile):
+
+2017-04-12  Michael Saboff  <msaboff@apple.com>
+
+        Implement Object.isFrozen() and Object.isSealed() per ECMA spec
+        https://bugs.webkit.org/show_bug.cgi?id=170753
+
+        Reviewed by Mark Lam.
+
+        * runtime/ObjectConstructor.cpp:
+        (JSC::testIntegrityLevel): Added local helper as described in the ECMA standard.
+
+        (JSC::objectConstructorSeal):
+        (JSC::objectConstructorFreeze):
+        Eliminated incomplete special handling of JSFinalObjects.
+
+        (JSC::objectConstructorIsSealed):
+        (JSC::objectConstructorIsFrozen):
+        Refactored to use the new testIntegrityLevel() helper.
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use HAVE(MACHINE_CONTEXT) instead of USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Rubber stamped by Mark Lam.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up heap/MachineStackMarker by introducing USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Reviewed by Mark Lam.
+
+        We use USE(MACHINE_CONTEXT) to clean up runtime/MachineContext.h. And
+        we clean up heap/MachineStackMarker.cpp by using MachineContext functions.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::Registers::stackPointer):
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        * heap/MachineStackMarker.h:
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        (JSC::MachineContext::framePointer):
+        (JSC::MachineContext::instructionPointer):
+        (JSC::MachineContext::argumentPointer<1>):
+        (JSC::MachineContext::llintInstructionPointer):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        * API/tests/CompareAndSwapTest.cpp:
+        (testCompareAndSwap):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * b3/air/testair.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::run):
+        * bytecode/SuperSampler.cpp:
+        (JSC::initializeSuperSampler):
+        * dfg/DFGWorklist.cpp:
+        * disassembler/Disassembler.cpp:
+        * heap/Heap.cpp:
+        (JSC::Heap::lastChanceToFinalize):
+        (JSC::Heap::notifyIsSafeToCollect):
+        * heap/Heap.h:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::~MachineThreads):
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::removeThread):
+        (JSC::MachineThreads::removeThreadIfFound):
+        (JSC::MachineThreads::MachineThread::MachineThread):
+        (JSC::MachineThreads::MachineThread::getRegisters):
+        (JSC::MachineThreads::MachineThread::Registers::stackPointer):
+        (JSC::MachineThreads::MachineThread::Registers::framePointer):
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer):
+        (JSC::MachineThreads::MachineThread::Registers::llintPC):
+        (JSC::MachineThreads::MachineThread::captureStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        (pthreadSignalHandlerSuspendResume): Deleted.
+        (JSC::threadData): Deleted.
+        (JSC::MachineThreads::Thread::Thread): Deleted.
+        (JSC::MachineThreads::Thread::createForCurrentThread): Deleted.
+        (JSC::MachineThreads::Thread::operator==): Deleted.
+        (JSC::MachineThreads::machineThreadForCurrentThread): Deleted.
+        (JSC::MachineThreads::ThreadData::ThreadData): Deleted.
+        (JSC::MachineThreads::ThreadData::~ThreadData): Deleted.
+        (JSC::MachineThreads::ThreadData::suspend): Deleted.
+        (JSC::MachineThreads::ThreadData::resume): Deleted.
+        (JSC::MachineThreads::ThreadData::getRegisters): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::stackPointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::framePointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::instructionPointer): Deleted.
+        (JSC::MachineThreads::ThreadData::Registers::llintPC): Deleted.
+        (JSC::MachineThreads::ThreadData::freeRegisters): Deleted.
+        (JSC::MachineThreads::ThreadData::captureStack): Deleted.
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::MachineThread::suspend):
+        (JSC::MachineThreads::MachineThread::resume):
+        (JSC::MachineThreads::MachineThread::threadID):
+        (JSC::MachineThreads::MachineThread::stackBase):
+        (JSC::MachineThreads::MachineThread::stackEnd):
+        (JSC::MachineThreads::threadsListHead):
+        (JSC::MachineThreads::Thread::operator!=): Deleted.
+        (JSC::MachineThreads::Thread::suspend): Deleted.
+        (JSC::MachineThreads::Thread::resume): Deleted.
+        (JSC::MachineThreads::Thread::getRegisters): Deleted.
+        (JSC::MachineThreads::Thread::freeRegisters): Deleted.
+        (JSC::MachineThreads::Thread::captureStack): Deleted.
+        (JSC::MachineThreads::Thread::platformThread): Deleted.
+        (JSC::MachineThreads::Thread::stackBase): Deleted.
+        (JSC::MachineThreads::Thread::stackEnd): Deleted.
+        * jit/ICStats.cpp:
+        (JSC::ICStats::ICStats):
+        (JSC::ICStats::~ICStats):
+        * jit/ICStats.h:
+        * jsc.cpp:
+        (functionDollarAgentStart):
+        (startTimeoutThreadIfNeeded):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::lock):
+        * runtime/JSLock.h:
+        (JSC::JSLock::ownerThread):
+        (JSC::JSLock::currentThreadIsHoldingLock):
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::isValidFramePointer):
+        (JSC::SamplingProfiler::SamplingProfiler):
+        (JSC::SamplingProfiler::createThreadIfNecessary):
+        (JSC::SamplingProfiler::takeSample):
+        * runtime/SamplingProfiler.h:
+        * runtime/VM.h:
+        (JSC::VM::ownerThread):
+        * runtime/VMTraps.cpp:
+        (JSC::findActiveVMAndStackBounds):
+        (JSC::VMTraps::SignalSender::send):
+        (JSC::VMTraps::fireTrap):
+
+2017-04-11  Dean Jackson  <dino@apple.com>
+
+        Disable outdated WritableStream API
+        https://bugs.webkit.org/show_bug.cgi?id=170749
+        <rdar://problem/31446233>
+
+        Reviewed by Tim Horton.
+
+        The API we implement is no longer accurate. Disable it until we
+        are compatible with the new specification
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for CF ports after r215241
+        https://bugs.webkit.org/show_bug.cgi?id=170725
+
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::nextFireTime):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebCore][JSC] ResourceUsageData.{timeOfNextEdenCollection,timeOfNextFullCollection} should be MonotonicTime
+        https://bugs.webkit.org/show_bug.cgi?id=170725
+
+        Reviewed by Sam Weinig.
+
+        This patch makes GCActivityCallback return MonotonicTime instead of raw double value.
+
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::nextFireTime):
+        * heap/GCActivityCallback.h:
+
+2017-04-11  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc] Add missing MacroAssemblerMIPS::or32() implementation
+        https://bugs.webkit.org/show_bug.cgi?id=169714
+
+        Reviewed by Michael Catanzaro.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::or32):
+        Added or32(TrustedImm32, Address).
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/comments/multi-line-html-close.js
+        https://bugs.webkit.org/show_bug.cgi?id=170648
+
+        Reviewed by Keith Miller.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::lex):
+        A multi-line comment that contains a line terminator is itself treated
+        like a line terminator. An HTML Close Comment that comes after it can
+        therefore treat it like it is at the start of a line, because it was
+        immediately preceeded by the equivalent of a line terminator.
+
+2017-04-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/built-ins/Array/S15.4.3_A2.2.js
+        https://bugs.webkit.org/show_bug.cgi?id=170652
+
+        Reviewed by Michael Saboff.
+
+        * runtime/ArrayConstructor.cpp:
+        (JSC::ArrayConstructor::finishCreation):
+        * runtime/BooleanConstructor.cpp:
+        (JSC::BooleanConstructor::finishCreation):
+        * runtime/DateConstructor.cpp:
+        (JSC::DateConstructor::finishCreation):
+        * runtime/FunctionConstructor.cpp:
+        (JSC::FunctionConstructor::finishCreation):
+        * runtime/JSArrayBufferConstructor.cpp:
+        (JSC::JSArrayBufferConstructor::finishCreation):
+        * runtime/NumberConstructor.cpp:
+        (JSC::NumberConstructor::finishCreation):
+        * runtime/ObjectConstructor.cpp:
+        (JSC::ObjectConstructor::finishCreation):
+        * runtime/RegExpConstructor.cpp:
+        (JSC::RegExpConstructor::finishCreation):
+        * runtime/StringConstructor.cpp:
+        (JSC::StringConstructor::finishCreation):
+        * runtime/SymbolConstructor.cpp:
+        (JSC::SymbolConstructor::finishCreation):
+        Ensure the "length" property on these native constructors is configurable (deletable).
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Windows after r215228 part 2
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        Since GCActivityCallback class is annotated exported, we do not need to annotate each member.
+
+        * heap/GCActivityCallback.h:
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK] Use RunLoop::Timer in GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch makes GTK port use RunLoop::Timer for JSRunLoopTimer.
+        Only Cocoa-based ports use platform-specific Timer because it
+        has additional feature that changes RunLoop to the WebThread one.
+
+        And we enable Heap timers in all the ports including JSCOnly port.
+
+        * heap/EdenGCActivityCallback.cpp:
+        (JSC::EdenGCActivityCallback::lastGCLength):
+        * heap/EdenGCActivityCallback.h:
+        * heap/FullGCActivityCallback.cpp:
+        (JSC::FullGCActivityCallback::lastGCLength):
+        * heap/FullGCActivityCallback.h:
+        * heap/GCActivityCallback.cpp:
+        (JSC::GCActivityCallback::GCActivityCallback):
+        (JSC::GCActivityCallback::doWork):
+        (JSC::GCActivityCallback::scheduleTimer):
+        (JSC::GCActivityCallback::cancelTimer):
+        (JSC::GCActivityCallback::nextFireTime):
+        (JSC::GCActivityCallback::didAllocate):
+        * heap/GCActivityCallback.h:
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::doWork):
+        (JSC::IncrementalSweeper::doSweep):
+        * heap/IncrementalSweeper.h:
+        * heap/StopIfNecessaryTimer.cpp:
+        (JSC::StopIfNecessaryTimer::scheduleSoon):
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::JSRunLoopTimer::setRunLoop):
+        (JSC::JSRunLoopTimer::scheduleTimer):
+        (JSC::JSRunLoopTimer::cancelTimer):
+        (JSC::JSRunLoopTimer::JSRunLoopTimer):
+        (JSC::JSRunLoopTimer::~JSRunLoopTimer):
+        (JSC::JSRunLoopTimer::timerDidFireCallback):
+        * runtime/JSRunLoopTimer.h:
+        * runtime/PromiseDeferredTimer.cpp:
+        (JSC::PromiseDeferredTimer::scheduleWorkSoon):
+
+2017-04-11  Guillaume Emont  <guijemont@igalia.com>
+
+        [jsc][mips] Add missing MacroAssembler functions after r214187
+        https://bugs.webkit.org/show_bug.cgi?id=170089
+
+        Reviewed by Yusuke Suzuki.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::loadFloat): Added.
+        (JSC::MacroAssemblerMIPS::storeFloat): Added.
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Enable JSRunLoopTimer for JSCOnly and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=170655
+
+        Reviewed by Carlos Garcia Campos.
+
+        * runtime/JSRunLoopTimer.cpp:
+        (JSC::JSRunLoopTimer::JSRunLoopTimer):
+        (JSC::JSRunLoopTimer::scheduleTimer):
+        (JSC::JSRunLoopTimer::cancelTimer):
+        * runtime/JSRunLoopTimer.h:
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r215217
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Alex Christensen  <achristensen@webkit.org>
+
+        Continue enabling WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=170703
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-10  Mark Lam  <mark.lam@apple.com>
+
+        Move ProbeContext and ProbeFunction out of AbstractMacroAssembler.
+        https://bugs.webkit.org/show_bug.cgi?id=170681
+
+        Reviewed by Michael Saboff.
+
+        This is a refactoring step towards enabling custom probe printers the way printInternal() works for dataLog.
+
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler::ProbeContext::gpr): Deleted.
+        (JSC::AbstractMacroAssembler::ProbeContext::fpr): Deleted.
+        (JSC::AbstractMacroAssembler::ProbeContext::gprName): Deleted.
+        (JSC::AbstractMacroAssembler::ProbeContext::fprName): Deleted.
+        * assembler/MacroAssembler.cpp:
+        (JSC::stdFunctionCallback):
+        (JSC::MacroAssembler::probe):
+        * assembler/MacroAssembler.h:
+        (JSC::ProbeContext::gpr):
+        (JSC::ProbeContext::fpr):
+        (JSC::ProbeContext::gprName):
+        (JSC::ProbeContext::fprName):
+        * assembler/MacroAssemblerARM.cpp:
+        (JSC::MacroAssemblerARM::probe):
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::arm64ProbeTrampoline):
+        (JSC::MacroAssemblerARM64::probe):
+        * assembler/MacroAssemblerARMv7.cpp:
+        (JSC::MacroAssemblerARMv7::probe):
+        * assembler/MacroAssemblerPrinter.cpp:
+        * assembler/MacroAssemblerPrinter.h:
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssemblerX86Common::probe):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::abstractStructure):
+        (JSC::FTL::DFG::LowerDFGToB3::probe): Deleted.
+        - Deleted because this became a useless place-holder after the transition to B3.
+
+2017-04-10  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Fix B3IRGenerator for BrTable
+        https://bugs.webkit.org/show_bug.cgi?id=170685
+
+        Reviewed by JF Bastien.
+
+        For some reason this didn't get included in r215141.
+
+        This fixes an issue with BrTable and loops where we would use the loop's return type
+        as the branch target type.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::ControlData::resultForBranch):
+        (JSC::Wasm::B3IRGenerator::unifyValuesWithBlock):
+
+2017-04-08  Oliver Hunt  <oliver@apple.com>
+
+        Remove use of strcpy from JSC
+        https://bugs.webkit.org/show_bug.cgi?id=170646
+
+        Reviewed by Mark Lam.
+
+        Replace the use of strcpy with memcpy as strcpy keeps
+        on tripping various analyser warnings even though its
+        trivially safe in this case.
+
+        Essentially code hygiene, no change in behaviour, no
+        perf impact.
+
+        * dfg/DFGDisassembler.cpp:
+        (JSC::DFG::Disassembler::dumpDisassembly):
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/expressions/object/__proto__-fn-name.js
+        https://bugs.webkit.org/show_bug.cgi?id=170650
+
+        Reviewed by Saam Barati.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parseProperty):
+        There needs to be special handling of:
+        
+          PropertyDefinition :  PropertyName ':' AssignmentExpression
+         
+        When the property name is __proto__. In this case the
+        SetFunctionName path does not happen, so the name "__proto__"
+        is not inferred on any anonymous function. See:
+        https://tc39.github.io/ecma262/#sec-__proto__-property-names-in-object-initializers
+
+        * parser/Parser.h:
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createProperty):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createProperty):
+        Add an extra parameter to see if inferring / setting names are allowed.
+
+2017-04-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: test262/test/annexB/language/literals/regexp/identity-escape.js
+        https://bugs.webkit.org/show_bug.cgi?id=170651
+
+        Reviewed by Saam Barati.
+
+        * yarr/YarrParser.h:
+        (JSC::Yarr::Parser::parseEscape):
+        For \8 and \9 match just the number "8" or "9" instead of both "\\" and the number.
+        See: https://tc39.github.io/ecma262/#sec-decimalescape
+
+2017-04-08  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC tests gardening
+        https://bugs.webkit.org/show_bug.cgi?id=170508
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Fix issue with BrTable targeting a Loop
+        https://bugs.webkit.org/show_bug.cgi?id=170638
+
+        Reviewed by Saam Barati.
+
+        This fixes the same issue V8 had in: https://github.com/WebAssembly/spec/pull/456#event-1033547537
+
+        * wasm/WasmValidate.cpp:
+        (JSC::Wasm::Validate::ControlData::branchTargetSignature):
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Add a PriorityQueue class
+        https://bugs.webkit.org/show_bug.cgi?id=170579
+
+        Reviewed by Saam Barati.
+
+        Update Wasm::Worklist to use WTF::PriorityQueue.
+
+        * wasm/WasmWorklist.cpp:
+        (JSC::Wasm::Worklist::enqueue):
+        (JSC::Wasm::Worklist::completePlanSynchronously):
+        (JSC::Wasm::Worklist::stopAllPlansForVM):
+        (JSC::Wasm::Worklist::~Worklist):
+        (JSC::Wasm::Worklist::iterate): Deleted.
+        * wasm/WasmWorklist.h:
+        (JSC::Wasm::Worklist::isHigherPriority):
+        (JSC::Wasm::Worklist::Comparator::operator()): Deleted.
+
+2017-04-07  Yuichiro Kikura  <y.kikura@gmail.com>
+
+        WebGPU: implement ComputeCommandEncoder and related components
+        https://bugs.webkit.org/show_bug.cgi?id=170444
+
+        Reviewed by Alex Christensen.
+
+        I added some identifiers related with WebGPUComputeCommandEncoder based on the proposal.
+        https://webkit.org/wp-content/uploads/webgpu-api-proposal.html
+
+        * runtime/CommonIdentifiers.h:
+
 2017-04-07  Saam Barati  <sbarati@apple.com>
 
         WebAssembly: Module::getOrCreateCodeBlock is wrong

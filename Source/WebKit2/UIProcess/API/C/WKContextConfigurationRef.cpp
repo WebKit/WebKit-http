@@ -42,6 +42,11 @@ WKContextConfigurationRef WKContextConfigurationCreate()
     return toAPI(&configuration.leakRef());
 }
 
+WKContextConfigurationRef WKContextConfigurationCreateWithLegacyOptions()
+{
+    return toAPI(&API::ProcessPoolConfiguration::createWithLegacyOptions().leakRef());
+}
+
 WKStringRef WKContextConfigurationCopyDiskCacheDirectory(WKContextConfigurationRef configuration)
 {
     return toCopiedAPI(toImpl(configuration)->diskCacheDirectory());
@@ -130,4 +135,14 @@ WKArrayRef WKContextConfigurationCopyOverrideLanguages(WKContextConfigurationRef
 void WKContextConfigurationSetOverrideLanguages(WKContextConfigurationRef configuration, WKArrayRef overrideLanguages)
 {
     toImpl(configuration)->setOverrideLanguages(toImpl(overrideLanguages)->toStringVector());
+}
+
+bool WKContextConfigurationShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration)
+{
+    return toImpl(configuration)->shouldCaptureAudioInUIProcess();
+}
+
+void WKContextConfigurationSetShouldCaptureAudioInUIProcess(WKContextConfigurationRef configuration, bool should)
+{
+    toImpl(configuration)->setShouldCaptureAudioInUIProcess(should);
 }

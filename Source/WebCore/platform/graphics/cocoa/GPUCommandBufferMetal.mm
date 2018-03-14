@@ -69,6 +69,20 @@ void GPUCommandBuffer::commit()
     [m_commandBuffer commit];
 }
 
+void GPUCommandBuffer::completed(Ref<DeferredPromise>&& passedPromise)
+{
+    if (!m_commandBuffer)
+        return;
+
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+
+    [m_commandBuffer addCompletedHandler:^(id<MTLCommandBuffer>) {
+        callOnMainThread([promise] {
+            promise->resolve();
+        });
+    }];
+}
+
 } // namespace WebCore
 
 #endif

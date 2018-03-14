@@ -1,3 +1,473 @@
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use HAVE(MACHINE_CONTEXT) instead of USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Rubber stamped by Mark Lam.
+
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::getRegisters):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up heap/MachineStackMarker by introducing USE(MACHINE_CONTEXT)
+        https://bugs.webkit.org/show_bug.cgi?id=170770
+
+        Reviewed by Mark Lam.
+
+        We add a new define USE_MACHINE_CONTEXT, which becomes true if mcontext_t exists
+        and we know the way to retrieve values from mcontext_t.
+
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::getRegisters):
+
+2017-04-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Thread class and use RefPtr<Thread> and align Windows Threading implementation semantics to Pthread one
+        https://bugs.webkit.org/show_bug.cgi?id=170502
+
+        Reviewed by Mark Lam.
+
+        This patch is refactoring of WTF Threading mechanism to merge JavaScriptCore's threading extension to WTF Threading.
+        Previously, JavaScriptCore requires richer threading features (such as suspending and resuming threads), and they
+        are implemented for PlatformThread in JavaScriptCore. But these features should be implemented in WTF Threading side
+        instead of maintaining JSC's own threading features too. This patch removes these features from JSC and move it to
+        WTF Threading.
+
+        However, current WTF Threading has one problem: Windows version of WTF Threading has different semantics from Pthreads
+        one. In Windows WTF Threading, we cannot perform any operation after the target thread is detached: WTF Threading stop
+        tracking the state of the thread once the thread is detached. But this is not the same to Pthreads one. In Pthreads,
+        pthread_detach just means that the resource of the thread will be destroyed automatically. While some operations like
+        pthread_join will be rejected, some operations like pthread_kill will be accepted.
+
+        The problem is that detached thread can be suspended and resumed in JSC. For example, in jsc.cpp, we start the worker
+        thread and detach it immediately. In worker thread, we will create VM and thus concurrent GC will suspend and resume
+        the detached thread. However, in Windows WTF Threading, we have no reference to the detached thread. Thus we cannot
+        perform suspend and resume operations onto the detached thread.
+
+        To solve the problem, we change Windows Threading mechanism drastically to align it to the Pthread semantics. In the
+        new Threading, we have RefPtr<Thread> class. It holds a handle to a platform thread. We can perform threading operations
+        with this class. For example, Thread::suspend is offered. And we use destructor of the thread local variable to release
+        the resources held by RefPtr<Thread>. In Windows, Thread::detach does nothing because the resource will be destroyed
+        automatically by RefPtr<Thread>.
+
+        To do so, we introduce ThreadHolder for Windows. This is similar to the previous ThreadIdentifierData for Pthreads.
+        It holds RefPtr<Thread> in the thread local storage (technically, it is Fiber Local Storage in Windows). Thread::current()
+        will return this reference.
+
+        The problematic situation is that the order of the deallocation of the thread local storage is not defined. So we should
+        not touch thread local storage in the destructor of the thread local storage. To avoid such edge cases, we have
+        currentThread() / Thread::currentID() APIs. They are safe to be called even in the destructor of the other thread local
+        storage. And in Windows, in the FLS destructor, we will create the thread_local variable to defer the destruction of
+        the ThreadHolder. We ensure that this destructor is called after the other FLS destructors are called in Windows 10.
+
+        This patch is performance neutral.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/ConditionSpeedTest.cpp:
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/CMakeLists.txt:
+        * wtf/MainThread.h:
+        * wtf/MemoryPressureHandler.h:
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::tryLockFor):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread):
+        * wtf/ParallelJobsGeneric.h:
+        (WTF::ParallelEnvironment::ThreadPrivate::ThreadPrivate): Deleted.
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::forEachImpl):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::forEach):
+        * wtf/PlatformRegisters.h: Renamed from Source/JavaScriptCore/runtime/PlatformThread.h.
+        * wtf/RefPtr.h:
+        (WTF::RefPtr::RefPtr):
+        * wtf/ThreadFunctionInvocation.h:
+        (WTF::ThreadFunctionInvocation::ThreadFunctionInvocation):
+        * wtf/ThreadHolder.cpp: Added.
+        (WTF::ThreadHolder::~ThreadHolder):
+        (WTF::ThreadHolder::initialize):
+        * wtf/ThreadHolder.h: Renamed from Source/WTF/wtf/ThreadIdentifierDataPthreads.h.
+        (WTF::ThreadHolder::thread):
+        (WTF::ThreadHolder::ThreadHolder):
+        * wtf/ThreadHolderPthreads.cpp: Renamed from Source/WTF/wtf/ThreadIdentifierDataPthreads.cpp.
+        (WTF::ThreadHolder::initializeOnce):
+        (WTF::ThreadHolder::current):
+        (WTF::ThreadHolder::destruct):
+        * wtf/ThreadHolderWin.cpp: Added.
+        (WTF::threadMapMutex):
+        (WTF::threadMap):
+        (WTF::ThreadHolder::initializeOnce):
+        (WTF::ThreadHolder::current):
+        (WTF::ThreadHolder::destruct):
+        * wtf/ThreadSpecific.h:
+        * wtf/Threading.cpp:
+        (WTF::Thread::normalizeThreadName):
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::setCurrentThreadIsUserInteractive):
+        (WTF::Thread::setCurrentThreadIsUserInitiated):
+        (WTF::Thread::setGlobalMaxQOSClass):
+        (WTF::Thread::adjustedQOSClass):
+        (WTF::Thread::dump):
+        (WTF::initializeThreading):
+        (WTF::normalizeThreadName): Deleted.
+        (WTF::createThread): Deleted.
+        (WTF::setCurrentThreadIsUserInteractive): Deleted.
+        (WTF::setCurrentThreadIsUserInitiated): Deleted.
+        (WTF::setGlobalMaxQOSClass): Deleted.
+        (WTF::adjustedQOSClass): Deleted.
+        * wtf/Threading.h:
+        (WTF::Thread::id):
+        (WTF::Thread::operator==):
+        (WTF::Thread::operator!=):
+        (WTF::Thread::joinableState):
+        (WTF::Thread::didBecomeDetached):
+        (WTF::Thread::didJoin):
+        (WTF::Thread::hasExited):
+        (WTF::currentThread):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::Thread):
+        (WTF::Thread::~Thread):
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::Thread::initializePlatformThreading):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::createInternal):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::current):
+        (WTF::Thread::currentID):
+        (WTF::Thread::signal):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::didExit):
+        (WTF::Thread::establish):
+        (WTF::PthreadState::PthreadState): Deleted.
+        (WTF::PthreadState::joinableState): Deleted.
+        (WTF::PthreadState::pthreadHandle): Deleted.
+        (WTF::PthreadState::didBecomeDetached): Deleted.
+        (WTF::PthreadState::didExit): Deleted.
+        (WTF::PthreadState::didJoin): Deleted.
+        (WTF::PthreadState::hasExited): Deleted.
+        (WTF::threadMapMutex): Deleted.
+        (WTF::initializeThreading): Deleted.
+        (WTF::threadMap): Deleted.
+        (WTF::identifierByPthreadHandle): Deleted.
+        (WTF::establishIdentifierForPthreadHandle): Deleted.
+        (WTF::pthreadHandleForIdentifierWithLockAlreadyHeld): Deleted.
+        (WTF::createThreadInternal): Deleted.
+        (WTF::initializeCurrentThreadInternal): Deleted.
+        (WTF::changeThreadPriority): Deleted.
+        (WTF::waitForThreadCompletion): Deleted.
+        (WTF::detachThread): Deleted.
+        (WTF::threadDidExit): Deleted.
+        (WTF::currentThread): Deleted.
+        (WTF::signalThread): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::Thread):
+        (WTF::Thread::~Thread):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::initializePlatformThreading):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::createInternal):
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::current):
+        (WTF::Thread::currentID):
+        (WTF::Thread::didExit):
+        (WTF::Thread::establish):
+        (WTF::initializeCurrentThreadInternal): Deleted.
+        (WTF::threadMapMutex): Deleted.
+        (WTF::initializeThreading): Deleted.
+        (WTF::threadMap): Deleted.
+        (WTF::storeThreadHandleByIdentifier): Deleted.
+        (WTF::threadHandleForIdentifier): Deleted.
+        (WTF::clearThreadHandleForIdentifier): Deleted.
+        (WTF::createThreadInternal): Deleted.
+        (WTF::changeThreadPriority): Deleted.
+        (WTF::waitForThreadCompletion): Deleted.
+        (WTF::detachThread): Deleted.
+        (WTF::currentThread): Deleted.
+        * wtf/WorkQueue.cpp:
+        (WTF::WorkQueue::concurrentApply):
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::dispatchQOSClass):
+        * wtf/generic/WorkQueueGeneric.cpp:
+        (WorkQueue::platformInitialize):
+        (WorkQueue::platformInvalidate):
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        (WTF::MemoryPressureHandler::EventFDPoller::~EventFDPoller):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2017-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Use the DisplayRefreshMonitor facilities
+        https://bugs.webkit.org/show_bug.cgi?id=170599
+
+        Reviewed by Carlos Garcia Campos.
+
+        * wtf/Platform.h: Enable USE_REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR for the GTK+ port.
+        * wtf/glib/RunLoopSourcePriority.h: Add the DisplayRefreshMonitorTimer entry that
+        matches the value of LayerFlushTimer.
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WebCore][JSC] ResourceUsageData.{timeOfNextEdenCollection,timeOfNextFullCollection} should be MonotonicTime
+        https://bugs.webkit.org/show_bug.cgi?id=170725
+
+        Reviewed by Sam Weinig.
+
+        Make MonotonicTime more constexpr friendly mainly to annotate MonotonicTime::nan() as constexpr.
+
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::MonotonicTime):
+        (WTF::MonotonicTime::fromRawSeconds):
+        (WTF::MonotonicTime::infinity):
+        (WTF::MonotonicTime::nan):
+        (WTF::MonotonicTime::secondsSinceEpoch):
+        (WTF::MonotonicTime::operator bool):
+        (WTF::MonotonicTime::operator+):
+        (WTF::MonotonicTime::operator-):
+        (WTF::MonotonicTime::operator==):
+        (WTF::MonotonicTime::operator!=):
+        (WTF::MonotonicTime::operator<):
+        (WTF::MonotonicTime::operator>):
+        (WTF::MonotonicTime::operator<=):
+        (WTF::MonotonicTime::operator>=):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for Windows port after r215228
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][GTK] Use RunLoop::Timer in GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=170723
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add secondsUntilFire method. And add setName and setPriority
+        for GTK RunLoop::Timer.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::setName):
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::isActive):
+        (WTF::RunLoop::TimerBase::secondsUntilFire):
+
+2017-04-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Enable JSRunLoopTimer for JSCOnly and Windows
+        https://bugs.webkit.org/show_bug.cgi?id=170655
+
+        Reviewed by Carlos Garcia Campos.
+
+        This patch makes RunLoop::Timer in Generic and Windows thread-safe to use it
+        in JSC's JSRunLoopTimer. Eventually, we would like to replace JSRunLoopTimer's
+        platform-dependent implementation to WTF::RunLoop::Timer.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::TimerBase::start):
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::EarliestSchedule::operator()):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::runImpl):
+        (WTF::RunLoop::schedule):
+        (WTF::RunLoop::scheduleAndWakeUp):
+        (WTF::RunLoop::TimerBase::~TimerBase):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+        * wtf/glib/RunLoopGLib.cpp:
+        (WTF::RunLoop::TimerBase::TimerBase):
+        * wtf/win/RunLoopWin.cpp:
+        (WTF::RunLoop::TimerBase::timerFired):
+        (WTF::RunLoop::TimerBase::start):
+        (WTF::RunLoop::TimerBase::stop):
+        (WTF::RunLoop::TimerBase::isActive):
+
+2017-04-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        REGRESSION(r213645): It made JSC tests super slow and timeout on AArch64 Linux
+        https://bugs.webkit.org/show_bug.cgi?id=169510
+
+        Reviewed by Saam Barati.
+
+        Add the `volatile` qualifiers for ASM statements that set up ldxr and stxr
+        instruction calls when HAVE(LL_SC) is enabled for aarch64 platforms.
+
+        This avoids indefinite execution when running GCC-compiled JSC on Linux.
+        Specific bug or expected behavior that differs from Clang wasn't determined.
+
+        HAVE(LL_SC) is re-enabled on non-Darwin aarch64 platforms.
+
+        * wtf/Atomics.h:
+        * wtf/Platform.h:
+
+2017-04-10  Thorsten Glaser  <tg@mirbsd.de>
+
+        [GTK] Fix x32 build
+        https://bugs.webkit.org/show_bug.cgi?id=170673
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wtf/Platform.h:
+
+2017-04-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Annotate Seconds' member functions and operators with constexpr
+        https://bugs.webkit.org/show_bug.cgi?id=170662
+
+        Reviewed by Daniel Bates.
+
+        Annotate Seconds' member functions and operators with constexpr.
+        It allows us to use Seconds calculation in compile time and use these
+        calculation for static const global variables.
+
+        operator% is an exception: it uses fmod and it is not offered as constexpr.
+
+        * wtf/MathExtras.h:
+        (defaultMinimumForClamp):
+        (defaultMaximumForClamp):
+        (clampToAccepting64):
+        Super unfortunate ugly code. This is because GCC 4.9 does not support C++14 relaxed constexpr.
+
+        * wtf/Seconds.h:
+        (WTF::Seconds::Seconds):
+        (WTF::Seconds::value):
+        (WTF::Seconds::minutes):
+        (WTF::Seconds::seconds):
+        (WTF::Seconds::milliseconds):
+        (WTF::Seconds::microseconds):
+        (WTF::Seconds::nanoseconds):
+        (WTF::Seconds::operator bool):
+        (WTF::Seconds::operator+):
+        (WTF::Seconds::operator-):
+        (WTF::Seconds::operator*):
+        (WTF::Seconds::operator/):
+        (WTF::Seconds::operator==):
+        (WTF::Seconds::operator!=):
+        (WTF::Seconds::operator<):
+        (WTF::Seconds::operator>):
+        (WTF::Seconds::operator<=):
+        (WTF::Seconds::operator>=):
+
+2017-04-09  Chris Dumez  <cdumez@apple.com>
+
+        Start dropping Timer API dealing with double
+        https://bugs.webkit.org/show_bug.cgi?id=170649
+
+        Reviewed by Yusuke Suzuki.
+
+        Start dropping Timer API dealing with double as people should use Seconds now.
+
+        * wtf/RunLoopTimer.h:
+        * wtf/glib/MainThreadGLib.cpp:
+        (WTF::MainThreadDispatcher::schedule):
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Unreviewed, remove constexpr function since GTK didn't like it.
+
+        * wtf/PriorityQueue.h:
+        (WTF::PriorityQueue::parentOf):
+
+2017-04-07  Chris Dumez  <cdumez@apple.com>
+
+        Start using MonotonicTime / Seconds in Timer class
+        https://bugs.webkit.org/show_bug.cgi?id=170625
+
+        Reviewed by Simon Fraser.
+
+        Add modulo operator to MonotonicTime.
+
+        * wtf/MonotonicTime.h:
+        (WTF::MonotonicTime::operator%):
+
+2017-04-07  Keith Miller  <keith_miller@apple.com>
+
+        Add a PriorityQueue class
+        https://bugs.webkit.org/show_bug.cgi?id=170579
+
+        Reviewed by Saam Barati.
+
+        This patch adds a new PriorityQueue class that is backed by
+        WTF::Vector.  It also has a number of other niceties such as being
+        able to iterate the queue and increase or decrease keys.
+
+        One note is that increaseKey and decreaseKey are O(n) rather than
+        O(log(n)).  Traditionally, the lookup of the key is done with a
+        hash map but that's not feasible here.  This is because unless the
+        queue's element type is a pointer there is no good way maintain a
+        persistent reference to every entry in the queue while we sift.
+        The only way to update the location of an entry is to do a hash
+        table lookup with the entry's hash but this is probably more
+        expensive than just doing a linear search.
+
+        Also, add comparison operator functions, which can be passed to PriorityQueue.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/MathExtras.h:
+        (isLessThan):
+        (isLessThanEqual):
+        (isGreaterThan):
+        (isGreaterThanEqual):
+        * wtf/PriorityQueue.h: Added.
+        (WTF::PriorityQueue::size):
+        (WTF::PriorityQueue::isEmpty):
+        (WTF::PriorityQueue::enqueue):
+        (WTF::PriorityQueue::peek):
+        (WTF::PriorityQueue::dequeue):
+        (WTF::PriorityQueue::decreaseKey):
+        (WTF::PriorityQueue::increaseKey):
+        (WTF::PriorityQueue::begin):
+        (WTF::PriorityQueue::end):
+        (WTF::PriorityQueue::isValidHeap):
+        (WTF::PriorityQueue::parentOf):
+        (WTF::PriorityQueue::leftChildOf):
+        (WTF::PriorityQueue::rightChildOf):
+        (WTF::PriorityQueue::siftUp):
+        (WTF::PriorityQueue::siftDown):
+
+2017-04-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use audit_token_t instead of pid_t for checking sandbox of other processes
+        https://bugs.webkit.org/show_bug.cgi?id=170616
+        <rdar://problem/31158189>
+
+        Reviewed by Daniel Bates.
+
+        * wtf/spi/darwin/SandboxSPI.h:
+        Declare more SPI.
+
 2017-04-07  Ting-Wei Lan  <lantw44@gmail.com>
 
         Include cstdio before using sscanf and stderr

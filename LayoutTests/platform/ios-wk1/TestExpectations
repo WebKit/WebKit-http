@@ -10,6 +10,7 @@ editing/input/focus-change-with-marked-text.html [ Pass ]
 # Skip WebRTC for now in WK1
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
+fast/events/constructors/media-stream-event-constructor.html
 
 # <rdar://problem/6501130> LayoutTests: Enable editing tests after we support editing
 editing/deleting/4922367.html
@@ -527,7 +528,6 @@ compositing/iframes/connect-compositing-iframe2.html [ Failure ]
 compositing/iframes/connect-compositing-iframe3.html [ Failure ]
 compositing/iframes/enter-compositing-iframe.html [ Failure ]
 compositing/iframes/iframe-resize.html [ Failure ]
-compositing/iframes/iframe-size-from-zero.html [ Failure ]
 compositing/iframes/iframe-size-to-zero.html [ Failure ]
 compositing/iframes/iframe-src-change.html [ Failure ]
 compositing/iframes/invisible-nested-iframe-show.html [ Failure ]

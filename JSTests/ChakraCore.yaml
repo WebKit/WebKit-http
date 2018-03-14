@@ -1442,8 +1442,7 @@
 - path: ChakraCore/test/es5/defineProperty.js
   cmd: runChakra :baseline, "NoException", "defineProperty.baseline", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es5/defineIndexProperty.js
-  # Differences in Obj.seal, Obj.frozen and sort.
-  cmd: runChakra :skip, "NoException", "defineIndexProperty.baseline", []
+  cmd: runChakra :baseline, "NoException", "defineIndexProperty.baseline-jsc", []
 - path: ChakraCore/test/es5/enumerable.js
   cmd: runChakra :baseline, "NoException", "enumerable.baseline-jsc", []
 - path: ChakraCore/test/es5/hasItem.js
@@ -1834,8 +1833,7 @@
   # Different behavior.
   cmd: runChakra :skip, "NoException", "proxytest9.baseline", []
 - path: ChakraCore/test/es6/ES6Function_bugs.js
-  # Different behavior with Object.seal().
-  cmd: runChakra :skip, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
+  cmd: runChakra :pass, "NoException", "", ["../UnitTestFramework/UnitTestFramework.js"]
 - path: ChakraCore/test/es6/OS_2700778.js
   cmd: runChakra :pass, "NoException", "", []
 - path: ChakraCore/test/es6/bug_OS_2184795.js

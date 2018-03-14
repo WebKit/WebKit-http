@@ -76,7 +76,7 @@ bool Vibration::vibrate(const VibrationPattern& pattern)
 
     m_pattern = sanitized;
 
-    m_timer.startOneShot(0);
+    m_timer.startOneShot(0_s);
     m_state = State::Waiting;
     return true;
 }
@@ -110,7 +110,7 @@ void Vibration::timerFired()
         m_vibrationClient->vibrate(m_pattern[0]);
         break;
     }
-    m_timer.startOneShot(m_pattern[0] / 1000.0);
+    m_timer.startOneShot(1_ms * m_pattern[0]);
     m_pattern.remove(0);
 }
 

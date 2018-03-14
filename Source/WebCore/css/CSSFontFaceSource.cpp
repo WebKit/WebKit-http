@@ -136,7 +136,7 @@ void CSSFontFaceSource::load(CSSFontSelector& fontSelector)
     fontSelector.beginLoadingFontSoon(*m_font);
 }
 
-RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings)
+RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, bool syntheticBold, bool syntheticItalic, const FontFeatureSettings& fontFaceFeatures, const FontVariantSettings& fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
     ASSERT(status() == Status::Success);
 
@@ -154,19 +154,19 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
                 m_immediateFontCustomPlatformData = CachedFont::createCustomFontData(*buffer, wrapping);
             } if (!m_immediateFontCustomPlatformData)
                 return nullptr;
-            return Font::create(CachedFont::platformDataFromCustomData(*m_immediateFontCustomPlatformData, fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings), true);
+            return Font::create(CachedFont::platformDataFromCustomData(*m_immediateFontCustomPlatformData, fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities), true);
         }
 
         // We're local. Just return a Font from the normal cache.
         // We don't want to check alternate font family names here, so pass true as the checkingAlternateName parameter.
-        return FontCache::singleton().fontForFamily(fontDescription, m_familyNameOrURI, &fontFaceFeatures, &fontFaceVariantSettings, true);
+        return FontCache::singleton().fontForFamily(fontDescription, m_familyNameOrURI, &fontFaceFeatures, &fontFaceVariantSettings, fontFaceCapabilities, true);
     }
 
     if (m_font) {
         if (!m_font->ensureCustomFontData(m_familyNameOrURI))
             return nullptr;
 
-        return m_font->createFont(fontDescription, m_familyNameOrURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings);
+        return m_font->createFont(fontDescription, m_familyNameOrURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
     }
 
     // In-Document SVG Fonts
@@ -179,7 +179,7 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
     if (!m_inDocumentCustomPlatformData) {
         SVGFontElement& fontElement = downcast<SVGFontElement>(*m_svgFontFaceElement->parentNode());
         if (auto otfFont = convertSVGToOTFFont(fontElement))
-            m_generatedOTFBuffer = SharedBuffer::adoptVector(otfFont.value());
+            m_generatedOTFBuffer = SharedBuffer::create(WTFMove(otfFont.value()));
         if (!m_generatedOTFBuffer)
             return nullptr;
         m_inDocumentCustomPlatformData = createFontCustomPlatformData(*m_generatedOTFBuffer);
@@ -187,7 +187,7 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
     if (!m_inDocumentCustomPlatformData)
         return nullptr;
 #if PLATFORM(COCOA)
-    return Font::create(m_inDocumentCustomPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings), true, false);
+    return Font::create(m_inDocumentCustomPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities), true, false);
 #else
     return Font::create(m_inDocumentCustomPlatformData->fontPlatformData(fontDescription, syntheticBold, syntheticItalic), true, false);
 #endif

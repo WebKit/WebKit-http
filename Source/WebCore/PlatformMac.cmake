@@ -210,6 +210,7 @@ list(APPEND WebCore_SOURCES
 
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
     crypto/mac/CryptoAlgorithmAES_CFBMac.cpp
+    crypto/mac/CryptoAlgorithmAES_CTRMac.cpp
     crypto/mac/CryptoAlgorithmAES_GCMMac.cpp
     crypto/mac/CryptoAlgorithmAES_KWMac.cpp
     crypto/mac/CryptoAlgorithmECDHMac.cpp
@@ -429,6 +430,8 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/GPUBufferMetal.mm
     platform/graphics/cocoa/GPUCommandBufferMetal.mm
     platform/graphics/cocoa/GPUCommandQueueMetal.mm
+    platform/graphics/cocoa/GPUComputeCommandEncoderMetal.mm
+    platform/graphics/cocoa/GPUComputePipelineStateMetal.mm
     platform/graphics/cocoa/GPUDepthStencilDescriptorMetal.mm
     platform/graphics/cocoa/GPUDepthStencilStateMetal.mm
     platform/graphics/cocoa/GPUDeviceMetal.mm

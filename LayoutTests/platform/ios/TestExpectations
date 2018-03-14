@@ -59,9 +59,6 @@ fast/history/page-cache-closed-audiocontext.html
 fast/history/page-cache-running-audiocontext.html
 fast/history/page-cache-suspended-audiocontext.html
 
-# WebRTC tests are skipped on iOS for now.
-fast/events/constructors/media-stream-event-constructor.html
-
 # No wheel events on iOS
 fast/scrolling/iframe-scrollable-after-back.html [ Skip ]
 fast/scrolling/overflow-scrollable-after-back.html [ Skip ]
@@ -140,6 +137,7 @@ fast/shadow-dom/pointerlockelement-in-slot.html
 # FIXME: Media tests not supported on iOS
 http/tests/media
 imported/w3c/web-platform-tests/html/semantics/embedded-content/media-elements
+http/tests/cache/disk-cache/disk-cache-media-small.html
 
 # No touch events
 fast/events/touch [ Skip ]
@@ -431,8 +429,6 @@ webkit.org/b/137530 canvas/philip/tests/2d.composite.operation.darker.html [ Fai
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.broken.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.drawImage.outsidesource.html [ Failure ]
-webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgb-eof.html [ Failure ]
-webkit.org/b/137530 canvas/philip/tests/2d.fillStyle.parse.rgba-eof.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.missingargs.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.path.rect.winding.html [ Failure ]
 webkit.org/b/137530 canvas/philip/tests/2d.text.draw.baseline.bottom.html [ Failure ]

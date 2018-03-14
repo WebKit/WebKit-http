@@ -199,6 +199,14 @@ TEST_F(WKContentExtensionStoreTest, NonDefaultStore)
     NSString *identifier = @"TestExtension";
     NSString *fileName = @"ContentExtension-TestExtension";
 
+    __block bool doneGettingAvailableIdentifiers = false;
+    [store getAvailableContentExtensionIdentifiers:^(NSArray<NSString *> *identifiers) {
+        EXPECT_NOT_NULL(identifiers);
+        EXPECT_EQ(identifiers.count, 0u);
+        doneGettingAvailableIdentifiers = true;
+    }];
+    TestWebKitAPI::Util::run(&doneGettingAvailableIdentifiers);
+    
     __block bool doneCompiling = false;
     [store compileContentExtensionForIdentifier:identifier encodedContentExtension:basicFilter completionHandler:^(WKContentExtension *filter, NSError *error) {
         EXPECT_NOT_NULL(filter);
@@ -206,6 +214,15 @@ TEST_F(WKContentExtensionStoreTest, NonDefaultStore)
         doneCompiling = true;
     }];
     TestWebKitAPI::Util::run(&doneCompiling);
+
+    doneGettingAvailableIdentifiers = false;
+    [store getAvailableContentExtensionIdentifiers:^(NSArray<NSString *> *identifiers) {
+        EXPECT_NOT_NULL(identifiers);
+        EXPECT_EQ(identifiers.count, 1u);
+        EXPECT_STREQ(identifiers[0].UTF8String, "TestExtension");
+        doneGettingAvailableIdentifiers = true;
+    }];
+    TestWebKitAPI::Util::run(&doneGettingAvailableIdentifiers);
 
     NSData *data = [NSData dataWithContentsOfURL:[tempDir URLByAppendingPathComponent:fileName]];
     EXPECT_NOT_NULL(data);
@@ -228,6 +245,27 @@ TEST_F(WKContentExtensionStoreTest, NonDefaultStore)
 
     NSData *dataAfterRemoving = [NSData dataWithContentsOfURL:[tempDir URLByAppendingPathComponent:fileName]];
     EXPECT_NULL(dataAfterRemoving);
+}
+
+TEST_F(WKContentExtensionStoreTest, MultipleExtensions)
+{
+    __block bool done = false;
+    [[WKContentExtensionStore defaultStore] compileContentExtensionForIdentifier:@"FirstExtension" encodedContentExtension:basicFilter completionHandler:^(WKContentExtension *filter, NSError *error) {
+        EXPECT_NOT_NULL(filter);
+        EXPECT_NULL(error);
+        [[WKContentExtensionStore defaultStore] compileContentExtensionForIdentifier:@"SecondExtension" encodedContentExtension:basicFilter completionHandler:^(WKContentExtension *filter, NSError *error) {
+            EXPECT_NOT_NULL(filter);
+            EXPECT_NULL(error);
+            [[WKContentExtensionStore defaultStore] getAvailableContentExtensionIdentifiers:^(NSArray<NSString *> *identifiers) {
+                EXPECT_NOT_NULL(identifiers);
+                EXPECT_EQ(identifiers.count, 2u);
+                EXPECT_STREQ(identifiers[0].UTF8String, "FirstExtension");
+                EXPECT_STREQ(identifiers[1].UTF8String, "SecondExtension");
+                done = true;
+            }];
+        }];
+    }];
+    TestWebKitAPI::Util::run(&done);
 }
 
 TEST_F(WKContentExtensionStoreTest, NonASCIISource)
@@ -269,18 +307,10 @@ static bool receivedAlert { false };
 {
     switch (alertCount++) {
     case 0:
-        // FIXME: The first content blocker should be enabled here.
-        // ContentExtensionsBackend::addContentExtension isn't being called in the WebProcess
-        // until after the first main resource starts loading, so we need to send a message to the
-        // WebProcess before loading if we have installed content blockers.
-        // See rdar://problem/27788755
-        EXPECT_STREQ("content blockers disabled", message.UTF8String);
-        break;
-    case 1:
         // Default behavior.
         EXPECT_STREQ("content blockers enabled", message.UTF8String);
         break;
-    case 2:
+    case 1:
         // After having removed the content extension.
         EXPECT_STREQ("content blockers disabled", message.UTF8String);
         break;
@@ -320,10 +350,6 @@ TEST_F(WKContentExtensionStoreTest, AddRemove)
     alertCount = 0;
     receivedAlert = false;
     [webView loadRequest:request];
-    TestWebKitAPI::Util::run(&receivedAlert);
-
-    receivedAlert = false;
-    [webView reload];
     TestWebKitAPI::Util::run(&receivedAlert);
 
     [[configuration userContentController] removeContentExtension:extension.get()];

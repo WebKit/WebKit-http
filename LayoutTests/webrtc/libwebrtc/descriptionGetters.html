@@ -12,15 +12,12 @@ if (window.testRunner)
     testRunner.setUserMediaPermission(true);
 
 promise_test((test) => {
-     if (window.internals)
-     internals.useMockRTCPeerConnectionFactory("TwoRealPeerConnections");
-
      var localConnection = new RTCPeerConnection();
      var remoteConnection = new RTCPeerConnection();
      var currentSDP;
      return navigator.mediaDevices.getUserMedia({ video: true}).then((stream) => {
 
-        localConnection.addStream(stream);
+        localConnection.addTrack(stream.getVideoTracks()[0], stream);
         return localConnection.createOffer();
     }).then((desc) => {
         currentSDP = desc.sdp;

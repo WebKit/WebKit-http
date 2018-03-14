@@ -1574,7 +1574,7 @@ void FrameView::layout(bool allowSubtree)
             // defer widget updates and event dispatch until after we return. postLayoutTasks()
             // can make us need to update again, and we can get stuck in a nasty cycle unless
             // we call it through the timer here.
-            m_postLayoutTasksTimer.startOneShot(0);
+            m_postLayoutTasksTimer.startOneShot(0_s);
             if (needsLayout())
                 layout();
         }
@@ -2515,7 +2515,7 @@ void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const S
         m_delayedScrollEventTimer.stop();
         sendScrollEvent();
     } else if (!m_delayedScrollEventTimer.isActive())
-        m_delayedScrollEventTimer.startOneShot(throttlingDelay.value());
+        m_delayedScrollEventTimer.startOneShot(throttlingDelay);
 
     if (Document* document = frame().document())
         document->sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize());
@@ -2931,10 +2931,16 @@ void FrameView::enableSpeculativeTilingIfNeeded()
     }
     if (!shouldEnableSpeculativeTilingDuringLoading(*this))
         return;
+
+    if (m_speculativeTilingDelayDisabledForTesting) {
+        speculativeTilingEnableTimerFired();
+        return;
+    }
+
     if (m_speculativeTilingEnableTimer.isActive())
         return;
     // Delay enabling a bit as load completion may trigger further loading from scripts.
-    static const double speculativeTilingEnableDelay = 0.5;
+    static const Seconds speculativeTilingEnableDelay { 500_ms };
     m_speculativeTilingEnableTimer.startOneShot(speculativeTilingEnableDelay);
 }
 
@@ -2958,6 +2964,13 @@ void FrameView::show()
         adjustTiledBackingCoverage();
     }
 }
+
+void FrameView::hide()
+{
+    ScrollView::hide();
+    adjustTiledBackingCoverage();
+}
+
 void FrameView::convertSubtreeLayoutToFullLayout()
 {
     ASSERT(m_layoutRoot);
@@ -3522,7 +3535,7 @@ void FrameView::performPostLayoutTasks()
     // is called through the post layout timer.
     Ref<FrameView> protectedThis(*this);
 
-    m_updateEmbeddedObjectsTimer.startOneShot(0);
+    m_updateEmbeddedObjectsTimer.startOneShot(0_s);
 
     if (auto* page = frame().page()) {
         if (auto* scrollingCoordinator = page->scrollingCoordinator())

@@ -84,7 +84,7 @@
 namespace WebCore {
 
 // Timeout for link preloads to be used after window.onload
-static const int unusedPreloadTimeoutInSeconds = 3;
+static const Seconds unusedPreloadTimeout { 3_s };
 
 static CachedResource* createResource(CachedResource::Type type, CachedResourceRequest&& request, SessionID sessionID)
 {
@@ -828,7 +828,7 @@ void CachedResourceLoader::documentDidFinishLoadEvent()
     // If m_preloads is not empty here, it's full of link preloads,
     // as speculative preloads were cleared at DCL.
     if (m_preloads && m_preloads->size() && !m_unusedPreloadsTimer.isActive())
-        m_unusedPreloadsTimer.startOneShot(unusedPreloadTimeoutInSeconds);
+        m_unusedPreloadsTimer.startOneShot(unusedPreloadTimeout);
 }
 
 void CachedResourceLoader::stopUnusedPreloadsTimer()
@@ -935,12 +935,8 @@ CachedResourceLoader::RevalidationPolicy CachedResourceLoader::determineRevalida
         return Reload;
 
     auto* textDecoder = existingResource->textResourceDecoder();
-    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset())) {
-        if (!existingResource->hasUnknownEncoding())
-            return Reload;
-        existingResource->setHasUnknownEncoding(false);
+    if (textDecoder && !textDecoder->hasEqualEncodingForCharset(cachedResourceRequest.charset()) && !textDecoder->encodingSet())
         existingResource->setEncoding(cachedResourceRequest.charset());
-    }
 
     // FIXME: We should use the same cache policy for all resource types. The raw resource policy is overly strict
     //        while the normal subresource policy is too loose.
@@ -1171,7 +1167,7 @@ void CachedResourceLoader::loadDone(bool shouldPerformPostLoadActions)
         performPostLoadActions();
 
     if (!m_garbageCollectDocumentResourcesTimer.isActive())
-        m_garbageCollectDocumentResourcesTimer.startOneShot(0);
+        m_garbageCollectDocumentResourcesTimer.startOneShot(0_s);
 }
 
 // Garbage collecting m_documentResources is a workaround for the

@@ -82,7 +82,7 @@ static const char* boolString(bool val)
 }
 #endif
 
-static const double DefaultWatchdogTimerInterval = 1;
+static const Seconds defaultWatchdogTimerInterval { 1_s };
 
 @class WebAVMediaSelectionOption;
 
@@ -351,7 +351,7 @@ static WebVideoFullscreenInterfaceAVKit::ExitFullScreenReason convertToExitFullS
 @interface WebAVPictureInPicturePlayerLayerView : UIView
 @end
 
-static CALayer* WebAVPictureInPicturePlayerLayerView_layerClass(id, SEL)
+static Class WebAVPictureInPicturePlayerLayerView_layerClass(id, SEL)
 {
     return [WebAVPlayerLayer class];
 }
@@ -374,7 +374,7 @@ static Class getWebAVPictureInPicturePlayerLayerViewClass()
 @property (retain) UIView* videoView;
 @end
 
-static CALayer *WebAVPlayerLayerView_layerClass(id, SEL)
+static Class WebAVPlayerLayerView_layerClass(id, SEL)
 {
     return [WebAVPlayerLayer class];
 }
@@ -986,7 +986,7 @@ bool WebVideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(WebVideoFu
     m_videoFullscreenModel->requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenModeNone, reason == ExitFullScreenReason::DoneButtonTapped);
 
     if (!m_watchdogTimer.isActive())
-        m_watchdogTimer.startOneShot(DefaultWatchdogTimerInterval);
+        m_watchdogTimer.startOneShot(defaultWatchdogTimerInterval);
 
     return false;
 }

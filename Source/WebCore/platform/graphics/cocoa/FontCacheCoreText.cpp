@@ -464,29 +464,40 @@ static inline float denormalizeWeight(float value)
     return (value + 109.3) / 523.7;
 }
 
-static inline float denormalizeWidth(float value)
-{
-    if (value < 125)
-        return (value - 100) / 50;
-    return (value - 50) / 150;
-}
-
 static inline float denormalizeSlope(float value)
 {
     return value / 300;
 }
-#endif
 
-#if !HAS_CORE_TEXT_WIDTH_ATTRIBUTE || ENABLE(VARIATION_FONTS)
-static inline float normalizeWidth(float value)
+static inline float denormalizeVariationWidth(float value)
 {
-    if (value < 0.5)
-        return value * 50 + 100;
-    return value * 150 + 50;
+    if (value <= 125)
+        return value / 100;
+    if (value <= 150)
+        return (value + 125) / 200;
+    return (value + 400) / 400;
 }
 #endif
 
-RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMode textRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const FontFeatureSettings& features, const FontVariantSettings& variantSettings, FontSelectionRequest fontSelectionRequest, const FontVariationSettings& variations, FontOpticalSizing fontOpticalSizing, float size)
+#if ENABLE(VARIATION_FONTS) || !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static inline float normalizeVariationWidth(float value)
+{
+    if (value <= 1.25)
+        return value * 100;
+    if (value <= 1.375)
+        return value * 200 - 125;
+    return value * 400 - 400;
+}
+#endif
+
+#if !HAS_CORE_TEXT_WIDTH_ATTRIBUTE
+static inline float normalizeWidth(float value)
+{
+    return normalizeVariationWidth(value + 1);
+}
+#endif
+
+RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMode textRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, const FontFeatureSettings& features, const FontVariantSettings& variantSettings, FontSelectionRequest fontSelectionRequest, const FontVariationSettings& variations, FontOpticalSizing fontOpticalSizing, float size)
 {
     bool alwaysAddVariations = false;
 
@@ -497,6 +508,7 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMo
 #else
     UNUSED_PARAM(fontSelectionRequest);
     UNUSED_PARAM(fontOpticalSizing);
+    UNUSED_PARAM(fontFaceCapabilities);
     UNUSED_PARAM(size);
 #endif
 
@@ -567,9 +579,15 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMo
         float weight = fontSelectionRequest.weight;
         float width = fontSelectionRequest.width;
         float slope = fontSelectionRequest.slope;
+        if (auto weightValue = fontFaceCapabilities.weight)
+            weight = std::max(std::min(weight, static_cast<float>(weightValue->maximum)), static_cast<float>(weightValue->minimum));
+        if (auto widthValue = fontFaceCapabilities.width)
+            width = std::max(std::min(width, static_cast<float>(widthValue->maximum)), static_cast<float>(widthValue->minimum));
+        if (auto slopeValue = fontFaceCapabilities.weight)
+            slope = std::max(std::min(slope, static_cast<float>(slopeValue->maximum)), static_cast<float>(slopeValue->minimum));
         if (needsConversion) {
             weight = denormalizeWeight(weight);
-            width = denormalizeWidth(width);
+            width = denormalizeVariationWidth(width);
             slope = denormalizeSlope(slope);
         }
         applyVariation({{'w', 'g', 'h', 't'}}, weight);
@@ -964,7 +982,7 @@ static VariationCapabilities variationCapabilitiesForFontDescriptor(CTFontDescri
         if (result.weight)
             result.weight = {{ normalizeWeight(result.weight.value().minimum), normalizeWeight(result.weight.value().maximum) }};
         if (result.width)
-            result.width = {{ normalizeWidth(result.width.value().minimum), normalizeWidth(result.width.value().maximum) }};
+            result.width = {{ normalizeVariationWidth(result.width.value().minimum), normalizeVariationWidth(result.width.value().maximum) }};
         if (result.slope)
             result.slope = {{ normalizeSlope(result.slope.value().minimum), normalizeSlope(result.slope.value().maximum) }};
     }
@@ -1144,7 +1162,7 @@ static void invalidateFontCache()
     FontCache::singleton().invalidate();
 }
 
-static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, FontSelectionRequest request, const FontFeatureSettings& featureSettings, const FontVariantSettings& variantSettings, const FontVariationSettings& variationSettings, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const TextRenderingMode& textRenderingMode, FontSelectionRequest fontSelectionRequest, FontOpticalSizing fontOpticalSizing, float size)
+static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, FontSelectionRequest request, const FontFeatureSettings& featureSettings, const FontVariantSettings& variantSettings, const FontVariationSettings& variationSettings, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities, const TextRenderingMode& textRenderingMode, FontSelectionRequest fontSelectionRequest, FontOpticalSizing fontOpticalSizing, float size)
 {
     if (family.isEmpty())
         return nullptr;
@@ -1152,7 +1170,7 @@ static RetainPtr<CTFontRef> fontWithFamily(const AtomicString& family, FontSelec
     auto foundFont = platformFontWithFamilySpecialCase(family, request, size);
     if (!foundFont)
         foundFont = platformFontLookupWithFamily(family, request, size);
-    return preparePlatformFont(foundFont.get(), textRenderingMode, fontFaceFeatures, fontFaceVariantSettings, featureSettings, variantSettings, fontSelectionRequest, variationSettings, fontOpticalSizing, size);
+    return preparePlatformFont(foundFont.get(), textRenderingMode, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, featureSettings, variantSettings, fontSelectionRequest, variationSettings, fontOpticalSizing, size);
 }
 
 #if PLATFORM(MAC)
@@ -1187,11 +1205,11 @@ static void autoActivateFont(const String& name, CGFloat size)
 }
 #endif
 
-std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings)
+std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDescription& fontDescription, const AtomicString& family, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, FontSelectionSpecifiedCapabilities fontFaceCapabilities)
 {
     float size = fontDescription.computedPixelSize();
 
-    auto font = fontWithFamily(family, fontDescription.fontSelectionRequest(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontDescription.textRenderingMode(), fontDescription.fontSelectionRequest(), fontDescription.opticalSizing(), size);
+    auto font = fontWithFamily(family, fontDescription.fontSelectionRequest(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, fontDescription.textRenderingMode(), fontDescription.fontSelectionRequest(), fontDescription.opticalSizing(), size);
 
 #if PLATFORM(MAC)
     if (!font) {
@@ -1202,7 +1220,7 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
         // Ignore the result because we want to use our own algorithm to actually find the font.
         autoActivateFont(family.string(), size);
 
-        font = fontWithFamily(family, fontDescription.fontSelectionRequest(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontDescription.textRenderingMode(), fontDescription.fontSelectionRequest(), fontDescription.opticalSizing(), size);
+        font = fontWithFamily(family, fontDescription.fontSelectionRequest(), fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings(), fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities, fontDescription.textRenderingMode(), fontDescription.fontSelectionRequest(), fontDescription.opticalSizing(), size);
     }
 #endif
 
@@ -1290,7 +1308,7 @@ RefPtr<Font> FontCache::systemFallbackForCharacters(const FontDescription& descr
 
     const FontPlatformData& platformData = originalFontData->platformData();
     auto result = lookupFallbackFont(platformData.font(), description.weight(), description.locale(), characters, length);
-    result = preparePlatformFont(result.get(), description.textRenderingMode(), nullptr, nullptr, description.featureSettings(), description.variantSettings(), description.fontSelectionRequest(), description.variationSettings(), description.opticalSizing(), description.computedSize());
+    result = preparePlatformFont(result.get(), description.textRenderingMode(), nullptr, nullptr, { }, description.featureSettings(), description.variantSettings(), description.fontSelectionRequest(), description.variationSettings(), description.opticalSizing(), description.computedSize());
     if (!result)
         return lastResortFallbackFont(description);
 

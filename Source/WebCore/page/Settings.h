@@ -256,8 +256,8 @@ public:
     WEBCORE_EXPORT static void setShouldRespectPriorityInCSSAttributeSetters(bool);
     static bool shouldRespectPriorityInCSSAttributeSetters();
 
-    void setTimeWithoutMouseMovementBeforeHidingControls(double time) { m_timeWithoutMouseMovementBeforeHidingControls = time; }
-    double timeWithoutMouseMovementBeforeHidingControls() const { return m_timeWithoutMouseMovementBeforeHidingControls; }
+    void setTimeWithoutMouseMovementBeforeHidingControls(Seconds time) { m_timeWithoutMouseMovementBeforeHidingControls = time; }
+    Seconds timeWithoutMouseMovementBeforeHidingControls() const { return m_timeWithoutMouseMovementBeforeHidingControls; }
 
     bool hiddenPageCSSAnimationSuspensionEnabled() const { return m_hiddenPageCSSAnimationSuspensionEnabled; }
     WEBCORE_EXPORT void setHiddenPageCSSAnimationSuspensionEnabled(bool);
@@ -310,6 +310,9 @@ public:
 
     bool mediaCaptureRequiresSecureConnection() const;
     WEBCORE_EXPORT static void setMediaCaptureRequiresSecureConnection(bool);
+
+    static bool useAVFoundationAudioCapture();
+    WEBCORE_EXPORT static void setUseAVFoundationAudioCapture(bool);
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -361,7 +364,7 @@ private:
 #endif
     bool m_scrollingPerformanceLoggingEnabled : 1;
 
-    double m_timeWithoutMouseMovementBeforeHidingControls;
+    Seconds m_timeWithoutMouseMovementBeforeHidingControls;
 
     Timer m_setImageLoadingSettingsTimer;
     void imageLoadingSettingsTimerFired();
@@ -415,6 +418,7 @@ private:
     String m_mediaDeviceIdentifierStorageDirectory;
     static bool gMockCaptureDevicesEnabled;
     static bool gMediaCaptureRequiresSecureConnection;
+    static bool gUseAVFoundationAudioCapture;
 #endif
 
 #if ENABLE(APPLE_PAY)

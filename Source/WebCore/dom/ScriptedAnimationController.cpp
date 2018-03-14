@@ -47,10 +47,10 @@
 #include <wtf/CurrentTime.h>
 
 // Allow a little more than 60fps to make sure we can at least hit that frame rate.
-static const Seconds fullSpeedAnimationInterval { 0.015 };
+static const Seconds fullSpeedAnimationInterval { 15_ms };
 // Allow a little more than 30fps to make sure we can at least hit that frame rate.
-static const Seconds halfSpeedThrottlingAnimationInterval { 0.030 };
-static const Seconds aggressiveThrottlingAnimationInterval { 10 };
+static const Seconds halfSpeedThrottlingAnimationInterval { 30_ms };
+static const Seconds aggressiveThrottlingAnimationInterval { 10_s };
 #endif
 
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(page() && page()->isAlwaysOnLoggingAllowed(), PerformanceLogging, "%p - ScriptedAnimationController::" fmt, this, ##__VA_ARGS__)
@@ -303,8 +303,22 @@ void ScriptedAnimationController::scheduleAnimation()
         return;
 
     Seconds animationInterval = interval();
-    double scheduleDelay = std::max<double>(animationInterval.value() - (m_document->domWindow()->nowTimestamp() - m_lastAnimationFrameTimestamp), 0);
+    Seconds scheduleDelay = std::max(animationInterval - Seconds(m_document->domWindow()->nowTimestamp() - m_lastAnimationFrameTimestamp), 0_s);
+
+    if (isThrottled()) {
+        // FIXME: not ideal to snapshot time both in now() and nowTimestamp(), the latter of which also has reduced resolution.
+        MonotonicTime now = MonotonicTime::now();
+
+        MonotonicTime fireTime = now + scheduleDelay;
+        Seconds alignmentInterval = 10_ms;
+        // Snap to the nearest alignmentInterval.
+        Seconds alignment = (fireTime + alignmentInterval / 2) % alignmentInterval;
+        MonotonicTime alignedFireTime = fireTime - alignment;
+        scheduleDelay = alignedFireTime - now;
+    }
+
     m_animationTimer.startOneShot(scheduleDelay);
+
     dispatchLoggingEventIfRequired("raf-schedule-animation-timer");
 #else
     if (FrameView* frameView = m_document->view())

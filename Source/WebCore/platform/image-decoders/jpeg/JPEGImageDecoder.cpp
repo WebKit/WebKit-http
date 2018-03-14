@@ -510,12 +510,12 @@ JPEGImageDecoder::~JPEGImageDecoder()
 {
 }
 
-bool JPEGImageDecoder::isSizeAvailable()
+EncodedDataStatus JPEGImageDecoder::encodedDataStatus()
 {
-    if (!ImageDecoder::isSizeAvailable())
-         decode(true);
+    if (ImageDecoder::encodedDataStatus() < EncodedDataStatus::SizeAvailable)
+        decode(true);
 
-    return ImageDecoder::isSizeAvailable();
+    return ImageDecoder::encodedDataStatus();
 }
 
 bool JPEGImageDecoder::setSize(const IntSize& size)

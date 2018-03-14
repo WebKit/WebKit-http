@@ -153,9 +153,25 @@ NS_ASSUME_NONNULL_END
 
 #if PLATFORM(MAC) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
 
+OBJC_CLASS AVFunctionBarPlaybackControlsProvider;
+OBJC_CLASS AVFunctionBarScrubber;
+OBJC_CLASS AVFunctionBarMediaSelectionOption;
+
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101300
+typedef AVFunctionBarMediaSelectionOption AVTouchBarMediaSelectionOption;
+typedef AVFunctionBarPlaybackControlsProvider AVTouchBarPlaybackControlsProvider;
+typedef AVFunctionBarScrubber AVTouchBarScrubber;
+#define AVTouchBarPlaybackControlsControlling AVFunctionBarPlaybackControlsControlling
+#endif // __MAC_OS_X_VERSION_MAX_ALLOWED < 101300
+
 #if USE(APPLE_INTERNAL_SDK)
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#import <AVKit/AVTouchBarPlaybackControlsProvider.h>
+#import <AVKit/AVTouchBarScrubber.h>
+#else
 #import <AVKit/AVFunctionBarPlaybackControlsProvider.h>
 #import <AVKit/AVFunctionBarScrubber.h>
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 #else
 
 NS_ASSUME_NONNULL_BEGIN
@@ -179,7 +195,6 @@ NS_ASSUME_NONNULL_BEGIN
 @property (assign, nullable) id<AVFunctionBarPlaybackControlsControlling> playbackControlsController;
 @end
 
-@class AVFunctionBarMediaSelectionOption;
 @class AVThumbnail;
 
 NS_ASSUME_NONNULL_END

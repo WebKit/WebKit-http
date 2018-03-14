@@ -50,17 +50,17 @@ void GIFImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
         m_reader->setData(&data);
 }
 
-bool GIFImageDecoder::isSizeAvailable()
+EncodedDataStatus GIFImageDecoder::encodedDataStatus()
 {
-    if (!ImageDecoder::isSizeAvailable())
-         decode(0, GIFSizeQuery);
+    if (ImageDecoder::encodedDataStatus() < EncodedDataStatus::SizeAvailable)
+        decode(0, GIFSizeQuery);
 
-    return ImageDecoder::isSizeAvailable();
+    return ImageDecoder::encodedDataStatus();
 }
 
 bool GIFImageDecoder::setSize(const IntSize& size)
 {
-    if (ImageDecoder::isSizeAvailable() && this->size() == size)
+    if (ImageDecoder::encodedDataStatus() >= EncodedDataStatus::SizeAvailable && this->size() == size)
         return true;
 
     if (!ImageDecoder::setSize(size))

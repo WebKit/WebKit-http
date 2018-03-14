@@ -57,7 +57,7 @@
 
 namespace WebCore {
 
-static const double elementMainContentCheckInterval = .250;
+static const Seconds elementMainContentCheckInterval { 250_ms };
 
 static bool isElementRectMostlyInMainFrame(const HTMLMediaElement&);
 static bool isElementLargeEnoughForMainContent(const HTMLMediaElement&, MediaSessionMainContentPurpose);
@@ -487,7 +487,7 @@ void MediaElementSession::externalOutputDeviceAvailableDidChange(bool hasTargets
     LOG(Media, "MediaElementSession::externalOutputDeviceAvailableDidChange(%p) - hasTargets %s", this, hasTargets ? "TRUE" : "FALSE");
 
     m_hasPlaybackTargets = hasTargets;
-    m_targetAvailabilityChangedTimer.startOneShot(0);
+    m_targetAvailabilityChangedTimer.startOneShot(0_s);
 }
 
 bool MediaElementSession::canPlayToWirelessPlaybackTarget() const
