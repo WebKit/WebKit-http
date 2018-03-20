@@ -215,7 +215,8 @@ void ShadowBlur::setShadowValues(const FloatSize& radius, const FloatSize& offse
 void ShadowBlur::updateShadowBlurValues()
 {
     // Limit blur radius to 128 to avoid lots of very expensive blurring.
-    m_blurRadius = m_blurRadius.shrunkTo(FloatSize(128, 128));
+    // Or better yet, 32.
+    m_blurRadius = m_blurRadius.shrunkTo(FloatSize(32, 32));
 
     // The type of shadow is decided by the blur radius, shadow offset, and shadow color.
     if (!m_color.isVisible()) {
