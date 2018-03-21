@@ -720,6 +720,214 @@ bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum target, Pla
 #endif
 }
 
+void blurLayerImage_SIMDFriendly(unsigned char* data, uint32_t width, uint32_t height, uint32_t stride, float blur_width, float blur_height)
+{
+    UNUSED_PARAM(blur_height);
+    uint32_t adjusted_blur;
+    {
+        const float gaussianKernelFactor = 3 / 4.f * sqrtf(2 * M_PI);
+        const float fudgeFactor = 0.88f;
+        adjusted_blur = std::max<uint32_t>(2, static_cast<uint32_t>(floorf((blur_width / 2) * gaussianKernelFactor * fudgeFactor + 0.5f)));
+    }
+
+    uint32_t curve_sigma = adjusted_blur;
+    uint32_t curve_sum = curve_sigma * 2 + 1;
+
+    // Blurring vertically.
+    {
+        uint32_t remainder = width % 4;
+        uint32_t four_count = (width - remainder) / 4;
+
+        for (uint32_t i = 0; i < four_count; ++i) {
+            unsigned char* pixels[4];
+            {
+                auto* pixels_base = data + 16 * i;
+                pixels[0] = pixels_base + 4 * 0;
+                pixels[1] = pixels_base + 4 * 1;
+                pixels[2] = pixels_base + 4 * 2;
+                pixels[3] = pixels_base + 4 * 3;
+            }
+
+            uint32_t last_value[4] = { pixels[0][3], pixels[1][3], pixels[2][3], pixels[3][3] };
+            uint32_t grouping_sum[4] = { 0, 0, 0, 0 };
+            for (uint32_t j = 0, limit = curve_sigma + 1; j < limit; ++j) {
+                uint32_t target_pixel = stride * j + 3;
+                grouping_sum[0] += pixels[0][target_pixel];
+                grouping_sum[1] += pixels[1][target_pixel];
+                grouping_sum[2] += pixels[2][target_pixel];
+                grouping_sum[3] += pixels[3][target_pixel];
+            }
+
+            for (uint32_t j = 0; j < height; ++j) {
+                uint32_t value[4] = { 0, 0, 0, 0 };
+                {
+                    if (j > curve_sigma) {
+                        grouping_sum[0] -= last_value[0];
+                        grouping_sum[1] -= last_value[1];
+                        grouping_sum[2] -= last_value[2];
+                        grouping_sum[3] -= last_value[3];
+
+                        uint32_t target_pixel = stride * (j - curve_sigma) + 3;
+                        last_value[0] = pixels[0][target_pixel];
+                        last_value[1] = pixels[1][target_pixel];
+                        last_value[2] = pixels[2][target_pixel];
+                        last_value[3] = pixels[3][target_pixel];
+                    }
+
+                    value[0] = grouping_sum[0];
+                    value[1] = grouping_sum[1];
+                    value[2] = grouping_sum[2];
+                    value[3] = grouping_sum[3];
+
+                    if (j + curve_sigma + 1 < height) {
+                        uint32_t target_pixel = stride * (j + curve_sigma + 1) + 3;
+                        grouping_sum[0] += pixels[0][target_pixel];
+                        grouping_sum[1] += pixels[1][target_pixel];
+                        grouping_sum[2] += pixels[2][target_pixel];
+                        grouping_sum[3] += pixels[3][target_pixel];
+                    }
+                }
+
+                {
+                    uint32_t target_pixel = stride * j + 2;
+                    pixels[0][target_pixel] = value[0] / curve_sum;
+                    pixels[1][target_pixel] = value[1] / curve_sum;
+                    pixels[2][target_pixel] = value[2] / curve_sum;
+                    pixels[3][target_pixel] = value[3] / curve_sum;
+                }
+            }
+        }
+
+        for (uint32_t i = 0; i < remainder; ++i) {
+            auto* pixels = data + 4 * i;
+
+            uint32_t last_value = pixels[3];
+            uint32_t grouping_sum = 0;
+            for (uint32_t j = 0, limit = curve_sigma + 1; j < limit; ++j)
+                grouping_sum += pixels[stride * j + 3];
+
+            for (uint32_t j = 0; j < height; ++j) {
+                uint32_t value = 0;
+                {
+                    if (j > curve_sigma) {
+                        grouping_sum -= last_value;
+                        last_value = pixels[stride * (j - curve_sigma) + 3];
+                    }
+
+                    value = grouping_sum;
+
+                    if (j + curve_sigma + 1 < height)
+                        grouping_sum += pixels[stride * (j + curve_sigma + 1) + 3];
+                }
+
+                pixels[stride * j + 2] = value / curve_sum;
+            }
+        }
+    }
+
+    // Blurring horizontally
+    {
+        uint32_t remainder = height % 4;
+        uint32_t four_count = (height - remainder) / 4;
+
+        for (uint32_t j = 0; j < four_count; ++j) {
+            unsigned char* pixels[4];
+            {
+                auto* pixels_base = data + 4 * j * stride;
+                pixels[0] = pixels_base + stride * 0;
+                pixels[1] = pixels_base + stride * 1;
+                pixels[2] = pixels_base + stride * 2;
+                pixels[3] = pixels_base + stride * 3;
+            }
+
+            uint32_t last_value[4] = { pixels[0][2], pixels[1][2], pixels[2][2], pixels[3][2] };
+            uint32_t grouping_sum[4] = { 0, 0, 0, 0 };
+            for (uint32_t i = 0, limit = curve_sigma + 1; i < limit; ++i) {
+                uint32_t target_pixel = 4 * i + 2;
+                grouping_sum[0] += pixels[0][target_pixel];
+                grouping_sum[1] += pixels[1][target_pixel];
+                grouping_sum[2] += pixels[2][target_pixel];
+                grouping_sum[3] += pixels[3][target_pixel];
+            }
+
+            for (uint32_t i = 0; i < width; ++i) {
+                uint32_t value[4] = { 0, 0, 0, 0 };
+                {
+                    if (i > curve_sigma) {
+                        grouping_sum[0] -= last_value[0];
+                        grouping_sum[1] -= last_value[1];
+                        grouping_sum[2] -= last_value[2];
+                        grouping_sum[3] -= last_value[3];
+
+                        uint32_t target_pixel = 4 * (i - curve_sigma) + 2;
+                        last_value[0] = pixels[0][target_pixel];
+                        last_value[1] = pixels[1][target_pixel];
+                        last_value[2] = pixels[2][target_pixel];
+                        last_value[3] = pixels[3][target_pixel];
+                    }
+
+                    value[0] = grouping_sum[0];
+                    value[1] = grouping_sum[1];
+                    value[2] = grouping_sum[2];
+                    value[3] = grouping_sum[3];
+
+                    if (i + curve_sigma + 1 < width) {
+                        uint32_t target_pixel = 4 * (i + curve_sigma + 1) + 2;
+                        grouping_sum[0] += pixels[0][target_pixel];
+                        grouping_sum[1] += pixels[1][target_pixel];
+                        grouping_sum[2] += pixels[2][target_pixel];
+                        grouping_sum[3] += pixels[3][target_pixel];
+                    }
+                }
+
+                {
+                    uint32_t target_pixel = 4 * i + 3;
+                    pixels[0][target_pixel] = value[0] / curve_sum;
+                    pixels[1][target_pixel] = value[1] / curve_sum;
+                    pixels[2][target_pixel] = value[2] / curve_sum;
+                    pixels[3][target_pixel] = value[3] / curve_sum;
+                }
+            }
+        }
+
+        for (uint32_t j = 0; j < remainder; ++j) {
+            auto* pixels = data + j * stride;
+
+            uint32_t last_value = pixels[2];
+            uint32_t grouping_sum = 0;
+            for (uint32_t i = 0, limit = curve_sigma + 1; i < limit; ++i)
+                grouping_sum += pixels[4 * i + 2];
+
+            for (uint32_t i = 0; i < width; ++i) {
+                uint32_t value = 0;
+                {
+                    if (i > curve_sigma) {
+                        grouping_sum -= last_value;
+                        last_value = pixels[4 * (i - curve_sigma) + 2];
+                    }
+
+                    value = grouping_sum;
+
+                    if (i + curve_sigma + 1 < width)
+                        grouping_sum += pixels[4 * (i + curve_sigma + 1) + 2];
+                }
+
+                pixels[4 * i + 3] = value / curve_sum;
+            }
+        }
+    }
+}
+
+void ImageBuffer::blur(const IntSize& size, const FloatSize& blurRadius)
+{
+    if (cairo_surface_get_type(m_data.m_surface.get()) != CAIRO_SURFACE_TYPE_IMAGE)
+        return;
+
+    unsigned char* data = cairo_image_surface_get_data(m_data.m_surface.get());
+    int stride = cairo_image_surface_get_stride(m_data.m_surface.get());
+    blurLayerImage_SIMDFriendly(data, size.width(), size.height(), stride, blurRadius.width(), blurRadius.height());
+}
+
 } // namespace WebCore
 
 #endif // USE(CAIRO)
