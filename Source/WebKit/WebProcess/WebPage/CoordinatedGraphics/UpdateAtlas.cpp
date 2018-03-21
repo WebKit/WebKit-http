@@ -44,11 +44,8 @@ public:
 
     void paintToSurfaceContext(GraphicsContext& context) override
     {
-        if (m_supportsAlpha) {
-            context.setCompositeOperation(CompositeCopy);
-            context.fillRect(IntRect(IntPoint::zero(), m_size), Color::transparent);
-            context.setCompositeOperation(CompositeSourceOver);
-        }
+        if (m_supportsAlpha)
+            context.clearRect({ { }, m_size });
 
         m_client.paintToSurfaceContext(context);
     }
