@@ -325,8 +325,12 @@ void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, Graphi
 void ImageBuffer::draw(GraphicsContext& destinationContext, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode)
 {
-    BackingStoreCopy copyMode = &destinationContext == &context() ? CopyBackingStore : DontCopyBackingStore;
-    RefPtr<Image> image = copyImage(copyMode);
+    if (&destinationContext == &context()) {
+        drawNativeImage(m_data.m_surface, destinationContext, destRect, srcRect, m_size, op, blendMode, ImageOrientation());
+        return;
+    }
+
+    RefPtr<Image> image = copyImage(CopyBackingStore);
     destinationContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode, DecodingMode::Synchronous, ImageOrientationDescription()));
 }
 
