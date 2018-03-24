@@ -56,9 +56,7 @@ public:
     void setCookieJar(SoupCookieJar*);
     SoupCookieJar* cookieJar() const;
 
-    void setCache(SoupCache*);
-    SoupCache* cache() const;
-    static void clearCache(const String& cacheDirectory);
+    static void clearOldSoupCache(const String& cacheDirectory);
 
 #if PLATFORM(WPE)
     static void setProxySettingsFromEnvironment();
