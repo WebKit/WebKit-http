@@ -38,7 +38,7 @@ public:
     virtual ~AutomationSessionClient();
 
     String sessionIdentifier() const override;
-    WebKit::WebPageProxy* didRequestNewWindow(WebKit::WebAutomationSession&) override;
+    void requestNewPageWithOptions(WebKit::WebAutomationSession&, API::AutomationSessionBrowsingContextOptions, CompletionHandler<void(WebKit::WebPageProxy*)>&&) override;
     void didDisconnectFromRemote(WebKit::WebAutomationSession&) override;
 
     bool isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) override;

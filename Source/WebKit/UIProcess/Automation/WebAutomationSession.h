@@ -119,9 +119,9 @@ public:
     // Platform: Generic
     void getBrowsingContexts(Inspector::ErrorString&, Ref<GetBrowsingContextsCallback>&&) final;
     void getBrowsingContext(Inspector::ErrorString&, const String&, Ref<GetBrowsingContextCallback>&&) final;
-    void createBrowsingContext(Inspector::ErrorString&, String*) override;
     void closeBrowsingContext(Inspector::ErrorString&, const String&) override;
     void switchToBrowsingContext(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle) override;
+    void createBrowsingContext(Inspector::ErrorString&, const bool* preferNewTab, Ref<CreateBrowsingContextCallback>&&) override;
     void setWindowFrameOfBrowsingContext(Inspector::ErrorString&, const String& handle, const JSON::Object* origin, const JSON::Object* size, Ref<SetWindowFrameOfBrowsingContextCallback>&&) final;
     void navigateBrowsingContext(Inspector::ErrorString&, const String& handle, const String& url, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<NavigateBrowsingContextCallback>&&) override;
     void goBackInBrowsingContext(Inspector::ErrorString&, const String&, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoBackInBrowsingContextCallback>&&) override;
