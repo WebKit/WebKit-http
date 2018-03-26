@@ -27,6 +27,10 @@ Dependencies can be installed (for a gcc2hybrid version) via:
         libxslt_x86_devel icu_x86_devel icu_devel perl python ruby_x86 \
         libexecinfo_x86_devel libwebp_x86_devel lighttpd_x86 php \
         pkgconfig_x86 pywebsocket gnutls36_x86 gnutls36_x86_devel
+        
+##### NOTE :
+If you get an _Ruby missng error_ even after you have installed ruby, similar to <br>`Could NOT find Ruby  (missing: RUBY_INCLUDE_DIR RUBY_LIBRARY RUBY_CONFIG_INCLUDE_DIR)  (found suitable version "2.2.0", minimum required is "1.9")`, you can skip that.
+
 
 Or, if you build Haiku from source you can add the packages to your UserBuildConfig:
 
