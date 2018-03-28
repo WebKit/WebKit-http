@@ -349,6 +349,19 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
     // FIXME: Add support for local/live audio input.
     priv->provider->render(nullptr, priv->bus, priv->framesToPull);
 
+    if (priv->bus->isSilent()) {
+        priv->numberOfSamples -= priv->framesToPull;
+        if (!priv->silentStartTime)
+            priv->silentStartTime = WTF::currentTime();
+    }
+    else {
+        if (priv->silentStartTime) {
+            priv->numberOfSamples += (WTF::currentTime() - priv->silentStartTime) * priv->sampleRate;
+            priv->silentStartTime = 0;
+        }
+    }
+
+    GstFlowReturn ret = GST_FLOW_OK;
     ASSERT(channelBufferList.size() == priv->sources.size());
     bool failed = false;
     for (unsigned i = 0; i < priv->sources.size(); ++i) {
@@ -360,14 +373,21 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
             continue;
 
         auto& appsrc = priv->sources[i];
-        // Leak the buffer ref, because gst_app_src_push_buffer steals it.
-        GstFlowReturn ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc.get()), buffer.leakRef());
-        if (ret != GST_FLOW_OK) {
-            // FLUSHING and EOS are not errors.
-            if (ret < GST_FLOW_EOS || ret == GST_FLOW_NOT_LINKED)
-                GST_ELEMENT_ERROR(src, CORE, PAD, ("Internal WebAudioSrc error"), ("Failed to push buffer on %s flow: %s", GST_OBJECT_NAME(appsrc.get()), gst_flow_get_name(ret)));
-            gst_task_stop(src->priv->task.get());
-            failed = true;
+
+        // FIXME: Properly handle silence (NULL) data (without hogging the cpu)
+        if ((ret == GST_FLOW_OK) && (!priv->bus->isSilent())) {
+
+            // Leak the buffer ref, because gst_app_src_push_buffer steals it.
+            ret = gst_app_src_push_buffer(GST_APP_SRC(appsrc.get()), buffer.leakRef());
+            if (ret != GST_FLOW_OK) {
+                // FLUSHING and EOS are not errors.
+                if (ret < GST_FLOW_EOS || ret == GST_FLOW_NOT_LINKED)
+                    GST_ELEMENT_ERROR(src, CORE, PAD, ("Internal WebAudioSrc error"), ("Failed to push buffer on %s flow: %s", GST_OBJECT_NAME(appsrc.get()), gst_flow_get_name(ret)));
+                gst_task_stop(src->priv->task.get());
+                failed = true;
+            }
+        } else {
+            g_usleep(1000);
         }
     }
 }
