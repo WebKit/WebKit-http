@@ -386,9 +386,9 @@ static void webKitWebAudioSrcLoop(WebKitWebAudioSrc* src)
                 gst_task_stop(src->priv->task.get());
                 failed = true;
             }
-        } else {
-            g_usleep(1000);
         }
+        else
+            g_usleep(1000);
     }
 }
 
