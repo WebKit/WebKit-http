@@ -439,6 +439,11 @@ void ChromeClientHaiku::loadIconForFiles(const Vector<String>& filenames, FileIc
     Icon::createIconForFiles(filenames);
 }
 
+RefPtr<Icon> ChromeClientHaiku::createIconForFiles(const Vector<String>& filenames)
+{
+    return Icon::createIconForFiles(filenames);
+}
+
 void ChromeClientHaiku::setCursor(const Cursor& cursor)
 {
     if (!m_webView->LockLooper())

@@ -149,6 +149,7 @@ namespace WebCore {
 
         // Asynchronous request to load an icon for specified filenames.
         void loadIconForFiles(const Vector<String>&, FileIconLoader&) override;
+        RefPtr<Icon> createIconForFiles(const Vector<String>& filenames) override;
 
         bool selectItemWritingDirectionIsNatural() override;
         bool selectItemAlignmentFollowsMenuWritingDirection() override;
