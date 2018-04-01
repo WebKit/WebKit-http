@@ -43,6 +43,7 @@
 #include "Comment.h"
 #include "CommonVM.h"
 #include "CompositionEvent.h"
+#include "ConstantPropertyMap.h"
 #include "ContentSecurityPolicy.h"
 #include "CookieJar.h"
 #include "CustomElementReactionQueue.h"
@@ -452,6 +453,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_scriptRunner(std::make_unique<ScriptRunner>(*this))
     , m_moduleLoader(std::make_unique<ScriptModuleLoader>(*this))
     , m_xmlVersion(ASCIILiteral("1.0"))
+    , m_constantPropertyMap(std::make_unique<ConstantPropertyMap>(*this))
     , m_documentClasses(documentClasses)
     , m_eventQueue(*this)
     , m_weakFactory(this)
@@ -2049,6 +2051,11 @@ StyleResolver& Document::userAgentShadowTreeStyleResolver()
 }
 
 void Document::fontsNeedUpdate(FontSelector&)
+{
+    invalidateMatchedPropertiesCacheAndForceStyleRecalc();
+}
+
+void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
 {
     if (auto* resolver = styleScope().resolverIfExists())
         resolver->invalidateMatchedPropertiesCache();
@@ -4418,7 +4425,7 @@ ExceptionOr<std::pair<AtomicString, AtomicString>> Document::parseQualifiedName(
         U16_NEXT(qualifiedName, i, length, c)
         if (c == ':') {
             if (sawColon)
-                return Exception { NAMESPACE_ERR };
+                return Exception { INVALID_CHARACTER_ERR };
             nameStart = true;
             sawColon = true;
             colonPosition = i - 1;
@@ -4436,7 +4443,7 @@ ExceptionOr<std::pair<AtomicString, AtomicString>> Document::parseQualifiedName(
         return std::pair<AtomicString, AtomicString> { { }, { qualifiedName } };
 
     if (!colonPosition || length - colonPosition <= 1)
-        return Exception { NAMESPACE_ERR };
+        return Exception { INVALID_CHARACTER_ERR };
 
     return std::pair<AtomicString, AtomicString> { StringView { qualifiedName }.substring(0, colonPosition).toAtomicString(), StringView { qualifiedName }.substring(colonPosition + 1).toAtomicString() };
 }

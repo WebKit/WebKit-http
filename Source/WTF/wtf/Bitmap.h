@@ -46,8 +46,8 @@ public:
     void set(size_t, bool);
     bool testAndSet(size_t);
     bool testAndClear(size_t);
-    bool concurrentTestAndSet(size_t, Dependency = nullDependency(), TransactionAbortLikelihood = TransactionAbortLikelihood::Likely);
-    bool concurrentTestAndClear(size_t, Dependency = nullDependency(), TransactionAbortLikelihood = TransactionAbortLikelihood::Likely);
+    bool concurrentTestAndSet(size_t, Dependency = nullDependency());
+    bool concurrentTestAndClear(size_t, Dependency = nullDependency());
     size_t nextPossiblyUnset(size_t) const;
     void clear(size_t);
     void clearAll();
@@ -178,7 +178,7 @@ inline bool Bitmap<bitmapSize, WordType>::testAndClear(size_t n)
 }
 
 template<size_t bitmapSize, typename WordType>
-ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, Dependency dependency, TransactionAbortLikelihood abortLikelihood)
+ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, Dependency dependency)
 {
     WordType mask = one << (n % wordSize);
     size_t index = n / wordSize;
@@ -190,12 +190,11 @@ ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndSet(size_t n, 
             
             value |= mask;
             return true;
-        },
-        abortLikelihood);
+        });
 }
 
 template<size_t bitmapSize, typename WordType>
-ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n, Dependency dependency, TransactionAbortLikelihood abortLikelihood)
+ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n, Dependency dependency)
 {
     WordType mask = one << (n % wordSize);
     size_t index = n / wordSize;
@@ -207,8 +206,7 @@ ALWAYS_INLINE bool Bitmap<bitmapSize, WordType>::concurrentTestAndClear(size_t n
             
             value &= ~mask;
             return true;
-        },
-        abortLikelihood);
+        });
 }
 
 template<size_t bitmapSize, typename WordType>

@@ -47,9 +47,6 @@ typedef NSWindow *PlatformWindow;
 #elif PLATFORM(GTK)
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget *PlatformWindow;
-#elif PLATFORM(EFL)
-typedef Evas_Object* PlatformWKView;
-typedef Ecore_Evas* PlatformWindow;
 #elif PLATFORM(HAIKU)
 typedef BView* PlatformWKView;
 typedef BWindow* PlatformWindow;
@@ -75,7 +72,7 @@ public:
     void simulateSpacebarKeyPress();
     void simulateAltKeyPress();
     void simulateRightClick(unsigned x, unsigned y);
-    void simulateMouseMove(unsigned x, unsigned y);
+    void simulateMouseMove(unsigned x, unsigned y, WKEventModifiers = 0);
 #if PLATFORM(MAC)
     void simulateButtonClick(WKEventMouseButton, unsigned x, unsigned y, WKEventModifiers);
 #endif

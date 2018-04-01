@@ -783,13 +783,6 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     WKPageClearWheelEventTestTrigger(m_mainWebView->page());
 
-#if PLATFORM(EFL)
-    // EFL uses a real window while other ports such as Qt don't.
-    // In EFL, we need to resize the window to the original size after calls to window.resizeTo.
-    WKRect rect = m_mainWebView->windowFrame();
-    m_mainWebView->setWindowFrame(WKRectMake(rect.origin.x, rect.origin.y, TestController::viewWidth, TestController::viewHeight));
-#endif
-
     WKPageSetMuted(m_mainWebView->page(), true);
 
     WKPageClearUserMediaState(m_mainWebView->page());
@@ -2256,14 +2249,24 @@ void TestController::setStatisticsTimeToLiveUserInteraction(double seconds)
     WKResourceLoadStatisticsManagerSetTimeToLiveUserInteraction(seconds);
 }
 
+void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetTimeToLiveCookiePartitionFree(seconds);
+}
+
 void TestController::statisticsFireDataModificationHandler()
 {
     WKResourceLoadStatisticsManagerFireDataModificationHandler();
 }
     
-void TestController::statisticsFireShouldPartitionCookiesHandler(WKStringRef hostName, bool value)
+void TestController::statisticsFireShouldPartitionCookiesHandler()
 {
-    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler(hostName, value);
+    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandler();
+}
+
+void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandlerForOneDomain(hostName, value);
 }
 
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)

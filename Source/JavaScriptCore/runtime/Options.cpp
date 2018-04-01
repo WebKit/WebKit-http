@@ -329,7 +329,10 @@ static void scaleJITPolicy()
 
 static void overrideDefaults()
 {
-    if (WTF::numberOfProcessorCores() < 4) {
+#if !PLATFORM(IOS)
+    if (WTF::numberOfProcessorCores() < 4)
+#endif
+    {
         Options::maximumMutatorUtilization() = 0.6;
         Options::concurrentGCMaxHeadroom() = 1.4;
         Options::minimumGCPauseMS() = 1;
@@ -388,6 +391,15 @@ static void recomputeDependentOptions()
     if (!MacroAssemblerX86::supportsFloatingPoint())
         Options::useJIT() = false;
 #endif
+
+    if (!Options::useJIT())
+        Options::useWebAssembly() = false;
+
+    if (!Options::useWebAssembly()) {
+        Options::webAssemblyFastMemoryPreallocateCount() = 0;
+        Options::useWebAssemblyFastTLS() = false;
+    }
+    
     if (Options::dumpDisassembly()
         || Options::dumpDFGDisassembly()
         || Options::dumpFTLDisassembly()

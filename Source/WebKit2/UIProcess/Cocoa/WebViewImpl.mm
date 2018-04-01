@@ -67,6 +67,7 @@
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKThumbnailViewInternal.h"
 #import <HIToolbox/CarbonEventsCore.h>
+#import <WebCore/AVKitSPI.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/ActivityState.h>
 #import <WebCore/ColorMac.h>
@@ -126,6 +127,13 @@ SOFT_LINK_CONSTANT_MAY_FAIL(Lookup, LUNotificationPopoverWillClose, NSString *)
 - (void)handleEventByInputMethod:(NSEvent *)event completionHandler:(void(^)(BOOL handled))completionHandler;
 - (BOOL)handleEventByKeyboardLayout:(NSEvent *)event;
 @end
+
+#if HAVE(TOUCH_BAR) && ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+// FIXME: Remove this once -setCanShowMediaSelectionButton: is declared in an SDK used by Apple's buildbot.
+@interface AVTouchBarScrubber ()
+- (void)setCanShowMediaSelectionButton:(BOOL)canShowMediaSelectionButton;
+@end
+#endif
 
 @interface WKAccessibilitySettingsObserver : NSObject {
     WebKit::WebViewImpl *_impl;
@@ -1140,13 +1148,18 @@ void WebViewImpl::updateMediaTouchBar()
     if (!m_mediaPlaybackControlsView) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
         m_mediaPlaybackControlsView = adoptNS([allocAVTouchBarScrubberInstance() init]);
+        // FIXME: Remove this once setCanShowMediaSelectionButton: is declared in an SDK used by Apple's buildbot.
+        if ([m_mediaPlaybackControlsView respondsToSelector:@selector(setCanShowMediaSelectionButton:)])
+            [m_mediaPlaybackControlsView setCanShowMediaSelectionButton:YES];
 #else
         m_mediaPlaybackControlsView = adoptNS([allocAVFunctionBarScrubberInstance() init]);
 #endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     }
 
-    if (!m_playbackControlsManager)
+    if (!m_playbackControlsManager) {
         m_playbackControlsManager = adoptNS([[WebPlaybackControlsManager alloc] init]);
+        [m_playbackControlsManager setAllowsPictureInPicturePlayback:m_page->preferences().allowsPictureInPictureMediaPlayback()];
+    }
 
     if (PlatformWebPlaybackSessionInterface* interface = m_page->playbackSessionManager()->controlsManagerInterface())
         [m_playbackControlsManager setWebPlaybackSessionInterfaceMac:interface];
@@ -1363,6 +1376,11 @@ bool WebViewImpl::drawsBackground() const
 bool WebViewImpl::isOpaque() const
 {
     return m_page->drawsBackground();
+}
+
+void WebViewImpl::setShouldSuppressFirstResponderChanges(bool shouldSuppress)
+{   
+    m_pageClient->setShouldSuppressFirstResponderChanges(shouldSuppress);
 }
 
 bool WebViewImpl::acceptsFirstResponder()

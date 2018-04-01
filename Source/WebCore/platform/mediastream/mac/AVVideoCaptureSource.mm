@@ -111,9 +111,9 @@ const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange
 
 class AVVideoCaptureSourceFactory : public RealtimeMediaSource::CaptureFactory {
 public:
-    RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice& captureDevice, const MediaConstraints* constraints, String& invalidConstraint) final {
-        AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:captureDevice.persistentId()];
-        ASSERT(!device || (captureDevice.type() == CaptureDevice::DeviceType::Video));
+    RefPtr<RealtimeMediaSource> createMediaSourceForCaptureDeviceWithConstraints(const String& deviceID, CaptureDevice::DeviceType type, const MediaConstraints* constraints, String& invalidConstraint) final {
+        AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:deviceID];
+        ASSERT_UNUSED(type, !device || (type == CaptureDevice::DeviceType::Video));
         return device ? AVVideoCaptureSource::create(device, emptyString(), constraints, invalidConstraint) : nullptr;
     }
 };
@@ -525,9 +525,9 @@ bool AVVideoCaptureSource::supportsSizeAndFrameRate(std::optional<int> width, st
     if (!frameRate)
         return true;
 
-    double rate = frameRate.value();
+    int rate = static_cast<int>(frameRate.value());
     for (AVFrameRateRangeType *range in [[device() activeFormat] videoSupportedFrameRateRanges]) {
-        if (rate >= range.minFrameRate && rate <= range.maxFrameRate)
+        if (rate >= static_cast<int>(range.minFrameRate) && rate <= static_cast<int>(range.maxFrameRate))
             return true;
     }
 

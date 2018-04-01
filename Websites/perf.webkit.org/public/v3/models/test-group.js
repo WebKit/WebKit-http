@@ -40,6 +40,20 @@ class TestGroup extends LabeledObject {
         this._commitSetToLabel.clear();
     }
 
+    test()
+    {
+        if (!this._buildRequests.length)
+            return null;
+        return this._buildRequests[0].test();
+    }
+
+    platform()
+    {
+        if (!this._buildRequests.length)
+            return null;
+        return this._buildRequests[0].platform();
+    }
+
     repetitionCount()
     {
         if (!this._buildRequests.length)
@@ -109,13 +123,11 @@ class TestGroup extends LabeledObject {
         return this._buildRequests.some(function (request) { return request.isPending(); });
     }
 
-    compareTestResults(beforeValues, afterValues)
+    compareTestResults(metric, beforeValues, afterValues)
     {
+        console.assert(metric);
         const beforeMean = Statistics.sum(beforeValues) / beforeValues.length;
         const afterMean = Statistics.sum(afterValues) / afterValues.length;
-
-        var metric = AnalysisTask.findById(this._taskId).metric();
-        console.assert(metric);
 
         var result = {changeType: null, status: 'failed', label: 'Failed', fullLabel: 'Failed', isStatisticallySignificant: false};
 
@@ -187,6 +199,16 @@ class TestGroup extends LabeledObject {
             return AnalysisTask.fetchById(data['taskId']);
         }).then((task) => {
             return this._fetchTestGroupsForTask(task.id()).then(() => task);
+        });
+    }
+
+    static createWithCustomConfiguration(task, platform, test, groupName, repetitionCount, commitSets)
+    {
+        console.assert(commitSets.length == 2);
+        const revisionSets = this._revisionSetsFromCommitSets(commitSets);
+        const params = {task: task.id(), name: groupName, platform: platform.id(), test: test.id(), repetitionCount, revisionSets};
+        return PrivilegedAPI.sendRequest('create-test-group', params).then((data) => {
+            return this._fetchTestGroupsForTask(task.id());
         });
     }
 

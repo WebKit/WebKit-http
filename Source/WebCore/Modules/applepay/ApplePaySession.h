@@ -97,7 +97,7 @@ public:
     void didSelectShippingMethod(const PaymentRequest::ShippingMethod&);
     void didSelectShippingContact(const PaymentContact&);
     void didSelectPaymentMethod(const PaymentMethod&);
-    void didCancelPayment();
+    void didCancelPaymentSession();
 
     using RefCounted<ApplePaySession>::ref;
     using RefCounted<ApplePaySession>::deref;
@@ -137,6 +137,7 @@ private:
         ShippingMethodSelected,
         ShippingContactSelected,
         PaymentMethodSelected,
+        CancelRequested,
         Authorized,
         Completed,
 

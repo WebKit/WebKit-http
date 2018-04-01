@@ -47,6 +47,7 @@ class SelectionData;
 class SharedBuffer;
 class URL;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 
 class PlatformPasteboard {
@@ -55,6 +56,8 @@ public:
 #if PLATFORM(IOS)
     WEBCORE_EXPORT PlatformPasteboard();
     WEBCORE_EXPORT Vector<String> filenamesForDataInteraction();
+    WEBCORE_EXPORT void getTypesByFidelityForItemAtIndex(Vector<String>& types, int index);
+    WEBCORE_EXPORT void updatePreferredTypeIdentifiers(const Vector<String>& types);
 #endif
     WEBCORE_EXPORT static String uniqueName();
 
@@ -78,9 +81,10 @@ public:
     WEBCORE_EXPORT void write(const PasteboardWebContent&);
     WEBCORE_EXPORT void write(const PasteboardImage&);
     WEBCORE_EXPORT void write(const String& pasteboardType, const String&);
+    WEBCORE_EXPORT void write(const PasteboardURL&);
     WEBCORE_EXPORT RefPtr<SharedBuffer> readBuffer(int index, const String& pasteboardType);
     WEBCORE_EXPORT String readString(int index, const String& pasteboardType);
-    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType);
+    WEBCORE_EXPORT URL readURL(int index, const String& pasteboardType, String& title);
     WEBCORE_EXPORT int count();
     WEBCORE_EXPORT int numberOfFiles();
 
@@ -94,6 +98,7 @@ private:
     WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardWebContent&);
     WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardImage&);
     WEBCORE_EXPORT void writeObjectRepresentations(const String& pasteboardType, const String& text);
+    WEBCORE_EXPORT void writeObjectRepresentations(const PasteboardURL&);
 #endif
 
 #if PLATFORM(MAC)

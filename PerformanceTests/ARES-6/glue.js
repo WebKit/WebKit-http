@@ -28,7 +28,7 @@ const driver = new Driver(
     isInBrowser ? document.getElementById("status") : null,
     isInBrowser ? document.getElementById("trigger") : null,
     function() {
-        driver.start(8)
+        driver.start(6)
     },
     isInBrowser ? document.getElementById("magic") : null,
     isInBrowser ? document.getElementById("Geomean") : null,
@@ -41,4 +41,5 @@ function reportResult(...args) {
 driver.addBenchmark(AirBenchmarkRunner);
 driver.addBenchmark(BasicBenchmarkRunner);
 driver.addBenchmark(BabylonBenchmarkRunner);
+driver.addBenchmark(MLBenchmarkRunner);
 driver.readyTrigger();

@@ -276,6 +276,7 @@ public:
             break;
 
         case SourceParseMode::GeneratorWrapperFunctionMode:
+        case SourceParseMode::GeneratorWrapperMethodMode:
             setIsGeneratorFunction();
             break;
 
@@ -647,7 +648,6 @@ public:
                 if (!isParameter) {
                     auto addResult = m_declaredVariables.add(function);
                     addResult.iterator->value.setIsVar();
-                    addResult.iterator->value.setIsSloppyModeHoistingCandidate();
                     sloppyModeHoistedFunctions.add(function);
                 }
             }
@@ -1235,7 +1235,7 @@ private:
 
     std::pair<DeclarationResultMask, ScopeRef> declareFunction(const Identifier* ident)
     {
-        if ((m_statementDepth == 1) || (!strictMode() && !currentScope()->isFunction() && !closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext())) {
+        if (m_statementDepth == 1 || (!strictMode() && !currentScope()->isFunction())) {
             // Functions declared at the top-most scope (both in sloppy and strict mode) are declared as vars
             // for backwards compatibility. This allows us to declare functions with the same name more than once.
             // In sloppy mode, we always declare functions as vars.
@@ -1246,7 +1246,7 @@ private:
         }
 
         if (!strictMode()) {
-            ASSERT(currentScope()->isFunction() || closestParentOrdinaryFunctionNonLexicalScope()->isEvalContext());
+            ASSERT(currentScope()->isFunction());
 
             // Functions declared inside a function inside a nested block scope in sloppy mode are subject to this
             // crazy rule defined inside Annex B.3.3 in the ES6 spec. It basically states that we will create
@@ -1367,7 +1367,12 @@ private:
     {
         return m_lexer->getToken(m_token);
     }
-    
+
+    ALWAYS_INLINE StringView getToken(const JSToken& token)
+    {
+        return m_lexer->getToken(token);
+    }
+
     ALWAYS_INLINE bool match(JSTokenType expected)
     {
         return m_token.m_type == expected;
@@ -1574,9 +1579,9 @@ private:
     template <class TreeBuilder> ALWAYS_INLINE TreeExpression parseArgument(TreeBuilder&, ArgumentType&);
     template <class TreeBuilder> TreeProperty parseProperty(TreeBuilder&, bool strict);
     template <class TreeBuilder> TreeExpression parsePropertyMethod(TreeBuilder& context, const Identifier* methodName, bool isGenerator, bool isAsyncMethod);
-    template <class TreeBuilder> TreeProperty parseGetterSetter(TreeBuilder&, bool strict, PropertyNode::Type, unsigned getterOrSetterStartOffset, ConstructorKind, bool isClassProperty);
+    template <class TreeBuilder> TreeProperty parseGetterSetter(TreeBuilder&, bool strict, PropertyNode::Type, unsigned getterOrSetterStartOffset, ConstructorKind, bool isClassProperty, bool isStaticMethod);
     template <class TreeBuilder> ALWAYS_INLINE TreeFunctionBody parseFunctionBody(TreeBuilder&, SyntaxChecker&, const JSTokenLocation&, int, int functionKeywordStart, int functionNameStart, int parametersStart, ConstructorKind, SuperBinding, FunctionBodyType, unsigned, SourceParseMode);
-    template <class TreeBuilder> ALWAYS_INLINE bool parseFormalParameters(TreeBuilder&, TreeFormalParameterList, bool isArrowFunction, unsigned&);
+    template <class TreeBuilder> ALWAYS_INLINE bool parseFormalParameters(TreeBuilder&, TreeFormalParameterList, bool isArrowFunction, bool isMethod, unsigned&);
     enum VarDeclarationListContext { ForLoopContext, VarDeclarationContext };
     template <class TreeBuilder> TreeExpression parseVariableDeclarationList(TreeBuilder&, int& declarations, TreeDestructuringPattern& lastPattern, TreeExpression& lastInitializer, JSTextPosition& identStart, JSTextPosition& initStart, JSTextPosition& initEnd, VarDeclarationListContext, DeclarationType, ExportType, bool& forLoopConstDoesNotHaveInitializer);
     template <class TreeBuilder> TreeSourceElements parseArrowFunctionSingleExpressionBodySourceElements(TreeBuilder&);
@@ -1640,9 +1645,19 @@ private:
         return !m_errorMessage.isNull();
     }
 
+    bool isDisallowedIdentifierLet(const JSToken& token)
+    {
+        return token.m_type == LET && strictMode();
+    }
+
     bool isDisallowedIdentifierAwait(const JSToken& token)
     {
         return token.m_type == AWAIT && (!m_parserState.allowAwait || currentScope()->isAsyncFunctionBoundary() || m_scriptMode == JSParserScriptMode::Module);
+    }
+
+    bool isDisallowedIdentifierYield(const JSToken& token)
+    {
+        return token.m_type == YIELD && (strictMode() || currentScope()->isGenerator());
     }
     
     ALWAYS_INLINE SuperBinding adjustSuperBindingForBaseConstructor(ConstructorKind constructorKind, SuperBinding superBinding, ScopeRef functionScope)
@@ -1662,12 +1677,28 @@ private:
         return methodSuperBinding;
     }
 
+    const char* disallowedIdentifierLetReason()
+    {
+        ASSERT(strictMode());
+        return "in strict mode";
+    }
+
     const char* disallowedIdentifierAwaitReason()
     {
         if (!m_parserState.allowAwait || currentScope()->isAsyncFunctionBoundary())
             return "in an async function";
         if (m_scriptMode == JSParserScriptMode::Module)
             return "in a module";
+        RELEASE_ASSERT_NOT_REACHED();
+        return nullptr;
+    }
+
+    const char* disallowedIdentifierYieldReason()
+    {
+        if (strictMode())
+            return "in strict mode";
+        if (currentScope()->isGenerator())
+            return "in a generator function";
         RELEASE_ASSERT_NOT_REACHED();
         return nullptr;
     }

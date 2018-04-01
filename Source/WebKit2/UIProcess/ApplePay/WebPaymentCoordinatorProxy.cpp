@@ -94,7 +94,7 @@ void WebPaymentCoordinatorProxy::showPaymentUI(const String& originatingURLStrin
 
     if (activePaymentCoordinatorProxy) {
         activePaymentCoordinatorProxy->hidePaymentUI();
-        activePaymentCoordinatorProxy->didCancelPayment();
+        activePaymentCoordinatorProxy->didCancelPaymentSession();
     }
 
     activePaymentCoordinatorProxy = this;
@@ -110,7 +110,7 @@ void WebPaymentCoordinatorProxy::showPaymentUI(const String& originatingURLStrin
     platformShowPaymentUI(originatingURL, linkIconURLs, paymentRequest, [this](bool result) {
         ASSERT(m_state == State::Activating);
         if (!result) {
-            didCancelPayment();
+            didCancelPaymentSession();
             return;
         }
 
@@ -179,9 +179,11 @@ void WebPaymentCoordinatorProxy::completePaymentSession(const std::optional<WebC
     if (!canCompletePayment())
         return;
 
+    bool isFinalStateResult = WebCore::isFinalStateResult(result);
+
     platformCompletePaymentSession(result);
 
-    if (!WebCore::isFinalStateStatus(result ? result->status : WebCore::PaymentAuthorizationStatus::Success)) {
+    if (!isFinalStateResult) {
         m_state = State::Active;
         return;
     }
@@ -200,11 +202,20 @@ void WebPaymentCoordinatorProxy::abortPaymentSession()
     didReachFinalState();
 }
 
-void WebPaymentCoordinatorProxy::didCancelPayment()
+void WebPaymentCoordinatorProxy::cancelPaymentSession()
+{
+    if (!canCancel())
+        return;
+
+    hidePaymentUI();
+    didCancelPaymentSession();
+}
+
+void WebPaymentCoordinatorProxy::didCancelPaymentSession()
 {
     ASSERT(canCancel());
 
-    m_webPageProxy.send(Messages::WebPaymentCoordinator::DidCancelPayment());
+    m_webPageProxy.send(Messages::WebPaymentCoordinator::DidCancelPaymentSession());
 
     didReachFinalState();
 }

@@ -601,9 +601,10 @@ void WebPage::updateThrottleState()
     // We should suppress if the page is not active, is visually idle, and supression is enabled.
     bool isLoading = m_activityState & ActivityState::IsLoading;
     bool isPlayingAudio = m_activityState & ActivityState::IsAudible;
+    bool isCapturingMedia = m_activityState & ActivityState::IsCapturingMedia;
     bool isVisuallyIdle = m_activityState & ActivityState::IsVisuallyIdle;
     bool windowIsActive = m_activityState & ActivityState::WindowIsActive;
-    bool pageSuppressed = !windowIsActive && !isLoading && !isPlayingAudio && m_processSuppressionEnabled && isVisuallyIdle;
+    bool pageSuppressed = !windowIsActive && !isLoading && !isPlayingAudio && !isCapturingMedia && m_processSuppressionEnabled && isVisuallyIdle;
 
     // The UserActivity keeps the processes runnable. So if the page should be suppressed, stop the activity.
     // If the page should not be supressed, start it.
@@ -3601,7 +3602,7 @@ void WebPage::performDragControllerAction(uint64_t action, const WebCore::DragDa
 
         auto& frame = m_page->focusController().focusedOrMainFrame();
         frame.editor().setIgnoreSelectionChanges(true);
-        m_page->dragController().performDragOperation(dragData);
+        bool handled = m_page->dragController().performDragOperation(dragData);
         frame.editor().setIgnoreSelectionChanges(false);
 
         // If we started loading a local file, the sandbox extension tracker would have adopted this
@@ -3610,7 +3611,9 @@ void WebPage::performDragControllerAction(uint64_t action, const WebCore::DragDa
 
         m_pendingDropExtensionsForFileUpload.clear();
 #if ENABLE(DATA_INTERACTION)
-        send(Messages::WebPageProxy::DidPerformDataInteractionControllerOperation());
+        send(Messages::WebPageProxy::DidPerformDataInteractionControllerOperation(handled));
+#else
+        UNUSED_PARAM(handled);
 #endif
         break;
     }
@@ -3865,6 +3868,15 @@ void WebPage::advanceToNextMisspelling(bool startBeforeSelection)
     frame.editor().advanceToNextMisspelling(startBeforeSelection);
 }
 #endif
+
+bool WebPage::hasRichlyEditableSelection() const
+{
+    auto& frame = m_page->focusController().focusedOrMainFrame();
+    if (m_page->dragCaretController().isContentRichlyEditable())
+        return true;
+
+    return frame.selection().selection().isContentRichlyEditable();
+}
 
 void WebPage::changeSpellingToWord(const String& word)
 {

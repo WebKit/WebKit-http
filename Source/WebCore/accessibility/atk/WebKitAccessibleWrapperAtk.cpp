@@ -400,8 +400,11 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
 
-    if (coreObject->ariaHasPopup())
-        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", "true");
+    if (coreObject->supportsARIAHasPopup())
+        attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->ariaPopupValue().utf8().data());
+
+    if (coreObject->supportsARIACurrent())
+        attributeSet = addToAtkAttributeSet(attributeSet, "current", coreObject->ariaCurrentValue().utf8().data());
 
     AccessibilitySortDirection sortDirection = coreObject->sortDirection();
     if (sortDirection != SortDirectionNone) {
@@ -427,15 +430,20 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     // According to the W3C Core Accessibility API Mappings 1.1, section 5.4.1 General Rules:
     // "User agents must expose the WAI-ARIA role string if the API supports a mechanism to do so."
     // In the case of ATK, the mechanism to do so is an object attribute pair (xml-roles:"string").
-    // The computedRoleString is primarily for testing, and not limited to elements with ARIA roles.
-    // Because the computedRoleString currently contains the ARIA role string, we'll use it for
-    // both purposes, as the "computed-role" object attribute for all elements which have a value
-    // and also via the "xml-roles" attribute for elements with ARIA, as well as for landmarks.
-    String roleString = coreObject->computedRoleString();
-    if (!roleString.isEmpty()) {
-        if (coreObject->ariaRoleAttribute() != UnknownRole || coreObject->isLandmark())
-            attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", roleString.utf8().data());
-        attributeSet = addToAtkAttributeSet(attributeSet, "computed-role", roleString.utf8().data());
+    // We cannot use the computedRoleString for this purpose because it is not limited to elements
+    // with ARIA roles, and it might not contain the actual ARIA role value (e.g. DPub ARIA).
+    String roleString = coreObject->getAttribute(HTMLNames::roleAttr);
+    if (!roleString.isEmpty())
+        attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", roleString.utf8().data());
+
+    String computedRoleString = coreObject->computedRoleString();
+    if (!computedRoleString.isEmpty()) {
+        attributeSet = addToAtkAttributeSet(attributeSet, "computed-role", computedRoleString.utf8().data());
+
+        // The HTML AAM maps several elements to ARIA landmark roles. In order for the type of landmark
+        // to be obtainable in the same fashion as an ARIA landmark, fall back on the computedRoleString.
+        if (coreObject->ariaRoleAttribute() == UnknownRole && coreObject->isLandmark())
+            attributeSet = addToAtkAttributeSet(attributeSet, "xml-roles", computedRoleString.utf8().data());
     }
 
     String roleDescription = coreObject->roleDescription();
@@ -522,6 +530,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case WindowRole:
         return ATK_ROLE_WINDOW;
     case PopUpButtonRole:
+        return coreObject->ariaHasPopup() ? ATK_ROLE_PUSH_BUTTON : ATK_ROLE_COMBO_BOX;
     case ComboBoxRole:
         return ATK_ROLE_COMBO_BOX;
     case SplitGroupRole:
@@ -544,13 +553,12 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
         return ATK_ROLE_TABLE;
     case ApplicationRole:
         return ATK_ROLE_APPLICATION;
+    case ApplicationGroupRole:
+    case GroupRole:
     case RadioGroupRole:
     case SVGRootRole:
     case TabPanelRole:
         return ATK_ROLE_PANEL;
-    case ApplicationGroupRole:
-    case GroupRole:
-        return coreObject->isStyleFormatGroup() ? ATK_ROLE_SECTION : ATK_ROLE_PANEL;
     case RowHeaderRole:
         return ATK_ROLE_ROW_HEADER;
     case ColumnHeaderRole:
@@ -596,9 +604,11 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
 #if ATK_CHECK_VERSION(2, 11, 3)
         return ATK_ROLE_BLOCK_QUOTE;
 #endif
+    case ApplicationTextGroupRole:
     case DivRole:
     case PreRole:
     case SVGTextRole:
+    case TextGroupRole:
         return ATK_ROLE_SECTION;
     case FooterRole:
         return ATK_ROLE_FOOTER;
@@ -747,7 +757,8 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
     bool isListBoxOption = parent && parent->isListBox();
 
     // Please keep the state list in alphabetical order
-    if (isListBoxOption && coreObject->isSelectedOptionActive())
+    if ((isListBoxOption && coreObject->isSelectedOptionActive())
+        || coreObject->ariaCurrentState() != ARIACurrentFalse)
         atk_state_set_add_state(stateSet, ATK_STATE_ACTIVE);
 
     if (coreObject->isBusy())
@@ -786,6 +797,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
         atk_state_set_add_state(stateSet, ATK_STATE_HORIZONTAL);
     else if (coreObject->orientation() == AccessibilityOrientationVertical)
         atk_state_set_add_state(stateSet, ATK_STATE_VERTICAL);
+
+    if (coreObject->ariaHasPopup())
+        atk_state_set_add_state(stateSet, ATK_STATE_HAS_POPUP);
 
     if (coreObject->isIndeterminate())
         atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
@@ -1064,7 +1078,7 @@ static bool roleIsTextType(AccessibilityRole role)
 {
     return role == ParagraphRole || role == HeadingRole || role == DivRole || role == CellRole
         || role == LinkRole || role == WebCoreLinkRole || role == ListItemRole || role == PreRole
-        || role == GridCellRole;
+        || role == GridCellRole || role == TextGroupRole || role == ApplicationTextGroupRole;
 }
 
 static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)

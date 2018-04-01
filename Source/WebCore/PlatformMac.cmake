@@ -69,7 +69,7 @@ if (NOT LOOKUP_FRAMEWORK-NOTFOUND)
 endif ()
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore"
+    "${FORWARDING_HEADERS_DIR}/JavaScriptCore"
     "${THIRDPARTY_DIR}/ANGLE"
     "${THIRDPARTY_DIR}/ANGLE/include/KHR"
     "${WEBCORE_DIR}/accessibility/mac"
@@ -430,6 +430,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/PatternCG.cpp
     platform/graphics/cg/SubimageCacheWithTimer.cpp
     platform/graphics/cg/TransformationMatrixCG.cpp
+    platform/graphics/cg/UTIRegistry.cpp
 
     platform/graphics/cocoa/GPUBufferMetal.mm
     platform/graphics/cocoa/GPUCommandBufferMetal.mm

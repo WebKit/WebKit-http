@@ -48,7 +48,7 @@ namespace {
 constexpr bool verbose = false;
 
 NEVER_INLINE NO_RETURN_DUE_TO_CRASH void webAssemblyCouldntGetFastMemory() { CRASH(); }
-NEVER_INLINE NO_RETURN_DUE_TO_CRASH void webAssemblyCouldntUnmapMemoryBytes() { CRASH(); }
+NEVER_INLINE NO_RETURN_DUE_TO_CRASH void webAssemblyCouldntUnmapMemory() { CRASH(); }
 NEVER_INLINE NO_RETURN_DUE_TO_CRASH void webAssemblyCouldntUnprotectMemory() { CRASH(); }
 
 void* mmapBytes(size_t bytes)
@@ -66,7 +66,7 @@ void* mmapBytes(size_t bytes)
 void munmapBytes(void* memory, size_t size)
 {
     if (UNLIKELY(munmap(memory, size)))
-        webAssemblyCouldntUnmapMemoryBytes();
+        webAssemblyCouldntUnmapMemory();
 }
 
 void zeroAndUnprotectBytes(void* start, size_t bytes)
@@ -93,6 +93,12 @@ std::atomic<void*> fastMemoryCache[fastMemoryCacheHardLimit] = { ATOMIC_VAR_INIT
 std::atomic<void*> currentlyActiveFastMemories[fastMemoryAllocationSoftLimit] = { ATOMIC_VAR_INIT(nullptr) };
 std::atomic<size_t> currentlyAllocatedFastMemories = ATOMIC_VAR_INIT(0);
 std::atomic<size_t> observedMaximumFastMemory = ATOMIC_VAR_INIT(0);
+std::atomic<size_t> currentSlowMemoryCapacity = ATOMIC_VAR_INIT(0);
+
+size_t fastMemoryAllocatedBytesSoftLimit()
+{
+    return fastMemoryAllocationSoftLimit * Memory::fastMappedBytes();
+}
 
 void* tryGetCachedFastMemory()
 {
@@ -143,8 +149,8 @@ void* tryGetFastMemory(VM& vm)
         memory = tryGetCachedFastMemory();
         if (memory)
             dataLogLnIf(verbose, "tryGetFastMemory re-using ", RawPointer(memory));
-        else {
-            // No memory was available in the cache. Maybe waiting on GC will find a free one.
+        else if (currentlyAllocatedFastMemories.load(std::memory_order_acquire) >= 1) {
+            // No memory was available in the cache, but we know there's at least one currently live. Maybe GC will find a free one.
             // FIXME collectSync(Full) and custom eager destruction of wasm memories could be better. For now use collectAllGarbage. Also, nothing tells us the current VM is holding onto fast memories. https://bugs.webkit.org/show_bug.cgi?id=170748
             dataLogLnIf(verbose, "tryGetFastMemory waiting on GC and retrying");
             vm.heap.collectAllGarbage();
@@ -194,9 +200,27 @@ void* tryGetFastMemory(VM& vm)
     return memory;
 }
 
+bool slowMemoryCapacitySoftMaximumExceeded()
+{
+    // The limit on slow memory capacity is arbitrary. Its purpose is to limit
+    // virtual memory allocation. We choose to set the limit at the same virtual
+    // memory limit imposed on fast memories.
+    size_t maximum = fastMemoryAllocatedBytesSoftLimit();
+    size_t currentCapacity = currentSlowMemoryCapacity.load(std::memory_order_acquire);
+    if (UNLIKELY(currentCapacity > maximum)) {
+        dataLogLnIf(verbose, "Slow memory capacity limit reached");
+        return true;
+    }
+    return false;
+}
+
 void* tryGetSlowMemory(size_t bytes)
 {
+    if (slowMemoryCapacitySoftMaximumExceeded())
+        return nullptr;
     void* memory = mmapBytes(bytes);
+    if (memory)
+        currentSlowMemoryCapacity.fetch_add(bytes, std::memory_order_acq_rel);
     dataLogLnIf(memory && verbose, "Obtained slow memory ", RawPointer(memory), " with capacity ", bytes);
     dataLogLnIf(!memory && verbose, "Failed obtaining slow memory with capacity ", bytes);
     return memory;
@@ -228,6 +252,7 @@ void relinquishMemory(void* memory, size_t writableSize, size_t mappedCapacity, 
     case MemoryMode::BoundsChecking:
         dataLogLnIf(verbose, "relinquishFastMemory freeing slow memory ", RawPointer(memory));
         munmapBytes(memory, mappedCapacity);
+        currentSlowMemoryCapacity.fetch_sub(mappedCapacity, std::memory_order_acq_rel);
         return;
 
     case MemoryMode::NumberOfMemoryModes:
@@ -273,14 +298,17 @@ void Memory::initializePreallocations()
 
     // Races cannot occur in this function: it is only called at program initialization, before WebAssembly can be invoked.
 
-    const auto startTime = MonotonicTime::now();
+    MonotonicTime startTime;
+    if (verbose)
+        startTime = MonotonicTime::now();
+
     const size_t desiredFastMemories = std::min<size_t>(Options::webAssemblyFastMemoryPreallocateCount(), fastMemoryCacheHardLimit);
 
     // Start off trying to allocate fast memories contiguously so they don't fragment each other. This can fail if the address space is otherwise fragmented. In that case, go for smaller contiguous allocations. We'll eventually get individual non-contiguous fast memories allocated, or we'll just be unable to fit a single one at which point we give up.
     auto allocateContiguousFastMemories = [&] (size_t numContiguous) -> bool {
         if (void *memory = mmapBytes(Memory::fastMappedBytes() * numContiguous)) {
             for (size_t subMemory = 0; subMemory < numContiguous; ++subMemory) {
-                void* startAddress = reinterpret_cast<char*>(memory) + Memory::fastMappedBytes() * subMemory + subMemory;
+                void* startAddress = reinterpret_cast<char*>(memory) + Memory::fastMappedBytes() * subMemory;
                 bool inserted = false;
                 for (size_t cacheEntry = 0; cacheEntry < fastMemoryCacheHardLimit; ++cacheEntry) {
                     if (fastMemoryCache[cacheEntry].load(std::memory_order_relaxed) == nullptr) {
@@ -312,14 +340,17 @@ void Memory::initializePreallocations()
     currentlyAllocatedFastMemories.store(fastMemoryPreallocateCount, std::memory_order_relaxed);
     observedMaximumFastMemory.store(fastMemoryPreallocateCount, std::memory_order_relaxed);
 
-    const auto endTime = MonotonicTime::now();
+    if (verbose) {
+        MonotonicTime endTime = MonotonicTime::now();
 
-    for (size_t cacheEntry = 0; cacheEntry < fastMemoryPreallocateCount; ++cacheEntry) {
-        void* startAddress = fastMemoryCache[cacheEntry].load(std::memory_order_relaxed);
-        ASSERT(startAddress);
-        dataLogLnIf(verbose, "Pre-allocation of WebAssembly fast memory at ", RawPointer(startAddress));
+        for (size_t cacheEntry = 0; cacheEntry < fastMemoryPreallocateCount; ++cacheEntry) {
+            void* startAddress = fastMemoryCache[cacheEntry].load(std::memory_order_relaxed);
+            ASSERT(startAddress);
+            dataLogLn("Pre-allocation of WebAssembly fast memory at ", RawPointer(startAddress));
+        }
+
+        dataLogLn("Pre-allocated ", fastMemoryPreallocateCount, " WebAssembly fast memories in ", fastMemoryPreallocateCount == 0 ? 0 : fragments, fragments == 1 ? " fragment, took " : " fragments, took ", endTime - startTime);
     }
-    dataLogLnIf(verbose, "Pre-allocated ", fastMemoryPreallocateCount, " WebAssembly fast memories in ", fastMemoryPreallocateCount == 0 ? 0 : fragments, fragments == 1 ? " fragment, took " : " fragments, took ", endTime - startTime);
 }
 
 Memory::Memory(PageCount initial, PageCount maximum)

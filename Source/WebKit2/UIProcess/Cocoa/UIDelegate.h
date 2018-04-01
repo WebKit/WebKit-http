@@ -76,6 +76,9 @@ private:
     private:
         // API::UIClient
         RefPtr<WebKit::WebPageProxy> createNewPage(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&) override;
+        bool createNewPageAsync(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&, std::function<void (RefPtr<WebKit::WebPageProxy>)> completionHandler) override;
+        RefPtr<WebKit::WebPageProxy> createNewPageCommon(WebKit::WebPageProxy*, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const WebKit::NavigationActionData&, std::function<void (RefPtr<WebKit::WebPageProxy>)>* completionHandler);
+
         void close(WebKit::WebPageProxy*) override;
         void fullscreenMayReturnToInline(WebKit::WebPageProxy*) override;
         void didEnterFullscreen(WebKit::WebPageProxy*) override;
@@ -118,6 +121,7 @@ private:
 
     struct {
         bool webViewCreateWebViewWithConfigurationForNavigationActionWindowFeatures : 1;
+        bool webViewCreateWebViewWithConfigurationForNavigationActionWindowFeaturesAsync : 1;
         bool webViewRunJavaScriptAlertPanelWithMessageInitiatedByFrameCompletionHandler : 1;
         bool webViewRunJavaScriptConfirmPanelWithMessageInitiatedByFrameCompletionHandler : 1;
         bool webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler : 1;
@@ -132,7 +136,7 @@ private:
         bool webViewFullscreenMayReturnToInline : 1;
         bool webViewDidEnterFullscreen : 1;
         bool webViewDidExitFullscreen : 1;
-        bool webViewRequestUserMediaAuthorizationForMicrophoneCameraURLMainFrameURLDecisionHandler : 1;
+        bool webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler : 1;
         bool webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler : 1;
         bool webViewMediaCaptureStateDidChange : 1;
 #if PLATFORM(IOS)

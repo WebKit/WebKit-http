@@ -28,13 +28,13 @@
 
 #if USE(LIBWEBRTC) && PLATFORM(COCOA)
 
-#include <webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.h>
+#include "H264VideoToolBoxEncoder.h"
 
 namespace WebCore {
 
 webrtc::VideoEncoder* VideoToolboxVideoEncoderFactory::CreateSupportedVideoEncoder(const cricket::VideoCodec& codec)
 {
-    return new webrtc::H264VideoToolboxEncoder(codec);
+    return new H264VideoToolboxEncoder(codec);
 }
 
 void VideoToolboxVideoEncoderFactory::DestroyVideoEncoder(webrtc::VideoEncoder* encoder)

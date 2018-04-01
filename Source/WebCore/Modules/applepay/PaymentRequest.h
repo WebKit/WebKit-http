@@ -192,9 +192,10 @@ struct ShippingContactUpdate {
 };
 
 struct ShippingMethodUpdate {
-    PaymentAuthorizationStatus status;
     PaymentRequest::TotalAndLineItems newTotalAndLineItems;
 };
+
+WEBCORE_EXPORT bool isFinalStateResult(const std::optional<PaymentAuthorizationResult>&);
 
 }
 

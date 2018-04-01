@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +26,13 @@
 #pragma once
 
 #include "ArgumentCoders.h"
+#include <WebCore/AutoplayEvent.h>
+#include <WebCore/CaptureDevice.h>
 #include <WebCore/ColorSpace.h>
 #include <WebCore/DiagnosticLoggingClient.h>
 #include <WebCore/FrameLoaderTypes.h>
 #include <WebCore/IndexedDB.h>
+#include <WebCore/MediaSelectionOption.h>
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/PaymentHeaders.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
@@ -92,6 +95,7 @@ struct Length;
 struct GrammarDetail;
 struct MimeClassInfo;
 struct PasteboardImage;
+struct PasteboardURL;
 struct PasteboardWebContent;
 struct PluginInfo;
 struct RecentSearch;
@@ -394,6 +398,11 @@ template<> struct ArgumentCoder<WebCore::PasteboardWebContent> {
     static bool decode(Decoder&, WebCore::PasteboardWebContent&);
 };
 
+template<> struct ArgumentCoder<WebCore::PasteboardURL> {
+    static void encode(Encoder&, const WebCore::PasteboardURL&);
+    static bool decode(Decoder&, WebCore::PasteboardURL&);
+};
+
 template<> struct ArgumentCoder<WebCore::PasteboardImage> {
     static void encode(Encoder&, const WebCore::PasteboardImage&);
     static bool decode(Decoder&, WebCore::PasteboardImage&);
@@ -651,6 +660,11 @@ template<> struct ArgumentCoder<WebCore::ScrollOffsetRange<float>> {
 
 #endif
 
+template<> struct ArgumentCoder<WebCore::MediaSelectionOption> {
+    static void encode(Encoder&, const WebCore::MediaSelectionOption&);
+    static bool decode(Decoder&, WebCore::MediaSelectionOption&);
+};
+
 } // namespace IPC
 
 namespace WTF {
@@ -670,6 +684,17 @@ template<> struct EnumTraits<WebCore::HasInsecureContent> {
         WebCore::HasInsecureContent,
         WebCore::HasInsecureContent::No,
         WebCore::HasInsecureContent::Yes
+    >;
+};
+
+template<> struct EnumTraits<WebCore::AutoplayEvent> {
+    using values = EnumValues<
+        WebCore::AutoplayEvent,
+        WebCore::AutoplayEvent::DidPreventMediaFromPlaying,
+        WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying,
+        WebCore::AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference,
+        WebCore::AutoplayEvent::UserDidInterfereWithPlayback,
+        WebCore::AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying
     >;
 };
 
@@ -699,5 +724,25 @@ template<> struct EnumTraits<WebCore::IndexedDB::GetAllType> {
     >;
 };
 #endif
+
+#if ENABLE(MEDIA_STREAM)
+template<> struct EnumTraits<WebCore::CaptureDevice::DeviceType> {
+    using values = EnumValues<
+        WebCore::CaptureDevice::DeviceType,
+        WebCore::CaptureDevice::DeviceType::Unknown,
+        WebCore::CaptureDevice::DeviceType::Audio,
+        WebCore::CaptureDevice::DeviceType::Video
+    >;
+};
+#endif
+
+template<> struct EnumTraits<WebCore::MediaSelectionOption::Type> {
+    using values = EnumValues<
+        WebCore::MediaSelectionOption::Type,
+        WebCore::MediaSelectionOption::Type::Regular,
+        WebCore::MediaSelectionOption::Type::LegibleOff,
+        WebCore::MediaSelectionOption::Type::LegibleAuto
+    >;
+};
 
 } // namespace WTF

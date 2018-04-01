@@ -35,15 +35,19 @@ namespace WebCore {
     // This class decodes the GIF image format.
     class GIFImageDecoder final : public ImageDecoder {
     public:
-        GIFImageDecoder(AlphaOption, GammaAndColorProfileOption);
+        static Ref<ImageDecoder> create(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+        {
+            return adoptRef(*new GIFImageDecoder(alphaOption, gammaAndColorProfileOption));
+        }
+
         virtual ~GIFImageDecoder();
 
         enum GIFQuery { GIFFullQuery, GIFSizeQuery, GIFFrameCountQuery };
 
         // ImageDecoder
-        String filenameExtension() const override { return "gif"; }
+        String filenameExtension() const override { return ASCIILiteral("gif"); }
         void setData(SharedBuffer& data, bool allDataReceived) override;
-        EncodedDataStatus encodedDataStatus() override;
+        EncodedDataStatus encodedDataStatus() const override;
         bool setSize(const IntSize&) override;
         size_t frameCount() const override;
         RepetitionCount repetitionCount() const override;
@@ -60,6 +64,8 @@ namespace WebCore {
         void gifComplete();
 
     private:
+        GIFImageDecoder(AlphaOption, GammaAndColorProfileOption);
+
         // If the query is GIFFullQuery, decodes the image up to (but not
         // including) |haltAtFrame|.  Otherwise, decodes as much as is needed to
         // answer the query, ignoring bitmap data.  If decoding fails but there

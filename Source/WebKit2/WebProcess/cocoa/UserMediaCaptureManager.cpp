@@ -114,6 +114,24 @@ public:
             observer->audioSamplesAvailable(time, audioData, m_description, numberOfFrames);
     }
 
+    virtual void setMuted(bool muted)
+    {
+        if (m_muted == muted)
+            return;
+
+        m_muted = muted;
+        m_manager.setMuted(m_id, m_muted);
+    }
+
+    virtual void setEnabled(bool enabled)
+    {
+        if (m_enabled == enabled)
+            return;
+
+        m_enabled = enabled;
+        m_manager.setEnabled(m_id, m_enabled);
+    }
+
     void startProducingData() final { m_manager.startProducingData(m_id); }
     void stopProducingData() final { m_manager.stopProducingData(m_id); }
     bool isCaptureSource() const final { return true; }
@@ -164,7 +182,7 @@ void UserMediaCaptureManager::initialize(const WebProcessCreationParameters& par
         RealtimeMediaSourceCenter::singleton().setAudioFactory(*this);
 }
 
-RefPtr<RealtimeMediaSource> UserMediaCaptureManager::createMediaSourceForCaptureDeviceWithConstraints(const CaptureDevice& device, const MediaConstraints* constraints, String& invalidConstraints)
+RefPtr<RealtimeMediaSource> UserMediaCaptureManager::createMediaSourceForCaptureDeviceWithConstraints(const String& deviceID, CaptureDevice::DeviceType type, const MediaConstraints* constraints, String& invalidConstraints)
 {
     if (!constraints)
         return nullptr;
@@ -176,9 +194,22 @@ RefPtr<RealtimeMediaSource> UserMediaCaptureManager::createMediaSourceForCapture
     constraintsData.isValid = constraints->isValid();
     bool succeeded;
 
-    m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, device, constraintsData), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, invalidConstraints), 0);
+    m_process.sendSync(Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints(id, deviceID, type, constraintsData), Messages::UserMediaCaptureManagerProxy::CreateMediaSourceForCaptureDeviceWithConstraints::Reply(succeeded, invalidConstraints), 0);
 
-    auto source = adoptRef(new Source(String::number(id), RealtimeMediaSource::Type::Audio, device.label(), id, *this));
+    RealtimeMediaSource::Type sourceType;
+    switch (type) {
+    case WebCore::CaptureDevice::DeviceType::Audio:
+        sourceType = WebCore::RealtimeMediaSource::Type::Audio;
+        break;
+    case WebCore::CaptureDevice::DeviceType::Video:
+        sourceType = WebCore::RealtimeMediaSource::Type::Video;
+        break;
+    case WebCore::CaptureDevice::DeviceType::Unknown:
+    default:
+        sourceType = WebCore::RealtimeMediaSource::Type::None;
+        break;
+    }
+    auto source = adoptRef(new Source(String::number(id), sourceType, emptyString(), id, *this));
     m_sources.set(id, source);
     return source;
 }
@@ -242,6 +273,16 @@ WebCore::RealtimeMediaSourceCapabilities&& UserMediaCaptureManager::capabilities
     WebCore::RealtimeMediaSourceCapabilities capabilities;
     m_process.sendSync(Messages::UserMediaCaptureManagerProxy::Capabilities(id), Messages::UserMediaCaptureManagerProxy::Capabilities::Reply(capabilities), 0);
     return WTFMove(capabilities);
+}
+
+void UserMediaCaptureManager::setMuted(uint64_t id, bool muted)
+{
+    m_process.send(Messages::UserMediaCaptureManagerProxy::SetMuted(id, muted), 0);
+}
+
+void UserMediaCaptureManager::setEnabled(uint64_t id, bool enabled)
+{
+    m_process.send(Messages::UserMediaCaptureManagerProxy::SetEnabled(id, enabled), 0);
 }
 
 }

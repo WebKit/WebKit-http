@@ -64,13 +64,14 @@ public:
     void completePaymentMethodSelection(std::optional<PaymentMethodUpdate>&&);
     void completePaymentSession(std::optional<PaymentAuthorizationResult>&&);
     void abortPaymentSession();
+    void cancelPaymentSession();
 
     WEBCORE_EXPORT void validateMerchant(const URL& validationURL);
     WEBCORE_EXPORT void didAuthorizePayment(const Payment&);
     WEBCORE_EXPORT void didSelectPaymentMethod(const PaymentMethod&);
     WEBCORE_EXPORT void didSelectShippingMethod(const PaymentRequest::ShippingMethod&);
     WEBCORE_EXPORT void didSelectShippingContact(const PaymentContact&);
-    WEBCORE_EXPORT void didCancelPayment();
+    WEBCORE_EXPORT void didCancelPaymentSession();
 
 private:
     PaymentCoordinatorClient& m_client;

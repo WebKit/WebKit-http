@@ -1315,10 +1315,6 @@ void CodeBlock::finalizeLLIntInlineCaches()
             curInstruction[7].u.structureChain.clear();
             break;
         }
-        // FIXME: https://bugs.webkit.org/show_bug.cgi?id=166418
-        // We need to add optimizations for op_resolve_scope_for_hoisting_func_decl_in_eval to do link time scope resolution.
-        case op_resolve_scope_for_hoisting_func_decl_in_eval:
-            break;
         case op_get_array_length:
             break;
         case op_to_this:
@@ -3111,5 +3107,22 @@ BytecodeLivenessAnalysis& CodeBlock::livenessAnalysisSlow()
     }
 }
 
+void setPrinter(Printer::PrintRecord& record, CodeBlock* codeBlock)
+{
+    Printer::setPrinter(record, toCString(codeBlock));
+}
 
 } // namespace JSC
+
+namespace WTF {
+    
+void printInternal(PrintStream& out, JSC::CodeBlock* codeBlock)
+{
+    if (UNLIKELY(!codeBlock)) {
+        out.print("<null codeBlock>");
+        return;
+    }
+    out.print(*codeBlock);
+}
+    
+} // namespace WTF

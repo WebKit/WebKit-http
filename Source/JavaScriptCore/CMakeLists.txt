@@ -38,7 +38,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/wasm"
     "${JAVASCRIPTCORE_DIR}/wasm/js"
     "${JAVASCRIPTCORE_DIR}/yarr"
-    "${DERIVED_SOURCES_DIR}/ForwardingHeaders"
+    "${FORWARDING_HEADERS_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}"
     "${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/inspector"
 )
@@ -72,6 +72,7 @@ set(JavaScriptCore_SOURCES
     assembler/MacroAssemblerCodeRef.cpp
     assembler/MacroAssemblerPrinter.cpp
     assembler/MacroAssemblerX86Common.cpp
+    assembler/Printer.cpp
 
     b3/air/AirAllocateRegistersAndStackByLinearScan.cpp
     b3/air/AirAllocateRegistersByGraphColoring.cpp
@@ -105,6 +106,7 @@ set(JavaScriptCore_SOURCES
     b3/air/AirPadInterference.cpp
     b3/air/AirPhaseInsertionSet.cpp
     b3/air/AirPhaseScope.cpp
+    b3/air/AirPrintSpecial.cpp
     b3/air/AirRegLiveness.cpp
     b3/air/AirReportUsedRegisters.cpp
     b3/air/AirSimplifyCFG.cpp
@@ -931,11 +933,11 @@ set(JavaScriptCore_SOURCES
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
     tools/SigillCrashAnalyzer.cpp
-    tools/StackTrace.cpp
     tools/VMInspector.cpp
 
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp
+    wasm/WasmBBQPlan.cpp
     wasm/WasmBinding.cpp
     wasm/WasmCallee.cpp
     wasm/WasmCallingConvention.cpp
@@ -943,14 +945,16 @@ set(JavaScriptCore_SOURCES
     wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
+    wasm/WasmMachineThreads.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
     wasm/WasmModule.cpp
     wasm/WasmModuleInformation.cpp
     wasm/WasmModuleParser.cpp
+    wasm/WasmOMGPlan.cpp
+    wasm/WasmOpcodeOrigin.cpp
     wasm/WasmPageCount.cpp
     wasm/WasmPlan.cpp
-    wasm/WasmOpcodeOrigin.cpp
     wasm/WasmSignature.cpp
     wasm/WasmThunks.cpp
     wasm/WasmValidate.cpp
@@ -1070,7 +1074,7 @@ set(JavaScriptCore_SCRIPTS_SOURCES_PATHS
 )
 
 # Force JavaScriptCore to run scripts from the same staging path as WebCore.
-set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
+set(JavaScriptCore_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/JavaScriptCore/Scripts")
 
 file(MAKE_DIRECTORY ${JavaScriptCore_SCRIPTS_DIR})
 

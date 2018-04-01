@@ -87,6 +87,7 @@ typedef void (^UIWKSelectionWithDirectionCompletionHandler)(BOOL selectionEndIsM
 typedef void (^UIWKKeyWebEventCompletionHandler)(::WebEvent *theEvent, BOOL wasHandled);
 
 typedef BlockPtr<void(WebKit::InteractionInformationAtPosition)> InteractionInformationCallback;
+typedef std::pair<WebKit::InteractionInformationRequest, InteractionInformationCallback> InteractionInformationRequestAndCallback;
 
 namespace WebKit {
 
@@ -174,7 +175,9 @@ struct WKAutoCorrectionData {
     WebKit::WKSelectionDrawingInfo _lastSelectionDrawingInfo;
 
     std::optional<WebKit::InteractionInformationRequest> _outstandingPositionInformationRequest;
-    Vector<std::pair<WebKit::InteractionInformationRequest, InteractionInformationCallback>> _pendingPositionInformationHandlers;
+
+    uint64_t _positionInformationCallbackDepth;
+    Vector<std::optional<InteractionInformationRequestAndCallback>> _pendingPositionInformationHandlers;
     
     std::unique_ptr<WebKit::InputViewUpdateDeferrer> _inputViewUpdateDeferrer;
 
@@ -200,14 +203,9 @@ struct WKAutoCorrectionData {
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::WKDataInteractionState _dataInteractionState;
-    BOOL _isPerformingDataInteractionOperation;
     RetainPtr<WKDataInteraction> _dataInteraction;
     RetainPtr<WKDataOperation> _dataOperation;
     CGPoint _deferredActionSheetRequestLocation;
-    RetainPtr<UIView> _visibleContentViewSnapshot;
-    RetainPtr<UIImageView> _dataInteractionUnselectedContentSnapshot;
-    BOOL _isRunningConcludeEditDataInteractionAnimation;
-    RetainPtr<WKDataInteractionCaretView> _dataInteractionCaretView;
 #endif
 }
 
@@ -287,8 +285,12 @@ struct WKAutoCorrectionData {
 - (void)_accessibilityRetrieveRectsEnclosingSelectionOffset:(NSInteger)offset withGranularity:(UITextGranularity)granularity;
 - (void)_accessibilityRetrieveRectsAtSelectionOffset:(NSInteger)offset withText:(NSString *)text;
 
+@property (nonatomic, readonly) WebKit::InteractionInformationAtPosition currentPositionInformation;
+- (void)doAfterPositionInformationUpdate:(void (^)(WebKit::InteractionInformationAtPosition))action forRequest:(WebKit::InteractionInformationRequest)request;
+- (void)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request;
+
 #if ENABLE(DATA_INTERACTION)
-- (void)_didPerformDataInteractionControllerOperation;
+- (void)_didPerformDataInteractionControllerOperation:(BOOL)handled;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
 - (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image withIndicatorData:(std::optional<WebCore::TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action;
 - (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;

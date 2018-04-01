@@ -1055,10 +1055,10 @@ void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<Webs
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd)
+void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)
 {
     for (auto& processPool : processPools())
-        processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd));
+        processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, clearFirst));
 }
 #endif
 
@@ -1106,18 +1106,7 @@ void WebsiteDataStore::webProcessDidCloseConnection(WebProcessProxy& webProcessP
 
 bool WebsiteDataStore::isAssociatedProcessPool(WebProcessPool& processPool) const
 {
-    if (auto dataStore = processPool.websiteDataStore()) {
-        if (&dataStore->websiteDataStore() == this)
-            return true;
-    } else if (&API::WebsiteDataStore::defaultDataStore()->websiteDataStore() == this) {
-        // If a process pool doesn't have an explicit data store and this is the default WebsiteDataStore,
-        // add that process pool to the set.
-        // FIXME: This behavior is weird and necessitated by the fact that process pools don't always
-        // have a data store; they should.
-        return true;
-    }
-
-    return false;
+    return &processPool.websiteDataStore().websiteDataStore() == this;
 }
 
 HashSet<RefPtr<WebProcessPool>> WebsiteDataStore::processPools(size_t count, bool ensureAPoolExists) const
@@ -1246,8 +1235,8 @@ void WebsiteDataStore::registerSharedResourceLoadObserver()
     
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     m_resourceLoadStatistics->registerSharedResourceLoadObserver(
-        [this] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd) {
-            this->shouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd);
+        [this] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst) {
+            this->shouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, clearFirst);
         });
 #else
     m_resourceLoadStatistics->registerSharedResourceLoadObserver();

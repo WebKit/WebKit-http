@@ -1457,6 +1457,8 @@ void AXObjectCache::handleAttributeChanged(const QualifiedName& attrName, Elemen
         postNotification(element, AXObjectCache::AXInvalidStatusChanged);
     else if (attrName == aria_modalAttr)
         handleAriaModalChange(element);
+    else if (attrName == aria_currentAttr)
+        postNotification(element, AXObjectCache::AXCurrentChanged);
     else
         postNotification(element, AXObjectCache::AXAriaAttributeChanged);
 }
@@ -2637,7 +2639,7 @@ CharacterOffset AXObjectCache::characterOffsetForIndex(int index, const Accessib
             // Do not include the new line character, always move the offset to the start of next node.
             if ((validate.node->isTextNode() || characterOffsetNodeIsBR(validate))) {
                 CharacterOffset next = nextCharacterOffset(validate, false);
-                if (!next.offset && rootAXEditableElement(next.node) == rootAXEditableElement(validate.node))
+                if (!next.isNull() && !next.offset && rootAXEditableElement(next.node) == rootAXEditableElement(validate.node))
                     result = next;
             }
             break;

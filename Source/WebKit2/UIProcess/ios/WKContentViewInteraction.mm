@@ -57,11 +57,11 @@
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
 #import "_WKActivatedElementInfoInternal.h"
+#import "_WKDraggableElementInfoInternal.h"
 #import "_WKElementAction.h"
 #import "_WKFocusedElementInfo.h"
 #import "_WKFormInputSession.h"
 #import "_WKInputDelegate.h"
-#import "_WKTestingDelegate.h"
 #import <CoreText/CTFont.h>
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
@@ -653,9 +653,6 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 
 #if ENABLE(DATA_INTERACTION)
     [self teardownDataInteractionDelegates];
-    _isPerformingDataInteractionOperation = NO;
-    [_dataInteractionCaretView remove];
-    _dataInteractionCaretView = nil;
 #endif
 
     _inspectorNodeSearchEnabled = NO;
@@ -1158,7 +1155,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     BOOL shouldZoomToFocusRect = YES;
 #if ENABLE(DATA_INTERACTION)
     // FIXME: We need to teach WKWebView to properly zoom and scroll during a data interaction operation.
-    shouldZoomToFocusRect = ![WebItemProviderPasteboard sharedInstance].hasPendingOperation;
+    shouldZoomToFocusRect = !_dataInteractionState.isPerformingOperation;
 #endif
     if (shouldZoomToFocusRect) {
         // In case user scaling is force enabled, do not use that scaling when zooming in with an input field.
@@ -1306,6 +1303,11 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return [self _actionForLongPressFromPositionInformation:_positionInformation];
 }
 
+- (InteractionInformationAtPosition)currentPositionInformation
+{
+    return _positionInformation;
+}
+
 - (void)doAfterPositionInformationUpdate:(void (^)(InteractionInformationAtPosition))action forRequest:(InteractionInformationRequest)request
 {
     if ([self _currentPositionInformationIsValidForRequest:request]) {
@@ -1314,7 +1316,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return;
     }
 
-    _pendingPositionInformationHandlers.append({ request, action });
+    _pendingPositionInformationHandlers.append(InteractionInformationRequestAndCallback(request, action));
 
     if (![self _hasValidOutstandingPositionInformationRequest:request])
         [self requestAsynchronousPositionInformationUpdate:request];
@@ -1361,20 +1363,30 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 {
     ASSERT(_hasValidPositionInformation);
 
-    Vector<size_t> indicesOfHandledRequests;
+    ++_positionInformationCallbackDepth;
+    auto updatedPositionInformation = _positionInformation;
+
     for (size_t index = 0; index < _pendingPositionInformationHandlers.size(); ++index) {
-        auto& requestAndHandler = _pendingPositionInformationHandlers[index];
-        if (![self _currentPositionInformationIsValidForRequest:requestAndHandler.first])
+        auto requestAndHandler = _pendingPositionInformationHandlers[index];
+        if (!requestAndHandler)
             continue;
 
-        if (requestAndHandler.second)
-            requestAndHandler.second(_positionInformation);
+        if (![self _currentPositionInformationIsValidForRequest:requestAndHandler->first])
+            continue;
 
-        indicesOfHandledRequests.append(index);
+        _pendingPositionInformationHandlers[index] = std::nullopt;
+
+        if (requestAndHandler->second)
+            requestAndHandler->second(updatedPositionInformation);
     }
 
-    while (indicesOfHandledRequests.size())
-        _pendingPositionInformationHandlers.remove(indicesOfHandledRequests.takeLast());
+    if (--_positionInformationCallbackDepth)
+        return;
+
+    for (int index = _pendingPositionInformationHandlers.size() - 1; index >= 0; --index) {
+        if (!_pendingPositionInformationHandlers[index])
+            _pendingPositionInformationHandlers.remove(index);
+    }
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -3839,7 +3851,7 @@ static bool isAssistableInputType(InputType type)
         // The default behavior is to allow node assistance if the user is interacting or the keyboard is already active.
         shouldShowKeyboard = userIsInteracting || _textSelectionAssistant;
 #if ENABLE(DATA_INTERACTION)
-        shouldShowKeyboard |= _isPerformingDataInteractionOperation;
+        shouldShowKeyboard |= _dataInteractionState.isPerformingOperation;
 #endif
     }
     if (!shouldShowKeyboard)

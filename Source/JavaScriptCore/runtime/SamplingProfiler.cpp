@@ -48,12 +48,8 @@
 #include "VM.h"
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
+#include <wtf/StackTrace.h>
 #include <wtf/text/StringBuilder.h>
-
-#if OS(DARWIN) || OS(LINUX)
-#include <cxxabi.h>
-#include <dlfcn.h>
-#endif
 
 namespace JSC {
 
@@ -167,7 +163,8 @@ protected:
     bool isValidFramePointer(void* exec)
     {
         uint8_t* fpCast = bitwise_cast<uint8_t*>(exec);
-        for (MachineThreads::MachineThread* thread = m_vm.heap.machineThreads().threadsListHead(m_machineThreadsLocker); thread; thread = thread->next) {
+        const auto& threadList = m_vm.heap.machineThreads().threadsListHead(m_machineThreadsLocker);
+        for (MachineThreads::MachineThread* thread = threadList.head(); thread; thread = thread->next()) {
             uint8_t* stackBase = static_cast<uint8_t*>(thread->stackBase());
             uint8_t* stackLimit = static_cast<uint8_t*>(thread->stackEnd());
             RELEASE_ASSERT(stackBase);
@@ -749,17 +746,11 @@ String SamplingProfiler::StackFrame::displayName(VM& vm)
     }
 
     if (frameType == FrameType::Unknown || frameType == FrameType::C) {
-#if OS(DARWIN) || OS(LINUX)
+#if HAVE(DLADDR)
         if (frameType == FrameType::C) {
-            const char* mangledName = nullptr;
-            const char* cxaDemangled = nullptr;
-            Dl_info info;
-            if (dladdr(cCodePC, &info) && info.dli_sname)
-                mangledName = info.dli_sname;
-            if (mangledName) {
-                cxaDemangled = abi::__cxa_demangle(mangledName, 0, 0, 0);
-                return String(cxaDemangled ? cxaDemangled : mangledName);
-            }
+            auto demangled = WTF::StackTrace::demangle(cCodePC);
+            if (demangled)
+                return String(demangled->demangledName() ? demangled->demangledName() : demangled->mangledName());
             WTF::dataLog("couldn't get a name");
         }
 #endif

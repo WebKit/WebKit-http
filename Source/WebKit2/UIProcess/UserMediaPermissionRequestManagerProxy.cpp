@@ -269,11 +269,11 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
 
         if (!m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *m_page.process().webFrame(frameID), *userMediaOrigin.get(), *topLevelOrigin.get(), request.get()))
             userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);
-        
+
     };
 
-    auto audioConstraints = MediaConstraintsImpl::create(audioConstraintsData);
-    auto videoConstraints = MediaConstraintsImpl::create(videoConstraintsData);
+    auto audioConstraints = MediaConstraintsImpl::create(MediaConstraintsData(audioConstraintsData));
+    auto videoConstraints = MediaConstraintsImpl::create(MediaConstraintsData(videoConstraintsData));
 
     syncWithWebCorePrefs();
     RealtimeMediaSourceCenter::singleton().validateRequestConstraints(validHandler, invalidHandler, audioConstraints, videoConstraints);
@@ -338,16 +338,6 @@ void UserMediaPermissionRequestManagerProxy::syncWithWebCorePrefs() const
     bool useAVFoundationAudioCapture = m_page.preferences().useAVFoundationAudioCapture();
     WebCore::RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture(useAVFoundationAudioCapture);
 #endif
-#endif
-}
-
-void UserMediaPermissionRequestManagerProxy::stopCapture()
-{
-    if (!m_page.isValid())
-        return;
-
-#if ENABLE(MEDIA_STREAM)
-    m_page.setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
 #endif
 }
 

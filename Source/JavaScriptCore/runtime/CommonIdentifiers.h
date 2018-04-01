@@ -211,6 +211,7 @@
     macro(focus) \
     macro(forEach) \
     macro(formatMatcher) \
+    macro(formatToParts) \
     macro(forward) \
     macro(frames) \
     macro(from) \
@@ -268,6 +269,7 @@
     macro(parent) \
     macro(parse) \
     macro(parseInt) \
+    macro(parseFloat) \
     macro(postMessage) \
     macro(profiledBytecodes) \
     macro(propertyIsEnumerable) \

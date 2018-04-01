@@ -50,9 +50,6 @@ typedef struct _GtkWidget GtkWidget;
 typedef WKViewRef PlatformWKView;
 typedef GtkWidget* PlatformWindow;
 typedef cairo_surface_t *PlatformImage;
-#elif PLATFORM(EFL)
-typedef Evas_Object* PlatformWKView;
-typedef Ecore_Evas* PlatformWindow;
 #elif PLATFORM(HAIKU)
 class BWebView;
 class BWindow;
@@ -117,10 +114,6 @@ private:
     PlatformWindow m_window;
     bool m_windowIsKey;
     const TestOptions m_options;
-
-#if PLATFORM(EFL) || PLATFORM(HAIKU)
-    bool m_usingFixedLayout;
-#endif
 };
 
 } // namespace WTR

@@ -247,6 +247,20 @@ public:
         return Call::fromTailJump(newJump);
     }
 
+    Call threadSafePatchableNearCall()
+    {
+        const size_t nearCallOpcodeSize = 1;
+        const size_t nearCallRelativeLocationSize = sizeof(int32_t);
+        // We want to make sure the 32-bit near call immediate is 32-bit aligned.
+        size_t codeSize = m_assembler.codeSize();
+        size_t alignedSize = WTF::roundUpToMultipleOf<nearCallRelativeLocationSize>(codeSize + nearCallOpcodeSize);
+        emitNops(alignedSize - (codeSize + nearCallOpcodeSize));
+        DataLabelPtr label = DataLabelPtr(this);
+        Call result = nearCall();
+        ASSERT_UNUSED(label, differenceBetween(label, result) == (nearCallOpcodeSize + nearCallRelativeLocationSize));
+        return result;
+    }
+
     Jump branchAdd32(ResultCondition cond, TrustedImm32 src, AbsoluteAddress dest)
     {
         move(TrustedImmPtr(dest.m_ptr), scratchRegister());
@@ -1435,32 +1449,32 @@ public:
     
     void atomicStrongCAS64(StatusCondition cond, RegisterID expectedAndResult, RegisterID newValue, Address address, RegisterID result)
     {
-        atomicStrongCAS(cond, expectedAndResult, result, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
+        atomicStrongCAS(cond, expectedAndResult, result, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
     }
 
     void atomicStrongCAS64(StatusCondition cond, RegisterID expectedAndResult, RegisterID newValue, BaseIndex address, RegisterID result)
     {
-        atomicStrongCAS(cond, expectedAndResult, result, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
+        atomicStrongCAS(cond, expectedAndResult, result, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
     }
 
     void atomicStrongCAS64(RegisterID expectedAndResult, RegisterID newValue, Address address)
     {
-        atomicStrongCAS(expectedAndResult, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
+        atomicStrongCAS(expectedAndResult, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
     }
 
     void atomicStrongCAS64(RegisterID expectedAndResult, RegisterID newValue, BaseIndex address)
     {
-        atomicStrongCAS(expectedAndResult, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
+        atomicStrongCAS(expectedAndResult, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
     }
 
     Jump branchAtomicStrongCAS64(StatusCondition cond, RegisterID expectedAndResult, RegisterID newValue, Address address)
     {
-        return branchAtomicStrongCAS(cond, expectedAndResult, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
+        return branchAtomicStrongCAS(cond, expectedAndResult, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base); });
     }
 
     Jump branchAtomicStrongCAS64(StatusCondition cond, RegisterID expectedAndResult, RegisterID newValue, BaseIndex address)
     {
-        return branchAtomicStrongCAS(cond, expectedAndResult, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
+        return branchAtomicStrongCAS(cond, expectedAndResult, address, [&] { m_assembler.cmpxchgq_rm(newValue, address.offset, address.base, address.index, address.scale); });
     }
 
     void atomicWeakCAS64(StatusCondition cond, RegisterID expectedAndClobbered, RegisterID newValue, Address address, RegisterID result)

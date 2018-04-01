@@ -190,8 +190,11 @@ Color DragData::asColor() const
     return platformStrategies()->pasteboardStrategy()->color(m_pasteboardName);
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(DraggingPurpose purpose) const
 {
+    if (purpose == DraggingPurpose::ForFileUpload)
+        return containsFiles();
+
     Vector<String> types;
     platformStrategies()->pasteboardStrategy()->getTypes(types, m_pasteboardName);
     return types.contains(String(WebArchivePboardType))
@@ -281,6 +284,52 @@ String DragData::asURL(FilenameConversionPolicy, String* title) const
 
     return String();        
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+void DragData::updatePreferredTypeIdentifiers(const Vector<String>& supportedTypesVector) const
+{
+    NSMutableSet *supportedTypes = [NSMutableSet setWithCapacity:supportedTypesVector.size()];
+    for (auto& supportedType : supportedTypesVector)
+        [supportedTypes addObject:supportedType];
+
+    // Match UIItemProvider behavior by performing two-pass UTI matching.
+    Vector<String> bestTypeIdentifiers;
+    auto& strategy = *platformStrategies()->pasteboardStrategy();
+    uint64_t itemCount = strategy.getPasteboardItemsCount(m_pasteboardName);
+    for (uint64_t itemIndex = 0; itemIndex < itemCount; ++itemIndex) {
+        Vector<String> typeIdentifiers;
+        strategy.getTypesByFidelityForItemAtIndex(typeIdentifiers, itemIndex, m_pasteboardName);
+
+        String bestTypeIdentifier = emptyString();
+        // In the first pass, look for the highest fidelity UTI that exactly matches one of the supported UTIs.
+        for (auto& type : typeIdentifiers) {
+            if ([supportedTypes containsObject:(NSString *)type]) {
+                bestTypeIdentifier = type;
+                break;
+            }
+        }
+
+        // In the second pass, look for the highest fidelity UTI that conforms to one of the supported UTIs.
+        if (bestTypeIdentifier.isEmpty()) {
+            for (auto& type : typeIdentifiers) {
+                for (NSString *supportedType in supportedTypes) {
+                    if (UTTypeConformsTo(type.createCFString().autorelease(), (CFStringRef)supportedType)) {
+                        bestTypeIdentifier = type;
+                        break;
+                    }
+                }
+                if (!bestTypeIdentifier.isEmpty())
+                    break;
+            }
+        }
+        bestTypeIdentifiers.append(bestTypeIdentifier);
+    }
+
+    strategy.updatePreferredTypeIdentifiers(bestTypeIdentifiers, m_pasteboardName);
+}
+
+#endif
 
 } // namespace WebCore
 

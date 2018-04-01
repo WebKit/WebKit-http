@@ -546,6 +546,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         break;
     }
+        
+    case AtomicsIsLockFree: {
+        if (node->child1().useKind() != Int32Use)
+            clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(SpecBoolInt32);
+        break;
+    }
 
     case ArithClz32: {
         JSValue operand = forNode(node->child1()).value();
@@ -1506,7 +1513,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         forNode(node).set(m_graph, m_vm.stringStructure.get());
         break;
             
-    case GetByVal: {
+    case GetByVal:
+    case AtomicsAdd:
+    case AtomicsAnd:
+    case AtomicsCompareExchange:
+    case AtomicsExchange:
+    case AtomicsLoad:
+    case AtomicsOr:
+    case AtomicsStore:
+    case AtomicsSub:
+    case AtomicsXor: {
+        if (node->op() != GetByVal)
+            clobberWorld(node->origin.semantic, clobberLimit);
         switch (node->arrayMode().type()) {
         case Array::SelectUsingPredictions:
         case Array::Unprofiled:
@@ -2855,16 +2873,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).setType(m_graph, SpecObject);
         break;
-
-    case ResolveScopeForHoistingFuncDeclInEval:
-        clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).makeBytecodeTop();
-        break;
-
+        
     case PutGlobalVariable:
     case NotifyWrite:
         break;
-
+            
     case OverridesHasInstance:
         forNode(node).setType(SpecBoolean);
         break;

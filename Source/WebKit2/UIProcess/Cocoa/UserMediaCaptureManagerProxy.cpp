@@ -125,10 +125,10 @@ UserMediaCaptureManagerProxy::~UserMediaCaptureManagerProxy()
     m_process.removeMessageReceiver(Messages::UserMediaCaptureManagerProxy::messageReceiverName());
 }
 
-void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const CaptureDevice& device, const MediaConstraintsData& constraintsData, bool& succeeded, String& invalidConstraints)
+void UserMediaCaptureManagerProxy::createMediaSourceForCaptureDeviceWithConstraints(uint64_t id, const String& deviceID, WebCore::CaptureDevice::DeviceType type, const MediaConstraintsData& constraintsData, bool& succeeded, String& invalidConstraints)
 {
-    auto constraints = MediaConstraintsImpl::create(constraintsData);
-    auto source = RealtimeMediaSourceCenter::singleton().audioFactory()->createMediaSourceForCaptureDeviceWithConstraints(device, constraints.ptr(), invalidConstraints);
+    auto constraints = MediaConstraintsImpl::create(MediaConstraintsData(constraintsData));
+    auto source = RealtimeMediaSourceCenter::singleton().audioFactory()->createMediaSourceForCaptureDeviceWithConstraints(deviceID, type, constraints.ptr(), invalidConstraints);
     succeeded = !!source;
 
     if (source)
@@ -155,7 +155,21 @@ void UserMediaCaptureManagerProxy::capabilities(uint64_t id, WebCore::RealtimeMe
     if (iter != m_proxies.end())
         capabilities = iter->value->source().capabilities();
 }
-    
+
+void UserMediaCaptureManagerProxy::setMuted(uint64_t id, bool muted)
+{
+    auto iter = m_proxies.find(id);
+    if (iter != m_proxies.end())
+        iter->value->source().setMuted(muted);
+}
+
+void UserMediaCaptureManagerProxy::setEnabled(uint64_t id, bool enabled)
+{
+    auto iter = m_proxies.find(id);
+    if (iter != m_proxies.end())
+        iter->value->source().setEnabled(enabled);
+}
+
 }
 
 #endif

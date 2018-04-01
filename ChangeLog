@@ -1,3 +1,80 @@
+2017-04-25  Daniel Bates  <dabates@apple.com>
+
+        [Cocoa][Win] Enable of X-Content-Type-Options: nosniff header
+        https://bugs.webkit.org/show_bug.cgi?id=136452
+        <rdar://problem/23412620>
+
+        Reviewed by Brent Fulgham.
+
+        Enable X-Content-Type-Options: nosniff on Mac, iOS and Windows platforms.
+
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed follow-up to r215681.
+
+        * Source/cmake/OptionsGTK.cmake: Don't re-define the ENABLE_SUBTLE_CRYPTO
+        macro, that's already done by the option macro.
+
+2017-04-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Switch to use ENABLE_REMOTE_INSPECTOR instead of ENABLE_INSPECTOR_SERVER for the remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=166680
+
+        Reviewed by Michael Catanzaro.
+
+        Add private option for ENABLE_REMOTE_INSPECTOR and enabled it by default.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-04-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK] Make the ENABLE_SUBTLE_CRYPTO option depend on libgcrypt 1.7.0
+        https://bugs.webkit.org/show_bug.cgi?id=171112
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsGTK.cmake: When ENABLE_SUBTLE_CRYPTO feature is enabled,
+        the detected libgcrypt library version should be at least 1.7.0 since we'll be
+        relying on API that was introduced in that version.
+
+2017-04-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] WTF target should not have wtf and subdirectries in public interface
+        https://bugs.webkit.org/show_bug.cgi?id=171115
+
+        Reviewed by Michael Catanzaro.
+
+        In r209665 WEBCORE_FRAMEWORK macro started to export INCLUDE_DIRECTORIES of
+        targets as their public interface, so that linked targets can use them
+        implicitly without copying directory lists around. This matches existing
+        practice for all targets except WTF, headers from which are always included
+        with full path starting from "<wtf/...".
+
+        Since r209665 it became possible to include headers from wtf or its
+        subdirectories in CMake builds without using "<wtf/..." path. It should
+        not be allowed.
+
+        * Source/cmake/WebKitMacros.cmake: Support xxx_PRIVATE_HEADERS
+        CMake variables.
+
+2017-04-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Define FORWARDING_HEADERS_DIR in WebKitFS and use it everywhere
+        https://bugs.webkit.org/show_bug.cgi?id=171071
+
+        Reviewed by Michael Catanzaro.
+
+        "${DERIVED_SOURCES_DIR}/ForwardingHeaders" path occurs very often in the
+        build system files. GTK-specifc FORWARDING_HEADERS_DIR variable should
+        be available for all ports.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+
 2017-04-17  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSCOnly] Fix build failures in macOS

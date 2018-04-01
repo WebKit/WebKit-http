@@ -93,6 +93,10 @@
 #include <WebCore/MediaSessionEvents.h>
 #endif
 
+#if PLATFORM(COCOA)
+#include "VersionChecks.h"
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -242,7 +246,13 @@ void WKPageStopLoading(WKPageRef pageRef)
 
 void WKPageReload(WKPageRef pageRef)
 {
-    toImpl(pageRef)->reload({ });
+    OptionSet<WebCore::ReloadOption> reloadOptions;
+#if PLATFORM(COCOA)
+    if (linkedOnOrAfter(WebKit::SDKVersion::FirstWithExpiredOnlyReloadBehavior))
+        reloadOptions |= WebCore::ReloadOption::ExpiredOnly;
+#endif
+
+    toImpl(pageRef)->reload(reloadOptions);
 }
 
 void WKPageReloadWithoutContentBlockers(WKPageRef pageRef)
@@ -2241,12 +2251,37 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         }
 #endif
 
-        void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event) override
+        static WKAutoplayEventFlags toWKAutoplayEventFlags(OptionSet<WebCore::AutoplayEventFlags> flags)
+        {
+            WKAutoplayEventFlags wkFlags = kWKAutoplayEventFlagsNone;
+            if (flags.contains(WebCore::AutoplayEventFlags::HasAudio))
+                wkFlags |= kWKAutoplayEventFlagsHasAudio;
+
+            return wkFlags;
+        }
+
+        static WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
+        {
+            switch (event) {
+            case WebCore::AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference:
+                return kWKAutoplayEventDidEndMediaPlaybackWithoutUserInterference;
+            case WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying:
+                return kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+            case WebCore::AutoplayEvent::DidPreventMediaFromPlaying:
+                return kWKAutoplayEventDidPreventFromAutoplaying;
+            case WebCore::AutoplayEvent::UserDidInterfereWithPlayback:
+                return kWKAutoplayEventUserDidInterfereWithPlayback;
+            case WebCore::AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying:
+                return kWKAutoplayEventUserNeverPlayedMediaPreventedFromPlaying;
+            }
+        }
+
+        void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags) override
         {
             if (!m_client.handleAutoplayEvent)
                 return;
 
-            m_client.handleAutoplayEvent(toAPI(&page), static_cast<WKAutoplayEvent>(event), m_client.base.clientInfo);
+            m_client.handleAutoplayEvent(toAPI(&page), toWKAutoplayEvent(event), toWKAutoplayEventFlags(flags), m_client.base.clientInfo);
         }
     };
 

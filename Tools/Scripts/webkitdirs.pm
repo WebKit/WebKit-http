@@ -101,7 +101,6 @@ BEGIN {
 use constant {
     AppleWin => "AppleWin",
     GTK      => "GTK",
-    Efl      => "Efl",
     Haiku    => "Haiku",
     iOS      => "iOS",
     tvOS     => "tvOS",
@@ -450,7 +449,6 @@ sub argumentsForConfiguration()
     push(@args, '--32-bit') if ($architecture ne "x86_64" and !isWin64());
     push(@args, '--64-bit') if (isWin64());
     push(@args, '--gtk') if isGtk();
-    push(@args, '--efl') if isEfl();
     push(@args, '--haiku') if isHaiku();
     push(@args, '--jsc-only') if isJSCOnly();
     push(@args, '--wincairo') if isWinCairo();
@@ -461,7 +459,7 @@ sub argumentsForConfiguration()
 sub extractNonMacOSHostConfiguration
 {
     my @args = ();
-    my @extract = ('--device', '--efl', '--gtk', '--ios', '--platform', '--sdk', '--simulator', '--wincairo', 'SDKROOT', 'ARCHS');
+    my @extract = ('--device', '--gtk', '--ios', '--platform', '--sdk', '--simulator', '--wincairo', 'SDKROOT', 'ARCHS');
     foreach (@{$_[0]}) {
         my $line = $_;
         my $flag = 0;
@@ -687,7 +685,7 @@ sub executableProductDir
     my $productDirectory = productDir();
 
     my $binaryDirectory;
-    if (isEfl() || isGtk() || isHaiku() || isJSCOnly()) {
+    if (isGtk() || isHaiku() || isJSCOnly()) {
         $binaryDirectory = "bin";
     } elsif (isAnyWindows()) {
         $binaryDirectory = isWin64() ? "bin64" : "bin32";
@@ -938,9 +936,6 @@ sub builtDylibPathForName
         }
         return "$configurationProductDir/lib/libWebKit.so";
     }
-    if (isEfl()) {
-        return "$configurationProductDir/lib/libewebkit2.so";
-    }
     if (isIOSWebKit()) {
         return "$configurationProductDir/$libraryName.framework/$libraryName";
     }
@@ -1066,7 +1061,6 @@ sub determinePortName()
     return if defined $portName;
 
     my %argToPortName = (
-        efl => Efl,
         gtk => GTK,
         haiku => Haiku,
         'jsc-only' => JSCOnly,
@@ -1102,7 +1096,6 @@ sub determinePortName()
     } else {
         if ($unknownPortProhibited) {
             my $portsChoice = join "\n\t", qw(
-                --efl
                 --gtk
                 --haiku
                 --jsc-only
@@ -1121,11 +1114,6 @@ sub portName()
 {
     determinePortName();
     return $portName;
-}
-
-sub isEfl()
-{
-    return portName() eq Efl;
 }
 
 sub isGtk()
@@ -1542,7 +1530,7 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk() || isEfl() || isHaiku()) {
+    if (isGtk() || isHaiku()) {
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
@@ -1551,7 +1539,7 @@ sub launcherPath()
 
 sub launcherName()
 {
-    if (isGtk() || isEfl()) {
+    if (isGtk()) {
         return "MiniBrowser";
     } elsif (isAppleCocoaWebKit()) {
         return "Safari";
@@ -1856,14 +1844,12 @@ sub getJhbuildPath()
     if (isGit() && isGitBranchBuild() && gitBranch()) {
         pop(@jhbuildPath);
     }
-    if (isEfl()) {
-        push(@jhbuildPath, "DependenciesEFL");
-    } elsif (isGtk()) {
+    if (isGtk()) {
         push(@jhbuildPath, "DependenciesGTK");
     } elsif (isHaiku()) {
         return () # Unused on Haiku.
     } else {
-        die "Cannot get JHBuild path for platform that isn't GTK+ or EFL.\n";
+        die "Cannot get JHBuild path for platform that isn't GTK+.\n";
     }
     return File::Spec->catdir(@jhbuildPath);
 }
@@ -1900,9 +1886,7 @@ sub wrapperPrefixIfNeeded()
     }
     if (-e getJhbuildPath()) {
         my @prefix = (File::Spec->catfile(sourceDir(), "Tools", "jhbuild", "jhbuild-wrapper"));
-        if (isEfl()) {
-            push(@prefix, "--efl");
-        } elsif (isGtk()) {
+        if (isGtk()) {
             push(@prefix, "--gtk");
         }
         push(@prefix, "run");
@@ -2062,7 +2046,7 @@ sub generateBuildSystemFromCMakeProject
     push @args, '-DSHOW_BINDINGS_GENERATION_PROGRESS=1' unless ($willUseNinja && -t STDOUT);
 
     # Some ports have production mode, but build-webkit should always use developer mode.
-    push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isJSCOnly();
+    push @args, "-DDEVELOPER_MODE=ON" if isGtk() || isJSCOnly();
 
     # Don't warn variables which aren't used by cmake ports.
     push @args, "--no-warn-unused-cli";
@@ -2134,10 +2118,6 @@ sub buildCMakeProjectOrExit($$$@)
     my $returnCode;
 
     exit(exitStatus(cleanCMakeGeneratedProject())) if $clean;
-
-    if (isEfl() && checkForArgumentAndRemoveFromARGV("--update-efl")) {
-        system("perl", "$sourceDir/Tools/Scripts/update-webkitefl-libs") == 0 or die $!;
-    }
 
     if (isGtk() && checkForArgumentAndRemoveFromARGV("--update-gtk")) {
         system("perl", "$sourceDir/Tools/Scripts/update-webkitgtk-libs") == 0 or die $!;

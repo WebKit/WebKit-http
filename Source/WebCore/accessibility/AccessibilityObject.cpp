@@ -1838,11 +1838,8 @@ void AccessibilityObject::ariaTreeItemContent(AccessibilityChildrenVector& resul
 {
     // The ARIA tree item content are the item that are not other tree items or their containing groups.
     for (const auto& child : children()) {
-        AccessibilityRole role = child->roleValue();
-        if (role == TreeItemRole || role == GroupRole || role == ApplicationGroupRole)
-            continue;
-        
-        result.append(child);
+        if (!child->isGroup() && child->roleValue() != TreeItemRole)
+            result.append(child);
     }
 }
 
@@ -1959,6 +1956,11 @@ String AccessibilityObject::invalidStatus() const
     // Any other non empty string should be treated as "true".
     return trueValue;
 }
+
+bool AccessibilityObject::supportsARIACurrent() const
+{
+    return hasAttribute(aria_currentAttr);
+}
  
 AccessibilityARIACurrentState AccessibilityObject::ariaCurrentState() const
 {
@@ -1982,6 +1984,27 @@ AccessibilityARIACurrentState AccessibilityObject::ariaCurrentState() const
     
     // Any value not included in the list of allowed values should be treated as "true".
     return ARIACurrentTrue;
+}
+
+String AccessibilityObject::ariaCurrentValue() const
+{
+    switch (ariaCurrentState()) {
+    case ARIACurrentFalse:
+        return "false";
+    case ARIACurrentPage:
+        return "page";
+    case ARIACurrentStep:
+        return "step";
+    case ARIACurrentLocation:
+        return "location";
+    case ARIACurrentTime:
+        return "time";
+    case ARIACurrentDate:
+        return "date";
+    default:
+    case ARIACurrentTrue:
+        return "true";
+    }
 }
 
 bool AccessibilityObject::isAriaModalDescendant(Node* ariaModalNode) const
@@ -2115,44 +2138,44 @@ static void initializeRoleMap()
         { "directory", DirectoryRole },
         // The 'doc-*' roles are defined the ARIA DPUB mobile: https://www.w3.org/TR/dpub-aam-1.0/ 
         // Editor's draft is currently at https://rawgit.com/w3c/aria/master/dpub-aam/dpub-aam.html 
-        { "doc-abstract", LandmarkRegionRole },
+        { "doc-abstract", ApplicationTextGroupRole },
         { "doc-acknowledgments", LandmarkRegionRole },
         { "doc-afterword", LandmarkRegionRole },
         { "doc-appendix", LandmarkRegionRole },
         { "doc-backlink", WebCoreLinkRole },
-        { "doc-biblioentry", ApplicationGroupRole },
+        { "doc-biblioentry", ListItemRole },
         { "doc-bibliography", LandmarkRegionRole },
         { "doc-biblioref", WebCoreLinkRole },
         { "doc-chapter", LandmarkRegionRole },
-        { "doc-colophon", ApplicationGroupRole },
+        { "doc-colophon", ApplicationTextGroupRole },
         { "doc-conclusion", LandmarkRegionRole },
         { "doc-cover", ImageRole },
-        { "doc-credit", ApplicationGroupRole },
+        { "doc-credit", ApplicationTextGroupRole },
         { "doc-credits", LandmarkRegionRole },
-        { "doc-dedication", ApplicationGroupRole },
-        { "doc-endnote", ApplicationGroupRole },
+        { "doc-dedication", ApplicationTextGroupRole },
+        { "doc-endnote", ListItemRole },
         { "doc-endnotes", LandmarkRegionRole },
-        { "doc-epigraph", ApplicationGroupRole },
+        { "doc-epigraph", ApplicationTextGroupRole },
         { "doc-epilogue", LandmarkRegionRole },
         { "doc-errata", LandmarkRegionRole },
-        { "doc-example", ApplicationGroupRole },
-        { "doc-footnote", ApplicationGroupRole },
+        { "doc-example", ApplicationTextGroupRole },
+        { "doc-footnote", ApplicationTextGroupRole },
         { "doc-foreword", LandmarkRegionRole },
         { "doc-glossary", LandmarkRegionRole },
         { "doc-glossref", WebCoreLinkRole },
         { "doc-index", LandmarkNavigationRole },
         { "doc-introduction", LandmarkRegionRole },
         { "doc-noteref", WebCoreLinkRole },
-        { "doc-notice", ApplicationGroupRole },
-        { "doc-pagebreak", ApplicationGroupRole },
+        { "doc-notice", DocumentNoteRole },
+        { "doc-pagebreak", SplitterRole },
         { "doc-pagelist", LandmarkNavigationRole },
         { "doc-part", LandmarkRegionRole },
         { "doc-preface", LandmarkRegionRole },
         { "doc-prologue", LandmarkRegionRole },
-        { "doc-pullquote", ApplicationGroupRole },
-        { "doc-qna", ApplicationGroupRole },
+        { "doc-pullquote", ApplicationTextGroupRole },
+        { "doc-qna", ApplicationTextGroupRole },
         { "doc-subtitle", HeadingRole },
-        { "doc-tip", ApplicationGroupRole },
+        { "doc-tip", DocumentNoteRole },
         { "doc-toc", LandmarkNavigationRole },
         { "grid", GridRole },
         { "gridcell", GridCellRole },
@@ -2172,7 +2195,6 @@ static void initializeRoleMap()
         { "listitem", ListItemRole },        
         { "listbox", ListBoxRole },
         { "log", ApplicationLogRole },
-        // "option" isn't here because it may map to different roles depending on the parent element's role
         { "main", LandmarkMainRole },
         { "marquee", ApplicationMarqueeRole },
         { "math", DocumentMathRole },
@@ -2254,12 +2276,20 @@ String AccessibilityObject::computedRoleString() const
 {
     // FIXME: Need a few special cases that aren't in the RoleMap: option, etc. http://webkit.org/b/128296
     AccessibilityRole role = roleValue();
-    if (role == GroupRole)
-        return ""; // Special-casing an empty value because generic block elements (GroupRole) are not the same as role="group" (ApplicationGroupRole).
+
+    // We do not compute a role string for generic block elements with user-agent assigned roles.
+    if (role == GroupRole || role == TextGroupRole)
+        return "";
+
+    // We do compute a role string for block elements with author-provided roles.
+    if (role == ApplicationTextGroupRole)
+        return reverseAriaRoleMap().get(ApplicationGroupRole);
+
     if (role == HorizontalRuleRole)
-        role = SplitterRole;
+        return reverseAriaRoleMap().get(SplitterRole);
+
     if (role == PopUpButtonRole || role == ToggleButtonRole)
-        role = ButtonRole;
+        return reverseAriaRoleMap().get(ButtonRole);
 
     return reverseAriaRoleMap().get(role);
 }
@@ -2477,6 +2507,32 @@ bool AccessibilityObject::supportsRangeValue() const
         || isAttachmentElement();
 }
     
+bool AccessibilityObject::supportsARIAHasPopup() const
+{
+    return hasAttribute(aria_haspopupAttr) || isComboBox();
+}
+
+String AccessibilityObject::ariaPopupValue() const
+{
+    const AtomicString& hasPopup = getAttribute(aria_haspopupAttr);
+    if (equalLettersIgnoringASCIICase(hasPopup, "true")
+        || equalLettersIgnoringASCIICase(hasPopup, "dialog")
+        || equalLettersIgnoringASCIICase(hasPopup, "grid")
+        || equalLettersIgnoringASCIICase(hasPopup, "listbox")
+        || equalLettersIgnoringASCIICase(hasPopup, "menu")
+        || equalLettersIgnoringASCIICase(hasPopup, "tree"))
+        return hasPopup;
+
+    // In ARIA 1.1, the implicit value for combobox became "listbox."
+    if (isComboBox() && hasPopup.isEmpty())
+        return "listbox";
+
+    // The spec states that "User agents must treat any value of aria-haspopup that is not
+    // included in the list of allowed values, including an empty string, as if the value
+    // false had been provided."
+    return "false";
+}
+
 bool AccessibilityObject::supportsARIASetSize() const
 {
     return hasAttribute(aria_setsizeAttr);

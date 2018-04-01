@@ -81,17 +81,27 @@ void WebResourceLoadStatisticsManager::setTimeToLiveUserInteraction(double secon
     WebCore::ResourceLoadObserver::sharedObserver().setTimeToLiveUserInteraction(seconds);
 }
 
+void WebResourceLoadStatisticsManager::setTimeToLiveCookiePartitionFree(double seconds)
+{
+    WebCore::ResourceLoadObserver::sharedObserver().setTimeToLiveCookiePartitionFree(seconds);
+}
+
 void WebResourceLoadStatisticsManager::fireDataModificationHandler()
 {
     WebCore::ResourceLoadObserver::sharedObserver().fireDataModificationHandler();
 }
 
-void WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandler(const String& hostName, bool value)
+void WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandler()
+{
+    WebCore::ResourceLoadObserver::sharedObserver().fireShouldPartitionCookiesHandler();
+}
+
+void WebResourceLoadStatisticsManager::fireShouldPartitionCookiesHandlerForOneDomain(const String& hostName, bool value)
 {
     if (value)
-        WebCore::ResourceLoadObserver::sharedObserver().fireShouldPartitionCookiesHandler({ }, {hostName});
+        WebCore::ResourceLoadObserver::sharedObserver().fireShouldPartitionCookiesHandler({ }, {hostName}, false);
     else
-        WebCore::ResourceLoadObserver::sharedObserver().fireShouldPartitionCookiesHandler({hostName}, { });
+        WebCore::ResourceLoadObserver::sharedObserver().fireShouldPartitionCookiesHandler({hostName}, { }, false);
 }
 
 void WebResourceLoadStatisticsManager::setNotifyPagesWhenDataRecordsWereScanned(bool value)
@@ -111,20 +121,17 @@ void WebResourceLoadStatisticsManager::setMinimumTimeBetweeenDataRecordsRemoval(
 
 void WebResourceLoadStatisticsManager::clearInMemoryAndPersistentStore()
 {
-    auto store = WebCore::ResourceLoadObserver::sharedObserver().statisticsStore();
-    if (store)
-        store->clearInMemoryAndPersistent();
+    WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore();
 }
 
 void WebResourceLoadStatisticsManager::resetToConsistentState()
 {
     WebCore::ResourceLoadObserver::sharedObserver().setTimeToLiveUserInteraction(2592000);
+    WebCore::ResourceLoadObserver::sharedObserver().setTimeToLiveCookiePartitionFree(86400);
     WebResourceLoadStatisticsStore::setNotifyPagesWhenDataRecordsWereScanned(false);
     WebResourceLoadStatisticsStore::setShouldClassifyResourcesBeforeDataRecordsRemoval(true);
     WebResourceLoadStatisticsStore::setMinimumTimeBetweeenDataRecordsRemoval(60);
-    auto store = WebCore::ResourceLoadObserver::sharedObserver().statisticsStore();
-    if (store)
-        store->clear();
+    WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryStore();
 }
     
 } // namespace WebKit

@@ -72,7 +72,6 @@ class DeprecatedPort(object):
             "mac-wk2": MacWK2Port,
             "win": WinPort,
             "wincairo": WinCairoPort,
-            "efl-wk2": EflWK2Port,
             "haiku": HaikuPort,
         }
         default_port = {
@@ -216,13 +215,9 @@ class HaikuPort(DeprecatedPort):
         command.append(super(HaikuPort, self).makeArgs())
         return command
 
-
-class EflWK2Port(DeprecatedPort):
-    port_flag_name = "efl-wk2"
-
-    def build_webkit_command(self, build_style=None):
-        command = super(EflWK2Port, self).build_webkit_command(build_style=build_style)
-        command.append("--efl")
-        command.append("--update-efl")
-        command.append(super(EflWK2Port, self).makeArgs())
+    def run_webkit_tests_command(self, build_style=None):
+        command = super(HaikuPort, self).run_webkit_tests_command(build_style)
+        command.append("--haiku")
         return command
+
+

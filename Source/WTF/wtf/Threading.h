@@ -42,6 +42,7 @@
 #include <wtf/Atomics.h>
 #include <wtf/Expected.h>
 #include <wtf/Locker.h>
+#include <wtf/LocklessBag.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PlatformRegisters.h>
 #include <wtf/PrintStream.h>
@@ -55,6 +56,8 @@
 #endif
 
 namespace WTF {
+
+class ThreadMessageData;
 
 using ThreadIdentifier = uint32_t;
 typedef void (*ThreadFunction)(void* argument);
@@ -75,6 +78,7 @@ public:
 
     // Returns Thread object.
     WTF_EXPORT_PRIVATE static Thread& current();
+    WTF_EXPORT_PRIVATE static Thread* currentMayBeNull();
 
     // Returns ThreadIdentifier directly. It is useful if the user only cares about identity
     // of threads. At that time, users should know that holding this ThreadIdentifier does not ensure
@@ -132,7 +136,11 @@ public:
 
     static void initializePlatformThreading();
 
-private:
+#if USE(PTHREADS)
+    LocklessBag<ThreadMessageData*>& threadMessages() { return m_threadMessages; }
+#endif
+
+protected:
     Thread();
 
     // Internal platform-specific Thread::create implementation.
@@ -177,11 +185,13 @@ private:
     bool m_didExit { false };
 #if USE(PTHREADS)
     pthread_t m_handle;
+
+    LocklessBag<ThreadMessageData*> m_threadMessages;
 #if OS(DARWIN)
     mach_port_t m_platformThread;
 #else
     sem_t m_semaphoreForSuspendResume;
-    mcontext_t m_suspendedMachineContext;
+    PlatformRegisters m_platformRegisters;
     unsigned m_suspendCount { 0 };
     std::atomic<bool> m_suspended { false };
 #endif
@@ -202,10 +212,25 @@ inline ThreadIdentifier currentThread()
     return Thread::currentID();
 }
 
+
+// FIXME: The following functions remain because they are used from WebKit Windows support library,
+// WebKitQuartzCoreAdditions.dll. When updating the support library, we should use new API instead
+// and the following workaound should be removed. And new code should not use the following APIs.
+// Remove this workaround code when <rdar://problem/31793213> is fixed.
+#if OS(WINDOWS)
+WTF_EXPORT_PRIVATE ThreadIdentifier createThread(ThreadFunction, void*, const char* threadName);
+WTF_EXPORT_PRIVATE int waitForThreadCompletion(ThreadIdentifier);
+#endif
+
 } // namespace WTF
 
 using WTF::ThreadIdentifier;
 using WTF::Thread;
 using WTF::currentThread;
+
+#if OS(WINDOWS)
+using WTF::createThread;
+using WTF::waitForThreadCompletion;
+#endif
 
 #endif // Threading_h

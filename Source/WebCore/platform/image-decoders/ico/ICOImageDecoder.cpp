@@ -69,10 +69,10 @@ void ICOImageDecoder::setData(SharedBuffer& data, bool allDataReceived)
         setDataForPNGDecoderAtIndex(i);
 }
 
-EncodedDataStatus ICOImageDecoder::encodedDataStatus()
+EncodedDataStatus ICOImageDecoder::encodedDataStatus() const
 {
     if (ImageDecoder::encodedDataStatus() < EncodedDataStatus::SizeAvailable)
-        decode(0, true);
+        const_cast<ICOImageDecoder*>(this)->decode(0, true);
 
     return ImageDecoder::encodedDataStatus();
 }
@@ -216,9 +216,7 @@ bool ICOImageDecoder::decodeAtIndex(size_t index)
     }
 
     if (!m_pngDecoders[index]) {
-        m_pngDecoders[index] = std::make_unique<
-            PNGImageDecoder>(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied,
-                m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
+        m_pngDecoders[index] = PNGImageDecoder::create(m_premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied, m_ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied);
         setDataForPNGDecoderAtIndex(index);
     }
     // Fail if the size the PNGImageDecoder calculated does not match the size

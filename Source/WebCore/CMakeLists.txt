@@ -849,8 +849,8 @@ if (WIN32 AND INTERNAL_BUILD)
     set(JavaScriptCore_SCRIPTS_DIR "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore/Scripts")
     set(ANGLE_FORWARDING_HEADERS_DIR "${CMAKE_BINARY_DIR}/../include/private/ANGLE")
 else ()
-    set(JavaScriptCore_SCRIPTS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/Scripts")
-    set(ANGLE_FORWARDING_HEADERS_DIR "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE")
+    set(JavaScriptCore_SCRIPTS_DIR "${FORWARDING_HEADERS_DIR}/JavaScriptCore/Scripts")
+    set(ANGLE_FORWARDING_HEADERS_DIR "${FORWARDING_HEADERS_DIR}/ANGLE")
 endif ()
 
 set(WebCore_SOURCES
@@ -1460,6 +1460,7 @@ set(WebCore_SOURCES
     dom/Comment.cpp
     dom/ComposedTreeIterator.cpp
     dom/CompositionEvent.cpp
+    dom/ConstantPropertyMap.cpp
     dom/ContainerNode.cpp
     dom/ContainerNodeAlgorithms.cpp
     dom/ContextDestructionObserver.cpp
@@ -1971,6 +1972,7 @@ set(WebCore_SOURCES
     loader/PolicyCallback.cpp
     loader/PolicyChecker.cpp
     loader/ProgressTracker.cpp
+    loader/ResourceCryptographicDigest.cpp
     loader/ResourceLoadNotifier.cpp
     loader/ResourceLoadObserver.cpp
     loader/ResourceLoadStatistics.cpp
@@ -2080,6 +2082,7 @@ set(WebCore_SOURCES
     page/Page.cpp
     page/PageConfiguration.cpp
     page/PageConsoleClient.cpp
+    page/PageDebuggable.cpp
     page/PageGroup.cpp
     page/PageGroupLoadDeferrer.cpp
     page/PageOverlay.cpp

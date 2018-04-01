@@ -73,6 +73,7 @@ namespace WebCore {
 class AXObjectCache;
 class Attr;
 class CDATASection;
+class CSSCustomPropertyValue;
 class CSSFontSelector;
 class CSSStyleDeclaration;
 class CSSStyleSheet;
@@ -83,6 +84,7 @@ class CachedScript;
 class CanvasRenderingContext;
 class CharacterData;
 class Comment;
+class ConstantPropertyMap;
 class DOMImplementation;
 class DOMNamedFlowCollection;
 class DOMSelection;
@@ -1024,10 +1026,6 @@ public:
 
     WEBCORE_EXPORT String displayStringModifiedByEncoding(const String&) const;
 
-    // Quirk for the benefit of Apple's Dictionary application.
-    void setFrameElementsShouldIgnoreScrolling(bool ignore) { m_frameElementsShouldIgnoreScrolling = ignore; }
-    bool frameElementsShouldIgnoreScrolling() const { return m_frameElementsShouldIgnoreScrolling; }
-
 #if ENABLE(DASHBOARD_SUPPORT)
     void setAnnotatedRegionsDirty(bool f) { m_annotatedRegionsDirty = f; }
     bool annotatedRegionsDirty() const { return m_annotatedRegionsDirty; }
@@ -1206,6 +1204,8 @@ public:
 
     DocumentSharedObjectPool* sharedObjectPool() { return m_sharedObjectPool.get(); }
 
+    void invalidateMatchedPropertiesCacheAndForceStyleRecalc();
+
     void didRemoveAllPendingStylesheet();
     void didClearStyleResolver();
 
@@ -1298,6 +1298,8 @@ public:
 
     void attachToCachedFrame(CachedFrameBase&);
     void detachFromCachedFrame(CachedFrameBase&);
+
+    ConstantPropertyMap& constantProperties() const { return *m_constantPropertyMap; }
 
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
@@ -1535,6 +1537,8 @@ private:
 
     DocumentOrderedMap m_imagesByUsemap;
 
+    std::unique_ptr<ConstantPropertyMap> m_constantPropertyMap;
+
     std::unique_ptr<SelectorQueryCache> m_selectorQueryCache;
 
     DocumentClassFlags m_documentClasses;
@@ -1717,7 +1721,6 @@ private:
     bool m_gotoAnchorNeededAfterStylesheetsLoad { false };
     bool m_isDNSPrefetchEnabled { false };
     bool m_haveExplicitlyDisabledDNSPrefetch { false };
-    bool m_frameElementsShouldIgnoreScrolling { false };
 
     bool m_accessKeyMapValid { false };
     bool m_isSynthesized { false };

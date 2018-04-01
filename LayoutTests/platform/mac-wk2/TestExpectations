@@ -102,6 +102,7 @@ fast/events/drag-and-drop-fire-drag-dragover.html
 fast/events/drag-and-drop.html
 fast/events/drag-and-drop-link.html
 fast/events/drag-and-drop-link-fast-multiple-times-does-not-crash.html
+fast/events/drag-and-drop-link-containing-block.html
 fast/events/drag-in-frames.html
 fast/events/drag-parent-node.html
 fast/events/draggable-div-nodata.html
@@ -603,8 +604,6 @@ webkit.org/b/165352 fast/dom/Window/window-resize-contents.html [ Pass Timeout ]
 
 webkit.org/b/165392 [ ElCapitan Release ] imported/mathml-in-html5/mathml/presentation-markup/fractions/frac-parameters-1.html [ Pass Failure ]
 
-webkit.org/b/161887 [ ElCapitan ] swipe/main-frame-pinning-requirement.html [ Pass Timeout ]
-
 webkit.org/b/167653 http/tests/contentextensions/block-everything-unless-domain.html [ Pass Timeout ]
 
 webkit.org/b/167206 [ Sierra Release ] mathml/opentype/large-operators-displaystyle-dynamic.html [ Pass ImageOnlyFailure ]
@@ -650,3 +649,9 @@ webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failur
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
 
 webkit.org/b/170702 [ Sierra ] http/tests/inspector/network/resource-request-headers.html [ Pass Failure ]
+
+webkit.org/b/170907 [ Sierra Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
+
+webkit.org/b/170629 [ Sierra Debug ] memory/memory-pressure-simulation.html [ Pass Failure ]
+
+webkit.org/b/170484 swipe/main-frame-pinning-requirement.html [ Pass Failure ]

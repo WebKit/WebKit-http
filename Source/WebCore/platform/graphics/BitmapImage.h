@@ -78,6 +78,7 @@ public:
     EncodedDataStatus encodedDataStatus() const { return m_source.encodedDataStatus(); }
     size_t frameCount() const { return m_source.frameCount(); }
     RepetitionCount repetitionCount() const { return m_source.repetitionCount(); }
+    String uti() const override { return m_source.uti(); }
     String filenameExtension() const override { return m_source.filenameExtension(); }
     std::optional<IntPoint> hotSpot() const override { return m_source.hotSpot(); }
 
@@ -204,11 +205,7 @@ private:
     void dump(TextStream&) const override;
 
     // Animated images over a certain size are considered large enough that we'll only hang on to one frame at a time.
-#if !PLATFORM(IOS)
-    static const unsigned LargeAnimationCutoff = 5242880;
-#else
-    static const unsigned LargeAnimationCutoff = 2097152;
-#endif
+    static const unsigned LargeAnimationCutoff = 30 * 1014 * 1024;
 
     mutable ImageSource m_source;
 

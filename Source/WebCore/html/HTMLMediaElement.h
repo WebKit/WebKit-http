@@ -28,6 +28,7 @@
 #if ENABLE(VIDEO)
 
 #include "ActiveDOMObject.h"
+#include "AutoplayEvent.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
 #include "HTMLElement.h"
@@ -48,6 +49,10 @@
 #include "TextTrackCue.h"
 #include "VTTCue.h"
 #include "VideoTrack.h"
+#endif
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+#include "AudioSession.h"
 #endif
 
 #ifndef NDEBUG
@@ -119,6 +124,9 @@ class HTMLMediaElement
     , private AudioTrackClient
     , private TextTrackClient
     , private VideoTrackClient
+#endif
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    , private AudioSession::MutedStateObserver
 #endif
 {
 public:
@@ -748,6 +756,7 @@ private:
     enum class PlaybackWithoutUserGesture { None, Started, Prevented };
     void setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture);
     void userDidInterfereWithAutoplay();
+    void handleAutoplayEvent(AutoplayEvent);
 
     MediaTime minTimeSeekable() const;
     MediaTime maxTimeSeekable() const;
@@ -807,6 +816,10 @@ private:
     bool canProduceAudio() const final;
 
     void pageMutedStateDidChange() override;
+
+#if USE(AUDIO_SESSION) && PLATFORM(MAC)
+    void hardwareMutedStateDidChange(AudioSession*) final;
+#endif
 
     bool effectiveMuted() const;
 

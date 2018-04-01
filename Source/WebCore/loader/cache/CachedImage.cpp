@@ -51,6 +51,7 @@
 
 #if USE(CG)
 #include "PDFDocumentImage.h"
+#include "UTIRegistry.h"
 #endif
 
 namespace WebCore {
@@ -133,6 +134,8 @@ void CachedImage::didRemoveClient(CachedResourceClient& client)
         m_svgImageCache->removeClientFromCache(&static_cast<CachedImageClient&>(client));
 
     CachedResource::didRemoveClient(client);
+
+    static_cast<CachedImageClient&>(client).didRemoveCachedImageClient(*this);
 }
 
 void CachedImage::switchClientsToRevalidatedResource()
@@ -399,13 +402,15 @@ void CachedImage::addIncrementalDataBuffer(SharedBuffer& data)
     // Have the image update its data from its internal buffer.
     // It will not do anything now, but will delay decoding until
     // queried for info (like size or specific image frames).
-    EncodedDataStatus encodedDataStatus = m_image->setData(&data, false);
+    EncodedDataStatus encodedDataStatus = setImageDataBuffer(&data, false);
     if (encodedDataStatus > EncodedDataStatus::Error && encodedDataStatus < EncodedDataStatus::SizeAvailable)
         return;
 
     if (encodedDataStatus == EncodedDataStatus::Error || m_image->isNull()) {
         // Image decoding failed. Either we need more image data or the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
+        if (m_loader && encodedDataStatus == EncodedDataStatus::Error)
+            m_loader->cancel();
         if (inCache())
             MemoryCache::singleton().remove(*this);
         return;
@@ -418,6 +423,16 @@ void CachedImage::addIncrementalDataBuffer(SharedBuffer& data)
     notifyObservers();
 
     setEncodedSize(m_image->data() ? m_image->data()->size() : 0);
+}
+
+EncodedDataStatus CachedImage::setImageDataBuffer(SharedBuffer* data, bool allDataReceived)
+{
+    EncodedDataStatus encodedDataStatus = m_image ? m_image->setData(data, allDataReceived) : EncodedDataStatus::Error;
+#if USE(CG)
+    if (encodedDataStatus >= EncodedDataStatus::TypeAvailable && m_image->isBitmapImage() && !isAllowedImageUTI(m_image->uti()))
+        return EncodedDataStatus::Error;
+#endif
+    return encodedDataStatus;
 }
 
 void CachedImage::addDataBuffer(SharedBuffer& data)
@@ -440,10 +455,9 @@ void CachedImage::finishLoading(SharedBuffer* data)
     if (!m_image && data)
         createImage();
 
-    if (m_image)
-        m_image->setData(data, true);
+    EncodedDataStatus encodedDataStatus = setImageDataBuffer(data, true);
 
-    if (!m_image || m_image->isNull()) {
+    if (encodedDataStatus == EncodedDataStatus::Error || m_image->isNull()) {
         // Image decoding failed; the image data is malformed.
         error(errorOccurred() ? status() : DecodeError);
         if (inCache())

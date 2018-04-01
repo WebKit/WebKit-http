@@ -62,6 +62,7 @@ set(WTF_HEADERS
     LockAlgorithm.h
     LockedPrintStream.h
     Locker.h
+    LocklessBag.h
     LoggingHashID.h
     LoggingHashMap.h
     LoggingHashSet.h
@@ -123,13 +124,16 @@ set(WTF_HEADERS
     SmallPtrSet.h
     StackBounds.h
     StackStats.h
+    StackTrace.h
     StaticConstructors.h
     StdLibExtras.h
     Stopwatch.h
     StringExtras.h
     StringPrintStream.h
+    SystemFree.h
     SystemTracing.h
     ThreadHolder.cpp
+    ThreadMessage.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
     Threading.h
@@ -185,6 +189,7 @@ set(WTF_HEADERS
     text/icu/UTextProviderUTF16.h
 
     threads/BinarySemaphore.h
+    threads/Signals.h
 
     unicode/CharacterNames.h
     unicode/Collator.h
@@ -238,7 +243,9 @@ set(WTF_SOURCES
     SixCharacterHash.cpp
     StackBounds.cpp
     StackStats.cpp
+    StackTrace.cpp
     StringPrintStream.cpp
+    ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
     WTFThreadData.cpp
@@ -279,6 +286,7 @@ set(WTF_SOURCES
     text/icu/UTextProviderUTF16.cpp
 
     threads/BinarySemaphore.cpp
+    threads/Signals.cpp
 
     unicode/UTF8.cpp
 )
@@ -286,14 +294,19 @@ set(WTF_SOURCES
 set(WTF_INCLUDE_DIRECTORIES
     "${BMALLOC_DIR}"
     "${WTF_DIR}"
+    "${CMAKE_BINARY_DIR}"
+    "${DERIVED_SOURCES_DIR}"
+    "${THIRDPARTY_DIR}"
+)
+
+set(WTF_PRIVATE_INCLUDE_DIRECTORIES
+    "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
     "${WTF_DIR}/wtf/persistence"
     "${WTF_DIR}/wtf/text"
     "${WTF_DIR}/wtf/text/icu"
     "${WTF_DIR}/wtf/threads"
-    "${THIRDPARTY_DIR}"
-    "${CMAKE_BINARY_DIR}"
-    "${DERIVED_SOURCES_DIR}"
+    "${WTF_DIR}/wtf/unicode"
 )
 
 set(WTF_LOCAL_INCLUDE_DIRECTORIES

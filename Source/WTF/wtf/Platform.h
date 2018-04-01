@@ -440,6 +440,19 @@
 
 /* Operating environments */
 
+/* Export macro support. Detects the attributes available for shared library symbol export
+   decorations. */
+#if OS(WINDOWS) || (COMPILER_HAS_CLANG_DECLSPEC(dllimport) && COMPILER_HAS_CLANG_DECLSPEC(dllexport))
+#define USE_DECLSPEC_ATTRIBUTE 1
+#define USE_VISIBILITY_ATTRIBUTE 0
+#elif defined(__GNUC__)
+#define USE_DECLSPEC_ATTRIBUTE 0
+#define USE_VISIBILITY_ATTRIBUTE 1
+#else
+#define USE_DECLSPEC_ATTRIBUTE 0
+#define USE_VISIBILITY_ATTRIBUTE 0
+#endif
+
 /* Standard libraries */
 #if defined(HAVE_FEATURES_H) && HAVE_FEATURES_H
 /* If the included features.h is glibc's one, __GLIBC__ is defined. */
@@ -696,6 +709,20 @@
 #define HAVE_MACHINE_CONTEXT 1
 #endif
 
+#if OS(DARWIN) || (OS(LINUX) && defined(__GLIBC__) && !defined(__UCLIBC__))
+#define HAVE_BACKTRACE 1
+#endif
+
+#if OS(DARWIN) || OS(LINUX)
+#if PLATFORM(GTK)
+#if defined(__GLIBC__) && !defined(__UCLIBC__)
+#define HAVE_BACKTRACE_SYMBOLS 1
+#endif
+#endif /* PLATFORM(GTK) */
+#define HAVE_DLADDR 1
+#endif /* OS(DARWIN) || OS(LINUX) */
+
+
 /* ENABLE macro defaults */
 
 /* FIXME: move out all ENABLE() defines from here to FeatureDefines.h */
@@ -795,10 +822,6 @@
 #if ENABLE(DFG_JIT) && USE(JSVALUE64)
 #define ENABLE_CONCURRENT_JS 1
 #endif
-
-#if CPU(ARM64)
-#define HAVE_LL_SC 1
-#endif // CPU(ARM64) && OS(DARWIN)
 
 #if __has_include(<System/pthread_machdep.h>)
 #define HAVE_FAST_TLS 1
