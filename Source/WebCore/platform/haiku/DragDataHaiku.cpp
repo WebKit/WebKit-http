@@ -80,7 +80,7 @@ Color DragData::asColor() const
     return Color();
 }
 
-bool DragData::containsCompatibleContent() const
+bool DragData::containsCompatibleContent(WebCore::DragData::DraggingPurpose) const
 {
     return containsColor() || containsURL() || containsPlainText();
 }

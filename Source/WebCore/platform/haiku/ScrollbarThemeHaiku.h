@@ -37,8 +37,6 @@ public:
     ScrollbarThemeHaiku(bool drawOuterFrame);
     virtual ~ScrollbarThemeHaiku();
 
-    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) override;
-
     bool hasButtons(Scrollbar&) override;
     bool hasThumb(Scrollbar&) override;
 

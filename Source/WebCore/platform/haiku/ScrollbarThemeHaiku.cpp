@@ -62,14 +62,6 @@ ScrollbarThemeHaiku::~ScrollbarThemeHaiku()
 {
 }
 
-int ScrollbarThemeHaiku::scrollbarThickness(ScrollbarControlSize controlSize)
-{
-    // FIXME: Should we make a distinction between a Small and a Regular Scrollbar?
-    if (m_drawOuterFrame)
-    	return 15;
-    return 14;
-}
-
 bool ScrollbarThemeHaiku::hasButtons(Scrollbar&)
 {
     return true;

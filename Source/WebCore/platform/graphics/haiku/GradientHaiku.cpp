@@ -56,12 +56,8 @@ PlatformGradient Gradient::platformGradient()
     size_t size = m_stops.size();
     for (size_t i = 0; i < size; i++) {
         const ColorStop& stop = m_stops[i];
-        rgb_color color;
-        color.red = static_cast<uint8>(stop.red * 255);
-        color.green = static_cast<uint8>(stop.green * 255);
-        color.blue = static_cast<uint8>(stop.blue * 255);
-        color.alpha = static_cast<uint8>(stop.alpha * 255);
-        m_gradient->AddColor(color, stop.stop * 255);
+        rgb_color color(stop.color);
+        m_gradient->AddColor(color, stop.offset * 255);
 
         // TODO handle m_spreadMethod (pad/reflect/repeat)
     }
