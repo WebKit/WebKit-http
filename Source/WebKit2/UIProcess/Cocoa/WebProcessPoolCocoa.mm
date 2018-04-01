@@ -249,13 +249,13 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #endif
 #if ENABLE(MEDIA_STREAM)
     // Allow microphone access if either preference is set because WebRTC requires microphone access.
-    bool mediaStreamEnabled = m_defaultPageGroup->preferences().mediaStreamEnabled();
+    bool mediaDevicesEnabled = m_defaultPageGroup->preferences().mediaDevicesEnabled();
     bool webRTCEnabled = m_defaultPageGroup->preferences().peerConnectionEnabled();
     if ([defaults objectForKey:@"ExperimentalPeerConnectionEnabled"])
         webRTCEnabled = [defaults boolForKey:@"ExperimentalPeerConnectionEnabled"];
     
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.
-    if (!parameters.shouldCaptureAudioInUIProcess && (mediaStreamEnabled || webRTCEnabled))
+    if (!parameters.shouldCaptureAudioInUIProcess && (mediaDevicesEnabled || webRTCEnabled))
         SandboxExtension::createHandleForGenericExtension("com.apple.webkit.microphone", parameters.audioCaptureExtensionHandle);
 #endif
 }
@@ -338,7 +338,7 @@ String WebProcessPool::networkingCachesDirectory() const
     NSError *error = nil;
     NSString* nsPath = path;
     if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
-        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        NSLog(@"could not create networking caches directory \"%@\", error %@", nsPath, error);
         return String();
     }
 
@@ -357,7 +357,7 @@ String WebProcessPool::webContentCachesDirectory() const
     NSError *error = nil;
     NSString* nsPath = path;
     if (![[NSFileManager defaultManager] createDirectoryAtPath:nsPath withIntermediateDirectories:YES attributes:nil error:&error]) {
-        NSLog(@"could not create \"%@\", error %@", nsPath, error);
+        NSLog(@"could not create web content caches directory \"%@\", error %@", nsPath, error);
         return String();
     }
 

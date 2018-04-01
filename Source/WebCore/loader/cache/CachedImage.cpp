@@ -239,30 +239,6 @@ void CachedImage::setContainerSizeForRenderer(const CachedImageClient* renderer,
     m_svgImageCache->setContainerSizeForRenderer(renderer, containerSize, containerZoom);
 }
 
-bool CachedImage::usesImageContainerSize() const
-{
-    if (m_image)
-        return m_image->usesContainerSize();
-
-    return false;
-}
-
-bool CachedImage::imageHasRelativeWidth() const
-{
-    if (m_image)
-        return m_image->hasRelativeWidth();
-
-    return false;
-}
-
-bool CachedImage::imageHasRelativeHeight() const
-{
-    if (m_image)
-        return m_image->hasRelativeHeight();
-
-    return false;
-}
-
 LayoutSize CachedImage::imageSizeForRenderer(const RenderElement* renderer, float multiplier, SizeType sizeType)
 {
     if (!m_image)
@@ -352,12 +328,6 @@ CachedImage::CachedImageObserver::CachedImageObserver(CachedImage& image)
 {
     m_cachedImages.reserveInitialCapacity(1);
     m_cachedImages.append(&image);
-    if (auto* loader = image.loader()) {
-        m_allowSubsampling = loader->frameLoader()->frame().settings().imageSubsamplingEnabled();
-        m_allowLargeImageAsyncDecoding = loader->frameLoader()->frame().settings().largeImageAsyncDecodingEnabled();
-        m_allowAnimatedImageAsyncDecoding = loader->frameLoader()->frame().settings().animatedImageAsyncDecodingEnabled();
-        m_showDebugBackground = loader->frameLoader()->frame().settings().showDebugBorders();
-    }
 }
 
 void CachedImage::CachedImageObserver::decodedSizeChanged(const Image* image, long long delta)
@@ -372,10 +342,10 @@ void CachedImage::CachedImageObserver::didDraw(const Image* image)
         cachedImage->didDraw(image);
 }
 
-void CachedImage::CachedImageObserver::animationAdvanced(const Image* image)
+void CachedImage::CachedImageObserver::imageFrameAvailable(const Image* image, ImageAnimatingState animatingState, const IntRect* changeRect)
 {
     for (auto cachedImage : m_cachedImages)
-        cachedImage->animationAdvanced(image);
+        cachedImage->imageFrameAvailable(image, animatingState, changeRect);
 }
 
 void CachedImage::CachedImageObserver::changedInRect(const Image* image, const IntRect* rect)
@@ -527,22 +497,20 @@ void CachedImage::didDraw(const Image* image)
     CachedResource::didAccessDecodedData(timeStamp);
 }
 
-void CachedImage::animationAdvanced(const Image* image)
+void CachedImage::imageFrameAvailable(const Image* image, ImageAnimatingState animatingState, const IntRect* changeRect)
 {
     if (!image || image != m_image)
         return;
 
-    bool shouldPauseAnimation = true;
-
     CachedResourceClientWalker<CachedImageClient> clientWalker(m_clients);
+    VisibleInViewportState visibleState = VisibleInViewportState::No;
+
     while (CachedImageClient* client = clientWalker.next()) {
-        bool canPause = false;
-        client->newImageAnimationFrameAvailable(*this, canPause);
-        if (!canPause)
-            shouldPauseAnimation = false;
+        if (client->imageFrameAvailable(*this, animatingState, changeRect) == VisibleInViewportState::Yes)
+            visibleState = VisibleInViewportState::Yes;
     }
 
-    if (shouldPauseAnimation)
+    if (visibleState == VisibleInViewportState::No && animatingState == ImageAnimatingState::Yes)
         m_image->stopAnimation();
 }
 

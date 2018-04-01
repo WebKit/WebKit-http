@@ -53,6 +53,7 @@ class BBitmap;
 
 namespace WebCore {
 
+class Settings;
 class Timer;
 
 class BitmapImage final : public Image {
@@ -69,7 +70,9 @@ public:
     WEBCORE_EXPORT static RefPtr<BitmapImage> create(HBITMAP);
 #endif
     virtual ~BitmapImage();
-    
+
+    void updateFromSettings(const Settings&);
+
     bool hasSingleSecurityOrigin() const override { return true; }
 
     EncodedDataStatus dataChanged(bool allDataReceived) override;
@@ -146,11 +149,6 @@ protected:
     NativeImagePtr frameImageAtIndex(size_t index) { return m_source.frameImageAtIndex(index); }
     NativeImagePtr frameImageAtIndexCacheIfNeeded(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
 
-    bool allowSubsampling() const { return imageObserver() && imageObserver()->allowSubsampling(); }
-    bool allowLargeImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowLargeImageAsyncDecoding(); }
-    bool allowAnimatedImageAsyncDecoding() const { return imageObserver() && imageObserver()->allowAnimatedImageAsyncDecoding(); }
-    bool showDebugBackground() const { return imageObserver() && imageObserver()->showDebugBackground(); }
-
     // Called to invalidate cached data. When |destroyAll| is true, we wipe out
     // the entire frame buffer cache and tell the image source to destroy
     // everything; this is used when e.g. we want to free some room in the image
@@ -185,7 +183,7 @@ protected:
     // automatically pause once all observers no longer want to render the image anywhere.
     void stopAnimation() override;
     void resetAnimation() override;
-    void newFrameNativeImageAvailableAtIndex(size_t) override;
+    void imageFrameAvailableAtIndex(size_t) override;
 
     // Handle platform-specific data
     void invalidatePlatformData();
@@ -214,11 +212,24 @@ private:
     std::unique_ptr<Timer> m_frameTimer;
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     MonotonicTime m_desiredFrameStartTime; // The system time at which we hope to see the next call to startAnimation().
-    bool m_animationFinished { false };
 
     Seconds m_frameDecodingDurationForTesting;
     MonotonicTime m_desiredFrameDecodeTimeForTesting;
+
+    bool m_animationFinished { false };
+
+    // The default value of m_allowSubsampling should be the same as defaultImageSubsamplingEnabled in Settings.cpp
+#if PLATFORM(IOS)
+    bool m_allowSubsampling { true };
+#else
+    bool m_allowSubsampling { false };
+#endif
+    bool m_allowLargeImageAsyncDecoding { false };
+    bool m_allowAnimatedImageAsyncDecoding { false };
+    bool m_showDebugBackground { false };
+
     bool m_clearDecoderAfterAsyncFrameRequestForTesting { false };
+
 #if !LOG_DISABLED
     size_t m_lateFrameCount { 0 };
     size_t m_earlyFrameCount { 0 };

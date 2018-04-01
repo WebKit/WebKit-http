@@ -86,6 +86,7 @@ AccessibilityObject::AccessibilityObject()
     , m_haveChildren(false)
     , m_role(UnknownRole)
     , m_lastKnownIsIgnoredValue(DefaultBehavior)
+    , m_isIgnoredFromParentData(AccessibilityIsIgnoredFromParentData())
 #if PLATFORM(GTK)
     , m_wrapper(nullptr)
 #endif
@@ -321,6 +322,7 @@ bool AccessibilityObject::accessibleNameDerivesFromContent() const
     case DocumentMathRole:
     case DocumentNoteRole:
     case LandmarkRegionRole:
+    case LandmarkDocRegionRole:
     case FormRole:
     case GridRole:
     case GroupRole:
@@ -414,6 +416,7 @@ bool AccessibilityObject::isLandmark() const
     return role == LandmarkBannerRole
         || role == LandmarkComplementaryRole
         || role == LandmarkContentInfoRole
+        || role == LandmarkDocRegionRole
         || role == LandmarkMainRole
         || role == LandmarkNavigationRole
         || role == LandmarkRegionRole
@@ -860,6 +863,8 @@ bool AccessibilityObject::isRangeControl() const
     case ScrollBarRole:
     case SpinButtonRole:
         return true;
+    case SplitterRole:
+        return canSetFocusAttribute();
     default:
         return false;
     }
@@ -951,15 +956,11 @@ bool AccessibilityObject::press()
     
 bool AccessibilityObject::dispatchTouchEvent()
 {
-    bool handled = false;
 #if ENABLE(IOS_TOUCH_EVENTS)
-    MainFrame* frame = mainFrame();
-    if (!frame)
-        return false;
-
-    handled = frame->eventHandler().dispatchSimulatedTouchEvent(clickPoint());
+    if (auto* frame = mainFrame())
+        return frame->eventHandler().dispatchSimulatedTouchEvent(clickPoint());
 #endif
-    return handled;
+    return false;
 }
 
 Frame* AccessibilityObject::frame() const
@@ -1612,6 +1613,22 @@ String AccessibilityObject::ariaReadOnlyValue() const
     return getAttribute(aria_readonlyAttr).string().convertToASCIILowercase();
 }
 
+bool AccessibilityObject::supportsARIAAutoComplete() const
+{
+    return isARIATextControl() && hasAttribute(aria_autocompleteAttr);
+}
+
+String AccessibilityObject::ariaAutoCompleteValue() const
+{
+    const AtomicString& autoComplete = getAttribute(aria_autocompleteAttr);
+    if (equalLettersIgnoringASCIICase(autoComplete, "inline")
+        || equalLettersIgnoringASCIICase(autoComplete, "list")
+        || equalLettersIgnoringASCIICase(autoComplete, "both"))
+        return autoComplete;
+
+    return "none";
+}
+
 bool AccessibilityObject::contentEditableAttributeIsEnabled(Element* element)
 {
     if (!element)
@@ -2024,6 +2041,14 @@ bool AccessibilityObject::isAriaModalDescendant(Node* ariaModalNode) const
     return false;
 }
 
+bool AccessibilityObject::isAriaModalNode() const
+{
+    if (AXObjectCache* cache = axObjectCache())
+        return node() && cache->ariaModalNode() == node();
+
+    return false;
+}
+
 bool AccessibilityObject::ignoredFromARIAModalPresence() const
 {
     // We shouldn't ignore the top node.
@@ -2139,39 +2164,39 @@ static void initializeRoleMap()
         // The 'doc-*' roles are defined the ARIA DPUB mobile: https://www.w3.org/TR/dpub-aam-1.0/ 
         // Editor's draft is currently at https://rawgit.com/w3c/aria/master/dpub-aam/dpub-aam.html 
         { "doc-abstract", ApplicationTextGroupRole },
-        { "doc-acknowledgments", LandmarkRegionRole },
-        { "doc-afterword", LandmarkRegionRole },
-        { "doc-appendix", LandmarkRegionRole },
+        { "doc-acknowledgments", LandmarkDocRegionRole },
+        { "doc-afterword", LandmarkDocRegionRole },
+        { "doc-appendix", LandmarkDocRegionRole },
         { "doc-backlink", WebCoreLinkRole },
         { "doc-biblioentry", ListItemRole },
-        { "doc-bibliography", LandmarkRegionRole },
+        { "doc-bibliography", LandmarkDocRegionRole },
         { "doc-biblioref", WebCoreLinkRole },
-        { "doc-chapter", LandmarkRegionRole },
+        { "doc-chapter", LandmarkDocRegionRole },
         { "doc-colophon", ApplicationTextGroupRole },
-        { "doc-conclusion", LandmarkRegionRole },
+        { "doc-conclusion", LandmarkDocRegionRole },
         { "doc-cover", ImageRole },
         { "doc-credit", ApplicationTextGroupRole },
-        { "doc-credits", LandmarkRegionRole },
+        { "doc-credits", LandmarkDocRegionRole },
         { "doc-dedication", ApplicationTextGroupRole },
         { "doc-endnote", ListItemRole },
-        { "doc-endnotes", LandmarkRegionRole },
+        { "doc-endnotes", LandmarkDocRegionRole },
         { "doc-epigraph", ApplicationTextGroupRole },
-        { "doc-epilogue", LandmarkRegionRole },
-        { "doc-errata", LandmarkRegionRole },
+        { "doc-epilogue", LandmarkDocRegionRole },
+        { "doc-errata", LandmarkDocRegionRole },
         { "doc-example", ApplicationTextGroupRole },
         { "doc-footnote", ApplicationTextGroupRole },
-        { "doc-foreword", LandmarkRegionRole },
-        { "doc-glossary", LandmarkRegionRole },
+        { "doc-foreword", LandmarkDocRegionRole },
+        { "doc-glossary", LandmarkDocRegionRole },
         { "doc-glossref", WebCoreLinkRole },
         { "doc-index", LandmarkNavigationRole },
-        { "doc-introduction", LandmarkRegionRole },
+        { "doc-introduction", LandmarkDocRegionRole },
         { "doc-noteref", WebCoreLinkRole },
         { "doc-notice", DocumentNoteRole },
         { "doc-pagebreak", SplitterRole },
         { "doc-pagelist", LandmarkNavigationRole },
-        { "doc-part", LandmarkRegionRole },
-        { "doc-preface", LandmarkRegionRole },
-        { "doc-prologue", LandmarkRegionRole },
+        { "doc-part", LandmarkDocRegionRole },
+        { "doc-preface", LandmarkDocRegionRole },
+        { "doc-prologue", LandmarkDocRegionRole },
         { "doc-pullquote", ApplicationTextGroupRole },
         { "doc-qna", ApplicationTextGroupRole },
         { "doc-subtitle", HeadingRole },
@@ -2185,6 +2210,7 @@ static void initializeRoleMap()
         { "combobox", ComboBoxRole },
         { "definition", DefinitionRole },
         { "document", DocumentRole },
+        { "feed", ApplicationGroupRole },
         { "form", FormRole },
         { "rowheader", RowHeaderRole },
         { "group", ApplicationGroupRole },
@@ -2290,6 +2316,9 @@ String AccessibilityObject::computedRoleString() const
 
     if (role == PopUpButtonRole || role == ToggleButtonRole)
         return reverseAriaRoleMap().get(ButtonRole);
+
+    if (role == LandmarkDocRegionRole)
+        return reverseAriaRoleMap().get(LandmarkRegionRole);
 
     return reverseAriaRoleMap().get(role);
 }
@@ -2504,6 +2533,7 @@ bool AccessibilityObject::supportsRangeValue() const
         || isSlider()
         || isScrollbar()
         || isSpinButton()
+        || (isSplitter() && canSetFocusAttribute())
         || isAttachmentElement();
 }
     
@@ -3084,13 +3114,15 @@ bool AccessibilityObject::isDOMHidden() const
 
 AccessibilityObjectInclusion AccessibilityObject::defaultObjectInclusion() const
 {
-    if (isARIAHidden())
+    bool useParentData = !m_isIgnoredFromParentData.isNull();
+    
+    if (useParentData ? m_isIgnoredFromParentData.isARIAHidden : isARIAHidden())
         return IgnoreObject;
     
     if (ignoredFromARIAModalPresence())
         return IgnoreObject;
     
-    if (isPresentationalChildOfAriaRole())
+    if (useParentData ? m_isIgnoredFromParentData.isPresentationalChildOfAriaRole : isPresentationalChildOfAriaRole())
         return IgnoreObject;
     
     return accessibilityPlatformIncludesObject();
@@ -3280,6 +3312,25 @@ void AccessibilityObject::ariaLabelledByElements(AccessibilityChildrenVector& ar
 void AccessibilityObject::ariaOwnsElements(AccessibilityChildrenVector& axObjects) const
 {
     ariaElementsFromAttribute(axObjects, aria_ownsAttr);
+}
+
+void AccessibilityObject::setIsIgnoredFromParentDataForChild(AccessibilityObject* child)
+{
+    if (!child || child->parentObject() != this)
+        return;
+    
+    AccessibilityIsIgnoredFromParentData result = AccessibilityIsIgnoredFromParentData(this);
+    if (!m_isIgnoredFromParentData.isNull()) {
+        result.isARIAHidden = m_isIgnoredFromParentData.isARIAHidden || equalLettersIgnoringASCIICase(child->getAttribute(aria_hiddenAttr), "true");
+        result.isPresentationalChildOfAriaRole = m_isIgnoredFromParentData.isPresentationalChildOfAriaRole || ariaRoleHasPresentationalChildren();
+        result.isDescendantOfBarrenParent = m_isIgnoredFromParentData.isDescendantOfBarrenParent || !canHaveChildren();
+    } else {
+        result.isARIAHidden = child->isARIAHidden();
+        result.isPresentationalChildOfAriaRole = child->isPresentationalChildOfAriaRole();
+        result.isDescendantOfBarrenParent = child->isDescendantOfBarrenParent();
+    }
+    
+    child->setIsIgnoredFromParentData(result);
 }
 
 } // namespace WebCore

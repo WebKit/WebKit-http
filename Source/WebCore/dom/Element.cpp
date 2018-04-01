@@ -33,12 +33,11 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClassChangeInvalidation.h"
-#include "ClientRect.h"
-#include "ClientRectList.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ContainerNodeAlgorithms.h"
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
+#include "DOMRect.h"
 #include "DOMTokenList.h"
 #include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
@@ -1145,13 +1144,13 @@ LayoutRect Element::absoluteEventHandlerBounds(bool& includesFixedPositionElemen
     return absoluteEventBoundsOfElementAndDescendants(includesFixedPositionElements);
 }
 
-Ref<ClientRectList> Element::getClientRects()
+Vector<Ref<DOMRect>> Element::getClientRects()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
     RenderBoxModelObject* renderBoxModelObject = this->renderBoxModelObject();
     if (!renderBoxModelObject)
-        return ClientRectList::create();
+        return { };
 
     // FIXME: Handle SVG elements.
     // FIXME: Handle table/inline-table with a caption.
@@ -1159,10 +1158,10 @@ Ref<ClientRectList> Element::getClientRects()
     Vector<FloatQuad> quads;
     renderBoxModelObject->absoluteQuads(quads);
     document().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(quads, renderBoxModelObject->style());
-    return ClientRectList::create(quads);
+    return createDOMRectVector(quads);
 }
 
-Ref<ClientRect> Element::getBoundingClientRect()
+Ref<DOMRect> Element::getBoundingClientRect()
 {
     document().updateLayoutIgnorePendingStylesheets();
 
@@ -1180,14 +1179,14 @@ Ref<ClientRect> Element::getBoundingClientRect()
     }
 
     if (quads.isEmpty())
-        return ClientRect::create();
+        return DOMRect::create();
 
     FloatRect result = quads[0].boundingBox();
     for (size_t i = 1; i < quads.size(); ++i)
         result.unite(quads[i].boundingBox());
 
     document().adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(result, renderer()->style());
-    return ClientRect::create(result);
+    return DOMRect::create(result);
 }
 
 IntRect Element::clientRect() const
@@ -3038,7 +3037,7 @@ URL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 
 int Element::getIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLInteger(getAttribute(attributeName)).value_or(0);
+    return parseHTMLInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setIntegralAttribute(const QualifiedName& attributeName, int value)
@@ -3048,7 +3047,7 @@ void Element::setIntegralAttribute(const QualifiedName& attributeName, int value
 
 unsigned Element::getUnsignedIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).value_or(0);
+    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).valueOr(0);
 }
 
 void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value)

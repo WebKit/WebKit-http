@@ -303,6 +303,12 @@ sub AddToIncludesForIDLType
         return;
     }
 
+    if ($codeGenerator->IsPromiseType($type)) {
+        AddToIncludes("JSDOMPromise.h", $includesRef, $conditional);
+        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
+        return;
+    }
+
     if ($codeGenerator->IsWrapperType($type) || $codeGenerator->IsExternalDictionaryType($type) || $codeGenerator->IsExternalEnumType($type) || $type->name eq "EventListener") {
         AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
         return;
@@ -4562,10 +4568,10 @@ sub GenerateCallWith
         push(@$outputArray, "    auto& document = downcast<Document>(*context);\n");
         push(@callWithArgs, "document");
     }
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallerDocument")) {
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentDocument")) {
         $implIncludes{"Document.h"} = 1;
         $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@$outputArray, "    auto* document = callerDOMWindow($statePointer).document();\n");
+        push(@$outputArray, "    auto* document = incumbentDOMWindow($statePointer).document();\n");
         push(@$outputArray, "    if (!document)\n");
         push(@$outputArray, "        return" . ($returnValue ? " " . $returnValue : "") . ";\n");
         push(@callWithArgs, "*document");
@@ -4584,9 +4590,9 @@ sub GenerateCallWith
         $implIncludes{"JSDOMWindowBase.h"} = 1;
         push(@callWithArgs, "firstDOMWindow($statePointer)");
     }
-    if ($codeGenerator->ExtendedAttributeContains($callWith, "CallerWindow")) {
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentWindow")) {
         $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@callWithArgs, "callerDOMWindow($statePointer)");
+        push(@callWithArgs, "incumbentDOMWindow($statePointer)");
     }
 
     return @callWithArgs;
@@ -5432,6 +5438,7 @@ sub GetBaseIDLType
     return "IDLSequence<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsSequenceType($type);
     return "IDLFrozenArray<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsFrozenArrayType($type);
     return "IDLRecord<" . GetIDLType($interface, @{$type->subtypes}[0]) . ", " . GetIDLType($interface, @{$type->subtypes}[1]) . ">" if $codeGenerator->IsRecordType($type);
+    return "IDLPromise<" . GetIDLType($interface, @{$type->subtypes}[0]) . ">" if $codeGenerator->IsPromiseType($type);
     return "IDLUnion<" . join(", ", GetIDLUnionMemberTypes($interface, $type)) . ">" if $type->isUnion;
     return "IDLCallbackFunction<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackFunction($type);
     return "IDLCallbackInterface<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackInterface($type);

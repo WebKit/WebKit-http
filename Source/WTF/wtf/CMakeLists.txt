@@ -12,6 +12,7 @@ set(WTF_HEADERS
     BubbleSort.h
     BumpPointerAllocator.h
     ByteOrder.h
+    CPUTime.h
     ClockType.h
     CompilationThread.h
     Compiler.h
@@ -140,6 +141,7 @@ set(WTF_HEADERS
     ThreadingPrimitives.h
     TimeWithDynamicClockType.h
     TinyPtrSet.h
+    UUID.h
     UniqueRef.h
     VMTags.h
     ValueCheck.h
@@ -201,6 +203,7 @@ set(WTF_SOURCES
     Atomics.cpp
     AutomaticThread.cpp
     BitVector.cpp
+    CPUTime.cpp
     ClockType.cpp
     CompilationThread.cpp
     CrossThreadCopier.cpp
@@ -248,6 +251,7 @@ set(WTF_SOURCES
     ThreadMessage.cpp
     Threading.cpp
     TimeWithDynamicClockType.cpp
+    UUID.cpp
     WTFThreadData.cpp
     WallTime.cpp
     WordLock.cpp

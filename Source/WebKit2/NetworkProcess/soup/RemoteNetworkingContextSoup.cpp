@@ -30,6 +30,7 @@
 
 #include "NetworkSession.h"
 #include "SessionTracker.h"
+#include "WebsiteDataStoreParameters.h"
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
@@ -56,6 +57,11 @@ void RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
 
     NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, String::number(sessionID.sessionID()));
     SessionTracker::setSession(sessionID, NetworkSession::create(sessionID));
+}
+
+void RemoteNetworkingContext::ensureWebsiteDataStoreSession(WebsiteDataStoreParameters&&)
+{
+    // FIXME: Implement.
 }
 
 NetworkStorageSession& RemoteNetworkingContext::storageSession() const

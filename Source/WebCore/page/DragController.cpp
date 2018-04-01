@@ -32,7 +32,6 @@
 #if ENABLE(DRAG_SUPPORT)
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
-#include "ClientRect.h"
 #include "DataTransfer.h"
 #include "Document.h"
 #include "DocumentFragment.h"
@@ -86,6 +85,7 @@
 
 #include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
+#include <wtf/SetForScope.h>
 #endif
 
 #if PLATFORM(COCOA)
@@ -245,6 +245,8 @@ inline static bool dragIsHandledByDocument(DragController::DragHandlingMethod dr
 
 bool DragController::performDragOperation(const DragData& dragData)
 {
+    SetForScope<bool> isPerformingDrop(m_isPerformingDrop, true);
+
     m_documentUnderMouse = m_page.mainFrame().documentAtPoint(dragData.clientPosition());
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow;

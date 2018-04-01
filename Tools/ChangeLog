@@ -1,3 +1,325 @@
+2017-04-30  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] Have check-webkit-style advise against use of [get…Class() alloc]
+        https://bugs.webkit.org/show_bug.cgi?id=171486
+
+        Reviewed by Sam Weinig.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_soft_link_class_alloc): Added. Looks for [get…Class() alloc] and suggests
+          alloc…Instance() instead.
+        (check_style): Invoke new check.
+
+2017-04-30  Brady Eidson  <beidson@apple.com>
+
+        More fixing after r215991
+        https://bugs.webkit.org/show_bug.cgi?id=171483
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-04-30  Brady Eidson  <beidson@apple.com>
+
+        Updates to _WKWebsiteDataStoreConfiguration cookie storage location SPI.
+        <rdar://problem/31906397> and https://bugs.webkit.org/show_bug.cgi?id=171483
+
+        Reviewed by Geoff Garen (and kind of Andy Estes).
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-04-30  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Implement support for aria-autocomplete
+        https://bugs.webkit.org/show_bug.cgi?id=171167
+
+        Reviewed by Chris Fleizach.
+
+        Add "AXSupportsAutoCompletion" attribute so the presence of
+        ATK_STATE_SUPPORTS_AUTOCOMPLETION can be tested.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2017-04-30  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] ARIA treegrid role should be exposed as ATK_ROLE_TREE_TABLE; not ATK_ROLE_TABLE
+        https://bugs.webkit.org/show_bug.cgi?id=171170
+
+        Reviewed by Chris Fleizach.
+
+        Add "AXInterfaceTable" attribute to test which elements implement AtkTable.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2017-04-30  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Emit object:state-changed:busy event when aria-busy value changes
+        https://bugs.webkit.org/show_bug.cgi?id=171181
+
+        Reviewed by Chris Fleizach.
+
+        Add handler for AXElementBusyChanged notifications.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityNotificationHandlerAtk.cpp:
+
+2017-04-29  Aakash Jain  <aakash_jain@apple.com>
+
+        Use PEP8 style guide for raising exceptions in webkitpy.
+        https://bugs.webkit.org/show_bug.cgi?id=171439
+
+        Reviewed by Daniel Bates.
+
+        As per https://www.python.org/dev/peps/pep-0008/
+        "When raising an exception in Python 2, use raise ValueError('message') 
+        instead of the older form raise ValueError, 'message'"
+
+        * Scripts/webkitpy/common/net/irc/ircbot.py: Using new style for raising exceptions.
+        * Scripts/webkitpy/common/thread/messagepump.py: Same.
+        * Scripts/webkitpy/tool/bot/queueengine.py: Same.
+        * Scripts/webkitpy/tool/commands/queues.py: Same.
+        * Scripts/webkitpy/tool/commands/stepsequence.py: Same.
+        * Scripts/webkitpy/tool/multicommandtool.py: Same.
+        * Scripts/webkitpy/tool/steps/abstractstep.py: Same.
+
+2017-04-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Add system trace points for Document::updateTouchEventRegions()
+        https://bugs.webkit.org/show_bug.cgi?id=171470
+        rdar://problem/31901239
+
+        Reviewed by Tim Horton.
+
+        Add trace markers for updateTouchEventRegions.
+
+        * Tracing/SystemTracePoints.plist:
+
+2017-04-28  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add apple_additions to webkitpy to insert Internal tools
+        https://bugs.webkit.org/show_bug.cgi?id=170461
+        <rdar://problem/31433077>
+
+        Reviewed by Daniel Bates.
+
+        Allow a package to be pulled in by run-webkit-tests which provides an interface to
+        run layout tests on an iOS device.  If this package is not available, throw an
+        exception when attempting to run layout tests on an iOS device.
+
+        * Scripts/webkitpy/port/config.py:
+        (apple_additions): Import apple_additions package.
+        * Scripts/webkitpy/port/device.py:
+        (Device.install_dylibs): Pass a directory with all the frameworks and dylibs to be
+        installed on a device.
+        (Device.prepare_for_testing): Pass a list of ports to forward from the device to the
+        host, the bundle id of the app to be used for testing and a path to the layout test
+        directory to be mounted on the device.
+        (Device.finished_testing):
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options): Add apple_additions platform options if apple_additions exists.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.setup_test_run): Install dylibs and frameworks on the device, pass ports
+        to forward, the bundle ID of the testing app and the layout tests directory to
+        each device.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort):
+        (IOSDevicePort.default_child_processes): Query apple_additions for the number of child
+        processes to be run.
+        (IOSDevicePort.using_multiple_devices): Always assume multiple devices are used. When
+        a single device is used, it is still accessed through an array.
+        (IOSDevicePort._device_for_worker_number_map): Query apple_additions for the device
+        for worker number map.
+        (IOSDevicePort._driver_class): Query apple_additions for the test driver.
+        (IOSDevicePort.determine_full_port_name): Use class variable over hard-coded string.
+        (IOSDevicePort.check_for_leaks): No implementation for iOSDevicePort.
+        (IOSDevicePort.look_for_new_crash_logs): Ditto.
+        (IOSDevicePort.look_for_new_samples): Ditto.
+        (IOSDevicePort.sample_process): Ditto.
+        (IOSDevicePort._build_driver_flags): Use class variable over hard-coded string.
+        (IOSDevicePort._create_devices): Check that devices are available for testing and check
+        that we have enough devices for each child process.
+        (IOSDevicePort.clean_up_test_run): Have apple_additions preform any needed clean up.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_operating_system):
+        (IOSDeviceTest.test_spindump): Override method from DarwinTest.
+        (IOSDeviceTest.test_sample_process): Ditto.
+        (IOSDeviceTest.test_sample_process_exception): Ditto.
+
+2017-04-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix and re-enable data interaction unit tests
+        https://bugs.webkit.org/show_bug.cgi?id=171446
+        <rdar://problem/31820646>
+
+        Reviewed by Tim Horton.
+
+        Enables all DataInteractionTests, and adjusts file upload tests to no longer write to a temporary file before
+        registering with the UIItemProvider, and instead just register data directly via
+        -registerDataRepresentationForTypeIdentifier:visibility:loadHandler:.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        (temporaryURLForDataInteractionFileLoad): Deleted.
+        (cleanUpDataInteractionTemporaryPath): Deleted.
+        (-[UIItemProvider registerFileRepresentationForTypeIdentifier:withData:filename:]): Deleted.
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+
+2017-04-28  Brady Eidson  <beidson@apple.com>
+
+        Teach the DatabaseProcess to be fully SessionID aware
+        https://bugs.webkit.org/show_bug.cgi?id=171451
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+
+2017-04-28  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed follow-up to r214705.
+
+        shut.copytree will fail if given a file as an argument instead of a directory.
+
+        * Scripts/webkitpy/common/system/filesystem.py:
+        (FileSystem.copy_to_base_host): Use copytree when source is a directory and copyfile
+        when source is a file.
+        (FileSystem.copy_from_base_host): Ditto.
+
+2017-04-28  Chris Dumez  <cdumez@apple.com>
+
+        Update DOMTokenList.replace() to match the latest DOM specification
+        https://bugs.webkit.org/show_bug.cgi?id=171388
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage for new Vector API.
+
+        * TestWebKitAPI/Tests/WTF/Vector.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-04-28  Jonathan Bedard  <jbedard@apple.com>
+
+        WebKitTestRunner/DumpRenderTree prevent device from sleeping
+        https://bugs.webkit.org/show_bug.cgi?id=170731
+
+        Reviewed by Alex Christensen.
+
+        While running layout tests on a device, the device should not be put asleep.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree): Disable idle timer.
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformInitialize): Ditto.
+
+2017-04-28  Brady Eidson  <beidson@apple.com>
+
+        Start of support for multiple WebsiteDataStore/SessionIDs per process
+        https://bugs.webkit.org/show_bug.cgi?id=171422
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-04-28  Youenn Fablet  <youenn@apple.com>
+
+        Adding a runtime flag specific to MediaDevices
+        https://bugs.webkit.org/show_bug.cgi?id=171433
+
+        Reviewed by Geoffrey Garen.
+
+        Updating WTR and DRT as peer connection and media stream runtime flags are enabled by default.
+        Setting media devices runtime flag to true for WTR and DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * TestWebKitAPI/Tests/WebKit2/EnumerateMediaDevices.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/UserMedia.cpp:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setMediaDevicesEnabled):
+        (WTR::TestRunner::setMediaStreamEnabled): Deleted.
+        (WTR::TestRunner::setPeerConnectionEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+
+2017-04-28  Dean Jackson  <dino@apple.com>
+
+        [WebGPU] Label MTLCommandQueues with a prefix for internal telemetry
+        https://bugs.webkit.org/show_bug.cgi?id=171441
+        <rdar://problem/31826915>
+
+        Reviewed by Tim Horton.
+
+        Add an API test for GPUCommandQueue, exercising creation
+        and setting the label.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/mac/GPUCommandQueue.mm: Added.
+        (TestWebKitAPI::TEST_F):
+
+2017-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] aria-modal="true" should be exposed via ATK_STATE_MODAL
+        https://bugs.webkit.org/show_bug.cgi?id=171188
+
+        Reviewed by Chris Fleizach.
+
+        Add "AXModal" attribute string so that we can test the state's exposure.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2017-04-28  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] GridCellRole should implement AtkTableCell (regression?)
+        https://bugs.webkit.org/show_bug.cgi?id=171179
+
+        Reviewed by Chris Fleizach.
+
+        Add new "AXInterfaceTableCell" attribute so that we can test whether or
+        not there is an implementation of AtkTableCell (i.e. without risking false
+        negatives from bugs in the interface's implementation).
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::boolAttributeValue):
+
+2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move UUID from WebCore/platform to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=171372
+
+        Reviewed by Michael Catanzaro.
+
+        * WebKitTestRunner/TestController.cpp:
+
+2017-04-27  Alex Christensen  <achristensen@webkit.org>
+
+        Add stub SPI for setting cookie storage path on _WKWebsiteDataStoreConfiguration
+        https://bugs.webkit.org/show_bug.cgi?id=171399
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-04-27  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Disable flaky API test WKWebView.SetOverrideContentSecurityPolicyWithEmptyStringForPageWithCSP.
+        https://bugs.webkit.org/show_bug.cgi?id=167914
+
+        Unreviewed test gardening.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/OverrideContentSecurityPolicy.mm:
+        (TEST):
+
 2017-04-26  Saam Barati  <sbarati@apple.com>
 
         Add some more testing modes for Wasm tests now that we have tier up

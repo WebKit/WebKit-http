@@ -22,8 +22,7 @@
 
 #include <WebCore/CSSImportRule.h>
 #include "DOMObjectCache.h"
-#include <WebCore/ClientRect.h>
-#include <WebCore/ClientRectList.h>
+#include <WebCore/DOMRect.h>
 #include <WebCore/Document.h>
 #include <WebCore/ExceptionCode.h>
 #include <WebCore/ExceptionCodeDescription.h>
@@ -1230,8 +1229,7 @@ WebKitDOMClientRect* webkit_dom_element_get_bounding_client_rect(WebKitDOMElemen
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_ELEMENT(self), nullptr);
     WebCore::Element* item = WebKit::core(self);
-    auto clientRect = item->getBoundingClientRect();
-    return WebKit::kit(clientRect.ptr());
+    return WebKit::kit(item->getBoundingClientRect().ptr());
 }
 
 WebKitDOMClientRectList* webkit_dom_element_get_client_rects(WebKitDOMElement* self)
@@ -1239,8 +1237,7 @@ WebKitDOMClientRectList* webkit_dom_element_get_client_rects(WebKitDOMElement* s
     WebCore::JSMainThreadNullState state;
     g_return_val_if_fail(WEBKIT_DOM_IS_ELEMENT(self), nullptr);
     WebCore::Element* item = WebKit::core(self);
-    auto clientRects = item->getClientRects();
-    return WebKit::kit(clientRects.ptr());
+    return WebKit::kit(item->getClientRects());
 }
 
 WebKitDOMElement* webkit_dom_element_get_offset_parent(WebKitDOMElement* self)

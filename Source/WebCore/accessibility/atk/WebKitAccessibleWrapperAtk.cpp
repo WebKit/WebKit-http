@@ -400,6 +400,9 @@ static AtkAttributeSet* webkitAccessibleGetAttributes(AtkObject* object)
     if (!placeholder.isEmpty())
         attributeSet = addToAtkAttributeSet(attributeSet, "placeholder-text", placeholder.utf8().data());
 
+    if (coreObject->supportsARIAAutoComplete())
+        attributeSet = addToAtkAttributeSet(attributeSet, "autocomplete", coreObject->ariaAutoCompleteValue().utf8().data());
+
     if (coreObject->supportsARIAHasPopup())
         attributeSet = addToAtkAttributeSet(attributeSet, "haspopup", coreObject->ariaPopupValue().utf8().data());
 
@@ -457,9 +460,9 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
 {
     AccessibilityRole role = coreObject->roleValue();
     switch (role) {
-    case ApplicationAlertDialogRole:
     case ApplicationAlertRole:
         return ATK_ROLE_ALERT;
+    case ApplicationAlertDialogRole:
     case ApplicationDialogRole:
         return ATK_ROLE_DIALOG;
     case ApplicationStatusRole:
@@ -551,6 +554,8 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case GridRole:
     case TableRole:
         return ATK_ROLE_TABLE;
+    case TreeGridRole:
+        return ATK_ROLE_TREE_TABLE;
     case ApplicationRole:
         return ATK_ROLE_APPLICATION;
     case ApplicationGroupRole:
@@ -670,6 +675,7 @@ static AtkRole atkRole(AccessibilityObject* coreObject)
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
+    case LandmarkDocRegionRole:
     case LandmarkMainRole:
     case LandmarkNavigationRole:
     case LandmarkRegionRole:
@@ -809,6 +815,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
             atk_state_set_add_state(stateSet, ATK_STATE_INDETERMINATE);
     }
 
+    if (coreObject->isAriaModalNode())
+        atk_state_set_add_state(stateSet, ATK_STATE_MODAL);
+
     if (coreObject->invalidStatus() != "false")
         atk_state_set_add_state(stateSet, ATK_STATE_INVALID_ENTRY);
 
@@ -864,6 +873,9 @@ static void setAtkStateSetFromCoreObject(AccessibilityObject* coreObject, AtkSta
         atk_state_set_add_state(stateSet, ATK_STATE_SINGLE_LINE);
 
     // TODO: ATK_STATE_SENSITIVE
+
+    if (coreObject->supportsARIAAutoComplete() && coreObject->ariaAutoCompleteValue() != "none")
+        atk_state_set_add_state(stateSet, ATK_STATE_SUPPORTS_AUTOCOMPLETION);
 
     if (coreObject->isVisited())
         atk_state_set_add_state(stateSet, ATK_STATE_VISITED);
@@ -1141,11 +1153,11 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
         interfaceMask |= 1 << WAIImage;
 
     // Table
-    if (role == TableRole || role == GridRole)
+    if (coreObject->isTable())
         interfaceMask |= 1 << WAITable;
 
 #if ATK_CHECK_VERSION(2,11,90)
-    if (role == CellRole || role == ColumnHeaderRole || role == RowHeaderRole)
+    if (role == CellRole || role == GridCellRole || role == ColumnHeaderRole || role == RowHeaderRole)
         interfaceMask |= 1 << WAITableCell;
 #endif
 
@@ -1154,7 +1166,7 @@ static guint16 getInterfaceMaskFromObject(AccessibilityObject* coreObject)
         interfaceMask |= 1 << WAIDocument;
 
     // Value
-    if (role == SliderRole || role == SpinButtonRole || role == ScrollBarRole || role == ProgressIndicatorRole)
+    if (coreObject->supportsRangeValue())
         interfaceMask |= 1 << WAIValue;
 
 #if ENABLE(INPUT_TYPE_COLOR)

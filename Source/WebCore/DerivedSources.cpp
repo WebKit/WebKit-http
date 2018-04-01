@@ -107,8 +107,6 @@
 #endif
 #include "JSCDATASection.cpp"
 #include "JSCharacterData.cpp"
-#include "JSClientRect.cpp"
-#include "JSClientRectList.cpp"
 #include "JSCloseEvent.cpp"
 #include "JSCommandLineAPIHost.cpp"
 #include "JSComment.cpp"
@@ -379,6 +377,7 @@
 #include "JSPositionOptions.cpp"
 #include "JSProcessingInstruction.cpp"
 #include "JSProgressEvent.cpp"
+#include "JSPromiseRejectionEvent.cpp"
 #include "JSRadioNodeList.cpp"
 #include "JSRange.cpp"
 #include "JSReadableByteStreamController.cpp"

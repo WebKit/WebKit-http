@@ -61,6 +61,7 @@ public:
     WEBCORE_EXPORT static NetworkStorageSession& defaultStorageSession();
     WEBCORE_EXPORT static NetworkStorageSession* storageSession(SessionID);
     WEBCORE_EXPORT static void ensurePrivateBrowsingSession(SessionID, const String& identifierBase = String());
+    WEBCORE_EXPORT static void ensureSession(SessionID, const String& identifierBase = String());
     WEBCORE_EXPORT static void destroySession(SessionID);
     WEBCORE_EXPORT static void forEach(std::function<void(const WebCore::NetworkStorageSession&)>);
 
@@ -74,7 +75,8 @@ public:
 #endif
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
-    NetworkStorageSession(SessionID, RetainPtr<CFURLStorageSessionRef>);
+    WEBCORE_EXPORT static void ensureSession(SessionID, const String& identifierBase, RetainPtr<CFHTTPCookieStorageRef>&&);
+    NetworkStorageSession(SessionID, RetainPtr<CFURLStorageSessionRef>&&, RetainPtr<CFHTTPCookieStorageRef>&&);
 
     // May be null, in which case a Foundation default should be used.
     CFURLStorageSessionRef platformSession() { return m_platformSession.get(); }
@@ -122,6 +124,7 @@ private:
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     RetainPtr<CFURLStorageSessionRef> m_platformSession;
+    RetainPtr<CFHTTPCookieStorageRef> m_platformCookieStorage;
 #elif USE(SOUP)
     static void cookiesDidChange(NetworkStorageSession*);
 

@@ -521,6 +521,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
     case LandmarkBannerRole:
     case LandmarkComplementaryRole:
     case LandmarkContentInfoRole:
+    case LandmarkDocRegionRole:
     case LandmarkMainRole:
     case LandmarkNavigationRole:
     case LandmarkRegionRole:
@@ -577,7 +578,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 {
     
     if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, [] (const AccessibilityObject& object) {
-        return object.roleValue() == TableRole || object.roleValue() == GridRole;
+        return object.isTable();
     }))
         return parent->wrapper();
     return nil;
@@ -646,6 +647,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
                 break;
             case GridRole:
             case TableRole:
+            case TreeGridRole:
                 traits |= [self _axContainedByTableTrait];
                 break;
             default:
@@ -882,6 +884,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case LandmarkBannerRole:
         case LandmarkComplementaryRole:
         case LandmarkContentInfoRole:
+        case LandmarkDocRegionRole:
         case LandmarkMainRole:
         case LandmarkNavigationRole:
         case LandmarkRegionRole:

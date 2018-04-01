@@ -1,3 +1,648 @@
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        We initialize functions too early in an eval
+        https://bugs.webkit.org/show_bug.cgi?id=161099
+
+        Reviewed by Saam Barati.
+
+        Current patch allow to fix problem with scope in function that is 
+        declared within eval. Before scope was set inside Interpretator.cpp and it
+        was scope where eval is executed, but in this case function would not 
+        see let/const variables and classes declated in eval.
+        This patch devide declaration and binding in two operation, first just declare
+        variable with function name, and second bind variable to function with correct 
+        scope
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        * bytecompiler/BytecodeGenerator.h:
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+
+2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ES6]. Implement Annex B.3.3 function hoisting rules for eval
+        https://bugs.webkit.org/show_bug.cgi?id=163208
+
+        Reviewed by Saam Barati.
+
+        Current patch implements Annex B.3.3 that is related to 
+        hoisting of function declaration in eval. 
+        https://tc39.github.io/ecma262/#sec-web-compat-evaldeclarationinstantiation
+        Function declaration in eval should create variable with 
+        function name in function scope where eval is invoked 
+        or bind to variable if it declared outside of the eval. 
+        If variable is created it can be removed by 'delete a;' command. 
+        If eval is invoke in block scope that contains let/const 
+        variable with the same name as function declaration 
+        we do not bind. This patch leads to the following behavior: 
+        '''
+        function foo() {
+           {
+             print(boo); // undefined
+             eval('{ function boo() {}}');
+             print(boo); // function boo() {}
+           }
+           print(boo); // function boo() {}
+        }
+
+        function foobar() {
+          { 
+            let boo = 10;
+            print(boo); // 10;
+            eval('{ function boo() {}}');
+            print(boo); // 10;
+          }
+          print(boo) // 10
+        }
+
+        function bar() {
+           {
+              var boo = 10;
+              print(boo); // 10
+              eval('{ function boo() {} }'); 
+              print(boo); // function boo() {}
+           }
+           print(boo); // function boo() {}
+        }       
+        
+        function bas() {
+            {
+                 let boo = 10;
+                 eval(' { function boo() {} } ');
+                 print(boo); // 10
+            }
+            print(boo); //Reference Error
+        }
+        '''
+
+        Current implementation relies on already implemented 
+        'hoist function in sloppy mode' feature, with small changes.
+        In short it works in following way: during hoisting of function 
+        with name S in eval, we are looking for first scope that 
+        contains space for variable with name S and if this scope 
+        has var type we bind function there
+
+        To implement this feature was added bytecode ops:
+        op_resolve_scope_for_hoisting_func_decl_in_eval - get variable scope 
+        or return undefined if variable can't be binded there.
+
+        There is a corner case, hoist function in eval within catch block,
+        that is not covered by this patch, and will be fixed in 
+        https://bugs.webkit.org/show_bug.cgi?id=168184
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/CodeBlock.cpp:
+        (JSC::CodeBlock::finalizeLLIntInlineCaches):
+        * bytecode/EvalCodeBlock.h:
+        (JSC::EvalCodeBlock::functionHoistingCandidate):
+        (JSC::EvalCodeBlock::numFunctionHoistingCandidates):
+        * bytecode/UnlinkedEvalCodeBlock.h:
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::BytecodeGenerator):
+        (JSC::BytecodeGenerator::hoistSloppyModeFunctionIfNecessary):
+        (JSC::BytecodeGenerator::emitResolveScopeForHoistingFuncDeclInEval):
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasIdentifier):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileResolveScopeForHoistingFuncDeclInEval):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileResolveScopeForHoistingFuncDeclInEval):
+        * interpreter/Interpreter.cpp:
+        (JSC::Interpreter::execute):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOperations.h:
+        * jit/JITPropertyAccess.cpp:
+        (JSC::JIT::emit_op_resolve_scope_for_hoisting_func_decl_in_eval):
+        * jit/JITPropertyAccess32_64.cpp:
+        (JSC::JIT::emit_op_resolve_scope_for_hoisting_func_decl_in_eval):
+        * llint/LowLevelInterpreter.asm:
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionDeclarationStatement):
+        * parser/Parser.h:
+        (JSC::Scope::getSloppyModeHoistedFunctions):
+        (JSC::Parser::declareFunction):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+        * runtime/EvalExecutable.h:
+        (JSC::EvalExecutable::numFunctionHoistingCandidates):
+        (JSC::EvalExecutable::numTopLevelFunctionDecls):
+        (JSC::EvalExecutable::numberOfFunctionDecls): Deleted.
+        * runtime/JSScope.cpp:
+        (JSC::JSScope::resolve):
+        (JSC::JSScope::resolveScopeForHoistingFuncDeclInEval):
+        * runtime/JSScope.h:
+
+2017-04-29  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Deep nesting is leading to ReferenceError for hoisted function
+        https://bugs.webkit.org/show_bug.cgi?id=171456
+
+        Reviewed by Yusuke Suzuki.
+
+        Current patch fix error that appears during hoisting of the function 
+        in block scope. Error happens only when exist some deep scope that lead
+        to increase scope stack, after which list of the hosted candidates do not 
+        copied to updated scope stack.
+
+        * parser/Parser.h:
+        (JSC::Scope::Scope):
+
+2017-04-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] LabelScopePtr is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=171474
+
+        Reviewed by Geoffrey Garen.
+
+        Originally, LabelScopePtr is introduced because LabelScopes uses Vector<> instead of SegmentedVector<>.
+        LabelScopePtr holds the pointer to the vector owner and index instead of the pointer to LabelScope directly
+        since Vector<> can relocate LocalScopes inside it.
+        The reason why LabelScopes use Vector instead is that there is code copying this vector. SegmentedVector<>
+        prohibits copying since it is so costly. So, we used Vector<> here instead of SegmentedVector<>.
+
+        But the latest code does not have copying code for LabelScopes. Thus, we can take the same design to Label and
+        RegisterID. Just use SegmentedVector<> and Ref<>/RefPtr<>. This patch removes LabelScopePtr since it is no
+        longer necessary. And use SegmentedVector for LabelScopes.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::reclaim):
+        (JSC::BytecodeGenerator::reclaimFreeRegisters):
+        (JSC::BytecodeGenerator::newLabelScope):
+        (JSC::BytecodeGenerator::newLabel):
+        (JSC::BytecodeGenerator::pushFinallyControlFlowScope):
+        (JSC::BytecodeGenerator::breakTarget):
+        (JSC::BytecodeGenerator::continueTarget):
+        (JSC::BytecodeGenerator::emitEnumeration):
+        * bytecompiler/BytecodeGenerator.h:
+        * bytecompiler/LabelScope.h:
+        (JSC::LabelScope::LabelScope):
+        (JSC::LabelScope::breakTarget):
+        (JSC::LabelScope::continueTarget):
+        (JSC::LabelScope::type):
+        (JSC::LabelScope::name):
+        (JSC::LabelScope::scopeDepth):
+        (JSC::LabelScope::ref):
+        (JSC::LabelScope::deref):
+        (JSC::LabelScope::refCount):
+        (JSC::LabelScopePtr::LabelScopePtr): Deleted.
+        (JSC::LabelScopePtr::operator=): Deleted.
+        (JSC::LabelScopePtr::~LabelScopePtr): Deleted.
+        (JSC::LabelScopePtr::operator!): Deleted.
+        (JSC::LabelScopePtr::operator*): Deleted.
+        (JSC::LabelScopePtr::operator->): Deleted.
+        (JSC::LabelScopePtr::null): Deleted.
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::DoWhileNode::emitBytecode):
+        (JSC::WhileNode::emitBytecode):
+        (JSC::ForNode::emitBytecode):
+        (JSC::ForInNode::emitBytecode):
+        (JSC::ContinueNode::trivialTarget):
+        (JSC::ContinueNode::emitBytecode):
+        (JSC::BreakNode::trivialTarget):
+        (JSC::BreakNode::emitBytecode):
+        (JSC::SwitchNode::emitBytecode):
+        (JSC::LabelNode::emitBytecode):
+
+2017-04-28  Mark Lam  <mark.lam@apple.com>
+
+        Revert instrumentation from https://bugs.webkit.org/show_bug.cgi?id=170086 that is no longer needed.
+        https://bugs.webkit.org/show_bug.cgi?id=170094
+
+        Reviewed by JF Bastien and Keith Miller.
+
+        * heap/Heap.cpp:
+        (JSC::Heap::resumeThePeriphery):
+
+2017-04-27  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Implement the caseFirst option for Intl.Collator
+        https://bugs.webkit.org/show_bug.cgi?id=158188
+
+        Reviewed by Geoffrey Garen.
+
+        Implements the caseFirst option and unicode locale extension.
+        The caseFirst option explicitly determines whether upper or lower case comes first.
+
+        * runtime/IntlCollator.cpp:
+        (JSC::sortLocaleData): Added kf data.
+        (JSC::searchLocaleData): Added kf data.
+        (JSC::IntlCollator::initializeCollator): Set caseFirst option.
+        (JSC::IntlCollator::createCollator): Set new attributes on ICU collator.
+        (JSC::IntlCollator::caseFirstString): Added.
+        (JSC::IntlCollator::resolvedOptions): Added caseFirst property.
+        * runtime/IntlCollator.h:
+
+2017-04-27  Mark Lam  <mark.lam@apple.com>
+
+        Fix some RELEASE_ASSERT failures caused by OutOfMemoryErrors.
+        https://bugs.webkit.org/show_bug.cgi?id=171404
+        <rdar://problem/31876178>
+
+        Reviewed by Saam Barati.
+
+        1. Added some tryAllocate() functions in JSCellInlines.h.
+        2. Consolidated the implementations of allocateCell() template functions into a
+           single tryAllocateCellHelper() to reduce redundancy and eliminate needing to
+           copy-paste for variations of allocateCell and tryAllocateCell.
+        3. Changed JSFixedArray::createFromArray() and constructEmptyArray() to check for
+           allocation failure and throw an OutOfMemoryError.  It was already possible to
+           throw errors from these functions for other reasons.  So, their clients are
+           already ready to handle OOMEs.
+
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * runtime/JSCInlines.h:
+        * runtime/JSCell.h:
+        * runtime/JSCellInlines.h:
+        (JSC::tryAllocateCellHelper):
+        (JSC::allocateCell):
+        (JSC::tryAllocateCell):
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::createFromArray):
+        (JSC::JSFixedArray::tryCreate):
+        (JSC::JSFixedArray::create): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::constructEmptyArray):
+
+2017-04-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Support for promise rejection events (unhandledrejection)
+        https://bugs.webkit.org/show_bug.cgi?id=150358
+        <rdar://problem/28441651>
+
+        Reviewed by Saam Barati.
+
+        Patch by Joseph Pecoraro and Yusuke Suzuki.
+
+        Implement support for promise.[[PromiseIsHandled]] and the
+        HostPromiseRejectionTracker hook for HTML to track promise rejections:
+        https://tc39.github.io/ecma262/#sec-host-promise-rejection-tracker
+        https://html.spec.whatwg.org/multipage/webappapis.html#unhandled-promise-rejections
+
+        * builtins/BuiltinNames.h:
+        New private symbols.
+
+        * builtins/PromiseOperations.js:
+        (globalPrivate.newHandledRejectedPromise):
+        Utility to create a rejected promise with [[PromiseIsHandled]] to true.
+
+        (globalPrivate.rejectPromise):
+        (globalPrivate.initializePromise):
+        * builtins/PromisePrototype.js:
+        (then):
+        Implement standard behavior of [[PromiseIsHandled]] and the host hook.
+
+        * runtime/JSPromise.cpp:
+        (JSC::JSPromise::isHandled):
+        * runtime/JSPromise.h:
+        C++ accessors for the [[PromiseIsHandled]] state.
+
+        * bytecode/BytecodeIntrinsicRegistry.cpp:
+        (JSC::BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry):
+        * bytecode/BytecodeIntrinsicRegistry.h:
+        Expose private values for the Reject / Handle enum values in built-ins.
+
+        * jsc.cpp:
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::promiseResolveFunction):
+        Add a new GlobalObjectMethodTable hook matching the promise rejection hook.
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObjectFunctions.cpp:
+        (JSC::globalFuncHostPromiseRejectionTracker):
+        * runtime/JSGlobalObjectFunctions.h:
+        Plumb the builtin hook through to the optional GlobalObjectMethodTable hook.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.prototype.createFakeValueDescriptor):
+        Silence possible rejected promises created internally via Web Inspector.
+
+2017-04-27  Saam Barati  <sbarati@apple.com>
+
+        B3::FoldPathConstants does not consider the fall through case for Switch
+        https://bugs.webkit.org/show_bug.cgi?id=171390
+
+        Reviewed by Filip Pizlo.
+
+        foldPathConstants was not taking into account a Switch's default
+        case when it tried to constant propagate the switch's operand value.
+        e.g, we incorrectly transformed this code:
+        
+        ```
+        x = argumentGPR0;
+        switch (x) {
+        case 10: return 20;
+        
+        case 0:
+        default: return x == 0;
+        }
+        ```
+        
+        into:
+        ```
+        x = argumentGPR0;
+        switch (x) {
+        case 10: return 20;
+        
+        case 0:
+        default: return 1;
+        }
+        ```
+        
+        Because we didn't take into account the default case, we incorrectly
+        optimized the code as if case 0's block was only reachable if x is
+        equal to zero. This is obviously not true, since it's the same block
+        as the default case.
+        
+        This fix ensures that we can run the WebAssembly Tanks demo even when
+        we set webAssemblyBBQOptimizationLevel=2.
+
+        * b3/B3FoldPathConstants.cpp:
+        * b3/B3SwitchValue.cpp:
+        (JSC::B3::SwitchValue::fallThrough):
+        (JSC::B3::SwitchValue::removeCase): Deleted.
+        * b3/B3SwitchValue.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testCallFunctionWithHellaArguments):
+        (JSC::B3::testSwitchSameCaseAsDefault):
+        (JSC::B3::testWasmBoundsCheck):
+        (JSC::B3::run):
+
+2017-04-27  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: Don't tier up the same function twice
+        https://bugs.webkit.org/show_bug.cgi?id=171397
+
+        Reviewed by Filip Pizlo.
+
+        Because we don't CAS the tier up count on function entry/loop backedge and we use the least significant to indicate whether or not tier up has already started we could see the following:
+
+        Threads A and B are running count in memory is (0):
+
+        A: load tier up count (0)
+        B: load tier up count (0)
+        A: decrement count to -2 and see we need to check for tier up (0)
+        A: store -2 to count (-2)
+        A: exchangeOr(1) to tier up count (-1)
+        B: decrement count to -2 and see we need to check for tier up (-1)
+        B: store -2 to count (-2)
+        B: exchangeOr(1) to tier up count (-1)
+
+        This would cause us to tier up the same function twice, which we would rather avoid.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::emitTierUpCheck):
+        * wasm/WasmTierUpCount.h:
+        (JSC::Wasm::TierUpCount::TierUpCount):
+        (JSC::Wasm::TierUpCount::loopDecrement):
+        (JSC::Wasm::TierUpCount::functionEntryDecrement):
+        (JSC::Wasm::TierUpCount::shouldStartTierUp):
+
+2017-04-27  Keith Miller  <keith_miller@apple.com>
+
+        REGRESSION (r215843): ASSERTION FAILED: !m_completionTasks[0].first in  JSC::Wasm::Plan::tryRemoveVMAndCancelIfLast(JSC::VM &)
+        https://bugs.webkit.org/show_bug.cgi?id=171380
+
+        Reviewed by JF Bastien.
+
+        This patch fixes the association of VMs to Wasm::Plans. For validation
+        we want all the completion tasks to be associate with a VM. For BBQ,
+        we want the main task to not be associated with any VM.
+
+        * jsc.cpp:
+        (functionTestWasmModuleFunctions):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::BBQPlan):
+        * wasm/WasmBBQPlan.h:
+        * wasm/WasmCodeBlock.cpp:
+        (JSC::Wasm::CodeBlock::CodeBlock):
+        (JSC::Wasm::CodeBlock::compileAsync):
+        * wasm/WasmCodeBlock.h:
+        (JSC::Wasm::CodeBlock::create):
+        * wasm/WasmModule.cpp:
+        (JSC::Wasm::makeValidationCallback):
+        (JSC::Wasm::Module::validateSync):
+        (JSC::Wasm::Module::validateAsync):
+        (JSC::Wasm::Module::getOrCreateCodeBlock):
+        (JSC::Wasm::Module::compileSync):
+        (JSC::Wasm::Module::compileAsync):
+        * wasm/WasmModule.h:
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::OMGPlan):
+        (JSC::Wasm::runOMGPlanForIndex):
+        * wasm/WasmOMGPlan.h:
+        * wasm/WasmPlan.cpp:
+        (JSC::Wasm::Plan::Plan):
+        (JSC::Wasm::Plan::runCompletionTasks):
+        (JSC::Wasm::Plan::addCompletionTask):
+        (JSC::Wasm::Plan::tryRemoveVMAndCancelIfLast):
+        * wasm/WasmPlan.h:
+        (JSC::Wasm::Plan::dontFinalize):
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::constructJSWebAssemblyInstance):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyValidateFunc):
+
+2017-04-27  Saam Barati  <sbarati@apple.com>
+
+        Restore some caching functionality that got accidentally removed when doing Wasm PIC patches
+        https://bugs.webkit.org/show_bug.cgi?id=171382
+
+        Reviewed by Keith Miller.
+
+        When I created Wasm::CodeBlock, I accidentally removed caching
+        the creation of JSWebAssemblyCodeBlocks. This patch restores it.
+        It's worth keeping JSWebAssemblyModule's JSWebAssemblyCodeBlock
+        cache because creating a JSWebAssemblyCodeBlock does non trivial
+        work by creating the various IC call stubs.
+
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        (JSC::JSWebAssemblyCodeBlock::codeBlock):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::finalizeCreation):
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyModule.h:
+
+2017-04-27  Mark Lam  <mark.lam@apple.com>
+
+        Audit and fix incorrect uses of JSArray::tryCreateForInitializationPrivate().
+        https://bugs.webkit.org/show_bug.cgi?id=171344
+        <rdar://problem/31352667>
+
+        Reviewed by Filip Pizlo.
+
+        JSArray::tryCreateForInitializationPrivate() should only be used in performance
+        critical paths, and should always be used with care because it creates an
+        uninitialized object that needs to be initialized by its client before the object
+        can be released into the system.  Before the object is fully initialized:
+        a. the client should not re-enter the VM to execute JS code, and
+        b. GC should not run.
+
+        This is because until the object is fully initialized, it is an inconsistent
+        state that the GC and JS code will not be happy about.
+
+        In this patch, we do the following:
+
+        1. Renamed JSArray::tryCreateForInitializationPrivate() to
+           JSArray::tryCreateUninitializedRestricted() because "private" is a bit ambiguous
+           and can be confused with APIs that are called freely within WebKit but are
+           not meant for clients of WebKit.  In this case, we intend for use of this API
+           to be restricted to only a few carefully considered and crafted cases.
+
+        2. Introduce the ObjectInitializationScope RAII object which covers the period
+           when the uninitialized object is created and gets initialized.
+
+           ObjectInitializationScope will asserts that either the object is created
+           fully initialized (in the case where the object structure is not an "original"
+           structure) or if created uninitialized, is fully initialized at the end of
+           the scope.
+
+           If the object is created uninitialized, the ObjectInitializationScope also
+           ensures that we do not GC nor re-enter the VM to execute JS code.  This is
+           achieved by enabling DisallowGC and DisallowVMReentry scopes.
+
+           tryCreateUninitializedRestricted() and initializeIndex() now requires an
+           ObjectInitializationScope instance.  The ObjectInitializationScope replaces
+           the VM& argument because it can be used to pass the VM& itself.  This is a
+           small optimization that makes passing the ObjectInitializationScope free even
+           on release builds.
+
+        3. Factored a DisallowScope out of DisallowGC, and make DisallowGC extend it.
+           Introduce a DisallowVMReentry class that extends DisallowScope.
+
+        4. Fixed a bug found by the ObjectInitializationScope.  The bug is that there are
+           scenarios where the structure passed to tryCreateUninitializedRestricted()
+           that may not be an "original" structure.  As a result, initializeIndex() would
+           end up allocating new structures, and therefore trigger a GC.
+
+           The fix is to detect that the structure passed to tryCreateUninitializedRestricted()
+           is not an "original" one, and pre-initialize the array with 0s.
+
+           This bug was detected by existing tests. Hence, no new test needed.
+
+        5. Replaced all inappropriate uses of tryCreateUninitializedRestricted() with
+           tryCreate().  Inappropriate uses here means code that is not in performance
+           critical paths.
+
+           Similarly, replaced accompanying uses of initializeIndex() with putDirectIndex().
+
+           This patch is performance neutral (according to the JSC command line benchmarks).
+
+        * CMakeLists.txt:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * dfg/DFGOperations.cpp:
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * heap/DeferGC.cpp:
+        * heap/DeferGC.h:
+        (JSC::DisallowGC::DisallowGC):
+        (JSC::DisallowGC::initialize):
+        (JSC::DisallowGC::scopeReentryCount):
+        (JSC::DisallowGC::setScopeReentryCount):
+        (JSC::DisallowGC::~DisallowGC): Deleted.
+        (JSC::DisallowGC::isGCDisallowedOnCurrentThread): Deleted.
+        * heap/GCDeferralContextInlines.h:
+        (JSC::GCDeferralContext::~GCDeferralContext):
+        * heap/Heap.cpp:
+        (JSC::Heap::collectIfNecessaryOrDefer):
+        * runtime/ArrayPrototype.cpp:
+        (JSC::arrayProtoPrivateFuncConcatMemcpy):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createWithInlineFrame):
+        (JSC::ClonedArguments::createByCopyingFrom):
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/DisallowScope.h: Added.
+        (JSC::DisallowScope::DisallowScope):
+        (JSC::DisallowScope::~DisallowScope):
+        (JSC::DisallowScope::isInEffectOnCurrentThread):
+        (JSC::DisallowScope::enable):
+        (JSC::DisallowScope::enterScope):
+        (JSC::DisallowScope::exitScope):
+        * runtime/DisallowVMReentry.cpp: Added.
+        * runtime/DisallowVMReentry.h: Added.
+        (JSC::DisallowVMReentry::DisallowVMReentry):
+        (JSC::DisallowVMReentry::initialize):
+        (JSC::DisallowVMReentry::scopeReentryCount):
+        (JSC::DisallowVMReentry::setScopeReentryCount):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::tryCreateUninitializedRestricted):
+        (JSC::JSArray::fastSlice):
+        (JSC::JSArray::tryCreateForInitializationPrivate): Deleted.
+        * runtime/JSArray.h:
+        (JSC::JSArray::tryCreateUninitializedRestricted):
+        (JSC::JSArray::tryCreate):
+        (JSC::constructArray):
+        (JSC::constructArrayNegativeIndexed):
+        (JSC::JSArray::tryCreateForInitializationPrivate): Deleted.
+        (JSC::createArrayButterfly): Deleted.
+        * runtime/JSCellInlines.h:
+        (JSC::allocateCell):
+        * runtime/JSObject.h:
+        (JSC::JSObject::initializeIndex):
+        (JSC::JSObject::initializeIndexWithoutBarrier):
+        * runtime/ObjectInitializationScope.cpp: Added.
+        (JSC::ObjectInitializationScope::ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::~ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::notifyAllocated):
+        (JSC::ObjectInitializationScope::verifyPropertiesAreInitialized):
+        * runtime/ObjectInitializationScope.h: Added.
+        (JSC::ObjectInitializationScope::ObjectInitializationScope):
+        (JSC::ObjectInitializationScope::vm):
+        (JSC::ObjectInitializationScope::notifyAllocated):
+        * runtime/Operations.h:
+        (JSC::isScribbledValue):
+        (JSC::scribble):
+        * runtime/RegExpMatchesArray.cpp:
+        (JSC::createEmptyRegExpMatchesArray):
+        * runtime/RegExpMatchesArray.h:
+        (JSC::tryCreateUninitializedRegExpMatchesArray):
+        (JSC::createRegExpMatchesArray):
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+
 2017-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Remote inspector should support inspecting targets with previous version of backend commands

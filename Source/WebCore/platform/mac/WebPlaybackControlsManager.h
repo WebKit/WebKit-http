@@ -65,8 +65,9 @@ WEBCORE_EXPORT
 @property (getter=isPlaying) BOOL playing;
 @property BOOL canTogglePlayback;
 @property (nonatomic) float rate;
-@property (nonatomic) BOOL allowsPictureInPicturePlayback;
-@property (nonatomic, getter=isPictureInPictureActive) BOOL pictureInPictureActive;
+@property BOOL allowsPictureInPicturePlayback;
+@property (getter=isPictureInPictureActive) BOOL pictureInPictureActive;
+@property BOOL canTogglePictureInPicture;
 
 - (AVTouchBarMediaSelectionOption *)currentAudioTouchBarMediaSelectionOption;
 - (void)setCurrentAudioTouchBarMediaSelectionOption:(AVTouchBarMediaSelectionOption *)option;
@@ -74,6 +75,8 @@ WEBCORE_EXPORT
 - (void)setCurrentLegibleTouchBarMediaSelectionOption:(AVTouchBarMediaSelectionOption *)option;
 - (void)setAudioMediaSelectionOptions:(const Vector<WebCore::MediaSelectionOption>&)options withSelectedIndex:(NSUInteger)selectedIndex;
 - (void)setLegibleMediaSelectionOptions:(const Vector<WebCore::MediaSelectionOption>&)options withSelectedIndex:(NSUInteger)selectedIndex;
+- (void)setAudioMediaSelectionIndex:(NSUInteger)selectedIndex;
+- (void)setLegibleMediaSelectionIndex:(NSUInteger)selectedIndex;
 @end
 
 #endif // ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)

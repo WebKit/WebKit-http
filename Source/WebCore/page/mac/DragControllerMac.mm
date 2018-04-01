@@ -65,7 +65,16 @@ bool DragController::isCopyKeyDown(const DragData& dragData)
     
 DragOperation DragController::dragOperation(const DragData& dragData)
 {
-    if ((dragData.flags() & DragApplicationIsModal) || !(dragData.containsURL() || dragData.containsPromise()))
+    if (dragData.flags() & DragApplicationIsModal)
+        return DragOperationNone;
+
+    bool mayContainURL;
+    if (canLoadDataFromDraggingPasteboard())
+        mayContainURL = dragData.containsURL();
+    else
+        mayContainURL = dragData.containsURLTypeIdentifier();
+
+    if (!mayContainURL && !dragData.containsPromise())
         return DragOperationNone;
 
     if (!m_documentUnderMouse || (!(dragData.flags() & (DragApplicationHasAttachedSheet | DragApplicationIsSource))))
@@ -104,8 +113,7 @@ void DragController::updatePreferredTypeIdentifiersForDragHandlingMethod(DragHan
         break;
     case DragHandlingMethod::EditPlainText:
         supportedTypes.append(kUTTypeURL);
-        supportedTypes.append(kUTTypeText);
-        supportedTypes.append(kUTTypeUTF8PlainText);
+        supportedTypes.append(kUTTypePlainText);
         break;
     case DragHandlingMethod::EditRichText:
         for (NSString *type in Pasteboard::supportedPasteboardTypes())

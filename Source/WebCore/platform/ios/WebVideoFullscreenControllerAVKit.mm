@@ -40,6 +40,7 @@
 #import "WebVideoFullscreenInterfaceAVKit.h"
 #import "WebVideoFullscreenModelVideoElement.h"
 #import <QuartzCore/CoreAnimation.h>
+#import <UIKit/UIView.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCore/RenderVideo.h>
@@ -785,7 +786,7 @@ void WebVideoFullscreenControllerContext::setUpFullscreen(HTMLVideoElement& vide
         m_interface->setWebVideoFullscreenModel(this);
         m_interface->setWebVideoFullscreenChangeObserver(this);
 
-        m_videoFullscreenView = adoptNS([[getUIViewClass() alloc] init]);
+        m_videoFullscreenView = adoptNS([allocUIViewInstance() init]);
         
         m_interface->setupFullscreen(*m_videoFullscreenView.get(), videoElementClientRect, viewRef.get(), mode, allowsPictureInPicture);
     });

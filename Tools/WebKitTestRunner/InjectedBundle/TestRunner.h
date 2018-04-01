@@ -131,8 +131,7 @@ public:
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
     void setSubtleCryptoEnabled(bool);
-    void setMediaStreamEnabled(bool);
-    void setPeerConnectionEnabled(bool);
+    void setMediaDevicesEnabled(bool);
     void setWebRTCLegacyAPIEnabled(bool);
 
     // Special DOM functions.

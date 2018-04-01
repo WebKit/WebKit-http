@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 2007 Eric Seidel <eric@webkit.org>
- *  Copyright (C) 2007-2009, 2014-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -23,6 +23,7 @@
 
 #include "ArrayAllocationProfile.h"
 #include "ArrayBufferSharingMode.h"
+#include "ExceptionHelpers.h"
 #include "InternalFunction.h"
 #include "JSArray.h"
 #include "JSArrayBufferPrototype.h"
@@ -161,11 +162,10 @@ FOR_EACH_WEBASSEMBLY_CONSTRUCTOR_TYPE(DECLARE_SIMPLE_BUILTIN_TYPE)
 
 #undef DECLARE_SIMPLE_BUILTIN_TYPE
 
-class JSInternalPromise;
-class InternalPromisePrototype;
-class InternalPromiseConstructor;
-
-typedef Vector<ExecState*, 16> ExecStateStack;
+enum class JSPromiseRejectionOperation : unsigned {
+    Reject, // When a promise is rejected without any handlers.
+    Handle, // When a handler is added to a rejected promise for the first time.
+};
 
 struct GlobalObjectMethodTable {
     typedef bool (*SupportsRichSourceInfoFunctionPtr)(const JSGlobalObject*);
@@ -197,6 +197,9 @@ struct GlobalObjectMethodTable {
 
     typedef JSValue (*ModuleLoaderEvaluatePtr)(JSGlobalObject*, ExecState*, JSModuleLoader*, JSValue, JSValue, JSValue);
     ModuleLoaderEvaluatePtr moduleLoaderEvaluate;
+
+    typedef void (*PromiseRejectionTrackerPtr)(JSGlobalObject*, ExecState*, JSPromise*, JSPromiseRejectionOperation);
+    PromiseRejectionTrackerPtr promiseRejectionTracker;
 
     typedef String (*DefaultLanguageFunctionPtr)();
     DefaultLanguageFunctionPtr defaultLanguage;
@@ -872,7 +875,12 @@ inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* pro
         structure = globalObject->arrayStructureForProfileDuringAllocation(exec, profile, newTarget);
     RETURN_IF_EXCEPTION(scope, nullptr);
 
-    return ArrayAllocationProfile::updateLastAllocationFor(profile, JSArray::create(exec->vm(), structure, initialLength));
+    JSArray* result = JSArray::tryCreate(vm, structure, initialLength);
+    if (UNLIKELY(!result)) {
+        throwOutOfMemoryError(exec, scope);
+        return nullptr;
+    }
+    return ArrayAllocationProfile::updateLastAllocationFor(profile, result);
 }
 
 inline JSArray* constructEmptyArray(ExecState* exec, ArrayAllocationProfile* profile, unsigned initialLength = 0, JSValue newTarget = JSValue())

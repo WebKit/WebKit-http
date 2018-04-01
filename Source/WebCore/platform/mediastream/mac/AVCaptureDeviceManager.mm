@@ -39,7 +39,6 @@
 #import "RealtimeMediaSourceSettings.h"
 #import "RealtimeMediaSourceSupportedConstraints.h"
 #import "SoftLinking.h"
-#import "UUID.h"
 #import <AVFoundation/AVCaptureDevice.h>
 #import <AVFoundation/AVCaptureSession.h>
 #import <objc/runtime.h>
@@ -132,8 +131,8 @@ void AVCaptureDeviceManager::refreshAVCaptureDevicesOfType(CaptureDevice::Device
         if (!hasMatchingType)
             continue;
 
-        CaptureDevice existingCaptureDevice;
-        if (captureDeviceFromDeviceID(platformDevice.uniqueID, existingCaptureDevice) && existingCaptureDevice.type() == type)
+        std::optional<CaptureDevice> existingCaptureDevice = captureDeviceFromPersistentID(platformDevice.uniqueID);
+        if (existingCaptureDevice && existingCaptureDevice->type() == type)
             continue;
 
         CaptureDevice captureDevice(platformDevice.uniqueID, type, platformDevice.localizedName);

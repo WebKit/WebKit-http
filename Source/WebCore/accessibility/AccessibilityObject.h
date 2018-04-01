@@ -147,6 +147,7 @@ enum AccessibilityRole {
     LandmarkBannerRole,
     LandmarkComplementaryRole,
     LandmarkContentInfoRole,
+    LandmarkDocRegionRole,
     LandmarkMainRole,
     LandmarkNavigationRole,
     LandmarkRegionRole,
@@ -283,6 +284,24 @@ struct AccessibilityTextUnderElementMode {
         , includeFocusableContent(i)
         , ignoredChildNode(ignored)
         { }
+};
+
+// Use this struct to store the isIgnored data that depends on the parents, so that in addChildren()
+// we avoid going up the parent chain for each element while traversing the tree with useful information already.
+struct AccessibilityIsIgnoredFromParentData {
+    AccessibilityObject* parent;
+    bool isARIAHidden;
+    bool isPresentationalChildOfAriaRole;
+    bool isDescendantOfBarrenParent;
+    
+    AccessibilityIsIgnoredFromParentData(AccessibilityObject* parent = nullptr)
+        : parent(parent)
+        , isARIAHidden(false)
+        , isPresentationalChildOfAriaRole(false)
+        , isDescendantOfBarrenParent(false)
+        { }
+    
+    bool isNull() const { return !parent; }
 };
     
 enum AccessibilityOrientation {
@@ -662,6 +681,7 @@ public:
     // This function checks if the object should be ignored when there's a modal dialog displayed.
     bool ignoredFromARIAModalPresence() const;
     bool isAriaModalDescendant(Node*) const;
+    bool isAriaModalNode() const;
     
     bool supportsARIASetSize() const;
     bool supportsARIAPosInSet() const;
@@ -820,7 +840,9 @@ public:
     virtual bool hasChildren() const { return m_haveChildren; }
     virtual void updateChildrenIfNecessary();
     virtual void setNeedsToUpdateChildren() { }
+    virtual void setNeedsToUpdateSubtree() { }
     virtual void clearChildren();
+    virtual bool needsToUpdateChildren() const { return false; }
 #if PLATFORM(COCOA)
     virtual void detachFromParent();
 #else
@@ -940,6 +962,9 @@ public:
 
     bool supportsARIAReadOnly() const;
     String ariaReadOnlyValue() const;
+
+    bool supportsARIAAutoComplete() const;
+    String ariaAutoCompleteValue() const;
     
     bool supportsARIAAttributes() const;
     
@@ -1076,12 +1101,18 @@ public:
     
     static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const std::function<bool(const AccessibilityObject&)>&);
     
+    void clearIsIgnoredFromParentData() { m_isIgnoredFromParentData = AccessibilityIsIgnoredFromParentData(); }
+    void setIsIgnoredFromParentDataForChild(AccessibilityObject*);
+    
 protected:
     AXID m_id;
     AccessibilityChildrenVector m_children;
     mutable bool m_haveChildren;
     AccessibilityRole m_role;
     AccessibilityObjectInclusion m_lastKnownIsIgnoredValue;
+    AccessibilityIsIgnoredFromParentData m_isIgnoredFromParentData;
+    
+    void setIsIgnoredFromParentData(AccessibilityIsIgnoredFromParentData& data) { m_isIgnoredFromParentData = data; }
 
     virtual bool computeAccessibilityIsIgnored() const { return true; }
 

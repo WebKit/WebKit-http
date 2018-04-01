@@ -55,6 +55,7 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
 @synthesize canTogglePlayback=_canTogglePlayback;
 @synthesize allowsPictureInPicturePlayback;
 @synthesize pictureInPictureActive;
+@synthesize canTogglePictureInPicture;
 
 - (void)dealloc
 {
@@ -270,6 +271,26 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
         [self setCurrentLegibleTouchBarMediaSelectionOption:[webOptions objectAtIndex:selectedIndex]];
 }
 
+- (void)setAudioMediaSelectionIndex:(NSUInteger)selectedIndex
+{
+    if (selectedIndex >= [_audioTouchBarMediaSelectionOptions count])
+        return;
+
+    [self willChangeValueForKey:@"currentAudioTouchBarMediaSelectionOption"];
+    _currentAudioTouchBarMediaSelectionOption = [_audioTouchBarMediaSelectionOptions objectAtIndex:selectedIndex];
+    [self didChangeValueForKey:@"currentAudioTouchBarMediaSelectionOption"];
+}
+
+- (void)setLegibleMediaSelectionIndex:(NSUInteger)selectedIndex
+{
+    if (selectedIndex >= [_legibleTouchBarMediaSelectionOptions count])
+        return;
+
+    [self willChangeValueForKey:@"currentLegibleTouchBarMediaSelectionOption"];
+    _currentLegibleTouchBarMediaSelectionOption = [_legibleTouchBarMediaSelectionOptions objectAtIndex:selectedIndex];
+    [self didChangeValueForKey:@"currentLegibleTouchBarMediaSelectionOption"];
+}
+
 - (WebPlaybackSessionInterfaceMac*)webPlaybackSessionInterfaceMac
 {
     return _webPlaybackSessionInterfaceMac.get();
@@ -316,11 +337,6 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-
-- (BOOL)canTogglePictureInPicture
-{
-    return [self allowsPictureInPicturePlayback];
-}
 
 - (void)togglePictureInPicture
 {

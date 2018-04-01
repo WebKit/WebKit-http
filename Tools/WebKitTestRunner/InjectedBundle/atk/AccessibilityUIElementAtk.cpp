@@ -1104,14 +1104,23 @@ bool AccessibilityUIElement::boolAttributeValue(JSStringRef attribute)
         return checkElementState(m_element.get(), ATK_STATE_FOCUSED);
     if (attributeString == "AXInvalid")
         return checkElementState(m_element.get(), ATK_STATE_INVALID);
+    if (attributeString == "AXModal")
+        return checkElementState(m_element.get(), ATK_STATE_MODAL);
     if (attributeString == "AXMultiSelectable")
         return checkElementState(m_element.get(), ATK_STATE_MULTISELECTABLE);
     if (attributeString == "AXRequired")
         return checkElementState(m_element.get(), ATK_STATE_REQUIRED);
     if (attributeString == "AXSelected")
         return checkElementState(m_element.get(), ATK_STATE_SELECTED);
+    if (attributeString == "AXSupportsAutoCompletion")
+        return checkElementState(m_element.get(), ATK_STATE_SUPPORTS_AUTOCOMPLETION);
     if (attributeString == "AXVisited")
         return checkElementState(m_element.get(), ATK_STATE_VISITED);
+
+    if (attributeString == "AXInterfaceTable")
+        return ATK_IS_TABLE(m_element.get());
+    if (attributeString == "AXInterfaceTableCell")
+        return ATK_IS_TABLE_CELL(m_element.get());
 
     return false;
 }

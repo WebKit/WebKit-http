@@ -81,10 +81,10 @@ class BackForwardController;
 class BackForwardClient;
 class Chrome;
 class ChromeClient;
-class ClientRectList;
 class Color;
 class ContextMenuClient;
 class ContextMenuController;
+class DOMRect;
 class DatabaseProvider;
 class DiagnosticLoggingClient;
 class DragCaretController;
@@ -128,6 +128,7 @@ class Settings;
 class SocketProvider;
 class StorageNamespace;
 class StorageNamespaceProvider;
+class URL;
 class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
@@ -239,10 +240,10 @@ public:
 
     WEBCORE_EXPORT String scrollingStateTreeAsText();
     WEBCORE_EXPORT String synchronousScrollingReasonsAsText();
-    WEBCORE_EXPORT Ref<ClientRectList> nonFastScrollableRects();
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> nonFastScrollableRects();
 
-    WEBCORE_EXPORT Ref<ClientRectList> touchEventRectsForEvent(const String& eventName);
-    WEBCORE_EXPORT Ref<ClientRectList> passiveTouchEventListenerRects();
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> touchEventRectsForEvent(const String& eventName);
+    WEBCORE_EXPORT Vector<Ref<DOMRect>> passiveTouchEventListenerRects();
 
     Settings& settings() const { return *m_settings; }
     ProgressTracker& progress() const { return *m_progress; }
@@ -495,6 +496,8 @@ public:
     void allowPrompts();
     bool arePromptsAllowed();
 
+    void mainFrameLoadStarted(const URL&, FrameLoadType);
+
     void setLastSpatialNavigationCandidateCount(unsigned count) { m_lastSpatialNavigationCandidatesCount = count; }
     unsigned lastSpatialNavigationCandidateCount() const { return m_lastSpatialNavigationCandidatesCount; }
 
@@ -595,6 +598,12 @@ public:
     WEBCORE_EXPORT void setLowPowerModeEnabledOverrideForTesting(std::optional<bool>);
 
 private:
+    struct Navigation {
+        String domain;
+        FrameLoadType type;
+    };
+    void logNavigation(const Navigation&);
+
     WEBCORE_EXPORT void initGroup();
 
     void setIsInWindowInternal(bool);
@@ -803,6 +812,8 @@ private:
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
     std::unique_ptr<LowPowerModeNotifier> m_lowPowerModeNotifier;
     std::optional<bool> m_lowPowerModeEnabledOverrideForTesting;
+
+    std::optional<Navigation> m_navigationToLogWhenVisible;
 
     bool m_isRunningUserScripts { false };
 };

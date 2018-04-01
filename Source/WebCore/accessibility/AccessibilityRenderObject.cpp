@@ -2439,6 +2439,9 @@ AccessibilityObject* AccessibilityRenderObject::activeDescendant() const
 
 void AccessibilityRenderObject::handleAriaExpandedChanged()
 {
+    // This object might be deleted under the call to the parentObject() method.
+    auto protectedThis = makeRef(*this);
+    
     // Find if a parent of this object should handle aria-expanded changes.
     AccessibilityObject* containerParent = this->parentObject();
     while (containerParent) {
@@ -2979,7 +2982,7 @@ void AccessibilityRenderObject::addImageMapChildren()
 void AccessibilityRenderObject::updateChildrenIfNecessary()
 {
     if (needsToUpdateChildren())
-        clearChildren();        
+        clearChildren();
     
     AccessibilityObject::updateChildrenIfNecessary();
 }
@@ -3204,6 +3207,8 @@ void AccessibilityRenderObject::addChildren()
     for (RefPtr<AccessibilityObject> obj = firstChild(); obj; obj = obj->nextSibling())
         addChild(obj.get());
     
+    m_subtreeDirty = false;
+    
     addHiddenChildren();
     addAttachmentChildren();
     addImageMapChildren();
@@ -3353,6 +3358,7 @@ void AccessibilityRenderObject::selectedChildren(AccessibilityChildrenVector& re
         return;
     case GridRole:
     case TreeRole:
+    case TreeGridRole:
         ariaSelectedRows(result);
         return;
     case TabListRole:

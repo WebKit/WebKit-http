@@ -1233,14 +1233,16 @@ void RenderView::pushLayoutState(RenderObject& root)
     pushLayoutStateForCurrentFlowThread(root);
 }
 
-void RenderView::pushLayoutStateForPagination(RenderBlockFlow& layoutRoot)
+bool RenderView::pushLayoutStateForPaginationIfNeeded(RenderBlockFlow& layoutRoot)
 {
-    ASSERT(!m_layoutState);
+    if (m_layoutState)
+        return false;
     m_layoutState = std::make_unique<LayoutState>(layoutRoot);
     m_layoutState->m_isPaginated = true;
     // This is just a flag for known page height (see RenderBlockFlow::checkForPaginationLogicalHeightChange).
     m_layoutState->m_pageLogicalHeight = 1;
     pushLayoutStateForCurrentFlowThread(layoutRoot);
+    return true;
 }
 
 IntSize RenderView::viewportSizeForCSSViewportUnits() const
@@ -1390,7 +1392,7 @@ void RenderView::updateVisibleViewportRect(const IntRect& visibleRect)
     resumePausedImageAnimationsIfNeeded(visibleRect);
 
     for (auto* renderer : m_visibleInViewportRenderers) {
-        auto state = visibleRect.intersects(enclosingIntRect(renderer->absoluteClippedOverflowRect())) ? RenderElement::VisibleInViewport : RenderElement::NotVisibleInViewport;
+        auto state = visibleRect.intersects(enclosingIntRect(renderer->absoluteClippedOverflowRect())) ? VisibleInViewportState::Yes : VisibleInViewportState::No;
         renderer->setVisibleInViewportState(state);
     }
 }

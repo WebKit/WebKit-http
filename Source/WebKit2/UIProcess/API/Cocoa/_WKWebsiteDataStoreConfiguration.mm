@@ -40,6 +40,7 @@ static void checkURLArgument(NSURL *url)
     RetainPtr<NSURL> _webStorageDirectoryURL;
     RetainPtr<NSURL> _indexedDBDatabaseDirectoryURL;
     RetainPtr<NSURL> _webSQLDatabaseDirectoryURL;
+    RetainPtr<NSURL> _cookieStorageFileURL;
 }
 
 -(NSURL *)_webStorageDirectory {
@@ -68,6 +69,19 @@ static void checkURLArgument(NSURL *url)
     checkURLArgument(url);
     _webSQLDatabaseDirectoryURL = adoptNS([url copy]);
 }
+
+-(NSURL *)_cookieStorageFile {
+    return _cookieStorageFileURL.get();
+}
+
+-(void)_setCookieStorageFile:(NSURL *)url {
+    checkURLArgument(url);
+    if ([url hasDirectoryPath])
+        [NSException raise:NSInvalidArgumentException format:@"The cookie storage path must point to a file, not a directory."];
+
+    _cookieStorageFileURL = adoptNS([url copy]);
+}
+
 @end
 
 #endif

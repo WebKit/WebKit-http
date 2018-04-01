@@ -39,12 +39,12 @@
 #include "FloatSize.h"
 #include "MediaStreamTrack.h"
 #include "MediaStreamTrackPrivate.h"
-#include "UUID.h"
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+#include <wtf/UUID.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
@@ -56,6 +56,7 @@
 namespace WebCore {
 
 class MediaStream;
+class OrientationNotifier;
 
 class MediaStreamPrivate : public MediaStreamTrackPrivate::Observer, public RefCounted<MediaStreamPrivate> {
 public:
@@ -105,6 +106,8 @@ public:
     FloatSize intrinsicSize() const;
 
     WeakPtr<MediaStreamPrivate> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+
+    void monitorOrientation(OrientationNotifier&);
 
 #if USE(GSTREAMER)
     void setVideoRenderer(OwrGstVideoRenderer* renderer, GstElement* sink) { m_gstVideoRenderer = renderer; m_gstVideoSinkElement = sink; }

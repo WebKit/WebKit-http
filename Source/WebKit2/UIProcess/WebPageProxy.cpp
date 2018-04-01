@@ -489,11 +489,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
-    if (m_sessionID.isEphemeral()) {
-        m_process->processPool().sendToNetworkingProcess(Messages::NetworkProcess::EnsurePrivateBrowsingSession(m_sessionID));
-        m_process->processPool().sendToAllProcesses(Messages::WebProcess::EnsurePrivateBrowsingSession(m_sessionID));
-    }
-
 #if PLATFORM(COCOA)
     const CFIndex activityStateChangeRunLoopOrder = (CFIndex)RunLoopObserver::WellKnownRunLoopOrders::CoreAnimationCommit - 1;
     m_activityStateChangeDispatcher = std::make_unique<RunLoopObserver>(activityStateChangeRunLoopOrder, [this] {
@@ -712,7 +707,7 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() == WebProcessProxy::State::Terminated);
 
     m_isValid = true;
-    m_process->removeWebPage(m_pageID);
+    m_process->removeWebPage(*this, m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
 
     m_process = m_process->processPool().createNewWebProcessRespectingProcessCountLimit(m_websiteDataStore.get());
@@ -720,7 +715,7 @@ void WebPageProxy::reattachToWebProcess()
     ASSERT(m_process->state() != ChildProcessProxy::State::Terminated);
     if (m_process->state() == ChildProcessProxy::State::Running)
         processDidFinishLaunching();
-    m_process->addExistingWebPage(this, m_pageID);
+    m_process->addExistingWebPage(*this, m_pageID);
     m_process->addMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID, *this);
 
     updateActivityState();
@@ -866,7 +861,7 @@ void WebPageProxy::close()
     m_webProcessLifetimeTracker.pageWasInvalidated();
 
     m_process->send(Messages::WebPage::Close(), m_pageID);
-    m_process->removeWebPage(m_pageID);
+    m_process->removeWebPage(*this, m_pageID);
     m_process->removeMessageReceiver(Messages::WebPageProxy::messageReceiverName(), m_pageID);
     m_process->processPool().supplement<WebNotificationManagerProxy>()->clearNotifications(this);
 

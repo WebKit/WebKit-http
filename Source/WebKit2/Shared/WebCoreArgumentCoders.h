@@ -35,6 +35,7 @@
 #include <WebCore/MediaSelectionOption.h>
 #include <WebCore/NetworkLoadMetrics.h>
 #include <WebCore/PaymentHeaders.h>
+#include <WebCore/RealtimeMediaSource.h>
 #include <WebCore/ScrollSnapOffsetsInfo.h>
 
 namespace WTF {
@@ -493,11 +494,6 @@ template<> struct ArgumentCoder<WebCore::FilterOperation> {
 bool decodeFilterOperation(Decoder&, RefPtr<WebCore::FilterOperation>&);
 #endif
 
-template<> struct ArgumentCoder<WebCore::SessionID> {
-    static void encode(Encoder&, const WebCore::SessionID&);
-    static bool decode(Decoder&, WebCore::SessionID&);
-};
-
 template<> struct ArgumentCoder<WebCore::BlobPart> {
     static void encode(Encoder&, const WebCore::BlobPart&);
     static bool decode(Decoder&, WebCore::BlobPart&);
@@ -732,6 +728,14 @@ template<> struct EnumTraits<WebCore::CaptureDevice::DeviceType> {
         WebCore::CaptureDevice::DeviceType::Unknown,
         WebCore::CaptureDevice::DeviceType::Audio,
         WebCore::CaptureDevice::DeviceType::Video
+    >;
+};
+template<> struct EnumTraits<WebCore::RealtimeMediaSource::Type> {
+    using values = EnumValues<
+    WebCore::RealtimeMediaSource::Type,
+    WebCore::RealtimeMediaSource::Type::None,
+    WebCore::RealtimeMediaSource::Type::Audio,
+    WebCore::RealtimeMediaSource::Type::Video
     >;
 };
 #endif
