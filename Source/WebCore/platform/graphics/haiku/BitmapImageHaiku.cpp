@@ -33,6 +33,8 @@ namespace WebCore {
 
 IntSize nativeImageSize(const RefPtr<WebCore::BitmapRef>& image)
 {
+	if (!image)
+		return IntSize(0, 0);
     BRect r = image->Bounds();
     return IntSize(r.Width(), r.Height());
 }

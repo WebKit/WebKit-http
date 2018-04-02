@@ -1,17 +1,19 @@
 LIST(APPEND WTF_SOURCES
-    PlatformUserPreferredLanguagesHaiku.cpp
-
-    text/haiku/TextBreakIteratorInternalICUHaiku.cpp
-
-    haiku/MainThreadHaiku.cpp
-
-    generic/RunLoopGeneric.cpp
     generic/WorkQueueGeneric.cpp
+    generic/RunLoopGeneric.cpp
+    haiku/MainThreadHaiku.cpp
 
     OSAllocatorPosix.cpp
     ThreadingPthreads.cpp
 
     unicode/icu/CollatorICU.cpp
+
+    unix/CPUTimeUnix.cpp
+
+    PlatformUserPreferredLanguagesHaiku.cpp
+
+    text/haiku/TextBreakIteratorInternalICUHaiku.cpp
+
 )
 
 LIST(APPEND WTF_LIBRARIES

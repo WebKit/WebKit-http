@@ -71,12 +71,6 @@ bool EditorClientHaiku::smartInsertDeleteEnabled()
     return false;
 }
 
-bool EditorClientHaiku::isSelectTrailingWhitespaceEnabled()
-{
-    notImplemented();
-    return false;
-}
-
 bool EditorClientHaiku::isContinuousSpellCheckingEnabled()
 {
     notImplemented();
@@ -199,6 +193,12 @@ void EditorClientHaiku::didEndEditing()
 void EditorClientHaiku::didWriteSelectionToPasteboard()
 {
     notImplemented();
+}
+
+bool EditorClientHaiku::isSelectTrailingWhitespaceEnabled() const
+{
+    notImplemented();
+	return false;
 }
 
 void EditorClientHaiku::willWriteSelectionToPasteboard(WebCore::Range*)

@@ -53,7 +53,6 @@ public:
 
     bool shouldDeleteRange(Range*) override;
     bool smartInsertDeleteEnabled() override;
-    bool isSelectTrailingWhitespaceEnabled() override;
     bool isContinuousSpellCheckingEnabled() override;
     void toggleContinuousSpellChecking() override;
     bool isGrammarCheckingEnabled() override;
@@ -74,6 +73,7 @@ public:
     void didEndEditing() override;
     void didApplyStyle() override {};
 
+	bool isSelectTrailingWhitespaceEnabled() const override;
     void willWriteSelectionToPasteboard(WebCore::Range*) override;
     void didWriteSelectionToPasteboard() override;
     void getClientPasteboardDataForRange(WebCore::Range*, Vector<String>& pasteboardTypes, Vector<RefPtr<WebCore::SharedBuffer> >& pasteboardData) override;
