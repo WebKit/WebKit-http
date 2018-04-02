@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2017 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -160,7 +160,9 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
     JSValue prototype;
     if (propertyName != vm.propertyNames->underscoreProto) {
         for (; !obj->structure()->hasReadOnlyOrGetterSetterPropertiesExcludingProto(); obj = asObject(prototype)) {
-            prototype = obj->getPrototypeDirect();
+            prototype = obj->getPrototype(vm, exec);
+            RETURN_IF_EXCEPTION(scope, false);
+
             if (prototype.isNull())
                 return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
         }
@@ -205,10 +207,9 @@ bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
     }
     
     JSObject* prototype = synthesizePrototype(exec);
-    if (UNLIKELY(!prototype)) {
-        ASSERT(scope.exception());
+    ASSERT(!prototype == !!scope.exception());
+    if (UNLIKELY(!prototype))
         return false;
-    }
     bool putResult = false;
     if (prototype->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow, putResult))
         return putResult;

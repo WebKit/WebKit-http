@@ -713,7 +713,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncJoin(ExecState* exec)
         return JSValue::encode(slowJoin(*exec, thisObject, jsSeparator, length64));
     }
 
-    auto viewWithString = jsSeparator->viewWithUnderlyingString(*exec);
+    auto viewWithString = jsSeparator->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     scope.release();
@@ -1031,32 +1031,22 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncSplice(ExecState* exec)
         result = asArray(thisObj)->fastSlice(*exec, actualStart, actualDeleteCount);
 
     if (!result) {
-        if (speciesResult.first == SpeciesConstructResult::CreatedObject) {
+        if (speciesResult.first == SpeciesConstructResult::CreatedObject)
             result = speciesResult.second;
-            
-            for (unsigned k = 0; k < actualDeleteCount; ++k) {
-                JSValue v = getProperty(exec, thisObj, k + actualStart);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-                if (UNLIKELY(!v))
-                    continue;
-                result->putByIndexInline(exec, k, v, true);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-            }
-        } else {
+        else {
             result = JSArray::tryCreate(vm, exec->lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), actualDeleteCount);
             if (UNLIKELY(!result)) {
                 throwOutOfMemoryError(exec, scope);
                 return encodedJSValue();
             }
-
-            for (unsigned k = 0; k < actualDeleteCount; ++k) {
-                JSValue v = getProperty(exec, thisObj, k + actualStart);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-                if (UNLIKELY(!v))
-                    continue;
-                result->putDirectIndex(exec, k, v);
-                RETURN_IF_EXCEPTION(scope, encodedJSValue());
-            }
+        }
+        for (unsigned k = 0; k < actualDeleteCount; ++k) {
+            JSValue v = getProperty(exec, thisObj, k + actualStart);
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
+            if (UNLIKELY(!v))
+                continue;
+            result->putDirectIndex(exec, k, v, 0, PutDirectIndexShouldThrow);
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
         }
     }
 
@@ -1405,7 +1395,7 @@ void ArrayPrototype::tryInitializeSpeciesWatchpoint(ExecState* exec)
 
     PropertySlot constructorSlot(this, PropertySlot::InternalMethodType::VMInquiry);
     this->getOwnPropertySlot(this, exec, vm.propertyNames->constructor, constructorSlot);
-    ASSERT_UNUSED(scope, !scope.exception());
+    scope.assertNoException();
     if (constructorSlot.slotBase() != this
         || !constructorSlot.isCacheableValue()
         || constructorSlot.getValue(exec, vm.propertyNames->constructor) != arrayConstructor) {
@@ -1419,7 +1409,7 @@ void ArrayPrototype::tryInitializeSpeciesWatchpoint(ExecState* exec)
 
     PropertySlot speciesSlot(arrayConstructor, PropertySlot::InternalMethodType::VMInquiry);
     arrayConstructor->getOwnPropertySlot(arrayConstructor, exec, vm.propertyNames->speciesSymbol, speciesSlot);
-    ASSERT_UNUSED(scope, !scope.exception());
+    scope.assertNoException();
     if (speciesSlot.slotBase() != arrayConstructor
         || !speciesSlot.isCacheableGetter()
         || speciesSlot.getterSetter() != globalObject->speciesGetterSetter()) {

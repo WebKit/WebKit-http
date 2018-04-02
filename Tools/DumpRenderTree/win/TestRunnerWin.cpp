@@ -229,6 +229,11 @@ void TestRunner::display()
     displayWebView();
 }
 
+void TestRunner::displayAndTrackRepaints()
+{
+    displayWebView();
+}
+
 void TestRunner::keepWebHistory()
 {
     COMPtr<IWebHistory> history;

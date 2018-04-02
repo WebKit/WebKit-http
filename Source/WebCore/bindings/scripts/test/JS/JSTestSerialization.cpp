@@ -60,7 +60,7 @@ bool setJSTestSerializationConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC
 class JSTestSerializationPrototype : public JSC::JSNonFinalObject {
 public:
     using Base = JSC::JSNonFinalObject;
-    static JSTestSerializationPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
+    static JSTestSerializationPrototype* create(JSC::VM& vm, JSDOMGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestSerializationPrototype* ptr = new (NotNull, JSC::allocateCell<JSTestSerializationPrototype>(vm.heap)) JSTestSerializationPrototype(vm, globalObject, structure);
         ptr->finishCreation(vm);
@@ -92,7 +92,7 @@ template<> JSValue JSTestSerializationConstructor::prototypeForStructure(JSC::VM
 
 template<> void JSTestSerializationConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    putDirect(vm, vm.propertyNames->prototype, JSTestSerialization::prototype(vm, &globalObject), DontDelete | ReadOnly | DontEnum);
+    putDirect(vm, vm.propertyNames->prototype, JSTestSerialization::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestSerialization"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
@@ -135,12 +135,12 @@ void JSTestSerialization::finishCreation(VM& vm)
 
 }
 
-JSObject* JSTestSerialization::createPrototype(VM& vm, JSGlobalObject* globalObject)
+JSObject* JSTestSerialization::createPrototype(VM& vm, JSDOMGlobalObject& globalObject)
 {
-    return JSTestSerializationPrototype::create(vm, globalObject, JSTestSerializationPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
+    return JSTestSerializationPrototype::create(vm, &globalObject, JSTestSerializationPrototype::createStructure(vm, &globalObject, globalObject.objectPrototype()));
 }
 
-JSObject* JSTestSerialization::prototype(VM& vm, JSGlobalObject* globalObject)
+JSObject* JSTestSerialization::prototype(VM& vm, JSDOMGlobalObject& globalObject)
 {
     return getDOMPrototype<JSTestSerialization>(vm, globalObject);
 }
@@ -406,23 +406,23 @@ JSC::JSObject* JSTestSerialization::serialize(ExecState* state, JSTestSerializat
     auto* result = constructEmptyObject(state);
 
     auto firstStringAttributeValue = jsTestSerializationFirstStringAttributeGetter(*state, *thisObject, throwScope);
-    ASSERT(!throwScope.exception());
+    throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "firstStringAttribute"), firstStringAttributeValue);
 
     auto secondLongAttributeValue = jsTestSerializationSecondLongAttributeGetter(*state, *thisObject, throwScope);
-    ASSERT(!throwScope.exception());
+    throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "secondLongAttribute"), secondLongAttributeValue);
 
     auto fourthUnrestrictedDoubleAttributeValue = jsTestSerializationFourthUnrestrictedDoubleAttributeGetter(*state, *thisObject, throwScope);
-    ASSERT(!throwScope.exception());
+    throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "fourthUnrestrictedDoubleAttribute"), fourthUnrestrictedDoubleAttributeValue);
 
     auto fifthLongAttributeValue = jsTestSerializationFifthLongAttributeGetter(*state, *thisObject, throwScope);
-    ASSERT(!throwScope.exception());
+    throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "fifthLongAttribute"), fifthLongAttributeValue);
 
     auto sixthTypedefAttributeValue = jsTestSerializationSixthTypedefAttributeGetter(*state, *thisObject, throwScope);
-    ASSERT(!throwScope.exception());
+    throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "sixthTypedefAttribute"), sixthTypedefAttributeValue);
 
     return result;

@@ -580,21 +580,21 @@ PlatformLayer* MediaPlayerPrivateMediaStreamAVFObjC::backgroundLayer()
 
 MediaPlayerPrivateMediaStreamAVFObjC::DisplayMode MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode() const
 {
-    if (m_ended || m_intrinsicSize.isEmpty() || !metaDataAvailable() || !m_sampleBufferDisplayLayer)
+    if (m_intrinsicSize.isEmpty() || !metaDataAvailable() || !m_sampleBufferDisplayLayer)
         return None;
 
     if (auto* track = m_mediaStreamPrivate->activeVideoTrack()) {
-        if (!track->enabled() || track->muted())
+        if (!track->enabled() || track->muted() || track->ended())
             return PaintItBlack;
     }
 
-    if (playing()) {
+    if (playing() && !m_ended) {
         if (!m_mediaStreamPrivate->isProducingData())
             return PausedImage;
         return LivePreview;
     }
 
-    if (m_playbackState == PlaybackState::None)
+    if (m_playbackState == PlaybackState::None || m_ended)
         return PaintItBlack;
 
     return PausedImage;
@@ -696,6 +696,16 @@ bool MediaPlayerPrivateMediaStreamAVFObjC::hasAudio() const
     return m_mediaStreamPrivate->hasAudio();
 }
 
+void MediaPlayerPrivateMediaStreamAVFObjC::setVisible(bool visible)
+{
+    if (m_visible == visible)
+        return;
+
+    m_visible = visible;
+    if (m_visible)
+        flushRenderers();
+}
+
 MediaTime MediaPlayerPrivateMediaStreamAVFObjC::durationMediaTime() const
 {
     return MediaTime::positiveInfiniteTime();
@@ -768,8 +778,10 @@ void MediaPlayerPrivateMediaStreamAVFObjC::activeStatusChanged()
 
         if (ended != m_ended) {
             m_ended = ended;
-            if (m_player)
+            if (m_player) {
                 m_player->timeChanged();
+                m_player->characteristicChanged();
+            }
         }
     });
 }
@@ -1057,7 +1069,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::acceleratedRenderingStateChanged()
 
 String MediaPlayerPrivateMediaStreamAVFObjC::engineDescription() const
 {
-    static NeverDestroyed<String> description(ASCIILiteral("AVFoundation MediaStream Engine"));
+    static NeverDestroyed<String> description(MAKE_STATIC_STRING_IMPL("AVFoundation MediaStream Engine"));
     return description;
 }
 

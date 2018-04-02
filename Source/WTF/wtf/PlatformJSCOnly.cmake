@@ -1,6 +1,7 @@
 list(APPEND WTF_SOURCES
     PlatformUserPreferredLanguagesUnix.cpp
 
+    generic/MainThreadGeneric.cpp
     generic/WorkQueueGeneric.cpp
 )
 
@@ -16,10 +17,23 @@ else ()
     )
 endif ()
 
+if (WIN32)
+    list(APPEND WTF_SOURCES
+        win/MemoryFootprintWin.cpp
+    )
+elseif (APPLE)
+    list(APPEND WTF_SOURCES
+        cocoa/MemoryFootprintCocoa.cpp
+    )
+else ()
+    list(APPEND WTF_SOURCES
+        linux/MemoryFootprintLinux.cpp
+    )
+endif ()
+
 if (LOWERCASE_EVENT_LOOP_TYPE STREQUAL "glib")
     list(APPEND WTF_SOURCES
         glib/GRefPtr.cpp
-        glib/MainThreadGLib.cpp
         glib/RunLoopGLib.cpp
     )
     list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
@@ -32,7 +46,6 @@ if (LOWERCASE_EVENT_LOOP_TYPE STREQUAL "glib")
     )
 else ()
     list(APPEND WTF_SOURCES
-        generic/MainThreadGeneric.cpp
         generic/RunLoopGeneric.cpp
     )
 endif ()

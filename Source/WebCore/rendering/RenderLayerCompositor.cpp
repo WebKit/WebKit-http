@@ -810,7 +810,7 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
     absoluteBounds.move(layer.offsetFromAncestor(m_renderView.layer()));
     
     StringBuilder logString;
-    logString.append(String::format("%*p id %llu (%.3f,%.3f-%.3f,%.3f) %.2fKB", 12 + depth * 2, &layer, backing->graphicsLayer()->primaryLayerID(),
+    logString.append(String::format("%*p id %" PRIu64 " (%.3f,%.3f-%.3f,%.3f) %.2fKB", 12 + depth * 2, &layer, backing->graphicsLayer()->primaryLayerID(),
         absoluteBounds.x().toFloat(), absoluteBounds.y().toFloat(), absoluteBounds.maxX().toFloat(), absoluteBounds.maxY().toFloat(),
         backing->backingStoreMemoryEstimate() / 1024));
     
@@ -2464,14 +2464,14 @@ bool RenderLayerCompositor::clipsCompositingDescendants(const RenderLayer& layer
 
 bool RenderLayerCompositor::requiresCompositingForScrollableFrame() const
 {
-    // Need this done first to determine overflow.
-    ASSERT(!m_renderView.needsLayout());
     if (isMainFrameCompositor())
         return false;
 
     if (!(m_compositingTriggers & ChromeClient::ScrollableInnerFrameTrigger))
         return false;
 
+    // Need this done first to determine overflow.
+    ASSERT(!m_renderView.needsLayout());
     return m_renderView.frameView().isScrollable();
 }
 
@@ -2723,11 +2723,7 @@ static bool useCoordinatedScrollingForLayer(RenderView& view, const RenderLayer&
     if (layer.isRootLayer() && view.frameView().frame().isMainFrame())
         return true;
 
-#if PLATFORM(IOS)
-    return layer.hasTouchScrollableOverflow();
-#else
-    return layer.needsCompositedScrolling();
-#endif
+    return layer.usesAcceleratedScrolling();
 }
 
 bool RenderLayerCompositor::requiresCompositingForPosition(RenderLayerModelObject& renderer, const RenderLayer& layer, RenderLayer::ViewportConstrainedNotCompositedReason* viewportConstrainedNotCompositedReason) const
@@ -3904,7 +3900,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Lay
         if (!nodeID)
             return;
             
-        LOG(Compositing, "Registering ViewportConstrained scrolling node %llu (layer %llu) as child of %llu", nodeID, backing->graphicsLayer()->primaryLayerID(), parentNodeID);
+        LOG(Compositing, "Registering ViewportConstrained scrolling node %" PRIu64 " (layer %" PRIu64 ") as child of %" PRIu64, nodeID, backing->graphicsLayer()->primaryLayerID(), parentNodeID);
 
         switch (nodeType) {
         case FixedNode:
@@ -3950,7 +3946,7 @@ void RenderLayerCompositor::updateScrollCoordinatedLayer(RenderLayer& layer, Lay
             scrollingGeometry.currentVerticalSnapPointIndex = layer.currentVerticalSnapPointIndex();
 #endif
 
-            LOG(Compositing, "Registering Scrolling scrolling node %llu (layer %llu) as child of %llu", nodeID, backing->graphicsLayer()->primaryLayerID(), parentNodeID);
+            LOG(Compositing, "Registering Scrolling scrolling node %" PRIu64 " (layer %" PRIu64 ") as child of %" PRIu64, nodeID, backing->graphicsLayer()->primaryLayerID(), parentNodeID);
 
             scrollingCoordinator->updateOverflowScrollingNode(nodeID, backing->scrollingLayer(), backing->scrollingContentsLayer(), &scrollingGeometry);
         }

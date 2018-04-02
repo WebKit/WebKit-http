@@ -113,6 +113,12 @@
 #define DEFAULT_SHOULD_CAPTURE_AUDIO_IN_UIPROCESS false
 #endif
 
+#if PLATFORM(COCOA)
+#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED true
+#else
+#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED false
+#endif
+
 // macro(KeyUpper, KeyLower, TypeNameUpper, TypeName, DefaultValue, HumanReadableName, HumanReadableDescription)
 
 #define FOR_EACH_WEBKIT_BOOL_PREFERENCE(macro) \
@@ -265,6 +271,7 @@
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, true, "Gamepads", "Web Gamepad API support") \
     macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, true, "Input Events", "Enable InputEvents support") \
     macro(CredentialManagementEnabled, credentialManagementEnabled, Bool, bool, false, "Credential Management", "Enable Credential Management support") \
+    macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED, "Modern Media Controls", "Use modern media controls look") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -277,6 +284,9 @@
     macro(LayoutInterval, layoutInterval, Double, double, -1, "", "") \
     macro(MaxParseDuration, maxParseDuration, Double, double, -1, "", "") \
     macro(PasswordEchoDuration, passwordEchoDuration, Double, double, 2, "", "") \
+    macro(ResourceLoadStatisticsTimeToLiveUserInteraction, resourceLoadStatisticsTimeToLiveUserInteraction, Double, double, 2592000, "", "") \
+    macro(ResourceLoadStatisticsTimeToLiveCookiePartitionFree, resourceLoadStatisticsTimeToLiveCookiePartitionFree, Double, double, 86400, "", "") \
+    macro(ResourceLoadStatisticsReducedTimestampResolution, resourceLoadStatisticsReducedTimestampResolution, Double, double, 3600, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_UINT32_PREFERENCE(macro) \
@@ -321,12 +331,6 @@
 #define DEFAULT_EXPERIMENTAL_FEATURES_ENABLED false
 #endif
 
-#if PLATFORM(COCOA)
-#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED true
-#else
-#define DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED false
-#endif
-
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
 // <https://webkit.org/b/168415> El Capitan NetworkLoadTiming values are sometimes jumbled
 #define DEFAULT_RESOURCE_TIMING_ENABLED false
@@ -340,18 +344,19 @@
 //   are the text exposed to the user from the WebKit client.
 // - They should be alphabetically ordered by the human readable text (the first string).
 // - The default value may be either false (for unstable features) or
-//   DEFAULT_EXPERIMENTAL_FEATURE_ENABLED (for features that are ready for
+//   DEFAULT_EXPERIMENTAL_FEATURES_ENABLED (for features that are ready for
 //   wider testing).
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
+    macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Constant Properties", "Enable CSS constant() properties") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
     macro(LinkPreloadEnabled, linkPreloadEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Link Preload", "Link preload support") \
-    macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, DEFAULT_MODERN_MEDIA_CONTROLS_ENABLED, "Modern Media Controls", "Use modern media controls look") \
     macro(ResourceTimingEnabled, resourceTimingEnabled, Bool, bool, DEFAULT_RESOURCE_TIMING_ENABLED, "Resource Timing", "Enable ResourceTiming API") \
     macro(SubtleCryptoEnabled, subtleCryptoEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "SubtleCrypto", "Enable SubtleCrypto support") \
     macro(UserTimingEnabled, userTimingEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "User Timing", "Enable UserTiming API") \
+    macro(ViewportFitEnabled, viewportFitEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Viewport Fit", "Enable viewport-fit viewport parameter") \
     macro(WebAnimationsEnabled, webAnimationsEnabled, Bool, bool, false, "Web Animations", "Web Animations prototype") \
-    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "WebGL 2.0", "WebGL 2 prototype") \
+    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, false, "WebGL 2.0", "WebGL 2 prototype") \
     macro(WebGPUEnabled, webGPUEnabled, Bool, bool, false, "WebGPU", "WebGPU prototype") \
     \
 
@@ -376,7 +381,7 @@
     macro(PictographFontFamily, pictographFontFamily, String, String, "Apple Color Emoji", "", "") \
     \
 
-#elif PLATFORM(GTK) || PLATFORM(HAIKU)
+#elif PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE)
 
 #define FOR_EACH_WEBKIT_FONT_FAMILY_PREFERENCE(macro) \
     macro(StandardFontFamily, standardFontFamily, String, String, "Times", "", "") \

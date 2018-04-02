@@ -36,7 +36,7 @@ typedef struct _CCRSACryptor *CCRSACryptorRef;
 typedef CCRSACryptorRef PlatformRSAKey;
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(HAIKU)
+#if PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE)
 // gcry_sexp* equates gcry_sexp_t.
 struct gcry_sexp;
 typedef gcry_sexp* PlatformRSAKey;

@@ -53,6 +53,7 @@
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/DocumentLoader.h>
+#include <WebCore/Editor.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/File.h>
 #include <WebCore/Frame.h>
@@ -602,10 +603,10 @@ bool WebFrame::hasVerticalScrollbar() const
     return view->verticalScrollbar();
 }
 
-PassRefPtr<InjectedBundleHitTestResult> WebFrame::hitTest(const IntPoint point) const
+RefPtr<InjectedBundleHitTestResult> WebFrame::hitTest(const IntPoint point) const
 {
     if (!m_coreFrame)
-        return 0;
+        return nullptr;
 
     return InjectedBundleHitTestResult::create(m_coreFrame->eventHandler().hitTestResultAtPoint(point, HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent));
 }
@@ -817,7 +818,7 @@ RetainPtr<CFDataRef> WebFrame::webArchiveData(FrameFilterFunction callback, void
 }
 #endif
 
-PassRefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
+RefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
 {
     std::unique_ptr<ImageBuffer> snapshot = snapshotSelection(*coreFrame(), WebCore::SnapshotOptionsForceBlackText);
     if (!snapshot)
@@ -834,7 +835,7 @@ PassRefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     graphicsContext->scale(deviceScaleFactor);
     graphicsContext->drawConsumingImageBuffer(WTFMove(snapshot), FloatPoint());
 
-    return WTFMove(sharedSnapshot);
+    return sharedSnapshot;
 }
     
 } // namespace WebKit

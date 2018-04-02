@@ -99,14 +99,13 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:defaultIDBPath.path]);
     EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:defaultLocalStoragePath.path]);
 
-    _WKWebsiteDataStoreConfiguration *websiteDataStoreConfiguration = [[_WKWebsiteDataStoreConfiguration alloc] init];
-    websiteDataStoreConfiguration._webSQLDatabaseDirectory = sqlPath;
-    websiteDataStoreConfiguration._indexedDBDatabaseDirectory = idbPath;
-    websiteDataStoreConfiguration._webStorageDirectory = localStoragePath;
-    websiteDataStoreConfiguration._cookieStorageFile = cookieStorageFile;
+    RetainPtr<_WKWebsiteDataStoreConfiguration> websiteDataStoreConfiguration = adoptNS([[_WKWebsiteDataStoreConfiguration alloc] init]);
+    websiteDataStoreConfiguration.get()._webSQLDatabaseDirectory = sqlPath;
+    websiteDataStoreConfiguration.get()._indexedDBDatabaseDirectory = idbPath;
+    websiteDataStoreConfiguration.get()._webStorageDirectory = localStoragePath;
+    websiteDataStoreConfiguration.get()._cookieStorageFile = cookieStorageFile;
 
-    configuration.get().websiteDataStore = [[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration];
-    [websiteDataStoreConfiguration release];
+    configuration.get().websiteDataStore = [[[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()] autorelease];
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 
@@ -119,15 +118,22 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     EXPECT_STREQ([getNextMessage().body UTF8String], "Exception: QuotaExceededError (DOM Exception 22): The quota has been exceeded.");
     EXPECT_STREQ([getNextMessage().body UTF8String], "Success opening indexed database");
 
+    [[[webView configuration] processPool] _syncNetworkProcessCookies];
+
+    // Forcibly shut down everything of WebKit that we can.
+    [[[webView configuration] processPool] _terminateDatabaseProcess];
+    auto pid = [webView _webProcessIdentifier];
+    if (pid)
+        kill(pid, SIGKILL);
+
+    webView = nil;
+    handler = nil;
+    configuration = nil;
+
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:sqlPath.path]);
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:localStoragePath.path]);
 
-    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:idbPath.path]);
-    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultIDBPath.path]);
-
-    // FIXME: We currently don't have a reliable way to force sync on newer SDKs, so we can't test this on them.
-#if (__MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
-    [[[webView configuration] processPool] _syncNetworkProcessCookies];
+#if PLATFORM(IOS) || (__MAC_OS_X_VERSION_MIN_REQUIRED < 101300)
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:cookieStorageFile.path]);
 
     // Note: The format of the cookie file on disk is proprietary and opaque, so this is fragile to future changes.
@@ -140,9 +146,30 @@ TEST(WebKit2, WebsiteDataStoreCustomPaths)
     EXPECT_NE((const long)result.location, NSNotFound);
 #endif
 
+#if PLATFORM(MAC)
     // FIXME: The default SQL and LocalStorage paths are being used for something, but they shouldn't be. (theses should be false, not true)
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultSQLPath.path]);
     EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultLocalStoragePath.path]);
+#endif
+
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:idbPath.path]);
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:defaultIDBPath.path]);
+    RetainPtr<NSURL> fileIDBPath = [idbPath URLByAppendingPathComponent:@"file__0"];
+    EXPECT_TRUE([[NSFileManager defaultManager] fileExistsAtPath:fileIDBPath.get().path]);
+
+    // Data stores can't delete anything unless a WKProcessPool exists, so make sure the shared data store exists.
+    auto *processPool = [WKProcessPool _sharedProcessPool];
+    [processPool _terminateDatabaseProcess];
+    RetainPtr<WKWebsiteDataStore> dataStore = [[WKWebsiteDataStore alloc] _initWithConfiguration:websiteDataStoreConfiguration.get()];
+    RetainPtr<NSSet> types = adoptNS([[NSSet alloc] initWithObjects:WKWebsiteDataTypeIndexedDBDatabases, nil]);
+
+    receivedScriptMessage = false;
+    [dataStore removeDataOfTypes:types.get() modifiedSince:[NSDate distantPast] completionHandler:[]() {
+        receivedScriptMessage = true;
+    }];
+    TestWebKitAPI::Util::run(&receivedScriptMessage);
+
+    EXPECT_FALSE([[NSFileManager defaultManager] fileExistsAtPath:fileIDBPath.get().path]);
 }
 
 #endif

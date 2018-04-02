@@ -55,6 +55,11 @@ class BWebView;
 class BWindow;
 typedef BWebView* PlatformWKView;
 typedef BWindow* PlatformWindow;
+#elif PLATFORM(WPE)
+class HeadlessViewBackend;
+typedef WKViewRef PlatformWKView;
+typedef HeadlessViewBackend* PlatformWindow;
+typedef cairo_surface_t* PlatformImage;
 #endif
 
 namespace WTR {

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,7 +34,7 @@ namespace WebPreferencesKey {
 #define DEFINE_KEY_GETTERS(KeyUpper, KeyLower, TypeName, Type, DefaultValue, HumanReadableName, HumanReadableDescription) \
         const String& KeyLower##Key() \
         { \
-            static NeverDestroyed<String> key(ASCIILiteral(#KeyUpper)); \
+            static NeverDestroyed<String> key(MAKE_STATIC_STRING_IMPL(#KeyUpper)); \
             return key; \
         }
 

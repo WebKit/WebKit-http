@@ -398,7 +398,12 @@ public:
 
     WEBCORE_EXPORT Element* scrollingElement();
 
-    WEBCORE_EXPORT String readyState() const;
+    enum ReadyState {
+        Loading,
+        Interactive,
+        Complete
+    };
+    ReadyState readyState() const { return m_readyState; }
 
     WEBCORE_EXPORT String defaultCharsetForLegacyBindings() const;
 
@@ -659,11 +664,6 @@ public:
     bool inLimitedQuirksMode() const { return m_compatibilityMode == DocumentCompatibilityMode::LimitedQuirksMode; }
     bool inNoQuirksMode() const { return m_compatibilityMode == DocumentCompatibilityMode::NoQuirksMode; }
 
-    enum ReadyState {
-        Loading,
-        Interactive,
-        Complete
-    };
     void setReadyState(ReadyState);
     void setParsing(bool);
     bool parsing() const { return m_bParsing; }
@@ -726,8 +726,11 @@ public:
     void unregisterCollection(HTMLCollection&);
     void collectionCachedIdNameMap(const HTMLCollection&);
     void collectionWillClearIdNameMap(const HTMLCollection&);
-    bool shouldInvalidateNodeListAndCollectionCaches(const QualifiedName* attrName = nullptr) const;
-    void invalidateNodeListAndCollectionCaches(const QualifiedName* attrName);
+    bool shouldInvalidateNodeListAndCollectionCaches() const;
+    bool shouldInvalidateNodeListAndCollectionCachesForAttribute(const QualifiedName& attrName) const;
+
+    template <typename InvalidationFunction>
+    void invalidateNodeListAndCollectionCaches(InvalidationFunction);
 
     void attachNodeIterator(NodeIterator*);
     void detachNodeIterator(NodeIterator*);
@@ -1196,8 +1199,8 @@ public:
     IntSize initialViewportSize() const;
 #endif
 
-    void adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>&, const RenderStyle&);
-    void adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect&, const RenderStyle&);
+    void convertAbsoluteToClientQuads(Vector<FloatQuad>&, const RenderStyle&);
+    void convertAbsoluteToClientRect(FloatRect&, const RenderStyle&);
 
     bool hasActiveParser();
     void incrementActiveParserCount() { ++m_activeParserCount; }
@@ -1277,6 +1280,7 @@ public:
     bool hasHadActiveMediaStreamTrack() const { return m_hasHadActiveMediaStreamTrack; }
     void setDeviceIDHashSalt(const String& salt) { m_idHashSalt = salt; }
     String deviceIDHashSalt() const { return m_idHashSalt; }
+    void stopMediaCapture();
 #endif
 
 // FIXME: Find a better place for this functionality.
@@ -1365,6 +1369,7 @@ private:
     void loadEventDelayTimerFired();
 
     void pendingTasksTimerFired();
+    bool isCookieAverse() const;
 
     template<CollectionType> Ref<HTMLCollection> ensureCachedCollection();
 

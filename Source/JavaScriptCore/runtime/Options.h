@@ -100,6 +100,12 @@ private:
 typedef OptionRange optionRange;
 typedef const char* optionString;
 
+#if PLATFORM(IOS)
+#define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 2
+#else
+#define MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS 8
+#endif
+
 #define JSC_OPTIONS(v) \
     v(bool, validateOptions, false, Normal, "crashes if mis-typed JSC options were passed to the VM") \
     v(unsigned, dumpOptions, 0, Normal, "dumps JSC options (0 = None, 1 = Overridden only, 2 = All, 3 = Verbose)") \
@@ -200,6 +206,7 @@ typedef const char* optionString;
     v(double, mediumHeapRAMFraction, 0.5, Normal, nullptr) \
     v(double, mediumHeapGrowthFactor, 1.5, Normal, nullptr) \
     v(double, largeHeapGrowthFactor, 1.24, Normal, nullptr) \
+    v(double, criticalGCMemoryThreshold, 0.88, Normal, "percent memory in use the GC considers critical.  The collector is much more aggressive above this threshold") \
     v(double, minimumMutatorUtilization, 0, Normal, nullptr) \
     v(double, maximumMutatorUtilization, 0.7, Normal, nullptr) \
     v(double, epsilonMutatorUtilization, 0.01, Normal, nullptr) \
@@ -250,7 +257,7 @@ typedef const char* optionString;
     \
     v(bool, useConcurrentJIT, true, Normal, "allows the DFG / FTL compilation in threads other than the executing JS thread") \
     v(unsigned, numberOfDFGCompilerThreads, computeNumberOfWorkerThreads(2, 2) - 1, Normal, nullptr) \
-    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(8, 2) - 1, Normal, nullptr) \
+    v(unsigned, numberOfFTLCompilerThreads, computeNumberOfWorkerThreads(MAXIMUM_NUMBER_OF_FTL_COMPILER_THREADS, 2) - 1, Normal, nullptr) \
     v(int32, priorityDeltaOfDFGCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfFTLCompilerThreads, computePriorityDeltaOfWorkerThreads(-2, 0), Normal, nullptr) \
     v(int32, priorityDeltaOfWasmCompilerThreads, computePriorityDeltaOfWorkerThreads(-1, 0), Normal, nullptr) \
@@ -385,6 +392,7 @@ typedef const char* optionString;
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
     v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack at each simulated throw for exception scope verification") \
     v(bool, validateExceptionChecks, false, Normal, "Verifies that needed exception checks are performed.") \
+    v(unsigned, unexpectedExceptionStackTraceLimit, 100, Normal, "Stack trace limit for debugging unexpected exceptions observed in the VM") \
     \
     v(bool, useExecutableAllocationFuzz, false, Normal, nullptr) \
     v(unsigned, fireExecutableAllocationFuzzAt, 0, Normal, nullptr) \

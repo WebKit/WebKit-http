@@ -1,3 +1,386 @@
+2017-05-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: RTL: "Elements > Styles - Rules" rule and media query headers should be left aligned
+        https://bugs.webkit.org/show_bug.cgi?id=171954
+        <rdar://problem/31961976>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.css:
+        (.style-declaration-section > .header):
+        (.style-declaration-section.locked > .header > .locked-icon):
+        (.style-declaration-section > .header > .icon):
+        (.style-declaration-section > .header > textarea):
+        (.style-declaration-section.invalid-selector > .header > .icon):
+        (body[dir=ltr] .style-declaration-section > .header): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header): Deleted.
+        (body[dir=ltr] .style-declaration-section.locked > .header > .locked-icon): Deleted.
+        (body[dir=rtl] .style-declaration-section.locked > .header > .locked-icon): Deleted.
+        (body[dir=ltr] .style-declaration-section > .header > .icon): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header > .icon): Deleted.
+        (body[dir=ltr] .style-declaration-section > .header > textarea): Deleted.
+        (body[dir=rtl] .style-declaration-section > .header > textarea): Deleted.
+        Remove RTL rules.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection):
+        Set dir="ltr" so selector's textareas work correctly.
+
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules):
+
+2017-05-11  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Error trying to delete DOM breakpoints from the Debugger tab
+        https://bugs.webkit.org/show_bug.cgi?id=171970
+        <rdar://problem/32129262>
+
+        Reviewed by Brian Burg.
+
+        In the Debugger sidebar, DOM breakpoints can be cleared from a DOM node
+        in two ways: by using the DOM node tree element's context menu, or by
+        pressing the delete key while the element is selected. Each method used
+        a different code path, and the latter had an error which caused it to fail.
+
+        Add a `removeDOMBreakpointsForNode` method to DOMDebuggerManager to make
+        the operation convenient, and call it from both event handlers.
+
+        * UserInterface/Controllers/DOMBreakpointTreeController.js:
+        (WebInspector.DOMBreakpointTreeController.appendBreakpointContextMenuItems):
+        Use convenience method.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.removeDOMBreakpointsForNode):
+        Helper function for removing all of a node's breakpoints.
+
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        (WebInspector.DOMNodeTreeElement.prototype.ondelete):
+        Use convenience method.
+
+2017-05-11  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for resources in large sizes (32px @ 1x/2x)
+        https://bugs.webkit.org/show_bug.cgi?id=155802
+        <rdar://problem/25320686>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add more free icons for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/ClippingCSSLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingCSSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/ClippingGenericLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingGenericLarge@2x.png: Added.
+        * UserInterface/Images/gtk/ClippingJSLarge.png: Added.
+        * UserInterface/Images/gtk/ClippingJSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentCSSLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentCSSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentFontLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentFontLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentGenericLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentGenericLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentImageLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentImageLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentJSLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentJSLarge@2x.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkupLarge.png: Added.
+        * UserInterface/Images/gtk/DocumentMarkupLarge@2x.png: Added.
+
+2017-05-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: in Timelines > JavaScript & Events, digits for timer and animation frame number are not localized
+        https://bugs.webkit.org/show_bug.cgi?id=171818
+
+        Reviewed by Joseph Pecoraro.
+
+        These numbers need to be formatted with %d, not %s.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WebInspector.ScriptTimelineRecord.EventType.displayName):
+
+2017-05-10  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove dead code for switching Toolbar display options
+        https://bugs.webkit.org/show_bug.cgi?id=170738
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button > .glyph):
+        (.toolbar .item.button > .label):
+        (.toolbar.icon-and-label-vertical .item.button): Deleted.
+        (.toolbar.icon-and-label-horizontal .item.button): Deleted.
+        (.toolbar.small-size .item.button > .glyph): Deleted.
+        (.toolbar.label-only .item.button > .glyph): Deleted.
+        (.toolbar.label-only .item.activate.button.activated > .label): Deleted.
+        (.toolbar.icon-and-label-horizontal .item.button > .label): Deleted.
+        (.toolbar.icon-only .item.button > .label): Deleted.
+        * UserInterface/Views/ControlToolbarItem.css:
+        (.toolbar .item.control):
+        (.toolbar:matches(.icon-and-label-horizontal, .icon-only) .item.control): Deleted.
+        * UserInterface/Views/DashboardContainerView.css:
+        (.toolbar .dashboard-container):
+        (.toolbar.icon-and-label-vertical:matches(.small-size, .normal-size) .dashboard-container): Deleted.
+        (.toolbar.label-only .dashboard-container,): Deleted.
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard-container): Deleted.
+        (.toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        (body[dir=ltr] .toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        (body[dir=rtl] .toolbar.label-only .dashboard-container .advance-arrow): Deleted.
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item):
+        (.toolbar.label-only .dashboard.default > .item,): Deleted.
+        (.toolbar.normal-size:matches(.icon-only, .icon-and-label-vertical, .icon-and-label-horizontal) .dashboard.default > .item): Deleted.
+        * UserInterface/Views/ReplayDashboardView.css:
+        (.toolbar .dashboard.replay .item.button > .glyph):
+        (.toolbar.label-only .dashboard.replay .item.button > .glyph): Deleted.
+        * UserInterface/Views/Toolbar.css:
+        (.toolbar .control-section):
+        (.toolbar:matches(.icon-and-label-horizontal.small-size, .icon-only.small-size, .label-only) .control-section): Deleted.
+        * UserInterface/Views/Toolbar.js:
+        (WebInspector.Toolbar):
+        (WebInspector.Toolbar.prototype.layout):
+        (WebInspector.Toolbar.prototype.get displayMode): Deleted.
+        (WebInspector.Toolbar.prototype.set displayMode): Deleted.
+        (WebInspector.Toolbar.prototype.get sizeMode): Deleted.
+        (WebInspector.Toolbar.prototype.set sizeMode): Deleted.
+        (WebInspector.Toolbar.prototype._handleContextMenuEvent): Deleted.
+        (WebInspector.Toolbar.prototype._changeDisplayMode): Deleted.
+        (WebInspector.Toolbar.prototype._toggleSmallIcons): Deleted.
+
+2017-05-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Copy to clipboard fails via InspectorFrontendHostStub
+        https://bugs.webkit.org/show_bug.cgi?id=171907
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/InspectorFrontendHostStub.js:
+        (WebInspector.InspectorFrontendHostStub.prototype.copyText):
+        Actually make a text selection before attempting to copy to clipboard.
+
+2017-05-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Provide resource load error reason text in details sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=171901
+        <rdar://problem/29850995>
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Controllers/FrameResourceManager.js:
+        (WebInspector.FrameResourceManager.prototype.resourceRequestDidFailLoading):
+        * UserInterface/Models/Resource.js:
+        (WebInspector.Resource):
+        (WebInspector.Resource.prototype.get failureReasonText):
+        (WebInspector.Resource.prototype.markAsFailed):
+        * UserInterface/Protocol/NetworkObserver.js:
+        (WebInspector.NetworkObserver.prototype.loadingFailed):
+        Include the error text we got from the backend. In most cases this should
+        be a localized error description.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.set resource):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshErrorReason):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._refreshRequestAndResponse):
+        Include an Error field alongside the status code section when there was an error.
+
+2017-05-09  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK][Win] Web Inspector: Cann't open "Quick Open" dialog by pressing Ctrl+Shift+O
+        https://bugs.webkit.org/show_bug.cgi?id=171798
+
+        Reviewed by Michael Catanzaro.
+
+        PC can't input the shortcut keys Command+Shift+O and Command+P.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded): Use CommandOrControl instead of Command.
+
+2017-05-09  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: Assertion failed: Cannot select item with unexpected parent bar. (at NavigationBar.js:132)
+        https://bugs.webkit.org/show_bug.cgi?id=171885
+
+        Reviewed by Matt Baker.
+
+        This new assertion revealed a real misuse of the NavigationBar API.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WebInspector.NavigationBar.prototype.set selectedNavigationItem):
+        Improve this to be an assertion so it can be paused at using the debugger.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView.prototype._changeViewMode):
+        We need to set a NavigationItem as the selected item, not its identifier.
+        Look up the corresponding item for the identifier that we received (the view mode).
+
+2017-05-08  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: box model labels have bad alignment
+        https://bugs.webkit.org/show_bug.cgi?id=171817
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/BoxModelDetailsSectionRow.css:
+        (.details-section .row.box-model .label):
+        (body[dir=ltr] .details-section .row.box-model .label):
+        (body[dir=rtl] .details-section .row.box-model .label):
+        We can't just use a mirrored leading margin because all the
+        text here is center-aligned. Just hardcode a reasonable value.
+
+2017-05-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Request/Response toggles not working
+        https://bugs.webkit.org/show_bug.cgi?id=171833
+        <rdar://problem/31341637>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WebInspector.HierarchicalPathNavigationItem.set components.let.componentsEqual):
+        (WebInspector.HierarchicalPathNavigationItem.prototype.set components):
+        If the new components being set were shallowly equal, then they wouldn't
+        actually be updated even if ultimately they are different. In this case
+        the Path Components with values "request" / "response" would not update
+        between different resources because the path components had equivalent
+        simple values. Provide a different discriminator (comparisonData) which
+        can be an object so these path components compare as necessarily different.
+
+        * UserInterface/Views/HeapSnapshotClusterContentView.js:
+        (WebInspector.HeapSnapshotClusterContentView.createPathComponent):
+        (WebInspector.HeapSnapshotClusterContentView):
+        * UserInterface/Views/ResourceClusterContentView.js:
+        (WebInspector.ResourceClusterContentView.createPathComponent):
+        (WebInspector.ResourceClusterContentView):
+        (WebInspector.ResourceClusterContentView.prototype._resourceTypeDidChange):
+        * UserInterface/Views/SVGImageResourceClusterContentView.js:
+        (WebInspector.SVGImageResourceClusterContentView):
+        * UserInterface/Views/ScriptClusterTimelineView.js:
+        (WebInspector.ScriptClusterTimelineView.createPathComponent):
+        (WebInspector.ScriptClusterTimelineView):
+        Provide comparisonData for path components cases that would need it.
+
+2017-05-08  Chris Dumez  <cdumez@apple.com>
+
+        Drop non-standard Element.scrollByLines() / scrollByPages()
+        https://bugs.webkit.org/show_bug.cgi?id=171820
+
+        Reviewed by Simon Fraser.
+
+        Drop non-standard Element.scrollByLines() / scrollByPages() from
+        WebInspector code.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-05-08  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Make it easy to dynamically show/hide a SettingsView
+        https://bugs.webkit.org/show_bug.cgi?id=171765
+        <rdar://problem/32031280>
+
+        Reviewed by Brian Burg.
+
+        This patch adds SettingsTabContentView.prototype.setSettingsViewVisible,
+        for dynamically showing/hiding a child view (and its NavigationBar item).
+        The following new behavior is relevant when more that one child SettingsView
+        exist in the Settings tab:
+         - Hiding the selected view will cause a new view to become selected.
+           The previous visible view is selected, if it exists. Otherwise the
+           next visible view is used.
+         - Showing a view when no views are selected cause the view to be selected.
+
+        As the Settings tab currently has only one child view, the behavior above
+        was tested by adding a handful of vanilla SettingsView objects to the tab
+        and toggling their visibility.
+
+        * UserInterface/Views/NavigationBar.js:
+        Simplify overloaded parameter `navigationItemOrIdentifierOrIndex`, which
+        is used in a few places and is always an instance of NavigationItem.
+
+        (WebInspector.NavigationBar):
+        (WebInspector.NavigationBar.prototype.removeNavigationItem):
+        (WebInspector.NavigationBar.prototype.get selectedNavigationItem):
+        (WebInspector.NavigationBar.prototype.set selectedNavigationItem):
+        (WebInspector.NavigationBar.prototype.findNavigationItem):
+        Lookup a navigation item by its identifier.
+        (WebInspector.NavigationBar.prototype._findNavigationItem): Deleted.
+        Replaced overloaded private method with new public method.
+
+        * UserInterface/Views/NavigationItem.js:
+        Cleanup.
+        (WebInspector.NavigationItem):
+        (WebInspector.NavigationItem.prototype.get identifier):
+        (WebInspector.NavigationItem.prototype.get element):
+        (WebInspector.NavigationItem.prototype.get minimumWidth):
+        (WebInspector.NavigationItem.prototype.get parentNavigationBar):
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        Use `visibility: hidden` instead of `display: none` when hiding the
+        NavigationBar, so that the selected view's top position stays the same.
+
+        (.content-view.settings):
+        (.content-view.settings .navigation-bar.invisible):
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView):
+        Switch to an array of SettingsViews instead of a map. Fast lookup isn't
+        a concern due to the small number of items, and having indices simplifies
+        traversing the previous/next items in `setSettingsViewVisible`.
+
+        (WebInspector.SettingsTabContentView.prototype.set selectedSettingsView):
+        Rename `page` to `settingsView`.
+        (WebInspector.SettingsTabContentView.prototype.addSettingsView):
+        (WebInspector.SettingsTabContentView.prototype.setSettingsViewVisible):
+        Shows/hides the specified view. Hiding the selected SettingsView will
+        cause another visible view to become selected, if one exists.
+
+        (WebInspector.SettingsTabContentView.prototype._updateNavigationBarVisibility):
+        Helper for updating navigation bar visibility after making a change
+        to the navigation items.
+
+        (WebInspector.SettingsTabContentView.prototype._navigationItemSelected):
+
+2017-05-08  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Unprefix unicode-bidi CSS values
+        https://bugs.webkit.org/show_bug.cgi?id=171761
+
+        Reviewed by Simon Fraser.
+
+        * UserInterface/Models/CSSKeywordCompletions.js:
+
+2017-05-08  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icon for timeline recording stopwatch
+        https://bugs.webkit.org/show_bug.cgi?id=154088
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a free icon and remove some unused ones for the Web Inspector
+        in GTK+.
+
+        * UserInterface/Images/gtk/Stopwatch.png: Removed.
+        * UserInterface/Images/gtk/Stopwatch.svg: Added.
+        * UserInterface/Images/gtk/Stopwatch@2x.png: Removed.
+        * UserInterface/Views/TimelineIcons.css:
+        (body:not(.mac-platform, .windows-platform) .stopwatch-icon .icon): Deleted.
+
+2017-05-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        REGRESSION (r212998): Web Inspector: bad spacing of go-to arrow for HTTP POST request data
+        https://bugs.webkit.org/show_bug.cgi?id=171674
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DetailsSection.css:
+        (body[dir=ltr] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        (body[dir=rtl] .details-section > .content > .group > .row.simple > .value .go-to-arrow):
+        Swap margin-left and margin-right. This regressed when RTL support was added.
+
 2017-05-03  Devin Rousso  <webkit@devinrousso.com>
 
         REGRESSION (r215630): Web Inspector: Option-Click on URL in Styles sidebar does not work

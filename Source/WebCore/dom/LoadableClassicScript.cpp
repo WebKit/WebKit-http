@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple, Inc. All Rights Reserved.
+ * Copyright (C) 2016-2017 Apple, Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,14 +28,15 @@
 
 #include "ScriptElement.h"
 #include "ScriptSourceCode.h"
+#include "SubresourceIntegrity.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/StringImpl.h>
 
 namespace WebCore {
 
-Ref<LoadableClassicScript> LoadableClassicScript::create(const String& nonce, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree)
+Ref<LoadableClassicScript> LoadableClassicScript::create(const String& nonce, const String& integrityMetadata, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree)
 {
-    return adoptRef(*new LoadableClassicScript(nonce, crossOriginMode, charset, initiatorName, isInUserAgentShadowTree));
+    return adoptRef(*new LoadableClassicScript(nonce, integrityMetadata, crossOriginMode, charset, initiatorName, isInUserAgentShadowTree));
 }
 
 LoadableClassicScript::~LoadableClassicScript()
@@ -72,7 +73,7 @@ void LoadableClassicScript::notifyFinished(CachedResource& resource)
 {
     ASSERT(m_cachedScript);
     if (resource.resourceError().isAccessControl()) {
-        static NeverDestroyed<String> consoleMessage(ASCIILiteral("Cross-origin script load denied by Cross-Origin Resource Sharing policy."));
+        static NeverDestroyed<String> consoleMessage(MAKE_STATIC_STRING_IMPL("Cross-origin script load denied by Cross-Origin Resource Sharing policy."));
         m_error = Error {
             ErrorType::CrossOriginLoad,
             ConsoleMessage {
@@ -84,7 +85,7 @@ void LoadableClassicScript::notifyFinished(CachedResource& resource)
     }
 
 #if ENABLE(NOSNIFF)
-    if (!m_error && !m_cachedScript->mimeTypeAllowedByNosniff()) {
+    if (!m_error && !isScriptAllowedByNosniff(m_cachedScript->response())) {
         m_error = Error {
             ErrorType::Nosniff,
             ConsoleMessage {
@@ -95,6 +96,13 @@ void LoadableClassicScript::notifyFinished(CachedResource& resource)
         };
     }
 #endif
+
+    if (!m_error && !resource.errorOccurred() && !matchIntegrityMetadata(resource, m_integrity)) {
+        m_error = Error {
+            ErrorType::FailedIntegrityCheck,
+            ConsoleMessage { MessageSource::Security, MessageLevel::Error, makeString("Cannot load script ", m_cachedScript->url().stringCenterEllipsizedToLength(), ". Failed integrity metadata check.") }
+        };
+    }
 
     notifyClientFinished();
 }

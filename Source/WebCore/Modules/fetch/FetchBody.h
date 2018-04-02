@@ -34,7 +34,7 @@
 #include "FetchBodyConsumer.h"
 #include "FetchLoader.h"
 #include "FormData.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "URLSearchParams.h"
 #include <wtf/Optional.h>
 #include <wtf/Variant.h>
@@ -80,7 +80,7 @@ public:
 
     FetchBodyConsumer& consumer() { return m_consumer; }
 
-    void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&);
+    void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&, const String&);
     void cleanConsumePromise() { m_consumePromise = nullptr; }
 
     FetchBody clone() const;

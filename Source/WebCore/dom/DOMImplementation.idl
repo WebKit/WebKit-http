@@ -27,8 +27,5 @@
     [NewObject, MayThrowException] XMLDocument createDocument(DOMString? namespaceURI, [TreatNullAs=EmptyString] DOMString qualifiedName, optional DocumentType? doctype = null);
     [NewObject] HTMLDocument createHTMLDocument(optional DOMString title);
 
-    boolean hasFeature();
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    CSSStyleSheet createCSSStyleSheet(optional DOMString title = "undefined", optional DOMString media = "undefined");
+    boolean hasFeature(); // Useless; always returns true.
 };

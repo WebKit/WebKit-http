@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,12 +38,17 @@ public:
     VM& vm() const { return m_vm; }
     unsigned recursionDepth() const { return m_recursionDepth; }
     Exception* exception() { return m_vm.exception(); }
-    
+
+    ALWAYS_INLINE void assertNoException() { ASSERT_WITH_MESSAGE(!exception(), "%s", unexpectedExceptionMessage().data()); }
+    ALWAYS_INLINE void releaseAssertNoException() { RELEASE_ASSERT_WITH_MESSAGE(!exception(), "%s", unexpectedExceptionMessage().data()); }
+
 protected:
     ExceptionScope(VM&, ExceptionEventLocation);
     ExceptionScope(const ExceptionScope&) = delete;
     ExceptionScope(ExceptionScope&&) = default;
     ~ExceptionScope();
+
+    JS_EXPORT_PRIVATE CString unexpectedExceptionMessage();
 
     VM& m_vm;
     ExceptionScope* m_previousScope;
@@ -58,12 +63,17 @@ public:
     ALWAYS_INLINE VM& vm() const { return m_vm; }
     ALWAYS_INLINE Exception* exception() { return m_vm.exception(); }
 
+    ALWAYS_INLINE void assertNoException() { ASSERT(!exception()); }
+    ALWAYS_INLINE void releaseAssertNoException() { RELEASE_ASSERT(!exception()); }
+
 protected:
     ALWAYS_INLINE ExceptionScope(VM& vm)
         : m_vm(vm)
     { }
     ExceptionScope(const ExceptionScope&) = delete;
     ExceptionScope(ExceptionScope&&) = default;
+
+    ALWAYS_INLINE CString unexpectedExceptionMessage() { return { }; }
 
     VM& m_vm;
 };

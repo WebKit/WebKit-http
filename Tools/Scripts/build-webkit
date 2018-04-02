@@ -101,6 +101,7 @@ Usage: $programName [options] [options to pass to build system]
 
   --gtk                             Build the GTK+ port
   --haiku                           Build the Haiku port
+  --wpe                             Build the WPE port
   --wincairo                        Build using Cairo (rather than CoreGraphics) on Windows
 
   --inspector-frontend              Copy Web Inspector user interface resources to the build directory
@@ -258,7 +259,7 @@ if (isAppleWinWebKit() || isWinCairo()) {
     removeCMakeCache(@featureArgs);
 
     chdirWebKit();
-    if (exitStatus(generateBuildSystemFromCMakeProject())) {
+    if (exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs))) {
         die "Run \"C:/Program Files (x86)/Microsoft Visual Studio 14.0/VC/vcvarsall.bat\" before build-webkit when using ninja";
     }
     chdirWebKit();

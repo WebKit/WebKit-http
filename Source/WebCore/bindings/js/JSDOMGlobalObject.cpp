@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2017 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,7 @@
 #include "JSDOMGlobalObject.h"
 
 #include "Document.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "JSDOMWindow.h"
 #include "JSEventListener.h"
 #include "JSMediaStream.h"
@@ -81,9 +81,9 @@ EncodedJSValue JSC_HOST_CALL makeThisTypeErrorForBuiltins(ExecState* execState)
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto interfaceName = execState->uncheckedArgument(0).getString(execState);
-    ASSERT_UNUSED(scope, !scope.exception());
+    scope.assertNoException();
     auto functionName = execState->uncheckedArgument(1).getString(execState);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     return JSValue::encode(createTypeError(execState, makeThisTypeErrorMessage(interfaceName.utf8().data(), functionName.utf8().data())));
 }
 
@@ -95,9 +95,9 @@ EncodedJSValue JSC_HOST_CALL makeGetterTypeErrorForBuiltins(ExecState* execState
     auto scope = DECLARE_CATCH_SCOPE(vm);
 
     auto interfaceName = execState->uncheckedArgument(0).getString(execState);
-    ASSERT_UNUSED(scope, !scope.exception());
+    scope.assertNoException();
     auto attributeName = execState->uncheckedArgument(1).getString(execState);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     return JSValue::encode(createTypeError(execState, makeGetterTypeErrorMessage(interfaceName.utf8().data(), attributeName.utf8().data())));
 }
 
@@ -114,7 +114,7 @@ EncodedJSValue JSC_HOST_CALL isReadableByteStreamAPIEnabled(ExecState*)
     return JSValue::encode(jsBoolean(RuntimeEnabledFeatures::sharedFeatures().readableByteStreamAPIEnabled()));
 }
 #endif
-    
+
 void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
 {
     m_builtinInternalFunctions.initialize(*this);
@@ -124,11 +124,13 @@ void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
     JSObject* privateReadableByteStreamControllerConstructor = createReadableByteStreamControllerPrivateConstructor(vm, *this);
     JSObject* privateReadableStreamBYOBRequestConstructor = createReadableStreamBYOBRequestPrivateConstructor(vm, *this);
     JSObject* privateReadableStreamDefaultReaderConstructor = createReadableStreamDefaultReaderPrivateConstructor(vm, *this);
+    JSObject* privateReadableStreamBYOBReaderConstructor = createReadableStreamBYOBReaderPrivateConstructor(vm, *this);
 
     ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamDefaultControllerConstructor->info()).get());
     ASSERT(!constructors(NoLockingNecessary).get(privateReadableByteStreamControllerConstructor->info()).get());
     ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamBYOBRequestConstructor->info()).get());
     ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamDefaultReaderConstructor->info()).get());
+    ASSERT(!constructors(NoLockingNecessary).get(privateReadableStreamBYOBReaderConstructor->info()).get());
     JSC::WriteBarrier<JSC::JSObject> temp;
     {
         auto locker = lockDuringMarking(vm.heap, m_gcLock);
@@ -136,6 +138,7 @@ void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
         constructors(locker).add(privateReadableByteStreamControllerConstructor->info(), temp).iterator->value.set(vm, this, privateReadableByteStreamControllerConstructor);
         constructors(locker).add(privateReadableStreamBYOBRequestConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamBYOBRequestConstructor);
         constructors(locker).add(privateReadableStreamDefaultReaderConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamDefaultReaderConstructor);
+        constructors(locker).add(privateReadableStreamBYOBReaderConstructor->info(), temp).iterator->value.set(vm, this, privateReadableStreamBYOBReaderConstructor);
     }
 #endif
     JSVMClientData& clientData = *static_cast<JSVMClientData*>(vm.clientData);
@@ -162,6 +165,7 @@ void JSDOMGlobalObject::addBuiltinGlobals(VM& vm)
         JSDOMGlobalObject::GlobalPropertyInfo(clientData.builtinNames().ReadableByteStreamControllerPrivateName(), privateReadableByteStreamControllerConstructor, DontDelete | ReadOnly),
         JSDOMGlobalObject::GlobalPropertyInfo(clientData.builtinNames().ReadableStreamBYOBRequestPrivateName(), privateReadableStreamBYOBRequestConstructor, DontDelete | ReadOnly),
         JSDOMGlobalObject::GlobalPropertyInfo(clientData.builtinNames().ReadableStreamDefaultReaderPrivateName(), privateReadableStreamDefaultReaderConstructor, DontDelete | ReadOnly),
+        JSDOMGlobalObject::GlobalPropertyInfo(clientData.builtinNames().ReadableStreamBYOBReaderPrivateName(), privateReadableStreamBYOBReaderConstructor, DontDelete | ReadOnly),
         JSDOMGlobalObject::GlobalPropertyInfo(clientData.builtinNames().readableByteStreamAPIEnabledPrivateName(), JSFunction::create(vm, this, 0, String(), isReadableByteStreamAPIEnabled), DontDelete | ReadOnly),
 #endif
 #if ENABLE(WEB_RTC)

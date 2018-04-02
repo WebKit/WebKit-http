@@ -287,7 +287,6 @@ webkit.org/b/149891 imported/w3c/web-platform-tests/css/css-grid-1/grid-layout-p
 webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
 # selectors4
-webkit.org/b/170900 imported/w3c/web-platform-tests/css/selectors4/focus-within-006.html [ ImageOnlyFailure ]
 webkit.org/b/64861 imported/w3c/web-platform-tests/css/selectors4/selectors-dir-selector-ltr-001.html [ ImageOnlyFailure ]
 webkit.org/b/64861 imported/w3c/web-platform-tests/css/selectors4/selectors-dir-selector-rtl-001.html [ ImageOnlyFailure ]
 
@@ -364,9 +363,6 @@ webkit.org/b/171511 imported/w3c/web-platform-tests/resource-timing/rt-revalidat
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
-
-# rdar://problem/30975761
-[ Debug ] http/tests/fetch/fetch-in-worker-crash.html [ Skip ]
 
 imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional-cors.htm [ Failure ]
 imported/w3c/web-platform-tests/fetch/http-cache/partial.html [ Failure ]
@@ -843,7 +839,7 @@ fast/css/appearance-apple-pay-button.html [ ImageOnlyFailure ]
 
 webkit.org/b/150598 fast/repaint/table-hover-on-link.html [ Pass Failure ]
 
-webkit.org/b/151949 streams/reference-implementation/pipe-to.html [ Failure ]
+webkit.org/b/151949 streams/reference-implementation/pipe-to.html [ Pass Failure ]
 webkit.org/b/154687 streams/pipe-to.html [ Slow ]
 
 webkit.org/b/52185 fast/css/vertical-align-baseline-rowspan-010.html [ ImageOnlyFailure ]
@@ -1297,7 +1293,5 @@ webkit.org/b/170704 webrtc/video-mute.html [ Pass Failure ]
 webkit.org/b/171031 imported/w3c/web-platform-tests/XMLHttpRequest/getallresponseheaders-cl.htm [ Failure ]
 
 webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold.html [ Pass Failure ]
-
-webkit.org/b/171248 imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html
 
 webkit.org/b/170835 fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events.html [ Pass Failure ]

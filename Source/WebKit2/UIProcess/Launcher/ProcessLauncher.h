@@ -60,7 +60,7 @@ public:
         ProcessType processType;
         HashMap<String, String> extraInitializationData;
 
-#if ENABLE(DEVELOPER_MODE) && PLATFORM(GTK) || PLATFORM(HAIKU)
+#if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE))
         String processCmdPrefix;
 #endif
     };

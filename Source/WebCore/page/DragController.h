@@ -62,6 +62,7 @@ struct DragState;
         WEBCORE_EXPORT void dragExited(const DragData&);
         WEBCORE_EXPORT DragOperation dragUpdated(const DragData&);
         WEBCORE_EXPORT bool performDragOperation(const DragData&);
+        WEBCORE_EXPORT void dragCancelled();
 
         bool mouseIsOverFileInput() const { return m_fileInputElementUnderMouse; }
         unsigned numberOfItemsToBeAccepted() const { return m_numberOfItemsToBeAccepted; }
@@ -93,7 +94,6 @@ struct DragState;
         bool startDrag(Frame& src, const DragState&, DragOperation srcOp, const PlatformMouseEvent& dragEvent, const IntPoint& dragOrigin);
         static const IntSize& maxDragImageSize();
         
-        static const int LinkDragBorderInset;
         static const int MaxOriginalImageArea;
         static const int DragIconRightInset;
         static const int DragIconBottomInset;        

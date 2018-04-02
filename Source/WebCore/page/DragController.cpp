@@ -571,7 +571,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
     if (dragIsMove(innerFrame->selection(), dragData) || dragCaret.isContentRichlyEditable()) {
         bool chosePlainText = false;
         RefPtr<DocumentFragment> fragment = documentFragmentFromDragData(dragData, *innerFrame, *range, true, chosePlainText);
-        if (!fragment || !innerFrame->editor().shouldInsertFragment(fragment, range, EditorInsertAction::Dropped)) {
+        if (!fragment || !innerFrame->editor().shouldInsertFragment(*fragment, range.get(), EditorInsertAction::Dropped)) {
             return false;
         }
 
@@ -581,7 +581,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
             // but only to smart insert if the selection granularity is word granularity.
             bool smartDelete = innerFrame->editor().smartInsertDeleteEnabled();
             bool smartInsert = smartDelete && innerFrame->selection().granularity() == WordGranularity && dragData.canSmartReplace();
-            applyCommand(MoveSelectionCommand::create(fragment, dragCaret.base(), smartInsert, smartDelete));
+            MoveSelectionCommand::create(fragment.releaseNonNull(), dragCaret.base(), smartInsert, smartDelete)->apply();
         } else {
             if (setSelectionToDragCaret(innerFrame.get(), dragCaret, range, point)) {
                 ReplaceSelectionCommand::CommandOptions options = ReplaceSelectionCommand::SelectReplacement | ReplaceSelectionCommand::PreventNesting;
@@ -589,7 +589,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
                     options |= ReplaceSelectionCommand::SmartReplace;
                 if (chosePlainText)
                     options |= ReplaceSelectionCommand::MatchStyle;
-                applyCommand(ReplaceSelectionCommand::create(*m_documentUnderMouse, WTFMove(fragment), options, EditActionInsertFromDrop));
+                ReplaceSelectionCommand::create(*m_documentUnderMouse, fragment.releaseNonNull(), options, EditActionInsertFromDrop)->apply();
             }
         }
     } else {
@@ -600,7 +600,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
 
         m_client.willPerformDragDestinationAction(DragDestinationActionEdit, dragData);
         if (setSelectionToDragCaret(innerFrame.get(), dragCaret, range, point))
-            applyCommand(ReplaceSelectionCommand::create(*m_documentUnderMouse, createFragmentFromText(*range, text),  ReplaceSelectionCommand::SelectReplacement | ReplaceSelectionCommand::MatchStyle | ReplaceSelectionCommand::PreventNesting, EditActionInsertFromDrop));
+            ReplaceSelectionCommand::create(*m_documentUnderMouse, createFragmentFromText(*range, text),  ReplaceSelectionCommand::SelectReplacement | ReplaceSelectionCommand::MatchStyle | ReplaceSelectionCommand::PreventNesting, EditActionInsertFromDrop)->apply();
     }
 
     if (rootEditableElement) {
@@ -864,7 +864,6 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     m_sourceDragOperation = srcOp;
 
     DragImage dragImage;
-    FloatPoint dragImageAnchorPoint;
     IntPoint dragLoc(0, 0);
     IntPoint dragImageOffset(0, 0);
 
@@ -946,7 +945,6 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             if (textIndicator.contentImage)
                 dragImage.setIndicatorData(textIndicator);
             dragLoc = dragLocForSelectionDrag(src);
-            dragImageAnchorPoint = dragImageAnchorPointForSelectionDrag(src, mouseDraggedPoint);
             m_dragOffset = IntPoint(dragOrigin.x() - dragLoc.x(), dragOrigin.y() - dragLoc.y());
         }
 
@@ -959,8 +957,8 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         }
 
         DragItem dragItem;
+        dragItem.imageAnchorPoint = dragImageAnchorPointForSelectionDrag(src, mouseDraggedPoint);
         dragItem.image = WTFMove(dragImage);
-        dragItem.imageAnchorPoint = dragImageAnchorPoint;
         dragItem.data = WTFMove(pasteboardWriterData);
 
         beginDrag(WTFMove(dragItem), src, dragOrigin, mouseDraggedPoint, dataTransfer, DragSourceActionSelection);
@@ -986,11 +984,9 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 
         m_client.willPerformDragSourceAction(DragSourceActionImage, dragOrigin, dataTransfer);
 
-        if (!dragImage) {
-            IntRect imageRect = hitTestResult.imageRect();
-            imageRect.setLocation(m_page.mainFrame().view()->rootViewToContents(src.view()->contentsToRootView(imageRect.location())));
+        if (!dragImage)
             doImageDrag(element, dragOrigin, hitTestResult.imageRect(), dataTransfer, src, m_dragOffset);
-        } else {
+        else {
             // DHTML defined drag image
             doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, DragSourceActionImage);
         }
@@ -1001,13 +997,15 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     if (!linkURL.isEmpty() && (m_dragSourceAction & DragSourceActionLink)) {
         PasteboardWriterData pasteboardWriterData;
 
+        String textContentWithSimplifiedWhiteSpace = hitTestResult.textContent().simplifyWhiteSpace();
+
         if (!dataTransfer.pasteboard().hasData()) {
             // Simplify whitespace so the title put on the dataTransfer resembles what the user sees
             // on the web page. This includes replacing newlines with spaces.
             if (mustUseLegacyDragClient)
-                src.editor().copyURL(linkURL, hitTestResult.textContent().simplifyWhiteSpace(), dataTransfer.pasteboard());
+                src.editor().copyURL(linkURL, textContentWithSimplifiedWhiteSpace, dataTransfer.pasteboard());
             else
-                pasteboardWriterData.setURL(src.editor().pasteboardWriterURL(linkURL, hitTestResult.textContent().simplifyWhiteSpace()));
+                pasteboardWriterData.setURL(src.editor().pasteboardWriterURL(linkURL, textContentWithSimplifiedWhiteSpace));
         } else {
             // Make sure the pasteboard also contains trustworthy link data
             // but don't overwrite more general pasteboard types.
@@ -1031,26 +1029,24 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         m_client.willPerformDragSourceAction(DragSourceActionLink, dragOrigin, dataTransfer);
         if (!dragImage) {
             TextIndicatorData textIndicator;
-            dragImage = DragImage { createDragImageForLink(element, linkURL, hitTestResult.textContent(), textIndicator, src.settings().fontRenderingMode(), m_page.deviceScaleFactor()) };
+            dragImage = DragImage { createDragImageForLink(element, linkURL, textContentWithSimplifiedWhiteSpace, textIndicator, src.settings().fontRenderingMode(), m_page.deviceScaleFactor()) };
             if (dragImage) {
-                IntSize size = dragImageSize(dragImage.get());
-                m_dragOffset = IntPoint(-size.width() / 2, -LinkDragBorderInset);
-                dragLoc = IntPoint(mouseDraggedPoint.x() + m_dragOffset.x(), mouseDraggedPoint.y() + m_dragOffset.y());
+                m_dragOffset = dragOffsetForLinkDragImage(dragImage.get());
+                dragLoc = IntPoint(dragOrigin.x() + m_dragOffset.x(), dragOrigin.y() + m_dragOffset.y());
                 dragImage = DragImage { platformAdjustDragImageForDeviceScaleFactor(dragImage.get(), m_page.deviceScaleFactor()) };
                 if (textIndicator.contentImage)
                     dragImage.setIndicatorData(textIndicator);
-                dragImageAnchorPoint = FloatPoint { 0.5, static_cast<float>((size.height() - LinkDragBorderInset) / size.height()) };
             }
         }
 
         if (mustUseLegacyDragClient) {
-            doSystemDrag(WTFMove(dragImage), dragLoc, mouseDraggedPoint, { }, dataTransfer, src, DragSourceActionLink);
+            doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, DragSourceActionLink);
             return true;
         }
 
         DragItem dragItem;
+        dragItem.imageAnchorPoint = dragImage ? anchorPointForLinkDragImage(dragImage.get()) : FloatPoint();
         dragItem.image = WTFMove(dragImage);
-        dragItem.imageAnchorPoint = dragImageAnchorPoint;
         dragItem.data = WTFMove(pasteboardWriterData);
 
         beginDrag(WTFMove(dragItem), src, dragOrigin, mouseDraggedPoint, dataTransfer, DragSourceActionSelection);
@@ -1070,7 +1066,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 #if PLATFORM(COCOA)
                 // Otherwise, if no file URL is specified, call out to the injected bundle to populate the pasteboard with data.
                 auto& editor = src.editor();
-                editor.willWriteSelectionToPasteboard(src.selection().toNormalizedRange());
+                editor.willWriteSelectionToPasteboard(src.selection().toNormalizedRange().get());
                 editor.writeSelectionToPasteboard(dataTransfer.pasteboard());
                 editor.didWriteSelectionToPasteboard();
 #endif

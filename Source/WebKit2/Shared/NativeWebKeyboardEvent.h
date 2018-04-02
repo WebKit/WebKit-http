@@ -55,6 +55,10 @@ typedef union _GdkEvent GdkEvent;
 OBJC_CLASS WebEvent;
 #endif
 
+#if PLATFORM(WPE)
+struct wpe_input_keyboard_event;
+#endif
+
 namespace WebKit {
 
 class NativeWebKeyboardEvent : public WebKeyboardEvent {
@@ -66,6 +70,8 @@ public:
     NativeWebKeyboardEvent(GdkEvent*, const WebCore::CompositionResults&, InputMethodFilter::EventFakedForComposition, Vector<String>&& commands);
 #elif PLATFORM(IOS)
     NativeWebKeyboardEvent(::WebEvent *);
+#elif PLATFORM(WPE)
+    NativeWebKeyboardEvent(struct wpe_input_keyboard_event*);
 #endif
 
 #if USE(APPKIT)
@@ -78,6 +84,8 @@ public:
     const BMessage* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     ::WebEvent* nativeEvent() const { return m_nativeEvent.get(); }
+#elif PLATFORM(WPE)
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:

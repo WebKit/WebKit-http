@@ -269,7 +269,6 @@ svg/dynamic-updates/SVGClipPathElement-transform-influences-hitTesting.html
 svg/custom/linking-a-03-b-all.svg
 
 # SVG tests that fail due to an assert failure:
-webkit.org/b/132297 [ Debug ] svg/custom/bug79798.html [ Skip ]
 svg/custom/image-with-prefix-in-webarchive.svg
 
 # SVG tests that fail:
@@ -1882,7 +1881,7 @@ webkit.org/b/159881 [ Release ] fast/shapes/shape-outside-floats/shape-outside-b
 
 webkit.org/b/159427 http/tests/loading/basic-credentials-sent-automatically.html [ Pass Failure ]
 
-webkit.org/b/160368 [ Release ] http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
+webkit.org/b/160368 http/tests/xmlhttprequest/workers/methods-async.html [ Pass Timeout ]
 
 webkit.org/b/161323 media/track/media-element-enqueue-event-crash.html [ Skip ]
 webkit.org/b/161323 media/track/track-remove-crash.html [ Skip ]
@@ -1918,7 +1917,7 @@ webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pa
 
 webkit.org/b/163362 [ Debug ] platform/ios/ios/plugin/youtube-flash-plugin-iframe.html [ Pass Failure ]
 
-webkit.org/b/164960 [ Release ] http/tests/security/module-correct-mime-types.html [ Slow ]
+webkit.org/b/164960 http/tests/security/module-correct-mime-types.html [ Slow ]
 
 webkit.org/b/164961 [ Release ] http/tests/storage/callbacks-are-called-in-correct-context.html [ Timeout ]
 
@@ -1969,3 +1968,19 @@ webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/
 webkit.org/b/171628 scrollingcoordinator/ios/nested-fixed-layer-positions.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/171638 [ Release ] http/tests/xmlhttprequest/methods.html [ Pass Timeout ]
+
+webkit.org/b/171830 [ Debug ] http/tests/websocket/tests/hybi/workers/close.html [ Pass Failure ]
+
+webkit.org/b/169637 imported/w3c/web-platform-tests/XMLHttpRequest/timeout-multiple-fetches.html [ Pass Failure ]
+
+webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-streams/general.html [ Pass Failure ]
+
+webkit.org/b/171899 webrtc/libwebrtc/release-while-setting-local-description.html [ Pass Failure ]
+
+webkit.org/b/171930 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html [ Pass Failure ]
+
+webkit.org/b/171945 [ Debug ] perf/class-list-remove.html [ Pass Failure Timeout ]
+
+webkit.org/b/171951 [ Debug ] fast/hidpi/filters-and-image-buffer-resolution.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/171957 [ Debug ] fast/animation/request-animation-frame-time-unit.html [ Pass Failure ]

@@ -55,6 +55,7 @@ set(JavaScriptCore_SOURCES
     API/JSCallbackObject.cpp
     API/JSClassRef.cpp
     API/JSContextRef.cpp
+    API/JSHeapFinalizerPrivate.cpp
     API/JSMarkingConstraintPrivate.cpp
     API/JSObjectRef.cpp
     API/JSTypedArray.cpp
@@ -502,10 +503,12 @@ set(JavaScriptCore_SOURCES
     heap/GCActivityCallback.cpp
     heap/GCConductor.cpp
     heap/GCLogging.cpp
+    heap/GCRequest.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
     heap/HeapCell.cpp
+    heap/HeapFinalizerCallback.cpp
     heap/HeapHelperPool.cpp
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
@@ -528,6 +531,7 @@ set(JavaScriptCore_SOURCES
     heap/StopIfNecessaryTimer.cpp
     heap/Subspace.cpp
     heap/SynchronousStopTheWorldMutatorScheduler.cpp
+    heap/Synchronousness.cpp
     heap/VisitRaceKey.cpp
     heap/Weak.cpp
     heap/WeakBlock.cpp
@@ -949,12 +953,14 @@ set(JavaScriptCore_SOURCES
     wasm/WasmContext.cpp
     wasm/WasmFaultSignalHandler.cpp
     wasm/WasmFormat.cpp
+    wasm/WasmIndexOrName.cpp
     wasm/WasmMachineThreads.cpp
     wasm/WasmMemory.cpp
     wasm/WasmMemoryInformation.cpp
     wasm/WasmModule.cpp
     wasm/WasmModuleInformation.cpp
     wasm/WasmModuleParser.cpp
+    wasm/WasmNameSectionParser.cpp
     wasm/WasmOMGPlan.cpp
     wasm/WasmOpcodeOrigin.cpp
     wasm/WasmPageCount.cpp
@@ -965,6 +971,7 @@ set(JavaScriptCore_SOURCES
     wasm/WasmWorklist.cpp
 
     wasm/js/JSWebAssemblyCodeBlock.cpp
+    wasm/js/JSWebAssemblyCodeBlockSubspace.cpp
     wasm/js/JSWebAssemblyCompileError.cpp
     wasm/js/JSWebAssemblyInstance.cpp
     wasm/js/JSWebAssemblyLinkError.cpp
@@ -1199,15 +1206,20 @@ add_custom_command(
 # since it is used in the add_library() call at the end of this file.
 if (MSVC)
     enable_language(ASM_MASM)
-    list(APPEND JavaScriptCore_SOURCES
-        ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.asm
-    )
-    # Win32 needs /safeseh with assembly, but Win64 does not.
     if (CMAKE_SIZEOF_VOID_P EQUAL 4)
-        set_source_files_properties(${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.asm
-            PROPERTIES COMPILE_FLAGS  "/safeseh"
-        )
+        # Win32 needs /safeseh with assembly, but Win64 does not.
+        set(MASM_EXECUTABLE ml)
+        set(LLINT_MASM_FLAGS /safeseh /c /Fo)
+    else ()
+        set(MASM_EXECUTABLE ml64)
+        set(LLINT_MASM_FLAGS /c /Fo)
     endif ()
+    add_custom_command(
+        OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.obj
+        DEPENDS ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.asm
+        COMMAND ${MASM_EXECUTABLE} ${LLINT_MASM_FLAGS} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.obj ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.asm
+        VERBATIM)
+    list(APPEND JavaScriptCore_SOURCES ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LowLevelInterpreterWin.obj)
 else ()
     list(APPEND JavaScriptCore_HEADERS
         ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntAssembly.h

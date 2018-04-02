@@ -206,7 +206,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIncludes(VM& vm, Exec
     if (!targetOption)
         return JSValue::encode(jsBoolean(false));
 
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     if (std::isnan(static_cast<double>(*targetOption))) {
@@ -250,7 +250,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncIndexOf(VM& vm, ExecS
     auto targetOption = ViewClass::toAdaptorNativeFromValueWithoutCoercion(valueToFind);
     if (!targetOption)
         return JSValue::encode(jsNumber(-1));
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index < length; ++index) {
@@ -296,7 +296,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncJoin(VM& vm, ExecStat
 
     if (thisObject->isNeutered())
         return throwVMTypeError(exec, scope, typedArrayBufferHasBeenDetachedErrorMessage);
-    auto viewWithString = separatorString->viewWithUnderlyingString(*exec);
+    auto viewWithString = separatorString->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return joinWithSeparator(viewWithString.view);
 }
@@ -341,7 +341,7 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewProtoFuncLastIndexOf(VM& vm, E
         return JSValue::encode(jsNumber(-1));
 
     typename ViewClass::ElementType* array = thisObject->typedVector();
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     RELEASE_ASSERT(!thisObject->isNeutered());
 
     for (; index >= 0; --index) {
@@ -531,9 +531,9 @@ EncodedJSValue JSC_HOST_CALL genericTypedArrayViewPrivateFuncSubarrayCreate(VM&v
     ASSERT(exec->argument(0).isNumber());
     ASSERT(exec->argument(1).isUndefined() || exec->argument(1).isNumber());
     unsigned begin = argumentClampedIndexFromStartOrEnd(exec, 0, thisLength);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     unsigned end = argumentClampedIndexFromStartOrEnd(exec, 1, thisLength, thisLength);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
 
     RELEASE_ASSERT(!thisObject->isNeutered());
 

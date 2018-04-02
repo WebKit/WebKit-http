@@ -77,12 +77,31 @@ public:
 
         // Observer state queries.
         virtual bool preventSourceFromStopping() { return false; }
-        
+
         // Called on the main thread.
         virtual void videoSampleAvailable(MediaSample&) { }
 
         // May be called on a background thread.
         virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
+    };
+
+    template<typename Source> class SingleSourceFactory {
+    public:
+        void setActiveSource(Source& source)
+        {
+            if (m_activeSource && m_activeSource->isProducingData())
+                m_activeSource->setMuted(true);
+            m_activeSource = &source;
+        }
+
+        void unsetActiveSource(Source& source)
+        {
+            if (m_activeSource == &source)
+                m_activeSource = nullptr;
+        }
+
+    private:
+        RealtimeMediaSource* m_activeSource { nullptr };
     };
 
     class AudioCaptureFactory {
@@ -123,7 +142,7 @@ public:
 
     using SuccessHandler = std::function<void()>;
     using FailureHandler = std::function<void(const String& badConstraint, const String& errorString)>;
-    void applyConstraints(const MediaConstraints&, SuccessHandler, FailureHandler);
+    virtual void applyConstraints(const MediaConstraints&, SuccessHandler&&, FailureHandler&&);
     std::optional<std::pair<String, String>> applyConstraints(const MediaConstraints&);
 
     virtual bool supportsConstraints(const MediaConstraints&, String&);
@@ -214,6 +233,10 @@ protected:
     const Vector<Observer*> observers() const { return m_observers; }
 
     void notifyMutedObservers() const;
+
+    void initializeVolume(double volume) { m_volume = volume; }
+    void initializeSampleRate(int sampleRate) { m_sampleRate = sampleRate; }
+    void initializeEchoCancellation(bool echoCancellation) { m_echoCancellation = echoCancellation; }
 
     bool m_muted { false };
     bool m_enabled { true };

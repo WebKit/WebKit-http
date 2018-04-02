@@ -12,8 +12,8 @@ function test() {
     src.src = "notarealsource.txt";
     v.appendChild(src);
     src.addEventListener("error", function() {
-       if (window.testRunner) {
-            testRunner.display();
+        if (window.testRunner) {
+            testRunner.displayAndTrackRepaints();
             // If we didn't crash here, yay!  Test is a success
             document.body.appendChild(document.createTextNode("PASS"));
             testRunner.notifyDone();

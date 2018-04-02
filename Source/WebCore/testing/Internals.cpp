@@ -139,7 +139,7 @@
 #include "ViewportArguments.h"
 #include "WebCoreJSClientData.h"
 #if ENABLE(WEBGL)
-#include "WebGLRenderingContextBase.h"
+#include "WebGLRenderingContext.h"
 #endif
 #include "WorkerThread.h"
 #include "WritingDirection.h"
@@ -191,10 +191,6 @@
 #include "DOMWindowSpeechSynthesis.h"
 #include "PlatformSpeechSynthesizerMock.h"
 #include "SpeechSynthesis.h"
-#endif
-
-#if ENABLE(VIBRATION)
-#include "Vibration.h"
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -1681,7 +1677,7 @@ String Internals::rangeAsText(const Range& range)
 
 Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 {
-    return TextIterator::subrange(&range, rangeLocation, rangeLength);
+    return TextIterator::subrange(range, rangeLocation, rangeLength);
 }
 
 RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
@@ -2180,7 +2176,7 @@ RefPtr<DOMWindow> Internals::openDummyInspectorFrontend(const String& url)
 {
     auto* inspectedPage = contextDocument()->frame()->page();
     auto* window = inspectedPage->mainFrame().document()->domWindow();
-    auto frontendWindow = window->open(url, "", "", *window, *window);
+    auto frontendWindow = window->open(*window, *window, url, "", "");
     m_inspectorFrontend = std::make_unique<InspectorStubFrontend>(*inspectedPage, frontendWindow.copyRef());
     return frontendWindow;
 }
@@ -3130,17 +3126,6 @@ ExceptionOr<Ref<DOMRect>> Internals::selectionBounds()
     return DOMRect::create(document->frame()->selection().selectionBounds());
 }
 
-#if ENABLE(VIBRATION)
-
-bool Internals::isVibrating()
-{
-    auto* document = contextDocument();
-    auto* page = document ? document->page() : nullptr;
-    return page && Vibration::from(page)->isVibrating();
-}
-
-#endif
-
 ExceptionOr<bool> Internals::isPluginUnavailabilityIndicatorObscured(Element& element)
 {
     auto* renderer = element.renderer();
@@ -3976,7 +3961,7 @@ void Internals::setAsRunningUserScripts(Document& document)
 }
 
 #if ENABLE(WEBGL)
-void Internals::simulateWebGLContextChanged(WebGLRenderingContextBase& context)
+void Internals::simulateWebGLContextChanged(WebGLRenderingContext& context)
 {
     context.simulateContextChanged();
 }

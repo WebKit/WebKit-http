@@ -342,11 +342,11 @@ void InsertParagraphSeparatorCommand::doApply()
     // Split at pos if in the middle of a text node.
     Position positionAfterSplit;
     if (insertionPosition.anchorType() == Position::PositionIsOffsetInAnchor && is<Text>(*insertionPosition.containerNode())) {
-        RefPtr<Text> textNode = downcast<Text>(insertionPosition.containerNode());
+        Ref<Text> textNode = downcast<Text>(*insertionPosition.containerNode());
         bool atEnd = static_cast<unsigned>(insertionPosition.offsetInContainerNode()) >= textNode->length();
         if (insertionPosition.deprecatedEditingOffset() > 0 && !atEnd) {
             splitTextNode(textNode, insertionPosition.offsetInContainerNode());
-            positionAfterSplit = firstPositionInNode(textNode.get());
+            positionAfterSplit = firstPositionInNode(textNode.ptr());
             if (!textNode->previousSibling())
                 return; // Bail out if mutation events detachd the split text node.
             insertionPosition.moveToPosition(textNode->previousSibling(), insertionPosition.offsetInContainerNode());
@@ -382,7 +382,7 @@ void InsertParagraphSeparatorCommand::doApply()
             if (is<Text>(*splitTo) && insertionPosition.offsetInContainerNode() >= caretMaxOffset(*splitTo))
                 splitTo = NodeTraversal::next(*splitTo, startBlock.get());
             ASSERT(splitTo);
-            splitTreeToNode(splitTo, startBlock.get());
+            splitTreeToNode(*splitTo, *startBlock);
 
             for (n = startBlock->firstChild(); n; n = n->nextSibling()) {
                 VisiblePosition beforeNodePosition = positionBeforeNode(n);
@@ -391,7 +391,7 @@ void InsertParagraphSeparatorCommand::doApply()
             }
         }
 
-        moveRemainingSiblingsToNewParent(n, blockToInsert.get(), blockToInsert);
+        moveRemainingSiblingsToNewParent(n, blockToInsert.get(), *blockToInsert);
     }            
 
     // Handle whitespace that occurs after the split

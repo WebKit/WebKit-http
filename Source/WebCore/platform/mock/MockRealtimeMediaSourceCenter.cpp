@@ -65,7 +65,7 @@ MockRealtimeMediaSourceCenter::MockRealtimeMediaSourceCenter()
     m_supportedConstraints.setSupportsDeviceId(true);
 }
 
-void MockRealtimeMediaSourceCenter::validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints)
+void MockRealtimeMediaSourceCenter::validateRequestConstraints(ValidConstraintsHandler&& validHandler, InvalidConstraintsHandler&& invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints)
 {
     Vector<String> audioSourceIds;
     Vector<String> videoSourceIds;
@@ -126,7 +126,7 @@ void MockRealtimeMediaSourceCenter::validateRequestConstraints(ValidConstraintsH
     validHandler(WTFMove(audioSourceIds), WTFMove(videoSourceIds));
 }
 
-void MockRealtimeMediaSourceCenter::createMediaStream(NewMediaStreamHandler completionHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints)
+void MockRealtimeMediaSourceCenter::createMediaStream(NewMediaStreamHandler&& completionHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints)
 {
     Vector<Ref<RealtimeMediaSource>> audioSources;
     Vector<Ref<RealtimeMediaSource>> videoSources;
@@ -184,14 +184,24 @@ Vector<CaptureDevice> MockRealtimeMediaSourceCenter::getMediaStreamDevices()
     return sources;
 }
 
-RealtimeMediaSource::AudioCaptureFactory* MockRealtimeMediaSourceCenter::defaultAudioFactory()
+RealtimeMediaSource::AudioCaptureFactory& MockRealtimeMediaSourceCenter::defaultAudioFactory()
 {
-    return &MockRealtimeAudioSource::factory();
+    return MockRealtimeAudioSource::factory();
 }
 
-RealtimeMediaSource::VideoCaptureFactory* MockRealtimeMediaSourceCenter::defaultVideoFactory()
+RealtimeMediaSource::VideoCaptureFactory& MockRealtimeMediaSourceCenter::defaultVideoFactory()
 {
-    return &MockRealtimeVideoSource::factory();
+    return MockRealtimeVideoSource::factory();
+}
+
+CaptureDeviceManager& MockRealtimeMediaSourceCenter::defaultAudioCaptureDeviceManager()
+{
+    return m_defaultAudioCaptureDeviceManager;
+}
+
+CaptureDeviceManager& MockRealtimeMediaSourceCenter::defaultVideoCaptureDeviceManager()
+{
+    return m_defaultVideoCaptureDeviceManager;
 }
 
 ExceptionOr<void> MockRealtimeMediaSourceCenter::setDeviceEnabled(const String& id, bool enabled)

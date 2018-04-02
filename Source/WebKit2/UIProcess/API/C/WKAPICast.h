@@ -32,7 +32,7 @@
 #include "HTTPCookieAcceptPolicy.h"
 #include "InjectedBundleHitTestResultMediaType.h"
 #include "PluginModuleInfo.h"
-#include "ProcessCrashReason.h"
+#include "ProcessTerminationReason.h"
 #include "ResourceCachesToClear.h"
 #include "WKBundleHitTestResult.h"
 #include "WKContext.h"
@@ -41,7 +41,7 @@
 #include "WKPage.h"
 #include "WKPreferencesRef.h"
 #include "WKPreferencesRefPrivate.h"
-#include "WKProcessCrashReason.h"
+#include "WKProcessTerminationReason.h"
 #include "WKProtectionSpaceTypes.h"
 #include "WKResourceCacheManager.h"
 #include "WKSharedAPICast.h"
@@ -112,7 +112,6 @@ class WebRenderObject;
 class WebResourceLoadStatisticsManager;
 class WebTextChecker;
 class WebUserContentControllerProxy;
-class WebVibrationProxy;
 class WebViewportAttributes;
 struct WebsitePolicies;
 
@@ -168,7 +167,6 @@ WK_ADD_API_MAPPING(WKUserContentFilterRef, API::ContentExtension)
 WK_ADD_API_MAPPING(WKUserMediaPermissionCheckRef, UserMediaPermissionCheckProxy)
 WK_ADD_API_MAPPING(WKUserMediaPermissionRequestRef, UserMediaPermissionRequestProxy)
 WK_ADD_API_MAPPING(WKUserScriptRef, API::UserScript)
-WK_ADD_API_MAPPING(WKVibrationRef, WebVibrationProxy)
 WK_ADD_API_MAPPING(WKViewportAttributesRef, WebViewportAttributes)
 WK_ADD_API_MAPPING(WKWebsiteDataStoreRef, API::WebsiteDataStore)
 WK_ADD_API_MAPPING(WKWebsitePoliciesRef, API::WebsitePolicies)
@@ -235,20 +233,20 @@ inline WKCacheModel toAPI(CacheModel cacheModel)
     return kWKCacheModelDocumentViewer;
 }
 
-inline WKProcessCrashReason toAPI(ProcessCrashReason reason)
+inline WKProcessTerminationReason toAPI(ProcessTerminationReason reason)
 {
     switch (reason) {
-    case ProcessCrashReason::TerminationDueToMemoryUsage:
-        return kWKProcessCrashReasonTerminationDueToMemoryUsage;
-    case ProcessCrashReason::TerminationDueToCPUUsage:
-        return kWKProcessCrashReasonTerminationDueToCPUUsage;
-    case ProcessCrashReason::TerminationRequestedByClient:
-        return kWKProcessCrashReasonTerminationRequestedByClient;
-    case ProcessCrashReason::Other:
-        return kWKProcessCrashReasonOther;
+    case ProcessTerminationReason::ExceededMemoryLimit:
+        return kWKProcessTerminationReasonExceededMemoryLimit;
+    case ProcessTerminationReason::ExceededCPULimit:
+        return kWKProcessTerminationReasonExceededCPULimit;
+    case ProcessTerminationReason::RequestedByClient:
+        return kWKProcessTerminationReasonRequestedByClient;
+    case ProcessTerminationReason::Crash:
+        return kWKProcessTerminationReasonCrash;
     }
 
-    return kWKProcessCrashReasonOther;
+    return kWKProcessTerminationReasonCrash;
 }
 
 inline FontSmoothingLevel toFontSmoothingLevel(WKFontSmoothingLevel wkLevel)
@@ -577,6 +575,10 @@ inline ProxyingRefPtr<WebGrammarDetail> toAPI(const WebCore::GrammarDetail& gram
 
 #if defined(BUILDING_HAIKU__)
 #include "WKAPICastHaiku.h"
+#endif
+
+#if defined(BUILDING_WPE__)
+#include "WKAPICastWPE.h"
 #endif
 
 #endif // WKAPICast_h

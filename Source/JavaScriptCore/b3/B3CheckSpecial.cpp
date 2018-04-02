@@ -112,7 +112,7 @@ void CheckSpecial::forEachArg(Inst& inst, const ScopedLambda<Inst::EachArgCallba
     Inst hidden = hiddenBranch(inst);
     hidden.forEachArg(
         [&] (Arg& arg, Arg::Role role, Bank bank, Width width) {
-            if (Arg::isAnyDef(role)) {
+            if (Arg::isAnyDef(role) && role != Arg::Scratch) {
                 ASSERT(!optionalDefArgWidth); // There can only be one Def'ed arg.
                 optionalDefArgWidth = width;
             }
@@ -138,6 +138,13 @@ bool CheckSpecial::admitsStack(Inst& inst, unsigned argIndex)
     if (argIndex >= 1 && argIndex < 1 + m_numCheckArgs)
         return hiddenBranch(inst).admitsStack(argIndex - 1);
     return admitsStackImpl(numB3Args(inst), m_numCheckArgs + 1, inst, argIndex);
+}
+
+bool CheckSpecial::admitsExtendedOffsetAddr(Inst& inst, unsigned argIndex)
+{
+    if (argIndex >= 1 && argIndex < 1 + m_numCheckArgs)
+        return false;
+    return admitsStack(inst, argIndex);
 }
 
 std::optional<unsigned> CheckSpecial::shouldTryAliasingDef(Inst& inst)

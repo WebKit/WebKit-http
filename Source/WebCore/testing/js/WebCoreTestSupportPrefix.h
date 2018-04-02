@@ -43,14 +43,6 @@
 
 #if OS(WINDOWS)
 
-#ifndef _WIN32_WINNT
-#define _WIN32_WINNT 0x601
-#endif
-
-#ifndef WINVER
-#define WINVER 0x0601
-#endif
-
 #if !USE(CURL)
 #ifndef _WINSOCKAPI_
 #define _WINSOCKAPI_ // Prevent inclusion of winsock.h in windows.h
@@ -71,7 +63,7 @@
 
 #include <fcntl.h>
 #include <sys/types.h>
-#if defined(__APPLE__)
+#if HAVE(REGEX_H)
 #include <regex.h>
 #endif
 

@@ -110,7 +110,11 @@ const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8Planar;
 const OSType videoCaptureFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
 #endif
 
-class AVVideoCaptureSourceFactory : public RealtimeMediaSource::VideoCaptureFactory {
+class AVVideoCaptureSourceFactory : public RealtimeMediaSource::VideoCaptureFactory
+#if PLATFORM(IOS)
+    , public RealtimeMediaSource::SingleSourceFactory<AVVideoCaptureSource>
+#endif
+{
 public:
     CaptureSourceOrError createVideoCaptureSource(const String& deviceID, const MediaConstraints* constraints) final {
         AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:deviceID];
@@ -132,10 +136,15 @@ CaptureSourceOrError AVVideoCaptureSource::create(AVCaptureDeviceTypedef* device
     return CaptureSourceOrError(WTFMove(source));
 }
 
-RealtimeMediaSource::VideoCaptureFactory& AVVideoCaptureSource::factory()
+static AVVideoCaptureSourceFactory& avVideoCaptureSourceFactory()
 {
     static NeverDestroyed<AVVideoCaptureSourceFactory> factory;
     return factory.get();
+}
+
+RealtimeMediaSource::VideoCaptureFactory& AVVideoCaptureSource::factory()
+{
+    return avVideoCaptureSourceFactory();
 }
 
 AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id)
@@ -145,6 +154,9 @@ AVVideoCaptureSource::AVVideoCaptureSource(AVCaptureDeviceTypedef* device, const
 
 AVVideoCaptureSource::~AVVideoCaptureSource()
 {
+#if PLATFORM(IOS)
+    avVideoCaptureSourceFactory().unsetActiveSource(*this);
+#endif
 }
 
 static void updateSizeMinMax(int& min, int& max, int value)
@@ -381,6 +393,10 @@ static inline int sensorOrientationFromVideoOutput(AVCaptureVideoDataOutputType*
 
 void AVVideoCaptureSource::setupCaptureSession()
 {
+#if PLATFORM(IOS)
+    avVideoCaptureSourceFactory().setActiveSource(*this);
+#endif
+
     NSError *error = nil;
     RetainPtr<AVCaptureDeviceInputType> videoIn = adoptNS([allocAVCaptureDeviceInputInstance() initWithDevice:device() error:&error]);
     if (error) {

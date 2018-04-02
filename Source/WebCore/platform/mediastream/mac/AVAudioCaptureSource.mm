@@ -77,7 +77,11 @@ SOFT_LINK_POINTER(AVFoundation, AVMediaTypeAudio, NSString *)
 
 namespace WebCore {
 
-class AVAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory {
+class AVAudioCaptureSourceFactory : public RealtimeMediaSource::AudioCaptureFactory
+#if PLATFORM(IOS)
+    , public RealtimeMediaSource::SingleSourceFactory<AVAudioCaptureSource>
+#endif
+{
 public:
     CaptureSourceOrError createAudioCaptureSource(const String& deviceID, const MediaConstraints* constraints) final {
         AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:deviceID];
@@ -97,19 +101,27 @@ CaptureSourceOrError AVAudioCaptureSource::create(AVCaptureDeviceTypedef* device
     return CaptureSourceOrError(WTFMove(source));
 }
 
-RealtimeMediaSource::AudioCaptureFactory& AVAudioCaptureSource::factory()
+static AVAudioCaptureSourceFactory& avAudioCaptureSourceFactory()
 {
     static NeverDestroyed<AVAudioCaptureSourceFactory> factory;
     return factory.get();
+}
+
+RealtimeMediaSource::AudioCaptureFactory& AVAudioCaptureSource::factory()
+{
+    return avAudioCaptureSourceFactory();
 }
 
 AVAudioCaptureSource::AVAudioCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id)
     : AVMediaCaptureSource(device, id, Type::Audio)
 {
 }
-    
+
 AVAudioCaptureSource::~AVAudioCaptureSource()
 {
+#if PLATFORM(IOS)
+    avAudioCaptureSourceFactory().unsetActiveSource(*this);
+#endif
     shutdownCaptureSession();
 }
 
@@ -133,6 +145,10 @@ void AVAudioCaptureSource::updateSettings(RealtimeMediaSourceSettings& settings)
 
 void AVAudioCaptureSource::setupCaptureSession()
 {
+#if PLATFORM(IOS)
+    avAudioCaptureSourceFactory().setActiveSource(*this);
+#endif
+
     RetainPtr<AVCaptureDeviceInputType> audioIn = adoptNS([allocAVCaptureDeviceInputInstance() initWithDevice:device() error:nil]);
 
     if (![session() canAddInput:audioIn.get()]) {

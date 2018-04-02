@@ -22,6 +22,7 @@
 
 import logging
 import os
+import time
 
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.crashlogs import CrashLogs
@@ -84,6 +85,15 @@ class DarwinPort(ApplePort):
         self._executive.popen([self.path_to_script('run-safari')] + self._arguments_for_configuration() + ['--no-saved-state', '-NSOpen', results_filename],
             cwd=self.webkit_base(), stdout=file(os.devnull), stderr=file(os.devnull))
 
+    @memoized
+    def path_to_crash_logs(self):
+        log_directory = self.host.filesystem.expanduser('~')
+        log_directory = self.host.filesystem.join(log_directory, 'Library', 'Logs')
+        diagnositc_reports_directory = self.host.filesystem.join(log_directory, 'DiagnosticReports')
+        if self.host.filesystem.exists(diagnositc_reports_directory):
+            return diagnositc_reports_directory
+        return self.host.filesystem.join(log_directory, 'CrashReporter')
+
     def _merge_crash_logs(self, logs, new_logs, crashed_processes):
         for test, crash_log in new_logs.iteritems():
             try:
@@ -97,11 +107,30 @@ class DarwinPort(ApplePort):
         return logs
 
     def _look_for_all_crash_logs_in_log_dir(self, newer_than):
-        crash_log = CrashLogs(self.host)
+        crash_log = CrashLogs(self.host, self.path_to_crash_logs())
         return crash_log.find_all_logs(include_errors=True, newer_than=newer_than)
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
-        return super(DarwinPort, self)._get_crash_log(name, pid, stdout, stderr, newer_than)
+        # Note that we do slow-spin here and wait, since it appears the time
+        # ReportCrash takes to actually write and flush the file varies when there are
+        # lots of simultaneous crashes going on.
+        time_fn = time_fn or time.time
+        sleep_fn = sleep_fn or time.sleep
+        crash_log = ''
+        crash_logs = CrashLogs(self.host, self.path_to_crash_logs())
+        now = time_fn()
+        deadline = now + 5 * int(self.get_option('child_processes', 1))
+        while not crash_log and now <= deadline:
+            crash_log = crash_logs.find_newest_log(name, pid, include_errors=True, newer_than=newer_than)
+            if not wait_for_log:
+                break
+            if not crash_log or not [line for line in crash_log.splitlines() if not line.startswith('ERROR')]:
+                sleep_fn(0.1)
+                now = time_fn()
+
+        if not crash_log:
+            return (stderr, None)
+        return (stderr, crash_log)
 
     def look_for_new_crash_logs(self, crashed_processes, start_time):
         """Since crash logs can take a long time to be written out if the system is
@@ -173,6 +202,26 @@ class DarwinPort(ApplePort):
                 if self._filesystem.isfile(spindump_file):
                     sample_files[test_name] = spindump_file
         return sample_files
+
+    def _path_to_image_diff(self):
+        # ImageDiff for DarwinPorts is a little complicated. It will either be in
+        # a directory named ../mac relative to the port build directory, in a directory
+        # named ../<build-type> relative to the port build directory or in the port build directory
+        _image_diff_in_build_path = super(DarwinPort, self)._path_to_image_diff()
+        _port_build_dir = self.host.filesystem.dirname(_image_diff_in_build_path)
+
+        # Test ../mac
+        _path_to_test = self.host.filesystem.join(_port_build_dir, '..', 'mac', 'ImageDiff')
+        if self.host.filesystem.exists(_path_to_test):
+            return _path_to_test
+
+        # Test ../<build-type>
+        _build_type = self.host.filesystem.basename(_port_build_dir).split('-')[0]
+        _path_to_test = self.host.filesystem.join(_port_build_dir, '..', _build_type, 'ImageDiff')
+        if self.host.filesystem.exists(_path_to_test):
+            return _path_to_test
+
+        return _image_diff_in_build_path
 
     def make_command(self):
         return self.xcrun_find('make', '/usr/bin/make')

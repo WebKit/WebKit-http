@@ -247,7 +247,7 @@ void ImageFrameCache::cacheAsyncFrameNativeImageAtIndex(NativeImagePtr&& nativeI
         return;
 
     ASSERT(index < m_frames.size());
-    ASSERT(!frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, decodingOptions));
+    ASSERT(!frameIsCompleteAtIndex(index) || !frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, decodingOptions));
 
     // Clean the old native image and set a new one
     cacheFrameNativeImageAtIndex(WTFMove(nativeImage), index, subsamplingLevel, decodingOptions);
@@ -310,16 +310,18 @@ bool ImageFrameCache::requestFrameAsyncDecodingAtIndex(size_t index, Subsampling
     if (!isDecoderAvailable())
         return false;
 
+    // Allow new requests for the same frame if the frame is incomplete.
     ASSERT(index < m_frames.size());
+    if (frameIsCompleteAtIndex(index)) {
+        // We need to coalesce multiple requests for decoding the same ImageFrame while it
+        // is still being decoded. This may happen if the image rectangle is repainted
+        // multiple times while the ImageFrame has not finished decoding.
+        if (frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(index, sizeForDrawing))
+            return true;
 
-    // We need to coalesce multiple requests for decoding the same ImageFrame while it
-    // is still being decoded. This may happen if the image rectangle is repainted
-    // multiple times while the ImageFrame has not finished decoding.
-    if (frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(index, sizeForDrawing))
-        return true;
-
-    if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, sizeForDrawing))
-        return false;
+        if (frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(index, subsamplingLevel, sizeForDrawing))
+            return false;
+    }
 
     if (!hasAsyncDecodingQueue())
         startAsyncDecodingQueue();
@@ -474,6 +476,12 @@ std::optional<IntPoint> ImageFrameCache::hotSpot()
 
 IntSize ImageFrameCache::size()
 {
+#if !USE(CG)
+    // It's possible that we have decoded the metadata, but not frame contents yet. In that case ImageDecoder claims to
+    // have the size available, but the frame cache is empty. Return the decoder size without caching in such case.
+    if (m_frames.isEmpty() && isDecoderAvailable())
+        return m_decoder->size();
+#endif
     return frameMetadataAtIndexCacheIfNeeded<IntSize>(0, (&ImageFrame::size), &m_size, ImageFrame::Caching::Metadata, SubsamplingLevel::Default);
 }
 

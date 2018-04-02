@@ -1,3 +1,349 @@
+2017-05-12  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include algorithm before using std::min
+        https://bugs.webkit.org/show_bug.cgi?id=171733
+
+        Reviewed by Chris Dumez.
+
+        * wtf/text/StringCommon.h:
+
+2017-05-12  Andreas Kling  <akling@apple.com>
+
+        More aggressive memory kill limits.
+        https://bugs.webkit.org/show_bug.cgi?id=172037
+        <rdar://problem/31969082>
+
+        Reviewed by Michael Saboff.
+
+        Bring down the memory kill limits to 4GB for active processes, and 2GB for inactive.
+        Also make MemoryUsagePolicy::Strict kick in above 1.5GB.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::thresholdForPolicy):
+
+2017-05-12  Michael Saboff  <msaboff@apple.com>
+
+        [iOS] Use memory footprint to dynamically adjust behavior of allocators
+        https://bugs.webkit.org/show_bug.cgi?id=171944
+
+        Reviewed by Filip Pizlo.
+
+        Moved the non-Windows implementation of RAMSize() to bmalloc/AvailableMemory.cpp and
+        called the function availableMemory().
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2017-05-12  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Add MemoryFootprintLinux to build
+
+        Unreviewed build fix after r216731.
+
+        * wtf/PlatformWPE.cmake:
+
+2017-05-12  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed trivial JSCOnly buildfix after r216731.
+        https://bugs.webkit.org/show_bug.cgi?id=171693
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2017-05-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] Implement memoryFootprint for Windows
+        https://bugs.webkit.org/show_bug.cgi?id=171693
+
+        Reviewed by Alex Christensen.
+
+        This patch implements memoryFootprint for Windows. In Windows, we calculate the size
+        of private working set. This can be done by enumerating private pages in working set.
+
+        And we also split MemoryFootprint.cpp to cocoa, linux, and win versions.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MallocPtr.h:
+        (WTF::MallocPtr::operator*):
+        (WTF::MallocPtr::operator->):
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/PlatformMac.cmake:
+        * wtf/PlatformWin.cmake:
+        * wtf/cocoa/MemoryFootprintCocoa.cpp: Copied from Source/WTF/wtf/MemoryFootprint.cpp.
+        (WTF::memoryFootprint):
+        * wtf/linux/MemoryFootprintLinux.cpp: Renamed from Source/WTF/wtf/MemoryFootprint.cpp.
+        (WTF::forEachLine):
+        (WTF::memoryFootprint):
+        * wtf/win/MemoryFootprintWin.cpp: Added.
+        (WTF::memoryFootprint):
+
+2017-05-11  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for regex.h
+        https://bugs.webkit.org/show_bug.cgi?id=171950
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h:
+
+2017-05-11  Chris Dumez  <cdumez@apple.com>
+
+        Annotate Ref::ptr() with RETURNS_NONNULL
+        https://bugs.webkit.org/show_bug.cgi?id=171996
+
+        Reviewed by Andreas Kling.
+
+        Annotate Ref::ptr() with RETURNS_NONNULL as it can never return null.
+
+        * wtf/Ref.h:
+        (WTF::Ref::ptr): Deleted.
+
+2017-05-11  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Vibration API
+        https://bugs.webkit.org/show_bug.cgi?id=171766
+
+        Rubber-stamped by Alexey Proskuryakov.
+
+        * wtf/FeatureDefines.h:
+
+2017-05-09  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * wtf/FeatureDefines.h:
+        Remove definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-10  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Remove some last remnants of the EFL port
+        https://bugs.webkit.org/show_bug.cgi?id=171922
+
+        Reviewed by Antonio Gomes.
+
+        The EFL port is no more.
+
+        * wtf/PlatformEfl.cmake: Removed.
+
+2017-05-10  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] StaticStringImpl in HTMLNames.cpp aren't constructed
+        https://bugs.webkit.org/show_bug.cgi?id=171800
+
+        Reviewed by Yusuke Suzuki.
+
+        Global variables of StaticStringImpl in HTMLNames.cpp aren't
+        constructed on Windows since Bug 171586. It seems that
+        reinterpret_cast prevents constexpr's compile time initialization
+        in VC++.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImplShape::StringImplShape): Added const char* and
+        const char16_t* members in the union. Do not use reinterpret_cast
+        in constexpr constructors.
+
+2017-05-09  Mark Lam  <mark.lam@apple.com>
+
+        Force StaticStringImpl constructor to use the constexpr versions of StringImplShape constructors.
+        https://bugs.webkit.org/show_bug.cgi?id=171861
+
+        Reviewed by Yusuke Suzuki.
+
+        This is strictly necessary for correctness of the StaticStringImpl implementation.
+        We force the constructor selection by adding an extra dummy argument to the
+        constexpr versions of the StringImplShape constructors to disambiguate them from
+        the non-constexpr versions.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImplShape::StringImplShape):
+        (WTF::StringImpl::StaticStringImpl::StaticStringImpl):
+
+2017-05-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Upstream the WPE port
+        https://bugs.webkit.org/show_bug.cgi?id=171110
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+        * wtf/PlatformWPE.cmake: Added.
+        * wtf/glib/RunLoopSourcePriority.h:
+
+2017-05-08  Mark Lam  <mark.lam@apple.com>
+
+        Speculative Windows build fix after r216428.
+        https://bugs.webkit.org/show_bug.cgi?id=171776
+
+        Not reviewed.
+
+        * wtf/StackTrace.h:
+
+2017-05-08  Mark Lam  <mark.lam@apple.com>
+
+        Introduce ExceptionScope::assertNoException() and releaseAssertNoException().
+        https://bugs.webkit.org/show_bug.cgi?id=171776
+
+        Reviewed by Keith Miller.
+
+        1. Add an option to skip some number of top frames when capturing the StackTrace.
+        2. Add an option to use an indentation string when dumping the StackTrace.
+
+        * wtf/StackTrace.cpp:
+        (WTF::StackTrace::captureStackTrace):
+        (WTF::StackTrace::dump):
+        * wtf/StackTrace.h:
+
+2017-05-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use memoryFootprint for MemoryUsage retrieval in Linux
+        https://bugs.webkit.org/show_bug.cgi?id=171757
+
+        Reviewed by Michael Catanzaro.
+
+        This patch leverages memoryFootprint() to retrieve physical footprint in Linux.
+
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::ReliefLogger::platformMemoryUsage):
+
+2017-05-05  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WTF] Do not export deleted constructor in StringView
+        https://bugs.webkit.org/show_bug.cgi?id=171751
+
+        Reviewed by Alexey Proskuryakov.
+
+        * wtf/text/StringView.h:
+
+2017-05-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][JSCOnly] Merge MainThread implementations and use generic one
+        https://bugs.webkit.org/show_bug.cgi?id=171738
+
+        Reviewed by Michael Catanzaro.
+
+        GLib MainThread implementation is generic enough to be used in JSCOnly.
+        We move it to generic/ and GTK (GLib ports) and JSCOnly use it.
+        And we also drop GLib MainThread's isMainThread function because
+        generic thread ID one is enough.
+
+        This patch also cleans up initializing main thread code by using std::call_once.
+
+        * wtf/MainThread.cpp:
+        (WTF::initializeMainThread):
+        (WTF::isMainThread):
+        (WTF::initializeMainThreadToProcessMainThread):
+        (WTF::initializeWebThread):
+        (WTF::canAccessThreadLocalDataForThread):
+        (WTF::initializeMainThreadOnce): Deleted.
+        (WTF::initializeMainThreadToProcessMainThreadOnce): Deleted.
+        (WTF::initializeWebThreadOnce): Deleted.
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformJSCOnly.cmake:
+        * wtf/generic/MainThreadGeneric.cpp:
+        (WTF::MainThreadDispatcher::MainThreadDispatcher):
+        (WTF::MainThreadDispatcher::schedule):
+        (WTF::MainThreadDispatcher::fired):
+        (WTF::scheduleDispatchFunctionsOnMainThread):
+        * wtf/glib/MainThreadGLib.cpp: Removed.
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216206.
+        https://bugs.webkit.org/show_bug.cgi?id=171714
+
+        Multiple LayoutTests crashing in Document::page() (Requested
+        by ap on #webkit).
+
+        Reverted changeset:
+
+        "Remove support for legacy Notifications"
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+        http://trac.webkit.org/changeset/216206
+
+2017-05-04  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove redundant macros that are set in the CMake config
+        https://bugs.webkit.org/show_bug.cgi?id=171571
+
+        Reviewed by Brent Fulgham.
+
+        * config.h:
+
+2017-05-04  Mark Lam  <mark.lam@apple.com>
+
+        NeverDestroyed<String>(ASCIILiteral(...)) is not thread safe.
+        https://bugs.webkit.org/show_bug.cgi?id=171586
+        <rdar://problem/31873190>
+
+        Reviewed by Yusuke Suzuki.
+
+        StaticStringImpl is meant to be thread-safe.  However, it has a bug: it did not
+        set the s_hashFlagDidReportCost flag.  As a result, if cost() is called on it,
+        different threads may try to change its flags bits at the same time.  This patch
+        changes StaticStringImpl to always set the s_hashFlagDidReportCost flag.
+
+        Also factored out StringImplShape and made StringImpl and StaticStringImpl extend
+        it.  This makes it more clear that the 2 are intended to have the same shape.
+        Note: there is already a static_assert that the 2 have the same size.  This
+        change also ensures that they both have the same shape, which is a requirement in
+        order for StaticStringImpl to work.
+
+        Introduced the MAKE_STATIC_STRING_IMPL macro as a convenient way to instantiate
+        StaticStringImpls from literal strings.  This allows us to trivially change
+
+            NeverDestroyed<String> myString(ASCIILiteral("myString"));
+
+        to ...
+
+            NeverDestroyed<String> myString(MAKE_STATIC_STRING_IMPL("myString"));
+
+        and by so doing, make it thread-safe.
+
+        MAKE_STATIC_STRING_IMPL instantiates a lambda function to create the static
+        StaticStringImpls.
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImplShape::StringImplShape):
+        (WTF::StringImpl::StringImpl):
+        (WTF::StringImpl::cost):
+        (WTF::StringImpl::setHash):
+        (WTF::StringImpl::StaticStringImpl::StaticStringImpl):
+        (WTF::StringImpl::StaticStringImpl::operator StringImpl&):
+        * wtf/text/WTFString.h:
+        (WTF::String::String):
+        * wtf/text/icu/TextBreakIteratorICU.h:
+        (WTF::caretRules):
+
+2017-05-04  Sam Weinig  <sam@webkit.org>
+
+        Remove support for legacy Notifications
+        https://bugs.webkit.org/show_bug.cgi?id=171487
+
+        Reviewed by Jon Lee.
+
+        * wtf/FeatureDefines.h:
+        Remove definition of ENABLE_LEGACY_NOTIFICATIONS.
+
+2017-05-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][JSCOnly] Implement memoryFootprint for Linux
+        https://bugs.webkit.org/show_bug.cgi?id=171680
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Darwin's phys_footprint returns the amount of dirty anonymous memory in the process.
+        This patch implements the same thing in Linux by reading /proc/self/smaps.
+        We sum sizes of private dirty pages in anonymous regions.
+
+        * wtf/MemoryFootprint.cpp:
+        (WTF::forEachLine):
+        (WTF::memoryFootprint):
+
 2017-05-03  Mark Lam  <mark.lam@apple.com>
 
         Use the CLoop for CPU(ARM64E).

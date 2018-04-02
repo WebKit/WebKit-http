@@ -25,14 +25,32 @@
                 waitForEventAndEnd("seeked");
             }
 
+            function errorCallbackVideo(event)
+            {
+                logResult(true, "errorCallbackVideo called.");
+                consoleWrite("");
+                endTest();
+            }
+
+            function errorCallbackTextTracks(event)
+            {
+                logResult(true, "errorCallbackTextTracks called.");
+                consoleWrite("");
+                endTest();
+            }
+
             function start()
             {
                 consoleWrite("<br><em>** Set video.src, wait for media data to load</em>");
                 findMediaElement();
+                
+                waitForEvent('addtrack', addtrack, false, true, video.textTracks);
+                waitForEvent('error', errorCallbackVideo, false, false, video);
+                waitForEvent('error', errorCallbackTextTracks, false, false, video.textTracks);
+
                 run("video.src = 'http://127.0.0.1:8000/media/resources/hls/metadata/prog_index.m3u8'");
 
                 consoleWrite("");
-                waitForEvent('addtrack', addtrack, false, true, video.textTracks);
             }
         </script>
     </head>

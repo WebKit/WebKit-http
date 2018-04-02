@@ -42,6 +42,10 @@ OBJC_CLASS NSView;
 typedef union _GdkEvent GdkEvent;
 #endif
 
+#if PLATFORM(WPE)
+struct wpe_input_axis_event;
+#endif
+
 namespace WebKit {
 
 class NativeWebWheelEvent : public WebWheelEvent {
@@ -51,6 +55,8 @@ public:
 #elif PLATFORM(GTK)
     NativeWebWheelEvent(const NativeWebWheelEvent&);
     NativeWebWheelEvent(GdkEvent*);
+#elif PLATFORM(WPE)
+    NativeWebWheelEvent(struct wpe_input_axis_event*, float deviceScaleFactor);
 #endif
 
 #if USE(APPKIT)
@@ -61,6 +67,8 @@ public:
     const BMessage* nativeEvent() const { return m_nativeEvent; }
 #elif PLATFORM(IOS)
     const void* nativeEvent() const { return 0; }
+#elif PLATFORM(WPE)
+    const void* nativeEvent() const { return nullptr; }
 #endif
 
 private:

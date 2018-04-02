@@ -32,7 +32,7 @@
 #include "ActiveDOMObject.h"
 #include "DoubleRange.h"
 #include "EventTarget.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "LongRange.h"
 #include "MediaStreamTrackPrivate.h"
 #include "MediaTrackConstraints.h"
@@ -71,9 +71,11 @@ public:
     bool ended() const;
 
     Ref<MediaStreamTrack> clone();
-    void stopTrack();
 
-    bool isCaptureTrack() const;
+    enum class StopMode { Silently, PostEvent };
+    void stopTrack(StopMode = StopMode::Silently);
+
+    bool isCaptureTrack() const { return m_private->isCaptureTrack(); }
 
     struct TrackSettings {
         std::optional<int> width;
@@ -106,7 +108,7 @@ public:
     TrackCapabilities getCapabilities() const;
 
     const MediaTrackConstraints& getConstraints() const { return m_constraints; }
-    void applyConstraints(const std::optional<MediaTrackConstraints>&, DOMPromise<void>&&);
+    void applyConstraints(const std::optional<MediaTrackConstraints>&, DOMPromiseDeferred<void>&&);
 
     RealtimeMediaSource& source() { return m_private->source(); }
     MediaStreamTrackPrivate& privateTrack() { return m_private.get(); }
@@ -150,7 +152,7 @@ private:
     Ref<MediaStreamTrackPrivate> m_private;
 
     MediaTrackConstraints m_constraints;
-    std::optional<DOMPromise<void>> m_promise;
+    std::optional<DOMPromiseDeferred<void>> m_promise;
     WeakPtrFactory<MediaStreamTrack> m_weakPtrFactory;
 
     bool m_ended { false };

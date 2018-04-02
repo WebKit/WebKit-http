@@ -41,7 +41,7 @@ typedef struct CGImage *CGImageRef;
 OBJC_CLASS NSImage;
 #elif PLATFORM(WIN)
 typedef struct HBITMAP__* HBITMAP;
-#elif PLATFORM(GTK)
+#elif USE(CAIRO)
 #include "RefPtrCairo.h"
 #elif PLATFORM(HAIKU)
 class BBitmap;
@@ -66,7 +66,7 @@ typedef RetainPtr<CGImageRef> DragImageRef;
 typedef RetainPtr<NSImage> DragImageRef;
 #elif PLATFORM(WIN)
 typedef HBITMAP DragImageRef;
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || PLATFORM(WPE)
 typedef RefPtr<cairo_surface_t> DragImageRef;
 #elif PLATFORM(HAIKU)
 typedef BBitmap* DragImageRef;
@@ -95,6 +95,9 @@ WEBCORE_EXPORT DragImageRef createDragImageForRange(Frame&, Range&, bool forceBl
 DragImageRef createDragImageForImage(Frame&, Node&, IntRect& imageRect, IntRect& elementRect);
 DragImageRef createDragImageForLink(Element&, URL&, const String& label, TextIndicatorData&, FontRenderingMode, float deviceScaleFactor);
 void deleteDragImage(DragImageRef);
+
+IntPoint dragOffsetForLinkDragImage(DragImageRef);
+FloatPoint anchorPointForLinkDragImage(DragImageRef);
 
 class DragImage final {
 public:

@@ -84,10 +84,6 @@
 #include "WebContextMenuItem.h"
 #endif
 
-#if ENABLE(VIBRATION)
-#include "WebVibrationProxy.h"
-#endif
-
 #if ENABLE(MEDIA_SESSION)
 #include "WebMediaSessionMetadata.h"
 #include <WebCore/MediaSessionEvents.h>
@@ -114,7 +110,7 @@ template<> struct ClientTraits<WKPagePolicyClientBase> {
 };
 
 template<> struct ClientTraits<WKPageUIClientBase> {
-    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8, WKPageUIClientV9> Versions;
+    typedef std::tuple<WKPageUIClientV0, WKPageUIClientV1, WKPageUIClientV2, WKPageUIClientV3, WKPageUIClientV4, WKPageUIClientV5, WKPageUIClientV6, WKPageUIClientV7, WKPageUIClientV8, WKPageUIClientV9, WKPageUIClientV10> Versions;
 };
 
 #if ENABLE(CONTEXT_MENUS)
@@ -360,16 +356,6 @@ WKInspectorRef WKPageGetInspector(WKPageRef pageRef)
     return toAPI(toImpl(pageRef)->inspector());
 }
 
-WKVibrationRef WKPageGetVibration(WKPageRef page)
-{
-#if ENABLE(VIBRATION)
-    return toAPI(toImpl(page)->vibration());
-#else
-    UNUSED_PARAM(page);
-    return 0;
-#endif
-}
-
 double WKPageGetEstimatedProgress(WKPageRef pageRef)
 {
     return toImpl(pageRef)->estimatedProgress();
@@ -422,7 +408,7 @@ void WKPageSetCustomTextEncodingName(WKPageRef pageRef, WKStringRef encodingName
 
 void WKPageTerminate(WKPageRef pageRef)
 {
-    toImpl(pageRef)->terminateProcess();
+    toImpl(pageRef)->process().requestTermination(ProcessTerminationReason::RequestedByClient);
 }
 
 WKStringRef WKPageGetSessionHistoryURLValueType()
@@ -1782,6 +1768,14 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
             m_client.fullscreenMayReturnToInline(toAPI(page), m_client.base.clientInfo);
         }
+        
+        void setHasVideoInPictureInPicture(WebPageProxy* page, bool hasVideoInPictureInPicture) override
+        {
+            if (!m_client.setHasVideoInPictureInPicture)
+                return;
+            
+            m_client.setHasVideoInPictureInPicture(toAPI(page), hasVideoInPictureInPicture, m_client.base.clientInfo);
+        }
 
         void close(WebPageProxy* page) override
         {
@@ -2400,13 +2394,15 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
             m_client.didReceiveAuthenticationChallenge(toAPI(&page), toAPI(authenticationChallenge), m_client.base.clientInfo);
         }
 
-        void processDidCrash(WebPageProxy& page, WebKit::ProcessCrashReason reason) override
+        void processDidTerminate(WebPageProxy& page, WebKit::ProcessTerminationReason reason) override
         {
-            if (m_client.webProcessDidCrash)
-                m_client.webProcessDidCrash(toAPI(&page), m_client.base.clientInfo);
+            if (m_client.webProcessDidTerminate) {
+                m_client.webProcessDidTerminate(toAPI(&page), toAPI(reason), m_client.base.clientInfo);
+                return;
+            }
 
-            if (m_client.webProcessDidCrashWithReason)
-                m_client.webProcessDidCrashWithReason(toAPI(&page), toAPI(reason), m_client.base.clientInfo);
+            if (m_client.webProcessDidCrash && reason != WebKit::ProcessTerminationReason::RequestedByClient)
+                m_client.webProcessDidCrash(toAPI(&page), m_client.base.clientInfo);
         }
 
         RefPtr<API::Data> webCryptoMasterKey(WebPageProxy& page) override
@@ -2675,6 +2671,16 @@ void WKPageSetMediaVolume(WKPageRef page, float volume)
 void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted)
 {
     toImpl(page)->setMuted(muted);
+}
+
+void WKPageSetMediaCaptureEnabled(WKPageRef page, bool enabled)
+{
+    toImpl(page)->setMediaCaptureEnabled(enabled);
+}
+
+bool WKPageGetMediaCaptureEnabled(WKPageRef page)
+{
+    return toImpl(page)->mediaCaptureEnabled();
 }
 
 void WKPageDidAllowPointerLock(WKPageRef page)

@@ -66,6 +66,8 @@ typedef WebAccessibilityObjectWrapper AccessibilityObjectWrapper;
 #elif PLATFORM(GTK)
 typedef struct _AtkObject AtkObject;
 typedef struct _AtkObject AccessibilityObjectWrapper;
+#elif PLATFORM(WPE)
+class AccessibilityObjectWrapper : public RefCounted<AccessibilityObjectWrapper> { };
 #else
 class AccessibilityObjectWrapper;
 #endif
@@ -967,7 +969,7 @@ public:
     bool hasContentEditableAttributeSet() const;
 
     bool supportsARIAReadOnly() const;
-    String ariaReadOnlyValue() const;
+    virtual String ariaReadOnlyValue() const;
 
     bool supportsARIAAutoComplete() const;
     String ariaAutoCompleteValue() const;
@@ -1152,6 +1154,8 @@ protected:
     COMPtr<AccessibilityObjectWrapper> m_wrapper;
 #elif PLATFORM(GTK)
     AtkObject* m_wrapper;
+#elif PLATFORM(WPE)
+    RefPtr<AccessibilityObjectWrapper> m_wrapper;
 #endif
 };
 

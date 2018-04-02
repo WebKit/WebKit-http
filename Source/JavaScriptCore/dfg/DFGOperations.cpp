@@ -841,7 +841,7 @@ EncodedJSValue JIT_OPERATION operationParseIntStringNoRadix(ExecState* exec, JSS
     NativeCallFrameTracer tracer(&vm, exec);
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto viewWithString = string->viewWithUnderlyingString(*exec);
+    auto viewWithString = string->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, { });
 
     // This version is as if radix was undefined. Hence, undefined.toNumber() === 0.
@@ -854,7 +854,7 @@ EncodedJSValue JIT_OPERATION operationParseIntString(ExecState* exec, JSString* 
     NativeCallFrameTracer tracer(&vm, exec);
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto viewWithString = string->viewWithUnderlyingString(*exec);
+    auto viewWithString = string->viewWithUnderlyingString(exec);
     RETURN_IF_EXCEPTION(scope, { });
 
     return parseIntResult(parseInt(viewWithString.view, radix));
@@ -1750,9 +1750,9 @@ JSCell* JIT_OPERATION operationStrCat2(ExecState* exec, EncodedJSValue a, Encode
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSString* str1 = JSValue::decode(a).toString(exec);
-    ASSERT(!scope.exception()); // Impossible, since we must have been given primitives.
+    scope.assertNoException(); // Impossible, since we must have been given primitives.
     JSString* str2 = JSValue::decode(b).toString(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
 
     scope.release();
     return jsString(exec, str1, str2);
@@ -1765,11 +1765,11 @@ JSCell* JIT_OPERATION operationStrCat3(ExecState* exec, EncodedJSValue a, Encode
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     JSString* str1 = JSValue::decode(a).toString(exec);
-    ASSERT(!scope.exception()); // Impossible, since we must have been given primitives.
+    scope.assertNoException(); // Impossible, since we must have been given primitives.
     JSString* str2 = JSValue::decode(b).toString(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
     JSString* str3 = JSValue::decode(c).toString(exec);
-    ASSERT(!scope.exception());
+    scope.assertNoException();
 
     scope.release();
     return jsString(exec, str1, str2, str3);

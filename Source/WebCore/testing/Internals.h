@@ -29,7 +29,7 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "ContextDestructionObserver.h"
 #include "ExceptionOr.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 #include "PageConsoleClient.h"
 #include "RealtimeMediaSource.h"
 #include <runtime/Float32Array.h>
@@ -76,7 +76,7 @@ class SourceBuffer;
 class StyleSheet;
 class TimeRanges;
 class TypeConversions;
-class WebGLRenderingContextBase;
+class WebGLRenderingContext;
 class XMLHttpRequest;
 
 class Internals final : public RefCounted<Internals>,  private ContextDestructionObserver
@@ -450,10 +450,6 @@ public:
 
     ExceptionOr<Ref<DOMRect>> selectionBounds();
 
-#if ENABLE(VIBRATION)
-    bool isVibrating();
-#endif
-
     ExceptionOr<bool> isPluginUnavailabilityIndicatorObscured(Element&);
     bool isPluginSnapshotted(Element&);
 
@@ -565,7 +561,7 @@ public:
     void setAsRunningUserScripts(Document&);
 
 #if ENABLE(WEBGL)
-    void simulateWebGLContextChanged(WebGLRenderingContextBase&);
+    void simulateWebGLContextChanged(WebGLRenderingContext&);
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -573,7 +569,7 @@ public:
     unsigned long trackAudioSampleCount() const { return m_trackAudioSampleCount; }
     unsigned long trackVideoSampleCount() const { return m_trackVideoSampleCount; }
     void observeMediaStreamTrack(MediaStreamTrack&);
-    using TrackFramePromise = DOMPromise<IDLInterface<ImageData>>;
+    using TrackFramePromise = DOMPromiseDeferred<IDLInterface<ImageData>>;
     void grabNextMediaStreamTrackFrame(TrackFramePromise&&);
 #endif
 

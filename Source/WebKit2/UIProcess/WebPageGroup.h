@@ -28,7 +28,6 @@
 
 #include "APIObject.h"
 #include "WebPageGroupData.h"
-#include "WebPageProxy.h"
 #include "WebProcessProxy.h"
 #include <WebCore/UserStyleSheetTypes.h>
 #include <wtf/Forward.h>
@@ -44,7 +43,7 @@ class WebUserContentControllerProxy;
 class WebPageGroup : public API::ObjectImpl<API::Object::Type::PageGroup> {
 public:
     WebPageGroup(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
-    static PassRefPtr<WebPageGroup> create(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
+    static Ref<WebPageGroup> create(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
     static Ref<WebPageGroup> createNonNull(const String& identifier = String(), bool visibleToInjectedBundle = true, bool visibleToHistoryClient = true);
     static WebPageGroup* get(uint64_t pageGroupID);
 

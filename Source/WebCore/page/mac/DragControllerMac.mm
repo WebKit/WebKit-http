@@ -50,8 +50,6 @@
 
 namespace WebCore {
 
-const int DragController::LinkDragBorderInset = -2;
-
 const int DragController::MaxOriginalImageArea = 1500 * 1500;
 const int DragController::DragIconRightInset = 7;
 const int DragController::DragIconBottomInset = 3;
@@ -92,6 +90,7 @@ const IntSize& DragController::maxDragImageSize()
 
 void DragController::cleanupAfterSystemDrag()
 {
+#if PLATFORM(MAC)
     // Drag has ended, dragEnded *should* have been called, however it is possible
     // for the UIDelegate to take over the drag, and fail to send the appropriate
     // drag termination event.  As dragEnded just resets drag variables, we just
@@ -100,6 +99,7 @@ void DragController::cleanupAfterSystemDrag()
     // is asynchronous.
     if (m_page.mainFrame().view()->platformWidget())
         dragEnded();
+#endif
 }
 
 #if ENABLE(DATA_INTERACTION)

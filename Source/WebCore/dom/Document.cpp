@@ -271,6 +271,11 @@
 #include "XSLTProcessor.h"
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+#include "MediaStream.h"
+#include "MediaStreamRegistry.h"
+#endif
+
 using namespace WTF;
 using namespace Unicode;
 
@@ -922,7 +927,7 @@ Ref<Text> Document::createEditingTextNode(const String& text)
 Ref<CSSStyleDeclaration> Document::createCSSStyleDeclaration()
 {
     Ref<MutableStyleProperties> propertySet(MutableStyleProperties::create());
-    return *propertySet->ensureCSSStyleDeclaration();
+    return propertySet->ensureCSSStyleDeclaration();
 }
 
 ExceptionOr<Ref<Node>> Document::importNode(Node& nodeToImport, bool deep)
@@ -1128,25 +1133,6 @@ ExceptionOr<Ref<Element>> Document::createElementNS(const AtomicString& namespac
         return createHTMLElementWithNameValidation(*this, parsedName);
 
     return createElement(parsedName, false);
-}
-
-String Document::readyState() const
-{
-    static NeverDestroyed<const String> loading(ASCIILiteral("loading"));
-    static NeverDestroyed<const String> interactive(ASCIILiteral("interactive"));
-    static NeverDestroyed<const String> complete(ASCIILiteral("complete"));
-
-    switch (m_readyState) {
-    case Loading:
-        return loading;
-    case Interactive:
-        return interactive;
-    case Complete:
-        return complete;
-    }
-
-    ASSERT_NOT_REACHED();
-    return String();
 }
 
 void Document::setReadyState(ReadyState readyState)
@@ -4211,14 +4197,31 @@ HTMLFrameOwnerElement* Document::ownerElement() const
     return frame()->ownerElement();
 }
 
+// https://html.spec.whatwg.org/#cookie-averse-document-object
+bool Document::isCookieAverse() const
+{
+    // A Document that has no browsing context is cookie-averse.
+    if (!frame())
+        return true;
+
+    URL cookieURL = this->cookieURL();
+
+    // This is not part of the specification but we have historically allowed cookies over file protocol
+    // and some developers rely on this for testing.
+    if (cookieURL.isLocalFile())
+        return false;
+
+    // A Document whose URL's scheme is not a network scheme is cookie-averse (https://fetch.spec.whatwg.org/#network-scheme).
+    return !cookieURL.protocolIsInHTTPFamily() && !cookieURL.protocolIs("ftp");
+}
+
 ExceptionOr<String> Document::cookie()
 {
     if (page() && !page()->settings().cookieEnabled())
         return String();
 
-    // FIXME: The HTML5 DOM spec states that this attribute can raise an
-    // INVALID_STATE_ERR exception on getting if the Document has no
-    // browsing context.
+    if (isCookieAverse())
+        return String();
 
     if (!securityOrigin().canAccessCookies())
         return Exception { SECURITY_ERR };
@@ -4238,9 +4241,8 @@ ExceptionOr<void> Document::setCookie(const String& value)
     if (page() && !page()->settings().cookieEnabled())
         return { };
 
-    // FIXME: The HTML5 DOM spec states that this attribute can raise an
-    // INVALID_STATE_ERR exception on setting if the Document has no
-    // browsing context.
+    if (isCookieAverse())
+        return { };
 
     if (!securityOrigin().canAccessCookies())
         return Exception { SECURITY_ERR };
@@ -6407,42 +6409,31 @@ Element* eventTargetElementForDocument(Document* document)
     return element;
 }
 
-void Document::adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(Vector<FloatQuad>& quads, const RenderStyle& style)
+void Document::convertAbsoluteToClientQuads(Vector<FloatQuad>& quads, const RenderStyle& style)
 {
     if (!view())
         return;
 
-    float zoom = style.effectiveZoom();
-    float inverseFrameScale = 1;
-    if (frame())
-        inverseFrameScale = 1 / frame()->frameScaleFactor();
+    const auto& frameView = *view();
+    float inverseFrameScale = frameView.absoluteToDocumentScaleFactor(style.effectiveZoom());
+    auto documentToClientOffset = frameView.documentToClientOffset();
 
-    LayoutRect visibleContentRect = view()->visibleContentRect();
     for (auto& quad : quads) {
-        quad.move(-visibleContentRect.x(), -visibleContentRect.y());
-        if (zoom != 1)
-            quad.scale(1 / zoom);
         if (inverseFrameScale != 1)
             quad.scale(inverseFrameScale);
+
+        quad.move(documentToClientOffset);
     }
 }
 
-void Document::adjustFloatRectForScrollAndAbsoluteZoomAndFrameScale(FloatRect& rect, const RenderStyle& style)
+void Document::convertAbsoluteToClientRect(FloatRect& rect, const RenderStyle& style)
 {
     if (!view())
         return;
 
-    float zoom = style.effectiveZoom();
-    float inverseFrameScale = 1;
-    if (frame())
-        inverseFrameScale = 1 / frame()->frameScaleFactor();
-
-    LayoutRect visibleContentRect = view()->visibleContentRect();
-    rect.move(-visibleContentRect.x(), -visibleContentRect.y());
-    if (zoom != 1)
-        rect.scale(1 / zoom);
-    if (inverseFrameScale != 1)
-        rect.scale(inverseFrameScale);
+    const auto& frameView = *view();
+    rect = frameView.absoluteToDocumentRect(rect, style.effectiveZoom()); 
+    rect = frameView.documentToClientRect(rect);
 }
 
 bool Document::hasActiveParser()
@@ -6968,8 +6959,19 @@ void Document::didRemoveInDocumentShadowRoot(ShadowRoot& shadowRoot)
 
 void Document::orientationChanged(int orientation)
 {
+    LOG(Events, "Document %p orientationChanged - orientation %d", this, orientation);
     dispatchWindowEvent(Event::create(eventNames().orientationchangeEvent, false, false));
     m_orientationNotifier.orientationChanged(orientation);
 }
+
+#if ENABLE(MEDIA_STREAM)
+void Document::stopMediaCapture()
+{
+    MediaStreamRegistry::shared().forEach([this](MediaStream& stream) {
+        if (stream.document() == this)
+            stream.endCaptureTracks();
+    });
+}
+#endif
 
 } // namespace WebCore

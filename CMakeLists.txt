@@ -28,6 +28,7 @@ set(ALL_PORTS
     Haiku
     JSCOnly
     Mac
+    WPE
     WinCairo
 )
 set(PORT "NOPORT" CACHE STRING "choose which WebKit port to build (one of ${ALL_PORTS})")

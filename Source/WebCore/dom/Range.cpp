@@ -536,6 +536,7 @@ static inline unsigned lengthOfContentsInNode(Node& node)
     // This switch statement must be consistent with that of Range::processContentsBetweenOffsets.
     switch (node.nodeType()) {
     case Node::DOCUMENT_TYPE_NODE:
+    case Node::ATTRIBUTE_NODE:
         return 0;
     case Node::TEXT_NODE:
     case Node::CDATA_SECTION_NODE:
@@ -543,7 +544,6 @@ static inline unsigned lengthOfContentsInNode(Node& node)
     case Node::PROCESSING_INSTRUCTION_NODE:
         return downcast<CharacterData>(node).length();
     case Node::ELEMENT_NODE:
-    case Node::ATTRIBUTE_NODE:
     case Node::DOCUMENT_NODE:
     case Node::DOCUMENT_FRAGMENT_NODE:
         return downcast<ContainerNode>(node).countChildNodes();
@@ -1797,7 +1797,7 @@ Vector<FloatQuad> Range::borderAndTextQuads(CoordinateSpace space) const
                 Vector<FloatQuad> elementQuads;
                 renderer->absoluteQuads(elementQuads);
                 if (space == CoordinateSpace::Client)
-                    node->document().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(elementQuads, renderer->style());
+                    node->document().convertAbsoluteToClientQuads(elementQuads, renderer->style());
                 quads.appendVector(elementQuads);
             }
         } else if (is<Text>(*node)) {
@@ -1806,7 +1806,7 @@ Vector<FloatQuad> Range::borderAndTextQuads(CoordinateSpace space) const
                 unsigned endOffset = node == &endContainer() ? m_end.offset() : std::numeric_limits<unsigned>::max();
                 auto textQuads = renderer->absoluteQuadsForRange(startOffset, endOffset);
                 if (space == CoordinateSpace::Client)
-                    node->document().adjustFloatQuadsForScrollAndAbsoluteZoomAndFrameScale(textQuads, renderer->style());
+                    node->document().convertAbsoluteToClientQuads(textQuads, renderer->style());
                 quads.appendVector(textQuads);
             }
         }

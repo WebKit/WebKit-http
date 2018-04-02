@@ -78,6 +78,8 @@ using PlatformCursor = NSCursor *;
 using PlatformCursor = GRefPtr<GdkCursor>;
 #elif PLATFORM(HAIKU)
 using PlatformCursor = BCursor*;
+#elif PLATFORM(WPE)
+using PlatformCursor = void*;
 #endif
 
 class Cursor {

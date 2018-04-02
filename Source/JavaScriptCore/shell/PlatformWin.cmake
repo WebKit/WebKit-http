@@ -32,7 +32,9 @@ add_library(testapiLib SHARED
     ../API/tests/FunctionOverridesTest.cpp
     ../API/tests/GlobalContextWithFinalizerTest.cpp
     ../API/tests/JSONParseTest.cpp
+    ../API/tests/JSObjectGetProxyTargetTest.cpp
     ../API/tests/PingPongStackOverflowTest.cpp
+    ../API/tests/MultithreadedMultiVMExecutionTest.cpp
     ../API/tests/testapi.c
     ../API/tests/TypedArrayCTest.cpp
 )

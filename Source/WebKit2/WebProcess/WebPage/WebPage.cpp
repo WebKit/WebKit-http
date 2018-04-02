@@ -57,6 +57,7 @@
 #include "SessionStateConversion.h"
 #include "SessionTracker.h"
 #include "ShareableBitmap.h"
+#include "UserMediaPermissionRequestManager.h"
 #include "VisitedLinkTableController.h"
 #include "WKBundleAPICast.h"
 #include "WKRetainPtr.h"
@@ -130,6 +131,7 @@
 #include <WebCore/DragController.h>
 #include <WebCore/DragData.h>
 #include <WebCore/Editing.h>
+#include <WebCore/Editor.h>
 #include <WebCore/ElementIterator.h>
 #include <WebCore/EventHandler.h>
 #include <WebCore/EventNames.h>
@@ -200,10 +202,6 @@
 
 #if ENABLE(MHTML)
 #include <WebCore/MHTMLArchive.h>
-#endif
-
-#if ENABLE(VIBRATION)
-#include "WebVibrationClient.h"
 #endif
 
 #if ENABLE(POINTER_LOCK)
@@ -344,7 +342,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_geolocationPermissionRequestManager(this)
 #endif
 #if ENABLE(MEDIA_STREAM)
-    , m_userMediaPermissionRequestManager(*this)
+    , m_userMediaPermissionRequestManager { std::make_unique<UserMediaPermissionRequestManager>(*this) }
 #endif
     , m_pageScrolledHysteresis([this](HysteresisState state) { if (state == HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisSeconds)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
@@ -353,6 +351,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_forceAlwaysUserScalable(parameters.ignoresViewportScaleLimits)
     , m_screenSize(parameters.screenSize)
     , m_availableScreenSize(parameters.availableScreenSize)
+    , m_allowsBlockSelection(parameters.allowsBlockSelection)
 #endif
     , m_layerVolatilityTimer(*this, &WebPage::layerVolatilityTimerFired)
     , m_activityState(parameters.activityState)
@@ -432,11 +431,8 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(GEOLOCATION)
     WebCore::provideGeolocationTo(m_page.get(), new WebGeolocationClient(this));
 #endif
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     WebCore::provideNotification(m_page.get(), new WebNotificationClient(this));
-#endif
-#if ENABLE(VIBRATION)
-    WebCore::provideVibrationTo(m_page.get(), new WebVibrationClient(this));
 #endif
 #if ENABLE(PROXIMITY_EVENTS)
     WebCore::provideDeviceProximityTo(m_page.get(), new WebDeviceProximityClient(this));
@@ -586,6 +582,18 @@ void WebPage::enableICECandidateFiltering()
 {
     m_page->rtcController().disableICECandidateFiltering();
 }
+
+#if USE(LIBWEBRTC)
+void WebPage::disableEnumeratingAllNetworkInterfaces()
+{
+    m_page->libWebRTCProvider().disableEnumeratingAllNetworkInterfaces();
+}
+
+void WebPage::enableEnumeratingAllNetworkInterfaces()
+{
+    m_page->libWebRTCProvider().enableEnumeratingAllNetworkInterfaces();
+}
+#endif
 #endif
 
 void WebPage::reinitializeWebPage(WebPageCreationParameters&& parameters)
@@ -2720,7 +2728,7 @@ void WebPage::setSessionID(SessionID sessionID)
     m_page->setSessionID(sessionID);
 }
 
-void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, DownloadID downloadID)
+void WebPage::didReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, const DownloadID& downloadID)
 {
     WebFrame* frame = WebProcess::singleton().webFrame(frameID);
     if (!frame)
@@ -3198,7 +3206,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setShouldDisplayTextDescriptions(store.getBoolValueForKey(WebPreferencesKey::shouldDisplayTextDescriptionsKey()));
 #endif
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     settings.setNotificationsEnabled(store.getBoolValueForKey(WebPreferencesKey::notificationsEnabledKey()));
 #endif
 
@@ -3324,6 +3332,10 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
 #endif
 
     settings.setSpringTimingFunctionEnabled(store.getBoolValueForKey(WebPreferencesKey::springTimingFunctionEnabledKey()));
+
+    settings.setConstantPropertiesEnabled(store.getBoolValueForKey(WebPreferencesKey::constantPropertiesEnabledKey()));
+
+    settings.setViewportFitEnabled(store.getBoolValueForKey(WebPreferencesKey::viewportFitEnabledKey()));
 
     settings.setVisualViewportEnabled(store.getBoolValueForKey(WebPreferencesKey::visualViewportEnabledKey()));
 
@@ -3499,7 +3511,7 @@ NotificationPermissionRequestManager* WebPage::notificationPermissionRequestMana
     return m_notificationPermissionRequestManager.get();
 }
 
-#if !PLATFORM(GTK) && !PLATFORM(COCOA)
+#if !PLATFORM(GTK) && !PLATFORM(COCOA) && !PLATFORM(WPE)
 bool WebPage::handleEditingKeyboardEvent(KeyboardEvent* evt)
 {
     Node* node = evt->target()->toNode();
@@ -3655,6 +3667,18 @@ void WebPage::mayPerformUploadDragDestinationAction()
         m_pendingDropExtensionsForFileUpload[i]->consumePermanently();
     m_pendingDropExtensionsForFileUpload.clear();
 }
+
+void WebPage::didStartDrag()
+{
+    m_isStartingDrag = false;
+    m_page->mainFrame().eventHandler().didStartDrag();
+}
+
+void WebPage::dragCancelled()
+{
+    m_isStartingDrag = false;
+    m_page->mainFrame().eventHandler().dragCancelled();
+}
     
 #endif // ENABLE(DRAG_SUPPORT)
 
@@ -3684,7 +3708,7 @@ void WebPage::unapplyEditCommand(uint64_t stepID)
     if (!step)
         return;
 
-    step->step()->unapply();
+    step->step().unapply();
 }
 
 void WebPage::reapplyEditCommand(uint64_t stepID)
@@ -3694,7 +3718,7 @@ void WebPage::reapplyEditCommand(uint64_t stepID)
         return;
 
     m_isInRedo = true;
-    step->step()->reapply();
+    step->step().reapply();
     m_isInRedo = false;
 }
 
@@ -3840,27 +3864,27 @@ void WebPage::didReceiveNotificationPermissionDecision(uint64_t notificationID, 
 #if ENABLE(MEDIA_STREAM)
 void WebPage::userMediaAccessWasGranted(uint64_t userMediaID, const String& audioDeviceUID, const String& videoDeviceUID)
 {
-    m_userMediaPermissionRequestManager.userMediaAccessWasGranted(userMediaID, audioDeviceUID, videoDeviceUID);
+    m_userMediaPermissionRequestManager->userMediaAccessWasGranted(userMediaID, audioDeviceUID, videoDeviceUID);
 }
 
 void WebPage::userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint)
 {
-    m_userMediaPermissionRequestManager.userMediaAccessWasDenied(userMediaID, static_cast<UserMediaRequest::MediaAccessDenialReason>(reason), invalidConstraint);
+    m_userMediaPermissionRequestManager->userMediaAccessWasDenied(userMediaID, static_cast<UserMediaRequest::MediaAccessDenialReason>(reason), invalidConstraint);
 }
 
 void WebPage::didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<CaptureDevice>& devices, const String& deviceIdentifierHashSalt, bool originHasPersistentAccess)
 {
-    m_userMediaPermissionRequestManager.didCompleteMediaDeviceEnumeration(userMediaID, devices, deviceIdentifierHashSalt, originHasPersistentAccess);
+    m_userMediaPermissionRequestManager->didCompleteMediaDeviceEnumeration(userMediaID, devices, deviceIdentifierHashSalt, originHasPersistentAccess);
 }
 #if ENABLE(SANDBOX_EXTENSIONS)
 void WebPage::grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions& extensions)
 {
-    m_userMediaPermissionRequestManager.grantUserMediaDeviceSandboxExtensions(extensions);
+    m_userMediaPermissionRequestManager->grantUserMediaDeviceSandboxExtensions(extensions);
 }
 
 void WebPage::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
 {
-    m_userMediaPermissionRequestManager.revokeUserMediaDeviceSandboxExtensions(extensionIDs);
+    m_userMediaPermissionRequestManager->revokeUserMediaDeviceSandboxExtensions(extensionIDs);
 }
 #endif
 #endif
@@ -4554,6 +4578,13 @@ void WebPage::setMediaVolume(float volume)
 void WebPage::setMuted(MediaProducer::MutedStateFlags state)
 {
     m_page->setMuted(state);
+}
+
+void WebPage::stopMediaCapture()
+{
+#if ENABLE(MEDIA_STREAM)
+    m_page->stopMediaCapture();
+#endif
 }
 
 #if ENABLE(MEDIA_SESSION)

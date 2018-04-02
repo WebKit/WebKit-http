@@ -185,42 +185,64 @@ void ScrollingStateScrollingNode::setExpectsWheelEventTestTrigger(bool expectsTe
     setPropertyChanged(ExpectsWheelEventTestTrigger);
 }
 
-void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, int indent, ScrollingStateTreeAsTextBehavior behavior) const
+void ScrollingStateScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior behavior) const
 {
-    ScrollingStateNode::dumpProperties(ts, indent, behavior);
+    ScrollingStateNode::dumpProperties(ts, behavior);
     
     if (m_scrollPosition != FloatPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(scroll position "
+        TextStream::GroupScope scope(ts);
+        ts << "scroll position "
             << TextStream::FormatNumberRespectingIntegers(m_scrollPosition.x()) << " "
-            << TextStream::FormatNumberRespectingIntegers(m_scrollPosition.y()) << ")\n";
+            << TextStream::FormatNumberRespectingIntegers(m_scrollPosition.y());
     }
 
     if (!m_scrollableAreaSize.isEmpty()) {
-        writeIndent(ts, indent + 1);
-        ts << "(scrollable area size "
+        TextStream::GroupScope scope(ts);
+        ts << "scrollable area size "
             << TextStream::FormatNumberRespectingIntegers(m_scrollableAreaSize.width()) << " "
-            << TextStream::FormatNumberRespectingIntegers(m_scrollableAreaSize.height()) << ")\n";
+            << TextStream::FormatNumberRespectingIntegers(m_scrollableAreaSize.height());
     }
 
     if (!m_totalContentsSize.isEmpty()) {
-        writeIndent(ts, indent + 1);
-        ts << "(contents size "
+        TextStream::GroupScope scope(ts);
+        ts << "contents size "
             << TextStream::FormatNumberRespectingIntegers(m_totalContentsSize.width()) << " "
-            << TextStream::FormatNumberRespectingIntegers(m_totalContentsSize.height()) << ")\n";
+            << TextStream::FormatNumberRespectingIntegers(m_totalContentsSize.height());
     }
+
+    if (m_reachableContentsSize != m_totalContentsSize)
+        ts.dumpProperty("reachable contents size", m_reachableContentsSize);
 
     if (m_requestedScrollPosition != IntPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(requested scroll position "
+        TextStream::GroupScope scope(ts);
+        ts << "requested scroll position "
             << TextStream::FormatNumberRespectingIntegers(m_requestedScrollPosition.x()) << " "
-            << TextStream::FormatNumberRespectingIntegers(m_requestedScrollPosition.y()) << ")\n";
+            << TextStream::FormatNumberRespectingIntegers(m_requestedScrollPosition.y());
     }
+    if (m_requestedScrollPositionRepresentsProgrammaticScroll)
+        ts.dumpProperty("requested scroll position represents programmatic scroll", m_requestedScrollPositionRepresentsProgrammaticScroll);
 
-    if (m_scrollOrigin != IntPoint()) {
-        writeIndent(ts, indent + 1);
-        ts << "(scroll origin " << m_scrollOrigin.x() << " " << m_scrollOrigin.y() << ")\n";
-    }
+    if (m_scrollOrigin != IntPoint())
+        ts.dumpProperty("scroll origin", m_scrollOrigin);
+
+#if ENABLE(CSS_SCROLL_SNAP)
+    if (m_snapOffsetsInfo.horizontalSnapOffsets.size())
+        ts.dumpProperty("horizontal snap offsets", m_snapOffsetsInfo.horizontalSnapOffsets);
+
+    if (m_snapOffsetsInfo.verticalSnapOffsets.size())
+        ts.dumpProperty("vertical snap offsets", m_snapOffsetsInfo.verticalSnapOffsets);
+
+    if (m_currentHorizontalSnapPointIndex)
+        ts.dumpProperty("current horizontal snap point index", m_currentHorizontalSnapPointIndex);
+
+    if (m_currentVerticalSnapPointIndex)
+        ts.dumpProperty("current vertical snap point index", m_currentVerticalSnapPointIndex);
+#endif
+
+    ts.dumpProperty("scrollable area parameters", m_scrollableAreaParameters);
+
+    if (m_expectsWheelEventTestTrigger)
+        ts.dumpProperty("expects wheel event test trigger", m_expectsWheelEventTestTrigger);
 }
 
 } // namespace WebCore

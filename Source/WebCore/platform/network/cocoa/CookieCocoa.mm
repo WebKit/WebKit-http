@@ -95,8 +95,12 @@ Cookie::operator NSHTTPCookie *() const
     if (portString)
         [properties setObject:portString forKey:NSHTTPCookiePort];
 
-    [properties setObject:@(secure) forKey:NSHTTPCookieSecure];
-    [properties setObject:(session ? @"TRUE" : @"FALSE") forKey:NSHTTPCookieDiscard];
+    if (secure)
+        [properties setObject:@YES forKey:NSHTTPCookieSecure];
+
+    if (session)
+        [properties setObject:@YES forKey:NSHTTPCookieDiscard];
+
     [properties setObject:@"1" forKey:NSHTTPCookieVersion];
 
     return [NSHTTPCookie cookieWithProperties:properties];

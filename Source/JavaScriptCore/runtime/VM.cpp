@@ -172,6 +172,9 @@ VM::VM(VMType vmType, HeapType heapType)
     , stringSpace("JSString", heap)
     , destructibleObjectSpace("JSDestructibleObject", heap)
     , segmentedVariableObjectSpace("JSSegmentedVariableObjectSpace", heap)
+#if ENABLE(WEBASSEMBLY)
+    , webAssemblyCodeBlockSpace("JSWebAssemblyCodeBlockSpace", heap)
+#endif
     , vmType(vmType)
     , clientData(0)
     , topVMEntryFrame(nullptr)
@@ -614,6 +617,11 @@ void VM::throwException(ExecState* exec, Exception* exception)
     interpreter->notifyDebuggerOfExceptionToBeThrown(*this, exec, exception);
 
     setException(exception);
+
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+    m_nativeStackTraceOfLastThrow = std::unique_ptr<StackTrace>(StackTrace::captureStackTrace(Options::unexpectedExceptionStackTraceLimit()));
+    m_throwingThread = currentThread();
+#endif
 }
 
 JSValue VM::throwException(ExecState* exec, JSValue thrownValue)
@@ -858,9 +866,9 @@ void VM::dumpTypeProfilerData()
     typeProfiler()->dumpTypeProfilerData(*this);
 }
 
-void VM::queueMicrotask(JSGlobalObject* globalObject, Ref<Microtask>&& task)
+void VM::queueMicrotask(JSGlobalObject& globalObject, Ref<Microtask>&& task)
 {
-    m_microtaskQueue.append(std::make_unique<QueuedTask>(*this, globalObject, WTFMove(task)));
+    m_microtaskQueue.append(std::make_unique<QueuedTask>(*this, &globalObject, WTFMove(task)));
 }
 
 void VM::drainMicrotasks()

@@ -36,7 +36,7 @@ typedef struct _CCECCryptor *CCECCryptorRef;
 typedef CCECCryptorRef PlatformECKey;
 #endif
 
-#if PLATFORM(GTK) || PLATFORM(HAIKU)
+#if PLATFORM(GTK) || PLATFORM(HAIKU) || PLATFORM(WPE)
 // gcry_sexp* equates gcry_sexp_t.
 struct gcry_sexp;
 typedef gcry_sexp* PlatformECKey;

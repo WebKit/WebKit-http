@@ -290,3 +290,9 @@ webkitImageReadyEventEnabled initial=false
 shouldSuppressKeyboardInputDuringProvisionalNavigation initial=false
 
 langAttributeAwareFormControlUIEnabled initial=false
+
+subresourceIntegrityEnabled initial=true
+
+constantPropertiesEnabled initial=false
+
+viewportFitEnabled initial=false

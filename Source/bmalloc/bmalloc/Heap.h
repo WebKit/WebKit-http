@@ -42,6 +42,10 @@
 #include <array>
 #include <mutex>
 
+#if BOS(DARWIN)
+#include <dispatch/dispatch.h>
+#endif
+
 namespace bmalloc {
 
 class BeginTag;
@@ -67,6 +71,11 @@ public:
     void shrinkLarge(std::lock_guard<StaticMutex>&, const Range&, size_t);
 
     void scavenge(std::unique_lock<StaticMutex>&, ScavengeMode);
+
+#if BPLATFORM(IOS)
+    size_t memoryFootprint();
+    double percentAvailableMemoryInUse();
+#endif
 
 #if BOS(DARWIN)
     void setScavengerThreadQOSClass(qos_class_t overrideClass) { m_requestedScavengerThreadQOSClass = overrideClass; }
@@ -105,6 +114,10 @@ private:
     void scavengeSmallPages(std::unique_lock<StaticMutex>&, ScavengeMode);
     void scavengeLargeObjects(std::unique_lock<StaticMutex>&, ScavengeMode);
 
+#if BPLATFORM(IOS)
+    void updateMemoryInUseParameters();
+#endif
+
     size_t m_vmPageSizePhysical;
     Vector<LineMetadata> m_smallLineMetadata;
     std::array<size_t, sizeClassCount> m_pageClasses;
@@ -125,10 +138,19 @@ private:
     Environment m_environment;
     DebugHeap* m_debugHeap;
 
+    std::chrono::milliseconds m_scavengeSleepDuration = { maxScavengeSleepDuration };
+
+#if BPLATFORM(IOS)
+    size_t m_maxAvailableMemory;
+    size_t m_memoryFootprint;
+    double m_percentAvailableMemoryInUse;
+#endif
+
     VMHeap m_vmHeap;
 
 #if BOS(DARWIN)
-    qos_class_t m_requestedScavengerThreadQOSClass { QOS_CLASS_UNSPECIFIED };
+    dispatch_source_t m_pressureHandlerDispatchSource;
+    qos_class_t m_requestedScavengerThreadQOSClass { QOS_CLASS_USER_INITIATED };
 #endif
 };
 
@@ -147,6 +169,18 @@ inline void Heap::derefSmallLine(std::lock_guard<StaticMutex>& lock, Object obje
         return;
     deallocateSmallLine(lock, object);
 }
+
+#if BPLATFORM(IOS)
+inline size_t Heap::memoryFootprint()
+{
+    return m_memoryFootprint;
+}
+
+inline double Heap::percentAvailableMemoryInUse()
+{
+    return m_percentAvailableMemoryInUse;
+}
+#endif
 
 } // namespace bmalloc
 

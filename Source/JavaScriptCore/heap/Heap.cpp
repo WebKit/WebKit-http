@@ -47,13 +47,16 @@
 #include "JSGlobalObject.h"
 #include "JSLock.h"
 #include "JSVirtualMachineInternal.h"
+#include "JSWebAssemblyCodeBlock.h"
 #include "MachineStackMarker.h"
+#include "MarkedAllocatorInlines.h"
 #include "MarkedSpaceInlines.h"
 #include "MarkingConstraintSet.h"
 #include "PreventCollectionScope.h"
 #include "SamplingProfiler.h"
 #include "ShadowChicken.h"
 #include "SpaceTimeMutatorScheduler.h"
+#include "SubspaceInlines.h"
 #include "SuperSampler.h"
 #include "StochasticSpaceTimeMutatorScheduler.h"
 #include "StopIfNecessaryTimer.h"
@@ -65,6 +68,9 @@
 #include "WasmMemory.h"
 #include "WeakSetInlines.h"
 #include <algorithm>
+#if PLATFORM(IOS)
+#include <bmalloc/bmalloc.h>
+#endif
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
 #include <wtf/ParallelVectorIterator.h>
@@ -109,10 +115,18 @@ size_t minHeapSize(HeapType heapType, size_t ramSize)
 
 size_t proportionalHeapSize(size_t heapSize, size_t ramSize)
 {
+#if PLATFORM(IOS)
+    size_t memoryFootprint = bmalloc::api::memoryFootprint();
+    if (memoryFootprint < ramSize * Options::smallHeapRAMFraction())
+        return Options::smallHeapGrowthFactor() * heapSize;
+    if (memoryFootprint < ramSize * Options::mediumHeapRAMFraction())
+        return Options::mediumHeapGrowthFactor() * heapSize;
+#else
     if (heapSize < ramSize * Options::smallHeapRAMFraction())
         return Options::smallHeapGrowthFactor() * heapSize;
     if (heapSize < ramSize * Options::mediumHeapRAMFraction())
         return Options::mediumHeapGrowthFactor() * heapSize;
+#endif
     return Options::largeHeapGrowthFactor() * heapSize;
 }
 
@@ -310,6 +324,10 @@ Heap::Heap(VM* vm, HeapType heapType)
     
     m_collectorSlotVisitor->optimizeForStoppedMutator();
 
+    // When memory is critical, allow allocating 25% of the amount above the critical threshold before collecting.
+    size_t memoryAboveCriticalThreshold = static_cast<size_t>(static_cast<double>(m_ramSize) * (1.0 - Options::criticalGCMemoryThreshold()));
+    m_maxEdenSizeWhenCritical = memoryAboveCriticalThreshold / 4;
+
     LockHolder locker(*m_threadLock);
     m_thread = adoptRef(new Thread(locker, *this));
 }
@@ -483,6 +501,16 @@ bool Heap::webAssemblyFastMemoriesThisCycleAtThreshold() const
     // a collection: get too close and we may be close to the actual limit.
     size_t fastMemoryThreshold = std::max<size_t>(1, Wasm::Memory::maxFastMemoryCount() / 2);
     return m_webAssemblyFastMemoriesAllocatedThisCycle > fastMemoryThreshold;
+}
+
+bool Heap::overCriticalMemoryThreshold() const
+{
+#if PLATFORM(IOS)
+    if (bmalloc::api::percentAvailableMemoryInUse() > Options::criticalGCMemoryThreshold())
+        return true;
+#endif
+
+    return false;
 }
 
 void Heap::reportAbandonedObjectGraph()
@@ -828,6 +856,22 @@ void Heap::deleteAllCodeBlocks(DeleteAllCodeEffort effort)
 
     for (ExecutableBase* executable : m_executables)
         executable->clearCode();
+
+#if ENABLE(WEBASSEMBLY)
+    {
+        // We must ensure that we clear the JS call ICs from Wasm. Otherwise, Wasm will
+        // have no idea that we cleared the code from all of the Executables in the
+        // VM. This could leave Wasm in an inconsistent state where it has an IC that
+        // points into a CodeBlock that could be dead. The IC will still succeed because
+        // it uses a callee check, but then it will call into dead code.
+        HeapIterationScope heapIterationScope(*this);
+        m_vm->webAssemblyCodeBlockSpace.forEachLiveCell([&] (HeapCell* cell, HeapCell::Kind kind) {
+            ASSERT_UNUSED(kind, kind == HeapCell::Kind::JSCell);
+            JSWebAssemblyCodeBlock* codeBlock = static_cast<JSWebAssemblyCodeBlock*>(cell);
+            codeBlock->clearJSCallICs(*m_vm);
+        });
+    }
+#endif
 }
 
 void Heap::deleteAllUnlinkedCodeBlocks(DeleteAllCodeEffort effort)
@@ -940,31 +984,52 @@ void Heap::sweepSynchronously()
     }
 }
 
-void Heap::collectAllGarbage()
+void Heap::collect(Synchronousness synchronousness, GCRequest request)
 {
-    if (!m_isSafeToCollect)
+    switch (synchronousness) {
+    case Async:
+        collectAsync(request);
         return;
-    
-    collectSync(CollectionScope::Full);
-
-    DeferGCForAWhile deferGC(*this);
-    if (UNLIKELY(Options::useImmortalObjects()))
-        sweeper()->stopSweeping();
-
-    bool alreadySweptInCollectSync = Options::sweepSynchronously();
-    if (!alreadySweptInCollectSync) {
-        if (Options::logGC())
-            dataLog("[GC<", RawPointer(this), ">: ");
-        sweepSynchronously();
-        if (Options::logGC())
-            dataLog("]\n");
+    case Sync:
+        collectSync(request);
+        return;
     }
-    m_objectSpace.assertNoUnswept();
-
-    sweepAllLogicallyEmptyWeakBlocks();
+    RELEASE_ASSERT_NOT_REACHED();
 }
 
-void Heap::collectAsync(std::optional<CollectionScope> scope)
+void Heap::collectNow(Synchronousness synchronousness, GCRequest request)
+{
+    switch (synchronousness) {
+    case Async: {
+        collectAsync(request);
+        stopIfNecessary();
+        return;
+    }
+        
+    case Sync: {
+        collectSync(request);
+        
+        DeferGCForAWhile deferGC(*this);
+        if (UNLIKELY(Options::useImmortalObjects()))
+            sweeper().stopSweeping();
+        
+        bool alreadySweptInCollectSync = Options::sweepSynchronously();
+        if (!alreadySweptInCollectSync) {
+            if (Options::logGC())
+                dataLog("[GC<", RawPointer(this), ">: ");
+            sweepSynchronously();
+            if (Options::logGC())
+                dataLog("]\n");
+        }
+        m_objectSpace.assertNoUnswept();
+        
+        sweepAllLogicallyEmptyWeakBlocks();
+        return;
+    } }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+void Heap::collectAsync(GCRequest request)
 {
     if (!m_isSafeToCollect)
         return;
@@ -972,38 +1037,25 @@ void Heap::collectAsync(std::optional<CollectionScope> scope)
     bool alreadyRequested = false;
     {
         LockHolder locker(*m_threadLock);
-        for (std::optional<CollectionScope> request : m_requests) {
-            if (scope) {
-                if (scope == CollectionScope::Eden) {
-                    alreadyRequested = true;
-                    break;
-                } else {
-                    RELEASE_ASSERT(scope == CollectionScope::Full);
-                    if (request == CollectionScope::Full) {
-                        alreadyRequested = true;
-                        break;
-                    }
-                }
-            } else {
-                if (!request || request == CollectionScope::Full) {
-                    alreadyRequested = true;
-                    break;
-                }
+        for (const GCRequest& previousRequest : m_requests) {
+            if (request.subsumedBy(previousRequest)) {
+                alreadyRequested = true;
+                break;
             }
         }
     }
     if (alreadyRequested)
         return;
 
-    requestCollection(scope);
+    requestCollection(request);
 }
 
-void Heap::collectSync(std::optional<CollectionScope> scope)
+void Heap::collectSync(GCRequest request)
 {
     if (!m_isSafeToCollect)
         return;
     
-    waitForCollection(requestCollection(scope));
+    waitForCollection(requestCollection(request));
 }
 
 bool Heap::shouldCollectInCollectorThread(const AbstractLocker&)
@@ -1108,12 +1160,11 @@ NEVER_INLINE bool Heap::runNotRunningPhase(GCConductor conn)
 NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
 {
     m_currentGCStartTime = MonotonicTime::now();
-        
-    std::optional<CollectionScope> scope;
+    
     {
         LockHolder locker(*m_threadLock);
         RELEASE_ASSERT(!m_requests.isEmpty());
-        scope = m_requests.first();
+        m_currentRequest = m_requests.first();
     }
         
     if (Options::logGC())
@@ -1125,8 +1176,8 @@ NEVER_INLINE bool Heap::runBeginPhase(GCConductor conn)
         dataLog("Collection scope already set during GC: ", *m_collectionScope, "\n");
         RELEASE_ASSERT_NOT_REACHED();
     }
-        
-    willStartCollection(scope);
+    
+    willStartCollection();
         
     if (UNLIKELY(m_verifier)) {
         // Verify that live objects from the last GC cycle haven't been corrupted by
@@ -1394,7 +1445,10 @@ NEVER_INLINE bool Heap::runEndPhase(GCConductor conn)
     }
 
     didFinishCollection();
-
+    
+    if (m_currentRequest.didFinishEndPhase)
+        m_currentRequest.didFinishEndPhase->run();
+    
     if (false) {
         dataLog("Heap state after GC:\n");
         m_objectSpace.dumpBits();
@@ -1947,6 +2001,9 @@ void Heap::finalize()
     if (HasOwnPropertyCache* cache = vm()->hasOwnPropertyCache())
         cache->clear();
     
+    for (const HeapFinalizerCallback& callback : m_heapFinalizerCallbacks)
+        callback.run(*vm());
+    
     if (Options::sweepSynchronously())
         sweepSynchronously();
 
@@ -1956,7 +2013,7 @@ void Heap::finalize()
     }
 }
 
-Heap::Ticket Heap::requestCollection(std::optional<CollectionScope> scope)
+Heap::Ticket Heap::requestCollection(GCRequest request)
 {
     stopIfNecessary();
     
@@ -1974,7 +2031,7 @@ Heap::Ticket Heap::requestCollection(std::optional<CollectionScope> scope)
         m_worldState.exchangeOr(mutatorHasConnBit);
     }
     
-    m_requests.append(scope);
+    m_requests.append(request);
     m_lastGrantedTicket++;
     if (!(m_worldState.load() & mutatorHasConnBit))
         m_threadCondition->notifyOne(locker);
@@ -2005,12 +2062,12 @@ void Heap::suspendCompilerThreads()
 #endif
 }
 
-void Heap::willStartCollection(std::optional<CollectionScope> scope)
+void Heap::willStartCollection()
 {
     if (Options::logGC())
         dataLog("=> ");
     
-    if (shouldDoFullCollection(scope)) {
+    if (shouldDoFullCollection()) {
         m_collectionScope = CollectionScope::Full;
         m_shouldDoFullCollection = false;
         if (Options::logGC())
@@ -2229,9 +2286,9 @@ GCActivityCallback* Heap::edenActivityCallback()
     return m_edenActivityCallback.get();
 }
 
-IncrementalSweeper* Heap::sweeper()
+IncrementalSweeper& Heap::sweeper()
 {
-    return m_sweeper.get();
+    return *m_sweeper;
 }
 
 void Heap::setGarbageCollectionTimerEnabled(bool enable)
@@ -2284,31 +2341,31 @@ void Heap::addExecutable(ExecutableBase* executable)
     m_executables.append(executable);
 }
 
-void Heap::collectAllGarbageIfNotDoneRecently()
+void Heap::collectNowFullIfNotDoneRecently(Synchronousness synchronousness)
 {
     if (!m_fullActivityCallback) {
-        collectAllGarbage();
+        collectNow(synchronousness, CollectionScope::Full);
         return;
     }
 
-    if (m_fullActivityCallback->didSyncGCRecently()) {
+    if (m_fullActivityCallback->didGCRecently()) {
         // A synchronous GC was already requested recently so we merely accelerate next collection.
         reportAbandonedObjectGraph();
         return;
     }
 
-    m_fullActivityCallback->setDidSyncGCRecently();
-    collectAllGarbage();
+    m_fullActivityCallback->setDidGCRecently();
+    collectNow(synchronousness, CollectionScope::Full);
 }
 
-bool Heap::shouldDoFullCollection(std::optional<CollectionScope> scope) const
+bool Heap::shouldDoFullCollection() const
 {
     if (!Options::useGenerationalGC())
         return true;
 
-    if (!scope)
-        return m_shouldDoFullCollection || webAssemblyFastMemoriesThisCycleAtThreshold();
-    return *scope == CollectionScope::Full;
+    if (!m_currentRequest.scope)
+        return m_shouldDoFullCollection || webAssemblyFastMemoriesThisCycleAtThreshold() || overCriticalMemoryThreshold();
+    return *m_currentRequest.scope == CollectionScope::Full;
 }
 
 void Heap::addLogicallyEmptyWeakBlock(WeakBlock* block)
@@ -2458,8 +2515,15 @@ void Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
         if (m_bytesAllocatedThisCycle <= Options::gcMaxHeapSize())
             return;
     } else {
+        size_t bytesAllowedThisCycle = m_maxEdenSize;
+
+#if PLATFORM(IOS)
+        if (overCriticalMemoryThreshold())
+            bytesAllowedThisCycle = std::min(m_maxEdenSizeWhenCritical, bytesAllowedThisCycle);
+#endif
+
         if (!webAssemblyFastMemoriesThisCycleAtThreshold()
-            && m_bytesAllocatedThisCycle <= m_maxEdenSize)
+            && m_bytesAllocatedThisCycle <= bytesAllowedThisCycle)
             return;
     }
 
@@ -2786,6 +2850,16 @@ void Heap::performIncrement(size_t bytes)
     size_t bytesVisited = slotVisitor.performIncrementOfDraining(static_cast<size_t>(targetBytes));
     // incrementBalance may go negative here because it'll remember how many bytes we overshot.
     m_incrementBalance -= bytesVisited;
+}
+
+void Heap::addHeapFinalizerCallback(const HeapFinalizerCallback& callback)
+{
+    m_heapFinalizerCallbacks.append(callback);
+}
+
+void Heap::removeHeapFinalizerCallback(const HeapFinalizerCallback& callback)
+{
+    m_heapFinalizerCallbacks.removeFirst(callback);
 }
 
 } // namespace JSC

@@ -285,7 +285,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     notifyThisWebProcessPoolWasCreated();
 }
 
-#if !PLATFORM(COCOA) && !PLATFORM(GTK)
+#if !PLATFORM(COCOA) && !PLATFORM(GTK) && !PLATFORM(WPE)
 void WebProcessPool::platformInitialize()
 {
 }
@@ -504,32 +504,37 @@ void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::
 }
 
 #if ENABLE(DATABASE_PROCESS)
-void WebProcessPool::ensureDatabaseProcess()
+void WebProcessPool::ensureDatabaseProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore)
 {
-    if (m_databaseProcess)
-        return;
-
-    m_databaseProcess = DatabaseProcessProxy::create(this);
-
     // *********
     // IMPORTANT: Do not change the directory structure for indexed databases on disk without first consulting a reviewer from Apple (<rdar://problem/17454712>)
     // *********
-    DatabaseProcessCreationParameters parameters;
-#if ENABLE(INDEXED_DATABASE)
-    ASSERT(!m_configuration->indexedDBDatabaseDirectory().isEmpty());
 
-    parameters.sessionID = websiteDataStore().websiteDataStore().sessionID();
-    parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
-    SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
+    if (!m_databaseProcess) {
+        m_databaseProcess = DatabaseProcessProxy::create(this);
+
+        DatabaseProcessCreationParameters parameters;
+#if ENABLE(INDEXED_DATABASE)
+        ASSERT(!m_configuration->indexedDBDatabaseDirectory().isEmpty());
+
+        parameters.sessionID = websiteDataStore().websiteDataStore().sessionID();
+        parameters.indexedDatabaseDirectory = m_configuration->indexedDBDatabaseDirectory();
+        SandboxExtension::createHandleForReadWriteDirectory(parameters.indexedDatabaseDirectory, parameters.indexedDatabaseDirectoryExtensionHandle);
 #endif
 
-    ASSERT(!parameters.indexedDatabaseDirectory.isEmpty());
-    m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(parameters), 0);
+        ASSERT(!parameters.indexedDatabaseDirectory.isEmpty());
+        m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(parameters), 0);
+    }
+
+    if (!relevantDataStore || relevantDataStore == &websiteDataStore().websiteDataStore())
+        return;
+
+    m_databaseProcess->send(Messages::DatabaseProcess::InitializeWebsiteDataStore(relevantDataStore->databaseProcessParameters()), 0);
 }
 
 void WebProcessPool::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    ensureDatabaseProcess();
+    ensureDatabaseProcessAndWebsiteDataStore(nullptr);
 
     m_databaseProcess->getDatabaseProcessConnection(WTFMove(reply));
 }
@@ -709,7 +714,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 
     parameters.defaultRequestTimeoutInterval = API::URLRequest::defaultTimeoutInterval();
 
-#if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+#if ENABLE(NOTIFICATIONS)
     // FIXME: There should be a generic way for supplements to add to the intialization parameters.
     supplement<WebNotificationManagerProxy>()->populateCopyOfNotificationPermissions(parameters.notificationPermissions);
 #endif
@@ -1537,7 +1542,7 @@ void WebProcessPool::plugInDidReceiveUserInteraction(unsigned plugInOriginHash, 
     m_plugInAutoStartProvider.didReceiveUserInteraction(plugInOriginHash, sessionID);
 }
 
-PassRefPtr<API::Dictionary> WebProcessPool::plugInAutoStartOriginHashes() const
+Ref<API::Dictionary> WebProcessPool::plugInAutoStartOriginHashes() const
 {
     return m_plugInAutoStartProvider.autoStartOriginsTableCopy();
 }

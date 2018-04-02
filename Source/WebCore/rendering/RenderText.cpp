@@ -29,6 +29,8 @@
 #include "BreakLines.h"
 #include "BreakingContext.h"
 #include "CharacterProperties.h"
+#include "DocumentMarker.h"
+#include "DocumentMarkerController.h"
 #include "EllipsisBox.h"
 #include "FloatQuad.h"
 #include "Frame.h"
@@ -41,6 +43,7 @@
 #include "RenderInline.h"
 #include "RenderLayer.h"
 #include "RenderView.h"
+#include "RenderedDocumentMarker.h"
 #include "Settings.h"
 #include "SimpleLineLayoutFunctions.h"
 #include "Text.h"
@@ -1063,6 +1066,27 @@ bool RenderText::containsOnlyWhitespace(unsigned from, unsigned len) const
     return currPos >= (from + len);
 }
 
+Vector<std::pair<unsigned, unsigned>> RenderText::draggedContentRangesBetweenOffsets(unsigned startOffset, unsigned endOffset) const
+{
+    auto markers = document().markers().markersFor(textNode(), DocumentMarker::DraggedContent);
+    if (markers.isEmpty())
+        return { };
+
+    Vector<std::pair<unsigned, unsigned>> draggedContentRanges;
+    for (auto* marker : markers) {
+        unsigned markerStart = std::max(marker->startOffset(), startOffset);
+        unsigned markerEnd = std::min(marker->endOffset(), endOffset);
+        if (markerStart >= markerEnd || markerStart > endOffset || markerEnd < startOffset)
+            continue;
+
+        std::pair<unsigned, unsigned> draggedContentRange;
+        draggedContentRange.first = markerStart;
+        draggedContentRange.second = markerEnd;
+        draggedContentRanges.append(draggedContentRange);
+    }
+    return draggedContentRanges;
+}
+
 IntPoint RenderText::firstRunLocation() const
 {
     if (auto* layout = simpleLineLayout())
@@ -1281,7 +1305,7 @@ void RenderText::setText(const String& text, bool force)
         downcast<RenderBlockFlow>(*parent()).invalidateLineLayoutPath();
     
     if (AXObjectCache* cache = document().existingAXObjectCache())
-        cache->deferTextChanged(*this);
+        cache->deferTextChangedIfNeeded(textNode());
 }
 
 String RenderText::textWithoutConvertingBackslashToYenSymbol() const

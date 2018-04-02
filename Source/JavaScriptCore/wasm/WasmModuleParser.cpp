@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,12 +30,10 @@
 
 #include "IdentifierInlines.h"
 #include "JSWebAssemblyTable.h"
-#include "WasmFormat.h"
 #include "WasmMemoryInformation.h"
+#include "WasmNameSectionParser.h"
 #include "WasmOps.h"
 #include "WasmSections.h"
-
-#include <sys/mman.h>
 
 namespace JSC { namespace Wasm {
 
@@ -55,8 +53,7 @@ auto ModuleParser::parse() -> Result
     WASM_PARSER_FAIL_IF(length() < minSize, "expected a module of at least ", minSize, " bytes");
     WASM_PARSER_FAIL_IF(!consumeCharacter(0) || !consumeString("asm"), "modules doesn't start with '\\0asm'");
     WASM_PARSER_FAIL_IF(!parseUInt32(versionNumber), "can't parse version number");
-    if (versionNumber != 0xD) // FIXME Stop supporting version 0xD temporarily. https://bugs.webkit.org/show_bug.cgi?id=168788
-        WASM_PARSER_FAIL_IF(versionNumber != expectedVersionNumber, "unexpected version number ", versionNumber, " expected ", expectedVersionNumber);
+    WASM_PARSER_FAIL_IF(versionNumber != expectedVersionNumber, "unexpected version number ", versionNumber, " expected ", expectedVersionNumber);
 
     Section previousSection = Section::Custom;
     while (m_offset < length()) {
@@ -156,8 +153,8 @@ auto ModuleParser::parseImport() -> PartialResult
     for (uint32_t importNumber = 0; importNumber < importCount; ++importNumber) {
         uint32_t moduleLen;
         uint32_t fieldLen;
-        Vector<LChar> moduleString;
-        Vector<LChar> fieldString;
+        Name moduleString;
+        Name fieldString;
         ExternalKind kind;
         unsigned kindIndex { 0 };
 
@@ -368,7 +365,7 @@ auto ModuleParser::parseExport() -> PartialResult
     HashSet<String> exportNames;
     for (uint32_t exportNumber = 0; exportNumber < exportCount; ++exportNumber) {
         uint32_t fieldLen;
-        Vector<LChar> fieldString;
+        Name fieldString;
         ExternalKind kind;
         unsigned kindIndex;
 
@@ -605,7 +602,14 @@ auto ModuleParser::parseCustom(uint32_t sectionLength) -> PartialResult
         WASM_PARSER_FAIL_IF(!parseUInt8(byte), "can't get ", byteNumber, "th data byte from ", customSectionNumber, "th custom section");
         section.payload.uncheckedAppend(byte);
     }
-    
+
+    Name nameName = { 'n', 'a', 'm', 'e' };
+    if (section.name == nameName) {
+        NameSectionParser nameSectionParser(section.payload.begin(), section.payload.size(), m_info);
+        if (auto nameSection = nameSectionParser.parse())
+            m_info->nameSection = WTFMove(*nameSection);
+    }
+
     m_info->customSections.uncheckedAppend(WTFMove(section));
 
     return { };

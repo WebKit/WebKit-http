@@ -68,6 +68,9 @@ class IOSDevicePort(IOSPort):
         return port_name
 
     # FIXME: These need device implementations <rdar://problem/30497991>.
+    def path_to_crash_logs(self):
+        raise NotImplementedError
+
     def check_for_leaks(self, process_name, process_pid):
         pass
 
@@ -86,6 +89,9 @@ class IOSDevicePort(IOSPort):
 
     def operating_system(self):
         return 'ios-device'
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
+        return (stderr, None)
 
     def _create_devices(self, device_class):
         if not apple_additions():

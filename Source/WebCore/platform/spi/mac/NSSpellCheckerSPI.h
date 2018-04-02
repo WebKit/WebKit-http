@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#if HAVE(ADVANCED_SPELL_CHECKING)
+#if PLATFORM(MAC)
 
 #if USE(APPLE_INTERNAL_SDK)
 
@@ -31,12 +31,20 @@
 
 #else
 
+#if HAVE(ADVANCED_SPELL_CHECKING)
 extern NSString *NSTextCheckingInsertionPointKey;
+#endif
 
 @interface NSSpellChecker ()
+
+#if HAVE(ADVANCED_SPELL_CHECKING)
 - (BOOL)deletesAutospaceBeforeString:(NSString *)string language:(NSString *)language;
+#endif
+
+- (void)_preflightChosenSpellServer;
+
 @end
 
 #endif
 
-#endif // HAVE(ADVANCED_SPELL_CHECKING)
+#endif // PLATFORM(MAC)

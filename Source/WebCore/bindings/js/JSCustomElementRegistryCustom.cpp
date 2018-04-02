@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -32,7 +32,7 @@
 #include "JSCustomElementInterface.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConvert.h"
-#include "JSDOMPromise.h"
+#include "JSDOMPromiseDeferred.h"
 
 using namespace JSC;
 
@@ -206,7 +206,7 @@ JSValue JSCustomElementRegistry::whenDefined(ExecState& state)
 
     if (UNLIKELY(scope.exception())) {
         rejectPromiseWithExceptionIfAny(state, *globalObject(), *promiseDeferred);
-        ASSERT(!scope.exception());
+        scope.assertNoException();
         return promiseDeferred->promise();
     }
 

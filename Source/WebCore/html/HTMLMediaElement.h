@@ -93,7 +93,7 @@ class VideoTrackList;
 class VideoTrackPrivate;
 class WebKitMediaKeys;
 
-template<typename> class DOMPromise;
+template<typename> class DOMPromiseDeferred;
 
 #if ENABLE(VIDEO_TRACK)
 using CueIntervalTree = PODIntervalTree<MediaTime, TextTrackCue*>;
@@ -130,6 +130,7 @@ class HTMLMediaElement
 #endif
 {
 public:
+    WeakPtr<HTMLMediaElement> createWeakPtr() { return m_weakFactory.createWeakPtr(); }
     MediaPlayer* player() const { return m_player.get(); }
 
     virtual bool isVideo() const { return false; }
@@ -238,7 +239,7 @@ public:
     bool loop() const;
     void setLoop(bool b);
 
-    void play(DOMPromise<void>&&);
+    void play(DOMPromiseDeferred<void>&&);
 
     WEBCORE_EXPORT void play() override;
     WEBCORE_EXPORT void pause() override;
@@ -855,6 +856,7 @@ private:
     void handleSeekToPlaybackPosition(double);
     void seekToPlaybackPositionEndedTimerFired();
 
+    WeakPtrFactory<HTMLMediaElement> m_weakFactory;
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
@@ -871,7 +873,7 @@ private:
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
-    Vector<DOMPromise<void>> m_pendingPlayPromises;
+    Vector<DOMPromiseDeferred<void>> m_pendingPlayPromises;
 
     double m_requestedPlaybackRate { 1 };
     double m_reportedPlaybackRate { 1 };
@@ -1020,7 +1022,7 @@ private:
     bool m_haveVisibleTextTrack : 1;
     bool m_processingPreferenceChange : 1;
 
-    PlaybackWithoutUserGesture m_playbackWithoutUserGesture;
+    PlaybackWithoutUserGesture m_playbackWithoutUserGesture { PlaybackWithoutUserGesture::None };
     std::optional<MediaTime> m_playbackWithoutUserGestureStartedTime;
 
     String m_subtitleTrackLanguage;

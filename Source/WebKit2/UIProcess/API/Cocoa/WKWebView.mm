@@ -1201,6 +1201,11 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
     return [_configuration selectionGranularity];
 }
 
+- (BOOL)_allowsBlockSelection
+{
+    return [_configuration _allowsBlockSelection];
+}
+
 - (void)_setHasCustomContentView:(BOOL)pageHasCustomContentView loadedMIMEType:(const WTF::String&)mimeType
 {
     if (pageHasCustomContentView) {
@@ -1463,6 +1468,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     if (![self usesStandardContentView])
         return;
 
+    LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
+
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         if (_resizeAnimationTransformTransactionID && layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID.value()) {
             _resizeAnimationTransformTransactionID = std::nullopt;
@@ -1625,7 +1632,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
     _scaleToRestore = scale;
 }
 
-- (PassRefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
+- (RefPtr<WebKit::ViewSnapshot>)_takeViewSnapshot
 {
     float deviceScale = WebCore::screenScaleFactor();
     WebCore::FloatSize snapshotSize(self.bounds.size);
@@ -2170,12 +2177,17 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
     [self _scheduleVisibleContentRectUpdateAfterScrollInView:scrollView];
 }
 
-- (CGRect)_visibleRectInEnclosingScrollView:(UIScrollView *)enclosingScrollView
+- (UIView *)_enclosingViewForExposedRectComputation
 {
-    if (!enclosingScrollView)
+    return [self _scroller];
+}
+
+- (CGRect)_visibleRectInEnclosingView:(UIView *)enclosingView
+{
+    if (!enclosingView)
         return self.bounds;
 
-    CGRect exposedRect = [enclosingScrollView convertRect:enclosingScrollView.bounds toView:self];
+    CGRect exposedRect = [enclosingView convertRect:enclosingView.bounds toView:self];
     return CGRectIntersectsRect(exposedRect, self.bounds) ? CGRectIntersection(exposedRect, self.bounds) : CGRectZero;
 }
 
@@ -2186,8 +2198,8 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
 
     CGRect visibleRectInContentCoordinates = [self convertRect:self.bounds toView:_contentView.get()];
     
-    if (UIScrollView *enclosingScroller = [self _scroller]) {
-        CGRect viewVisibleRect = [self _visibleRectInEnclosingScrollView:enclosingScroller];
+    if (UIView *enclosingView = [self _enclosingViewForExposedRectComputation]) {
+        CGRect viewVisibleRect = [self _visibleRectInEnclosingView:enclosingView];
         CGRect viewVisibleContentRect = [self convertRect:viewVisibleRect toView:_contentView.get()];
         visibleRectInContentCoordinates = CGRectIntersection(visibleRectInContentCoordinates, viewVisibleContentRect);
     }
@@ -3624,7 +3636,8 @@ WEBCORE_COMMAND(yankAndSelect)
 {
     _page->setEditable(editable);
 #if PLATFORM(MAC)
-    _impl->startObservingFontPanel();
+    if (editable)
+        _impl->didBecomeEditable();
 #endif
 }
 
@@ -3772,7 +3785,7 @@ WEBCORE_COMMAND(yankAndSelect)
 
 - (void)_killWebContentProcessAndResetState
 {
-    _page->terminateProcess();
+    _page->process().requestTermination(WebKit::ProcessTerminationReason::RequestedByClient);
 }
 
 #if PLATFORM(MAC)
@@ -4473,6 +4486,16 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     _page->setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
 }
 
+- (void)_setMediaCaptureEnabled:(BOOL)enabled
+{
+    _page->setMediaCaptureEnabled(enabled);
+}
+
+- (BOOL)_mediaCaptureEnabled
+{
+    return _page->mediaCaptureEnabled();
+}
+
 - (void)_setPageMuted:(_WKMediaMutedState)mutedState
 {
     WebCore::MediaProducer::MutedStateFlags coreState = WebCore::MediaProducer::NoneMuted;
@@ -4552,9 +4575,6 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_setInterfaceOrientationOverride:(UIInterfaceOrientation)interfaceOrientation
 {
-    if (!_overridesInterfaceOrientation)
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:UIWindowDidRotateNotification object:nil];
-
     _overridesInterfaceOrientation = YES;
 
     if (interfaceOrientation == _interfaceOrientationOverride)
@@ -4570,6 +4590,12 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 {
     ASSERT(_overridesInterfaceOrientation);
     return _interfaceOrientationOverride;
+}
+
+- (void)_clearInterfaceOrientationOverride
+{
+    _overridesInterfaceOrientation = NO;
+    _interfaceOrientationOverride = UIInterfaceOrientationPortrait;
 }
 
 - (CGSize)_maximumUnobscuredSizeOverride
@@ -4666,6 +4692,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
             _page->setMaximumUnobscuredSize(WebCore::FloatSize(newMaximumUnobscuredSize));
         if (_overridesInterfaceOrientation)
             _page->setDeviceOrientation(newOrientation);
+
         [self _scheduleVisibleContentRectUpdate];
         return;
     }
@@ -4903,6 +4930,15 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 {
     [self _setMinimumLayoutSizeOverride:minimumLayoutSize];
     [self _setMaximumUnobscuredSizeOverride:maximumUnobscuredSizeOverride];
+}
+
+- (void)_clearOverrideLayoutParameters
+{
+    _overridesMinimumLayoutSize = NO;
+    _minimumLayoutSizeOverride = CGSizeZero;
+    
+    _overridesMaximumUnobscuredSize = NO;
+    _maximumUnobscuredSizeOverride = CGSizeZero;
 }
 
 - (UIView *)_viewForFindUI

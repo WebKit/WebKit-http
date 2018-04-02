@@ -31,13 +31,13 @@
 #include <WebCore/AuthenticationChallenge.h>
 #include <WebCore/BlobPart.h>
 #include <WebCore/CertificateInfo.h>
+#include <WebCore/CompositionUnderline.h>
 #include <WebCore/Credential.h>
 #include <WebCore/Cursor.h>
 #include <WebCore/DatabaseDetails.h>
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
-#include <WebCore/Editor.h>
 #include <WebCore/EventTrackingRegions.h>
 #include <WebCore/FileChooser.h>
 #include <WebCore/FilterOperation.h>
@@ -84,10 +84,13 @@
 #if PLATFORM(IOS)
 #include <WebCore/FloatQuad.h>
 #include <WebCore/InspectorOverlay.h>
-#include <WebCore/Pasteboard.h>
 #include <WebCore/SelectionRect.h>
 #include <WebCore/SharedBuffer.h>
 #endif // PLATFORM(IOS)
+
+#if PLATFORM(IOS) || PLATFORM(WPE)
+#include <WebCore/Pasteboard.h>
+#endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetContext.h>
@@ -961,7 +964,7 @@ bool ArgumentCoder<Cursor>::decode(Decoder& decoder, Cursor& cursor)
         return false;
 
     if (!isValidImagePresent) {
-        cursor = Cursor(Image::nullImage(), IntPoint());
+        cursor = Cursor(&Image::nullImage(), IntPoint());
         return true;
     }
 
@@ -1491,6 +1494,23 @@ bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& p
 }
 
 #endif
+
+#if PLATFORM(WPE)
+void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const PasteboardWebContent& content)
+{
+    encoder << content.text;
+    encoder << content.markup;
+}
+
+bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWebContent& content)
+{
+    if (!decoder.decode(content.text))
+        return false;
+    if (!decoder.decode(content.markup))
+        return false;
+    return true;
+}
+#endif // PLATFORM(WPE)
 
 void ArgumentCoder<DictationAlternative>::encode(Encoder& encoder, const DictationAlternative& dictationAlternative)
 {

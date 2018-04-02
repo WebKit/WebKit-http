@@ -1288,6 +1288,8 @@ inline void FrameView::forceLayoutParentViewIfNeeded()
 
 void FrameView::layout(bool allowSubtree)
 {
+    ASSERT_WITH_SECURITY_IMPLICATION(!frame().document()->inRenderTreeUpdate());
+
     LOG(Layout, "FrameView %p (%dx%d) layout, main frameview %d, allowSubtree=%d", this, size().width(), size().height(), frame().isMainFrame(), allowSubtree);
     if (isInRenderTreeLayout()) {
         LOG(Layout, "  in layout, bailing");
@@ -1807,6 +1809,28 @@ void FrameView::removeViewportConstrainedObject(RenderElement* object)
         // why isn't the same check being made here?
         updateCanBlitOnScrollRecursively();
     }
+}
+
+LayoutRect FrameView::computeUpdatedLayoutViewportRect(const LayoutRect& layoutViewport, const LayoutRect& documentRect, const LayoutSize& unobscuredContentSize, const LayoutRect& unobscuredContentRect, const LayoutSize& baseLayoutViewportSize, const LayoutPoint& stableLayoutViewportOriginMin, const LayoutPoint& stableLayoutViewportOriginMax, LayoutViewportConstraint constraint)
+{
+    LayoutRect layoutViewportRect = layoutViewport;
+    
+    // The layout viewport is never smaller than baseLayoutViewportSize, and never be smaller than the unobscuredContentRect.
+    LayoutSize constrainedSize = baseLayoutViewportSize;
+    layoutViewportRect.setSize(constrainedSize.expandedTo(unobscuredContentSize));
+        
+    LayoutPoint layoutViewportOrigin = computeLayoutViewportOrigin(unobscuredContentRect, stableLayoutViewportOriginMin, stableLayoutViewportOriginMax, layoutViewportRect, StickToViewportBounds);
+        
+    if (constraint == LayoutViewportConstraint::ConstrainedToDocumentRect) {
+        // The max stable layout viewport origin really depends on the size of the layout viewport itself, so we need to adjust the location of the layout viewport one final time to make sure it does not end up out of bounds of the document.
+        // Without this adjustment (and with using the non-constrained unobscuredContentRect's size as the size of the layout viewport) the layout viewport can be pushed past the bounds of the document during rubber-banding, and cannot be pushed
+        // back in until the user scrolls back in the other direction.
+        layoutViewportOrigin.setX(clampTo<float>(layoutViewportOrigin.x(), 0, documentRect.width() - layoutViewportRect.width()));
+        layoutViewportOrigin.setY(clampTo<float>(layoutViewportOrigin.y(), 0, documentRect.height() - layoutViewportRect.height()));
+    }
+    layoutViewportRect.setLocation(layoutViewportOrigin);
+    
+    return layoutViewportRect;
 }
 
 // visualViewport and layoutViewport are both in content coordinates (unzoomed).
@@ -3601,6 +3625,8 @@ void FrameView::sendResizeEventIfNeeded()
     bool isMainFrame = frame().isMainFrame();
     bool canSendResizeEventSynchronously = isMainFrame && !m_shouldAutoSize;
 
+    LOG(Events, "FrameView %p sendResizeEventIfNeeded sending resize event, size %dx%d (canSendResizeEventSynchronously %d)", this, currentSize.width(), currentSize.height(), canSendResizeEventSynchronously);
+
     Ref<Event> resizeEvent = Event::create(eventNames().resizeEvent, false, false);
     if (canSendResizeEventSynchronously)
         frame().document()->dispatchWindowEvent(resizeEvent);
@@ -4417,7 +4443,7 @@ void FrameView::didPaintContents(GraphicsContext& context, const IntRect& dirtyR
     }
 }
 
-void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect)
+void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect, SecurityOriginPaintPolicy securityOriginPaintPolicy)
 {
 #ifndef NDEBUG
     bool fillWithRed;
@@ -4469,7 +4495,7 @@ void FrameView::paintContents(GraphicsContext& context, const IntRect& dirtyRect
     while (is<RenderInline>(renderer) && !downcast<RenderInline>(*renderer).firstLineBox())
         renderer = renderer->parent();
 
-    rootLayer->paint(context, dirtyRect, LayoutSize(), m_paintBehavior, renderer);
+    rootLayer->paint(context, dirtyRect, LayoutSize(), m_paintBehavior, renderer, 0, securityOriginPaintPolicy == SecurityOriginPaintPolicy::AnyOrigin ? RenderLayer::SecurityOriginPaintPolicy::AnyOrigin : RenderLayer::SecurityOriginPaintPolicy::AccessibleOriginOnly);
     if (rootLayer->containsDirtyOverlayScrollbars())
         rootLayer->paintOverlayScrollbars(context, dirtyRect, m_paintBehavior, renderer);
 
@@ -4878,6 +4904,42 @@ IntPoint FrameView::convertFromContainingView(const IntPoint& parentPoint) const
     }
     
     return parentPoint;
+}
+
+float FrameView::absoluteToDocumentScaleFactor(std::optional<float> effectiveZoom) const
+{
+    // If effectiveZoom is passed, it already factors in pageZoomFactor(). 
+    float cssZoom = effectiveZoom.value_or(frame().pageZoomFactor()); 
+    return 1 / (cssZoom * frame().frameScaleFactor());
+}
+
+FloatRect FrameView::absoluteToDocumentRect(FloatRect rect, std::optional<float> effectiveZoom) const
+{
+    rect.scale(absoluteToDocumentScaleFactor(effectiveZoom));
+    return rect;
+}
+
+FloatPoint FrameView::absoluteToDocumentPoint(FloatPoint p, std::optional<float> effectiveZoom) const
+{
+    p.scale(absoluteToDocumentScaleFactor(effectiveZoom));
+    return p;
+}
+
+FloatSize FrameView::documentToClientOffset() const
+{
+    return frame().settings().visualViewportEnabled() ? -toFloatSize(layoutViewportRect().location()) : -toFloatSize(visibleContentRect().location());
+}
+
+FloatRect FrameView::documentToClientRect(FloatRect rect) const
+{
+    rect.move(documentToClientOffset());
+    return rect;
+}
+
+FloatPoint FrameView::documentToClientPoint(FloatPoint p) const
+{
+    p.move(documentToClientOffset());
+    return p;
 }
 
 void FrameView::setTracksRepaints(bool trackRepaints)

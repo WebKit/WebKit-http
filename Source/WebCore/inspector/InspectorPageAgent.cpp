@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -115,12 +115,13 @@ bool InspectorPageAgent::cachedResourceContent(CachedResource* cachedResource, S
     if (!cachedResource)
         return false;
 
+    *base64Encoded = !hasTextContent(cachedResource);
+
     if (!cachedResource->encodedSize()) {
-        *result = String();
+        *result = emptyString();
         return true;
     }
 
-    *base64Encoded = !hasTextContent(cachedResource);
     if (*base64Encoded) {
         if (auto* buffer = cachedResource->resourceBuffer()) {
             *result = base64Encode(buffer->data(), buffer->size());
@@ -204,8 +205,8 @@ void InspectorPageAgent::resourceContent(ErrorString& errorString, Frame* frame,
 //static
 String InspectorPageAgent::sourceMapURLForResource(CachedResource* cachedResource)
 {
-    static NeverDestroyed<String> sourceMapHTTPHeader(ASCIILiteral("SourceMap"));
-    static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(ASCIILiteral("X-SourceMap"));
+    static NeverDestroyed<String> sourceMapHTTPHeader(MAKE_STATIC_STRING_IMPL("SourceMap"));
+    static NeverDestroyed<String> sourceMapHTTPHeaderDeprecated(MAKE_STATIC_STRING_IMPL("X-SourceMap"));
 
     if (!cachedResource)
         return String();

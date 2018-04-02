@@ -29,11 +29,9 @@ import subprocess
 import time
 
 from webkitpy.common.memoized import memoized
-from webkitpy.port import image_diff
 from webkitpy.port.device import Device
 from webkitpy.port.ios import IOSPort
 from webkitpy.xcode.simulator import Simulator, Runtime, DeviceType
-from webkitpy.common.system.crashlogs import CrashLogs
 
 
 _log = logging.getLogger(__name__)
@@ -134,44 +132,6 @@ class IOSSimulatorPort(IOSPort):
             maximum_simulator_count_on_this_system = 1
 
         return min(maximum_simulator_count_on_this_system, best_child_process_count_for_cpu)
-
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=time.time, sleep_fn=time.sleep, wait_for_log=True):
-        time_fn = time_fn or time.time
-        sleep_fn = sleep_fn or time.sleep
-
-        # FIXME: We should collect the actual crash log for DumpRenderTree.app because it includes more
-        # information (e.g. exception codes) than is available in the stack trace written to standard error.
-        stderr_lines = []
-        crashed_subprocess_name_and_pid = None  # e.g. ('DumpRenderTree.app', 1234)
-        for line in (stderr or '').splitlines():
-            if not crashed_subprocess_name_and_pid:
-                match = self.SUBPROCESS_CRASH_REGEX.match(line)
-                if match:
-                    crashed_subprocess_name_and_pid = (match.group('subprocess_name'), int(match.group('subprocess_pid')))
-                    continue
-            stderr_lines.append(line)
-
-        if crashed_subprocess_name_and_pid:
-            return self._get_crash_log(crashed_subprocess_name_and_pid[0], crashed_subprocess_name_and_pid[1], stdout,
-                '\n'.join(stderr_lines), newer_than, time_fn, sleep_fn, wait_for_log)
-
-        # App crashed
-        _log.debug('looking for crash log for %s:%s' % (name, str(pid)))
-        crash_log = ''
-        crash_logs = CrashLogs(self.host)
-        now = time_fn()
-        deadline = now + 5 * int(self.get_option('child_processes', 1))
-        while not crash_log and now <= deadline:
-            crash_log = crash_logs.find_newest_log(name, pid, include_errors=True, newer_than=newer_than)
-            if not wait_for_log:
-                break
-            if not crash_log or not [line for line in crash_log.splitlines() if not line.startswith('ERROR')]:
-                sleep_fn(0.1)
-                now = time_fn()
-
-        if not crash_log:
-            return stderr, None
-        return stderr, crash_log
 
     def _build_driver_flags(self):
         archs = ['ARCHS=i386'] if self.architecture() == 'x86' else []
@@ -327,18 +287,6 @@ class IOSSimulatorPort(IOSPort):
 
     def get_simulator_path(self, suffix=""):
         return os.path.join(self.SIMULATOR_DIRECTORY, "Simulator" + str(suffix) + ".app")
-
-    def diff_image(self, expected_contents, actual_contents, tolerance=None):
-        if not actual_contents and not expected_contents:
-            return (None, 0, None)
-        if not actual_contents or not expected_contents:
-            return (True, 0, None)
-        if not self._image_differ:
-            self._image_differ = image_diff.IOSSimulatorImageDiffer(self)
-        self.set_option_default('tolerance', 0.1)
-        if tolerance is None:
-            tolerance = self.get_option('tolerance')
-        return self._image_differ.diff_image(expected_contents, actual_contents, tolerance)
 
     def reset_preferences(self):
         _log.debug("reset_preferences")
