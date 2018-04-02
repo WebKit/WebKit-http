@@ -231,6 +231,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyTextTransform,
     CSSPropertyTop,
     CSSPropertyTransform,
+    CSSPropertyTransformBox,
     CSSPropertyTransformOrigin,
     CSSPropertyTransformStyle,
     CSSPropertyTransitionDelay,
@@ -328,6 +329,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyJustifyItems,
     CSSPropertyPlaceContent,
     CSSPropertyPlaceItems,
+    CSSPropertyPlaceSelf,
 #if ENABLE(FILTERS_LEVEL_2)
     CSSPropertyWebkitBackdropFilter,
 #endif
@@ -1965,16 +1967,16 @@ Ref<CSSFontStyleValue> ComputedStyleExtractor::fontNonKeywordStyleFromStyleValue
     return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(CSSValueOblique), CSSValuePool::singleton().createValue(static_cast<float>(italic), CSSPrimitiveValue::CSS_DEG));
 }
 
-Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic)
+Ref<CSSFontStyleValue> ComputedStyleExtractor::fontStyleFromStyleValue(FontSelectionValue italic, FontStyleAxis fontStyleAxis)
 {
-    if (auto keyword = fontStyleKeyword(italic))
+    if (auto keyword = fontStyleKeyword(italic, fontStyleAxis))
         return CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(keyword.value()));
     return fontNonKeywordStyleFromStyleValue(italic);
 }
 
 static Ref<CSSFontStyleValue> fontStyleFromStyle(const RenderStyle& style)
 {
-    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic());
+    return ComputedStyleExtractor::fontStyleFromStyleValue(style.fontDescription().italic(), style.fontDescription().fontStyleAxis());
 }
 
 static Ref<CSSValue> fontVariantFromStyle(const RenderStyle& style)
@@ -2608,7 +2610,7 @@ static Ref<CSSFontValue> fontShorthandValueForSelectionProperties(const FontDesc
     else
         return CSSFontValue::create();
 
-    if (auto italic = fontStyleKeyword(fontDescription.italic()))
+    if (auto italic = fontStyleKeyword(fontDescription.italic(), fontDescription.fontStyleAxis()))
         computedFont->style = CSSFontStyleValue::create(CSSValuePool::singleton().createIdentifierValue(italic.value()));
     else
         return CSSFontValue::create();
@@ -2961,6 +2963,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return getCSSPropertyValuesForShorthandProperties(placeContentShorthand());
         case CSSPropertyPlaceItems:
             return getCSSPropertyValuesForShorthandProperties(placeItemsShorthand());
+        case CSSPropertyPlaceSelf:
+            return getCSSPropertyValuesForShorthandProperties(placeSelfShorthand());
         case CSSPropertyOrder:
             return cssValuePool.createValue(style->order(), CSSPrimitiveValue::CSS_NUMBER);
         case CSSPropertyFloat:
@@ -3679,6 +3683,8 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return cssValuePool.createValue(style->speak());
         case CSSPropertyTransform:
             return computedTransform(renderer, *style);
+        case CSSPropertyTransformBox:
+            return CSSPrimitiveValue::create(style->transformBox());
         case CSSPropertyTransformOrigin: {
             auto list = CSSValueList::createSpaceSeparated();
             if (renderer) {

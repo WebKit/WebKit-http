@@ -44,7 +44,7 @@ static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncSet(ExecState*);
 
 namespace JSC {
 
-const ClassInfo WebAssemblyTablePrototype::s_info = { "WebAssembly.Table.prototype", &Base::s_info, &prototypeTableWebAssemblyTable, CREATE_METHOD_TABLE(WebAssemblyTablePrototype) };
+const ClassInfo WebAssemblyTablePrototype::s_info = { "WebAssembly.Table.prototype", &Base::s_info, &prototypeTableWebAssemblyTable, nullptr, CREATE_METHOD_TABLE(WebAssemblyTablePrototype) };
 
 /* Source for WebAssemblyTablePrototype.lut.h
  @begin prototypeTableWebAssemblyTable
@@ -67,7 +67,7 @@ static ALWAYS_INLINE JSWebAssemblyTable* getTable(ExecState* exec, VM& vm, JSVal
     return result;
 }
 
-EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncLength(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncLength(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -77,7 +77,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncLength(ExecState* exec)
     return JSValue::encode(jsNumber(table->size()));
 }
 
-EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGrow(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGrow(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -93,7 +93,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGrow(ExecState* exec)
     return JSValue::encode(jsUndefined());
 }
 
-EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGet(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGet(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -111,7 +111,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncGet(ExecState* exec)
     return JSValue::encode(jsNull());
 }
 
-EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncSet(ExecState* exec)
+static EncodedJSValue JSC_HOST_CALL webAssemblyTableProtoFuncSet(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);

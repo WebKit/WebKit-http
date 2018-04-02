@@ -1357,7 +1357,6 @@ fast/text/word-break.html [ Failure Pass ]
 fast/text/word-space.html [ Failure Pass ]
 fast/text/zero-font-size.html [ Failure Pass ]
 http/tests/misc/DOMContentLoaded-event.html [ Failure Pass ]
-http/tests/misc/slow-loading-mask.html [ Failure Pass ]
 http/tests/websocket/tests/hybi/invalid-encode-length.html [ Failure Pass ]
 imported/mozilla/svg/filters/filter-marked-line-02.svg [ Failure Pass ]
 imported/mozilla/svg/filters/filter-marked-line-03.svg [ Failure Pass ]
@@ -1939,8 +1938,6 @@ webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/ev
 
 webkit.org/b/169558 fast/history/ios/history-scroll-restoration.html [ Pass Failure ]
 
-webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]
-
 webkit.org/b/171301 [ Release ] http/tests/security/contentSecurityPolicy/1.1/module-scriptnonce-invalidnonce.html [ Pass Timeout ]
 
 webkit.org/b/171353 [ Release ] http/tests/local/blob/send-hybrid-blob-using-open-panel.html [ Pass Timeout ]
@@ -1984,3 +1981,10 @@ webkit.org/b/171945 [ Debug ] perf/class-list-remove.html [ Pass Failure Timeout
 webkit.org/b/171951 [ Debug ] fast/hidpi/filters-and-image-buffer-resolution.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/171957 [ Debug ] fast/animation/request-animation-frame-time-unit.html [ Pass Failure ]
+
+webkit.org/b/171061 webrtc/datachannel/filter-ice-candidate.html [ Pass Timeout ]
+
+webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/datachannel-emptystring.html [ Pass Failure ]
+webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/promises-call.html [ Pass Failure ]
+
+webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Pass Failure ]

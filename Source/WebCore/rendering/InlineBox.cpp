@@ -39,10 +39,11 @@ struct SameSizeAsInlineBox {
     void* a[4];
     FloatPoint b;
     float c[2];
-    unsigned d : 20;
+    unsigned d : 23;
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     unsigned s;
     bool f;
+    bool i;
 #endif
 };
 
@@ -70,7 +71,7 @@ void InlineBox::setHasBadParent()
 void InlineBox::invalidateParentChildList()
 {
     assertNotDeleted();
-    if (!m_hasBadParent && m_parent)
+    if (!m_hasBadParent && m_parent && m_isEverInChildList)
         m_parent->setHasBadChildList();
 }
 

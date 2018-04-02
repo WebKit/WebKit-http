@@ -70,19 +70,12 @@ void ImageSource::clearFrameBufferCache(size_t clearBeforeFrame)
     m_decoder->clearFrameBufferCache(clearBeforeFrame);
 }
 
-void ImageSource::clear(SharedBuffer* data)
-{
-    m_decoder = nullptr;
-    m_frameCache->setDecoder(nullptr);
-    setData(data, isAllDataReceived());
-}
-
 bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
 {
     if (!data || isDecoderAvailable())
         return true;
 
-    m_decoder = ImageDecoder::create(*data, m_frameCache->sourceURL(), m_alphaOption, m_gammaAndColorProfileOption);
+    m_decoder = ImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption);
     if (!isDecoderAvailable())
         return false;
 
@@ -111,10 +104,15 @@ void ImageSource::setData(SharedBuffer* data, bool allDataReceived)
     m_decoder->setData(*data, allDataReceived);
 }
 
+void ImageSource::resetData(SharedBuffer* data)
+{
+    m_decoder = nullptr;
+    m_frameCache->setDecoder(nullptr);
+    setData(data, isAllDataReceived());
+}
+
 EncodedDataStatus ImageSource::dataChanged(SharedBuffer* data, bool allDataReceived)
 {
-    m_frameCache->destroyIncompleteDecodedData();
-
 #if PLATFORM(IOS)
     // FIXME: We should expose a setting to enable/disable progressive loading and make this
     // code conditional on it. Then we can remove the PLATFORM(IOS)-guard.

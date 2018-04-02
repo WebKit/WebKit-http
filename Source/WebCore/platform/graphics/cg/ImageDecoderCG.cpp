@@ -30,11 +30,11 @@
 
 #include "ImageIOSPI.h"
 #include "ImageOrientation.h"
+#include "ImageSourceCG.h"
 #include "IntPoint.h"
 #include "IntSize.h"
 #include "Logging.h"
 #include "SharedBuffer.h"
-#include "URL.h"
 #include <wtf/NeverDestroyed.h>
 
 #if !PLATFORM(IOS)
@@ -148,11 +148,11 @@ void sharedBufferRelease(void* info)
 }
 #endif
 
-ImageDecoder::ImageDecoder(const URL& sourceURL, AlphaOption, GammaAndColorProfileOption)
+ImageDecoder::ImageDecoder(SharedBuffer& data, AlphaOption, GammaAndColorProfileOption)
 {
-#if 0
-    RetainPtr<CFURLRef> url = sourceURL.createCFURL();
-    RetainPtr<CFStringRef> utiHint = adoptCF(CGImageSourceGetTypeWithURL(url.get(), nullptr));
+    RetainPtr<CFStringRef> utiHint;
+    if (data.size() >= 32)
+        utiHint = adoptCF(CGImageSourceGetTypeWithData(data.createCFData().get(), nullptr, nullptr));
     
     if (utiHint) {
         const void* key = kCGImageSourceTypeIdentifierHint;
@@ -161,10 +161,6 @@ ImageDecoder::ImageDecoder(const URL& sourceURL, AlphaOption, GammaAndColorProfi
         m_nativeDecoder = adoptCF(CGImageSourceCreateIncremental(options.get()));
     } else
         m_nativeDecoder = adoptCF(CGImageSourceCreateIncremental(nullptr));
-#else
-    UNUSED_PARAM(sourceURL);
-    m_nativeDecoder = adoptCF(CGImageSourceCreateIncremental(nullptr));
-#endif
 }
 
 size_t ImageDecoder::bytesDecodedToDetermineProperties()
@@ -307,6 +303,12 @@ IntSize ImageDecoder::frameSizeAtIndex(size_t index, SubsamplingLevel subsamplin
 bool ImageDecoder::frameIsCompleteAtIndex(size_t index) const
 {
     ASSERT(frameCount());
+    // CGImageSourceGetStatusAtIndex() changes the return status value from kCGImageStatusIncomplete
+    // to kCGImageStatusComplete only if (index > 1 && index < frameCount() - 1). To get an accurate
+    // result for the last frame (or the single frame of the static image) use CGImageSourceGetStatus()
+    // instead for this frame.
+    if (index == frameCount() - 1)
+        return CGImageSourceGetStatus(m_nativeDecoder.get()) == kCGImageStatusComplete;
     return CGImageSourceGetStatusAtIndex(m_nativeDecoder.get(), index) == kCGImageStatusComplete;
 }
 

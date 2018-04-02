@@ -987,7 +987,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
         return;
 
-    case CheckDOM:
+    case CheckSubClass:
         def(PureValue(node, node->classInfo()));
         return;
 
@@ -1136,6 +1136,21 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             ASSERT(mode.isSomeTypedArrayView());
             read(MiscFields);
             def(HeapLocation(ArrayLengthLoc, MiscFields, node->child1()), LazyNode(node));
+            return;
+        }
+    }
+
+    case GetVectorLength: {
+        ArrayMode mode = node->arrayMode();
+        switch (mode.type()) {
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage:
+            read(Butterfly_vectorLength);
+            def(HeapLocation(VectorLengthLoc, Butterfly_vectorLength, node->child1()), LazyNode(node));
+            return;
+
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
             return;
         }
     }

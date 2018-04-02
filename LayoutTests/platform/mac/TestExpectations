@@ -27,8 +27,6 @@ fast/attachment/attachment-subtitle-resize.html [ Pass ]
 
 fast/harness/uiscriptcontroller [ Pass ]
 
-media/modern-media-controls/icon-button/icon-button-focus-state.html [ Pass ]
-
 fast/events/do-not-drag-and-drop-data-detectors-link.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -359,9 +357,6 @@ fast/writing-mode/japanese-lr-selection.html [ Failure ]
 fast/writing-mode/japanese-lr-text.html [ Failure ]
 fast/writing-mode/japanese-rl-selection.html [ Failure ]
 fast/writing-mode/japanese-rl-text.html [ Failure ]
-
-# <rdar://problem/11059031> Many, many Java tests fail on Mountain Lion
-java/
 
 # <rdar://problem/11187491> storage/websql/quota-tracking.html is failing on Mountain Lion
 storage/websql/quota-tracking.html
@@ -993,7 +988,6 @@ webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/U
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-append-buffer.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-appendbuffer-quota-exceeded.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-config-change-mp4-av-framesize.html [ Skip ]
-webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-duration-boundaryconditions.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-endofstream.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-errors.html [ Skip ]
 webkit.org/b/161725 [ Yosemite+ ] imported/w3c/web-platform-tests/media-source/mediasource-is-type-supported.html [ Skip ]
@@ -1054,8 +1048,6 @@ webkit.org/b/136109 [ Yosemite+ ] fast/multicol/mixed-opacity-fixed-test.html  [
 
 # FIXME: Needs bugzilla (<rdar://problem/18273139>)
 [ Yosemite+ ] storage/websql/sql-error-codes.html [ Failure ]
-
-webkit.org/b/82980 http/tests/navigation/back-twice-without-commit.html [ Pass Timeout ]
 
 # Language-specific font fallback is disabled on certain versions of OS X
 webkit.org/b/147390 [ Yosemite ElCapitan ] fast/text/fallback-language-han.html [ ImageOnlyFailure ]
@@ -1240,6 +1232,7 @@ webkit.org/b/159724 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/sen
 
 # WOFF2 is only supported on certain Operating Systems.
 webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/woff2.html [ ImageOnlyFailure ]
+webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/variations/font-face-format-woff2.html [ ImageOnlyFailure ]
 
 webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ ImageOnlyFailure ]
 
@@ -1455,48 +1448,6 @@ webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
 
-# picture-in-picture is not supported prior to Sierra.
-[ ElCapitan ] media/modern-media-controls/pip-support [ Skip ]
-[ ElCapitan ] http/tests/media/modern-media-controls/pip-support [ Skip ]
-[ ElCapitan ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
-[ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
-
-# iOS or iPad-specific tests
-media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html [ Skip ]
-media/modern-media-controls/pip-support/ipad/pip-support-enabled.html [ Skip ]
-media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
-media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip ]
-media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
-media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-audio-background.html [ Skip ]
-media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
-media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Skip ]
-media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
-media/modern-media-controls/media-documents/media-document-audio-ios-sizing.html [ Skip ]
-media/modern-media-controls/media-documents/media-document-video-ios-sizing.html [ Skip ]
-media/modern-media-controls/media-documents/ipad/media-document-audio-ios-sizing.html [ Skip ]
-media/modern-media-controls/media-documents/ipad/media-document-video-ios-sizing.html [ Skip ]
-media/modern-media-controls/audio/audio-controls-styles.html [ Skip ]
-
-webkit.org/b/169677 [ Release ] http/tests/media/modern-media-controls/time-labels-support/long-time.html [ Pass Timeout ]
-
-webkit.org/b/169118 [ Debug ] media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Pass Timeout ]
-
-webkit.org/b/167266 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Pass Failure ]
-webkit.org/b/168540 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
-
-webkit.org/b/165311 [ Sierra Debug ] media/modern-media-controls/pip-support/pip-support-click.html [ Pass Failure Timeout ]
-
-webkit.org/b/165386 media/modern-media-controls/seek-backward-support/seek-backward-support.html [ Pass Timeout ]
-
-webkit.org/b/169679 [ Debug ] media/modern-media-controls/time-label/time-label-white-space-nowrap.html [ Pass Failure ]
-
-webkit.org/b/169109 media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html [ Pass Timeout ]
-webkit.org/b/169158 media/modern-media-controls/tracks-support/tracks-support-show-panel-after-dragging-controls.html [ Pass Failure ]
-
-webkit.org/b/164229 [ Debug ] media/modern-media-controls/volume-support/volume-support-click.html [ Pass Timeout ]
-
-webkit.org/b/169568 media/modern-media-controls/volume-down-support/volume-down-support.html [ Pass Failure ]
-
 webkit.org/b/165874 streams/pipe-to.html [ Pass Failure ]
 
 # New Encrypted Media API not enabled on Mac
@@ -1589,4 +1540,4 @@ webkit.org/b/171760 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFa
 
 webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-streams/general.html [ Pass Failure ]
 
-webkit.org/b/169876 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-and-mouse-leave.html [ Pass Timeout ]
+webkit.org/b/172469 [ ElCapitan ] imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Timeout ]

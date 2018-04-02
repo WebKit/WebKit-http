@@ -1769,12 +1769,20 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.fullscreenMayReturnToInline(toAPI(page), m_client.base.clientInfo);
         }
         
-        void setHasVideoInPictureInPicture(WebPageProxy* page, bool hasVideoInPictureInPicture) override
+        void hasVideoInPictureInPictureDidChange(WebPageProxy* page, bool hasVideoInPictureInPicture) override
         {
-            if (!m_client.setHasVideoInPictureInPicture)
+            if (!m_client.hasVideoInPictureInPictureDidChange)
                 return;
             
-            m_client.setHasVideoInPictureInPicture(toAPI(page), hasVideoInPictureInPicture, m_client.base.clientInfo);
+            m_client.hasVideoInPictureInPictureDidChange(toAPI(page), hasVideoInPictureInPicture, m_client.base.clientInfo);
+        }
+
+        void didExceedBackgroundResourceLimitWhileInForeground(WebPageProxy& page, WKResourceLimit limit) override
+        {
+            if (!m_client.didExceedBackgroundResourceLimitWhileInForeground)
+                return;
+
+            m_client.didExceedBackgroundResourceLimitWhileInForeground(toAPI(&page), limit, m_client.base.clientInfo);
         }
 
         void close(WebPageProxy* page) override
@@ -2257,17 +2265,17 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
         static WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
         {
             switch (event) {
-            case WebCore::AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference:
-                return kWKAutoplayEventDidEndMediaPlaybackWithoutUserInterference;
+            case WebCore::AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference:
+                return kWKAutoplayEventDidAutoplayMediaPastThresholdWithoutUserInterference;
             case WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying:
                 return kWKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
             case WebCore::AutoplayEvent::DidPreventMediaFromPlaying:
                 return kWKAutoplayEventDidPreventFromAutoplaying;
             case WebCore::AutoplayEvent::UserDidInterfereWithPlayback:
                 return kWKAutoplayEventUserDidInterfereWithPlayback;
-            case WebCore::AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying:
-                return kWKAutoplayEventUserNeverPlayedMediaPreventedFromPlaying;
             }
+
+            RELEASE_ASSERT_NOT_REACHED();
         }
 
         void handleAutoplayEvent(WebPageProxy& page, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags) override

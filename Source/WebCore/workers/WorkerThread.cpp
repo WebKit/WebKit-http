@@ -202,14 +202,22 @@ void WorkerThread::workerThread()
 
     ASSERT(m_workerGlobalScope->hasOneRef());
 
-    // The below assignment will destroy the context, which will in turn notify messaging proxy.
-    // We cannot let any objects survive past thread exit, because no other thread will run GC or otherwise destroy them.
+    RefPtr<WorkerGlobalScope> workerGlobalScopeToDelete;
     {
         // Mutex protection is necessary to ensure that we don't change m_workerGlobalScope
         // while WorkerThread::stop is accessing it.
         LockHolder lock(m_threadCreationAndWorkerGlobalScopeMutex);
-        m_workerGlobalScope = nullptr;
+
+        // Delay the destruction of the WorkerGlobalScope context until after we've unlocked the
+        // m_threadCreationAndWorkerGlobalScopeMutex. This is needed because destructing the
+        // context will trigger the main thread to race against us to delete the WorkerThread
+        // object, and the WorkerThread object owns the mutex we need to unlock after this.
+        workerGlobalScopeToDelete = WTFMove(m_workerGlobalScope);
     }
+
+    // The below assignment will destroy the context, which will in turn notify messaging proxy.
+    // We cannot let any objects survive past thread exit, because no other thread will run GC or otherwise destroy them.
+    workerGlobalScopeToDelete = nullptr;
 
     // Clean up WebCore::ThreadGlobalData before WTF::WTFThreadData goes away!
     threadGlobalData().destroy();

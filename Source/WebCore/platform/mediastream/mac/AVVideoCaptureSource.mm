@@ -120,8 +120,17 @@ public:
         AVCaptureDeviceTypedef *device = [getAVCaptureDeviceClass() deviceWithUniqueID:deviceID];
         if (!device)
             return { };
-        return AVVideoCaptureSource::create(device, emptyString(), constraints);
+        return AVVideoCaptureSource::create(device, deviceID, constraints);
     }
+
+#if PLATFORM(IOS)
+private:
+    void setVisibility(bool isVisible)
+    {
+        if (activeSource())
+            activeSource()->setMuted(!isVisible);
+    }
+#endif
 };
 
 CaptureSourceOrError AVVideoCaptureSource::create(AVCaptureDeviceTypedef* device, const AtomicString& id, const MediaConstraints* constraints)

@@ -67,7 +67,7 @@ class AudioTrackPrivate;
 class Blob;
 class DOMError;
 class DeferredPromise;
-class DisplaySleepDisabler;
+class SleepDisabler;
 class Event;
 class HTMLSourceElement;
 class HTMLTrackElement;
@@ -515,6 +515,7 @@ public:
     WEBCORE_EXPORT const MediaResourceLoader* lastMediaResourceLoaderForTesting() const;
 
 #if ENABLE(MEDIA_STREAM)
+    void mediaStreamCaptureStarted() { resumeAutoplaying(); }
     bool hasMediaStreamSrcObject() const { return !!m_mediaStreamSrcObject; }
 #endif
 
@@ -815,6 +816,7 @@ private:
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
+    bool processingUserGestureForMedia() const final;
 
     void pageMutedStateDidChange() override;
 
@@ -1054,7 +1056,7 @@ private:
     friend class MediaController;
     RefPtr<MediaController> m_mediaController;
 
-    std::unique_ptr<DisplaySleepDisabler> m_sleepDisabler;
+    std::unique_ptr<SleepDisabler> m_sleepDisabler;
 
     WeakPtr<const MediaResourceLoader> m_lastMediaResourceLoaderForTesting;
 

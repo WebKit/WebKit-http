@@ -60,8 +60,13 @@ JSObject* createEvalError(ExecState* exec, const String& message, ErrorInstance:
 
 JSObject* createRangeError(ExecState* exec, const String& message, ErrorInstance::SourceAppender appender)
 {
-    ASSERT(!message.isEmpty());
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    return createRangeError(exec, globalObject, message, appender);
+}
+
+JSObject* createRangeError(ExecState* exec, JSGlobalObject* globalObject, const String& message, ErrorInstance::SourceAppender appender)
+{
+    ASSERT(!message.isEmpty());
     return ErrorInstance::create(exec, globalObject->vm(), globalObject->rangeErrorConstructor()->errorStructure(), message, appender, TypeNothing, true);
 }
 
@@ -182,7 +187,7 @@ bool addErrorInfoAndGetBytecodeOffset(ExecState* exec, VM& vm, JSObject* obj, bo
             callFrame = functor.foundCallFrame();
             unsigned stackIndex = functor.index();
             *bytecodeOffset = 0;
-            if (stackTrace.at(stackIndex).hasBytecodeOffset())
+            if (stackIndex < stackTrace.size() && stackTrace.at(stackIndex).hasBytecodeOffset())
                 *bytecodeOffset = stackTrace.at(stackIndex).bytecodeOffset();
         }
         
@@ -268,6 +273,11 @@ JSObject* createRangeError(ExecState* exec, const String& message)
     return createRangeError(exec, message, nullptr);
 }
 
+JSObject* createRangeError(ExecState* exec, JSGlobalObject* globalObject, const String& message)
+{
+    return createRangeError(exec, globalObject, message, nullptr);
+}
+
 JSObject* createReferenceError(ExecState* exec, const String& message)
 {
     return createReferenceError(exec, message, nullptr);
@@ -304,7 +314,7 @@ JSObject* createOutOfMemoryError(ExecState* exec)
 }
 
 
-const ClassInfo StrictModeTypeErrorFunction::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(StrictModeTypeErrorFunction) };
+const ClassInfo StrictModeTypeErrorFunction::s_info = { "Function", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(StrictModeTypeErrorFunction) };
 
 void StrictModeTypeErrorFunction::destroy(JSCell* cell)
 {

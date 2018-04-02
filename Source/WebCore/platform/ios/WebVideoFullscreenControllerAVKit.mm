@@ -99,8 +99,7 @@ class WebVideoFullscreenControllerContext;
 @end
 
 class WebVideoFullscreenControllerContext final
-    : private WebVideoFullscreenInterface
-    , private WebVideoFullscreenModel
+    : private WebVideoFullscreenModel
     , private WebVideoFullscreenModelClient
     , private WebVideoFullscreenChangeObserver
     , private WebPlaybackSessionModel
@@ -803,7 +802,7 @@ void WebVideoFullscreenControllerContext::setUpFullscreen(HTMLVideoElement& vide
     m_fullscreenModel->addClient(*this);
     m_fullscreenModel->setVideoElement(m_videoElement.get());
 
-    bool allowsPictureInPicture = m_videoElement->mediaSession().allowsPictureInPicture(*m_videoElement.get());
+    bool allowsPictureInPicture = m_videoElement->webkitSupportsPresentationMode(HTMLVideoElement::VideoPresentationMode::PictureInPicture);
 
     IntRect videoElementClientRect = elementRectInWindow(m_videoElement.get());
     FloatRect videoLayerFrame = FloatRect(FloatPoint(), videoElementClientRect.size());

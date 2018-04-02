@@ -74,7 +74,7 @@
 #endif
 
 #if USE(OS_STATE)
-#include <os/state_private.h>
+#import <os/state_private.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -92,7 +92,7 @@ using namespace WebCore;
 namespace WebKit {
 
 #if PLATFORM(MAC)
-static const Seconds backgroundCPUMonitoringInterval { 8_min };
+static const Seconds cpuMonitoringInterval { 8_min };
 #endif
 
 void WebProcess::platformSetCacheModel(CacheModel)
@@ -149,7 +149,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 #endif
 
     m_compositingRenderServerPort = WTFMove(parameters.acceleratedCompositingPort);
-    m_presenterApplicationPid = parameters.presenterApplicationPid;
 
     WebCore::registerMemoryReleaseNotifyCallbacks();
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
@@ -175,7 +174,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
 
 #if PLATFORM(IOS)
     if (canLoadAVSystemController_PIDToInheritApplicationStateFrom()) {
-        pid_t pid = WebProcess::singleton().presenterApplicationPid();
+        pid_t pid = WebCore::presentingApplicationPID();
         NSError *error = nil;
         [[getAVSystemControllerClass() sharedAVSystemController] setAttribute:@(pid) forKey:AVSystemController_PIDToInheritApplicationStateFrom error:&error];
         if (error)
@@ -397,46 +396,52 @@ void WebProcess::updateActivePages()
 #endif
 }
 
-void WebProcess::updateBackgroundCPULimit()
+void WebProcess::updateCPULimit()
 {
 #if PLATFORM(MAC)
-    std::optional<double> backgroundCPULimit;
+    std::optional<double> cpuLimit;
 
     // Use the largest limit among all pages in this process.
     for (auto& page : m_pageMap.values()) {
-        auto pageCPULimit = page->backgroundCPULimit();
+        auto pageCPULimit = page->cpuLimit();
         if (!pageCPULimit) {
-            backgroundCPULimit = std::nullopt;
+            cpuLimit = std::nullopt;
             break;
         }
-        if (!backgroundCPULimit || pageCPULimit > backgroundCPULimit.value())
-            backgroundCPULimit = pageCPULimit;
+        if (!cpuLimit || pageCPULimit > cpuLimit.value())
+            cpuLimit = pageCPULimit;
     }
 
-    if (m_backgroundCPULimit == backgroundCPULimit)
+    if (m_cpuLimit == cpuLimit)
         return;
 
-    m_backgroundCPULimit = backgroundCPULimit;
-    updateBackgroundCPUMonitorState();
+    m_cpuLimit = cpuLimit;
+    updateCPUMonitorState(CPUMonitorUpdateReason::LimitHasChanged);
 #endif
 }
 
-void WebProcess::updateBackgroundCPUMonitorState()
+void WebProcess::updateCPUMonitorState(CPUMonitorUpdateReason reason)
 {
 #if PLATFORM(MAC)
-    if (!m_backgroundCPULimit || hasVisibleWebPage()) {
-        if (m_backgroundCPUMonitor)
-            m_backgroundCPUMonitor->setCPULimit(std::nullopt);
+    if (!m_cpuLimit) {
+        if (m_cpuMonitor)
+            m_cpuMonitor->setCPULimit(std::nullopt);
         return;
     }
 
-    if (!m_backgroundCPUMonitor) {
-        m_backgroundCPUMonitor = std::make_unique<CPUMonitor>(backgroundCPUMonitoringInterval, [this](double cpuUsage) {
-            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded background CPU limit of %.1f%% (was using %.1f%%)", this, m_backgroundCPULimit.value() * 100, cpuUsage * 100);
-            parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedBackgroundCPULimit(), 0);
+    if (!m_cpuMonitor) {
+        m_cpuMonitor = std::make_unique<CPUMonitor>(cpuMonitoringInterval, [this](double cpuUsage) {
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcess exceeded CPU limit of %.1f%% (was using %.1f%%) hasVisiblePages? %d", this, m_cpuLimit.value() * 100, cpuUsage * 100, hasVisibleWebPage());
+            parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedCPULimit(), 0);
         });
+    } else if (reason == CPUMonitorUpdateReason::VisibilityHasChanged) {
+        // If the visibility has changed, stop the CPU monitor before setting its limit. This is needed because the CPU usage can vary wildly based on visibility and we would
+        // not want to report that a process has exceeded its background CPU limit even though most of the CPU time was used while the process was visible.
+        m_cpuMonitor->setCPULimit(std::nullopt);
     }
-    m_backgroundCPUMonitor->setCPULimit(m_backgroundCPULimit.value());
+    m_cpuMonitor->setCPULimit(m_cpuLimit.value());
+#else
+    UNUSED_PARAM(reason);
 #endif
 }
 

@@ -41,7 +41,7 @@
 
 namespace JSC {
 
-const ClassInfo JSWebAssemblyModule::s_info = { "WebAssembly.Module", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSWebAssemblyModule) };
+const ClassInfo JSWebAssemblyModule::s_info = { "WebAssembly.Module", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSWebAssemblyModule) };
 
 JSWebAssemblyModule* JSWebAssemblyModule::createStub(VM& vm, ExecState* exec, Structure* structure, Wasm::Module::ValidationResult&& result)
 {
@@ -82,7 +82,7 @@ void JSWebAssemblyModule::finishCreation(VM& vm)
     }
 
     m_exportSymbolTable.set(vm, this, exportSymbolTable);
-    m_callee.set(vm, this, WebAssemblyToJSCallee::create(vm, vm.webAssemblyToJSCalleeStructure.get(), this));
+    m_callee.set(vm, this, WebAssemblyToJSCallee::create(vm, this));
 }
 
 void JSWebAssemblyModule::destroy(JSCell* cell)

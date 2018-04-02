@@ -1125,7 +1125,10 @@ WebInspector.tabContentViewClassForRepresentedObject = function(representedObjec
             return WebInspector.DebuggerTabContentView;
     }
 
-    if (representedObject instanceof WebInspector.Frame || representedObject instanceof WebInspector.Resource || representedObject instanceof WebInspector.Script)
+    if (representedObject instanceof WebInspector.Frame
+        || representedObject instanceof WebInspector.Resource
+        || representedObject instanceof WebInspector.Script
+        || representedObject instanceof WebInspector.StyleSheet)
         return WebInspector.ResourcesTabContentView;
 
     // FIXME: Move Content Flows to the Elements tab?
@@ -1909,7 +1912,7 @@ WebInspector._reloadPage = function(event)
 WebInspector._reloadPageClicked = function(event)
 {
     // Ignore cache when the shift key is pressed.
-    PageAgent.reload(window.event ? window.event.shiftKey : false);
+    PageAgent.reload.invoke({shouldIgnoreCache: window.event ? window.event.shiftKey : false});
 };
 
 WebInspector._reloadPageIgnoringCache = function(event)
@@ -2313,7 +2316,7 @@ WebInspector.createSourceCodeLocationLink = function(sourceCodeLocation, options
     if (options.useGoToArrowButton)
         linkElement.appendChild(WebInspector.createGoToArrowButton());
     else
-        sourceCodeLocation.populateLiveDisplayLocationString(linkElement, "textContent");
+        sourceCodeLocation.populateLiveDisplayLocationString(linkElement, "textContent", options.columnStyle, options.nameStyle, options.prefix);
 
     if (options.dontFloat)
         linkElement.classList.add("dont-float");

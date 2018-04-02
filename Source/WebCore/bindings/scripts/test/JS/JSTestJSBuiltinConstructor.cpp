@@ -21,10 +21,11 @@
 #include "config.h"
 #include "JSTestJSBuiltinConstructor.h"
 
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMBuiltinConstructor.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include "TestJSBuiltinConstructorBuiltins.h"
 #include <runtime/Error.h>
@@ -92,7 +93,7 @@ template<> FunctionExecutable* JSTestJSBuiltinConstructorConstructor::initialize
     return testJSBuiltinConstructorInitializeTestJSBuiltinConstructorCodeGenerator(vm);
 }
 
-template<> const ClassInfo JSTestJSBuiltinConstructorConstructor::s_info = { "TestJSBuiltinConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructorConstructor) };
+template<> const ClassInfo JSTestJSBuiltinConstructorConstructor::s_info = { "TestJSBuiltinConstructor", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructorConstructor) };
 
 /* Hash table for prototype */
 
@@ -106,7 +107,7 @@ static const HashTableValue JSTestJSBuiltinConstructorPrototypeTableValues[] =
     { "testCustomFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunction), (intptr_t) (0) } },
 };
 
-const ClassInfo JSTestJSBuiltinConstructorPrototype::s_info = { "TestJSBuiltinConstructorPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructorPrototype) };
+const ClassInfo JSTestJSBuiltinConstructorPrototype::s_info = { "TestJSBuiltinConstructorPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructorPrototype) };
 
 void JSTestJSBuiltinConstructorPrototype::finishCreation(VM& vm)
 {
@@ -114,7 +115,7 @@ void JSTestJSBuiltinConstructorPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestJSBuiltinConstructorPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestJSBuiltinConstructor::s_info = { "TestJSBuiltinConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructor) };
+const ClassInfo JSTestJSBuiltinConstructor::s_info = { "TestJSBuiltinConstructor", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestJSBuiltinConstructor) };
 
 JSTestJSBuiltinConstructor::JSTestJSBuiltinConstructor(Structure* structure, JSDOMGlobalObject& globalObject)
     : JSDOMObject(structure, globalObject) { }
@@ -142,12 +143,12 @@ void JSTestJSBuiltinConstructor::destroy(JSC::JSCell* cell)
     thisObject->JSTestJSBuiltinConstructor::~JSTestJSBuiltinConstructor();
 }
 
-template<> inline JSTestJSBuiltinConstructor* BindingCaller<JSTestJSBuiltinConstructor>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+template<> inline JSTestJSBuiltinConstructor* IDLAttribute<JSTestJSBuiltinConstructor>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestJSBuiltinConstructor*>(state.vm(), JSValue::decode(thisValue));
 }
 
-template<> inline JSTestJSBuiltinConstructor* BindingCaller<JSTestJSBuiltinConstructor>::castForOperation(ExecState& state)
+template<> inline JSTestJSBuiltinConstructor* IDLOperation<JSTestJSBuiltinConstructor>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestJSBuiltinConstructor*>(state.vm(), state.thisValue());
 }
@@ -156,7 +157,7 @@ static inline JSValue jsTestJSBuiltinConstructorTestAttributeCustomGetter(ExecSt
 
 EncodedJSValue jsTestJSBuiltinConstructorTestAttributeCustom(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestJSBuiltinConstructor>::attribute<jsTestJSBuiltinConstructorTestAttributeCustomGetter>(state, thisValue, "testAttributeCustom");
+    return IDLAttribute<JSTestJSBuiltinConstructor>::get<jsTestJSBuiltinConstructorTestAttributeCustomGetter>(*state, thisValue, "testAttributeCustom");
 }
 
 static inline JSValue jsTestJSBuiltinConstructorTestAttributeCustomGetter(ExecState& state, JSTestJSBuiltinConstructor& thisObject, ThrowScope& throwScope)
@@ -170,7 +171,7 @@ static inline JSValue jsTestJSBuiltinConstructorTestAttributeRWCustomGetter(Exec
 
 EncodedJSValue jsTestJSBuiltinConstructorTestAttributeRWCustom(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestJSBuiltinConstructor>::attribute<jsTestJSBuiltinConstructorTestAttributeRWCustomGetter>(state, thisValue, "testAttributeRWCustom");
+    return IDLAttribute<JSTestJSBuiltinConstructor>::get<jsTestJSBuiltinConstructorTestAttributeRWCustomGetter>(*state, thisValue, "testAttributeRWCustom");
 }
 
 static inline JSValue jsTestJSBuiltinConstructorTestAttributeRWCustomGetter(ExecState& state, JSTestJSBuiltinConstructor& thisObject, ThrowScope& throwScope)
@@ -208,7 +209,7 @@ static inline bool setJSTestJSBuiltinConstructorTestAttributeRWCustomFunction(Ex
 
 bool setJSTestJSBuiltinConstructorTestAttributeRWCustom(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    return BindingCaller<JSTestJSBuiltinConstructor>::setAttribute<setJSTestJSBuiltinConstructorTestAttributeRWCustomFunction>(state, thisValue, encodedValue, "testAttributeRWCustom");
+    return IDLAttribute<JSTestJSBuiltinConstructor>::set<setJSTestJSBuiltinConstructorTestAttributeRWCustomFunction>(*state, thisValue, encodedValue, "testAttributeRWCustom");
 }
 
 static inline bool setJSTestJSBuiltinConstructorTestAttributeRWCustomFunction(ExecState& state, JSTestJSBuiltinConstructor& thisObject, JSValue value, ThrowScope& throwScope)
@@ -225,18 +226,16 @@ JSValue JSTestJSBuiltinConstructor::getConstructor(VM& vm, const JSGlobalObject*
     return getDOMConstructor<JSTestJSBuiltinConstructorConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static inline JSC::EncodedJSValue jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunctionCaller(JSC::ExecState*, JSTestJSBuiltinConstructor*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunction(ExecState* state)
-{
-    return BindingCaller<JSTestJSBuiltinConstructor>::callOperation<jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunctionCaller>(state, "testCustomFunction");
-}
-
-static inline JSC::EncodedJSValue jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunctionCaller(JSC::ExecState* state, JSTestJSBuiltinConstructor* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunctionCaller(JSC::ExecState* state, typename IDLOperation<JSTestJSBuiltinConstructor>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     return JSValue::encode(castedThis->testCustomFunction(*state));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunction(ExecState* state)
+{
+    return IDLOperation<JSTestJSBuiltinConstructor>::call<jsTestJSBuiltinConstructorPrototypeFunctionTestCustomFunctionCaller>(*state, "testCustomFunction");
 }
 
 void JSTestJSBuiltinConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)

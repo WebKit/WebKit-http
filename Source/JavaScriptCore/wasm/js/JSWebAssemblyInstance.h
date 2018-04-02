@@ -55,6 +55,8 @@ public:
 
     JSObject* importFunction(unsigned idx) { RELEASE_ASSERT(idx < m_numImportFunctions); return importFunctions()[idx].get(); }
 
+    JSModuleNamespaceObject* moduleNamespaceObject() { return m_moduleNamespaceObject.get(); }
+
     JSWebAssemblyMemory* memory() { return m_memory.get(); }
     void setMemory(VM& vm, JSWebAssemblyMemory* value) { ASSERT(!memory()); m_memory.set(vm, this, value); }
     Wasm::MemoryMode memoryMode() { return memory()->memory().mode(); }
@@ -73,10 +75,14 @@ public:
     static ptrdiff_t offsetOfGlobals() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_globals); }
     static ptrdiff_t offsetOfVM() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_vm); }
     static ptrdiff_t offsetOfCodeBlock() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_codeBlock); }
+    static ptrdiff_t offsetOfCachedStackLimit() { return OBJECT_OFFSETOF(JSWebAssemblyInstance, m_cachedStackLimit); }
     static size_t offsetOfImportFunctions() { return WTF::roundUpToMultipleOf<sizeof(WriteBarrier<JSCell>)>(sizeof(JSWebAssemblyInstance)); }
     static size_t offsetOfImportFunction(size_t importFunctionNum) { return offsetOfImportFunctions() + importFunctionNum * sizeof(sizeof(WriteBarrier<JSCell>)); }
 
     WebAssemblyToJSCallee* webAssemblyToJSCallee() { return m_callee.get(); }
+
+    void* cachedStackLimit() const { return m_cachedStackLimit; }
+    void setCachedStackLimit(void* limit) { m_cachedStackLimit = limit; }
 
 protected:
     JSWebAssemblyInstance(VM&, Structure*, unsigned numImportFunctions);
@@ -101,6 +107,7 @@ private:
     WriteBarrier<JSWebAssemblyTable> m_table;
     WriteBarrier<WebAssemblyToJSCallee> m_callee;
     MallocPtr<uint64_t> m_globals;
+    void* m_cachedStackLimit { bitwise_cast<void*>(std::numeric_limits<uintptr_t>::max()) };
     unsigned m_numImportFunctions;
 };
 

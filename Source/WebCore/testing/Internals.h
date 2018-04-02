@@ -114,6 +114,7 @@ public:
 
     void clearMemoryCache();
     void pruneMemoryCacheToSize(unsigned size);
+    void destroyDecodedDataForAllImages();
     unsigned memoryCacheSize() const;
 
     unsigned imageFrameIndex(HTMLImageElement&);
@@ -343,6 +344,7 @@ public:
     ExceptionOr<void> setUseFixedLayout(bool);
     ExceptionOr<void> setFixedLayoutSize(int width, int height);
     ExceptionOr<void> setViewExposedRect(float left, float top, float width, float height);
+    void setPrinting(int width, int height);
 
     void setHeaderHeight(float);
     void setFooterHeight(float);
@@ -562,7 +564,10 @@ public:
 
 #if ENABLE(WEBGL)
     void simulateWebGLContextChanged(WebGLRenderingContext&);
+    void failNextGPUStatusCheck(WebGLRenderingContext&);
 #endif
+
+    void setPageVisibility(bool isVisible);
 
 #if ENABLE(MEDIA_STREAM)
     ExceptionOr<void> setMediaDeviceState(const String& id, const String& property, bool value);
@@ -571,6 +576,7 @@ public:
     void observeMediaStreamTrack(MediaStreamTrack&);
     using TrackFramePromise = DOMPromiseDeferred<IDLInterface<ImageData>>;
     void grabNextMediaStreamTrackFrame(TrackFramePromise&&);
+    void delayMediaStreamTrackSamples(MediaStreamTrack&, float);
 #endif
 
 private:

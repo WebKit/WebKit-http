@@ -1,3 +1,405 @@
+2017-05-25  Saam Barati  <sbarati@apple.com>
+
+        Our for-in optimization in the bytecode generator does its static analysis incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=172532
+        <rdar://problem/32369452>
+
+        Reviewed by Mark Lam.
+
+        * stress/for-in-invalidation-for-any-write.js: Added.
+        (assert):
+        (test):
+        (test.i):
+
+2017-05-25  Mark Lam  <mark.lam@apple.com>
+
+        ObjectToStringAdaptiveInferredPropertyValueWatchpoint should not reinstall itself nor handleFire if it's dying shortly.
+        https://bugs.webkit.org/show_bug.cgi?id=172548
+        <rdar://problem/31458393>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-172548.patch: Added.
+
+2017-05-23  Saam Barati  <sbarati@apple.com>
+
+        We should not mmap zero bytes for a memory in Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=172528
+        <rdar://problem/32257076>
+
+        Reviewed by Mark Lam.
+
+        * wasm/js-api/dont-mmap-zero-byte-memory.js: Added.
+        (testMems):
+
+2017-05-23  Saam Barati  <sbarati@apple.com>
+
+        CFGSimplificationPhase should not merge a block with itself
+        https://bugs.webkit.org/show_bug.cgi?id=172508
+        <rdar://problem/28424006>
+
+        Reviewed by Keith Miller.
+
+        * stress/dont-crash-in-cfg-simplification.js: Added.
+        (bar):
+        (baz):
+        (foo):
+
+2017-05-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] Support GetByVal with ArrayStorage and SlowPutArrayStorage
+        https://bugs.webkit.org/show_bug.cgi?id=172216
+
+        Reviewed by Saam Barati.
+
+        * stress/array-storage-get-by-val.js: Added.
+        (shouldBe):
+        (testOutOfBound):
+        (testInBound):
+        (testSlowPutOutOfBound):
+        (testSlowPutInBound):
+
+2017-05-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix commented out tests
+        https://bugs.webkit.org/show_bug.cgi?id=172225
+
+        * stress/get-by-val-string.js:
+        (object.43):
+        (Hello):
+        (Hello.prototype.get 42):
+        (Hello.prototype.43):
+        (Derived):
+        (shouldBe):
+        (throw.new.Error): Deleted.
+
+2017-05-21  Saam Barati  <sbarati@apple.com>
+
+        We incorrectly throw a syntax error when declaring a top level for-loop iteration variable the same as a parameter
+        https://bugs.webkit.org/show_bug.cgi?id=171041
+        <rdar://problem/32082516>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/lexical-scoping-for-loop.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (let.test7):
+        (let.test8):
+        (let.test9):
+        (let.test10):
+        (let.test11):
+        (let.test12):
+
+2017-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Make get_by_val & string "499" to number 499
+        https://bugs.webkit.org/show_bug.cgi?id=172225
+
+        Reviewed by Saam Barati.
+
+        * stress/get-by-val-string.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (object.43):
+        (Hello):
+        (Hello.prototype.get 42):
+        (Hello.prototype.43):
+        (Derived):
+
+2017-05-19  Mark Lam  <mark.lam@apple.com>
+
+        [Re-landing] DFG::SpeculativeJIT::pickCanTrample() is wrongly ignoring result registers.
+        https://bugs.webkit.org/show_bug.cgi?id=172383
+        <rdar://problem/31418651>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-172383.js: Added.
+
+2017-05-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217156.
+
+        This change broke the iOS build.
+
+        Reverted changeset:
+
+        "DFG::SpeculativeJIT::pickCanTrample() is wrongly ignoring
+        result registers."
+        https://bugs.webkit.org/show_bug.cgi?id=172383
+        http://trac.webkit.org/changeset/217156
+
+2017-05-19  Mark Lam  <mark.lam@apple.com>
+
+        Add missing exception check.
+        https://bugs.webkit.org/show_bug.cgi?id=172346
+        <rdar://problem/32289640>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/regress-172346.js: Added.
+
+2017-05-19  Mark Lam  <mark.lam@apple.com>
+
+        DFG::SpeculativeJIT::pickCanTrample() is wrongly ignoring result registers.
+        https://bugs.webkit.org/show_bug.cgi?id=172383
+        <rdar://problem/31418651>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/regress-172383.js: Added.
+
+2017-05-19  Filip Pizlo  <fpizlo@apple.com>
+
+        arrayProtoPrivateFuncConcatMemcpy needs to be down with firstArray being undecided
+        https://bugs.webkit.org/show_bug.cgi?id=172369
+
+        Reviewed by Mark Lam.
+
+        * stress/undecided-concat.js: Added.
+
+2017-05-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        Reviewed by Saam Barati.
+
+        * stress/check-sub-class.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (calling):
+        (array.forEach):
+        (i.array.forEach):
+
+2017-05-18  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: exports is a getter
+        https://bugs.webkit.org/show_bug.cgi?id=172129
+
+        Reviewed by Saam Barati.
+
+        Update test to reflect new semantics.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-05-18  Saam Barati  <sbarati@apple.com>
+
+        Proxy's [[Get]] passes incorrect receiver
+        https://bugs.webkit.org/show_bug.cgi?id=164849
+        <rdar://problem/31767058>
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/proxy-get-set-correct-receiver.js: Added.
+        (assert):
+        (test):
+        (test.let.target.set prop):
+        (test.let.target.get prop):
+        (test.get let):
+        * stress/proxy-set.js:
+        (let.target.get x):
+        * stress/reflect-set-proxy-set.js:
+        (let.target.get x):
+        * stress/reflect-set-receiver-proxy-set.js:
+        (let.target.get x):
+
+2017-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        Constructor calls set this too early
+        https://bugs.webkit.org/show_bug.cgi?id=172302
+
+        Reviewed by Saam Barati.
+        
+        This tests all three kinds of constructs in BytecodeGenerator. All three were previously
+        wrong.
+
+        * stress/construct-overwritten-variable.js: Added.
+        (new.x.x):
+        * stress/construct-spread-overwritten-variable-2.js: Added.
+        (new.x.x):
+        * stress/construct-spread-overwritten-variable.js: Added.
+        (new.x.x):
+
+2017-05-18  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly: perform stack checks
+        https://bugs.webkit.org/show_bug.cgi?id=165546
+        <rdar://problem/29760307>
+
+        Reviewed by Filip Pizlo.
+
+        * wasm.yaml:
+        * wasm/function-tests/factorial.js:
+        * wasm/function-tests/float-sub.js:
+        * wasm/function-tests/stack-overflow.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.assertOverflows):
+        (assertOverflows.makeInstance):
+        (assertOverflows.makeInstance2):
+        (assertOverflows.assertThrows):
+        (assertOverflows):
+        (assertThrows.test.makeSignature):
+        (assertThrows.test.makeInstance):
+        (assertThrows.test):
+        (assertThrows):
+
+2017-05-18  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly API: test with neutered inputs
+        https://bugs.webkit.org/show_bug.cgi?id=163899
+
+        Reviewed by JF Bastien.
+
+        * wasm/js-api/neutered-inputs.js: Added.
+        (const.testFunction):
+        (const.testConstructor):
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch):
+
+2017-05-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG inlining should be hardened for the no-result case
+        https://bugs.webkit.org/show_bug.cgi?id=172290
+
+        Reviewed by Saam Barati.
+
+        * stress/array-constructor-no-result.js: Added.
+        (foo):
+        * stress/pow-no-result.js: Added.
+        (foo):
+
+2017-05-18  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217031, r217032, and r217037.
+        https://bugs.webkit.org/show_bug.cgi?id=172293
+
+        cause linking errors in Windows (Requested by yusukesuzuki on
+        #webkit).
+
+        Reverted changesets:
+
+        "[JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass"
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+        http://trac.webkit.org/changeset/217031
+
+        "Unreviewed, rebaseline for newly added ClassInfo"
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+        http://trac.webkit.org/changeset/217032
+
+        "Unreviewed, fix debug and non-JIT build"
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+        http://trac.webkit.org/changeset/217037
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC][DFG][DOMJIT] Extend CheckDOM to CheckSubClass
+        https://bugs.webkit.org/show_bug.cgi?id=172098
+
+        Reviewed by Saam Barati.
+
+        * stress/check-sub-class.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (calling):
+        (array.forEach):
+        (i.array.forEach):
+
+2017-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, address mlam's review feedback.
+
+        * stress/arguments-elimination-varargs-too-many-args-arg-count.js:
+
+2017-05-17  Saam Barati  <sbarati@apple.com>
+
+        We don't do context switches for Wasm->Wasm call indirect
+        https://bugs.webkit.org/show_bug.cgi?id=172188
+        <rdar://problem/32231828>
+
+        Reviewed by Keith Miller.
+
+        * wasm/function-tests/context-switch.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.makeInstance2):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.i2.makeInstance2):
+        (makeInstance):
+        (makeInstance2):
+        (assert.eq.makeInstance):
+        (assert.eq.makeInstance2):
+        (assert.eq):
+
+2017-05-17  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC: Incorrect LoadVarargs handling in ArgumentsEliminationPhase::transform
+        https://bugs.webkit.org/show_bug.cgi?id=172208
+
+        Reviewed by Saam Barati.
+
+        * stress/arguments-elimination-varargs-too-many-args-arg-count.js: Added.
+        (foo):
+        (bar):
+        (baz):
+
+2017-05-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Constant Folding Phase should convert MakeRope("", String) => Identity(String)
+        https://bugs.webkit.org/show_bug.cgi?id=172115
+
+        Reviewed by Saam Barati.
+
+        * stress/constant-folding-should-fold-make-rope-with-empty-strings.js: Added.
+        (shouldBe):
+        (unknown):
+        (readWord1):
+        (readWord2):
+        (readWord3):
+        (readWord4):
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: add memory fuzzer
+        https://bugs.webkit.org/show_bug.cgi?id=169976
+        <rdar://problem/31965328>
+
+        Reviewed by Keith Miller.
+
+        * wasm/fuzz/memory.js: Added.
+        (const.insert):
+        (const.action.string_appeared_here):
+        (const.performAction):
+        (catch):
+
+2017-05-16  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: validate load / store alignment
+        https://bugs.webkit.org/show_bug.cgi?id=168836
+        <rdar://problem/31965349>
+
+        Reviewed by Keith Miller.
+
+        * wasm/WASM.js: fix regular expression greed
+        * wasm/function-tests/memory-alignment.js: Added.
+        (const.op.of.WASM.opcodes):
+        * wasm/wasm.json: fix formatting
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        * stress/object-rest-deconstruct.js: Removed.
+        * stress/object-spread.js: Removed.
+
 2017-05-11  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: stop supporting 0xD

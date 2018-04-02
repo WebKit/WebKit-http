@@ -45,13 +45,13 @@ namespace {
 static unsigned copyFromSharedBuffer(char* buffer, unsigned bufferLength, const SharedBuffer& sharedBuffer)
 {
     unsigned bytesExtracted = 0;
-    for (const auto& segment : sharedBuffer) {
-        if (bytesExtracted + segment->size() <= bufferLength) {
-            memcpy(buffer + bytesExtracted, segment->data(), segment->size());
-            bytesExtracted += segment->size();
+    for (const auto& element : sharedBuffer) {
+        if (bytesExtracted + element.segment->size() <= bufferLength) {
+            memcpy(buffer + bytesExtracted, element.segment->data(), element.segment->size());
+            bytesExtracted += element.segment->size();
         } else {
-            ASSERT(bufferLength - bytesExtracted < segment->size());
-            memcpy(buffer + bytesExtracted, segment->data(), bufferLength - bytesExtracted);
+            ASSERT(bufferLength - bytesExtracted < element.segment->size());
+            memcpy(buffer + bytesExtracted, element.segment->data(), bufferLength - bytesExtracted);
             bytesExtracted = bufferLength;
             break;
         }
@@ -98,7 +98,7 @@ bool matchesCURSignature(char* contents)
 
 }
 
-RefPtr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, const URL&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+RefPtr<ImageDecoder> ImageDecoder::create(SharedBuffer& data, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
 {
     static const unsigned lengthOfLongestSignature = 14; // To wit: "RIFF????WEBPVP"
     char contents[lengthOfLongestSignature];
@@ -196,7 +196,7 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index) const
 float ImageDecoder::frameDurationAtIndex(size_t index)
 {
     ImageFrame* buffer = frameBufferAtIndex(index);
-    if (!buffer || buffer->isEmpty())
+    if (!buffer || buffer->isInvalid())
         return 0;
     
     // Many annoying ads specify a 0 duration to make an image flash as quickly as possible.
@@ -216,7 +216,7 @@ NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLe
         return nullptr;
 
     ImageFrame* buffer = frameBufferAtIndex(index);
-    if (!buffer || buffer->isEmpty() || !buffer->hasBackingStore())
+    if (!buffer || buffer->isInvalid() || !buffer->hasBackingStore())
         return nullptr;
 
     // Return the buffer contents as a native image. For some ports, the data

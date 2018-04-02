@@ -479,13 +479,14 @@ static RefPtr<CSSFontFeatureValue> consumeFontFeatureTag(CSSParserTokenRange& ra
     }
 
     int tagValue = 1;
-    // Feature tag values could follow: <integer> | on | off
-    if (range.peek().type() == NumberToken && range.peek().numericValueType() == IntegerValueType && range.peek().numericValue() >= 0) {
-        tagValue = clampTo<int>(range.consumeIncludingWhitespace().numericValue());
-        if (tagValue < 0)
+    if (!range.atEnd() && range.peek().type() != CommaToken) {
+        // Feature tag values could follow: <integer> | on | off
+        if (auto primitiveValue = consumeInteger(range, 0))
+            tagValue = primitiveValue->intValue();
+        else if (range.peek().id() == CSSValueOn || range.peek().id() == CSSValueOff)
+            tagValue = range.consumeIncludingWhitespace().id() == CSSValueOn;
+        else
             return nullptr;
-    } else if (range.peek().id() == CSSValueOn || range.peek().id() == CSSValueOff) {
-        tagValue = range.consumeIncludingWhitespace().id() == CSSValueOn;
     }
     return CSSFontFeatureValue::create(WTFMove(tag), tagValue);
 }
@@ -523,10 +524,13 @@ static RefPtr<CSSValue> consumeFontVariationTag(CSSParserTokenRange& range)
         tag[i] = character;
     }
     
-    if (range.atEnd() || range.peek().type() != NumberToken)
+    if (range.atEnd())
         return nullptr;
 
-    float tagValue = range.consumeIncludingWhitespace().numericValue();
+    double tagValue = 0;
+    auto success = consumeNumberRaw(range, tagValue);
+    if (!success)
+        return nullptr;
     
     return CSSFontVariationValue::create(tag, tagValue);
 }
@@ -630,7 +634,7 @@ public:
     {
         if (!m_result->length())
             return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-        return m_result.release();
+        return WTFMove(m_result);
     }
 
 private:
@@ -832,7 +836,7 @@ public:
     {
         if (!m_result->length())
             return CSSValuePool::singleton().createIdentifierValue(CSSValueNormal);
-        return m_result.release();
+        return WTFMove(m_result);
     }
 
 
@@ -4071,6 +4075,8 @@ RefPtr<CSSValue> CSSPropertyParser::parseSingleValue(CSSPropertyID property, CSS
         return consumeLineWidth(m_range, m_context.mode, UnitlessQuirk::Forbid);
     case CSSPropertyTransform:
         return consumeTransform(m_range, m_context.mode);
+    case CSSPropertyTransformBox:
+        return consumeIdent<CSSValueBorderBox, CSSValueViewBox, CSSValueFillBox>(m_range);
     case CSSPropertyTransformOriginX:
     case CSSPropertyPerspectiveOriginX:
         return consumePositionX(m_range, m_context.mode);
@@ -4429,7 +4435,7 @@ bool CSSPropertyParser::consumeSystemFont(bool important)
         return false;
     
     FontCascadeDescription fontDescription;
-    RenderTheme::defaultTheme()->systemFont(systemFontID, fontDescription);
+    RenderTheme::singleton().systemFont(systemFontID, fontDescription);
     if (!fontDescription.isAbsoluteSize())
         return false;
     
@@ -5545,6 +5551,25 @@ bool CSSPropertyParser::consumePlaceItemsShorthand(bool important)
     return true;
 }
 
+bool CSSPropertyParser::consumePlaceSelfShorthand(bool important)
+{
+    ASSERT(shorthandForProperty(CSSPropertyPlaceSelf).length() == 2);
+
+    RefPtr<CSSValue> alignSelfValue = consumeSimplifiedItemPosition(m_range);
+    if (!alignSelfValue)
+        return false;
+    RefPtr<CSSValue> justifySelfValue = m_range.atEnd() ? alignSelfValue : consumeSimplifiedItemPosition(m_range);
+    if (!justifySelfValue)
+        return false;
+
+    if (!m_range.atEnd())
+        return false;
+
+    addProperty(CSSPropertyAlignSelf, CSSPropertyPlaceSelf, alignSelfValue.releaseNonNull(), important);
+    addProperty(CSSPropertyJustifySelf, CSSPropertyPlaceSelf, justifySelfValue.releaseNonNull(), important);
+    return true;
+}
+
 bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
 {
     switch (property) {
@@ -5730,6 +5755,8 @@ bool CSSPropertyParser::parseShorthand(CSSPropertyID property, bool important)
         return consumePlaceContentShorthand(important);
     case CSSPropertyPlaceItems:
         return consumePlaceItemsShorthand(important);
+    case CSSPropertyPlaceSelf:
+        return consumePlaceSelfShorthand(important);
     case CSSPropertyWebkitMarquee:
         return consumeShorthandGreedily(webkitMarqueeShorthand(), important);
     default:

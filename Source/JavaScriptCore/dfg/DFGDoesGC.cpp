@@ -115,7 +115,7 @@ bool doesGC(Graph& graph, Node* node)
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
-    case CheckDOM:
+    case CheckSubClass:
     case CheckArray:
     case GetScope:
     case SkipScope:
@@ -218,6 +218,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetByValWithThis:
     case GetIndexedPropertyStorage:
     case GetArrayLength:
+    case GetVectorLength:
     case ArrayPush:
     case ArrayPop:
     case StringCharAt:

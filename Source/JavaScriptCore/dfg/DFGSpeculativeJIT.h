@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -110,6 +110,11 @@ private:
 public:
     SpeculativeJIT(JITCompiler&);
     ~SpeculativeJIT();
+
+    VM& vm()
+    {
+        return *m_jit.vm();
+    }
 
     struct TrustedImmPtr {
         template <typename T>
@@ -382,7 +387,7 @@ public:
     SilentRegisterSavePlan silentSavePlanForGPR(VirtualRegister spillMe, GPRReg source);
     SilentRegisterSavePlan silentSavePlanForFPR(VirtualRegister spillMe, FPRReg source);
     void silentSpill(const SilentRegisterSavePlan&);
-    void silentFill(const SilentRegisterSavePlan&, GPRReg canTrample);
+    void silentFill(const SilentRegisterSavePlan&);
 
     template<typename CollectionType>
     void silentSpill(const CollectionType& savePlans)
@@ -392,11 +397,10 @@ public:
     }
 
     template<typename CollectionType>
-    void silentFill(const CollectionType& savePlans, GPRReg exclude = InvalidGPRReg)
+    void silentFill(const CollectionType& savePlans)
     {
-        GPRReg canTrample = SpeculativeJIT::pickCanTrample(exclude);
         for (unsigned i = savePlans.size(); i--;)
-            silentFill(savePlans[i], canTrample);
+            silentFill(savePlans[i]);
     }
 
     template<typename CollectionType>
@@ -457,53 +461,12 @@ public:
         silentSpillAllRegisters(exclude.payloadGPR(), exclude.tagGPR());
 #endif
     }
-    
-    static GPRReg pickCanTrample(GPRReg exclude)
-    {
-        GPRReg result = GPRInfo::regT0;
-        if (result == exclude)
-            result = GPRInfo::regT1;
-        return result;
-    }
-    static GPRReg pickCanTrample(FPRReg)
-    {
-        return GPRInfo::regT0;
-    }
-    static GPRReg pickCanTrample(NoResultTag)
-    {
-        return GPRInfo::regT0;
-    }
 
-#if USE(JSVALUE64)
-    static GPRReg pickCanTrample(JSValueRegs exclude)
+    void silentFillAllRegisters()
     {
-        return pickCanTrample(exclude.payloadGPR());
-    }
-#else
-    static GPRReg pickCanTrample(JSValueRegs exclude)
-    {
-        GPRReg result = GPRInfo::regT0;
-        if (result == exclude.tagGPR()) {
-            result = GPRInfo::regT1;
-            if (result == exclude.payloadGPR())
-                result = GPRInfo::regT2;
-        } else if (result == exclude.payloadGPR()) {
-            result = GPRInfo::regT1;
-            if (result == exclude.tagGPR())
-                result = GPRInfo::regT2;
-        }
-        return result;
-    }
-#endif
-    
-    template<typename RegisterType>
-    void silentFillAllRegisters(RegisterType exclude)
-    {
-        GPRReg canTrample = pickCanTrample(exclude);
-        
         while (!m_plans.isEmpty()) {
             SilentRegisterSavePlan& plan = m_plans.last();
-            silentFill(plan, canTrample);
+            silentFill(plan);
             m_plans.removeLast();
         }
     }
@@ -1539,7 +1502,7 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result);
     }
-    JITCompiler::Call callOperation(J_JITOperation_EAZ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
+    JITCompiler::Call callOperation(J_JITOperation_EOZ operation, GPRReg result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result);
@@ -2099,7 +2062,7 @@ public:
         m_jit.setupArgumentsWithExecState(arg1);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
     }
-    JITCompiler::Call callOperation(J_JITOperation_EAZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2)
+    JITCompiler::Call callOperation(J_JITOperation_EOZ operation, JSValueRegs result, GPRReg arg1, GPRReg arg2)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2);
         return appendCallSetResult(operation, result.payloadGPR(), result.tagGPR());
@@ -2758,7 +2721,7 @@ public:
     void compileGetButterfly(Node*);
     void compileCallDOMGetter(Node*);
     void compileCallDOM(Node*);
-    void compileCheckDOM(Node*);
+    void compileCheckSubClass(Node*);
     
 #if USE(JSVALUE32_64)
     template<typename BaseOperandType, typename PropertyOperandType, typename ValueOperandType, typename TagType>

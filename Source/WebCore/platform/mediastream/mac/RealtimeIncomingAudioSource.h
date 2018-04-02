@@ -64,17 +64,9 @@ private:
     const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
 
-    MediaConstraints& constraints() { return *m_constraints.get(); }
-    RealtimeMediaSourceSupportedConstraints& supportedConstraints();
-
-    bool isProducingData() const final { return m_isProducingData; }
-
     AudioSourceProvider* audioSourceProvider() final;
 
     RealtimeMediaSourceSettings m_currentSettings;
-    RealtimeMediaSourceSupportedConstraints m_supportedConstraints;
-    RefPtr<MediaConstraints> m_constraints;
-    bool m_isProducingData { false };
     rtc::scoped_refptr<webrtc::AudioTrackInterface> m_audioTrack;
 
     RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;

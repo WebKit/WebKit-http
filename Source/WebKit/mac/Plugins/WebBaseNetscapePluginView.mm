@@ -84,14 +84,14 @@ using namespace WebCore;
       attributeKeys:(NSArray *)keys
     attributeValues:(NSArray *)values
        loadManually:(BOOL)loadManually
-            element:(PassRefPtr<WebCore::HTMLPlugInElement>)element
+            element:(RefPtr<WebCore::HTMLPlugInElement>&&)element
 {
     self = [super initWithFrame:frame];
     if (!self)
         return nil;
     
     _pluginPackage = pluginPackage;
-    _element = element;
+    _element = WTFMove(element);
     _sourceURL = adoptNS([URL copy]);
     _baseURL = adoptNS([baseURL copy]);
     _MIMEType = adoptNS([MIME copy]);
@@ -436,14 +436,6 @@ using namespace WebCore;
 {
     NSWindow *window = [self window];
     return !window || [window isMiniaturized] || [NSApp isHidden] || ![self isDescendantOf:[[self window] contentView]] || [self isHiddenOrHasHiddenAncestor];
-}
-
-- (BOOL)inFlatteningPaint
-{
-    auto* renderer = _element->renderer();
-    if (!is<RenderEmbeddedObject>(renderer))
-        return NO;
-    return !!(downcast<RenderEmbeddedObject>(*renderer).view().frameView().paintBehavior() & PaintBehaviorFlattenCompositingLayers);
 }
 
 - (BOOL)supportsSnapshotting

@@ -31,13 +31,13 @@
 
 namespace JSC {
 
-const ClassInfo JSMapIterator::s_info = { "Map Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(JSMapIterator) };
+const ClassInfo JSMapIterator::s_info = { "Map Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSMapIterator) };
 
 void JSMapIterator::finishCreation(VM& vm, JSMap* iteratedObject)
 {
     Base::finishCreation(vm);
     m_map.set(vm, this, iteratedObject);
-    setIterator(vm, m_map->impl()->head());
+    setIterator(vm, m_map->head());
 }
 
 void JSMapIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)

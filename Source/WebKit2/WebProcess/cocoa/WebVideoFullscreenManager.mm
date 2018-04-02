@@ -239,7 +239,7 @@ void WebVideoFullscreenManager::enterVideoFullscreenForVideoElement(HTMLVideoEle
         return;
     interface->setIsAnimating(true);
 
-    bool allowsPictureInPicture = videoElement.mediaSession().allowsPictureInPicture(videoElement);
+    bool allowsPictureInPicture = videoElement.webkitSupportsPresentationMode(HTMLVideoElement::VideoPresentationMode::PictureInPicture);
     
     m_page->send(Messages::WebVideoFullscreenManagerProxy::SetupFullscreenWithID(contextId, interface->layerHostingContext()->contextID(), videoRect, m_page->deviceScaleFactor(), interface->fullscreenMode(), allowsPictureInPicture), m_page->pageID());
 }
@@ -369,10 +369,10 @@ void WebVideoFullscreenManager::didExitFullscreen(uint64_t contextId)
     std::tie(model, interface) = ensureModelAndInterface(contextId);
     RefPtr<WebVideoFullscreenManager> strongThis(this);
     
-    model->waitForPreparedForInlineThen([strongThis, this, contextId, interface, model] {
-        dispatch_async(dispatch_get_main_queue(), [strongThis, this, contextId, interface, model] {
-            model->setVideoFullscreenLayer(nil, [strongThis, this, contextId, interface] {
-                dispatch_async(dispatch_get_main_queue(), [strongThis, this, contextId, interface] {
+    model->waitForPreparedForInlineThen([strongThis, contextId, interface, model] {
+        dispatch_async(dispatch_get_main_queue(), [strongThis, contextId, interface, model] {
+            model->setVideoFullscreenLayer(nil, [strongThis, contextId, interface] {
+                dispatch_async(dispatch_get_main_queue(), [strongThis, contextId, interface] {
                     if (interface->layerHostingContext()) {
                         interface->layerHostingContext()->setRootLayer(nullptr);
                         interface->setLayerHostingContext(nullptr);

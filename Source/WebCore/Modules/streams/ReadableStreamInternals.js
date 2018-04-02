@@ -333,6 +333,13 @@ function readableStreamDefaultControllerGetDesiredSize(controller)
 {
    "use strict";
 
+   const stream = controller.@controlledReadableStream;
+
+   if (stream.@state === @streamErrored)
+       return null;
+   if (stream.@state === @streamClosed)
+       return 0;
+
    return controller.@strategy.highWaterMark - controller.@queue.size;
 }
 
@@ -498,12 +505,12 @@ function readableStreamReaderGenericRelease(reader)
     @assert(!!reader.@ownerReadableStream);
     @assert(reader.@ownerReadableStream.@reader === reader);
 
-    if (reader.@ownerReadableStream.@state === @streamReadable) {
+    if (reader.@ownerReadableStream.@state === @streamReadable)
         reader.@closedPromiseCapability.@reject.@call(@undefined, new @TypeError("releasing lock of reader whose stream is still in readable state"));
-        reader.@closedPromiseCapability.@promise.@promiseIsHandled = true;
-    } else
+    else
         reader.@closedPromiseCapability = { @promise: @newHandledRejectedPromise(new @TypeError("reader released lock")) };
 
+    reader.@closedPromiseCapability.@promise.@promiseIsHandled = true;
     reader.@ownerReadableStream.@reader = @undefined;
-    reader.@ownerReadableStream = null;
+    reader.@ownerReadableStream = @undefined;
 }

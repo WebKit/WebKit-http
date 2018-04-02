@@ -28,14 +28,14 @@
 
 namespace WebCore {
 
-NativeNodeFilter::NativeNodeFilter(RefPtr<NodeFilterCondition>&& condition)
-    : m_condition(condition)
-{ }
-
-uint16_t NativeNodeFilter::acceptNode(Node* node)
+NativeNodeFilter::NativeNodeFilter(Ref<NodeFilterCondition>&& condition)
+    : m_condition(WTFMove(condition))
 {
-    // cast to short silences "enumeral and non-enumeral types in return" warning
-    return m_condition ? m_condition->acceptNode(node) : static_cast<uint16_t>(FILTER_ACCEPT);
+}
+
+CallbackResult<unsigned short> NativeNodeFilter::acceptNode(Node& node)
+{
+    return m_condition->acceptNode(node);
 }
 
 } // namespace WebCore

@@ -45,9 +45,11 @@
 #include <JavaScriptCore/JSBase.h>
 #include <array>
 #include <wtf/HashSet.h>
+#include <wtf/RetainPtr.h>
 
 struct OpaqueJSClass;
 struct OpaqueJSClassContextData;
+OBJC_CLASS JSWrapperMap;
 
 namespace Inspector {
 class JSGlobalObjectInspectorController;
@@ -351,6 +353,7 @@ public:
     WriteBarrier<Structure> m_webAssemblyModuleRecordStructure;
     WriteBarrier<Structure> m_webAssemblyFunctionStructure;
     WriteBarrier<Structure> m_webAssemblyWrapperFunctionStructure;
+    WriteBarrier<Structure> m_webAssemblyToJSCalleeStructure;
     FOR_EACH_WEBASSEMBLY_CONSTRUCTOR_TYPE(DEFINE_STORAGE_FOR_SIMPLE_TYPE)
 #endif // ENABLE(WEBASSEMBLY)
 
@@ -621,6 +624,7 @@ public:
     Structure* webAssemblyModuleRecordStructure() const { return m_webAssemblyModuleRecordStructure.get(); }
     Structure* webAssemblyFunctionStructure() const { return m_webAssemblyFunctionStructure.get(); }
     Structure* webAssemblyWrapperFunctionStructure() const { return m_webAssemblyWrapperFunctionStructure.get(); }
+    Structure* webAssemblyToJSCalleeStructure() const { return m_webAssemblyToJSCalleeStructure.get(); }
 #endif // ENABLE(WEBASSEMBLY)
 
     JS_EXPORT_PRIVATE void setRemoteDebuggingEnabled(bool);
@@ -827,6 +831,11 @@ public:
 
     bool needsSiteSpecificQuirks() const { return m_needsSiteSpecificQuirks; }
 
+#if JSC_OBJC_API_ENABLED
+    JSWrapperMap* wrapperMap() const { return m_wrapperMap.get(); }
+    void setWrapperMap(JSWrapperMap* map) { m_wrapperMap = map; }
+#endif
+
 protected:
     struct GlobalPropertyInfo {
         GlobalPropertyInfo(const Identifier& i, JSValue v, unsigned a)
@@ -856,6 +865,9 @@ private:
     JS_EXPORT_PRIVATE static void clearRareData(JSCell*);
 
     bool m_needsSiteSpecificQuirks { false };
+#if JSC_OBJC_API_ENABLED
+    RetainPtr<JSWrapperMap> m_wrapperMap;
+#endif
 };
 
 JSGlobalObject* asGlobalObject(JSValue);

@@ -741,18 +741,17 @@ MediaPlayer::ReadyState MediaPlayerPrivateMediaStreamAVFObjC::currentReadyState(
 
     bool allTracksAreLive = true;
     for (auto& track : m_mediaStreamPrivate->tracks()) {
-        if (!track->enabled() || track->readyState() != MediaStreamTrackPrivate::ReadyState::Live) {
+        if (!track->enabled() || track->readyState() != MediaStreamTrackPrivate::ReadyState::Live)
             allTracksAreLive = false;
-            break;
-        }
 
         if (track == m_mediaStreamPrivate->activeVideoTrack() && !m_imagePainter.mediaSample) {
+            if (!m_haveSeenMetadata)
+                return MediaPlayer::ReadyState::HaveNothing;
             allTracksAreLive = false;
-            break;
         }
     }
 
-    if (!allTracksAreLive && m_previousReadyState == MediaPlayer::ReadyState::HaveNothing)
+    if (!allTracksAreLive && !m_haveSeenMetadata)
         return MediaPlayer::ReadyState::HaveMetadata;
 
     return MediaPlayer::ReadyState::HaveEnoughData;
@@ -862,6 +861,18 @@ void MediaPlayerPrivateMediaStreamAVFObjC::readyStateChanged(MediaStreamTrackPri
     scheduleDeferredTask([this] {
         updateReadyState();
     });
+}
+
+bool MediaPlayerPrivateMediaStreamAVFObjC::supportsPictureInPicture() const
+{
+#if PLATFORM(IOS)
+    for (const auto& track : m_videoTrackMap.values()) {
+        if (track->streamTrack().isCaptureTrack())
+            return false;
+    }
+#endif
+    
+    return true;
 }
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -1078,7 +1089,8 @@ void MediaPlayerPrivateMediaStreamAVFObjC::setReadyState(MediaPlayer::ReadyState
     if (m_readyState == readyState)
         return;
 
-    m_previousReadyState = m_readyState;
+    if (readyState != MediaPlayer::ReadyState::HaveNothing)
+        m_haveSeenMetadata = true;
     m_readyState = readyState;
     characteristicsChanged();
 

@@ -22,11 +22,12 @@
 #include "JSTestIterable.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMIterator.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
+#include <builtins/BuiltinNames.h>
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
 
@@ -87,7 +88,7 @@ template<> void JSTestIterableConstructor::initializeProperties(VM& vm, JSDOMGlo
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestIterableConstructor::s_info = { "TestIterable", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestIterableConstructor) };
+template<> const ClassInfo JSTestIterableConstructor::s_info = { "TestIterable", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestIterableConstructor) };
 
 /* Hash table for prototype */
 
@@ -100,16 +101,16 @@ static const HashTableValue JSTestIterablePrototypeTableValues[] =
     { "forEach", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestIterablePrototypeFunctionForEach), (intptr_t) (1) } },
 };
 
-const ClassInfo JSTestIterablePrototype::s_info = { "TestIterablePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestIterablePrototype) };
+const ClassInfo JSTestIterablePrototype::s_info = { "TestIterablePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestIterablePrototype) };
 
 void JSTestIterablePrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
     reifyStaticProperties(vm, JSTestIterablePrototypeTableValues, *this);
-    putDirect(vm, vm.propertyNames->iteratorSymbol, JSFunction::create(vm, globalObject(), 0, ASCIILiteral("[Symbol.Iterator]"), jsTestIterablePrototypeFunctionSymbolIterator), DontEnum);
+    putDirect(vm, vm.propertyNames->iteratorSymbol, getDirect(vm, vm.propertyNames->builtinNames().entriesPublicName()), DontEnum);
 }
 
-const ClassInfo JSTestIterable::s_info = { "TestIterable", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestIterable) };
+const ClassInfo JSTestIterable::s_info = { "TestIterable", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestIterable) };
 
 JSTestIterable::JSTestIterable(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestIterable>&& impl)
     : JSDOMWrapper<TestIterable>(structure, globalObject, WTFMove(impl))
@@ -139,7 +140,7 @@ void JSTestIterable::destroy(JSC::JSCell* cell)
     thisObject->JSTestIterable::~JSTestIterable();
 }
 
-template<> inline JSTestIterable* BindingCaller<JSTestIterable>::castForOperation(ExecState& state)
+template<> inline JSTestIterable* IDLOperation<JSTestIterable>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestIterable*>(state.vm(), state.thisValue());
 }
@@ -183,29 +184,19 @@ using TestIterableIterator = JSDOMIterator<JSTestIterable, TestIterableIteratorT
 using TestIterableIteratorPrototype = JSDOMIteratorPrototype<JSTestIterable, TestIterableIteratorTraits>;
 
 template<>
-const JSC::ClassInfo TestIterableIterator::s_info = { "TestIterable Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(TestIterableIterator) };
+const JSC::ClassInfo TestIterableIterator::s_info = { "TestIterable Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(TestIterableIterator) };
 
 template<>
-const JSC::ClassInfo TestIterableIteratorPrototype::s_info = { "TestIterable Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(TestIterableIteratorPrototype) };
+const JSC::ClassInfo TestIterableIteratorPrototype::s_info = { "TestIterable Iterator", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(TestIterableIteratorPrototype) };
 
-static inline EncodedJSValue jsTestIterablePrototypeFunctionSymbolIteratorCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
+static inline EncodedJSValue jsTestIterablePrototypeFunctionEntriesCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
 {
     return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::Value));
 }
 
-JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionSymbolIterator(JSC::ExecState* state)
-{
-    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionSymbolIteratorCaller>(state, "[Symbol.Iterator]");
-}
-
-static inline EncodedJSValue jsTestIterablePrototypeFunctionEntriesCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
-{
-    return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::KeyValue));
-}
-
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionEntries(JSC::ExecState* state)
 {
-    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionEntriesCaller>(state, "entries");
+    return IDLOperation<JSTestIterable>::call<jsTestIterablePrototypeFunctionEntriesCaller>(*state, "entries");
 }
 
 static inline EncodedJSValue jsTestIterablePrototypeFunctionKeysCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
@@ -215,7 +206,7 @@ static inline EncodedJSValue jsTestIterablePrototypeFunctionKeysCaller(ExecState
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionKeys(JSC::ExecState* state)
 {
-    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionKeysCaller>(state, "keys");
+    return IDLOperation<JSTestIterable>::call<jsTestIterablePrototypeFunctionKeysCaller>(*state, "keys");
 }
 
 static inline EncodedJSValue jsTestIterablePrototypeFunctionValuesCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
@@ -225,7 +216,7 @@ static inline EncodedJSValue jsTestIterablePrototypeFunctionValuesCaller(ExecSta
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionValues(JSC::ExecState* state)
 {
-    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionValuesCaller>(state, "values");
+    return IDLOperation<JSTestIterable>::call<jsTestIterablePrototypeFunctionValuesCaller>(*state, "values");
 }
 
 static inline EncodedJSValue jsTestIterablePrototypeFunctionForEachCaller(ExecState* state, JSTestIterable* thisObject, JSC::ThrowScope& throwScope)
@@ -235,7 +226,7 @@ static inline EncodedJSValue jsTestIterablePrototypeFunctionForEachCaller(ExecSt
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionForEach(JSC::ExecState* state)
 {
-    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionForEachCaller>(state, "forEach");
+    return IDLOperation<JSTestIterable>::call<jsTestIterablePrototypeFunctionForEachCaller>(*state, "forEach");
 }
 
 bool JSTestIterableOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

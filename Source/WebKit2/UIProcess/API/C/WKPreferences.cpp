@@ -1611,16 +1611,6 @@ bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef prefe
     return toImpl(preferencesRef)->mediaCaptureRequiresSecureConnection();
 }
 
-void WKPreferencesSetUseAVFoundationAudioCapture(WKPreferencesRef preferencesRef, bool enabled)
-{
-    toImpl(preferencesRef)->setUseAVFoundationAudioCapture(enabled);
-}
-
-bool WKPreferencesGetUseAVFoundationAudioCapture(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->useAVFoundationAudioCapture();
-}
-
 void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setFetchAPIEnabled(flag);
@@ -1629,6 +1619,16 @@ void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 bool WKPreferencesGetFetchAPIEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->fetchAPIEnabled();
+}
+
+void WKPreferencesSetDisplayContentsEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setDisplayContentsEnabled(flag);
+}
+
+bool WKPreferencesGetDisplayContentsEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->displayContentsEnabled();
 }
 
 void WKPreferencesSetDownloadAttributeEnabled(WKPreferencesRef preferencesRef, bool flag)
@@ -1759,4 +1759,14 @@ void WKPreferencesSetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPr
 bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->shouldSuppressKeyboardInputDuringProvisionalNavigation();
+}
+
+void WKPreferencesSetMediaUserGestureInheritsFromDocument(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setMediaUserGestureInheritsFromDocument(flag);
+}
+
+bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaUserGestureInheritsFromDocument();
 }

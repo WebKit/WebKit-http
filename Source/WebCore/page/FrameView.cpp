@@ -1367,8 +1367,9 @@ void FrameView::layout(bool allowSubtree)
             document.styleScope().didChangeStyleSheetEnvironment();
             // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
             InspectorInstrumentation::mediaQueryResultChanged(document);
-        } else
-            document.evaluateMediaQueryList();
+        }
+        
+        document.evaluateMediaQueryList();
 
         // If there is any pagination to apply, it will affect the RenderView's style, so we should
         // take care of that now.
@@ -1579,9 +1580,9 @@ void FrameView::layout(bool allowSubtree)
             // can make us need to update again, and we can get stuck in a nasty cycle unless
             // we call it through the timer here.
             m_postLayoutTasksTimer.startOneShot(0_s);
-            if (needsLayout())
-                layout();
         }
+        if (needsLayout())
+            layout();
     }
 
     InspectorInstrumentation::didLayout(cookie, *root);
@@ -3510,9 +3511,8 @@ void FrameView::flushPostLayoutTasksQueue()
 
 void FrameView::performPostLayoutTasks()
 {
-    LOG(Layout, "FrameView %p performPostLayoutTasks", this);
-
     // FIXME: We should not run any JavaScript code in this function.
+    LOG(Layout, "FrameView %p performPostLayoutTasks", this);
 
     m_postLayoutTasksTimer.stop();
 
@@ -3532,11 +3532,6 @@ void FrameView::performPostLayoutTasks()
             page->chrome().client().didLayout();
     }
 #endif
-
-#if ENABLE(FONT_LOAD_EVENTS)
-    if (RuntimeEnabledFeatures::sharedFeatures().fontLoadEventsEnabled())
-        frame().document()->fonts()->didLayout();
-#endif
     
     // FIXME: We should consider adding DidLayout as a LayoutMilestone. That would let us merge this
     // with didLayout(LayoutMilestones).
@@ -3547,11 +3542,6 @@ void FrameView::performPostLayoutTasks()
 #if ENABLE(CSS_SCROLL_SNAP)
     updateSnapOffsets();
 #endif
-
-    // layout() protects FrameView, but it still can get destroyed when updateEmbeddedObjects()
-    // is called through the post layout timer.
-    Ref<FrameView> protectedThis(*this);
-
     m_updateEmbeddedObjectsTimer.startOneShot(0_s);
 
     if (auto* page = frame().page()) {
@@ -4399,10 +4389,13 @@ void FrameView::willPaintContents(GraphicsContext& context, const IntRect&, Pain
     if (FrameView* parentView = parentFrameView()) {
         if (parentView->paintBehavior() & PaintBehaviorFlattenCompositingLayers)
             m_paintBehavior |= PaintBehaviorFlattenCompositingLayers;
+            
+        if (parentView->paintBehavior() & PaintBehaviorSnapshotting)
+            m_paintBehavior |= PaintBehaviorSnapshotting;
     }
 
     if (document->printing())
-        m_paintBehavior |= PaintBehaviorFlattenCompositingLayers;
+        m_paintBehavior |= (PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting);
 
     paintingState.isFlatteningPaintOfRootFrame = (m_paintBehavior & PaintBehaviorFlattenCompositingLayers) && !frame().ownerElement();
     if (paintingState.isFlatteningPaintOfRootFrame)
@@ -4529,7 +4522,7 @@ void FrameView::paintContentsForSnapshot(GraphicsContext& context, const IntRect
 
     // Cache paint behavior and set a new behavior appropriate for snapshots.
     PaintBehavior oldBehavior = paintBehavior();
-    setPaintBehavior(oldBehavior | PaintBehaviorFlattenCompositingLayers);
+    setPaintBehavior(oldBehavior | (PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting));
 
     // If the snapshot should exclude selection, then we'll clear the current selection
     // in the render tree only. This will allow us to restore the selection from the DOM

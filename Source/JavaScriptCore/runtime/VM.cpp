@@ -38,7 +38,6 @@
 #include "CommonIdentifiers.h"
 #include "CommonSlowPaths.h"
 #include "CustomGetterSetter.h"
-#include "DFGLongLivedState.h"
 #include "DFGWorklist.h"
 #include "Disassembler.h"
 #include "ErrorInstance.h"
@@ -240,7 +239,6 @@ VM::VM(VMType vmType, HeapType heapType)
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
 #if ENABLE(WEBASSEMBLY)
-    webAssemblyToJSCalleeStructure.set(*this, WebAssemblyToJSCallee::createStructure(*this, 0, jsNull()));
     webAssemblyCodeBlockStructure.set(*this, JSWebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
 #endif
     moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
@@ -274,8 +272,6 @@ VM::VM(VMType vmType, HeapType heapType)
     functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
     hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
     hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
-    hashMapImplSetStructure.set(*this, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::createStructure(*this, 0, jsNull()));
-    hashMapImplMapStructure.set(*this, HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>::createStructure(*this, 0, jsNull()));
 
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     nativeStdFunctionCellStructure.set(*this, NativeStdFunctionCell::createStructure(*this, 0, jsNull()));
@@ -315,11 +311,6 @@ VM::VM(VMType vmType, HeapType heapType)
 
     callFrameForCatch = nullptr;
 
-#if ENABLE(DFG_JIT)
-    if (canUseJIT())
-        dfgState = std::make_unique<DFG::LongLivedState>();
-#endif
-    
     // Initialize this last, as a free way of asserting that VM initialization itself
     // won't use this.
     m_typedArrayController = adoptRef(new SimpleTypedArrayController());
@@ -659,7 +650,7 @@ size_t VM::updateSoftReservedZoneSize(size_t softReservedZoneSize)
     return oldSoftReservedZoneSize;
 }
 
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
 // On Windows the reserved stack space consists of committed memory, a guard page, and uncommitted memory,
 // where the guard page is a barrier between committed and uncommitted memory.
 // When data from the guard page is read or written, the guard page is moved, and memory is committed.
@@ -686,7 +677,7 @@ static void preCommitStackMemory(void* stackLimit)
 
 inline void VM::updateStackLimits()
 {
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
     void* lastSoftStackLimit = m_softStackLimit;
 #endif
 
@@ -701,7 +692,7 @@ inline void VM::updateStackLimits()
         m_stackLimit = wtfThreadData().stack().recursionLimit(reservedZoneSize);
     }
 
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
     // We only need to precommit stack memory dictated by the VM::m_softStackLimit limit.
     // This is because VM::m_softStackLimit applies to stack usage by LLINT asm or JIT
     // generated code which can allocate stack space that the C++ compiler does not know

@@ -120,6 +120,7 @@
 #import <WebCore/RenderLayer.h>
 #import <WebCore/TextResourceDecoder.h>
 #import <WebCore/WAKScrollView.h>
+#import <WebCore/WAKWindow.h>
 #import <WebCore/WKGraphics.h>
 #import <WebCore/WebCoreThreadRun.h>
 #endif
@@ -582,24 +583,31 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return plainText(core(range), TextIteratorDefaultBehavior, true);
 }
 
-- (BOOL)_shouldFlattenCompositingLayers:(CGContextRef)context
+
+- (PaintBehavior)_paintBehaviorForDestinationContext:(CGContextRef)context
 {
 #if !PLATFORM(IOS)
     // -currentContextDrawingToScreen returns YES for bitmap contexts.
     BOOL isPrinting = ![NSGraphicsContext currentContextDrawingToScreen];
     if (isPrinting)
-        return YES;
+        return PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting;
 #endif
 
     if (!WKCGContextIsBitmapContext(context))
-        return NO;
+        return 0;
 
     // If we're drawing into a bitmap, we might be snapshotting, or drawing into a layer-backed view.
     id documentView = [_private->webFrameView documentView];
-    if ([documentView isKindOfClass:[WebHTMLView class]] && [(WebHTMLView *)documentView _web_isDrawingIntoLayer])
-        return NO;
-
-    return [getWebView(self) _includesFlattenedCompositingLayersWhenDrawingToBitmap];
+    if ([documentView isKindOfClass:[WebHTMLView class]]) {
+#if PLATFORM(IOS)
+        if ([[documentView window] isInSnapshottingPaint])
+            return PaintBehaviorSnapshotting;
+#endif
+        if ([(WebHTMLView *)documentView _web_isDrawingIntoLayer])
+            return 0;
+    }
+    
+    return PaintBehaviorFlattenCompositingLayers | PaintBehaviorSnapshotting;
 }
 
 - (void)_drawRect:(NSRect)rect contentsOnly:(BOOL)contentsOnly
@@ -622,28 +630,29 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
 
     FrameView* view = _private->coreFrame->view();
     
-    bool shouldFlatten = false;
+    PaintBehavior oldBehavior = view->paintBehavior();
+    PaintBehavior paintBehavior = oldBehavior;
+    
     if (Frame* parentFrame = _private->coreFrame->tree().parent()) {
         // For subframes, we need to inherit the paint behavior from our parent
-        FrameView* parentView = parentFrame ? parentFrame->view() : 0;
-        if (parentView)
-            shouldFlatten = parentView->paintBehavior() & PaintBehaviorFlattenCompositingLayers;
+        if (FrameView* parentView = parentFrame ? parentFrame->view() : nullptr) {
+            if (parentView->paintBehavior() & PaintBehaviorFlattenCompositingLayers)
+                paintBehavior |= PaintBehaviorFlattenCompositingLayers;
+                
+            if (parentView->paintBehavior() & PaintBehaviorSnapshotting)
+                paintBehavior |= PaintBehaviorSnapshotting;
+        }
     } else
-        shouldFlatten = [self _shouldFlattenCompositingLayers:ctx];
+        paintBehavior |= [self _paintBehaviorForDestinationContext:ctx];
+        
+    view->setPaintBehavior(paintBehavior);
 
-    PaintBehavior oldBehavior = PaintBehaviorNormal;
-    if (shouldFlatten) {
-        oldBehavior = view->paintBehavior();
-        view->setPaintBehavior(oldBehavior | PaintBehaviorFlattenCompositingLayers);
-    }
-    
     if (contentsOnly)
         view->paintContents(context, enclosingIntRect(rect));
     else
         view->paint(context, enclosingIntRect(rect));
 
-    if (shouldFlatten)
-        view->setPaintBehavior(oldBehavior);
+    view->setPaintBehavior(oldBehavior);
 }
 
 - (BOOL)_getVisibleRect:(NSRect*)rect
@@ -792,15 +801,15 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return NSMakeRange(location, length);
 }
 
-- (PassRefPtr<Range>)_convertToDOMRange:(NSRange)nsrange
+- (RefPtr<Range>)_convertToDOMRange:(NSRange)nsrange
 {
     return [self _convertToDOMRange:nsrange rangeIsRelativeTo:WebRangeIsRelativeTo::EditableRoot];
 }
 
-- (PassRefPtr<Range>)_convertToDOMRange:(NSRange)nsrange rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo
+- (RefPtr<Range>)_convertToDOMRange:(NSRange)nsrange rangeIsRelativeTo:(WebRangeIsRelativeTo)rangeIsRelativeTo
 {
     if (nsrange.location > INT_MAX)
-        return 0;
+        return nullptr;
     if (nsrange.length > INT_MAX || nsrange.location + nsrange.length > INT_MAX)
         nsrange.length = INT_MAX - nsrange.location;
 
@@ -822,11 +831,11 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     const VisibleSelection& selection = _private->coreFrame->selection().selection();
     RefPtr<Range> selectedRange = selection.toNormalizedRange();
     if (!selectedRange)
-        return 0;
+        return nullptr;
 
     RefPtr<Range> paragraphRange = makeRange(startOfParagraph(selection.visibleStart()), selection.visibleEnd());
     if (!paragraphRange)
-        return 0;
+        return nullptr;
 
     ContainerNode& rootNode = paragraphRange.get()->startContainer().treeScope().rootNode();
     int paragraphStartIndex = TextIterator::rangeLength(Range::create(rootNode.document(), &rootNode, 0, &paragraphRange->startContainer(), paragraphRange->startOffset()).ptr());

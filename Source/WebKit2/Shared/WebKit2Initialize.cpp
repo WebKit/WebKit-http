@@ -32,24 +32,12 @@
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
 
-#if PLATFORM(COCOA)
-#include "WebSystemInterface.h"
-#endif
-#if PLATFORM(IOS)
-#import <WebCore/WebCoreThreadSystemInterface.h>
-#endif
-
 namespace WebKit {
+
+#if !PLATFORM(COCOA)
 
 void InitializeWebKit2()
 {
-#if PLATFORM(COCOA)
-    InitWebCoreSystemInterface();
-#endif
-#if PLATFORM(IOS)
-    InitWebCoreThreadSystemInterface();
-#endif
-
     JSC::initializeThreading();
     RunLoop::initializeMainRunLoop();
 
@@ -58,5 +46,7 @@ void InitializeWebKit2()
     WebKit::initializeLogChannelsIfNecessary();
 #endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 }
+
+#endif // !PLATFORM(COCOA)
 
 } // namespace WebKit

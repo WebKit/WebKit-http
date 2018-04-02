@@ -111,6 +111,8 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(DOMString testParam);
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(long testParam);
 
+    [EnabledForWorld=someWorld, EnabledAtRuntime=TestFeature] void enabledInSpecificWorldWhenRuntimeFeatureEnabled(long testParam);
+
     [EnabledForWorld=someWorld] void worldSpecificMethod(long testParam);
 
     // [EnabledBySetting] attributes and operations.
@@ -338,6 +340,8 @@ enum TestConfidence { "high", "kinda-low" };
     [MayThrowException] sequence<DOMString> stringArrayFunction(sequence<DOMString> values);
     [MayThrowException] DOMStringList domStringListFunction(DOMStringList values);
 
+    void operationWithOptionalUnionParameter(optional (DOMString or sequence<unrestricted double>) optionalUnion);
+
     void methodWithAndWithoutNullableSequence(sequence<unsigned long> arrayArg, sequence<unsigned long>? nullableArrayArg);
 
     Element? getElementById([RequiresExistingAtomicString] DOMString elementId);
@@ -413,6 +417,8 @@ enum TestConfidence { "high", "kinda-low" };
     static Promise<void> testStaticPromiseFunction();
     [MayThrowException] static Promise<void> testStaticPromiseFunctionWithException();
     [Custom] Promise<void> testCustomPromiseFunction();
+    [Custom] static Promise<void> testStaticCustomPromiseFunction();
+    [Custom, ReturnsOwnPromise] Promise<void> testCustomReturnsOwnPromiseFunction();
 
     // PutForwards
     [PutForwards=name] readonly attribute TestNode putForwardsAttribute;
@@ -433,6 +439,10 @@ enum TestConfidence { "high", "kinda-low" };
     serializer = {create, readOnlyStringAttr, enumAttr, longAttr};
 
     void bufferSourceParameter(BufferSource data);
+    
+    legacycaller void legacyCallerNamed(long param);
+    legacycaller long (DOMString param);
+    legacycaller void ();
 };
 
 // The following comment should not generate any code.

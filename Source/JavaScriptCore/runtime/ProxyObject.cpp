@@ -43,7 +43,7 @@ namespace JSC {
 
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(ProxyObject);
 
-const ClassInfo ProxyObject::s_info = { "ProxyObject", &Base::s_info, 0, CREATE_METHOD_TABLE(ProxyObject) };
+const ClassInfo ProxyObject::s_info = { "ProxyObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ProxyObject) };
 
 ProxyObject::ProxyObject(VM& vm, Structure* structure)
     : Base(vm, structure)
@@ -128,13 +128,15 @@ static JSValue performProxyGet(ExecState* exec, ProxyObject* proxyObject, JSValu
     JSObject* target = proxyObject->target();
 
     auto performDefaultGet = [&] {
-        return target->get(exec, propertyName);
+        scope.release();
+        PropertySlot slot(receiver, PropertySlot::InternalMethodType::Get);
+        if (target->getPropertySlot(exec, propertyName, slot))
+            return slot.getValue(exec, propertyName);
+        return jsUndefined();
     };
 
-    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid()))) {
-        scope.release();
+    if (vm.propertyNames->isPrivateName(Identifier::fromUid(&vm, propertyName.uid())))
         return performDefaultGet();
-    }
 
     JSValue handlerValue = proxyObject->handler();
     if (handlerValue.isNull())
@@ -146,10 +148,8 @@ static JSValue performProxyGet(ExecState* exec, ProxyObject* proxyObject, JSValu
     JSValue getHandler = handler->getMethod(exec, callData, callType, vm.propertyNames->get, ASCIILiteral("'get' property of a Proxy's handler object should be callable"));
     RETURN_IF_EXCEPTION(scope, { });
 
-    if (getHandler.isUndefined()) {
-        scope.release();
+    if (getHandler.isUndefined())
         return performDefaultGet();
-    }
 
     MarkedArgumentBuffer arguments;
     arguments.append(target);

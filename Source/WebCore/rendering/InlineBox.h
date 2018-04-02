@@ -417,6 +417,8 @@ private:
     static constexpr unsigned deletionSentinelDeletedValue = 0xF0DEADF0U;
     unsigned m_deletionSentinel { deletionSentinelNotDeletedValue };
     bool m_hasBadParent { false };
+protected:
+    bool m_isEverInChildList { true };
 #endif
 };
 

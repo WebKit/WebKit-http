@@ -674,6 +674,7 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
     WKPreferencesSetArtificialPluginInitializationDelayEnabled(preferences, false);
     WKPreferencesSetTabToLinksEnabled(preferences, false);
     WKPreferencesSetInteractiveFormValidationEnabled(preferences, true);
+    WKPreferencesSetDisplayContentsEnabled(preferences, true);
 
     WKPreferencesSetMockScrollbarsEnabled(preferences, options.useMockScrollbars);
     WKPreferencesSetNeedsSiteSpecificQuirks(preferences, options.needsSiteSpecificQuirks);
@@ -2208,6 +2209,16 @@ bool TestController::isStatisticsHasHadUserInteraction(WKStringRef hostName)
     return WKResourceLoadStatisticsManagerIsHasHadUserInteraction(hostName);
 }
 
+void TestController::setStatisticsGrandfathered(WKStringRef hostName, bool value)
+{
+    WKResourceLoadStatisticsManagerSetGrandfathered(hostName, value);
+}
+
+bool TestController::isStatisticsGrandfathered(WKStringRef hostName)
+{
+    return WKResourceLoadStatisticsManagerIsGrandfathered(hostName);
+}
+
 void TestController::setStatisticsSubframeUnderTopFrameOrigin(WKStringRef hostName, WKStringRef topFrameHostName)
 {
     WKResourceLoadStatisticsManagerSetSubframeUnderTopFrameOrigin(hostName, topFrameHostName);
@@ -2261,6 +2272,11 @@ void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemova
 void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds)
 {
     WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);
+}
+
+void TestController::setStatisticsGrandfatheringTime(double seconds)
+{
+    WKResourceLoadStatisticsManagerSetGrandfatheringTime(seconds);
 }
 
 void TestController::statisticsClearInMemoryAndPersistentStore()

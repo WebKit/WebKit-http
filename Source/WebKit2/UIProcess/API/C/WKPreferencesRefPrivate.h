@@ -433,10 +433,6 @@ WK_EXPORT bool WKPreferencesGetEnumeratingAllNetworkInterfacesEnabled(WKPreferen
 WK_EXPORT void WKPreferencesSetMediaCaptureRequiresSecureConnection(WKPreferencesRef, bool);
 WK_EXPORT bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef);
 
-// Defaults to false.
-WK_EXPORT void WKPreferencesSetUseAVFoundationAudioCapture(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetUseAVFoundationAudioCapture(WKPreferencesRef);
-    
 // Defaults to false
 WK_EXPORT void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetFetchAPIEnabled(WKPreferencesRef);
@@ -456,6 +452,10 @@ WK_EXPORT bool WKPreferencesGetAllowsPictureInPictureMediaPlayback(WKPreferences
 // Defaults to false
 WK_EXPORT void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetDisplayContentsEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetDisplayContentsEnabled(WKPreferencesRef);
 
 // Defaults to false
 WK_EXPORT void WKPreferencesSetUserTimingEnabled(WKPreferencesRef, bool flag);
@@ -492,6 +492,10 @@ WK_EXPORT bool WKPreferencesGetCredentialManagementEnabled(WKPreferencesRef);
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetInvisibleMediaAutoplayPermitted(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetInvisibleMediaAutoplayPermitted(WKPreferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetMediaUserGestureInheritsFromDocument(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

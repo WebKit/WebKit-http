@@ -2185,7 +2185,7 @@ static void initializeRoleMap()
         { "doc-epilogue", LandmarkDocRegionRole },
         { "doc-errata", LandmarkDocRegionRole },
         { "doc-example", ApplicationTextGroupRole },
-        { "doc-footnote", ApplicationTextGroupRole },
+        { "doc-footnote", FootnoteRole },
         { "doc-foreword", LandmarkDocRegionRole },
         { "doc-glossary", LandmarkDocRegionRole },
         { "doc-glossref", WebCoreLinkRole },
@@ -2305,7 +2305,7 @@ String AccessibilityObject::computedRoleString() const
         return "";
 
     // We do compute a role string for block elements with author-provided roles.
-    if (role == ApplicationTextGroupRole)
+    if (role == ApplicationTextGroupRole || role == FootnoteRole)
         return reverseAriaRoleMap().get(ApplicationGroupRole);
 
     if (role == HorizontalRuleRole)
@@ -3315,8 +3315,13 @@ void AccessibilityObject::ariaOwnsElements(AccessibilityChildrenVector& axObject
 
 void AccessibilityObject::setIsIgnoredFromParentDataForChild(AccessibilityObject* child)
 {
-    if (!child || child->parentObject() != this)
+    if (!child)
         return;
+    
+    if (child->parentObject() != this) {
+        child->clearIsIgnoredFromParentData();
+        return;
+    }
     
     AccessibilityIsIgnoredFromParentData result = AccessibilityIsIgnoredFromParentData(this);
     if (!m_isIgnoredFromParentData.isNull()) {

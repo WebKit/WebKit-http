@@ -95,6 +95,21 @@ static void checkTypeIdentifierPrecedesOtherTypeIdentifier(DataInteractionSimula
     EXPECT_TRUE([registeredTypes indexOfObject:firstType] < [registeredTypes indexOfObject:secondType]);
 }
 
+static void checkTypeIdentifierIsRegisteredAtIndex(DataInteractionSimulator *simulator, NSString *type, NSUInteger index)
+{
+    NSArray *registeredTypes = [simulator.sourceItemProviders.firstObject registeredTypeIdentifiers];
+    EXPECT_GT(registeredTypes.count, index);
+    EXPECT_WK_STREQ(type.UTF8String, [registeredTypes[index] UTF8String]);
+}
+
+static void checkSuggestedNameAndEstimatedSize(DataInteractionSimulator *simulator, NSString *suggestedName, CGSize estimatedSize)
+{
+    UIItemProvider *sourceItemProvider = [simulator sourceItemProviders].firstObject;
+    EXPECT_WK_STREQ(suggestedName.UTF8String, sourceItemProvider.suggestedName.UTF8String);
+    EXPECT_EQ(estimatedSize.width, sourceItemProvider.estimatedDisplayedSize.width);
+    EXPECT_EQ(estimatedSize.height, sourceItemProvider.estimatedDisplayedSize.height);
+}
+
 namespace TestWebKitAPI {
 
 TEST(DataInteractionTests, ImageToContentEditable)
@@ -113,6 +128,7 @@ TEST(DataInteractionTests, ImageToContentEditable)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(1, 201, 215, 174) ], [dataInteractionSimulator finalSelectionRects]);
     checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, (NSString *)kUTTypeFileURL);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"icon.png", { 215, 174 });
 }
 
 TEST(DataInteractionTests, ImageToTextarea)
@@ -132,6 +148,7 @@ TEST(DataInteractionTests, ImageToTextarea)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
 
     checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, (NSString *)kUTTypeFileURL);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"icon.png", { 215, 174 });
 }
 
 TEST(DataInteractionTests, ImageInLinkToInput)
@@ -144,6 +161,8 @@ TEST(DataInteractionTests, ImageInLinkToInput)
 
     EXPECT_WK_STREQ("https://www.apple.com/", [webView editorValue].UTF8String);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 241, 2057, 232) ], [dataInteractionSimulator finalSelectionRects]);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"icon.png", { 215, 174 });
+    checkTypeIdentifierIsRegisteredAtIndex(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, 0);
 }
 
 TEST(DataInteractionTests, ImageInLinkWithoutHREFToInput)
@@ -157,6 +176,21 @@ TEST(DataInteractionTests, ImageInLinkWithoutHREFToInput)
 
     NSURL *imageURL = [NSURL fileURLWithPath:[webView editorValue]];
     EXPECT_WK_STREQ("icon.png", imageURL.lastPathComponent);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"icon.png", { 215, 174 });
+    checkTypeIdentifierIsRegisteredAtIndex(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, 0);
+}
+
+TEST(DataInteractionTests, ImageDoesNotUseElementSizeAsEstimatedSize)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"gif-and-file-input"];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator runFrom: { 100, 100 } to: { 100, 300 }];
+
+    checkTypeIdentifierIsRegisteredAtIndex(dataInteractionSimulator.get(), (NSString *)kUTTypeGIF, 0);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"apple.gif", { 52, 64 });
+    EXPECT_WK_STREQ("apple.gif (image/gif)", [webView stringByEvaluatingJavaScript:@"output.textContent"]);
 }
 
 TEST(DataInteractionTests, ContentEditableToContentEditable)
@@ -232,6 +266,45 @@ TEST(DataInteractionTests, TextAreaToInput)
     checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 241, 990, 232) ], [dataInteractionSimulator finalSelectionRects]);
 }
 
+TEST(DataInteractionTests, SinglePlainTextWordTypeIdentifiers)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+
+    [webView loadTestPageNamed:@"textarea-to-input"];
+    [dataInteractionSimulator waitForInputSession];
+    [webView stringByEvaluatingJavaScript:@"source.value = 'pneumonoultramicroscopicsilicovolcanoconiosis'"];
+    [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
+    [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+
+    NSArray *registeredTypes = [[dataInteractionSimulator sourceItemProviders].firstObject registeredTypeIdentifiers];
+    EXPECT_EQ(1UL, registeredTypes.count);
+    EXPECT_WK_STREQ([(NSString *)kUTTypeUTF8PlainText UTF8String], [registeredTypes.firstObject UTF8String]);
+    EXPECT_EQ([webView stringByEvaluatingJavaScript:@"source.value"].length, 0UL);
+    EXPECT_WK_STREQ("pneumonoultramicroscopicsilicovolcanoconiosis", [webView editorValue].UTF8String);
+}
+
+TEST(DataInteractionTests, SinglePlainTextURLTypeIdentifiers)
+{
+    RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    RetainPtr<DataInteractionSimulator> dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+
+    [webView loadTestPageNamed:@"textarea-to-input"];
+    [dataInteractionSimulator waitForInputSession];
+    [webView stringByEvaluatingJavaScript:@"source.value = 'https://webkit.org/'"];
+    [webView stringByEvaluatingJavaScript:@"source.selectionStart = 0"];
+    [webView stringByEvaluatingJavaScript:@"source.selectionEnd = source.value.length"];
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+
+    NSArray *registeredTypes = [[dataInteractionSimulator sourceItemProviders].firstObject registeredTypeIdentifiers];
+    EXPECT_EQ(2UL, registeredTypes.count);
+    EXPECT_WK_STREQ([(NSString *)kUTTypeURL UTF8String], [registeredTypes.firstObject UTF8String]);
+    EXPECT_WK_STREQ([(NSString *)kUTTypeUTF8PlainText UTF8String], [registeredTypes.lastObject UTF8String]);
+    EXPECT_EQ(0UL, [webView stringByEvaluatingJavaScript:@"source.value"].length);
+    EXPECT_WK_STREQ("https://webkit.org/", [webView editorValue].UTF8String);
+}
+
 TEST(DataInteractionTests, LinkToInput)
 {
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -244,7 +317,8 @@ TEST(DataInteractionTests, LinkToInput)
 
     __block bool doneLoadingURL = false;
     UIItemProvider *sourceItemProvider = [dataInteractionSimulator sourceItemProviders].firstObject;
-    [sourceItemProvider loadObjectOfClass:[NSURL class] completionHandler:^(NSURL *url, NSError *error) {
+    [sourceItemProvider loadObjectOfClass:[NSURL class] completionHandler:^(id object, NSError *error) {
+        NSURL *url = object;
         EXPECT_WK_STREQ("Hello world", url._title.UTF8String ?: "");
         doneLoadingURL = true;
     }];
@@ -255,7 +329,7 @@ TEST(DataInteractionTests, LinkToInput)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionOverEventName]);
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 273, 2057, 232) ], [dataInteractionSimulator finalSelectionRects]);
-    checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText);
+    checkTypeIdentifierIsRegisteredAtIndex(dataInteractionSimulator.get(), (NSString *)kUTTypeURL, 0);
 }
 
 TEST(DataInteractionTests, BackgroundImageLinkToInput)
@@ -273,7 +347,7 @@ TEST(DataInteractionTests, BackgroundImageLinkToInput)
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionOverEventName]);
     EXPECT_TRUE([observedEventNames containsObject:DataInteractionPerformOperationEventName]);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(101, 241, 2057, 232) ], [dataInteractionSimulator finalSelectionRects]);
-    checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText);
+    checkTypeIdentifierIsRegisteredAtIndex(dataInteractionSimulator.get(), (NSString *)kUTTypeURL, 0);
 }
 
 TEST(DataInteractionTests, CanPreventStart)
@@ -445,6 +519,29 @@ TEST(DataInteractionTests, ExternalSourceImageAndHTMLToUploadArea)
     EXPECT_WK_STREQ("image/jpeg, text/html, text/html", outputValue.UTF8String);
 }
 
+TEST(DataInteractionTests, ExternalSourceMultipleURLsToContentEditable)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"autofocus-contenteditable"];
+    [webView stringByEvaluatingJavaScript:@"getSelection().removeAllRanges()"];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    auto firstItem = adoptNS([[UIItemProvider alloc] init]);
+    [firstItem registerObject:[NSURL URLWithString:@"https://www.apple.com/iphone/"] visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    auto secondItem = adoptNS([[UIItemProvider alloc] init]);
+    [secondItem registerObject:[NSURL URLWithString:@"https://www.apple.com/mac/"] visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    auto thirdItem = adoptNS([[UIItemProvider alloc] init]);
+    [thirdItem registerObject:[NSURL URLWithString:@"https://webkit.org/"] visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    [dataInteractionSimulator setExternalItemProviders:@[ firstItem.get(), secondItem.get(), thirdItem.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+
+    NSArray *separatedLinks = [[webView stringByEvaluatingJavaScript:@"editor.textContent"] componentsSeparatedByCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    EXPECT_EQ(3UL, separatedLinks.count);
+    EXPECT_WK_STREQ("https://www.apple.com/iphone/", separatedLinks[0]);
+    EXPECT_WK_STREQ("https://www.apple.com/mac/", separatedLinks[1]);
+    EXPECT_WK_STREQ("https://webkit.org/", separatedLinks[2]);
+}
+
 TEST(DataInteractionTests, RespectsExternalSourceFidelityRankings)
 {
     auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -534,6 +631,23 @@ TEST(DataInteractionTests, ExternalSourceTitledNSURL)
     EXPECT_WK_STREQ("https://www.apple.com/", [webView stringByEvaluatingJavaScript:@"editor.querySelector('a').href"]);
 }
 
+TEST(DataInteractionTests, ExternalSourceFileURL)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"autofocus-contenteditable"];
+    [webView stringByEvaluatingJavaScript:@"getSelection().removeAllRanges()"];
+
+    NSURL *URL = [NSURL URLWithString:@"file:///some/file/that/is/not/real"];
+    UIItemProvider *simulatedItemProvider = [UIItemProvider itemProviderWithURL:URL title:@""];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedItemProvider ]];
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+
+    EXPECT_FALSE([[webView stringByEvaluatingJavaScript:@"!!editor.querySelector('a')"] boolValue]);
+    EXPECT_WK_STREQ("Hello world\nfile:///some/file/that/is/not/real", [webView stringByEvaluatingJavaScript:@"document.body.innerText"]);
+}
+
 TEST(DataInteractionTests, OverrideDataInteractionOperation)
 {
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -588,6 +702,7 @@ TEST(DataInteractionTests, AttachmentElementItemProviders)
     [dataInteractionSimulator runFrom:CGPointMake(50, 50) to:CGPointMake(50, 400)];
 
     EXPECT_WK_STREQ("hello", [injectedString UTF8String]);
+    EXPECT_TRUE([webView stringByEvaluatingJavaScript:@"getSelection().isCollapsed"].boolValue);
 }
 
 TEST(DataInteractionTests, LargeImageToTargetDiv)
@@ -602,6 +717,7 @@ TEST(DataInteractionTests, LargeImageToTargetDiv)
     [dataInteractionSimulator runFrom:CGPointMake(200, 400) to:CGPointMake(200, 150)];
     EXPECT_WK_STREQ("PASS", [webView stringByEvaluatingJavaScript:@"target.textContent"].UTF8String);
     checkTypeIdentifierPrecedesOtherTypeIdentifier(dataInteractionSimulator.get(), (NSString *)kUTTypePNG, (NSString *)kUTTypeFileURL);
+    checkSuggestedNameAndEstimatedSize(dataInteractionSimulator.get(), @"large-red-square.png", { 2000, 2000 });
 }
 
 TEST(DataInteractionTests, LinkWithEmptyHREF)

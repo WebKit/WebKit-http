@@ -26,6 +26,7 @@
 #pragma once
 
 #include "WebProcessLifetimeObserver.h"
+#include <WebCore/Cookie.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
@@ -94,6 +95,7 @@ public:
 
     void fetchData(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, std::function<void (Vector<WebsiteDataRecord>)> completionHandler);
     void fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<String>&& topPrivatelyControlledDomains, std::function<void(Vector<WebsiteDataRecord>&&, Vector<String>&&)> completionHandler);
+    void topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, std::function<void(HashSet<String>&&)> completionHandler);
     void removeData(OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler);
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, std::function<void ()> completionHandler);
     void removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<String>&& topPrivatelyControlledDomains, std::function<void(Vector<String>)> completionHandler);
@@ -117,6 +119,10 @@ public:
 
     WebsiteDataStoreParameters parameters();
     DatabaseProcessCreationParameters databaseProcessParameters();
+
+    Vector<WebCore::Cookie> pendingCookies() const;
+    void addPendingCookie(const WebCore::Cookie&);
+    void removePendingCookie(const WebCore::Cookie&);
 
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
@@ -160,6 +166,7 @@ private:
     Vector<uint8_t> m_uiProcessCookieStorageIdentifier;
     RetainPtr<CFHTTPCookieStorageRef> m_cfCookieStorage;
 #endif
+    HashSet<WebCore::Cookie> m_pendingCookies;
 };
 
 }

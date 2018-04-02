@@ -1,3 +1,345 @@
+2017-05-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [Win] ASSERTION FAILED: !HashTranslator::equal(KeyTraits::emptyValue(), key)
+        https://bugs.webkit.org/show_bug.cgi?id=172586
+
+        Reviewed by Brent Fulgham.
+
+        In ThreadHolder for Windows, we need to construct HashMap<ThreadIdentifier, ThreadHolder*>.
+        The problem is that ThreadHolder::platformInitialize touches Thread::id() even before Thread
+        is not established. In that case, id() returns incorrect value.
+
+        But, calling ThreadHolder::initialize() after waiting for completion of Thread::establish() is
+        not a good idea. Since we already have NewThreadContext->creationMutex, we can wait for completion
+        of Thread::establish() easily. However, if we do so, Thread::create() returns RefPtr<Thread> that
+        may not call ThreadHolder::initialize() in its thread yet. In that case, ThreadHolder::get() fails.
+        Thus, Windows WTF::waitForThreadCompletion implementation becomes broken. We can add a new mutex
+        to wait for completion of ThreadHolder::initialize in the creator of the thread (like a ping-pong!).
+        But it overly complicates the implementation.
+
+        The following is overly complicated initialization phase.
+
+        Creator -> AC mutex(1) -------> establishment -> RL mutex(1) ----------------------> AC mutex(2) ->
+
+                               Thread -----------------> AC mutex(1) -> ThreadHolder init -> RL mutex(2) ->
+
+        So, instead, in this patch, we just use Thread::currentID(). When calling ThreadHolder::initialize(),
+        we pass ThreadIdentifier by using Thread::currentID(). This implementation works great because,
+
+        1. ThreadHolder::initialize requires ThreadIdentifier only in Windows environment because Pthread
+           ThreadHolder does not create HashMap<>. And this is used for obsolete Threading APIs. Thus this
+           hack will be removed in the near future.
+
+        2. In Windows, Thread::currentID() can return a valid value without using ThreadHolder. And it does
+           not require Thread establishment. So, calling currentID() to initialize ThreadHolder is ok in
+           Windows.
+
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::initialize): Deleted.
+        * wtf/ThreadHolder.h:
+        * wtf/ThreadHolderPthreads.cpp:
+        (WTF::ThreadHolder::initialize):
+        * wtf/ThreadHolderWin.cpp:
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::platformInitialize): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::wtfThreadEntryPoint):
+
+2017-05-25  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Clang warns about (intended) returning pointer to stack location in WTF/wtf/ThreadingPthreads.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=172595
+
+        Reviewed by Mark Lam.
+
+        * wtf/ThreadingPthreads.cpp: Use a #pragma to silence Clang warning about returning a
+        pointer to the stack (which is intended)
+
+2017-05-25  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r217416): Using #pragma once in WTFString.h broke the build
+
+        * wtf/text/WTFString.h: Switch back to #ifndef/#define/#endif.
+
+2017-05-25  David Kilzer  <ddkilzer@apple.com>
+
+        Make a change to force a build on the Apple bots
+
+        * wtf/text/WTFString.h: Use #pragma once.
+
+2017-05-24  Andreas Kling  <akling@apple.com>
+
+        Disable memory kill mechanisms when running with FastMalloc disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=172550
+        <rdar://problem/32181908>
+
+        Reviewed by Antti Koivisto.
+
+        If someone is using WebKit with a non-standard allocator, they are likely trying to debug
+        or test something, and suddenly getting killed is not gonna help with that.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor):
+
+2017-05-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Support RSA-PSS
+        https://bugs.webkit.org/show_bug.cgi?id=170869
+        <rdar://problem/31640672>
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        Add a flag to enable RSA-PSS in the future.
+
+2017-05-23  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove dead ENABLE(FONT_LOAD_EVENTS) code
+        https://bugs.webkit.org/show_bug.cgi?id=172517
+
+        Rubber-stamped by Simon Fraser.
+
+        * wtf/FeatureDefines.h:
+
+2017-05-23  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WTF] Export additional symbols in threading
+        https://bugs.webkit.org/show_bug.cgi?id=171952
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/ThreadMessage.h:
+        * wtf/threads/Signals.h:
+
+2017-05-23  Tomas Popela  <tpopela@redhat.com>
+
+        [WTF] Compilation fails with system malloc
+        https://bugs.webkit.org/show_bug.cgi?id=172445
+
+        Reviewed by Michael Catanzaro.
+
+        We are using the bmalloc even if the system malloc should be used.
+        Don't use bmalloc if the system malloc is requested and add the
+        missing implementation for computeRAMSize() on UNIX that's utilizing
+        the sysinfo() call.
+
+        * wtf/RAMSize.cpp:
+        (WTF::computeRAMSize):
+
+2017-05-22  Brian Burg  <bburg@apple.com>
+
+        Add a debugging macro that sleeps a thread until a debugger attaches
+        https://bugs.webkit.org/show_bug.cgi?id=171575
+
+        Reviewed by Mark Lam.
+
+        This is really useful for debugging early errors if for some reason you can't
+        launch a process directly from the debugger easily, such as Web Content processes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Assertions.h:
+        Always define the WTFBreakpointTrap() macro. Still make it an error if the CPU
+        type isn't supported for OS(DARWIN); if used on other platforms, cause a WTFCrash()
+        with a comment that indicates this is not implemented.
+
+        * wtf/DebugUtilities.h: Added.
+
+2017-05-19  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WTF] Remove PLATFORM(WIN) references
+        https://bugs.webkit.org/show_bug.cgi?id=172301
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/MemoryPressureHandler.h:
+        * wtf/Platform.h:
+
+2017-05-19  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [CMake] Add HAVE check for __int128_t
+        https://bugs.webkit.org/show_bug.cgi?id=172317
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::setTimeScale):
+        * wtf/Platform.h:
+
+2017-05-18  Andreas Kling  <akling@apple.com>
+
+        [WK2] Notify WebPageProxy client when an active process goes over the inactive memory limit
+        https://bugs.webkit.org/show_bug.cgi?id=172244
+        <rdar://problem/31800943>
+
+        Reviewed by Geoffrey Garen.
+
+        Add an installable callback to MemoryPressureHandler that gets invoked when an active process
+        exceeds the kill limit for an inactive process.
+
+        This allows a UI client to become aware that backgrounding a tab may cause it to get killed.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForMemoryKillWithProcessState):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::doesExceedInactiveLimitWhileActive):
+        (WTF::MemoryPressureHandler::doesNotExceedInactiveLimitWhileActive):
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setDidExceedInactiveLimitWhileActiveCallback):
+
+2017-05-18  Geoffrey Garen  <ggaren@apple.com>
+
+        AutomaticThread should wait longer before timing out
+        https://bugs.webkit.org/show_bug.cgi?id=172292
+
+        Reviewed by Filip Pizlo.
+
+        Increased the idle timeout from 1s => 10s.
+
+        This reduces the number of thread restarts on JetStream from
+        ~150 => ~0. It also matches other thread pool APIs on Darwin.
+
+        Intuitively, it seems wrong for helper threads to idle exit during
+        hardcore benchmarking.
+
+        This patch in combination with a bmalloc fix seems to be a 1%-2% JetStream
+        speedup on my Mac Pro.
+
+        A nice side-benefit is that per-thread traces are easier to read.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+
+2017-05-18  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [Win] Remove usage of _snprintf
+        https://bugs.webkit.org/show_bug.cgi?id=172251
+
+        Reviewed by Per Arne Vollan.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+        (WTF::setDataFile):
+
+2017-05-15  Mark Lam  <mark.lam@apple.com>
+
+        Rolling out r214038 and r213697: Crashes when using computed properties with rest destructuring and object spread.
+        https://bugs.webkit.org/show_bug.cgi?id=172147
+
+        Rubber-stamped by Saam Barati.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-05-14  Chris Dumez  <cdumez@apple.com>
+
+        Drop PassRefPtr class from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=172091
+
+        Reviewed by Alex Christensen.
+
+        Drop PassRefPtr class from WTF as it is no longer used or needed.
+        Also drop RefPtr::release() for the same reasons.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.cpp:
+        * wtf/CrossThreadCopier.h:
+        * wtf/Forward.h:
+        * wtf/PassRefPtr.h: Removed.
+        * wtf/RefPtr.h:
+        (WTF::refIfNotNull):
+        (WTF::derefIfNotNull):
+        (WTF::RefPtr::RefPtr):
+        (WTF::RefPtr::release): Deleted.
+        * wtf/SizeLimits.cpp:
+        * wtf/Vector.h:
+
+2017-05-13  Chris Dumez  <cdumez@apple.com>
+
+        Stop using RefPtr::release()
+        https://bugs.webkit.org/show_bug.cgi?id=172074
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatchAfter):
+
+2017-05-13  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216808.
+        https://bugs.webkit.org/show_bug.cgi?id=172075
+
+        caused lldb to hang when debugging (Requested by smfr on
+        #webkit).
+
+        Reverted changeset:
+
+        "Use Mach exceptions instead of signals where possible"
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+        http://trac.webkit.org/changeset/216808
+
+2017-05-12  Keith Miller  <keith_miller@apple.com>
+
+        Use Mach exceptions instead of signals where possible
+        https://bugs.webkit.org/show_bug.cgi?id=171865
+
+        Reviewed by Mark Lam.
+
+        This patch enables using mach exceptions on darwin. The way the
+        mach exception api works is that we create a mach port, which is
+        like a file descriptor.  We then wait for a message to arrive on
+        that port in a thread. When another thread raises an exception (say
+        due to a bad memory access) the OS sends our thread a message. The
+        payload of that message is the register file of the crashing
+        thread. We then call our custom handlers that change the state as
+        needed. In order to restart the thread we send a payload back to
+        the OS with an updated register file along with a success message
+        header.
+
+        This patch also makes thread messages work without signals by
+        simply suspending the thread, and then running the message at that
+        time.
+
+        You can read more about mach exceptions here:
+        http://www.cs.cmu.edu/afs/cs/project/mach/public/doc/unpublished/exception.ps
+        and the Mach interface Generator (MiG) here:
+        http://www.cs.cmu.edu/afs/cs/project/mach/public/doc/unpublished/mig.ps
+
+        * Configurations/WTF.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageUsingSignal):
+        (WTF::sendMessageUsingMach):
+        (WTF::deliverMessagesUsingMach):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h:
+        (WTF::sendMessage):
+        * wtf/Threading.h:
+        (WTF::Thread::machThread):
+        * wtf/mac/MachExceptions.defs: Copied from Source/WTF/wtf/ThreadMessage.h.
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::handleSignalsWithMach):
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::unregisterThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+
 2017-05-12  Ting-Wei Lan  <lantw44@gmail.com>
 
         Include algorithm before using std::min

@@ -128,9 +128,9 @@ private:
 
 class LayerFlushController : public RefCounted<LayerFlushController>, public WebCore::LayerFlushSchedulerClient {
 public:
-    static PassRefPtr<LayerFlushController> create(WebView* webView)
+    static Ref<LayerFlushController> create(WebView* webView)
     {
-        return adoptRef(new LayerFlushController(webView));
+        return adoptRef(*new LayerFlushController(webView));
     }
     
     virtual bool flushLayers();
@@ -306,8 +306,6 @@ private:
     WebCore::KeyboardUIMode _keyboardUIMode;
 
     BOOL shouldUpdateWhileOffscreen;
-
-    BOOL includesFlattenedCompositingLayersWhenDrawingToBitmap;
 
     // When this flag is set, next time a WebHTMLView draws, it needs to temporarily disable screen updates
     // so that the NSView drawing is visually synchronized with CALayer updates.

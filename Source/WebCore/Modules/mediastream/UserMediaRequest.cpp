@@ -41,21 +41,22 @@
 #include "ExceptionCode.h"
 #include "JSMediaStream.h"
 #include "JSOverconstrainedError.h"
+#include "Logging.h"
 #include "MainFrame.h"
-#include "MediaConstraintsImpl.h"
+#include "MediaConstraints.h"
 #include "RealtimeMediaSourceCenter.h"
 #include "Settings.h"
 #include "UserMediaController.h"
 
 namespace WebCore {
 
-ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
+ExceptionOr<void> UserMediaRequest::start(Document& document, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
 {
     auto* userMedia = UserMediaController::from(document.page());
     if (!userMedia)
         return Exception { NOT_SUPPORTED_ERR }; // FIXME: Why is it better to return an exception here instead of rejecting the promise as we do just below?
 
-    if (!audioConstraints->isValid() && !videoConstraints->isValid()) {
+    if (!audioConstraints.isValid && !videoConstraints.isValid) {
         promise.reject(TypeError);
         return { };
     }
@@ -64,7 +65,7 @@ ExceptionOr<void> UserMediaRequest::start(Document& document, Ref<MediaConstrain
     return { };
 }
 
-UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
+UserMediaRequest::UserMediaRequest(Document& document, UserMediaController& controller, MediaConstraints&& audioConstraints, MediaConstraints&& videoConstraints, DOMPromiseDeferred<IDLInterface<MediaStream>>&& promise)
     : ContextDestructionObserver(&document)
     , m_audioConstraints(WTFMove(audioConstraints))
     , m_videoConstraints(WTFMove(videoConstraints))
@@ -153,10 +154,11 @@ void UserMediaRequest::start()
     m_controller->requestUserMediaAccess(*this);
 }
 
-void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDeviceUID)
+void UserMediaRequest::allow(String&& audioDeviceUID, String&& videoDeviceUID, String&& deviceIdentifierHashSalt)
 {
-    m_allowedAudioDeviceUID = audioDeviceUID;
-    m_allowedVideoDeviceUID = videoDeviceUID;
+    RELEASE_LOG(MediaStream, "UserMediaRequest::allow %s %s", audioDeviceUID.utf8().data(), videoDeviceUID.utf8().data());
+    m_allowedAudioDeviceUID = WTFMove(audioDeviceUID);
+    m_allowedVideoDeviceUID = WTFMove(videoDeviceUID);
 
     RefPtr<UserMediaRequest> protectedThis = this;
     RealtimeMediaSourceCenter::NewMediaStreamHandler callback = [this, protectedThis = WTFMove(protectedThis)](RefPtr<MediaStreamPrivate>&& privateStream) mutable {
@@ -180,7 +182,10 @@ void UserMediaRequest::allow(const String& audioDeviceUID, const String& videoDe
         m_promise.resolve(stream);
     };
 
-    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints.get(), &m_videoConstraints.get());
+    m_audioConstraints.deviceIDHashSalt = deviceIdentifierHashSalt;
+    m_videoConstraints.deviceIDHashSalt = WTFMove(deviceIdentifierHashSalt);
+
+    RealtimeMediaSourceCenter::singleton().createMediaStream(WTFMove(callback), m_allowedAudioDeviceUID, m_allowedVideoDeviceUID, &m_audioConstraints, &m_videoConstraints);
 }
 
 void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invalidConstraint)
@@ -190,24 +195,31 @@ void UserMediaRequest::deny(MediaAccessDenialReason reason, const String& invali
 
     switch (reason) {
     case MediaAccessDenialReason::NoConstraints:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - no constraints");
         m_promise.reject(TypeError);
         break;
     case MediaAccessDenialReason::UserMediaDisabled:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - user media disabled");
         m_promise.reject(SECURITY_ERR);
         break;
     case MediaAccessDenialReason::NoCaptureDevices:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - no capture devices");
         m_promise.reject(NOT_FOUND_ERR);
         break;
     case MediaAccessDenialReason::InvalidConstraint:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - invalid constraint - %s", invalidConstraint.utf8().data());
         m_promise.rejectType<IDLInterface<OverconstrainedError>>(OverconstrainedError::create(invalidConstraint, ASCIILiteral("Invalid constraint")).get());
         break;
     case MediaAccessDenialReason::HardwareError:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - hardware error");
         m_promise.reject(NotReadableError);
         break;
     case MediaAccessDenialReason::OtherFailure:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - other failure");
         m_promise.reject(ABORT_ERR);
         break;
     case MediaAccessDenialReason::PermissionDenied:
+        RELEASE_LOG(MediaStream, "UserMediaRequest::deny - permission denied");
         m_promise.reject(NotAllowedError);
         break;
     }

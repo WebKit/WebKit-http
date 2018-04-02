@@ -52,7 +52,6 @@
 #include "TreeScope.h"
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
-#include <chrono>
 #include <memory>
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
@@ -464,9 +463,10 @@ public:
     WEBCORE_EXPORT Ref<HTMLCollection> anchors();
     WEBCORE_EXPORT Ref<HTMLCollection> scripts();
     Ref<HTMLCollection> all();
+    Ref<HTMLCollection> allFilteredByName(const AtomicString&);
 
-    Ref<HTMLCollection> windowNamedItems(const AtomicString& name);
-    Ref<HTMLCollection> documentNamedItems(const AtomicString& name);
+    Ref<HTMLCollection> windowNamedItems(const AtomicString&);
+    Ref<HTMLCollection> documentNamedItems(const AtomicString&);
 
     // Other methods (not part of DOM)
     bool isSynthesized() const { return m_isSynthesized; }
@@ -1148,6 +1148,7 @@ public:
     MonotonicTime lastHandledUserGestureTimestamp() const { return m_lastHandledUserGestureTimestamp; }
     bool hasHadUserInteraction() const { return static_cast<bool>(m_lastHandledUserGestureTimestamp); }
     void updateLastHandledUserGestureTimestamp(MonotonicTime);
+    bool processingUserGestureForMedia() const;
 
     void setUserDidInteractWithPage(bool userDidInteractWithPage) { ASSERT(&topDocument() == this); m_userDidInteractWithPage = userDidInteractWithPage; }
     bool userDidInteractWithPage() const { ASSERT(&topDocument() == this); return m_userDidInteractWithPage; }
@@ -1281,6 +1282,9 @@ public:
     void setDeviceIDHashSalt(const String& salt) { m_idHashSalt = salt; }
     String deviceIDHashSalt() const { return m_idHashSalt; }
     void stopMediaCapture();
+    void registerForMediaStreamStateChangeCallbacks(HTMLMediaElement&);
+    void unregisterForMediaStreamStateChangeCallbacks(HTMLMediaElement&);
+    void mediaStreamCaptureStateChanged();
 #endif
 
 // FIXME: Find a better place for this functionality.
@@ -1323,6 +1327,8 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
     friend class IgnoreOpensDuringUnloadCountIncrementer;
+
+    bool shouldInheritContentSecurityPolicyFromOwner() const;
 
     void detachFromFrame() { observeFrame(nullptr); }
 
@@ -1597,6 +1603,8 @@ private:
     void clearScriptedAnimationController();
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
 
+    void notifyVisibilityChangedToMediaCapture();
+
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;
     std::unique_ptr<DeviceMotionController> m_deviceMotionController;
@@ -1759,6 +1767,7 @@ private:
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+    HashSet<HTMLMediaElement*> m_mediaStreamStateChangeElements;
     String m_idHashSalt;
     bool m_hasHadActiveMediaStreamTrack { false };
 #endif

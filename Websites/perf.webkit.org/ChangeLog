@@ -1,3 +1,270 @@
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Opening an analysis task from the queue page is broken
+        https://bugs.webkit.org/show_bug.cgi?id=172559
+        <rdar://problem/32389708>
+
+        Rubber-stamped by Chris Dumez.
+
+        Fix the bug that opening the analysis task page from the queue page results in multiple assertion failures
+        as well as the list of test groups in the analysis task page not getting updated.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.updateSingleton): Because /api/build-requests/ do not include test groups, it's
+        possible for testGroup to be dynamically updated upon loading an analysis task page. Update _testGroup in
+        such instances instead of asserting that it doesn't happen.
+
+        * public/v3/models/data-model.js:
+        (DataModelObject.cachedFetch): Because various code to create model objects from the result of a JSON API
+        modify the fetched content in irreversible manner, e.g. `object.platform = Platform.findById(object.platform)`
+        we must return a fresh new content each time even if the result had been cached.
+
+        * public/v3/models/test-group.js:
+        (TestGroup.prototype.platform): Return this._platform as that's not available.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage):
+        (AnalysisTaskPage.prototype._resetVariables): Extracted from the constructor.
+        (AnalysisTaskPage.prototype.updateFromSerializedState): Reset all instance variables when opening a new
+        analysis task page. This would avoid showing the stale result even when fetching new test groups had failed.
+
+        * unit-tests/test-groups-tests.js: Added a test case for fetching the same test group twice. This used to hit
+        a problem in BuildRequest.constructBuildRequestsFromData which overrode platform property of each raw content
+        with a Platform model object because in the case of a cached fetch, we end up trying to look up the platform
+        again using the result of stringifying the Platform object instead of the platform ID included in the original
+        fetched content.
+        (sampleTestGroup): Added "platform" as included in the JSON API's response now.
+
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        The commit log viewer can overlap the analysis results viewer
+        https://bugs.webkit.org/show_bug.cgi?id=172534
+
+        Rubber-stamped by Chris Dumez.
+
+        Allocate the padding on the right for the commit log viewer, and add a horizontal scrollbar
+        to the analysis results viewer instead of letting it expand beneath the commit log viewer.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskResultsPane.htmlTemplate):
+        (AnalysisTaskResultsPane.cssTemplate):
+
+2017-05-24  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Sycning script build fix after r217378.
+
+        * tools/sync-buildbot.js:
+        (syncLoop):
+
+2017-05-23  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add the support for perf try bots to sync-buildbot.js
+        https://bugs.webkit.org/show_bug.cgi?id=172529
+
+        Rubber-stamped by Chris Dumez.
+
+        Make sync-buildbot.js schedule an A/B testing job with a patch or roots to buildbot.
+
+        Change the buildbot property format in the syncing script's configuration again to use a dictionary
+        with a single key of "revision", "patch", or "roots" to specify a revision, a patch, or a set of roots,
+        and simplified the structure of the configuration by always having "types" and "builders", and
+        make each entry in "configurations" refer to a list of types, platforms, and builders.
+
+        Since now there are build requests to build patches and run tests, "configurations" has been renamed to
+        "testConfigurations" and "buildConfigurations" have been added. Each entry in "buildConfigurations"
+        specifies a list of platforms and builders. Similarly in repository group configurations, the buildbot
+        properties for testing is now specified as "testProperties" and ones for building a patch is specified
+        in newly introduced "buildProperties".
+
+        * public/api/build-requests.php:
+        (update_builds): When a build request to build a patch fails, mark all subsequent requests as failed
+        since there is no way to run tests without a successful build.
+
+        * public/api/update-triggerable.php:
+        (main): Re-generate manifest.json after updating the triggerable. The lack of this re-generation was
+        the reason we had to manually GET /api/manifest in api-update-triggerable-tests.js.
+
+        * public/v3/models/build-request.js:
+        (BuildRequest.prototype.hasCompleted): Added.
+
+        * public/v3/models/manifest.js:
+        (Manifest.reset): Added. Extracted from MockData.resetV3Models in unit-tests/mock-data.js and
+        syncLoop in tools/sync-buildbot.js
+        (Manifest.fetch): Reset V3 models before fetching the manifest. This eliminates the need to manually
+        reset V3 models in syncLoop.
+
+        * public/v3/models/uploaded-file.js:
+        (UploadedFile.prototype.url): Use RemoteAPI.url to get the full URL instead of just a path.
+
+        * public/v3/remote.js:
+        (BrowserRemoteAPI.prototype.url): Added. Constructs the full URL.
+
+        * server-tests/api-update-triggerable-tests.js:
+        (.refetchManifest): Deleted. Now that /api/manifest re-generates manifest.json, we can simply call
+        Manifest.fetch instead.
+
+        * server-tests/resources/mock-data.js:
+        (MockData.resetV3Models): Calls Manifest.reset().
+        (MockData.addMockConfiguration): Extracted from addMockData.
+        (MockData.addMockData): Updated per the format change.
+        (MockData.mockTestSyncConfigWithSingleBuilder): Ditto.
+        (MockData.mockTestSyncConfigWithTwoBuilders): Ditto.
+        (MockData.runningBuild): Make buildNumber specifiable.
+        (MockData.finishedBuild): Ditto.
+
+        * server-tests/tools-buildbot-triggerable-tests.js: Updated configurations per the format change.
+        Now that now acceptsCustomRoots() for "system-and-webkit" must be true since we can't have a
+        repository group that which accepts a patch and not take roots.
+
+        * server-tests/tools-sync-buildbot-integration-tests.js: Added.
+        (createTriggerable): Added.
+        (createTestGroupWihPatch): Added.
+        (uploadRoot): Added.
+        (.assertAndResolveRequest): Added.
+        (.assertTestBuildHasFailed): Added.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer): Added. _type as an instance variable to identify whether this buildbot builder
+        is a "builder" which builds a patch, builder, or a "tester" which runs a test. Also renamed
+        _testConfigurations to _configurations.
+        (BuildbotSyncer.prototype.addTestConfiguration): Assert that either the type of this syncer hasn't
+        been set or it's a tester.
+        (BuildbotSyncer.prototype.testConfigurations): Return [] when it's a builder.
+        (BuildbotSyncer.prototype.addBuildConfiguration): Added. Adds a platform to a builder.
+        (BuildbotSyncer.prototype.buildConfigurations): Added. Returns the list of configurations if this
+        syncer is a builder. Otherwise returns [].
+        (BuildbotSyncer.prototype.isTester): Added.
+        (BuildbotSyncer.prototype.matchesConfiguration):
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Updated to support the new format.
+        (BuildbotSyncer._loadConfig): Ditto. Optionally parse buildConfigurations.
+        (BuildbotSyncer._resolveBuildersWithPlatforms): Added. For each test or build configuration entry,
+        creates the list of configurations per builder and platform.
+        (BuildbotSyncer._parseRepositoryGroup): Added the support for parsing the new format with revision,
+        roots, and patch option types with a lot of validations as we're seeing a bit of combinatorial
+        explosion in the number of things that can go wrong. Also parse buildProperties optionally.
+        (BuildbotSyncer._parseRepositoryGroupPropertyTemplate): Added. A helper function to parse a set of
+        buildbot properties, validates its content, and invokes a callback if it's an dynamically resolved
+        type such as "revision" and "patch".
+        (BuildbotSyncer._validateAndMergeConfig): Updated per the format change. No longer allows "types",
+        "type", "platforms", and "platform" as they're explicity resolved in _resolveBuildersWithPlatforms.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype.syncOnce):
+        (BuildbotTriggerable.prototype._validateRequests): Handle the case when a build request is not
+        associated with any test.
+        (BuildbotTriggerable.prototype._nextRequestInGroup): Return null when there is a build request to
+        build a patch which has not been completed (pending, scheduled, running, or failed). Since all
+        requests to build a patch has a negative order, those requests should all show up at the beginning.
+        (BuildbotTriggerable.prototype._scheduleRequestIfSlaveIsAvailable): Pick a new buildbot syncer when
+        scheduling the first request to build a patch or the first request to run a test. The first request
+        to run a test will always have order of 0, so it's a sufficient condition to find such a request.
+        On the other hand, the first request to build a patch can have a negative order number so we must
+        explicitly check if it's the first item in the ordered list of requests in the test group.
+
+        * tools/remote-server-relay.log: Added.
+
+        * tools/sync-buildbot.js:
+        (syncLoop): Fixed a bug we were not re-fetching the triggerable after updating the triggerable so
+        that Triggerable and related objects we have in the memory may not reflect what we just synced to
+        the perf dashboard. Also, we don't reset V3 models manually any more since Manifest.fetch does that.
+
+        * unit-tests/buildbot-syncer-tests.js: Added more test cases and updated existing test cases to test
+        exception messages explicitly since allowing any exception was resulting in some tests passing a
+        result of unrelated parsing error being thrown, etc...
+        (sampleiOSConfig): Updated per the format change.
+        (sampleiOSConfigWithExpansions): Ditto.
+        (smallConfiguration): Ditto.
+
+2017-05-22  Dewei Zhu  <dewei_zhu@apple.com>
+
+        Fix the bug that sometimes analysis task results pane is missing.
+        https://bugs.webkit.org/show_bug.cgi?id=172404
+
+        Reviewed by Ryosuke Niwa.
+
+        AnalysisTaskPage._didFetchTask and AnalaysisTaskPage._fetchRelatedInfoForTaskId should be called in order.
+        The race between those two functions causes the analysis task results pane sometimes missing.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer.prototype.render): Fix the bug in r217173 that commitSet can be undefined.
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskPage.prototype.updateFromSerializedState): Use arrow function to get rid of self variable.
+        Use `const` instead of var for constant variable. And call _didFetchTask before calling _fetchRelatedInfoForTaskId.
+        (AnalysisTaskPage.prototype._renderTaskNameAndStatus):
+        (AnalysisTaskPage.cssTemplate):
+
+2017-05-19  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Add a commit log viewer next to the analysis results viewer
+        https://bugs.webkit.org/show_bug.cgi?id=172399
+
+        Reviewed by Chris Dumez.
+
+        Add a commit log viewer next to the analysis results viewer, which visualizes the A/B testing results.
+
+        Also linkify the revisions in the table that shows the status of each A/B testing job,
+        and allow the prefix of "r" when associating a Subversion revision.
+
+        Finally, Fixed a bug that the list of commits associated with the analysis task were not re-rendered
+        when the list was updated by the user.
+
+        * public/v3/components/analysis-results-viewer.js:
+        (AnalysisResultsViewer): Added _selectorRadioButtonList as an instance variable. It's a list of radio
+        buttons to select a configuration (A/B) with a commit set. It's added to update the checked status of
+        radio buttons upon changing the currently selected test group.
+        (AnalysisResultsViewer.prototype.setTestGroups): Update the selected range to that of the currently
+        selected group.
+        (AnalysisResultsViewer.prototype.render): Fill _selectorRadioButtonList with radio buttons.
+
+        * public/v3/components/commit-log-viewer.js:
+        (CommitLogViewer): Added _showRepositoryName as an instance variable.
+        (CommitLogViewer.prototype.setShowRepositoryName): Added.
+        (CommitLogViewer.prototype.render): Hide the repository name when _showRepositoryName is false. This
+        is used in the newly added commit log viewer for the analysis results since we're showing a select
+        element with all the names of repositories above this component.
+
+        * public/v3/components/test-group-revision-table.js:
+        (TestGroupRevisionTable.prototype._buildCommitCell): Linkify the revisions if possible.
+
+        * public/v3/models/analysis-task.js:
+        (AnalysisTask.prototype.associateCommit): Strip "r" at the beginning for a Subversion like r12345
+        since that's the format we use to show to the user. This makes copy & paste easier.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskResultsPane): Added a bunch of new instance variables to show and update the commit log
+        viewer next to the analysis results viewer.
+        (AnalysisTaskResultsPane.prototype.setPoints): Create the list of repositories to show details.
+        (AnalysisTaskResultsPane.prototype.didConstructShadowTree): Re-render when the current selected test
+        group changes since that may have updated the selected range for A/B testing. Also re-render when
+        a new repository is selected to show details.
+        (AnalysisTaskResultsPane.prototype.render): Update the list of repositories and the commit log viewer.
+        (AnalysisTaskResultsPane.prototype._renderRepositoryList): Renders the list of repositories.
+        (AnalysisTaskResultsPane.prototype._updateCommitViewer): Updates the commit log viewer given the range
+        selected in the analysis results viewer.
+        (AnalysisTaskResultsPane.htmlTemplate): Updated the template.
+        (AnalysisTaskResultsPane.cssTemplate): Ditto.
+        (AnalysisTaskTestGroupPane.cssTemplate): Add a little space between the list of results and the table
+        of A/B testing jobs with revisions.
+        (AnalysisTaskPage.prototype.render): Fixed the bug that the list of commits associated with the task
+        is not updated when the list changes the task or the start point never changed when the list of commits
+        associated with the task changed. Make the lazily evaluated function compare the actual list of commits
+        so that it will invoke _renderCauseAndFixes when the list changes.
+        (AnalysisTaskPage.prototype._renderCauseAndFixes): Now renders a specific list.
+
+2017-05-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Another build fix. Added a missing null check.
+
+        * public/v3/components/custom-analysis-task-configurator.js:
+        (CustomAnalysisTaskConfigurator.prototype._setUploadedFilesIfEmpty):
+
+2017-05-14  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix. Added a missing null check.
+
+        * public/v3/pages/analysis-task-page.js:
+        (AnalysisTaskConfiguratorPane.prototype.setTestGroups):
+
 2017-05-11  Ryosuke Niwa  <rniwa@webkit.org>
 
         Remove the code for old syncing script configuration in BuildbotSyncer

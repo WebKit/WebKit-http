@@ -619,7 +619,6 @@ public:
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaCaptureRequiresSecureConnectionPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitUseAVFoundationAudioCapturePreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
@@ -666,9 +665,11 @@ public:
 #if ENABLE(INTERSECTION_OBSERVER)
         @NO, WebKitIntersectionObserverEnabledPreferenceKey,
 #endif
+        @NO, WebKitDisplayContentsEnabledPreferenceKey,
         @NO, WebKitUserTimingEnabledPreferenceKey,
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitCredentialManagementEnabledPreferenceKey,
+        @NO, WebKitMediaUserGestureInheritsFromDocument,
         nil];
 
 #if !PLATFORM(IOS)
@@ -2882,16 +2883,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
 }
 
-- (BOOL)useAVFoundationAudioCapture
-{
-    return [self _boolValueForKey:WebKitUseAVFoundationAudioCapturePreferenceKey];
-}
-
-- (void)setUseAVFoundationAudioCapture:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitUseAVFoundationAudioCapturePreferenceKey];
-}
-
 - (BOOL)enumeratingAllNetworkInterfacesEnabled
 {
     return [self _boolValueForKey:WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey];
@@ -3032,6 +3023,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitIntersectionObserverEnabledPreferenceKey];
 }
 
+- (BOOL)displayContentsEnabled
+{
+    return [self _boolValueForKey:WebKitDisplayContentsEnabledPreferenceKey];
+}
+
+- (void)setDisplayContentsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDisplayContentsEnabledPreferenceKey];
+}
+
 - (BOOL)userTimingEnabled
 {
     return [self _boolValueForKey:WebKitUserTimingEnabledPreferenceKey];
@@ -3060,6 +3061,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setCredentialManagementEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCredentialManagementEnabledPreferenceKey];
+}
+
+- (BOOL)mediaUserGestureInheritsFromDocument
+{
+    return [self _boolValueForKey:WebKitMediaUserGestureInheritsFromDocument];
+}
+
+- (void)setMediaUserGestureInheritsFromDocument:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaUserGestureInheritsFromDocument];
 }
 
 #if PLATFORM(IOS)

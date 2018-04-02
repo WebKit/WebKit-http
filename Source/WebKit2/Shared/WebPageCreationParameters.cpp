@@ -94,7 +94,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder.encodeEnum(userInterfaceLayoutDirection);
     encoder.encodeEnum(observedLayoutMilestones);
     encoder << overrideContentSecurityPolicy;
-    encoder << backgroundCPULimit;
+    encoder << cpuLimit;
     encoder << urlSchemeHandlers;
 #if ENABLE(WEB_RTC)
     encoder << iceCandidateFilteringEnabled;
@@ -107,7 +107,7 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << userStyleSheets;
     encoder << messageHandlers;
 #if ENABLE(CONTENT_EXTENSIONS)
-    encoder << contentExtensions;
+    encoder << contentRuleLists;
 #endif
 }
 
@@ -234,7 +234,7 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.overrideContentSecurityPolicy))
         return false;
 
-    if (!decoder.decode(parameters.backgroundCPULimit))
+    if (!decoder.decode(parameters.cpuLimit))
         return false;
 
     if (!decoder.decode(parameters.urlSchemeHandlers))
@@ -257,7 +257,7 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
     if (!decoder.decode(parameters.messageHandlers))
         return false;
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (!decoder.decode(parameters.contentExtensions))
+    if (!decoder.decode(parameters.contentRuleLists))
         return false;
 #endif
     return true;

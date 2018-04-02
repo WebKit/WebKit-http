@@ -157,6 +157,7 @@ typedef const char* optionString;
     v(optionRange, bytecodeRangeToFTLCompile, 0, Normal, "bytecode size range to allow FTL compilation on, e.g. 1:100") \
     v(optionString, jitWhitelist, nullptr, Normal, "file with list of function signatures to allow compilation on") \
     v(optionString, dfgWhitelist, nullptr, Normal, "file with list of function signatures to allow DFG compilation on") \
+    v(optionString, ftlWhitelist, nullptr, Normal, "file with list of function signatures to allow FTL compilation on") \
     v(bool, dumpSourceAtDFGTime, false, Normal, "dumps source code of JS function being DFG compiled") \
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
     v(bool, dumpGraphAfterParsing, false, Normal, nullptr) \
@@ -455,6 +456,7 @@ typedef const char* optionString;
     v(bool, crashIfWebAssemblyCantFastMemory, false, Normal, "If true, we will crash if we can't obtain fast memory for wasm.") \
     v(unsigned, webAssemblyFastMemoryPreallocateCount, 0, Normal, "WebAssembly fast memories can be pre-allocated at program startup and remain cached to avoid fragmentation leading to bounds-checked memory. This number is an upper bound on initial allocation as well as total count of fast memories. Zero means no pre-allocation, no caching, and no limit to the number of runtime allocations.") \
     v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.") \
+    v(bool, useFastTLSForWasmContext, true, Normal, "If true (and fast TLS is enabled), we will store context in fast TLS. If false, we will pin it to a register.") \
     v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.")
 
 

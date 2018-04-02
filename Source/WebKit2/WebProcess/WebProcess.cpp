@@ -250,6 +250,8 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 {    
     ASSERT(m_pageMap.isEmpty());
 
+    WebCore::setPresentingApplicationPID(parameters.presentingApplicationPID);
+
 #if OS(LINUX)
     if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
         MemoryPressureHandler::singleton().setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
@@ -275,6 +277,9 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
                 parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedActiveMemoryLimit(), 0);
             else
                 parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedInactiveMemoryLimit(), 0);
+        });
+        memoryPressureHandler.setDidExceedInactiveLimitWhileActiveCallback([this] () {
+            parentProcessConnection()->send(Messages::WebProcessProxy::DidExceedInactiveMemoryLimitWhileActive(), 0);
         });
 #endif
         memoryPressureHandler.setMemoryPressureStatusChangedCallback([this](bool isUnderMemoryPressure) {
@@ -388,7 +393,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     audit_token_t auditToken;
     if (parentProcessConnection()->getAuditToken(auditToken)) {
         RetainPtr<CFDataRef> auditData = adoptCF(CFDataCreate(nullptr, (const UInt8*)&auditToken, sizeof(auditToken)));
-        Inspector::RemoteInspector::singleton().setParentProcessInformation(presenterApplicationPid(), auditData);
+        Inspector::RemoteInspector::singleton().setParentProcessInformation(WebCore::presentingApplicationPID(), auditData);
     }
 #endif
 
@@ -594,7 +599,7 @@ void WebProcess::createWebPage(uint64_t pageID, WebPageCreationParameters&& para
 
         // Balanced by an enableTermination in removeWebPage.
         disableTermination();
-        updateBackgroundCPULimit();
+        updateCPULimit();
     } else
         result.iterator->value->reinitializeWebPage(WTFMove(parameters));
 
@@ -609,7 +614,7 @@ void WebProcess::removeWebPage(uint64_t pageID)
     m_pageMap.remove(pageID);
 
     enableTermination();
-    updateBackgroundCPULimit();
+    updateCPULimit();
 }
 
 bool WebProcess::shouldTerminate()
@@ -1285,11 +1290,11 @@ void WebProcess::updateActivePages()
 {
 }
 
-void WebProcess::updateBackgroundCPULimit()
+void WebProcess::updateCPULimit()
 {
 }
 
-void WebProcess::updateBackgroundCPUMonitorState()
+void WebProcess::updateCPUMonitorState(CPUMonitorUpdateReason)
 {
 }
 
@@ -1298,7 +1303,7 @@ void WebProcess::updateBackgroundCPUMonitorState()
 void WebProcess::pageActivityStateDidChange(uint64_t, WebCore::ActivityState::Flags changed)
 {
     if (changed & WebCore::ActivityState::IsVisible)
-        updateBackgroundCPUMonitorState();
+        updateCPUMonitorState(CPUMonitorUpdateReason::VisibilityHasChanged);
 }
 
 #if PLATFORM(IOS)

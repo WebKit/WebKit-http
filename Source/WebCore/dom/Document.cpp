@@ -137,6 +137,7 @@
 #include "PointerLockController.h"
 #include "PopStateEvent.h"
 #include "ProcessingInstruction.h"
+#include "RealtimeMediaSourceCenter.h"
 #include "RenderChildIterator.h"
 #include "RenderLayerCompositor.h"
 #include "RenderTreeUpdater.h"
@@ -1545,6 +1546,8 @@ void Document::visibilityStateChanged()
     dispatchEvent(Event::create(eventNames().visibilitychangeEvent, false, false));
     for (auto* client : m_visibilityStateCallbackClients)
         client->visibilityStateChanged();
+
+    notifyVisibilityChangedToMediaCapture();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -3480,10 +3483,19 @@ void Document::updateIsPlayingMedia(uint64_t sourceElementID)
     if (state == m_mediaState)
         return;
 
+#if ENABLE(MEDIA_STREAM)
+    bool captureStateChanged = MediaProducer::isCapturing(m_mediaState) != MediaProducer::isCapturing(state);
+#endif
+    
     m_mediaState = state;
 
     if (page())
         page()->updateIsPlayingMedia(sourceElementID);
+
+#if ENABLE(MEDIA_STREAM)
+    if (captureStateChanged)
+        mediaStreamCaptureStateChanged();
+#endif
 }
 
 void Document::pageMutedStateDidChange()
@@ -4979,6 +4991,11 @@ Ref<HTMLCollection> Document::all()
     return ensureRareData().ensureNodeLists().addCachedCollection<HTMLAllCollection>(*this, DocAll);
 }
 
+Ref<HTMLCollection> Document::allFilteredByName(const AtomicString& name)
+{
+    return ensureRareData().ensureNodeLists().addCachedCollection<HTMLAllNamedSubCollection>(*this, DocumentAllNamedItems, name);
+}
+
 Ref<HTMLCollection> Document::windowNamedItems(const AtomicString& name)
 {
     return ensureRareData().ensureNodeLists().addCachedCollection<WindowNameCollection>(*this, WindowNamedItems, name);
@@ -5205,15 +5222,31 @@ void Document::initSecurityContext()
     setSecurityOriginPolicy(ownerFrame->document()->securityOriginPolicy());
 }
 
+bool Document::shouldInheritContentSecurityPolicyFromOwner() const
+{
+    ASSERT(m_frame);
+    if (shouldInheritSecurityOriginFromOwner(m_url))
+        return true;
+    if (!isPluginDocument())
+        return false;
+    if (m_frame->tree().parent())
+        return true;
+    Frame* openerFrame = m_frame->loader().opener();
+    if (!openerFrame)
+        return false;
+    return openerFrame->document()->securityOrigin().canAccess(securityOrigin());
+}
+
 void Document::initContentSecurityPolicy()
 {
+    // 1. Inherit Upgrade Insecure Requests
     Frame* parentFrame = m_frame->tree().parent();
     if (parentFrame)
         contentSecurityPolicy()->copyUpgradeInsecureRequestStateFrom(*parentFrame->document()->contentSecurityPolicy());
 
-    if (!shouldInheritSecurityOriginFromOwner(m_url) && !isPluginDocument())
+    // 2. Inherit Content Security Policy
+    if (!shouldInheritContentSecurityPolicyFromOwner())
         return;
-
     Frame* ownerFrame = parentFrame;
     if (!ownerFrame)
         ownerFrame = m_frame->loader().opener();
@@ -6041,13 +6074,6 @@ int Document::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callbac
 
         if (!topOrigin().canAccess(securityOrigin()) && !hasHadUserInteraction())
             m_scriptedAnimationController->addThrottlingReason(ScriptedAnimationController::ThrottlingReason::NonInteractedCrossOriginFrame);
-
-        if (settings().shouldDispatchRequestAnimationFrameEvents()) {
-            if (!page())
-                dispatchEvent(Event::create("raf-no-page", false, false));
-            else if (page()->scriptedAnimationsSuspended())
-                dispatchEvent(Event::create("raf-scripted-animations-suspended-on-page", false, false));
-        }
     }
 
     return m_scriptedAnimationController->registerCallback(WTFMove(callback));
@@ -6357,6 +6383,21 @@ void Document::updateLastHandledUserGestureTimestamp(MonotonicTime time)
     
     if (HTMLFrameOwnerElement* element = ownerElement())
         element->document().updateLastHandledUserGestureTimestamp(time);
+}
+
+bool Document::processingUserGestureForMedia() const
+{
+    if (ScriptController::processingUserGestureForMedia())
+        return true;
+
+    if (settings().mediaUserGestureInheritsFromDocument())
+        return topDocument().hasHadUserInteraction();
+
+    auto* loader = this->loader();
+    if (loader && loader->allowsAutoplayQuirks())
+        return topDocument().hasHadUserInteraction();
+
+    return false;
 }
 
 void Document::startTrackingStyleRecalcs()
@@ -6964,6 +7005,13 @@ void Document::orientationChanged(int orientation)
     m_orientationNotifier.orientationChanged(orientation);
 }
 
+void Document::notifyVisibilityChangedToMediaCapture()
+{
+#if ENABLE(MEDIA_STREAM)
+    RealtimeMediaSourceCenter::singleton().setVisibility(!hidden());
+#endif
+}
+
 #if ENABLE(MEDIA_STREAM)
 void Document::stopMediaCapture()
 {
@@ -6971,6 +7019,25 @@ void Document::stopMediaCapture()
         if (stream.document() == this)
             stream.endCaptureTracks();
     });
+}
+
+void Document::registerForMediaStreamStateChangeCallbacks(HTMLMediaElement& element)
+{
+    m_mediaStreamStateChangeElements.add(&element);
+}
+
+void Document::unregisterForMediaStreamStateChangeCallbacks(HTMLMediaElement& element)
+{
+    m_mediaStreamStateChangeElements.remove(&element);
+}
+
+void Document::mediaStreamCaptureStateChanged()
+{
+    if (!MediaProducer::isCapturing(m_mediaState))
+        return;
+
+    for (auto* mediaElement : m_mediaStreamStateChangeElements)
+        mediaElement->mediaStreamCaptureStarted();
 }
 #endif
 

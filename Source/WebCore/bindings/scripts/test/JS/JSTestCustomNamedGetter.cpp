@@ -22,10 +22,10 @@
 #include "JSTestCustomNamedGetter.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
@@ -84,7 +84,7 @@ template<> void JSTestCustomNamedGetterConstructor::initializeProperties(VM& vm,
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestCustomNamedGetterConstructor::s_info = { "TestCustomNamedGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomNamedGetterConstructor) };
+template<> const ClassInfo JSTestCustomNamedGetterConstructor::s_info = { "TestCustomNamedGetter", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCustomNamedGetterConstructor) };
 
 /* Hash table for prototype */
 
@@ -94,7 +94,7 @@ static const HashTableValue JSTestCustomNamedGetterPrototypeTableValues[] =
     { "anotherFunction", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCustomNamedGetterPrototypeFunctionAnotherFunction), (intptr_t) (1) } },
 };
 
-const ClassInfo JSTestCustomNamedGetterPrototype::s_info = { "TestCustomNamedGetterPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomNamedGetterPrototype) };
+const ClassInfo JSTestCustomNamedGetterPrototype::s_info = { "TestCustomNamedGetterPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCustomNamedGetterPrototype) };
 
 void JSTestCustomNamedGetterPrototype::finishCreation(VM& vm)
 {
@@ -102,7 +102,7 @@ void JSTestCustomNamedGetterPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestCustomNamedGetterPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestCustomNamedGetter::s_info = { "TestCustomNamedGetter", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCustomNamedGetter) };
+const ClassInfo JSTestCustomNamedGetter::s_info = { "TestCustomNamedGetter", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCustomNamedGetter) };
 
 JSTestCustomNamedGetter::JSTestCustomNamedGetter(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestCustomNamedGetter>&& impl)
     : JSDOMWrapper<TestCustomNamedGetter>(structure, globalObject, WTFMove(impl))
@@ -167,7 +167,7 @@ bool JSTestCustomNamedGetter::getOwnPropertySlotByIndex(JSObject* object, ExecSt
     return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
 }
 
-template<> inline JSTestCustomNamedGetter* BindingCaller<JSTestCustomNamedGetter>::castForOperation(ExecState& state)
+template<> inline JSTestCustomNamedGetter* IDLOperation<JSTestCustomNamedGetter>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestCustomNamedGetter*>(state.vm(), state.thisValue());
 }
@@ -201,14 +201,7 @@ JSValue JSTestCustomNamedGetter::getConstructor(VM& vm, const JSGlobalObject* gl
     return getDOMConstructor<JSTestCustomNamedGetterConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static inline JSC::EncodedJSValue jsTestCustomNamedGetterPrototypeFunctionAnotherFunctionCaller(JSC::ExecState*, JSTestCustomNamedGetter*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunction(ExecState* state)
-{
-    return BindingCaller<JSTestCustomNamedGetter>::callOperation<jsTestCustomNamedGetterPrototypeFunctionAnotherFunctionCaller>(state, "anotherFunction");
-}
-
-static inline JSC::EncodedJSValue jsTestCustomNamedGetterPrototypeFunctionAnotherFunctionCaller(JSC::ExecState* state, JSTestCustomNamedGetter* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestCustomNamedGetterPrototypeFunctionAnotherFunctionCaller(JSC::ExecState* state, typename IDLOperation<JSTestCustomNamedGetter>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -219,6 +212,11 @@ static inline JSC::EncodedJSValue jsTestCustomNamedGetterPrototypeFunctionAnothe
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.anotherFunction(WTFMove(str));
     return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestCustomNamedGetterPrototypeFunctionAnotherFunction(ExecState* state)
+{
+    return IDLOperation<JSTestCustomNamedGetter>::call<jsTestCustomNamedGetterPrototypeFunctionAnotherFunctionCaller>(*state, "anotherFunction");
 }
 
 bool JSTestCustomNamedGetterOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

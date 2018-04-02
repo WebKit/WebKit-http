@@ -307,10 +307,9 @@
                 "oblique"
             ],
             "codegen-properties": {
-                "name-for-methods": "Italic",
+                "custom": "All",
                 "font-property": true,
-                "high-priority": true,
-                "converter": "FontStyle"
+                "high-priority": true
             },
             "specification": {
                 "category": "css-fonts",
@@ -4726,6 +4725,18 @@
                 "url": "https://drafts.csswg.org/css-align-3/#propdef-place-items"
             }
         },
+        "place-self": {
+            "codegen-properties": {
+                "longhands": [
+                    "align-self",
+                    "justify-self"
+                ]
+            },
+            "specification": {
+                "category": "css-align",
+                "url": "https://drafts.csswg.org/css-align-3/#propdef-place-self"
+            }
+        },
         "grid": {
             "codegen-properties": {
                 "longhands": [
@@ -5939,6 +5950,19 @@
             "specification": {
                 "category": "css-transforms",
                 "url": "https://www.w3.org/TR/css-transforms-1/#transform-property"
+            }
+        },
+        "transform-box": {
+            "values" : [
+                "border-box",
+                "fill-box",
+                "view-box"
+            ],
+            "codegen-properties": {
+            },
+            "specification": {
+                "category": "css-transforms",
+                "url": "https://www.w3.org/TR/css-transforms/#propdef-transform-box"
             }
         },
         "transform-origin": {

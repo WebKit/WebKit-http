@@ -183,6 +183,7 @@
 #define WebKitWebRTCLegacyAPIEnabledPreferenceKey @"WebKitWebRTCLegacyAPIEnabled"
 #define WebKitLinkPreloadEnabledPreferenceKey @"WebKitLinkPreloadEnabled"
 #define WebKitCredentialManagementEnabledPreferenceKey @"WebKitCredentialManagementEnabled"
+#define WebKitMediaUserGestureInheritsFromDocument @"WebKitMediaUserGestureInheritsFromDocument"
 
 #if !TARGET_OS_IPHONE
 // These are private both because callers should be using the cover methods and because the
@@ -227,11 +228,11 @@
 #define WebKitEnableInheritURIQueryComponentPreferenceKey @"WebKitEnableInheritURIQueryComponent"
 #define WebKitMediaDataLoadsAutomaticallyPreferenceKey @"WebKitMediaDataLoadsAutomatically"
 #define WebKitMockCaptureDevicesEnabledPreferenceKey @"WebKitMockCaptureDevicesEnabled"
-#define WebKitUseAVFoundationAudioCapturePreferenceKey @"WebKitUseAVFoundationAudioCaptureEnabled"
 #define WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey @"WebKitEnumeratingAllNetworkInterfacesEnabled"
 #define WebKitICECandidateFilteringEnabledPreferenceKey @"WebKitICECandidateFilteringEnabled"
 #define WebKitMediaCaptureRequiresSecureConnectionPreferenceKey @"WebKitMediaCaptureRequiresSecureConnection"
 #define WebKitAttachmentElementEnabledPreferenceKey @"WebKitAttachmentElementEnabled"
 #define WebKitIntersectionObserverEnabledPreferenceKey @"WebKitIntersectionObserverEnabled"
+#define WebKitDisplayContentsEnabledPreferenceKey @"WebKitDisplayContentsEnabled"
 #define WebKitUserTimingEnabledPreferenceKey @"WebKitUserTimingEnabled"
 #define WebKitResourceTimingEnabledPreferenceKey @"WebKitResourceTimingEnabled"

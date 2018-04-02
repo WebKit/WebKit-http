@@ -64,7 +64,6 @@ void CachedCSSStyleSheet::didAddClient(CachedResourceClient& client)
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
 {
-    ASSERT(m_decodedSheetText.isNull());
     m_decoder->setEncoding(chs, TextResourceDecoder::EncodingFromHTTPHeader);
 }
 
@@ -174,11 +173,11 @@ void CachedCSSStyleSheet::destroyDecodedData()
     setDecodedSize(0);
 }
 
-RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy)
+RefPtr<StyleSheetContents> CachedCSSStyleSheet::restoreParsedStyleSheet(const CSSParserContext& context, CachePolicy cachePolicy, FrameLoader& loader)
 {
     if (!m_parsedStyleSheetCache)
         return nullptr;
-    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy)) {
+    if (!m_parsedStyleSheetCache->subresourcesAllowReuse(cachePolicy, loader)) {
         m_parsedStyleSheetCache->removedFromMemoryCache();
         m_parsedStyleSheetCache = nullptr;
         return nullptr;

@@ -36,12 +36,12 @@ interface IWICImagingFactory;
 
 namespace WebCore {
 
-class ImageDecoder : public RefCounted<ImageDecoder> {
+class ImageDecoder : public ThreadSafeRefCounted<ImageDecoder> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     ImageDecoder();
     
-    static Ref<ImageDecoder> create(const SharedBuffer&, const URL&, AlphaOption, GammaAndColorProfileOption)
+    static Ref<ImageDecoder> create(SharedBuffer&, AlphaOption, GammaAndColorProfileOption)
     {
         return adoptRef(*new ImageDecoder());
     }

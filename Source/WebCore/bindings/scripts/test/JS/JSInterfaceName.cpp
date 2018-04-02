@@ -22,7 +22,6 @@
 #include "JSInterfaceName.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
@@ -78,7 +77,7 @@ template<> void JSInterfaceNameConstructor::initializeProperties(VM& vm, JSDOMGl
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSInterfaceNameConstructor::s_info = { "InterfaceName", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceNameConstructor) };
+template<> const ClassInfo JSInterfaceNameConstructor::s_info = { "InterfaceName", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceNameConstructor) };
 
 /* Hash table for prototype */
 
@@ -87,7 +86,7 @@ static const HashTableValue JSInterfaceNamePrototypeTableValues[] =
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsInterfaceNameConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSInterfaceNameConstructor) } },
 };
 
-const ClassInfo JSInterfaceNamePrototype::s_info = { "InterfaceNamePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceNamePrototype) };
+const ClassInfo JSInterfaceNamePrototype::s_info = { "InterfaceNamePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceNamePrototype) };
 
 void JSInterfaceNamePrototype::finishCreation(VM& vm)
 {
@@ -95,7 +94,7 @@ void JSInterfaceNamePrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSInterfaceNamePrototypeTableValues, *this);
 }
 
-const ClassInfo JSInterfaceName::s_info = { "InterfaceName", &Base::s_info, 0, CREATE_METHOD_TABLE(JSInterfaceName) };
+const ClassInfo JSInterfaceName::s_info = { "InterfaceName", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSInterfaceName) };
 
 JSInterfaceName::JSInterfaceName(Structure* structure, JSDOMGlobalObject& globalObject, Ref<InterfaceName>&& impl)
     : JSDOMWrapper<InterfaceName>(structure, globalObject, WTFMove(impl))

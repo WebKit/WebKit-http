@@ -226,6 +226,13 @@ public:
                     AllowMacroScratchRegisterUsage allowScratch(jit);
 
                     stackOverflow.link(&jit);
+                    
+                    // FIXME: We would not have to do this if the stack check was part of the Air
+                    // prologue. Then, we would know that there is no way for the callee-saves to
+                    // get clobbered.
+                    // https://bugs.webkit.org/show_bug.cgi?id=172456
+                    jit.emitRestore(params.proc().calleeSaveRegisterAtOffsetList());
+                    
                     jit.store32(
                         MacroAssembler::TrustedImm32(callSiteIndex.bits()),
                         CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
@@ -671,6 +678,9 @@ private:
         case GetArrayLength:
             compileGetArrayLength();
             break;
+        case GetVectorLength:
+            compileGetVectorLength();
+            break;
         case CheckInBounds:
             compileCheckInBounds();
             break;
@@ -1093,8 +1103,8 @@ private:
         case NumberToStringWithRadix:
             compileNumberToStringWithRadix();
             break;
-        case CheckDOM:
-            compileCheckDOM();
+        case CheckSubClass:
+            compileCheckSubClass();
             break;
         case CallDOM:
             compileCallDOM();
@@ -3350,6 +3360,18 @@ private:
             return;
         }
     }
+
+    void compileGetVectorLength()
+    {
+        switch (m_node->arrayMode().type()) {
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage:
+            setInt32(m_out.load32NonNegative(lowStorage(m_node->child2()), m_heaps.Butterfly_vectorLength));
+            return;
+        default:
+            return;
+        }
+    }
     
     void compileCheckInBounds()
     {
@@ -3403,7 +3425,7 @@ private:
             
             m_out.appendTo(slowCase, continuation);
             ValueFromBlock slowResult = m_out.anchor(
-                vmCall(Int64, m_out.operation(operationGetByValArrayInt), m_callFrame, base, index));
+                vmCall(Int64, m_out.operation(operationGetByValObjectInt), m_callFrame, base, index));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
@@ -3455,7 +3477,7 @@ private:
             
             m_out.appendTo(slowCase, continuation);
             ValueFromBlock slowResult = m_out.anchor(
-                vmCall(Int64, m_out.operation(operationGetByValArrayInt), m_callFrame, base, index));
+                vmCall(Int64, m_out.operation(operationGetByValObjectInt), m_callFrame, base, index));
             m_out.jump(continuation);
             
             m_out.appendTo(continuation, lastNext);
@@ -3547,6 +3569,47 @@ private:
             setJSValue(vmCall(
                 Int64, m_out.operation(operationGetByVal), m_callFrame,
                 lowJSValue(m_node->child1()), lowJSValue(m_node->child2())));
+            return;
+        }
+
+        case Array::ArrayStorage:
+        case Array::SlowPutArrayStorage: {
+            LValue index = lowInt32(m_node->child2());
+            LValue storage = lowStorage(m_node->child3());
+
+            IndexedAbstractHeap& heap = m_heaps.ArrayStorage_vector;
+
+            if (m_node->arrayMode().isInBounds()) {
+                LValue result = m_out.load64(baseIndex(heap, storage, index, m_node->child2()));
+                speculate(LoadFromHole, noValue(), 0, m_out.isZero64(result));
+                setJSValue(result);
+                break;
+            }
+
+            LValue base = lowCell(m_node->child1());
+
+            LBasicBlock inBounds = m_out.newBlock();
+            LBasicBlock slowCase = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            m_out.branch(
+                m_out.aboveOrEqual(index, m_out.load32NonNegative(storage, m_heaps.Butterfly_vectorLength)),
+                rarely(slowCase), usually(inBounds));
+
+            LBasicBlock lastNext = m_out.appendTo(inBounds, slowCase);
+            LValue result = m_out.load64(baseIndex(heap, storage, index, m_node->child2()));
+            ValueFromBlock fastResult = m_out.anchor(result);
+            m_out.branch(
+                m_out.isZero64(result),
+                rarely(slowCase), usually(continuation));
+
+            m_out.appendTo(slowCase, continuation);
+            ValueFromBlock slowResult = m_out.anchor(
+                vmCall(Int64, m_out.operation(operationGetByValObjectInt), m_callFrame, base, index));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setJSValue(m_out.phi(Int64, fastResult, slowResult));
             return;
         }
             
@@ -7858,9 +7921,8 @@ private:
 
         LValue hash = lowInt32(m_node->child3());
 
-        LValue hashMapImpl = m_out.loadPtr(map, m_node->child1().useKind() == MapObjectUse ? m_heaps.JSMap_hashMapImpl : m_heaps.JSSet_hashMapImpl);
-        LValue buffer = m_out.loadPtr(hashMapImpl, m_heaps.HashMapImpl_buffer);
-        LValue mask = m_out.sub(m_out.load32(hashMapImpl, m_heaps.HashMapImpl_capacity), m_out.int32One);
+        LValue buffer = m_out.loadPtr(map, m_heaps.HashMapImpl_buffer);
+        LValue mask = m_out.sub(m_out.load32(map, m_heaps.HashMapImpl_capacity), m_out.int32One);
 
         ValueFromBlock indexStart = m_out.anchor(hash);
         m_out.jump(loopStart);
@@ -10140,12 +10202,35 @@ private:
         crash();
     }
 
-    void compileCheckDOM()
+    void compileCheckSubClass()
     {
         LValue cell = lowCell(m_node->child1());
 
-        DOMJIT::Patchpoint* domJIT = m_node->checkDOMPatchpoint();
+        const ClassInfo* classInfo = m_node->classInfo();
+        if (!classInfo->checkSubClassPatchpoint) {
+            LBasicBlock loop = m_out.newBlock();
+            LBasicBlock parentClass = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
 
+            LValue structure = loadStructure(cell);
+            ValueFromBlock otherAtStart = m_out.anchor(m_out.loadPtr(structure, m_heaps.Structure_classInfo));
+            m_out.jump(loop);
+
+            LBasicBlock lastNext = m_out.appendTo(loop, parentClass);
+            LValue other = m_out.phi(pointerType(), otherAtStart);
+            m_out.branch(m_out.equal(other, m_out.constIntPtr(classInfo)), unsure(continuation), unsure(parentClass));
+
+            m_out.appendTo(parentClass, continuation);
+            LValue parent = m_out.loadPtr(other, m_heaps.ClassInfo_parentClass);
+            speculate(BadType, jsValueValue(cell), m_node->child1().node(), m_out.isNull(parent));
+            m_out.addIncomingToPhi(other, m_out.anchor(parent));
+            m_out.jump(loop);
+
+            m_out.appendTo(continuation, lastNext);
+            return;
+        }
+
+        RefPtr<DOMJIT::Patchpoint> domJIT = classInfo->checkSubClassPatchpoint();
         PatchpointValue* patchpoint = m_out.patchpoint(Void);
         patchpoint->appendSomeRegister(cell);
         patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));

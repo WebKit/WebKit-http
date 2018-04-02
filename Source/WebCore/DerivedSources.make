@@ -203,6 +203,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
     $(WebCore)/Modules/mediastream/RTCTrackEvent.idl \
     $(WebCore)/Modules/notifications/Notification.idl \
+    $(WebCore)/Modules/notifications/NotificationPermission.idl \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
     $(WebCore)/Modules/plugins/QuickTimePluginReplacement.idl \
     $(WebCore)/Modules/quota/DOMWindowQuota.idl \
@@ -299,7 +300,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
     $(WebCore)/crypto/parameters/RsaOaepParams.idl \
-    $(WebCore)/css/CSSFontFaceLoadEvent.idl \
+    $(WebCore)/crypto/parameters/RsaPssParams.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
     $(WebCore)/css/CSSImportRule.idl \
     $(WebCore)/css/CSSKeyframeRule.idl \
@@ -314,6 +315,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/CSSStyleSheet.idl \
     $(WebCore)/css/CSSSupportsRule.idl \
     $(WebCore)/css/CSSUnknownRule.idl \
+    $(WebCore)/css/DOMMatrix.idl \
+    $(WebCore)/css/DOMMatrixInit.idl \
+    $(WebCore)/css/DOMMatrixReadOnly.idl \
     $(WebCore)/css/DeprecatedCSSOMCounter.idl \
 	$(WebCore)/css/DeprecatedCSSOMPrimitiveValue.idl \
 	$(WebCore)/css/DeprecatedCSSOMRGBColor.idl \

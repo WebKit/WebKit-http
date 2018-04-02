@@ -285,7 +285,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
 #if ENABLE(VIDEO)
     if (dataTypes.contains(WebsiteDataType::DiskCache)) {
         callbackAggregator->addPendingCallback();
-        m_queue->dispatch([fetchOptions, mediaCacheDirectory = m_configuration.mediaCacheDirectory.isolatedCopy(), callbackAggregator] {
+        m_queue->dispatch([mediaCacheDirectory = m_configuration.mediaCacheDirectory.isolatedCopy(), callbackAggregator] {
             // FIXME: Make HTMLMediaElement::originsInMediaCache return a collection of SecurityOriginDatas.
             HashSet<RefPtr<WebCore::SecurityOrigin>> origins = WebCore::HTMLMediaElement::originsInMediaCache(mediaCacheDirectory);
             WebsiteData websiteData;
@@ -503,7 +503,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
 
 void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Vector<String>&& topPrivatelyControlledDomains, std::function<void(Vector<WebsiteDataRecord>&&, Vector<String>&&)> completionHandler)
 {
-    fetchData(dataTypes, fetchOptions, [topPrivatelyControlledDomains = WTFMove(topPrivatelyControlledDomains), completionHandler, this](auto&& existingDataRecords) {
+    fetchData(dataTypes, fetchOptions, [topPrivatelyControlledDomains = WTFMove(topPrivatelyControlledDomains), completionHandler](auto&& existingDataRecords) {
         Vector<WebsiteDataRecord> matchingDataRecords;
         Vector<String> domainsWithMatchingDataRecords;
         for (auto&& dataRecord : existingDataRecords) {
@@ -519,6 +519,20 @@ void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<Websi
     });
 }
     
+void WebsiteDataStore::topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, std::function<void(HashSet<String>&&)> completionHandler)
+{
+    fetchData(dataTypes, fetchOptions, [completionHandler, this](auto&& existingDataRecords) {
+        HashSet<String> domainsWithDataRecords;
+        for (auto&& dataRecord : existingDataRecords) {
+            String domain = dataRecord.topPrivatelyControlledDomain();
+            if (domain.isEmpty())
+                continue;
+            domainsWithDataRecords.add(domain);
+        }
+        completionHandler(WTFMove(domainsWithDataRecords));
+    });
+}
+
 static ProcessAccessType computeNetworkProcessAccessTypeForDataRemoval(OptionSet<WebsiteDataType> dataTypes, bool isNonPersistentStore)
 {
     ProcessAccessType processAccessType = ProcessAccessType::None;
@@ -1062,7 +1076,7 @@ void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<Webs
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
 void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)
 {
-    for (auto& processPool : processPools())
+    for (auto& processPool : WebProcessPool::allProcessPools())
         processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, clearFirst));
 }
 #endif
@@ -1265,12 +1279,30 @@ DatabaseProcessCreationParameters WebsiteDataStore::databaseProcessParameters()
     return parameters;
 }
 
+Vector<WebCore::Cookie> WebsiteDataStore::pendingCookies() const
+{
+    Vector<WebCore::Cookie> cookies;
+    copyToVector(m_pendingCookies, cookies);
+    return cookies;
+}
+
+void WebsiteDataStore::addPendingCookie(const WebCore::Cookie& cookie)
+{
+    m_pendingCookies.add(cookie);
+}
+
+void WebsiteDataStore::removePendingCookie(const WebCore::Cookie& cookie)
+{
+    m_pendingCookies.remove(cookie);
+}
+
 #if !PLATFORM(COCOA)
 WebsiteDataStoreParameters WebsiteDataStore::parameters()
 {
-    // FIXME: Implement.
-
-    return { };
+    // FIXME: Implement cookies.
+    WebsiteDataStoreParameters parameters;
+    parameters.sessionID = m_sessionID;
+    return parameters;
 }
 #endif
 

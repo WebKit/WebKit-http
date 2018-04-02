@@ -1369,7 +1369,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 #else
     _private->backgroundColor = CGColorRetain(cachedCGColor(Color::white));
 #endif
-    _private->includesFlattenedCompositingLayersWhenDrawingToBitmap = YES;
 
 #if PLATFORM(MAC)
     _private->windowVisibilityObserver = adoptNS([[WebWindowVisibilityObserver alloc] initWithView:self]);
@@ -2978,7 +2977,6 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setMockCaptureDevicesEnabled([preferences mockCaptureDevicesEnabled]);
     settings.setMediaCaptureRequiresSecureConnection([preferences mediaCaptureRequiresSecureConnection]);
     RuntimeEnabledFeatures::sharedFeatures().setMediaStreamEnabled([preferences mediaStreamEnabled]);
-    settings.setUseAVFoundationAudioCapture([preferences useAVFoundationAudioCapture]);
     RuntimeEnabledFeatures::sharedFeatures().setMediaDevicesEnabled([preferences mediaDevicesEnabled]);
 #endif
 
@@ -3043,6 +3041,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #if ENABLE(INTERSECTION_OBSERVER)
     RuntimeEnabledFeatures::sharedFeatures().setIntersectionObserverEnabled(preferences.intersectionObserverEnabled);
 #endif
+    RuntimeEnabledFeatures::sharedFeatures().setDisplayContentsEnabled(preferences.displayContentsEnabled);
 
 #if ENABLE(SUBTLE_CRYPTO)
     RuntimeEnabledFeatures::sharedFeatures().setSubtleCryptoEnabled([preferences subtleCryptoEnabled]);
@@ -3085,9 +3084,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setShouldConvertInvalidURLsToBlank(shouldConvertInvalidURLsToBlank());
 
-    // FIXME: enable async image decoding after the flickering bug wk170640 is fixed.
-    // settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
-    settings.setLargeImageAsyncDecodingEnabled(false);
+    settings.setLargeImageAsyncDecodingEnabled([preferences largeImageAsyncDecodingEnabled]);
     settings.setAnimatedImageAsyncDecodingEnabled([preferences animatedImageAsyncDecodingEnabled]);
 }
 
@@ -4504,16 +4501,6 @@ static inline IMP getMethod(id o, SEL s)
     }
 
     return YES;
-}
-
-- (void)_setIncludesFlattenedCompositingLayersWhenDrawingToBitmap:(BOOL)flag
-{
-    _private->includesFlattenedCompositingLayersWhenDrawingToBitmap = flag;
-}
-
-- (BOOL)_includesFlattenedCompositingLayersWhenDrawingToBitmap
-{
-    return _private->includesFlattenedCompositingLayersWhenDrawingToBitmap;
 }
 
 - (void)setTracksRepaints:(BOOL)flag
@@ -9150,9 +9137,10 @@ bool LayerFlushController::flushLayers()
 #if PLATFORM(IOS)
     WebThreadLock();
 #endif
-#if !PLATFORM(IOS)
+
+#if PLATFORM(MAC)
     NSWindow *window = [m_webView window];
-    
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
     // An NSWindow may not display in the next runloop cycle after dirtying due to delayed window display logic,
     // in which case this observer can fire first. So if the window is due for a display, don't commit
     // layer changes, otherwise they'll show on screen before the view drawing.
@@ -9166,7 +9154,8 @@ bool LayerFlushController::flushLayers()
 
     if (viewsNeedDisplay)
         return false;
-#endif
+#endif // __MAC_OS_X_VERSION_MIN_REQUIRED < 101300
+#endif // PLATFORM(MAC)
 
 #if PLATFORM(IOS)
     // Ensure fixed positions layers are where they should be.
@@ -9176,7 +9165,7 @@ bool LayerFlushController::flushLayers()
     [m_webView _viewWillDrawInternal];
 
     if ([m_webView _flushCompositingChanges]) {
-#if !PLATFORM(IOS)
+#if PLATFORM(MAC)
         // AppKit may have disabled screen updates, thinking an upcoming window flush will re-enable them.
         // In case setNeedsDisplayInRect() has prevented the window from needing to be flushed, re-enable screen
         // updates here.

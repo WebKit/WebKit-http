@@ -159,10 +159,10 @@ namespace JSC {
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
     macro(stringSubstrInternal) \
-    macro(toObject) \
     macro(makeBoundFunction) \
     macro(hasOwnLengthProperty) \
     macro(importModule) \
+    macro(propertyIsEnumerable) \
     macro(WebAssembly) \
     macro(Module) \
     macro(Instance) \

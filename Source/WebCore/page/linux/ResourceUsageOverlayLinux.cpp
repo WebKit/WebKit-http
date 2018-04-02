@@ -74,7 +74,7 @@ public:
         : m_overlay(overlay)
     {
         FontCascadeDescription fontDescription;
-        RenderTheme::defaultTheme()->systemFont(CSSValueMessageBox, fontDescription);
+        RenderTheme::singleton().systemFont(CSSValueMessageBox, fontDescription);
         fontDescription.setComputedSize(gFontSize);
         m_textFont = FontCascade(fontDescription, 0, 0);
         m_textFont.update(nullptr);
@@ -85,7 +85,7 @@ public:
     }
 
 private:
-    void paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip) override
+    void paintContents(const GraphicsLayer*, GraphicsContext& context, GraphicsLayerPaintingPhase, const FloatRect& clip, GraphicsLayerPaintFlags) override
     {
         GraphicsContextStateSaver stateSaver(context);
         context.fillRect(clip, Color(0.0f, 0.0f, 0.0f, 0.8f));

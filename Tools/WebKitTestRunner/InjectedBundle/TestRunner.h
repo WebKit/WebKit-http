@@ -351,7 +351,9 @@ public:
     
     // Resource Load Statistics
     void installStatisticsDidModifyDataRecordsCallback(JSValueRef callback);
+    void installStatisticsDidScanDataRecordsCallback(JSValueRef callback);
     void statisticsDidModifyDataRecordsCallback();
+    void statisticsDidScanDataRecordsCallback();
     void statisticsFireDataModificationHandler();
     void statisticsFireShouldPartitionCookiesHandler();
     void statisticsFireShouldPartitionCookiesHandlerForOneDomain(JSStringRef hostName, bool value);
@@ -359,6 +361,8 @@ public:
     bool isStatisticsPrevalentResource(JSStringRef hostName);
     void setStatisticsHasHadUserInteraction(JSStringRef hostName, bool value);
     bool isStatisticsHasHadUserInteraction(JSStringRef hostName);
+    void setStatisticsGrandfathered(JSStringRef hostName, bool value);
+    bool isStatisticsGrandfathered(JSStringRef hostName);
     void setStatisticsSubframeUnderTopFrameOrigin(JSStringRef hostName, JSStringRef topFrameHostName);
     void setStatisticsSubresourceUnderTopFrameOrigin(JSStringRef hostName, JSStringRef topFrameHostName);
     void setStatisticsSubresourceUniqueRedirectTo(JSStringRef hostName, JSStringRef hostNameRedirectedTo);
@@ -367,6 +371,7 @@ public:
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
+    void setStatisticsGrandfatheringTime(double seconds);
     void statisticsClearInMemoryAndPersistentStore();
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours);
     void statisticsResetToConsistentState();

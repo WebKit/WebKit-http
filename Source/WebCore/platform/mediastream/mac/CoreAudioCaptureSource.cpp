@@ -35,6 +35,7 @@
 #include "AudioSession.h"
 #include "CoreAudioCaptureDevice.h"
 #include "CoreAudioCaptureDeviceManager.h"
+#include "CoreAudioSPI.h"
 #include "Logging.h"
 #include "MediaTimeAVFoundation.h"
 #include "WebAudioSourceProviderAVFObjC.h"
@@ -46,6 +47,7 @@
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include "CoreMediaSoftLink.h"
+
 
 namespace WebCore {
 
@@ -126,7 +128,9 @@ private:
     enum QueueAction { Add, Remove };
     Vector<std::pair<QueueAction, Ref<AudioSampleDataSource>>> m_pendingSources;
 
+#if PLATFORM(MAC)
     uint32_t m_captureDeviceID { 0 };
+#endif
 
     CAAudioStreamDescription m_microphoneProcFormat;
     RefPtr<AudioSampleBufferList> m_microphoneSampleBuffer;
@@ -143,7 +147,6 @@ private:
     Lock m_pendingSourceQueueLock;
     Lock m_internalStateLock;
 
-    int32_t m_suspendCount { 0 };
     int32_t m_producingCount { 0 };
 
     mutable std::unique_ptr<RealtimeMediaSourceCapabilities> m_capabilities;
@@ -292,6 +295,10 @@ OSStatus CoreAudioSharedUnit::setupAudioUnit()
         return err;
     }
     m_ioUnitInitialized = true;
+
+    uint32_t outputDevice;
+    if (!defaultOutputDevice(&outputDevice))
+        AudioDeviceDuck(outputDevice, 1.0, nullptr, 0);
 
     return err;
 }
@@ -611,6 +618,22 @@ OSStatus CoreAudioSharedUnit::defaultInputDevice(uint32_t* deviceID)
     return err;
 }
 
+OSStatus CoreAudioSharedUnit::defaultOutputDevice(uint32_t* deviceID)
+{
+    OSErr err = -1;
+#if PLATFORM(MAC)
+    AudioObjectPropertyAddress address = { kAudioHardwarePropertyDefaultOutputDevice, kAudioObjectPropertyScopeGlobal, kAudioObjectPropertyElementMaster };
+
+    if (AudioObjectHasProperty(kAudioObjectSystemObject, &address)) {
+        UInt32 propertySize = sizeof(AudioDeviceID);
+        err = AudioObjectGetPropertyData(kAudioObjectSystemObject, &address, 0, nullptr, &propertySize, deviceID);
+    }
+#else
+    UNUSED_PARAM(deviceID);
+#endif
+    return err;
+}
+
 CaptureSourceOrError CoreAudioCaptureSource::create(const String& deviceID, const MediaConstraints* constraints)
 {
     String label;
@@ -648,8 +671,6 @@ CoreAudioCaptureSource::CoreAudioCaptureSource(const String& deviceID, const Str
     : RealtimeMediaSource(deviceID, RealtimeMediaSource::Type::Audio, label)
     , m_captureDeviceID(persistentID)
 {
-    m_muted = true;
-
     auto& unit = CoreAudioSharedUnit::singleton();
 
     initializeEchoCancellation(unit.enableEchoCancellation());
@@ -680,20 +701,11 @@ void CoreAudioCaptureSource::removeEchoCancellationSource(AudioSampleDataSource&
 
 void CoreAudioCaptureSource::startProducingData()
 {
-    if (m_isProducingData)
-        return;
-
 #if PLATFORM(IOS)
     coreAudioCaptureSourceFactory().setActiveSource(*this);
 #endif
 
     CoreAudioSharedUnit::singleton().startProducingData();
-    m_isProducingData = CoreAudioSharedUnit::singleton().isProducingData();
-
-    if (!m_isProducingData)
-        return;
-
-    m_muted = false;
 
     if (m_audioSourceProvider)
         m_audioSourceProvider->prepare(&CoreAudioSharedUnit::singleton().microphoneFormat().streamDescription());
@@ -701,12 +713,7 @@ void CoreAudioCaptureSource::startProducingData()
 
 void CoreAudioCaptureSource::stopProducingData()
 {
-    if (!m_isProducingData)
-        return;
-
     CoreAudioSharedUnit::singleton().stopProducingData();
-    m_isProducingData = false;
-    m_muted = true;
 
     if (m_audioSourceProvider)
         m_audioSourceProvider->unprepare();
@@ -756,7 +763,7 @@ AudioSourceProvider* CoreAudioCaptureSource::audioSourceProvider()
 {
     if (!m_audioSourceProvider) {
         m_audioSourceProvider = WebAudioSourceProviderAVFObjC::create(*this);
-        if (m_isProducingData)
+        if (isProducingData())
             m_audioSourceProvider->prepare(&CoreAudioSharedUnit::singleton().microphoneFormat().streamDescription());
     }
 

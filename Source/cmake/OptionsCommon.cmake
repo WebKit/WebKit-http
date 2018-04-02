@@ -173,7 +173,7 @@ if (COMPILER_IS_CLANG)
 endif ()
 
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86|armhf)")
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" AND NOT "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "x86_64")
     # To avoid out of memory when building with debug option in 32bit system.
     # See https://bugs.webkit.org/show_bug.cgi?id=77327
     set(CMAKE_SHARED_LINKER_FLAGS_DEBUG "-Wl,--no-keep-memory ${CMAKE_SHARED_LINKER_FLAGS_DEBUG}")
@@ -234,6 +234,7 @@ include(CheckIncludeFile)
 include(CheckFunctionExists)
 include(CheckSymbolExists)
 include(CheckStructHasMember)
+include(CheckTypeSize)
 
 macro(_HAVE_CHECK_INCLUDE _variable _header)
     check_include_file(${_header} ${_variable}_value)
@@ -286,3 +287,10 @@ _HAVE_CHECK_SYMBOL(HAVE_SIGNAL_H SIGTRAP signal.h)
 _HAVE_CHECK_STRUCT(HAVE_STAT_BIRTHTIME "struct stat" st_birthtime sys/stat.h)
 _HAVE_CHECK_STRUCT(HAVE_TM_GMTOFF "struct tm" tm_gmtoff time.h)
 _HAVE_CHECK_STRUCT(HAVE_TM_ZONE "struct tm" tm_zone time.h)
+
+# Check for int types
+check_type_size("__int128_t" INT128_VALUE)
+
+if (HAVE_INT128_VALUE)
+  SET_AND_EXPOSE_TO_BUILD(HAVE_INT128_T INT128_VALUE)
+endif ()

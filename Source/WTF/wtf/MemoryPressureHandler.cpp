@@ -57,6 +57,12 @@ MemoryPressureHandler::MemoryPressureHandler()
 
 void MemoryPressureHandler::setShouldUsePeriodicMemoryMonitor(bool use)
 {
+    if (!isFastMallocEnabled()) {
+        // If we're running with FastMalloc disabled, some kind of testing or debugging is probably happening.
+        // Let's be nice and not enable the memory kill mechanism.
+        return;
+    }
+
     if (use) {
         m_measurementTimer = std::make_unique<RunLoop::Timer<MemoryPressureHandler>>(RunLoop::main(), this, &MemoryPressureHandler::measurementTimerFired);
         m_measurementTimer->startRepeating(30);
@@ -75,15 +81,21 @@ static const char* toString(MemoryUsagePolicy policy)
 }
 #endif
 
-size_t MemoryPressureHandler::thresholdForMemoryKill()
+static size_t thresholdForMemoryKillWithProcessState(WebsamProcessState processState)
 {
 #if CPU(X86_64) || CPU(ARM64)
-    if (m_processState == WebsamProcessState::Active)
+    if (processState == WebsamProcessState::Active)
         return 4 * GB;
     return 2 * GB;
 #else
+    UNUSED_PARAM(processState);
     return 3 * GB;
 #endif
+}
+
+size_t MemoryPressureHandler::thresholdForMemoryKill()
+{
+    return thresholdForMemoryKillWithProcessState(m_processState);
 }
 
 static size_t thresholdForPolicy(MemoryUsagePolicy policy)
@@ -163,6 +175,25 @@ void MemoryPressureHandler::measurementTimerFired()
         releaseMemory(Critical::Yes, Synchronous::No);
         break;
     }
+
+    if (processState() == WebsamProcessState::Active && footprint.value() > thresholdForMemoryKillWithProcessState(WebsamProcessState::Inactive))
+        doesExceedInactiveLimitWhileActive();
+    else
+        doesNotExceedInactiveLimitWhileActive();
+}
+
+void MemoryPressureHandler::doesExceedInactiveLimitWhileActive()
+{
+    if (m_hasInvokedDidExceedInactiveLimitWhileActiveCallback)
+        return;
+    if (m_didExceedInactiveLimitWhileActiveCallback)
+        m_didExceedInactiveLimitWhileActiveCallback();
+    m_hasInvokedDidExceedInactiveLimitWhileActiveCallback = true;
+}
+
+void MemoryPressureHandler::doesNotExceedInactiveLimitWhileActive()
+{
+    m_hasInvokedDidExceedInactiveLimitWhileActiveCallback = false;
 }
 
 void MemoryPressureHandler::setProcessState(WebsamProcessState state)
@@ -252,7 +283,7 @@ void MemoryPressureHandler::ReliefLogger::logMemoryUsageChange()
         m_initialMemory->physical, currentMemory->physical, physicalDiff);
 }
 
-#if !PLATFORM(COCOA) && !OS(LINUX) && !PLATFORM(WIN)
+#if !PLATFORM(COCOA) && !OS(LINUX) && !OS(WINDOWS)
 void MemoryPressureHandler::install() { }
 void MemoryPressureHandler::uninstall() { }
 void MemoryPressureHandler::holdOff(unsigned) { }
@@ -261,7 +292,7 @@ void MemoryPressureHandler::platformReleaseMemory(Critical) { }
 std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage() { return std::nullopt; }
 #endif
 
-#if !PLATFORM(WIN)
+#if !OS(WINDOWS)
 void MemoryPressureHandler::platformInitialize() { }
 #endif
 

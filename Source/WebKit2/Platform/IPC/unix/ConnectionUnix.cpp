@@ -132,6 +132,11 @@ bool Connection::processMessage()
     memcpy(&messageInfo, messageData, sizeof(messageInfo));
     messageData += sizeof(messageInfo);
 
+    if (messageInfo.attachmentCount() > attachmentMaxAmount || (!messageInfo.isBodyOutOfLine() && messageInfo.bodySize() > messageMaxSize)) {
+        ASSERT_NOT_REACHED();
+        return false;
+    }
+
     size_t messageLength = sizeof(MessageInfo) + messageInfo.attachmentCount() * sizeof(AttachmentInfo) + (messageInfo.isBodyOutOfLine() ? 0 : messageInfo.bodySize());
     if (m_readBuffer.size() < messageLength)
         return false;
@@ -189,7 +194,7 @@ bool Connection::processMessage()
     if (messageInfo.isBodyOutOfLine()) {
         ASSERT(messageInfo.bodySize());
 
-        if (attachmentInfo[attachmentCount].isNull()) {
+        if (attachmentInfo[attachmentCount].isNull() || attachmentInfo[attachmentCount].size() != messageInfo.bodySize()) {
             ASSERT_NOT_REACHED();
             return false;
         }
@@ -267,6 +272,10 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
         struct cmsghdr* controlMessage;
         for (controlMessage = CMSG_FIRSTHDR(&message); controlMessage; controlMessage = CMSG_NXTHDR(&message, controlMessage)) {
             if (controlMessage->cmsg_level == SOL_SOCKET && controlMessage->cmsg_type == SCM_RIGHTS) {
+                if (controlMessage->cmsg_len < CMSG_LEN(0) || controlMessage->cmsg_len > attachmentMaxAmount) {
+                    ASSERT_NOT_REACHED();
+                    break;
+                }
                 size_t previousFileDescriptorsSize = fileDescriptors.size();
                 size_t fileDescriptorsCount = (controlMessage->cmsg_len - CMSG_LEN(0)) / sizeof(int);
                 fileDescriptors.grow(fileDescriptors.size() + fileDescriptorsCount);

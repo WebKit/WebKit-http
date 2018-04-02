@@ -64,6 +64,7 @@ SOFT_LINK_CONSTANT(Contacts, CNPostalAddressCityKey, NSString *);
 SOFT_LINK_CONSTANT(Contacts, CNPostalAddressStateKey, NSString *);
 SOFT_LINK_CONSTANT(Contacts, CNPostalAddressPostalCodeKey, NSString *);
 SOFT_LINK_CONSTANT(Contacts, CNPostalAddressCountryKey, NSString *);
+SOFT_LINK_CONSTANT(Contacts, CNPostalAddressISOCountryCodeKey, NSString *);
 SOFT_LINK_CLASS(PassKit, PKPaymentAuthorizationResult)
 SOFT_LINK_CLASS(PassKit, PKPaymentRequestPaymentMethodUpdate)
 SOFT_LINK_CLASS(PassKit, PKPaymentRequestShippingContactUpdate)
@@ -635,6 +636,11 @@ static RetainPtr<NSError> toNSError(const WebCore::PaymentError& error)
             pkContactField = getPKContactFieldPostalAddress();
             postalAddressKey = getCNPostalAddressCountryKey();
             break;
+
+        case WebCore::PaymentError::ContactField::CountryCode:
+            pkContactField = getPKContactFieldPostalAddress();
+            postalAddressKey = getCNPostalAddressISOCountryCodeKey();
+            break;
         }
 
         [userInfo setObject:pkContactField forKey:getPKPaymentErrorContactFieldUserInfoKey()];
@@ -743,7 +749,7 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(const s
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
 static PKPaymentAuthorizationStatus toPKPaymentAuthorizationStatus(const std::optional<WebCore::ShippingContactUpdate>& update)
 {
-    if (!update)
+    if (!update || update->errors.isEmpty())
         return PKPaymentAuthorizationStatusSuccess;
 
     if (update->errors.size() == 1) {

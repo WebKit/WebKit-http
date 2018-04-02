@@ -141,11 +141,6 @@ class Watchdog;
 class Watchpoint;
 class WatchpointSet;
 
-#if ENABLE(DFG_JIT)
-namespace DFG {
-class LongLivedState;
-}
-#endif // ENABLE(DFG_JIT)
 #if ENABLE(FTL_JIT)
 namespace FTL {
 class Thunks;
@@ -300,10 +295,6 @@ public:
     JSWebAssemblyCodeBlockSubspace webAssemblyCodeBlockSpace;
 #endif
 
-#if ENABLE(DFG_JIT)
-    std::unique_ptr<DFG::LongLivedState> dfgState;
-#endif // ENABLE(DFG_JIT)
-
     VMType vmType;
     ClientData* clientData;
     VMEntryFrame* topVMEntryFrame;
@@ -330,7 +321,6 @@ public:
     Strong<Structure> programExecutableStructure;
     Strong<Structure> functionExecutableStructure;
 #if ENABLE(WEBASSEMBLY)
-    Strong<Structure> webAssemblyToJSCalleeStructure;
     Strong<Structure> webAssemblyCodeBlockStructure;
 #endif
     Strong<Structure> moduleProgramExecutableStructure;

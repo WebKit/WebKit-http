@@ -336,7 +336,6 @@ dom/xhtml/level2/html/HTMLAppletElement10.xhtml
 editing/selection/selection-applet.html
 fast/replaced/applet-disabled-positioned.html
 fast/replaced/applet-rendering-java-disabled.html
-java
 
 # WebKitTestRunner needs testRunner.displayInvalidatedRegion
 compositing/plugins/invalidate_rect.html
@@ -703,6 +702,7 @@ http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-sub-fra
 http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+webkit.org/b/172452 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Pass Failure Timeout ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

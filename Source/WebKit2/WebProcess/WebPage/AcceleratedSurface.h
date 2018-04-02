@@ -35,18 +35,29 @@ class WebPage;
 class AcceleratedSurface {
     WTF_MAKE_NONCOPYABLE(AcceleratedSurface); WTF_MAKE_FAST_ALLOCATED;
 public:
-    static std::unique_ptr<AcceleratedSurface> create(WebPage&);
+    class Client {
+    public:
+        virtual void frameComplete() = 0;
+    };
+
+    static std::unique_ptr<AcceleratedSurface> create(WebPage&, Client&);
     virtual ~AcceleratedSurface() = default;
 
     virtual uint64_t window() const { ASSERT_NOT_REACHED(); return 0; }
-    virtual uint64_t surfaceID() const { ASSERT_NOT_REACHED(); return 0; };
+    virtual uint64_t surfaceID() const { ASSERT_NOT_REACHED(); return 0; }
     virtual bool resize(const WebCore::IntSize&);
     virtual bool shouldPaintMirrored() const { return false; }
 
+    virtual void initialize() { }
+    virtual void finalize() { }
+    virtual void willRenderFrame() { }
+    virtual void didRenderFrame() { }
+
 protected:
-    AcceleratedSurface(WebPage&);
+    AcceleratedSurface(WebPage&, Client&);
 
     WebPage& m_webPage;
+    Client& m_client;
     WebCore::IntSize m_size;
 };
 

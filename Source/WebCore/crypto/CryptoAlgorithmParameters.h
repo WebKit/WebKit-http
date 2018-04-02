@@ -51,6 +51,7 @@ public:
         RsaHashedImportParams,
         RsaKeyGenParams,
         RsaOaepParams,
+        RsaPssParams,
     };
 
     // FIXME: Consider merging name and identifier.

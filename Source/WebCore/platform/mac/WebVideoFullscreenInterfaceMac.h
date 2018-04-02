@@ -31,7 +31,6 @@
 #include "HTMLMediaElementEnums.h"
 #include "WebPlaybackSessionInterfaceMac.h"
 #include "WebPlaybackSessionModel.h"
-#include "WebVideoFullscreenInterface.h"
 #include "WebVideoFullscreenModel.h"
 #include <wtf/RefCounted.h>
 #include <wtf/RetainPtr.h>
@@ -47,8 +46,7 @@ class WebPlaybackSessionInterfaceMac;
 class WebVideoFullscreenChangeObserver;
 
 class WEBCORE_EXPORT WebVideoFullscreenInterfaceMac
-    : public WebVideoFullscreenInterface
-    , public WebVideoFullscreenModelClient
+    : public WebVideoFullscreenModelClient
     , private WebPlaybackSessionModelClient
     , public RefCounted<WebVideoFullscreenInterfaceMac> {
 

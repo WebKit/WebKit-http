@@ -24,7 +24,6 @@
  */
 
 [
-    NoInterfaceObject,
     Conditional=WEB_RTC,
     EnabledAtRuntime=PeerConnection,
     ImplementationLacksVTable,

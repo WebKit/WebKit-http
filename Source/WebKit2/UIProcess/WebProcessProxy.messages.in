@@ -47,7 +47,7 @@ messages -> WebProcessProxy LegacyReceiver {
 
     DidExceedActiveMemoryLimit()
     DidExceedInactiveMemoryLimit()
-    DidExceedBackgroundCPULimit()
+    DidExceedCPULimit()
 
     RetainIconForPageURL(String pageURL)
     ReleaseIconForPageURL(String pageURL)
@@ -56,4 +56,5 @@ messages -> WebProcessProxy LegacyReceiver {
     DidReceiveBackgroundResponsivenessPing()
 
     MemoryPressureStatusChanged(bool isUnderMemoryPressure)
+    DidExceedInactiveMemoryLimitWhileActive()
 }

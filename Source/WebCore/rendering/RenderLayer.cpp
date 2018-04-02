@@ -4383,6 +4383,9 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
         else if (localPaintFlags & PaintLayerPaintingRootBackgroundOnly)
             paintBehavior |= PaintBehaviorRootBackgroundOnly;
 
+        if (paintingInfo.paintBehavior & PaintBehaviorSnapshotting)
+            paintBehavior |= PaintBehaviorSnapshotting;
+
         if (paintingInfo.paintBehavior & PaintBehaviorExcludeSelection)
             paintBehavior |= PaintBehaviorExcludeSelection;
 
@@ -4784,6 +4787,9 @@ void RenderLayer::paintForegroundForFragments(const LayerFragments& layerFragmen
 
     if (localPaintingInfo.paintBehavior & PaintBehaviorExcludeSelection)
         localPaintBehavior |= PaintBehaviorExcludeSelection;
+
+    if (localPaintingInfo.paintBehavior & PaintBehaviorSnapshotting)
+        localPaintBehavior |= PaintBehaviorSnapshotting;
 
     // Optimize clipping for the single fragment case.
     bool shouldClip = localPaintingInfo.clipToDirtyRect && layerFragments.size() == 1 && layerFragments[0].shouldPaintContent && !layerFragments[0].foregroundRect.isEmpty();
@@ -7216,7 +7222,7 @@ void showLayerTree(const WebCore::RenderLayer* layer)
         return;
 
     WTF::String output = externalRepresentation(&layer->renderer().frame(), WebCore::RenderAsTextShowAllLayers | WebCore::RenderAsTextShowLayerNesting | WebCore::RenderAsTextShowCompositedLayers | WebCore::RenderAsTextShowAddresses | WebCore::RenderAsTextShowIDAndClass | WebCore::RenderAsTextDontUpdateLayout | WebCore::RenderAsTextShowLayoutState | WebCore::RenderAsTextShowOverflow | WebCore::RenderAsTextShowSVGGeometry | WebCore::RenderAsTextShowLayerFragments);
-    fprintf(stderr, "%s\n", output.utf8().data());
+    fprintf(stderr, "\n%s\n", output.utf8().data());
 }
 
 void showLayerTree(const WebCore::RenderObject* renderer)

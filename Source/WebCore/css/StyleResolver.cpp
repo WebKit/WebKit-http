@@ -105,6 +105,7 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RuleSet.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGDocument.h"
 #include "SVGDocumentExtensions.h"
 #include "SVGFontFaceElement.h"
@@ -795,7 +796,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
     if (style.display() == CONTENTS) {
         // FIXME: Enable for all elements.
-        bool elementSupportsDisplayContents = is<HTMLSlotElement>(element);
+        bool elementSupportsDisplayContents = is<HTMLSlotElement>(element) || RuntimeEnabledFeatures::sharedFeatures().displayContentsEnabled();
         if (!elementSupportsDisplayContents)
             style.setDisplay(INLINE);
     }
@@ -930,10 +931,20 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
         if (!element->shadowPseudoId().isNull())
             style.setUserModify(READ_ONLY);
 
-        // For now, <marquee> requires an overflow clip to work properly.
         if (is<HTMLMarqueeElement>(*element)) {
+            // For now, <marquee> requires an overflow clip to work properly.
             style.setOverflowX(OHIDDEN);
             style.setOverflowY(OHIDDEN);
+
+            bool isVertical = style.marqueeDirection() == MUP || style.marqueeDirection() == MDOWN;
+            // Make horizontal marquees not wrap.
+            if (!isVertical) {
+                style.setWhiteSpace(NOWRAP);
+                style.setTextAlign(TASTART);
+            }
+            // Apparently this is the expected legacy behavior.
+            if (isVertical && style.height().isAuto())
+                style.setHeight(Length(200, Fixed));
         }
     }
 
@@ -998,7 +1009,7 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
 
     // Let the theme also have a crack at adjusting the style.
     if (style.hasAppearance())
-        RenderTheme::defaultTheme()->adjustStyle(*this, style, element, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
+        RenderTheme::singleton().adjustStyle(*this, style, element, m_state.hasUAAppearance(), m_state.borderData(), m_state.backgroundData(), m_state.backgroundColor());
 
     // If we have first-letter pseudo style, do not share this style.
     if (style.hasPseudoStyle(FIRST_LETTER))

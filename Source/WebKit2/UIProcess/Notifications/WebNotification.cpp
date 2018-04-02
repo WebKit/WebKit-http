@@ -28,7 +28,7 @@
 
 namespace WebKit {
 
-WebNotification::WebNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, const String& dir, const String& originString, uint64_t notificationID)
+WebNotification::WebNotification(const String& title, const String& body, const String& iconURL, const String& tag, const String& lang, WebCore::NotificationDirection dir, const String& originString, uint64_t notificationID)
     : m_title(title)
     , m_body(body)
     , m_iconURL(iconURL)

@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2011 Ericsson AB. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -36,6 +37,7 @@
 #include "ExceptionOr.h"
 #include "RealtimeMediaSource.h"
 #include "RealtimeMediaSourceSupportedConstraints.h"
+#include <wtf/Function.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -43,11 +45,12 @@ namespace WebCore {
 
 class CaptureDevice;
 class CaptureDeviceManager;
-class MediaConstraints;
 class RealtimeMediaSourceSettings;
 class RealtimeMediaSourceSupportedConstraints;
 class TrackSourceInfo;
 
+struct MediaConstraints;
+    
 class RealtimeMediaSourceCenter {
 public:
     virtual ~RealtimeMediaSourceCenter();
@@ -55,19 +58,22 @@ public:
     WEBCORE_EXPORT static RealtimeMediaSourceCenter& singleton();
     static void setSharedStreamCenterOverride(RealtimeMediaSourceCenter*);
 
-    using ValidConstraintsHandler = std::function<void(const Vector<String>&& audioDeviceUIDs, const Vector<String>&& videoDeviceUIDs)>;
-    using InvalidConstraintsHandler = std::function<void(const String& invalidConstraint)>;
-    virtual void validateRequestConstraints(ValidConstraintsHandler&&, InvalidConstraintsHandler&&, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) = 0;
+    using ValidConstraintsHandler = WTF::Function<void(Vector<String>&& audioDeviceUIDs, Vector<String>&& videoDeviceUIDs, String&&)>;
+    using InvalidConstraintsHandler = WTF::Function<void(const String& invalidConstraint)>;
+    virtual void validateRequestConstraints(ValidConstraintsHandler&&, InvalidConstraintsHandler&&, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints, String&&);
 
     using NewMediaStreamHandler = std::function<void(RefPtr<MediaStreamPrivate>&&)>;
-    virtual void createMediaStream(NewMediaStreamHandler&&, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints) = 0;
+    virtual void createMediaStream(NewMediaStreamHandler&&, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* audioConstraints, const MediaConstraints* videoConstraints);
 
-    virtual Vector<CaptureDevice> getMediaStreamDevices() = 0;
+    WEBCORE_EXPORT virtual Vector<CaptureDevice> getMediaStreamDevices();
     
-    virtual const RealtimeMediaSourceSupportedConstraints& supportedConstraints() { return m_supportedConstraints; }
+    const RealtimeMediaSourceSupportedConstraints& supportedConstraints() { return m_supportedConstraints; }
 
     virtual RealtimeMediaSource::AudioCaptureFactory& defaultAudioFactory() = 0;
     virtual RealtimeMediaSource::VideoCaptureFactory& defaultVideoFactory() = 0;
+
+    virtual CaptureDeviceManager& defaultAudioCaptureDeviceManager() = 0;
+    virtual CaptureDeviceManager& defaultVideoCaptureDeviceManager() = 0;
 
     WEBCORE_EXPORT void setAudioFactory(RealtimeMediaSource::AudioCaptureFactory&);
     WEBCORE_EXPORT void unsetAudioFactory(RealtimeMediaSource::AudioCaptureFactory&);
@@ -76,9 +82,6 @@ public:
     WEBCORE_EXPORT void setVideoFactory(RealtimeMediaSource::VideoCaptureFactory&);
     WEBCORE_EXPORT void unsetVideoFactory(RealtimeMediaSource::VideoCaptureFactory&);
     WEBCORE_EXPORT RealtimeMediaSource::VideoCaptureFactory& videoFactory();
-
-    virtual CaptureDeviceManager& defaultAudioCaptureDeviceManager() = 0;
-    virtual CaptureDeviceManager& defaultVideoCaptureDeviceManager() = 0;
 
     WEBCORE_EXPORT void setAudioCaptureDeviceManager(CaptureDeviceManager&);
     WEBCORE_EXPORT void unsetAudioCaptureDeviceManager(CaptureDeviceManager&);
@@ -90,12 +93,14 @@ public:
 
     String hashStringWithSalt(const String& id, const String& hashSalt);
     WEBCORE_EXPORT std::optional<CaptureDevice> captureDeviceWithUniqueID(const String& id, const String& hashSalt);
-    virtual ExceptionOr<void> setDeviceEnabled(const String&, bool);
+    WEBCORE_EXPORT ExceptionOr<void> setDeviceEnabled(const String&, bool);
 
     using DevicesChangedObserverToken = unsigned;
     DevicesChangedObserverToken addDevicesChangedObserver(std::function<void()>&&);
     void removeDevicesChangedObserver(DevicesChangedObserverToken);
     void captureDevicesChanged();
+
+    void setVisibility(bool isVisible);
 
 protected:
     RealtimeMediaSourceCenter();
@@ -108,8 +113,6 @@ protected:
 
     CaptureDeviceManager* m_audioCaptureDeviceManager { nullptr };
     CaptureDeviceManager* m_videoCaptureDeviceManager { nullptr };
-
-    HashMap<unsigned, std::function<void()>> m_devicesChangedObservers;
 };
 
 } // namespace WebCore

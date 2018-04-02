@@ -367,6 +367,12 @@ static bool markerTypesFrom(const String& markerType, DocumentMarker::MarkerType
     return true;
 }
 
+static std::unique_ptr<PrintContext>& printContextForTesting()
+{
+    static NeverDestroyed<std::unique_ptr<PrintContext>> context;
+    return context;
+}
+
 const char* Internals::internalsId = "internals";
 
 Ref<Internals> Internals::create(Document& document)
@@ -401,6 +407,7 @@ void Internals::resetToConsistentState(Page& page)
         mainFrameView->setFixedLayoutSize(IntSize());
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
+        page.chrome().client().resetUpdateAtlasForTesting();
 #endif
         if (auto* backing = mainFrameView->tiledBacking())
             backing->setTileSizeUpdateDelayDisabledForTesting(false);
@@ -448,6 +455,8 @@ void Internals::resetToConsistentState(Page& page)
     MockPreviewLoaderClient::singleton().setPassword("");
     PreviewLoader::setClientForTesting(nullptr);
 #endif
+
+    printContextForTesting() = nullptr;
 }
 
 Internals::Internals(Document& document)
@@ -728,6 +737,11 @@ void Internals::pruneMemoryCacheToSize(unsigned size)
 {
     MemoryCache::singleton().pruneDeadResourcesToSize(size);
     MemoryCache::singleton().pruneLiveResourcesToSize(size, true);
+}
+    
+void Internals::destroyDecodedDataForAllImages()
+{
+    MemoryCache::singleton().destroyDecodedDataForAllImages();
 }
 
 unsigned Internals::memoryCacheSize() const
@@ -2597,6 +2611,12 @@ ExceptionOr<void> Internals::setViewExposedRect(float x, float y, float width, f
     return { };
 }
 
+void Internals::setPrinting(int width, int height)
+{
+    printContextForTesting() = std::make_unique<PrintContext>(frame());
+    printContextForTesting()->begin(width, height);
+}
+
 void Internals::setHeaderHeight(float height)
 {
     Document* document = contextDocument();
@@ -3965,8 +3985,28 @@ void Internals::simulateWebGLContextChanged(WebGLRenderingContext& context)
 {
     context.simulateContextChanged();
 }
+
+void Internals::failNextGPUStatusCheck(WebGLRenderingContext& context)
+{
+    context.setFailNextGPUStatusCheck();
+}
 #endif
 
+void Internals::setPageVisibility(bool isVisible)
+{
+    auto* document = contextDocument();
+    if (!document || !document->page())
+        return;
+    auto& page = *document->page();
+    auto state = page.activityState();
+
+    if (!isVisible)
+        state &= ~ActivityState::IsVisible;
+    else
+        state |= ActivityState::IsVisible;
+
+    page.setActivityState(state);
+}
 
 #if ENABLE(MEDIA_STREAM)
 void Internals::observeMediaStreamTrack(MediaStreamTrack& track)
@@ -3986,14 +4026,15 @@ void Internals::videoSampleAvailable(MediaSample& sample)
     if (!m_nextTrackFramePromise)
         return;
 
-    auto videoSettings = m_track->getSettings();
-    if (!videoSettings.width || !videoSettings.height)
+    auto& videoSettings = m_track->source().settings();
+    if (!videoSettings.width() || !videoSettings.height())
         return;
-
+    
     auto rgba = sample.getRGBAImageData();
     if (!rgba)
         return;
-    auto imageData = ImageData::create(rgba.releaseNonNull(), *videoSettings.width, *videoSettings.height);
+    
+    auto imageData = ImageData::create(rgba.releaseNonNull(), videoSettings.width(), videoSettings.height());
     if (!imageData.hasException())
         m_nextTrackFramePromise->resolve(imageData.releaseReturnValue().releaseNonNull());
     else
@@ -4020,6 +4061,11 @@ ExceptionOr<void> Internals::setMediaDeviceState(const String& id, const String&
         return result.releaseException();
 
     return { };
+}
+
+void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float delay)
+{
+    track.source().delaySamples(delay);
 }
 
 #endif

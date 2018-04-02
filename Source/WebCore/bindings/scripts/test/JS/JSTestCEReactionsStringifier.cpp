@@ -22,11 +22,12 @@
 #include "JSTestCEReactionsStringifier.h"
 
 #include "CustomElementReactionQueue.h"
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
@@ -87,7 +88,7 @@ template<> void JSTestCEReactionsStringifierConstructor::initializeProperties(VM
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestCEReactionsStringifierConstructor::s_info = { "TestCEReactionsStringifier", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCEReactionsStringifierConstructor) };
+template<> const ClassInfo JSTestCEReactionsStringifierConstructor::s_info = { "TestCEReactionsStringifier", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCEReactionsStringifierConstructor) };
 
 /* Hash table for prototype */
 
@@ -98,7 +99,7 @@ static const HashTableValue JSTestCEReactionsStringifierPrototypeTableValues[] =
     { "toString", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestCEReactionsStringifierPrototypeFunctionToString), (intptr_t) (0) } },
 };
 
-const ClassInfo JSTestCEReactionsStringifierPrototype::s_info = { "TestCEReactionsStringifierPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCEReactionsStringifierPrototype) };
+const ClassInfo JSTestCEReactionsStringifierPrototype::s_info = { "TestCEReactionsStringifierPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCEReactionsStringifierPrototype) };
 
 void JSTestCEReactionsStringifierPrototype::finishCreation(VM& vm)
 {
@@ -106,7 +107,7 @@ void JSTestCEReactionsStringifierPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestCEReactionsStringifierPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestCEReactionsStringifier::s_info = { "TestCEReactionsStringifier", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestCEReactionsStringifier) };
+const ClassInfo JSTestCEReactionsStringifier::s_info = { "TestCEReactionsStringifier", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestCEReactionsStringifier) };
 
 JSTestCEReactionsStringifier::JSTestCEReactionsStringifier(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestCEReactionsStringifier>&& impl)
     : JSDOMWrapper<TestCEReactionsStringifier>(structure, globalObject, WTFMove(impl))
@@ -136,12 +137,12 @@ void JSTestCEReactionsStringifier::destroy(JSC::JSCell* cell)
     thisObject->JSTestCEReactionsStringifier::~JSTestCEReactionsStringifier();
 }
 
-template<> inline JSTestCEReactionsStringifier* BindingCaller<JSTestCEReactionsStringifier>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+template<> inline JSTestCEReactionsStringifier* IDLAttribute<JSTestCEReactionsStringifier>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestCEReactionsStringifier*>(state.vm(), JSValue::decode(thisValue));
 }
 
-template<> inline JSTestCEReactionsStringifier* BindingCaller<JSTestCEReactionsStringifier>::castForOperation(ExecState& state)
+template<> inline JSTestCEReactionsStringifier* IDLOperation<JSTestCEReactionsStringifier>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestCEReactionsStringifier*>(state.vm(), state.thisValue());
 }
@@ -150,7 +151,7 @@ static inline JSValue jsTestCEReactionsStringifierValueGetter(ExecState&, JSTest
 
 EncodedJSValue jsTestCEReactionsStringifierValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestCEReactionsStringifier>::attribute<jsTestCEReactionsStringifierValueGetter>(state, thisValue, "value");
+    return IDLAttribute<JSTestCEReactionsStringifier>::get<jsTestCEReactionsStringifierValueGetter>(*state, thisValue, "value");
 }
 
 static inline JSValue jsTestCEReactionsStringifierValueGetter(ExecState& state, JSTestCEReactionsStringifier& thisObject, ThrowScope& throwScope)
@@ -190,7 +191,7 @@ static inline bool setJSTestCEReactionsStringifierValueFunction(ExecState&, JSTe
 
 bool setJSTestCEReactionsStringifierValue(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
-    return BindingCaller<JSTestCEReactionsStringifier>::setAttribute<setJSTestCEReactionsStringifierValueFunction>(state, thisValue, encodedValue, "value");
+    return IDLAttribute<JSTestCEReactionsStringifier>::set<setJSTestCEReactionsStringifierValueFunction>(*state, thisValue, encodedValue, "value");
 }
 
 static inline bool setJSTestCEReactionsStringifierValueFunction(ExecState& state, JSTestCEReactionsStringifier& thisObject, JSValue value, ThrowScope& throwScope)
@@ -211,19 +212,17 @@ JSValue JSTestCEReactionsStringifier::getConstructor(VM& vm, const JSGlobalObjec
     return getDOMConstructor<JSTestCEReactionsStringifierConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static inline JSC::EncodedJSValue jsTestCEReactionsStringifierPrototypeFunctionToStringCaller(JSC::ExecState*, JSTestCEReactionsStringifier*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestCEReactionsStringifierPrototypeFunctionToString(ExecState* state)
-{
-    return BindingCaller<JSTestCEReactionsStringifier>::callOperation<jsTestCEReactionsStringifierPrototypeFunctionToStringCaller>(state, "toString");
-}
-
-static inline JSC::EncodedJSValue jsTestCEReactionsStringifierPrototypeFunctionToStringCaller(JSC::ExecState* state, JSTestCEReactionsStringifier* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestCEReactionsStringifierPrototypeFunctionToStringCaller(JSC::ExecState* state, typename IDLOperation<JSTestCEReactionsStringifier>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     return JSValue::encode(toJS<IDLDOMString>(*state, impl.value()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestCEReactionsStringifierPrototypeFunctionToString(ExecState* state)
+{
+    return IDLOperation<JSTestCEReactionsStringifier>::call<jsTestCEReactionsStringifierPrototypeFunctionToStringCaller>(*state, "toString");
 }
 
 bool JSTestCEReactionsStringifierOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

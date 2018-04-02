@@ -30,9 +30,15 @@ class BuildRequest extends DataModelObject {
 
     updateSingleton(object)
     {
-        console.assert(this._testGroup == object.testGroup);
         console.assert(this._order == object.order);
         console.assert(this._commitSet == object.commitSet);
+
+        const testGroup = object.testGroup;
+        console.assert(!this._testGroup || this._testGroup == testGroup);
+        if (!this._testGroup && testGroup)
+            testGroup.addBuildRequest(this);
+
+        this._testGroup = testGroup;
         this._status = object.status;
         this._statusUrl = object.url;
         this._buildId = object.build;
@@ -52,6 +58,7 @@ class BuildRequest extends DataModelObject {
 
     status() { return this._status; }
     hasFinished() { return this._status == 'failed' || this._status == 'completed' || this._status == 'canceled'; }
+    hasCompleted() { return this._status == 'completed'; }
     hasStarted() { return this._status != 'pending'; }
     isScheduled() { return this._status == 'scheduled'; }
     isPending() { return this._status == 'pending'; }

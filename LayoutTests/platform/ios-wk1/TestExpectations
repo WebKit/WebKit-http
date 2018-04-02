@@ -1379,8 +1379,6 @@ imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/
 # w3c tests that pass
 imported/w3c/canvas/2d.line.cap.round.html [ Pass ]
 
-webkit.org/b/161191 imported/w3c/web-platform-tests/url/url-setters.html [ Skip ]
-
 # import tests that pass
 imported/mozilla/svg/smil/transform/rotate-angle-4.svg [ Pass ]
 imported/mozilla/svg/smil/transform/rotate-angle-5.svg [ Pass ]
@@ -1886,3 +1884,5 @@ http/tests/websocket/tests/hybi/network-process-crash-error.html [ Skip ]
 
 # This was a WK2-only fix.
 http/tests/css/filters-on-iframes.html [ Skip ]
+
+webkit.org/b/172092 [ Release ] fast/parser/adoption-agency-unload-iframe-4.html [ Timeout ]

@@ -109,6 +109,11 @@ var unexpectedErrorMessage; // set by onerror when expectingError is not true
 
     if (!isWorker()) {
         window.addEventListener('DOMContentLoaded', function() {
+            // Call waitUntilDone() as early as possible otherwise some tests may complete before
+            // the load event has fired.
+            if (window.jsTestIsAsync && window.testRunner)
+                testRunner.waitUntilDone();
+
             // Some tests set jsTestIsAsync in load event handler. Adding the listener late
             // makes handleTestFinished() run after the test handles load events.
             window.addEventListener("load", handleTestFinished, false);
@@ -643,6 +648,42 @@ function expectError()
         testFailed("shouldHaveError() called twice before an error occurred!");
     }
     expectingError = true;
+}
+
+function shouldReject(_a, _message)
+{
+    var _exception;
+    var _av;
+    try {
+        _av = typeof _a == "function" ? _a() : eval(_a);
+    } catch (e) {
+        testFailed((_message ? _message : _a) + " should not throw exception. Threw exception " + e + ".");
+        return Promise.resolve();
+    }
+
+    return _av.then(function(result) {
+        testFailed((_message ? _message : _a) + " should reject promise. Resolved with " + result + ".");
+    }, function(error) {
+        testPassed((_message ? _message : _a) + " rejected promise  with " + error + ".");
+    });
+}
+
+function shouldThrowErrorName(_a, _name)
+{
+    var _exception;
+    try {
+        typeof _a == "function" ? _a() : eval(_a);
+    } catch (e) {
+        _exception = e;
+    }
+
+    if (_exception) {
+        if (_exception.name == _name)
+            testPassed(_a + " threw exception " + _exception + ".");
+        else
+            testFailed(_a + " should throw a " + _name + ". Threw a " + _exception.name + ".");
+    } else
+        testFailed(_a + " should throw a " + _name + ". Did not throw.");
 }
 
 function shouldHaveHadError(message)

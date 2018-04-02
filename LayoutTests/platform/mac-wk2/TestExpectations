@@ -23,6 +23,7 @@ fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
 [ Sierra+ ] http/tests/ssl/applepay/ [ Pass ]
+http/tests/ssl/applepay/ApplePayError.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
@@ -634,8 +635,6 @@ webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event
 
 webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/events/event-handler-javascript.html [ Failure ]
 
-webkit.org/b/169719 fast/mediacapturefromelement/CanvasCaptureMediaStream-request-frame-events.html [ Pass Failure ]
-
 webkit.org/b/170203 fast/images/animated-image-different-dest-size.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failure ]
@@ -683,10 +682,12 @@ webkit.org/b/171939 [ Sierra Release ] media/track/track-cue-rendering-on-resize
 
 webkit.org/b/171947 [ Sierra Release ] transitions/extra-transition.html [ Pass Failure ]
 
-webkit.org/b/171978 [ ElCapitan Debug ] media/media-controls-clone-crash.html [ Pass Timeout ]
-
 webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
 
 webkit.org/b/168937 [ Debug ] tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html [ Pass Failure ]
 
 webkit.org/b/172034 [ Sierra Release ] webrtc/closing-peerconnection.html [ Pass Timeout ]
+
+webkit.org/b/171061 webrtc/datachannel/filter-ice-candidate.html [ Pass Timeout ]
+
+webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Pass Failure ]

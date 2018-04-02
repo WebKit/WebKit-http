@@ -58,7 +58,7 @@ private:
     RealtimeOutgoingVideoSource(Ref<RealtimeMediaSource>&&);
 
     void sendFrame(rtc::scoped_refptr<webrtc::VideoFrameBuffer>&&);
-    void sendBlackFrame();
+    void sendBlackFrames();
     void sendOneBlackFrame();
     void setSizeFromSource();
 
@@ -97,6 +97,10 @@ private:
     bool m_isStopped { false };
     Timer m_blackFrameTimer;
     rtc::scoped_refptr<webrtc::VideoFrameBuffer> m_blackFrame;
+    bool m_shouldApplyRotation { false };
+#if !RELEASE_LOG_DISABLED
+    size_t m_numberOfFrames { 0 };
+#endif
 };
 
 } // namespace WebCore

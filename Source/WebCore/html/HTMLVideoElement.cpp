@@ -48,7 +48,7 @@
 #include <wtf/NeverDestroyed.h>
 
 #if ENABLE(VIDEO_PRESENTATION_MODE)
-#include "WebVideoFullscreenInterface.h"
+#include "WebVideoFullscreenModel.h"
 #endif
 
 namespace WebCore {
@@ -153,14 +153,21 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 
 bool HTMLVideoElement::supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode videoFullscreenMode) const
 {
-    if (videoFullscreenMode == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture && !mediaSession().allowsPictureInPicture(*this))
+    if (!player())
         return false;
+    
+    if (videoFullscreenMode == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture) {
+        if (!mediaSession().allowsPictureInPicture(*this))
+            return false;
+        if (!player()->supportsPictureInPicture())
+            return false;
+    }
 
     Page* page = document().page();
     if (!page) 
         return false;
 
-    if (!player() || !player()->supportsFullscreen())
+    if (!player()->supportsFullscreen())
         return false;
 
 #if PLATFORM(IOS)
@@ -391,7 +398,7 @@ URL HTMLVideoElement::posterImageURL() const
 bool HTMLVideoElement::webkitSupportsPresentationMode(VideoPresentationMode mode) const
 {
     if (mode == VideoPresentationMode::Fullscreen)
-        return mediaSession().fullscreenPermitted(*this) && supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard);
+        return supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard);
 
     if (mode == VideoPresentationMode::PictureInPicture) {
 #if PLATFORM(COCOA)
@@ -399,7 +406,7 @@ bool HTMLVideoElement::webkitSupportsPresentationMode(VideoPresentationMode mode
             return false;
 #endif
 
-        return mediaSession().allowsPictureInPicture(*this) && supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
+        return supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
     }
 
     if (mode == VideoPresentationMode::Inline)

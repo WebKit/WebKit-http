@@ -22,10 +22,10 @@
 #include "JSTestEventTarget.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include "JSNode.h"
 #include <runtime/Error.h>
@@ -84,7 +84,7 @@ template<> void JSTestEventTargetConstructor::initializeProperties(VM& vm, JSDOM
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTarget", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
+template<> const ClassInfo JSTestEventTargetConstructor::s_info = { "TestEventTarget", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTargetConstructor) };
 
 /* Hash table for prototype */
 
@@ -94,7 +94,7 @@ static const HashTableValue JSTestEventTargetPrototypeTableValues[] =
     { "item", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestEventTargetPrototypeFunctionItem), (intptr_t) (1) } },
 };
 
-const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTargetPrototype) };
+const ClassInfo JSTestEventTargetPrototype::s_info = { "TestEventTargetPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTargetPrototype) };
 
 void JSTestEventTargetPrototype::finishCreation(VM& vm)
 {
@@ -102,7 +102,7 @@ void JSTestEventTargetPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestEventTargetPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestEventTarget) };
+const ClassInfo JSTestEventTarget::s_info = { "TestEventTarget", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestEventTarget) };
 
 JSTestEventTarget::JSTestEventTarget(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestEventTarget>&& impl)
     : JSEventTarget(structure, globalObject, WTFMove(impl))
@@ -174,7 +174,7 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
     Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
 }
 
-template<> inline JSTestEventTarget* BindingCaller<JSTestEventTarget>::castForOperation(ExecState& state)
+template<> inline JSTestEventTarget* IDLOperation<JSTestEventTarget>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestEventTarget*>(state.vm(), state.thisValue());
 }
@@ -208,14 +208,7 @@ JSValue JSTestEventTarget::getConstructor(VM& vm, const JSGlobalObject* globalOb
     return getDOMConstructor<JSTestEventTargetConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(JSC::ExecState*, JSTestEventTarget*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* state)
-{
-    return BindingCaller<JSTestEventTarget>::callOperation<jsTestEventTargetPrototypeFunctionItemCaller>(state, "item");
-}
-
-static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(JSC::ExecState* state, JSTestEventTarget* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(JSC::ExecState* state, typename IDLOperation<JSTestEventTarget>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -225,6 +218,11 @@ static inline JSC::EncodedJSValue jsTestEventTargetPrototypeFunctionItemCaller(J
     auto index = convert<IDLUnsignedLong>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLInterface<Node>>(*state, *castedThis->globalObject(), impl.item(WTFMove(index))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestEventTargetPrototypeFunctionItem(ExecState* state)
+{
+    return IDLOperation<JSTestEventTarget>::call<jsTestEventTargetPrototypeFunctionItemCaller>(*state, "item");
 }
 
 void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)

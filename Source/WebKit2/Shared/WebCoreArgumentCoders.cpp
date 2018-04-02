@@ -102,7 +102,7 @@
 
 #if ENABLE(MEDIA_STREAM)
 #include <WebCore/CaptureDevice.h>
-#include <WebCore/MediaConstraintsImpl.h>
+#include <WebCore/MediaConstraints.h>
 #endif
 
 using namespace WebCore;
@@ -1474,6 +1474,7 @@ void ArgumentCoder<PasteboardImage>::encode(Encoder& encoder, const PasteboardIm
     encoder << pasteboardImage.url.url;
     encoder << pasteboardImage.url.title;
     encoder << pasteboardImage.resourceMIMEType;
+    encoder << pasteboardImage.suggestedName;
     if (pasteboardImage.resourceData)
         encodeSharedBuffer(encoder, pasteboardImage.resourceData.get());
 }
@@ -1487,6 +1488,8 @@ bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& p
     if (!decoder.decode(pasteboardImage.url.title))
         return false;
     if (!decoder.decode(pasteboardImage.resourceMIMEType))
+        return false;
+    if (!decoder.decode(pasteboardImage.suggestedName))
         return false;
     if (!decodeSharedBuffer(decoder, pasteboardImage.resourceData))
         return false;
@@ -2389,17 +2392,19 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
 }
 
 #if ENABLE(MEDIA_STREAM)
-void ArgumentCoder<MediaConstraintsData>::encode(Encoder& encoder, const WebCore::MediaConstraintsData& constraint)
+void ArgumentCoder<MediaConstraints>::encode(Encoder& encoder, const WebCore::MediaConstraints& constraint)
 {
     encoder << constraint.mandatoryConstraints
         << constraint.advancedConstraints
+        << constraint.deviceIDHashSalt
         << constraint.isValid;
 }
 
-bool ArgumentCoder<MediaConstraintsData>::decode(Decoder& decoder, WebCore::MediaConstraintsData& constraints)
+bool ArgumentCoder<MediaConstraints>::decode(Decoder& decoder, WebCore::MediaConstraints& constraints)
 {
     return decoder.decode(constraints.mandatoryConstraints)
         && decoder.decode(constraints.advancedConstraints)
+        && decoder.decode(constraints.deviceIDHashSalt)
         && decoder.decode(constraints.isValid);
 }
 

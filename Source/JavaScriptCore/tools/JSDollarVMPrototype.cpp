@@ -35,11 +35,12 @@
 #include "MarkedSpaceInlines.h"
 #include "StackVisitor.h"
 #include <wtf/DataLog.h>
+#include <wtf/ProcessID.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
 
-const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
+const ClassInfo JSDollarVMPrototype::s_info = { "DollarVMPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSDollarVMPrototype) };
     
     
 bool JSDollarVMPrototype::currentThreadOwnsJSLock(ExecState* exec)
@@ -438,12 +439,10 @@ static EncodedJSValue JSC_HOST_CALL functionValue(ExecState* exec)
     return JSValue::encode(jsString(exec, stream.toString()));
 }
 
-#if !PLATFORM(WIN)
 static EncodedJSValue JSC_HOST_CALL functionGetPID(ExecState*)
 {
-    return JSValue::encode(jsNumber(getpid()));
+    return JSValue::encode(jsNumber(getCurrentProcessID()));
 }
-#endif
 
 void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
@@ -469,9 +468,7 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "printStack", functionPrintStack, 0);
 
     addFunction(vm, globalObject, "value", functionValue, 1);
-#if !PLATFORM(WIN)
     addFunction(vm, globalObject, "getpid", functionGetPID, 0);
-#endif
 }
 
 } // namespace JSC

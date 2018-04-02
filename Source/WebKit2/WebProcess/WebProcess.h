@@ -147,10 +147,6 @@ public:
 
     uint64_t userGestureTokenIdentifier(RefPtr<WebCore::UserGestureToken>);
     void userGestureTokenDestroyed(WebCore::UserGestureToken&);
-
-#if PLATFORM(COCOA)
-    pid_t presenterApplicationPid() const { return m_presenterApplicationPid; }
-#endif
     
     const TextCheckerState& textCheckerState() const { return m_textCheckerState; }
     void setTextCheckerState(const TextCheckerState&);
@@ -321,8 +317,9 @@ private:
 
     void logDiagnosticMessageForNetworkProcessCrash();
     bool hasVisibleWebPage() const;
-    void updateBackgroundCPULimit();
-    void updateBackgroundCPUMonitorState();
+    void updateCPULimit();
+    enum class CPUMonitorUpdateReason { LimitHasChanged, VisibilityHasChanged };
+    void updateCPUMonitorState(CPUMonitorUpdateReason);
 
     // ChildProcess
     void initializeProcess(const ChildProcessInitializationParameters&) override;
@@ -368,7 +365,6 @@ private:
 
 #if PLATFORM(COCOA)
     WebCore::MachSendRight m_compositingRenderServerPort;
-    pid_t m_presenterApplicationPid;
 #endif
 
     bool m_fullKeyboardAccessEnabled { false };
@@ -425,8 +421,8 @@ private:
     unsigned m_pagesMarkingLayersAsVolatile { 0 };
     bool m_suppressMemoryPressureHandler { false };
 #if PLATFORM(MAC)
-    std::unique_ptr<WebCore::CPUMonitor> m_backgroundCPUMonitor;
-    std::optional<double> m_backgroundCPULimit;
+    std::unique_ptr<WebCore::CPUMonitor> m_cpuMonitor;
+    std::optional<double> m_cpuLimit;
 #endif
 
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;

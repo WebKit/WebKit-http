@@ -28,8 +28,8 @@
 #define BitmapTexturePool_h
 
 #include "BitmapTexture.h"
-#include "Timer.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/RunLoop.h>
 
 #if USE(TEXTURE_MAPPER_GL)
 #include "GraphicsContext3D.h"
@@ -59,6 +59,7 @@ private:
         { }
 
         void markIsInUse() { m_lastUsedTime = monotonicallyIncreasingTime(); }
+        bool canBeReleased (double minUsedTime) const { return m_lastUsedTime < minUsedTime && m_texture->refCount() == 1; }
 
         RefPtr<BitmapTexture> m_texture;
         double m_lastUsedTime { 0.0 };
@@ -74,7 +75,7 @@ private:
 
     Vector<Entry> m_textures;
     Vector<Entry> m_attachmentTextures;
-    Timer m_releaseUnusedTexturesTimer;
+    RunLoop::Timer<BitmapTexturePool> m_releaseUnusedTexturesTimer;
 };
 
 } // namespace WebCore

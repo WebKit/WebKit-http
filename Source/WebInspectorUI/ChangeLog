@@ -1,3 +1,452 @@
+2017-05-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add ListStylePositionInside.svg and ListStylePositionOutside.svg
+        https://bugs.webkit.org/show_bug.cgi?id=172574
+
+        Reviewed by Michael Catanzaro.
+
+        Add more free icons for the Web Inspector of GTK+ port.
+
+        * UserInterface/Images/gtk/ListStylePositionInside.svg: Added.
+        * UserInterface/Images/gtk/ListStylePositionOutside.svg: Added.
+
+2017-05-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new icons AnimationPlayStatePaused.svg and AnimationPlayStateRunning.svg
+        https://bugs.webkit.org/show_bug.cgi?id=172579
+
+        Reviewed by Michael Catanzaro.
+
+        Add more free icons for the Web Inspector of GTK+ port.
+
+        * UserInterface/Images/gtk/AnimationPlayStatePaused.svg: Added.
+        * UserInterface/Images/gtk/AnimationPlayStateRunning.svg: Added.
+
+2017-05-24  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for garbage collect and clean buttons in Console
+        https://bugs.webkit.org/show_bug.cgi?id=167356
+
+        Reviewed by Michael Catanzaro.
+
+        * UserInterface/Images/gtk/NavigationItemClear.svg: Aligned for 16x16 dimension.
+        * UserInterface/Images/gtk/NavigationItemGarbageCollect.svg: Added.
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView): Removed the Clear image dimension's conditional expression.
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WebInspector.NetworkGridContentView): Ditto.
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WebInspector.TimelineRecordingContentView): Ditto.
+
+2017-05-24  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't load the active recording until a Timeline view needs to be shown
+        https://bugs.webkit.org/show_bug.cgi?id=172467
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView):
+        (WebInspector.TimelineTabContentView.prototype.restoreFromCookie):
+        (WebInspector.TimelineTabContentView.prototype._showTimelineViewForType):
+        Move the call to `_recordingLoaded` to when a timeline view needs to be shown and only if
+        `_displayedRecording` isn't already set. This delays the creation of the content view for
+        the recording to right before it needs to be displayed.
+
+
+2017-05-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: content views are not restored on reload if its tree element is filtered out
+        https://bugs.webkit.org/show_bug.cgi?id=165744
+        <rdar://problem/27461323>
+
+        Reviewed by Devin Rousso.
+
+        By default, NavigationSidebar should get the selected represented object
+        from its content browser, instead of relying on the tree selection. This
+        allows a filtered tree selection to persist across page loads.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype.get currentRepresentedObject):
+        (WebInspector.NavigationSidebarPanel.prototype.saveStateToCookie):
+        Get the represented object from the content browser instead of relying
+        on the tree selection (which can be filtered out).
+
+        (WebInspector.NavigationSidebarPanel.prototype._updateFilter):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementAddedOrChanged):
+        (WebInspector.NavigationSidebarPanel.prototype._treeElementWasFiltered):
+        Reselect the represented object's tree element when it is shown due
+        to a change in the filter state.
+
+        (WebInspector.NavigationSidebarPanel.prototype.get hasSelectedElement): Deleted.
+        Not used.
+        (WebInspector.NavigationSidebarPanel.prototype.representedObjectWasFiltered): Deleted.
+        Not used. Replaced by _treeElementWasFiltered.
+
+2017-05-23  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Cannot delete a disabled XHR breakpoint
+        https://bugs.webkit.org/show_bug.cgi?id=171971
+        <rdar://problem/32129527>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Controllers/DOMDebuggerManager.js:
+        (WebInspector.DOMDebuggerManager.prototype.removeXHRBreakpoint):
+        Dispatch XHRBreakpointRemoved event before removing the breakpoint from
+        the backend. A disabled breakpoint will have already been removed, and
+        an enabled breakpoint that fails to get removed from the backend should
+        be removed from the frontend, to prevent it being resolved in the future.
+        Drive-by fix: remove spurious dispatch of DOMBreakpointRemoved event.
+
+        (WebInspector.DOMDebuggerManager.prototype._detachXHRBreakpoint): Deleted.
+        Merged with removeXHRBreakpoint to simplify implementation.
+
+2017-05-23  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: use initialLayout for NetworkSidebarPanel
+        https://bugs.webkit.org/show_bug.cgi?id=172470
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel):
+        (WebInspector.NetworkSidebarPanel.prototype.showDefaultContentView):
+        (WebInspector.NetworkSidebarPanel.prototype.initialLayout):
+        Don't create NetworkGridContentView until right before it is shown.
+
+2017-05-23  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add a new icon DockLeft.svg
+        https://bugs.webkit.org/show_bug.cgi?id=172492
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/DockLeft.svg: Added.
+
+2017-05-23  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add a new icon CSSVariable.svg
+        https://bugs.webkit.org/show_bug.cgi?id=172491
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/CSSVariable.svg: Added.
+
+2017-05-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Changes are not applied in CSS sidebar when switching to Resources tab without blurring editor
+        https://bugs.webkit.org/show_bug.cgi?id=172388
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refreshEditor):
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.cssStyleDeclarationSectionEditorFocused):
+        (WebInspector.RulesStyleDetailsPanel.prototype.shown):
+        When showing the StyleDetailsPanel, if there is an active editor, which is now saved each
+        time one becomes focused, force an update of that editor's content.
+
+2017-05-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: New Tab contents not centered vertically
+        https://bugs.webkit.org/show_bug.cgi?id=172486
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/NewTabContentView.css:
+        (.new-tab.tab.content-view):
+        Use align-items instead of align-content.
+
+2017-05-22  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: New CSS Rules should go into a new Stylesheet Resource that can be viewed/edited/saved
+        https://bugs.webkit.org/show_bug.cgi?id=138810
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Controllers/CSSStyleManager.js:
+        (WebInspector.CSSStyleManager):
+        (WebInspector.CSSStyleManager.prototype.preferredInspectorStyleSheetForFrame):
+        (WebInspector.CSSStyleManager.prototype._updateResourceContent.fetchedStyleSheetContent):
+        Manually dispatch a change event for modifications to CSSStyleSheet objects since they are
+        not covered by the listener for Resource changes.
+
+        * UserInterface/Main.html:
+        Include WebInspector.CSSStyleSheetTreeElement.
+
+        * UserInterface/Models/Collection.js:
+        (WebInspector.Collection.TypeVerifier):
+        * UserInterface/Models/ResourceCollection.js:
+        (WebInspector.ResourceCollection.TypeVerifier.Stylesheet):
+        Add TypeVerifier for CSSStyleSheet.
+
+        * UserInterface/Models/DOMNodeStyles.js:
+        (WebInspector.DOMNodeStyles.prototype._parseRulePayload):
+        Manually create a SourceCodeLocation object for Inspector Style Sheets.
+
+        * UserInterface/Views/CSSStyleSheetTreeElement.js: Added.
+        (WebInspector.CSSStyleSheetTreeElement):
+
+        * UserInterface/Views/ResourceIcons.css:
+        (:matches(.resource-icon.resource-type-stylesheet, .stylessheet-icon) .icon):
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement.forwardingConstructor):
+        (WebInspector.FrameTreeElement):
+        (WebInspector.FrameTreeElement.prototype.onattach):
+        (WebInspector.FrameTreeElement.prototype.ondetach):
+        (WebInspector.FrameTreeElement.prototype.onpopulate):
+        (WebInspector.FrameTreeElement.prototype._styleSheetAdded):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype._styleSheetAdded):
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        Listen for the creation of CSSStyleSheet objects and add them to the sidebar if they are an
+        Inspector Style Sheet.  Regular style sheets are added via their respective resources.
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._isTreeElementWithoutRepresentedObject):
+        Prevent CSSStyleSheetTreeElement instances from attempting to save state to a cookie.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.tabContentViewClassForRepresentedObject):
+        (WebInspector.createSourceCodeLocationLink):
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/Views/CSSStyleDeclarationSection.js:
+        (WebInspector.CSSStyleDeclarationSection.prototype.refresh):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView):
+        * UserInterface/Views/SourceCodeTextEditor.js:
+        (WebInspector.SourceCodeTextEditor.prototype._prepareEditorForInitialContent):
+        (WebInspector.SourceCodeTextEditor.prototype._looselyMatchesSourceCodeLocation):
+        (WebInspector.SourceCodeTextEditor.prototype._matchesSourceCodeLocation):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView):
+        (WebInspector.TextResourceContentView.prototype.get supportsSave):
+        (WebInspector.TextResourceContentView.prototype.get saveData):
+        (WebInspector.TextResourceContentView.prototype._contentWillPopulate):
+        (WebInspector.TextResourceContentView.prototype._shouldBeEditable):
+        Support editing and saving an Inspector Style Sheet via its CSSStyleSheet object.
+
+2017-05-22  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: webkit reload policy should match default behavior
+        https://bugs.webkit.org/show_bug.cgi?id=171385
+        <rdar://problem/31871515>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        Use PageAgent.reload.invoke to make the reload options more explicit.
+
+        * UserInterface/Test/FrontendTestHarness.js:
+        (FrontendTestHarness.prototype.reloadPage):
+        Convert this method to take an options dictionary rather than positional
+        boolean arguments. Update call sites to pass correct options.
+
+        When running tests, we want to revalidate unexpired resources, as there
+        does not seem to be another reliable way to trigger revalidated cached
+        resources from a Web Inspector layout test. Make this behavior the default.
+
+2017-05-22  Simon Fraser  <simon.fraser@apple.com>
+
+        Support transform-box to switch sizing box in SVG
+        https://bugs.webkit.org/show_bug.cgi?id=145783
+
+        Reviewed by Dean Jackson.
+
+        Add transform-box to the list of autocompletions.
+
+        * UserInterface/External/CodeMirror/css.js:
+
+2017-05-22  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: In Timelines > JavaScript & Events, digits for sample count are not localized
+        https://bugs.webkit.org/show_bug.cgi?id=171819
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ScriptTimelineDataGridNode.js:
+        (WebInspector.ScriptTimelineDataGridNode.prototype.createCellContent):
+
+2017-05-22  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: RTL: Text in autocomplete popover should be aligned left
+        https://bugs.webkit.org/show_bug.cgi?id=171998
+
+        Reviewed by Brian Burg.
+
+        Autocomplete popover is only used for CSS and JavaScript, and
+        these should always be shown as LTR text.
+
+        * UserInterface/Views/CompletionSuggestionsView.css:
+        (.completion-suggestions):
+
+2017-05-22  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add active call frame indicator image
+        https://bugs.webkit.org/show_bug.cgi?id=161987
+        <rdar://problem/28307419>
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add a free icon for the Web Inspector of GTK port.
+
+        * UserInterface/Images/gtk/ActiveCallFrame.svg: Added.
+
+2017-05-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Use initialLayout for Settings tab
+        https://bugs.webkit.org/show_bug.cgi?id=172304
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/GeneralSettingsView.js:
+        (WebInspector.GeneralSettingsView.prototype.initialLayout):
+        Move listener for zoom factor to only update that editor.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView):
+        (WebInspector.SettingsTabContentView.prototype.initialLayout): Added.
+        It is not necessary to create the UI for editing settings until the Settings tab is shown.
+        Use initialLayout to ensure UI gets created exactly once, after the tab is selected.
+
+2017-05-18  Devin Rousso  <drousso@apple.com>
+
+        REGRESSION (r?): Web Inspector: Shift-click on color square in Styles sidebar should not select text
+        https://bugs.webkit.org/show_bug.cgi?id=171902
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._handleMouseUp):
+        Do not attempt to select text if the element being clicked is a bookmark (such as a swatch).
+
+2017-05-18  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web Socket Document Icon
+        https://bugs.webkit.org/show_bug.cgi?id=170023
+
+        Reviewed by Matt Baker.
+
+        Icons made by Jon Davis.
+
+        * UserInterface/Images/WebSocket.png: Added.
+        * UserInterface/Images/WebSocket@2x.png: Added.
+        * UserInterface/Images/WebSocketLarge.png: Added.
+        * UserInterface/Images/WebSocketLarge@2x.png: Added.
+        New icons for Web Socket resources.
+
+        * UserInterface/Views/ResourceIcons.css:
+        (body:matches(.mac-platform, .windows-platform) .resource-icon.resource-type-websocket .icon):
+        (body:matches(.mac-platform, .windows-platform) .large .resource-icon.resource-type-websocket .icon):
+        Use the icon.
+
+2017-05-18  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Web Inspector: [GTK] Adopt currentColor for mask SVG images
+        https://bugs.webkit.org/show_bug.cgi?id=150603
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/Circle.svg:
+        * UserInterface/Images/gtk/ClearBoth.svg:
+        * UserInterface/Images/gtk/ClearLeft.svg:
+        * UserInterface/Images/gtk/ClearRight.svg:
+        * UserInterface/Images/gtk/Close.svg:
+        * UserInterface/Images/gtk/CloseLarge.svg:
+        * UserInterface/Images/gtk/Console.svg:
+        * UserInterface/Images/gtk/Debugger.svg:
+        * UserInterface/Images/gtk/DockBottom.svg:
+        * UserInterface/Images/gtk/DockRight.svg:
+        * UserInterface/Images/gtk/DownloadArrow.svg:
+        * UserInterface/Images/gtk/Elements.svg:
+        * UserInterface/Images/gtk/Errors.svg:
+        * UserInterface/Images/gtk/Eye.svg:
+        * UserInterface/Images/gtk/FloatLeft.svg:
+        * UserInterface/Images/gtk/FloatRight.svg:
+        * UserInterface/Images/gtk/FontStyleItalic.svg:
+        * UserInterface/Images/gtk/FontStyleNormal.svg:
+        * UserInterface/Images/gtk/Gear.svg:
+        * UserInterface/Images/gtk/Issues.svg:
+        * UserInterface/Images/gtk/Logs.svg:
+        * UserInterface/Images/gtk/Minus.svg:
+        * UserInterface/Images/gtk/NavigationItemClear.svg:
+        * UserInterface/Images/gtk/NavigationItemTrash.svg:
+        * UserInterface/Images/gtk/Network.svg:
+        * UserInterface/Images/gtk/NewTab.svg:
+        * UserInterface/Images/gtk/NewTabPlus.svg:
+        * UserInterface/Images/gtk/Pause.svg:
+        * UserInterface/Images/gtk/Pencil.svg:
+        * UserInterface/Images/gtk/Plus13.svg:
+        * UserInterface/Images/gtk/Plus15.svg:
+        * UserInterface/Images/gtk/ReloadFull.svg:
+        * UserInterface/Images/gtk/ReloadToolbar.svg:
+        * UserInterface/Images/gtk/Resources.svg:
+        * UserInterface/Images/gtk/Search.svg:
+        * UserInterface/Images/gtk/SearchResults.svg:
+        * UserInterface/Images/gtk/SplitToggleUp.svg:
+        * UserInterface/Images/gtk/StepInto.svg:
+        * UserInterface/Images/gtk/StepOut.svg:
+        * UserInterface/Images/gtk/StepOver.svg:
+        * UserInterface/Images/gtk/Stop.svg:
+        * UserInterface/Images/gtk/Storage.svg:
+        * UserInterface/Images/gtk/TextAlignCenter.svg:
+        * UserInterface/Images/gtk/TextAlignJustify.svg:
+        * UserInterface/Images/gtk/TextAlignLeft.svg:
+        * UserInterface/Images/gtk/TextAlignRight.svg:
+        * UserInterface/Images/gtk/TextDecorationLineThrough.svg:
+        * UserInterface/Images/gtk/TextDecorationOverline.svg:
+        * UserInterface/Images/gtk/TextDecorationUnderline.svg:
+        * UserInterface/Images/gtk/TextTransformCapitalize.svg:
+        * UserInterface/Images/gtk/TextTransformLowercase.svg:
+        * UserInterface/Images/gtk/TextTransformUppercase.svg:
+        * UserInterface/Images/gtk/Time.svg:
+        * UserInterface/Images/gtk/Timeline.svg:
+        * UserInterface/Images/gtk/Undock.svg:
+        * UserInterface/Images/gtk/VisualStyleNone.svg:
+        * UserInterface/Images/gtk/VisualStylePropertyLinked.svg:
+        * UserInterface/Images/gtk/VisualStylePropertyUnlinked.svg:
+        * UserInterface/Images/gtk/Weight.svg:
+
+2017-05-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for Search icon of Quick Open dialog
+        https://bugs.webkit.org/show_bug.cgi?id=172110
+
+        Reviewed by Michael Catanzaro.
+
+        Add a free icon for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/Search.svg: Added.
+
+2017-05-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for Worker Scripts / Web Sockets
+        https://bugs.webkit.org/show_bug.cgi?id=164138
+
+        Reviewed by Michael Catanzaro.
+
+        Add more free icons for the Web Inspector in GTK+.
+
+        * UserInterface/Images/gtk/WorkerScript.png: Added.
+        * UserInterface/Images/gtk/WorkerScript@2x.png: Added.
+        * UserInterface/Images/gtk/WorkerScriptLarge.png: Added.
+        * UserInterface/Images/gtk/WorkerScriptLarge@2x.png: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.script.worker-icon .icon):
+        (.large .script.worker-icon .icon):
+        (body:matches(.mac-platform, .windows-platform) .script.worker-icon .icon): Deleted.
+        (body:matches(.mac-platform, .windows-platform) .large .script.worker-icon .icon): Deleted.
+
 2017-05-11  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: RTL: "Elements > Styles - Rules" rule and media query headers should be left aligned

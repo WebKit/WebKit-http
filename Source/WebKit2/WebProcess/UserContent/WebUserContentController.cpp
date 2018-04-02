@@ -29,7 +29,7 @@
 #include "DataReference.h"
 #include "FrameInfoData.h"
 #include "InjectedBundleScriptWorld.h"
-#include "WebCompiledContentExtension.h"
+#include "WebCompiledContentRuleList.h"
 #include "WebFrame.h"
 #include "WebPage.h"
 #include "WebProcess.h"
@@ -61,7 +61,7 @@ typedef HashMap<uint64_t, std::pair<RefPtr<InjectedBundleScriptWorld>, unsigned>
 
 static WorldMap& worldMap()
 {
-    static NeverDestroyed<WorldMap> map(std::initializer_list<WorldMap::KeyValuePairType> { { 1, std::make_pair(InjectedBundleScriptWorld::normalWorld(), 1) } });
+    static NeverDestroyed<WorldMap> map(std::initializer_list<WorldMap::KeyValuePairType> { { 1, std::make_pair(&InjectedBundleScriptWorld::normalWorld(), 1) } });
 
     return map;
 }
@@ -208,9 +208,9 @@ void WebUserContentController::removeAllUserStyleSheets(const Vector<uint64_t>& 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 class WebUserMessageHandlerDescriptorProxy : public WebCore::UserMessageHandlerDescriptor {
 public:
-    static PassRefPtr<WebUserMessageHandlerDescriptorProxy> create(WebUserContentController* controller, const String& name, InjectedBundleScriptWorld& world, uint64_t identifier)
+    static Ref<WebUserMessageHandlerDescriptorProxy> create(WebUserContentController* controller, const String& name, InjectedBundleScriptWorld& world, uint64_t identifier)
     {
-        return adoptRef(new WebUserMessageHandlerDescriptorProxy(controller, name, world, identifier));
+        return adoptRef(*new WebUserMessageHandlerDescriptorProxy(controller, name, world, identifier));
     }
 
     virtual ~WebUserMessageHandlerDescriptorProxy()
@@ -339,22 +339,22 @@ void WebUserContentController::removeUserScriptMessageHandlerInternal(InjectedBu
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
-void WebUserContentController::addContentExtensions(const Vector<std::pair<String, WebCompiledContentExtensionData>>& contentExtensions)
+void WebUserContentController::addContentRuleLists(const Vector<std::pair<String, WebCompiledContentRuleListData>>& contentRuleLists)
 {
-    for (const auto& contentExtension : contentExtensions) {
-        WebCompiledContentExtensionData contentExtensionData = contentExtension.second;
-        RefPtr<WebCompiledContentExtension> compiledContentExtension = WebCompiledContentExtension::create(WTFMove(contentExtensionData));
+    for (const auto& contentRuleList : contentRuleLists) {
+        WebCompiledContentRuleListData contentRuleListData = contentRuleList.second;
+        RefPtr<WebCompiledContentRuleList> compiledContentRuleList = WebCompiledContentRuleList::create(WTFMove(contentRuleListData));
 
-        m_contentExtensionBackend.addContentExtension(contentExtension.first, WTFMove(compiledContentExtension));
+        m_contentExtensionBackend.addContentExtension(contentRuleList.first, WTFMove(compiledContentRuleList));
     }
 }
 
-void WebUserContentController::removeContentExtension(const String& name)
+void WebUserContentController::removeContentRuleList(const String& name)
 {
     m_contentExtensionBackend.removeContentExtension(name);
 }
 
-void WebUserContentController::removeAllContentExtensions()
+void WebUserContentController::removeAllContentRuleLists()
 {
     m_contentExtensionBackend.removeAllContentExtensions();
 }

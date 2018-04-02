@@ -295,10 +295,10 @@ RenderThemeIOS::RenderThemeIOS()
     CFNotificationCenterAddObserver(CFNotificationCenterGetLocalCenter(), this, contentSizeCategoryDidChange, UIContentSizeCategoryDidChangeNotification, 0, CFNotificationSuspensionBehaviorDeliverImmediately);
 }
 
-Ref<RenderTheme> RenderTheme::themeForPage(Page*)
+RenderTheme& RenderTheme::singleton()
 {
-    static RenderTheme& renderTheme = RenderThemeIOS::create().leakRef();
-    return renderTheme;
+    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeIOS::create());
+    return theme.get();
 }
 
 Ref<RenderTheme> RenderThemeIOS::create()
@@ -1771,9 +1771,11 @@ bool RenderThemeIOS::paintAttachment(const RenderObject& renderer, const PaintIn
 
     context.translate(toFloatSize(paintRect.location()));
 
-    Path borderPath = attachmentBorderPath(info);
-    paintAttachmentBorder(context, borderPath);
-    context.clipPath(borderPath);
+    if (attachment.shouldDrawBorder()) {
+        auto borderPath = attachmentBorderPath(info);
+        paintAttachmentBorder(context, borderPath);
+        context.clipPath(borderPath);
+    }
 
     context.translate(FloatSize(0, info.contentYOrigin));
 

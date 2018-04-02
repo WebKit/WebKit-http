@@ -934,34 +934,36 @@ void RenderGrid::prepareChildForPositionedLayout(RenderBox& child)
     child.containingBlock()->insertPositionedObject(child);
 
     RenderLayer* childLayer = child.layer();
-    childLayer->setStaticInlinePosition(borderAndPaddingStart());
-    childLayer->setStaticBlockPosition(borderAndPaddingBefore());
+    childLayer->setStaticInlinePosition(borderStart());
+    childLayer->setStaticBlockPosition(borderBefore());
 }
 
 void RenderGrid::layoutPositionedObject(RenderBox& child, bool relayoutChildren, bool fixedPositionObjectsOnly)
 {
-    // FIXME: Properly support orthogonal writing mode.
-    if (!isOrthogonalChild(child)) {
-        LayoutUnit columnOffset = LayoutUnit();
-        LayoutUnit columnBreadth = LayoutUnit();
-        offsetAndBreadthForPositionedChild(child, ForColumns, columnOffset, columnBreadth);
-        LayoutUnit rowOffset = LayoutUnit();
-        LayoutUnit rowBreadth = LayoutUnit();
-        offsetAndBreadthForPositionedChild(child, ForRows, rowOffset, rowBreadth);
-
-        child.setOverrideContainingBlockContentLogicalWidth(columnBreadth);
-        child.setOverrideContainingBlockContentLogicalHeight(rowBreadth);
-        child.setExtraInlineOffset(columnOffset);
-        child.setExtraBlockOffset(rowOffset);
-
-        if (child.parent() == this) {
-            auto& childLayer = *child.layer();
-            childLayer.setStaticInlinePosition(borderStart() + columnOffset);
-            childLayer.setStaticBlockPosition(borderBefore() + rowOffset);
-        }
+    if (isOrthogonalChild(child)) {
+        // FIXME: Properly support orthogonal writing mode.
+        RenderBlock::layoutPositionedObject(child, relayoutChildren, fixedPositionObjectsOnly);
+        return;
     }
 
+    LayoutUnit columnOffset;
+    LayoutUnit columnBreadth;
+    offsetAndBreadthForPositionedChild(child, ForColumns, columnOffset, columnBreadth);
+    LayoutUnit rowOffset;
+    LayoutUnit rowBreadth;
+    offsetAndBreadthForPositionedChild(child, ForRows, rowOffset, rowBreadth);
+
+    child.setOverrideContainingBlockContentLogicalWidth(columnBreadth);
+    child.setOverrideContainingBlockContentLogicalHeight(rowBreadth);
+
+    // Mark for layout as we're resetting the position before and we relay in generic layout logic
+    // for positioned items in order to get the offsets properly resolved.
+    child.setChildNeedsLayout(MarkOnlyThis);
+
+    // FIXME: If possible it'd be nice to avoid this layout here when it's not needed.
     RenderBlock::layoutPositionedObject(child, relayoutChildren, fixedPositionObjectsOnly);
+
+    child.setLogicalLocation(LayoutPoint(child.logicalLeft() + columnOffset, child.logicalTop() + rowOffset));
 }
 
 void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, GridTrackSizingDirection direction, LayoutUnit& offset, LayoutUnit& breadth)
@@ -1029,9 +1031,8 @@ void RenderGrid::offsetAndBreadthForPositionedChild(const RenderBox& child, Grid
     breadth = end - start;
     offset = start;
 
-    if (isRowAxis && !style().isLeftToRightDirection() && !child.style().hasStaticInlinePosition(child.isHorizontalWritingMode())) {
-        // If the child doesn't have a static inline position (i.e. "left" and/or "right" aren't "auto",
-        // we need to calculate the offset from the left (even if we're in RTL).
+    if (isRowAxis && !style().isLeftToRightDirection()) {
+        // We always want to calculate the static position from the left (even if we're in RTL).
         if (endIsAuto)
             offset = LayoutUnit();
         else {
@@ -1075,8 +1076,9 @@ void RenderGrid::populateGridPositionsForDirection(GridTrackSizingDirection dire
     unsigned numberOfTracks = tracks.size();
     unsigned numberOfLines = numberOfTracks + 1;
     unsigned lastLine = numberOfLines - 1;
-
-    ContentAlignmentData offset = computeContentPositionAndDistributionOffset(direction, m_trackSizingAlgorithm.freeSpace(direction).value(), numberOfTracks);
+    bool hasCollapsedTracks = m_grid.hasAutoRepeatEmptyTracks(direction);
+    size_t numberOfCollapsedTracks = hasCollapsedTracks ? m_grid.autoRepeatEmptyTracks(direction)->size() : 0;
+    ContentAlignmentData offset = computeContentPositionAndDistributionOffset(direction, m_trackSizingAlgorithm.freeSpace(direction).value(), numberOfTracks - numberOfCollapsedTracks);
     auto& positions = isRowAxis ? m_columnPositions : m_rowPositions;
     positions.resize(numberOfLines);
     auto borderAndPadding = isRowAxis ? borderAndPaddingLogicalLeft() : borderAndPaddingBefore();
@@ -1084,7 +1086,6 @@ void RenderGrid::populateGridPositionsForDirection(GridTrackSizingDirection dire
     if (numberOfLines > 1) {
         // If we have collapsed tracks we just ignore gaps here and add them later as we might not
         // compute the gap between two consecutive tracks without examining the surrounding ones.
-        bool hasCollapsedTracks = m_grid.hasAutoRepeatEmptyTracks(direction);
         LayoutUnit gap = !hasCollapsedTracks ? gridGap(direction) : LayoutUnit();
         unsigned nextToLastLine = numberOfLines - 2;
         for (unsigned i = 0; i < nextToLastLine; ++i)
@@ -1095,21 +1096,23 @@ void RenderGrid::populateGridPositionsForDirection(GridTrackSizingDirection dire
         // coincide exactly) except on the edges of the grid where they become 0.
         if (hasCollapsedTracks) {
             gap = gridGap(direction);
-            unsigned remainingEmptyTracks = m_grid.autoRepeatEmptyTracks(direction)->size();
+            unsigned remainingEmptyTracks = numberOfCollapsedTracks;
+            LayoutUnit offsetAccumulator;
             LayoutUnit gapAccumulator;
             for (unsigned i = 1; i < lastLine; ++i) {
-                if (m_grid.isEmptyAutoRepeatTrack(direction, i - 1))
+                if (m_grid.isEmptyAutoRepeatTrack(direction, i - 1)) {
                     --remainingEmptyTracks;
-                else {
+                    offsetAccumulator += offset.distributionOffset;
+                } else {
                     // Add gap between consecutive non empty tracks. Add it also just once for an
                     // arbitrary number of empty tracks between two non empty ones.
                     bool allRemainingTracksAreEmpty = remainingEmptyTracks == (lastLine - i);
                     if (!allRemainingTracksAreEmpty || !m_grid.isEmptyAutoRepeatTrack(direction, i))
                         gapAccumulator += gap;
                 }
-                positions[i] += gapAccumulator;
+                positions[i] += gapAccumulator - offsetAccumulator;
             }
-            positions[lastLine] += gapAccumulator;
+            positions[lastLine] += gapAccumulator - offsetAccumulator;
         }
     }
     auto& offsetBetweenTracks = isRowAxis ? m_offsetBetweenColumns : m_offsetBetweenRows;

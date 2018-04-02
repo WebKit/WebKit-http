@@ -21,8 +21,8 @@
 #include "config.h"
 #include "JSTestInterfaceLeadingUnderscore.h"
 
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
 #include "JSDOMExceptionHandling.h"
@@ -80,7 +80,7 @@ template<> void JSTestInterfaceLeadingUnderscoreConstructor::initializePropertie
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestInterfaceLeadingUnderscoreConstructor::s_info = { "TestInterfaceLeadingUnderscore", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscoreConstructor) };
+template<> const ClassInfo JSTestInterfaceLeadingUnderscoreConstructor::s_info = { "TestInterfaceLeadingUnderscore", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscoreConstructor) };
 
 /* Hash table for prototype */
 
@@ -90,7 +90,7 @@ static const HashTableValue JSTestInterfaceLeadingUnderscorePrototypeTableValues
     { "readonly", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestInterfaceLeadingUnderscoreReadonly), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
-const ClassInfo JSTestInterfaceLeadingUnderscorePrototype::s_info = { "TestInterfaceLeadingUnderscorePrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscorePrototype) };
+const ClassInfo JSTestInterfaceLeadingUnderscorePrototype::s_info = { "TestInterfaceLeadingUnderscorePrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscorePrototype) };
 
 void JSTestInterfaceLeadingUnderscorePrototype::finishCreation(VM& vm)
 {
@@ -98,7 +98,7 @@ void JSTestInterfaceLeadingUnderscorePrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestInterfaceLeadingUnderscorePrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestInterfaceLeadingUnderscore::s_info = { "TestInterfaceLeadingUnderscore", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscore) };
+const ClassInfo JSTestInterfaceLeadingUnderscore::s_info = { "TestInterfaceLeadingUnderscore", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestInterfaceLeadingUnderscore) };
 
 JSTestInterfaceLeadingUnderscore::JSTestInterfaceLeadingUnderscore(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestInterfaceLeadingUnderscore>&& impl)
     : JSDOMWrapper<TestInterfaceLeadingUnderscore>(structure, globalObject, WTFMove(impl))
@@ -128,7 +128,7 @@ void JSTestInterfaceLeadingUnderscore::destroy(JSC::JSCell* cell)
     thisObject->JSTestInterfaceLeadingUnderscore::~JSTestInterfaceLeadingUnderscore();
 }
 
-template<> inline JSTestInterfaceLeadingUnderscore* BindingCaller<JSTestInterfaceLeadingUnderscore>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+template<> inline JSTestInterfaceLeadingUnderscore* IDLAttribute<JSTestInterfaceLeadingUnderscore>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestInterfaceLeadingUnderscore*>(state.vm(), JSValue::decode(thisValue));
 }
@@ -137,7 +137,7 @@ static inline JSValue jsTestInterfaceLeadingUnderscoreReadonlyGetter(ExecState&,
 
 EncodedJSValue jsTestInterfaceLeadingUnderscoreReadonly(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestInterfaceLeadingUnderscore>::attribute<jsTestInterfaceLeadingUnderscoreReadonlyGetter>(state, thisValue, "readonly");
+    return IDLAttribute<JSTestInterfaceLeadingUnderscore>::get<jsTestInterfaceLeadingUnderscoreReadonlyGetter>(*state, thisValue, "readonly");
 }
 
 static inline JSValue jsTestInterfaceLeadingUnderscoreReadonlyGetter(ExecState& state, JSTestInterfaceLeadingUnderscore& thisObject, ThrowScope& throwScope)

@@ -32,11 +32,11 @@ namespace JSC {
 
 template<>
 const ClassInfo HashMapBucket<HashMapBucketDataKey>::s_info =
-    { "HashMapBucket", nullptr, 0, CREATE_METHOD_TABLE(HashMapBucket<HashMapBucketDataKey>) };
+    { "HashMapBucket", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(HashMapBucket<HashMapBucketDataKey>) };
 
 template<>
 const ClassInfo HashMapBucket<HashMapBucketDataKeyValue>::s_info =
-    { "HashMapBucket", nullptr, 0, CREATE_METHOD_TABLE(HashMapBucket<HashMapBucketDataKeyValue>) };
+    { "HashMapBucket", nullptr, nullptr, nullptr, CREATE_METHOD_TABLE(HashMapBucket<HashMapBucketDataKeyValue>) };
 
 template <typename Data>
 void HashMapBucket<Data>::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -52,14 +52,6 @@ void HashMapBucket<Data>::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.appendValues(bitwise_cast<WriteBarrier<Unknown>*>(&thisObject->m_data), sizeof(Data) / sizeof(WriteBarrier<Unknown>));
 }
 
-template<>
-const ClassInfo HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::s_info =
-    { "HashMapImpl", nullptr, 0, CREATE_METHOD_TABLE(HashMapImpl<HashMapBucket<HashMapBucketDataKey>>) };
-
-template<>
-const ClassInfo HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>::s_info =
-    { "HashMapImpl", nullptr, 0, CREATE_METHOD_TABLE(HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>) };
-
 template <typename HashMapBucket>
 void HashMapImpl<HashMapBucket>::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
@@ -74,6 +66,12 @@ void HashMapImpl<HashMapBucket>::visitChildren(JSCell* cell, SlotVisitor& visito
         visitor.markAuxiliary(buffer);
 }
 
+template <typename HashMapBucket>
+size_t HashMapImpl<HashMapBucket>::estimatedSize(JSCell* cell)
+{
+    return Base::estimatedSize(cell) + static_cast<HashMapImpl<HashMapBucket>*>(cell)->approximateSize();
+}
+
 const ClassInfo* getHashMapBucketKeyClassInfo()
 {
     return &HashMapBucket<HashMapBucketDataKey>::s_info;
@@ -82,13 +80,8 @@ const ClassInfo* getHashMapBucketKeyValueClassInfo()
 {
     return &HashMapBucket<HashMapBucketDataKeyValue>::s_info;
 }
-const ClassInfo* getHashMapImplKeyClassInfo()
-{
-    return &HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::s_info;
-}
-const ClassInfo* getHashMapImplKeyValueClassInfo()
-{
-    return &HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>::s_info;
-}
+
+template class HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>;
+template class HashMapImpl<HashMapBucket<HashMapBucketDataKey>>;
 
 } // namespace JSC

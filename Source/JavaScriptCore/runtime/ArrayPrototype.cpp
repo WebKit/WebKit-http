@@ -62,7 +62,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoFuncLastIndexOf(ExecState*);
 
 // ------------------------------ ArrayPrototype ----------------------------
 
-const ClassInfo ArrayPrototype::s_info = {"Array", &JSArray::s_info, nullptr, CREATE_METHOD_TABLE(ArrayPrototype)};
+const ClassInfo ArrayPrototype::s_info = {"Array", &JSArray::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(ArrayPrototype)};
 
 ArrayPrototype* ArrayPrototype::create(VM& vm, JSGlobalObject* globalObject, Structure* structure)
 {
@@ -1280,6 +1280,7 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState* exec)
     }
 
     unsigned resultSize = checkedResultSize.unsafeGet();
+    IndexingType firstType = firstArray->indexingType();
     IndexingType secondType = secondArray->indexingType();
     IndexingType type = firstArray->mergeIndexingTypeForCopying(secondType);
     if (type == NonArray || !firstArray->canFastCopy(vm, secondArray) || resultSize >= MIN_SPARSE_ARRAY_INDEX) {
@@ -1317,13 +1318,19 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState* exec)
         memcpy(buffer + firstArraySize, secondButterfly->contiguousDouble().data(), sizeof(JSValue) * secondArraySize);
     } else if (type != ArrayWithUndecided) {
         WriteBarrier<Unknown>* buffer = result->butterfly()->contiguous().data();
-        memcpy(buffer, firstButterfly->contiguous().data(), sizeof(JSValue) * firstArraySize);
-        if (secondType != ArrayWithUndecided)
-            memcpy(buffer + firstArraySize, secondButterfly->contiguous().data(), sizeof(JSValue) * secondArraySize);
-        else {
-            for (unsigned i = secondArraySize; i--;)
-                buffer[i + firstArraySize].clear();
-        }
+        
+        auto copy = [&] (unsigned offset, void* source, unsigned size, IndexingType type) {
+            if (type != ArrayWithUndecided) {
+                memcpy(buffer + offset, source, sizeof(JSValue) * size);
+                return;
+            }
+            
+            for (unsigned i = size; i--;)
+                buffer[i + offset].clear();
+        };
+        
+        copy(0, firstButterfly->contiguous().data(), firstArraySize, firstType);
+        copy(firstArraySize, secondButterfly->contiguous().data(), secondArraySize, secondType);
     }
 
     result->butterfly()->setPublicLength(resultSize);

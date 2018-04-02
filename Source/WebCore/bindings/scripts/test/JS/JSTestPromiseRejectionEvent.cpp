@@ -21,8 +21,8 @@
 #include "config.h"
 #include "JSTestPromiseRejectionEvent.h"
 
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructor.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMPromise.h"
@@ -148,7 +148,7 @@ template<> void JSTestPromiseRejectionEventConstructor::initializeProperties(VM&
     putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestPromiseRejectionEventConstructor::s_info = { "TestPromiseRejectionEvent", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestPromiseRejectionEventConstructor) };
+template<> const ClassInfo JSTestPromiseRejectionEventConstructor::s_info = { "TestPromiseRejectionEvent", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestPromiseRejectionEventConstructor) };
 
 /* Hash table for prototype */
 
@@ -159,7 +159,7 @@ static const HashTableValue JSTestPromiseRejectionEventPrototypeTableValues[] =
     { "reason", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestPromiseRejectionEventReason), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
-const ClassInfo JSTestPromiseRejectionEventPrototype::s_info = { "TestPromiseRejectionEventPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestPromiseRejectionEventPrototype) };
+const ClassInfo JSTestPromiseRejectionEventPrototype::s_info = { "TestPromiseRejectionEventPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestPromiseRejectionEventPrototype) };
 
 void JSTestPromiseRejectionEventPrototype::finishCreation(VM& vm)
 {
@@ -167,7 +167,7 @@ void JSTestPromiseRejectionEventPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestPromiseRejectionEventPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestPromiseRejectionEvent::s_info = { "TestPromiseRejectionEvent", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestPromiseRejectionEvent) };
+const ClassInfo JSTestPromiseRejectionEvent::s_info = { "TestPromiseRejectionEvent", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestPromiseRejectionEvent) };
 
 JSTestPromiseRejectionEvent::JSTestPromiseRejectionEvent(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestPromiseRejectionEvent>&& impl)
     : JSEvent(structure, globalObject, WTFMove(impl))
@@ -191,7 +191,7 @@ JSObject* JSTestPromiseRejectionEvent::prototype(VM& vm, JSDOMGlobalObject& glob
     return getDOMPrototype<JSTestPromiseRejectionEvent>(vm, globalObject);
 }
 
-template<> inline JSTestPromiseRejectionEvent* BindingCaller<JSTestPromiseRejectionEvent>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+template<> inline JSTestPromiseRejectionEvent* IDLAttribute<JSTestPromiseRejectionEvent>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestPromiseRejectionEvent*>(state.vm(), JSValue::decode(thisValue));
 }
@@ -200,7 +200,7 @@ static inline JSValue jsTestPromiseRejectionEventPromiseGetter(ExecState&, JSTes
 
 EncodedJSValue jsTestPromiseRejectionEventPromise(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestPromiseRejectionEvent>::attribute<jsTestPromiseRejectionEventPromiseGetter, CastedThisErrorBehavior::RejectPromise>(state, thisValue, "promise");
+    return IDLAttribute<JSTestPromiseRejectionEvent>::get<jsTestPromiseRejectionEventPromiseGetter, CastedThisErrorBehavior::RejectPromise>(*state, thisValue, "promise");
 }
 
 static inline JSValue jsTestPromiseRejectionEventPromiseGetter(ExecState& state, JSTestPromiseRejectionEvent& thisObject, ThrowScope& throwScope)
@@ -216,7 +216,7 @@ static inline JSValue jsTestPromiseRejectionEventReasonGetter(ExecState&, JSTest
 
 EncodedJSValue jsTestPromiseRejectionEventReason(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestPromiseRejectionEvent>::attribute<jsTestPromiseRejectionEventReasonGetter>(state, thisValue, "reason");
+    return IDLAttribute<JSTestPromiseRejectionEvent>::get<jsTestPromiseRejectionEventReasonGetter>(*state, thisValue, "reason");
 }
 
 static inline JSValue jsTestPromiseRejectionEventReasonGetter(ExecState& state, JSTestPromiseRejectionEvent& thisObject, ThrowScope& throwScope)

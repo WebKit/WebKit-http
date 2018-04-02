@@ -265,6 +265,64 @@ void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPers
     }
 }
 
+void WebProcessProxy::topPrivatelyControlledDomainsWithWebiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, std::function<void(HashSet<String>&&)> completionHandler)
+{
+    struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
+        explicit CallbackAggregator(std::function<void(HashSet<String>&&)> completionHandler)
+            : completionHandler(WTFMove(completionHandler))
+        {
+        }
+        
+        void addDomainsWithDeletedWebsiteData(HashSet<String>&& domains)
+        {
+            domainsWithDeletedWebsiteData.add(domains.begin(), domains.end());
+        }
+        
+        void addPendingCallback()
+        {
+            ++pendingCallbacks;
+        }
+        
+        void removePendingCallback()
+        {
+            ASSERT(pendingCallbacks);
+            --pendingCallbacks;
+            
+            callIfNeeded();
+        }
+        
+        void callIfNeeded()
+        {
+            if (!pendingCallbacks)
+                completionHandler(WTFMove(domainsWithDeletedWebsiteData));
+        }
+        
+        unsigned pendingCallbacks = 0;
+        std::function<void(HashSet<String>&&)> completionHandler;
+        HashSet<String> domainsWithDeletedWebsiteData;
+    };
+    
+    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(WTFMove(completionHandler)));
+    
+    HashSet<WebCore::SessionID> visitedSessionIDs;
+    for (auto& page : globalPageMap()) {
+        auto& dataStore = page.value->websiteDataStore();
+        if (!dataStore.isPersistent() || visitedSessionIDs.contains(dataStore.sessionID()))
+            continue;
+        visitedSessionIDs.add(dataStore.sessionID());
+        callbackAggregator->addPendingCallback();
+        dataStore.topPrivatelyControlledDomainsWithWebsiteData(dataTypes, { }, [callbackAggregator, shouldNotifyPage, page](HashSet<String>&& domainsWithDataRecords) {
+            if (shouldNotifyPage)
+                page.value->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
+            
+            WTF::RunLoop::main().dispatch([callbackAggregator, domainsWithDataRecords = WTFMove(domainsWithDataRecords)]() mutable {
+                callbackAggregator->addDomainsWithDeletedWebsiteData(WTFMove(domainsWithDataRecords));
+                callbackAggregator->removePendingCallback();
+            });
+        });
+    }
+}
+
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
 {
     uint64_t pageID = generatePageID();
@@ -1133,6 +1191,12 @@ void WebProcessProxy::logDiagnosticMessageForResourceLimitTermination(const Stri
         (*pages().begin())->logDiagnosticMessage(DiagnosticLoggingKeys::simulatedPageCrashKey(), limitKey, ShouldSample::No);
 }
 
+void WebProcessProxy::didExceedInactiveMemoryLimitWhileActive()
+{
+    for (auto& page : pages())
+        page->didExceedInactiveMemoryLimitWhileActive();
+}
+
 void WebProcessProxy::didExceedActiveMemoryLimit()
 {
     RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedActiveMemoryLimit() Terminating WebProcess that has exceeded the active memory limit", this);
@@ -1147,24 +1211,33 @@ void WebProcessProxy::didExceedInactiveMemoryLimit()
     requestTermination(ProcessTerminationReason::ExceededMemoryLimit);
 }
 
-void WebProcessProxy::didExceedBackgroundCPULimit()
+void WebProcessProxy::didExceedCPULimit()
 {
     for (auto& page : pages()) {
-        if (page->isViewVisible())
-            return;
-
         if (page->isPlayingAudio()) {
-            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because there is audio playing", this);
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because there is audio playing", this);
             return;
         }
 
         if (page->hasActiveAudioStream() || page->hasActiveVideoStream()) {
-            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because it is capturing audio / video", this);
+            RELEASE_LOG(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() WebProcess has exceeded the background CPU limit but we are not terminating it because it is capturing audio / video", this);
             return;
         }
     }
 
-    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedBackgroundCPULimit() Terminating background WebProcess that has exceeded the background CPU limit", this);
+    bool hasVisiblePage = false;
+    for (auto& page : pages()) {
+        if (page->isViewVisible()) {
+            page->didExceedBackgroundCPULimitWhileInForeground();
+            hasVisiblePage = true;
+        }
+    }
+
+    // We only notify the client that the process exceeded the CPU limit when it is visible, we do not terminate it.
+    if (hasVisiblePage)
+        return;
+
+    RELEASE_LOG_ERROR(PerformanceLogging, "%p - WebProcessProxy::didExceedCPULimit() Terminating background WebProcess that has exceeded the background CPU limit", this);
     logDiagnosticMessageForResourceLimitTermination(DiagnosticLoggingKeys::exceededBackgroundCPULimitKey());
     requestTermination(ProcessTerminationReason::ExceededCPULimit);
 }

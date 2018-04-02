@@ -39,7 +39,7 @@
 
 namespace JSC {
 
-const ClassInfo MapPrototype::s_info = { "Map", &Base::s_info, &mapPrototypeTable, CREATE_METHOD_TABLE(MapPrototype) };
+const ClassInfo MapPrototype::s_info = { "Map", &Base::s_info, &mapPrototypeTable, nullptr, CREATE_METHOD_TABLE(MapPrototype) };
 
 /* Source for MapPrototype.lut.h
 @begin mapPrototypeTable
@@ -147,7 +147,7 @@ EncodedJSValue JSC_HOST_CALL mapProtoFuncSize(CallFrame* callFrame)
     JSMap* map = getMap(callFrame, callFrame->thisValue());
     if (!map)
         return JSValue::encode(jsUndefined());
-    return JSValue::encode(jsNumber(map->size(callFrame)));
+    return JSValue::encode(jsNumber(map->size()));
 }
 
 EncodedJSValue JSC_HOST_CALL mapProtoFuncValues(CallFrame* callFrame)

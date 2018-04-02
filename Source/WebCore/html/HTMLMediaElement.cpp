@@ -41,7 +41,6 @@
 #include "CookieJar.h"
 #include "DiagnosticLoggingClient.h"
 #include "DiagnosticLoggingKeys.h"
-#include "DisplaySleepDisabler.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "ElementIterator.h"
@@ -85,6 +84,7 @@
 #include "SessionID.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "SleepDisabler.h"
 #include "TimeRanges.h"
 #include "UserContentController.h"
 #include "UserGestureIndicator.h"
@@ -111,10 +111,6 @@
 #if ENABLE(WEB_AUDIO)
 #include "AudioSourceProvider.h"
 #include "MediaElementAudioSourceNode.h"
-#endif
-
-#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-#include "WebVideoFullscreenInterface.h"
 #endif
 
 #if PLATFORM(IOS)
@@ -157,6 +153,10 @@
 #include "NotImplemented.h"
 #endif
 
+#if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+#include "WebVideoFullscreenModel.h"
+#endif
+
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(document().page() && document().page()->isAlwaysOnLoggingAllowed(), Media, "%p - HTMLMediaElement::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
@@ -165,6 +165,7 @@ static const Seconds SeekRepeatDelay { 100_ms };
 static const double SeekTime = 0.2;
 static const Seconds ScanRepeatDelay { 1.5_s };
 static const double ScanMaximumRate = 8;
+static const double AutoplayInterferenceTimeThreshold = 10;
 
 static const Seconds hideMediaControlsAfterEndedDelay { 6_s };
 
@@ -685,6 +686,10 @@ void HTMLMediaElement::registerWithDocument(Document& document)
 
     document.addAudioProducer(this);
     addElementToDocumentMap(*this, document);
+
+#if ENABLE(MEDIA_STREAM)
+    document.registerForMediaStreamStateChangeCallbacks(*this);
+#endif
 }
 
 void HTMLMediaElement::unregisterWithDocument(Document& document)
@@ -720,6 +725,11 @@ void HTMLMediaElement::unregisterWithDocument(Document& document)
 
     document.removeAudioProducer(this);
     removeElementFromDocumentMap(*this, document);
+
+#if ENABLE(MEDIA_STREAM)
+    document.unregisterForMediaStreamStateChangeCallbacks(*this);
+#endif
+
 }
 
 void HTMLMediaElement::didMoveToNewDocument(Document& oldDocument)
@@ -1162,7 +1172,7 @@ void HTMLMediaElement::load()
     
     if (!m_mediaSession->dataLoadingPermitted(*this))
         return;
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
     prepareForLoad();
@@ -1878,7 +1888,7 @@ void HTMLMediaElement::audioTrackEnabledChanged(AudioTrack& track)
 {
     if (m_audioTracks && m_audioTracks->contains(track))
         m_audioTracks->scheduleChangeEvent();
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 }
 
@@ -2322,6 +2332,7 @@ SuccessOr<MediaPlaybackDenialReason> HTMLMediaElement::canTransitionFromAutoplay
      && !document().isSandboxed(SandboxAutomaticFeatures))
         return mediaSession().playbackPermitted(*this);
 
+    RELEASE_LOG(Media, "HTMLMediaElement::canTransitionFromAutoplayToPlay - page consent required");
     return MediaPlaybackDenialReason::PageConsentRequired;
 }
 
@@ -2688,7 +2699,7 @@ void HTMLMediaElement::seekWithTolerance(const MediaTime& inTime, const MediaTim
     } else
         seekTask();
 
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureToControlControlsManager);
 }
 
@@ -3153,7 +3164,7 @@ void HTMLMediaElement::play(DOMPromiseDeferred<void>&& promise)
         return;
     }
 
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
     if (!playInternal()) {
@@ -3174,7 +3185,7 @@ void HTMLMediaElement::play()
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::Prevented);
         return;
     }
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
 
     playInternal();
@@ -3238,7 +3249,7 @@ bool HTMLMediaElement::playInternal()
     } else if (m_readyState >= HAVE_FUTURE_DATA)
         scheduleResolvePendingPlayPromises();
 
-    if (ScriptController::processingUserGestureForMedia()) {
+    if (processingUserGestureForMedia()) {
         if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Prevented) {
             handleAutoplayEvent(AutoplayEvent::DidPlayMediaPreventedFromPlaying);
             setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
@@ -3259,7 +3270,7 @@ void HTMLMediaElement::pause()
     if (!m_mediaSession->playbackPermitted(*this))
         return;
 
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::RequireUserGestureToControlControlsManager);
 
     pauseInternal();
@@ -3286,7 +3297,7 @@ void HTMLMediaElement::pauseInternal()
 
     m_autoplaying = false;
 
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         userDidInterfereWithAutoplay();
 
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
@@ -3381,7 +3392,7 @@ void HTMLMediaElement::setMuted(bool muted)
 
     bool mutedStateChanged = m_muted != muted;
     if (mutedStateChanged || !m_explicitlyMuted) {
-        if (ScriptController::processingUserGestureForMedia()) {
+        if (processingUserGestureForMedia()) {
             removeBehaviorsRestrictionsAfterFirstUserGesture(MediaElementSession::AllRestrictions & ~MediaElementSession::RequireUserGestureToControlControlsManager);
 
             if (hasAudio() && muted)
@@ -3572,6 +3583,11 @@ void HTMLMediaElement::playbackProgressTimerFired()
     if (m_mediaSource)
         m_mediaSource->monitorSourceBuffers();
 #endif
+
+    if (!seeking() && m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Started && currentTime() - m_playbackWithoutUserGestureStartedTime->toDouble() > AutoplayInterferenceTimeThreshold) {
+        handleAutoplayEvent(AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference);
+        setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
+    }
 }
 
 void HTMLMediaElement::scheduleTimeupdateEvent(bool periodicEvent)
@@ -4471,9 +4487,6 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
                 if (!wasSeeking)
                     addBehaviorRestrictionsOnEndIfNecessary();
 
-                if (m_playbackWithoutUserGesture == PlaybackWithoutUserGesture::Started)
-                    handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
-
                 setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
             }
             // If the media element has a current media controller, then report the controller state
@@ -5233,17 +5246,6 @@ void HTMLMediaElement::stopWithoutDestroyingMediaPlayer()
     setPausedInternal(true);
     m_mediaSession->clientWillPausePlayback();
 
-    switch (m_playbackWithoutUserGesture) {
-    case PlaybackWithoutUserGesture::Started:
-        handleAutoplayEvent(AutoplayEvent::DidEndMediaPlaybackWithoutUserInterference);
-        break;
-    case PlaybackWithoutUserGesture::Prevented:
-        handleAutoplayEvent(AutoplayEvent::UserNeverPlayedMediaPreventedFromPlaying);
-        break;
-    case PlaybackWithoutUserGesture::None:
-        break;
-    }
-
     setPlaybackWithoutUserGesture(PlaybackWithoutUserGesture::None);
 
     userCancelledLoad();
@@ -5351,7 +5353,7 @@ void HTMLMediaElement::mediaVolumeDidChange()
 
 void HTMLMediaElement::visibilityStateChanged()
 {
-    m_elementIsHidden = document().hidden();
+    m_elementIsHidden = document().hidden() && m_videoFullscreenMode == VideoFullscreenModeNone;
     LOG(Media, "HTMLMediaElement::visibilityStateChanged(%p) - visible = %s", this, boolString(!m_elementIsHidden));
     updateSleepDisabling();
     m_mediaSession->visibilityChanged();
@@ -5393,7 +5395,7 @@ void HTMLMediaElement::syncTextTrackBounds()
 void HTMLMediaElement::webkitShowPlaybackTargetPicker()
 {
     LOG(Media, "HTMLMediaElement::webkitShowPlaybackTargetPicker(%p)", this);
-    if (ScriptController::processingUserGestureForMedia())
+    if (processingUserGestureForMedia())
         removeBehaviorsRestrictionsAfterFirstUserGesture();
     m_mediaSession->showPlaybackTargetPicker(*this);
 }
@@ -6348,7 +6350,7 @@ void HTMLMediaElement::updateSleepDisabling()
     if (!shouldDisableSleep && m_sleepDisabler)
         m_sleepDisabler = nullptr;
     else if (shouldDisableSleep && !m_sleepDisabler)
-        m_sleepDisabler = DisplaySleepDisabler::create("com.apple.WebCore: HTMLMediaElement playback");
+        m_sleepDisabler = SleepDisabler::create("com.apple.WebCore: HTMLMediaElement playback");
 
     if (m_player)
         m_player->setShouldDisableSleep(shouldDisableSleep);
@@ -6697,7 +6699,7 @@ bool HTMLMediaElement::ensureMediaControlsInjectedScript()
     if (!page)
         return false;
 
-    String mediaControlsScript = RenderTheme::themeForPage(page)->mediaControlsScript();
+    String mediaControlsScript = RenderTheme::singleton().mediaControlsScript();
     if (!mediaControlsScript.length())
         return false;
 
@@ -7127,6 +7129,11 @@ bool HTMLMediaElement::shouldOverrideBackgroundPlaybackRestriction(PlatformMedia
     return false;
 }
 
+bool HTMLMediaElement::processingUserGestureForMedia() const
+{
+    return document().processingUserGestureForMedia();
+}
+
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 void HTMLMediaElement::updateMediaState(UpdateState updateState)
 {
@@ -7202,7 +7209,7 @@ void HTMLMediaElement::userDidInterfereWithAutoplay()
         return;
 
     // Only consider interference in the first 10 seconds of automatic playback.
-    if (currentTime() - m_playbackWithoutUserGestureStartedTime->toDouble() > 10)
+    if (currentTime() - m_playbackWithoutUserGestureStartedTime->toDouble() > AutoplayInterferenceTimeThreshold)
         return;
 
     handleAutoplayEvent(AutoplayEvent::UserDidInterfereWithPlayback);
@@ -7474,6 +7481,7 @@ void HTMLMediaElement::fullscreenModeChanged(VideoFullscreenMode mode)
         return;
 
     m_videoFullscreenMode = mode;
+    visibilityStateChanged();
     m_mediaSession->scheduleClientDataBufferingCheck();
     scheduleUpdatePlaybackControlsManager();
 }

@@ -33,10 +33,10 @@
 @class WebWindowScaleAnimation;
 @class WebView;
 namespace WebCore {
-    class DisplaySleepDisabler;
-    class Element;
-    class RenderBox;
-    class EventListener;
+class SleepDisabler;
+class Element;
+class RenderBox;
+class EventListener;
 }
 
 @interface WebFullScreenController : NSWindowController {
@@ -67,7 +67,7 @@ namespace WebCore {
 
 - (BOOL)isFullScreen;
 
-- (void)setElement:(PassRefPtr<WebCore::Element>)element;
+- (void)setElement:(RefPtr<WebCore::Element>&&)element;
 - (WebCore::Element*)element;
 
 - (void)enterFullScreen:(NSScreen *)screen;

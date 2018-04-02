@@ -22,15 +22,15 @@
 #include "JSTestDOMJIT.h"
 
 #include "DOMJITAbstractHeapRepository.h"
-#include "DOMJITCheckDOM.h"
 #include "DOMJITIDLConvert.h"
 #include "DOMJITIDLType.h"
 #include "DOMJITIDLTypeFilter.h"
+#include "JSDOMAttribute.h"
 #include "JSDOMBinding.h"
-#include "JSDOMBindingCaller.h"
 #include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMOperation.h"
 #include "JSDOMWrapperCache.h"
 #include "JSElement.h"
 #include "JSNodeList.h"
@@ -96,35 +96,15 @@ JSC::EncodedJSValue jsTestDOMJITNodeNullableAttr(JSC::ExecState*, JSC::EncodedJS
 JSC::EncodedJSValue jsTestDOMJITConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::PropertyName);
 bool setJSTestDOMJITConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::EncodedJSValue);
 
-#if ENABLE(JIT)
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetAttribute, DOMJIT::checkDOM<TestDOMJIT>, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLNullable<IDLDOMString>>::value, DOMJIT::IDLArgumentTypeFilter<IDLDOMString>::value);
-#else
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetAttribute, nullptr, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLNullable<IDLDOMString>>::value, DOMJIT::IDLArgumentTypeFilter<IDLDOMString>::value);
-#endif
+static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetAttribute, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLNullable<IDLDOMString>>::value, DOMJIT::IDLArgumentTypeFilter<IDLDOMString>::value);
 
-#if ENABLE(JIT)
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITItem((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionItem, DOMJIT::checkDOM<TestDOMJIT>, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLDOMString>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value);
-#else
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITItem((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionItem, nullptr, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLDOMString>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value);
-#endif
+static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITItem((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionItem, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLDOMString>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value, DOMJIT::IDLArgumentTypeFilter<IDLUnsignedShort>::value);
 
-#if ENABLE(JIT)
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITHasAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionHasAttribute, DOMJIT::checkDOM<TestDOMJIT>, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLBoolean>::value);
-#else
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITHasAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionHasAttribute, nullptr, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLBoolean>::value);
-#endif
+static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITHasAttribute((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionHasAttribute, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLBoolean>::value);
 
-#if ENABLE(JIT)
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementById((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementById, DOMJIT::checkDOM<TestDOMJIT>, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<Element>>::value, DOMJIT::IDLArgumentTypeFilter<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>>::value);
-#else
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementById((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementById, nullptr, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<Element>>::value, DOMJIT::IDLArgumentTypeFilter<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>>::value);
-#endif
+static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementById((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementById, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<Element>>::value, DOMJIT::IDLArgumentTypeFilter<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>>::value);
 
-#if ENABLE(JIT)
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementsByName((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementsByName, DOMJIT::checkDOM<TestDOMJIT>, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<NodeList>>::value, DOMJIT::IDLArgumentTypeFilter<IDLAtomicStringAdaptor<IDLDOMString>>::value);
-#else
-static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementsByName((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementsByName, nullptr, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<NodeList>>::value, DOMJIT::IDLArgumentTypeFilter<IDLAtomicStringAdaptor<IDLDOMString>>::value);
-#endif
+static const JSC::DOMJIT::Signature DOMJITSignatureForTestDOMJITGetElementsByName((uintptr_t)unsafeJsTestDOMJITPrototypeFunctionGetElementsByName, JSTestDOMJIT::info(), JSC::DOMJIT::Effect::forRead(DOMJIT::AbstractHeapRepository::DOM), DOMJIT::IDLResultTypeFilter<IDLInterface<NodeList>>::value, DOMJIT::IDLArgumentTypeFilter<IDLAtomicStringAdaptor<IDLDOMString>>::value);
 
 class JSTestDOMJITPrototype : public JSC::JSNonFinalObject {
 public:
@@ -165,7 +145,7 @@ template<> void JSTestDOMJITConstructor::initializeProperties(VM& vm, JSDOMGloba
     putDirect(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum);
 }
 
-template<> const ClassInfo JSTestDOMJITConstructor::s_info = { "TestDOMJIT", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestDOMJITConstructor) };
+template<> const ClassInfo JSTestDOMJITConstructor::s_info = { "TestDOMJIT", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestDOMJITConstructor) };
 
 /* Hash table for prototype */
 
@@ -214,7 +194,7 @@ static const HashTableValue JSTestDOMJITPrototypeTableValues[] =
     { "getElementsByName", JSC::Function | DOMJITFunction, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestDOMJITPrototypeFunctionGetElementsByName), (intptr_t) static_cast<const JSC::DOMJIT::Signature*>(&DOMJITSignatureForTestDOMJITGetElementsByName) } },
 };
 
-const ClassInfo JSTestDOMJITPrototype::s_info = { "TestDOMJITPrototype", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestDOMJITPrototype) };
+const ClassInfo JSTestDOMJITPrototype::s_info = { "TestDOMJITPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestDOMJITPrototype) };
 
 void JSTestDOMJITPrototype::finishCreation(VM& vm)
 {
@@ -222,7 +202,7 @@ void JSTestDOMJITPrototype::finishCreation(VM& vm)
     reifyStaticProperties(vm, JSTestDOMJITPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestDOMJIT::s_info = { "TestDOMJIT", &Base::s_info, 0, CREATE_METHOD_TABLE(JSTestDOMJIT) };
+const ClassInfo JSTestDOMJIT::s_info = { "TestDOMJIT", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestDOMJIT) };
 
 JSTestDOMJIT::JSTestDOMJIT(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestDOMJIT>&& impl)
     : JSNode(structure, globalObject, WTFMove(impl))
@@ -246,12 +226,12 @@ JSObject* JSTestDOMJIT::prototype(VM& vm, JSDOMGlobalObject& globalObject)
     return getDOMPrototype<JSTestDOMJIT>(vm, globalObject);
 }
 
-template<> inline JSTestDOMJIT* BindingCaller<JSTestDOMJIT>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
+template<> inline JSTestDOMJIT* IDLAttribute<JSTestDOMJIT>::cast(ExecState& state, EncodedJSValue thisValue)
 {
     return jsDynamicDowncast<JSTestDOMJIT*>(state.vm(), JSValue::decode(thisValue));
 }
 
-template<> inline JSTestDOMJIT* BindingCaller<JSTestDOMJIT>::castForOperation(ExecState& state)
+template<> inline JSTestDOMJIT* IDLOperation<JSTestDOMJIT>::cast(ExecState& state)
 {
     return jsDynamicDowncast<JSTestDOMJIT*>(state.vm(), state.thisValue());
 }
@@ -260,7 +240,7 @@ static inline JSValue jsTestDOMJITAnyAttrGetter(ExecState&, JSTestDOMJIT&, Throw
 
 EncodedJSValue jsTestDOMJITAnyAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITAnyAttrGetter>(state, thisValue, "anyAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITAnyAttrGetter>(*state, thisValue, "anyAttr");
 }
 
 static inline JSValue jsTestDOMJITAnyAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -287,7 +267,7 @@ static inline JSValue jsTestDOMJITBooleanAttrGetter(ExecState&, JSTestDOMJIT&, T
 
 EncodedJSValue jsTestDOMJITBooleanAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITBooleanAttrGetter>(state, thisValue, "booleanAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITBooleanAttrGetter>(*state, thisValue, "booleanAttr");
 }
 
 static inline JSValue jsTestDOMJITBooleanAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -314,7 +294,7 @@ static inline JSValue jsTestDOMJITByteAttrGetter(ExecState&, JSTestDOMJIT&, Thro
 
 EncodedJSValue jsTestDOMJITByteAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITByteAttrGetter>(state, thisValue, "byteAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITByteAttrGetter>(*state, thisValue, "byteAttr");
 }
 
 static inline JSValue jsTestDOMJITByteAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -341,7 +321,7 @@ static inline JSValue jsTestDOMJITOctetAttrGetter(ExecState&, JSTestDOMJIT&, Thr
 
 EncodedJSValue jsTestDOMJITOctetAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITOctetAttrGetter>(state, thisValue, "octetAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITOctetAttrGetter>(*state, thisValue, "octetAttr");
 }
 
 static inline JSValue jsTestDOMJITOctetAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -368,7 +348,7 @@ static inline JSValue jsTestDOMJITShortAttrGetter(ExecState&, JSTestDOMJIT&, Thr
 
 EncodedJSValue jsTestDOMJITShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITShortAttrGetter>(state, thisValue, "shortAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITShortAttrGetter>(*state, thisValue, "shortAttr");
 }
 
 static inline JSValue jsTestDOMJITShortAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -395,7 +375,7 @@ static inline JSValue jsTestDOMJITUnsignedShortAttrGetter(ExecState&, JSTestDOMJ
 
 EncodedJSValue jsTestDOMJITUnsignedShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedShortAttrGetter>(state, thisValue, "unsignedShortAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedShortAttrGetter>(*state, thisValue, "unsignedShortAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedShortAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -422,7 +402,7 @@ static inline JSValue jsTestDOMJITLongAttrGetter(ExecState&, JSTestDOMJIT&, Thro
 
 EncodedJSValue jsTestDOMJITLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITLongAttrGetter>(state, thisValue, "longAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITLongAttrGetter>(*state, thisValue, "longAttr");
 }
 
 static inline JSValue jsTestDOMJITLongAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -449,7 +429,7 @@ static inline JSValue jsTestDOMJITUnsignedLongAttrGetter(ExecState&, JSTestDOMJI
 
 EncodedJSValue jsTestDOMJITUnsignedLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedLongAttrGetter>(state, thisValue, "unsignedLongAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedLongAttrGetter>(*state, thisValue, "unsignedLongAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedLongAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -476,7 +456,7 @@ static inline JSValue jsTestDOMJITLongLongAttrGetter(ExecState&, JSTestDOMJIT&, 
 
 EncodedJSValue jsTestDOMJITLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITLongLongAttrGetter>(state, thisValue, "longLongAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITLongLongAttrGetter>(*state, thisValue, "longLongAttr");
 }
 
 static inline JSValue jsTestDOMJITLongLongAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -503,7 +483,7 @@ static inline JSValue jsTestDOMJITUnsignedLongLongAttrGetter(ExecState&, JSTestD
 
 EncodedJSValue jsTestDOMJITUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedLongLongAttrGetter>(state, thisValue, "unsignedLongLongAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedLongLongAttrGetter>(*state, thisValue, "unsignedLongLongAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedLongLongAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -530,7 +510,7 @@ static inline JSValue jsTestDOMJITFloatAttrGetter(ExecState&, JSTestDOMJIT&, Thr
 
 EncodedJSValue jsTestDOMJITFloatAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITFloatAttrGetter>(state, thisValue, "floatAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITFloatAttrGetter>(*state, thisValue, "floatAttr");
 }
 
 static inline JSValue jsTestDOMJITFloatAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -557,7 +537,7 @@ static inline JSValue jsTestDOMJITUnrestrictedFloatAttrGetter(ExecState&, JSTest
 
 EncodedJSValue jsTestDOMJITUnrestrictedFloatAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnrestrictedFloatAttrGetter>(state, thisValue, "unrestrictedFloatAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnrestrictedFloatAttrGetter>(*state, thisValue, "unrestrictedFloatAttr");
 }
 
 static inline JSValue jsTestDOMJITUnrestrictedFloatAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -584,7 +564,7 @@ static inline JSValue jsTestDOMJITDoubleAttrGetter(ExecState&, JSTestDOMJIT&, Th
 
 EncodedJSValue jsTestDOMJITDoubleAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITDoubleAttrGetter>(state, thisValue, "doubleAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITDoubleAttrGetter>(*state, thisValue, "doubleAttr");
 }
 
 static inline JSValue jsTestDOMJITDoubleAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -611,7 +591,7 @@ static inline JSValue jsTestDOMJITUnrestrictedDoubleAttrGetter(ExecState&, JSTes
 
 EncodedJSValue jsTestDOMJITUnrestrictedDoubleAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnrestrictedDoubleAttrGetter>(state, thisValue, "unrestrictedDoubleAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnrestrictedDoubleAttrGetter>(*state, thisValue, "unrestrictedDoubleAttr");
 }
 
 static inline JSValue jsTestDOMJITUnrestrictedDoubleAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -638,7 +618,7 @@ static inline JSValue jsTestDOMJITDomStringAttrGetter(ExecState&, JSTestDOMJIT&,
 
 EncodedJSValue jsTestDOMJITDomStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITDomStringAttrGetter>(state, thisValue, "domStringAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITDomStringAttrGetter>(*state, thisValue, "domStringAttr");
 }
 
 static inline JSValue jsTestDOMJITDomStringAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -665,7 +645,7 @@ static inline JSValue jsTestDOMJITByteStringAttrGetter(ExecState&, JSTestDOMJIT&
 
 EncodedJSValue jsTestDOMJITByteStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITByteStringAttrGetter>(state, thisValue, "byteStringAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITByteStringAttrGetter>(*state, thisValue, "byteStringAttr");
 }
 
 static inline JSValue jsTestDOMJITByteStringAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -692,7 +672,7 @@ static inline JSValue jsTestDOMJITUsvStringAttrGetter(ExecState&, JSTestDOMJIT&,
 
 EncodedJSValue jsTestDOMJITUsvStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUsvStringAttrGetter>(state, thisValue, "usvStringAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUsvStringAttrGetter>(*state, thisValue, "usvStringAttr");
 }
 
 static inline JSValue jsTestDOMJITUsvStringAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -719,7 +699,7 @@ static inline JSValue jsTestDOMJITNodeAttrGetter(ExecState&, JSTestDOMJIT&, Thro
 
 EncodedJSValue jsTestDOMJITNodeAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITNodeAttrGetter>(state, thisValue, "nodeAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITNodeAttrGetter>(*state, thisValue, "nodeAttr");
 }
 
 static inline JSValue jsTestDOMJITNodeAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -746,7 +726,7 @@ static inline JSValue jsTestDOMJITBooleanNullableAttrGetter(ExecState&, JSTestDO
 
 EncodedJSValue jsTestDOMJITBooleanNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITBooleanNullableAttrGetter>(state, thisValue, "booleanNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITBooleanNullableAttrGetter>(*state, thisValue, "booleanNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITBooleanNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -773,7 +753,7 @@ static inline JSValue jsTestDOMJITByteNullableAttrGetter(ExecState&, JSTestDOMJI
 
 EncodedJSValue jsTestDOMJITByteNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITByteNullableAttrGetter>(state, thisValue, "byteNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITByteNullableAttrGetter>(*state, thisValue, "byteNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITByteNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -800,7 +780,7 @@ static inline JSValue jsTestDOMJITOctetNullableAttrGetter(ExecState&, JSTestDOMJ
 
 EncodedJSValue jsTestDOMJITOctetNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITOctetNullableAttrGetter>(state, thisValue, "octetNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITOctetNullableAttrGetter>(*state, thisValue, "octetNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITOctetNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -827,7 +807,7 @@ static inline JSValue jsTestDOMJITShortNullableAttrGetter(ExecState&, JSTestDOMJ
 
 EncodedJSValue jsTestDOMJITShortNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITShortNullableAttrGetter>(state, thisValue, "shortNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITShortNullableAttrGetter>(*state, thisValue, "shortNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITShortNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -854,7 +834,7 @@ static inline JSValue jsTestDOMJITUnsignedShortNullableAttrGetter(ExecState&, JS
 
 EncodedJSValue jsTestDOMJITUnsignedShortNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedShortNullableAttrGetter>(state, thisValue, "unsignedShortNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedShortNullableAttrGetter>(*state, thisValue, "unsignedShortNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedShortNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -881,7 +861,7 @@ static inline JSValue jsTestDOMJITLongNullableAttrGetter(ExecState&, JSTestDOMJI
 
 EncodedJSValue jsTestDOMJITLongNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITLongNullableAttrGetter>(state, thisValue, "longNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITLongNullableAttrGetter>(*state, thisValue, "longNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITLongNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -908,7 +888,7 @@ static inline JSValue jsTestDOMJITUnsignedLongNullableAttrGetter(ExecState&, JST
 
 EncodedJSValue jsTestDOMJITUnsignedLongNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedLongNullableAttrGetter>(state, thisValue, "unsignedLongNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedLongNullableAttrGetter>(*state, thisValue, "unsignedLongNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedLongNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -935,7 +915,7 @@ static inline JSValue jsTestDOMJITLongLongNullableAttrGetter(ExecState&, JSTestD
 
 EncodedJSValue jsTestDOMJITLongLongNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITLongLongNullableAttrGetter>(state, thisValue, "longLongNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITLongLongNullableAttrGetter>(*state, thisValue, "longLongNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITLongLongNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -962,7 +942,7 @@ static inline JSValue jsTestDOMJITUnsignedLongLongNullableAttrGetter(ExecState&,
 
 EncodedJSValue jsTestDOMJITUnsignedLongLongNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnsignedLongLongNullableAttrGetter>(state, thisValue, "unsignedLongLongNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnsignedLongLongNullableAttrGetter>(*state, thisValue, "unsignedLongLongNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUnsignedLongLongNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -989,7 +969,7 @@ static inline JSValue jsTestDOMJITFloatNullableAttrGetter(ExecState&, JSTestDOMJ
 
 EncodedJSValue jsTestDOMJITFloatNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITFloatNullableAttrGetter>(state, thisValue, "floatNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITFloatNullableAttrGetter>(*state, thisValue, "floatNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITFloatNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1016,7 +996,7 @@ static inline JSValue jsTestDOMJITUnrestrictedFloatNullableAttrGetter(ExecState&
 
 EncodedJSValue jsTestDOMJITUnrestrictedFloatNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnrestrictedFloatNullableAttrGetter>(state, thisValue, "unrestrictedFloatNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnrestrictedFloatNullableAttrGetter>(*state, thisValue, "unrestrictedFloatNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUnrestrictedFloatNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1043,7 +1023,7 @@ static inline JSValue jsTestDOMJITDoubleNullableAttrGetter(ExecState&, JSTestDOM
 
 EncodedJSValue jsTestDOMJITDoubleNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITDoubleNullableAttrGetter>(state, thisValue, "doubleNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITDoubleNullableAttrGetter>(*state, thisValue, "doubleNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITDoubleNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1070,7 +1050,7 @@ static inline JSValue jsTestDOMJITUnrestrictedDoubleNullableAttrGetter(ExecState
 
 EncodedJSValue jsTestDOMJITUnrestrictedDoubleNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUnrestrictedDoubleNullableAttrGetter>(state, thisValue, "unrestrictedDoubleNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUnrestrictedDoubleNullableAttrGetter>(*state, thisValue, "unrestrictedDoubleNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUnrestrictedDoubleNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1097,7 +1077,7 @@ static inline JSValue jsTestDOMJITDomStringNullableAttrGetter(ExecState&, JSTest
 
 EncodedJSValue jsTestDOMJITDomStringNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITDomStringNullableAttrGetter>(state, thisValue, "domStringNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITDomStringNullableAttrGetter>(*state, thisValue, "domStringNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITDomStringNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1124,7 +1104,7 @@ static inline JSValue jsTestDOMJITByteStringNullableAttrGetter(ExecState&, JSTes
 
 EncodedJSValue jsTestDOMJITByteStringNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITByteStringNullableAttrGetter>(state, thisValue, "byteStringNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITByteStringNullableAttrGetter>(*state, thisValue, "byteStringNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITByteStringNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1151,7 +1131,7 @@ static inline JSValue jsTestDOMJITUsvStringNullableAttrGetter(ExecState&, JSTest
 
 EncodedJSValue jsTestDOMJITUsvStringNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITUsvStringNullableAttrGetter>(state, thisValue, "usvStringNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITUsvStringNullableAttrGetter>(*state, thisValue, "usvStringNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITUsvStringNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1178,7 +1158,7 @@ static inline JSValue jsTestDOMJITNodeNullableAttrGetter(ExecState&, JSTestDOMJI
 
 EncodedJSValue jsTestDOMJITNodeNullableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return BindingCaller<JSTestDOMJIT>::attribute<jsTestDOMJITNodeNullableAttrGetter>(state, thisValue, "nodeNullableAttr");
+    return IDLAttribute<JSTestDOMJIT>::get<jsTestDOMJITNodeNullableAttrGetter>(*state, thisValue, "nodeNullableAttr");
 }
 
 static inline JSValue jsTestDOMJITNodeNullableAttrGetter(ExecState& state, JSTestDOMJIT& thisObject, ThrowScope& throwScope)
@@ -1230,14 +1210,7 @@ JSValue JSTestDOMJIT::getConstructor(VM& vm, const JSGlobalObject* globalObject)
     return getDOMConstructor<JSTestDOMJITConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetAttributeCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetAttribute(ExecState* state)
-{
-    return BindingCaller<JSTestDOMJIT>::callOperation<jsTestDOMJITPrototypeFunctionGetAttributeCaller>(state, "getAttribute");
-}
-
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetAttributeCaller(JSC::ExecState* state, JSTestDOMJIT* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetAttributeCaller(JSC::ExecState* state, typename IDLOperation<JSTestDOMJIT>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -1247,6 +1220,11 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetAttributeCalle
     auto name = convert<IDLDOMString>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetAttribute(ExecState* state)
+{
+    return IDLOperation<JSTestDOMJIT>::call<jsTestDOMJITPrototypeFunctionGetAttributeCaller>(*state, "getAttribute");
 }
 
 JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLDOMString> encodedName)
@@ -1262,14 +1240,7 @@ JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetAttribut
     return JSValue::encode(toJS<IDLNullable<IDLDOMString>>(*state, impl.getAttribute(WTFMove(name))));
 }
 
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionItem(ExecState* state)
-{
-    return BindingCaller<JSTestDOMJIT>::callOperation<jsTestDOMJITPrototypeFunctionItemCaller>(state, "item");
-}
-
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::ExecState* state, JSTestDOMJIT* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::ExecState* state, typename IDLOperation<JSTestDOMJIT>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -1281,6 +1252,11 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionItemCaller(JSC::E
     auto y = convert<IDLUnsignedShort>(*state, state->uncheckedArgument(1));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionItem(ExecState* state)
+{
+    return IDLOperation<JSTestDOMJIT>::call<jsTestDOMJITPrototypeFunctionItemCaller>(*state, "item");
 }
 
 JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionItem(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedX, DOMJIT::IDLJSArgumentType<IDLUnsignedShort> encodedY)
@@ -1298,19 +1274,17 @@ JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionItem(JSC::E
     return JSValue::encode(toJS<IDLDOMString>(*state, impl.item(WTFMove(x), WTFMove(y))));
 }
 
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionHasAttributeCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionHasAttribute(ExecState* state)
-{
-    return BindingCaller<JSTestDOMJIT>::callOperation<jsTestDOMJITPrototypeFunctionHasAttributeCaller>(state, "hasAttribute");
-}
-
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionHasAttributeCaller(JSC::ExecState* state, JSTestDOMJIT* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionHasAttributeCaller(JSC::ExecState* state, typename IDLOperation<JSTestDOMJIT>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
     return JSValue::encode(toJS<IDLBoolean>(impl.hasAttribute()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionHasAttribute(ExecState* state)
+{
+    return IDLOperation<JSTestDOMJIT>::call<jsTestDOMJITPrototypeFunctionHasAttributeCaller>(*state, "hasAttribute");
 }
 
 JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionHasAttribute(JSC::ExecState* state, JSTestDOMJIT* castedThis)
@@ -1324,14 +1298,7 @@ JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionHasAttribut
     return JSValue::encode(toJS<IDLBoolean>(impl.hasAttribute()));
 }
 
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementById(ExecState* state)
-{
-    return BindingCaller<JSTestDOMJIT>::callOperation<jsTestDOMJITPrototypeFunctionGetElementByIdCaller>(state, "getElementById");
-}
-
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCaller(JSC::ExecState* state, JSTestDOMJIT* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCaller(JSC::ExecState* state, typename IDLOperation<JSTestDOMJIT>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -1341,6 +1308,11 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementByIdCal
     auto elementId = convert<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementById(ExecState* state)
+{
+    return IDLOperation<JSTestDOMJIT>::call<jsTestDOMJITPrototypeFunctionGetElementByIdCaller>(*state, "getElementById");
 }
 
 JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementById(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLRequiresExistingAtomicStringAdaptor<IDLDOMString>> encodedElementId)
@@ -1356,14 +1328,7 @@ JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementB
     return JSValue::encode(toJS<IDLInterface<Element>>(*state, *castedThis->globalObject(), impl.getElementById(WTFMove(elementId))));
 }
 
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByNameCaller(JSC::ExecState*, JSTestDOMJIT*, JSC::ThrowScope&);
-
-EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementsByName(ExecState* state)
-{
-    return BindingCaller<JSTestDOMJIT>::callOperation<jsTestDOMJITPrototypeFunctionGetElementsByNameCaller>(state, "getElementsByName");
-}
-
-static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByNameCaller(JSC::ExecState* state, JSTestDOMJIT* castedThis, JSC::ThrowScope& throwScope)
+static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByNameCaller(JSC::ExecState* state, typename IDLOperation<JSTestDOMJIT>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
@@ -1373,6 +1338,11 @@ static inline JSC::EncodedJSValue jsTestDOMJITPrototypeFunctionGetElementsByName
     auto elementName = convert<IDLAtomicStringAdaptor<IDLDOMString>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     return JSValue::encode(toJS<IDLInterface<NodeList>>(*state, *castedThis->globalObject(), impl.getElementsByName(WTFMove(elementName))));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestDOMJITPrototypeFunctionGetElementsByName(ExecState* state)
+{
+    return IDLOperation<JSTestDOMJIT>::call<jsTestDOMJITPrototypeFunctionGetElementsByNameCaller>(*state, "getElementsByName");
 }
 
 JSC::EncodedJSValue JIT_OPERATION unsafeJsTestDOMJITPrototypeFunctionGetElementsByName(JSC::ExecState* state, JSTestDOMJIT* castedThis, DOMJIT::IDLJSArgumentType<IDLAtomicStringAdaptor<IDLDOMString>> encodedElementName)

@@ -880,6 +880,7 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate4->setShadowDOMEnabled(TRUE);
     prefsPrivate4->setCustomElementsEnabled(TRUE);
     prefsPrivate4->setModernMediaControlsEnabled(FALSE);
+    prefsPrivate4->clearNetworkLoaderSession();
 
     setAlwaysAcceptCookies(false);
 }
@@ -1462,6 +1463,9 @@ static void prepareConsistentTestingEnvironment(IWebPreferences* standardPrefere
     ASSERT(standardPreferences);
     ASSERT(standardPreferencesPrivate);
     standardPreferences->setAutosaves(FALSE);
+
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, standardPreferences);
+    prefsPrivate4->switchNetworkLoaderToNewTestingSession();
 
     standardPreferences->setJavaScriptEnabled(TRUE);
     standardPreferences->setDefaultFontSize(16);

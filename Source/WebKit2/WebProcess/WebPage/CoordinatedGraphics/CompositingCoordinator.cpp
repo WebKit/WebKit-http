@@ -268,7 +268,7 @@ void CompositingCoordinator::notifyFlushRequired(const GraphicsLayer*)
         m_client.notifyFlushRequired();
 }
 
-void CompositingCoordinator::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect)
+void CompositingCoordinator::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect, GraphicsLayerPaintFlags)
 {
     m_client.paintLayerContents(graphicsLayer, graphicsContext, enclosingIntRect(clipRect));
 }
@@ -445,6 +445,15 @@ void CompositingCoordinator::releaseAtlases(ReleaseAtlasPolicy policy)
 
     if (!m_atlasesToRemove.isEmpty())
         m_client.releaseUpdateAtlases(WTFMove(m_atlasesToRemove));
+}
+
+void CompositingCoordinator::clearUpdateAtlases()
+{
+    if (m_isPurging)
+        return;
+
+    m_releaseInactiveAtlasesTimer.stop();
+    m_updateAtlases.clear();
 }
 
 } // namespace WebKit
