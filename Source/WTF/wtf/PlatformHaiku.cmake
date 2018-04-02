@@ -2,6 +2,7 @@ LIST(APPEND WTF_SOURCES
     generic/WorkQueueGeneric.cpp
     generic/RunLoopGeneric.cpp
     haiku/MainThreadHaiku.cpp
+	haiku/MemoryFootprintHaiku.cpp
 
     OSAllocatorPosix.cpp
     ThreadingPthreads.cpp

@@ -30,8 +30,6 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-
 #include <Application.h>
 #include <interface/Bitmap.h>
 #include <BitmapStream.h>
@@ -50,9 +48,6 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/StdLibExtras.h>
-#include <wtf/RefPtr.h>
 
 enum PixelComponent {
     Red,

@@ -47,7 +47,7 @@ void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
     RefPtr<DocumentFragment> fragment = pasteboard->documentFragment(
         m_frame, *range, allowPlainText, chosePlainText);
 
-    if (fragment && shouldInsertFragment(fragment, range,
+    if (fragment && shouldInsertFragment(*fragment, range.get(),
             EditorInsertAction::Pasted))
     {
         pasteAsFragment(*fragment, canSmartReplaceWithPasteboard(*pasteboard),

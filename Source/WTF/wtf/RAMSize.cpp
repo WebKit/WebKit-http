@@ -32,7 +32,9 @@
 #if OS(WINDOWS)
 #include <windows.h>
 #elif defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
-#if OS(UNIX)
+#if OS(HAIKU)
+#include <OS.h>
+#elif OS(UNIX)
 #include <sys/sysinfo.h>
 #endif // OS(UNIX)
 #else
@@ -55,7 +57,11 @@ static size_t computeRAMSize()
         return ramSizeGuess;
     return status.ullTotalPhys;
 #elif defined(USE_SYSTEM_MALLOC) && USE_SYSTEM_MALLOC
-#if OS(UNIX)
+#if OS(HAIKU)
+	system_info si;
+	get_system_info(&si);
+	return si.max_pages * B_PAGE_SIZE;
+#elif OS(UNIX)
     struct sysinfo si;
     sysinfo(&si);
     return si.totalram * si.mem_unit;

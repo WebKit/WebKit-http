@@ -29,8 +29,6 @@
 
 namespace WebCore {
 
-TextureMapper::TextureMapper() = default;
-
 TextureMapper::~TextureMapper() = default;
 
 RefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& size, const BitmapTexture::Flags flags)
@@ -54,9 +52,6 @@ TextureMapper::TextureMapper(AccelerationMode accelerationMode)
     , m_accelerationMode(accelerationMode)
     , m_isMaskMode(false)
     , m_wrapMode(StretchWrap)
-{ }
-
-TextureMapper::~TextureMapper()
 { }
 
 } // namespace

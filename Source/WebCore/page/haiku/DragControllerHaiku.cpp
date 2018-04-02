@@ -38,7 +38,6 @@ namespace WebCore {
 
 // FIXME: These values are straight out of DragControllerMac, so probably have
 // little correlation with Haiku standards...
-const int DragController::LinkDragBorderInset = 2;
 const int DragController::MaxOriginalImageArea = 1500 * 1500;
 const int DragController::DragIconRightInset = 7;
 const int DragController::DragIconBottomInset = 3;

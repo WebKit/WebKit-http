@@ -42,7 +42,7 @@ public:
     virtual void endClip() override { graphicsContext()->restore(); }
     virtual IntRect clipBounds() override { return currentContext()->clipBounds(); }
     virtual IntSize maxTextureSize() const;
-    virtual PassRefPtr<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
+    virtual Ref<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
 
     inline GraphicsContext* currentContext()
     {

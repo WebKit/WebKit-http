@@ -98,6 +98,12 @@ void TestRunner::display()
     //displayWebView();
 }
 
+void TestRunner::displayAndTrackRepaints()
+{
+    notImplemented();
+    //displayWebView();
+}
+
 void TestRunner::keepWebHistory()
 {
     WebCore::DumpRenderTreeClient::setShouldTrackVisitedLinks(true);

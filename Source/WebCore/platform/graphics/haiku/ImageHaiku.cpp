@@ -51,13 +51,13 @@ Vector<char> loadResourceIntoArray(const char*);
 
 namespace WebCore {
 
-WTF::PassRefPtr<Image> Image::loadPlatformResource(const char* name)
+WTF::Ref<Image> Image::loadPlatformResource(const char* name)
 {
     Vector<char> array = loadResourceIntoArray(name);
-    WTF::RefPtr<BitmapImage> image = BitmapImage::create();
+    WTF::Ref<BitmapImage> image = BitmapImage::create();
     image->setData(SharedBuffer::create(array.data(), array.size()), true);
 
-    return image.release();
+    return image;
 }
 
 void BitmapImage::invalidatePlatformData()
