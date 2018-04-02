@@ -1,3 +1,823 @@
+2017-05-04  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION(STP): rgb() with calc() containing variables doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=169939
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/css/variables/calc-float-to-int-expected.html: Added.
+        * fast/css/variables/calc-float-to-int.html: Added.
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed gardening. Update main expectations of http/tests/inspector/network/resource-request-headers.html.
+
+        And add platform specific results for mac-wk2.
+
+        * http/tests/inspector/network/resource-request-headers-expected.txt:
+        * platform/mac-wk2/http/tests/inspector/network/resource-request-headers-expected.txt: Copied from LayoutTests/http/tests/inspector/network/resource-request-headers-expected.txt.
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html: Added.
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: aria-rowspan value should be ignored if td/th rowspan value is provided
+        https://bugs.webkit.org/show_bug.cgi?id=171214
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/aria-cellspans-with-native-cellspans-expected.txt: Added.
+        * accessibility/aria-cellspans-with-native-cellspans.html: Added.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark http/tests/xmlhttprequest/methods.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171638
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark scrollingcoordinator/ios/nested-fixed-layer-positions.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171628
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        SearchInputType could end up with a mismatched renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=171547
+        <rdar://problem/31935047>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/forms/change-input-type-and-submit-form-crash-expected.txt: Added.
+        * fast/forms/change-input-type-and-submit-form-crash.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/slider/slider-styles.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171629
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest http/tests/inspector/network/fetch-network-data.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=166038
+        <rdar://problem/29488489>
+
+        Reviewed by Matt Baker.
+
+        * platform/mac/TestExpectations:
+        * http/tests/inspector/network/fetch-network-data.html:
+        * http/tests/inspector/network/xhr-request-data-encoded-correctly.html:
+        Use singleFireEventListener instead of awaitEvent so that the follow-up event handlers
+        can be added synchronously instead of in a microtask. When the microtask happened later
+        than other incoming events then the follow-up handlers would have been added too late.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=170699.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Have WKWebView call _updateVisibleContentRects for the current transaction if possible, rather than always delaying
+        https://bugs.webkit.org/show_bug.cgi?id=171619
+        https://bugs.webkit.org/show_bug.cgi?id=170153
+
+        Reviewed by Tim Horton.
+
+        These tests need to wait a bit for the scrolling state of the document to be updated.
+
+        * fast/scrolling/ios/touch-scroll-pointer-events-none.html:
+        * fast/scrolling/ios/touch-scroll-visibility-hidden.html:
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Link preload HTMLPreloadScanner support
+        https://bugs.webkit.org/show_bug.cgi?id=170747
+
+        Reviewed by Youenn Fablet.
+
+        * http/tests/preload/preloadscanner_download_resources-expected.txt: Added.
+        * http/tests/preload/preloadscanner_download_resources.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/preload/single_download_preload.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171331
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark perf/object-keys.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171617
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Different behaviour with the .sort(callback) method (unlike Firefox & Chrome)
+        https://bugs.webkit.org/show_bug.cgi?id=47825
+
+        Reviewed by Saam Barati.
+
+        Fix broken test.
+
+        * http/tests/inspector/worker/blob-script-with-cross-domain-imported-scripts-expected.txt:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Mark http/tests/xmlhttprequest/supported-xml-content-types.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171613
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Nan Wang  <n_wang@apple.com>
+
+        AX: VO skips cells after cell with aria-colspan
+        https://bugs.webkit.org/show_bug.cgi?id=171579
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/mac/aria-grid-column-span-expected.txt: Added.
+        * accessibility/mac/aria-grid-column-span.html: Added.
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark http/tests/websocket/tests/hybi/inspector/binary.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=171553
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Detach frame from document when entering page cache
+        https://bugs.webkit.org/show_bug.cgi?id=166774
+        <rdar://problem/29904368>
+
+        Reviewed by Chris Dumez.
+
+        * TestExpectations: Unskip tests.
+        * fast/history/page-cache-after-window-open-expected.txt: Update expected result.
+        * fast/history/page-cache-after-window-open.html: Ditto.
+        * fast/history/page-cache-with-opener-expected.txt: Ditto.
+        * fast/history/page-cache-with-opener.html: Update test given its new expected behavior.
+        * fast/history/resources/page-cache-window-with-opener.html: Ditto.
+        * http/tests/security/xss-DENIED-click-and-form-submission-from-inactive-domwindow-expected.txt: Added.
+        * http/tests/security/xss-DENIED-click-and-form-submission-from-inactive-domwindow.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window2.html: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window3-expected.txt: Added.
+        * http/tests/security/xss-DENIED-script-inject-into-inactive-window3.html: Added.
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Marking three imported/w3c/web-platform-tests/webrtc test as flaky failures.
+        https://bugs.webkit.org/show_bug.cgi?id=171605
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-03  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test http/tests/local/blob/send-sliced-data-blob.html as flaky failure and timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=171564
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Treat cells with ARIA table cell properties as cells
+        https://bugs.webkit.org/show_bug.cgi?id=171178
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/minimal-table-with-aria-is-data-table-expected.txt: Added.
+        * accessibility/minimal-table-with-aria-is-data-table.html: Added.
+        * platform/gtk/accessibility/minimal-table-with-aria-is-data-table-expected.txt: Added.
+
+2017-05-03  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Support dashed values in unicode locale extensions
+        https://bugs.webkit.org/show_bug.cgi?id=171480
+
+        Reviewed by JF Bastien.
+
+        Added tests for calendar locale extensions that contain '-'.
+
+        * js/intl-datetimeformat-expected.txt:
+        * js/script-tests/intl-datetimeformat.js:
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Abandon the current load once the provisional loader detaches from the frame
+        https://bugs.webkit.org/show_bug.cgi?id=171577
+        <rdar://problem/31581227>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash-expected.txt: Added.
+        * fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash.html: Added.
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several tests.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline inspector resource size tests.
+
+        Libsoup doesn't provide the required information to fill all those size metrics.
+
+        * platform/gtk/http/tests/inspector/network/resource-sizes-memory-cache-expected.txt: Added.
+        * platform/gtk/http/tests/inspector/network/resource-sizes-network-expected.txt: Added.
+
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Dynamically added position:fixed element is in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=170280
+        rdar://problem/31374008
+
+        Reviewed by Tim Horton.
+
+        * scrollingcoordinator/ios/nested-fixed-layer-positions-expected.html: Added.
+        * scrollingcoordinator/ios/nested-fixed-layer-positions.html: Added.
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Move flaky expectation for svg/animations/getCurrentTime-pause-unpause.html ios-wk1 to ios TestExpectations file.
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios/TestExpectations:
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html as flaky on macOS.
+        https://bugs.webkit.org/show_bug.cgi?id=170907
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-02  Zalan Bujtas  <zalan@apple.com>
+
+        Defer AX cache update when text content changes until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=171429
+        <rdar://problem/31885984>
+
+        Reviewed by Simon Fraser.
+
+        * accessibility/crash-while-adding-text-child-with-transform-expected.txt: Added.
+        * accessibility/crash-while-adding-text-child-with-transform.html: Added.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change attempts to fix all whitespace issues in these two
+        files (which are now identical and will be kept in sync by
+        check-webkit-style):
+
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+
+        It also syncs the implementation of shouldBe(), shouldNotBe(),
+        shouldNotThrow() and shouldThrow() across the following files:
+
+            JSTests/stress/resources/standalone-pre.js
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+            LayoutTests/resources/js-test.js
+            LayoutTests/resources/standalone-pre.js
+
+        Only interesting (non-whitespace) changes are listed below.
+
+        * http/tests/resources/js-test-pre.js: Copy from resources/js-test-pre.js.
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+        * resources/js-test-pre.js:
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+        * resources/js-test.js:
+        (shouldBe): Prefix 'quiet' variable with underscore.  Use
+        stringify() when printing '_bv' value.
+
+        * resources/standalone-pre.js:
+        (shouldBe): Prefix 'exception' and 'quiet' variables with
+        underscore.
+        (shouldNotBe): Ditto.
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Moved the mac aria-orientation.html test to the shared tests and add several
+        new test cases to it. Update the orientation-related assertion in two tests
+        to reflect the ARIA 1.1 behavior.
+
+        * accessibility/aria-orientation-expected.txt: Renamed from LayoutTests/accessibility/mac/aria-orientation-expected.txt.
+        * accessibility/aria-orientation.html: Renamed from LayoutTests/accessibility/mac/aria-orientation.html.
+        * accessibility/mac/slider-supports-actions.html: Updated.
+        * accessibility/gtk/combobox-descendants-orientation-crash-expected.txt: Updated.
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r211382): Partial right-to-left text runs are painted at an offset (breaks Find indicators, Look Up, and custom ::selection style)
+        https://bugs.webkit.org/show_bug.cgi?id=169517
+        <rdar://problem/30652443>
+
+        Reviewed by Dean Jackson.
+
+        * fast/text/complex-text-selection-expected.html: Added.
+        * fast/text/complex-text-selection.html: Added.
+        * platform/ios/TestExpectations:
+
+2017-05-02  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Mac] WK1: http/tests/inspector/network/resource-sizes tests are failing
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        Skip these tests on WebKit1. They depend on the NSURLSession
+        loading path which is not used in WebKit1.
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Flaky Crash under EventTarget::fireEventListeners on imported/blink/paint/deprecatedpaintlayer/non-self-painting-layer-overrides-visibility.html
+        https://bugs.webkit.org/show_bug.cgi?id=171406
+        <rdar://problem/30945281>
+
+        Reviewed by Eric Carlson.
+
+        Unskip test.
+
+        * platform/mac/TestExpectations:
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test svg/animations/animated-svg-image-removed-from-document-paused.html as flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171559
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html as flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=170818
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font Loading API specifies font is loaded but sizing of font after load reports inconsistent values
+        https://bugs.webkit.org/show_bug.cgi?id=168533
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/text/font-loading-local-expected.txt: Added.
+        * fast/text/font-loading-local.html: Added.
+        * fast/text/web-font-load-fallback-during-loading.html:
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Allow media stream based videos with sound autoplay if the page is already playing sound
+        https://bugs.webkit.org/show_bug.cgi?id=171447
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/media/autoplay-if-audio-is-playing-expected.txt: Added.
+        * http/tests/media/autoplay-if-audio-is-playing.html: Added.
+        * http/tests/media/resources/test-25fps.mp4: Added.
+
+2017-05-02  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test http/tests/xmlhttprequest/methods-async.html as flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=171530
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] ECDSA signing and verification support
+        https://bugs.webkit.org/show_bug.cgi?id=171103
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Enable the passing ECDSA tests under
+        crypto/subtle/. The ECDSA tests that utilize PKCS #8 and SPKI remain
+        skipped since support for that hasn't landed yet.
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] HKDF bit derivation support
+        https://bugs.webkit.org/show_bug.cgi?id=171074
+
+        Reviewed by Michael Catanzaro.
+
+        The crypto/subtle/hkdf-derive-bits-length-limits.html test is added, testing the
+        corner-case length values for which the bit derivation operation must succeed or
+        fail for any specified SHA hash algorithm. With HashLen as the algorithm's output
+        length, the operation should reject for lengths of 0 or above 255 * HashLen * 8.
+        The operation should resolve for lengths between the two limits, with testing
+        performed on lengths of 8 (the minimum output length), HashLen * 8 (matching the
+        output length of the hash algorithm), and 255 * HashLen * 8 (the maximum
+        derivation output length).
+
+        * crypto/subtle/hkdf-derive-bits-length-limits-expected.txt: Added.
+        * crypto/subtle/hkdf-derive-bits-length-limits.html: Added.
+        * platform/gtk/TestExpectations: Enable the HKDF tests under crypto/subtle/.
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] ECDH bit derivation support
+        https://bugs.webkit.org/show_bug.cgi?id=171070
+
+        Reviewed by Michael Catanzaro.
+
+        The crypto/subtle/ecdh-derive-bits-length-limits.html test is added, testing the
+        corner-case length values for which the bit derivation operation must succeed or
+        fail. When specifying 0 as the length, the returned result must match the EC key
+        size in length. 8, tested as the minimum non-zero value, and the key size for
+        each key must also correctly resolve and return a resulting ArrayBuffer whose
+        length in bytes must match the requested length. Derivations for byte-aligned
+        values should start rejecting immediately for length values that are bigger than
+        the EC key's length.
+
+        * crypto/subtle/ecdh-derive-bits-length-limits-expected.txt: Added.
+        * crypto/subtle/ecdh-derive-bits-length-limits.html: Added.
+        * platform/gtk/TestExpectations: Enable Web Crypto ECDH tests under crypto/subtle/
+        that are passing now that the proper implementation has been added. The remaining
+        failing ECDH tests use PKCS #8 and SPKI key import/export formats, which are not
+        supported yet.
+
+2017-05-01  Saam Barati  <sbarati@apple.com>
+
+        REGRESSION: LayoutTest workers/wasm-hashset-many.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=171449
+
+        Unreviewed.
+
+        * platform/win/TestExpectations: Skip Wasm tests on Windows.
+        * workers/wasm-hashset-many-expected.txt:
+        * workers/wasm-hashset/many-test.js: Make wasm-hashset-many run fewer workers.
+
+2017-05-01  Youenn Fablet  <youenn@apple.com>
+
+        Ensure RealtimeOutgoingVideoSource sends a black frame when its related source is muted
+        https://bugs.webkit.org/show_bug.cgi?id=171497
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-mute.html: Updating the test to make debugging clearer.
+
+2017-05-01  Matt Lewis  <jlewis3@apple.com>
+
+        Marked LayoutTest/http/tests/preload/not_delaying_window_onload_before_discovery.html as flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171528
+
+        Unreviewed test Gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-05-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose viewport-fit instead of clip-to-safe-area
+        https://bugs.webkit.org/show_bug.cgi?id=171503
+        <rdar://problem/31918249>
+
+        Reviewed by Simon Fraser.
+
+        * TestExpectations:
+        * fast/css/variables/constants/ios/safe-area-inset-set-expected.html:
+        * fast/css/variables/constants/ios/safe-area-inset-set.html:
+        * fast/viewport/ios/viewport-fit-auto-expected.txt: Added.
+        * fast/viewport/ios/viewport-fit-auto.html: Added.
+        * fast/viewport/ios/viewport-fit-contain-expected.txt: Added.
+        * fast/viewport/ios/viewport-fit-contain.html: Added.
+        * fast/viewport/ios/viewport-fit-cover-expected.txt: Added.
+        * fast/viewport/ios/viewport-fit-cover.html: Added.
+        * tiled-drawing/ios/viewport-clip-to-safe-area-no-gets-margin-tiles-expected.txt: Removed.
+        * tiled-drawing/ios/viewport-clip-to-safe-area-no-gets-margin-tiles.html: Removed.
+        * tiled-drawing/ios/viewport-clip-to-safe-area-yes-gets-no-margin-tiles-expected.txt: Removed.
+        * tiled-drawing/ios/viewport-clip-to-safe-area-yes-gets-no-margin-tiles.html: Removed.
+        Remove clip-to-safe-area tests and add some viewport-fit tests. Also, adjust
+        safe-area-inset-set to use the new UIScriptController setSafeAreaInset method.
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Documents created using DOMParser.parseFromString should inherit their context document's origin / URL
+        https://bugs.webkit.org/show_bug.cgi?id=171499
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage. I have verified that this test passes in both Firefox and Chrome.
+
+        * fast/dom/domparser-parsefromstring-origin-expected.txt: Added.
+        * fast/dom/domparser-parsefromstring-origin.html: Added.
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark inspector/debugger/tail-recursion.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=168387
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline two fast/visual-viewport tests for iOS.
+
+        Unreviewed test gardening.
+
+        * platform/ios/fast/visual-viewport/zoomed-fixed-expected.txt:
+        * platform/ios/fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt:
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [GTK] Two test started to fail after due to unhandled promise rejection reported after r215916
+        https://bugs.webkit.org/show_bug.cgi?id=171491
+
+        Unreviewed test gardening.
+
+        * js/promises-tests/promises-tests-2-3-3.html:
+        Silence unhandled expectation messages for this test.
+
+        * media/video-fullscreen-restriction-removed-expected.txt:
+        Rebaseline expected results with unhandled expectation message.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Support time@datetime for verbosity clarification of dates, times, and durations
+        https://bugs.webkit.org/show_bug.cgi?id=171498
+        <rdar://problem/12985540>
+
+        Reviewed by Joanmarie Diggs.
+
+        * accessibility/datetime-attribute.html: Added.
+        * accessibility/roles-computedRoleString-expected.txt:
+        * platform/gtk/accessibility/datetime-attribute-expected.txt: Added.
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/datetime-attribute-expected.txt: Added.
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
+2017-05-01  Matt Lewis  <jlewis3@apple.com>
+
+        Marked fast/mediastream/getUserMedia-webaudio.html as flaky timeout.
+        https://bugs.webkit.org/show_bug.cgi?id=170960
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        RejectedPromiseTracker should produce better callstacks and avoid capturing callstacks unless there is a debugger/inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171416
+        <rdar://problem/31899425>
+
+        Reviewed by Saam Barati and Brian Burg.
+
+        * inspector/console/message-stack-trace-expected.txt: Added.
+        * inspector/console/message-stack-trace.html: Added.
+        Test console stack traces from various places where console messages
+        are generated and the stacks are important.
+
+        * inspector/console/resources/log-console-stack-trace.js: Added.
+        (TestPage.registerInitializer.logCallFrame):
+        (TestPage.registerInitializer.window.logConsoleMessageStackTrace):
+        Like the logger for Debugger StackTrace but for Console StackTrace.
+
+        * inspector/debugger/break-on-exception-throw-in-promise-expected.txt:
+        * inspector/debugger/break-on-uncaught-exception-throw-in-promise-expected.txt:
+        * fast/mediastream/MediaStream-MediaElement-setObject-null-expected.txt:
+        * http/tests/security/video-cross-origin-caching-expected.txt:
+        * js/dom/unhandled-promise-rejection-bindings-type-error-expected.txt:
+        * js/dom/unhandled-promise-rejection-console-report-expected.txt:
+        * js/promises-tests/promises-tests-2-2-6-expected.txt:
+        * streams/reference-implementation/pipe-to-options-expected.txt:
+        * streams/reference-implementation/readable-stream-templated-expected.txt:
+        * streams/reference-implementation/writable-stream-abort-expected.txt:
+        * streams/reference-implementation/writable-stream-expected.txt:
+        * webrtc/libwebrtc/release-while-creating-offer-expected.txt:
+        * webrtc/libwebrtc/release-while-setting-local-description-expected.txt:
+        Rebaseline results. Better stack trace for errors includes correct line numbers.
+        Explicit rejections with a value do not include backtraces without a debugger.
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTest/imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests.html is a flaky failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171511
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update TestExpectations for http/tests/fetch/fetch-in-worker-crash.html.
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Expose values of aria-rowcount, aria-colcount, aria-rowindex, aria-colindex, aria-rowspan, and aria-colspan as object attributes
+        https://bugs.webkit.org/show_bug.cgi?id=171496
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Unskip accessibility/aria-table-attributes.html
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/visual-viewport/rtl-zoomed-rects.html for mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171500
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/fast/visual-viewport/rtl-zoomed-rects-expected.txt:
+
+2017-05-01  Matt Lewis  <jlewis3@apple.com>
+
+        Rebaselined fast/visual-viewport/ tests.
+        https://bugs.webkit.org/show_bug.cgi?id=171500
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/fast/visual-viewport/nonzoomed-rects-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/rtl-nonzoomed-rects-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/rtl-zoomed-rects-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/rubberbanding-viewport-rects-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/rubberbanding-viewport-rects-extended-background-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/rubberbanding-viewport-rects-header-footer-expected.txt:
+        * platform/ios-wk2/fast/visual-viewport/zoomed-fixed-expected.txt: Added.
+        * platform/ios-wk2/fast/visual-viewport/zoomed-fixed-header-and-footer-expected.txt: Added.
+        * platform/ios-wk2/fast/visual-viewport/zoomed-rects-expected.txt:
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Do not dispatch SVG load event in frameless documents
+        https://bugs.webkit.org/show_bug.cgi?id=171505
+        <rdar://problem/31799776>
+
+        Reviewed by Andreas Kling.
+
+        Add layout test coverage. I have verified that this test passes on both Firefox and Chrome.
+
+        * fast/dom/domparser-parsefromstring-svg-load-event-expected.txt: Added.
+        * fast/dom/domparser-parsefromstring-svg-load-event.html: Added.
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip editing/execCommand/show-modal-dialog-during-execCommand.html on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=171501
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html  after r215956.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Add support to query for aria-current
+        https://bugs.webkit.org/show_bug.cgi?id=149016
+
+        Reviewed by Chris Fleizach.
+
+        * platform/gtk/TestExpectations: Unskip now-passing test.
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline giantRowspan tests after r215914.
+
+        * platform/gtk/fast/table/giantRowspan-expected.txt:
+        * platform/gtk/fast/table/giantRowspan2-expected.txt:
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several test.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Rebaseline several WPT fetch API tests.
+
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/request-headers.any-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/request-headers.any.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-no-preflight.any.worker-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any-expected.txt: Added.
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/api/cors/cors-origin.any.worker-expected.txt: Added.
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: AccessibilityTable::ariaRowCount() and ariaColumnCount() should not return -1 unless that is the author-provided value
+        https://bugs.webkit.org/show_bug.cgi?id=171475
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/table-detection-expected.txt: Updated.
+        * accessibility/table-with-rules-expected.txt: Updated.
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several test.
+
+        * platform/gtk/TestExpectations:
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA "figure" and "term" roles; update AXRoleDescription mapping for "feed" role
+        https://bugs.webkit.org/show_bug.cgi?id=171183
+
+        Reviewed by Chris Fleizach.
+
+        New test cases added and expectations updated.
+
+        * accessibility/gtk/xml-roles-exposed-expected.txt:
+        * accessibility/gtk/xml-roles-exposed.html:
+        * accessibility/roles-computedRoleString.html:
+        * accessibility/roles-exposed.html:
+        * platform/gtk/accessibility/roles-exposed-expected.txt:
+        * platform/mac/accessibility/roles-computedRoleString-expected.txt:
+        * platform/mac/accessibility/roles-exposed-expected.txt:
+
 2017-04-30  Zalan Bujtas  <zalan@apple.com>
 
         Initialize a new layout state while bailing out of simple line layout only when needed.

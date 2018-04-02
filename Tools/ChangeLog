@@ -1,3 +1,557 @@
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * TestRunnerShared/UIScriptContext/UIScriptContext.cpp:
+        (UIScriptContext::tryToCompleteUIScriptForCurrentParentCallback):
+
+2017-05-04  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an optional width parameter to -[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]
+        https://bugs.webkit.org/show_bug.cgi?id=171646
+        <rdar://problem/30306321>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptions.mm:
+        (runTestWithWidth):
+        (TEST):
+        (-[RenderedImageWithOptionsObject didRenderImageWithSize:]): Deleted.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsPlugIn.mm:
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[RenderedImageWithOptionsPlugIn webProcessPlugInBrowserContextController:didFinishLoadForFrame:]):
+        (-[RenderedImageWithOptionsPlugIn renderImageWithWidth:completionHandler:]):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RenderedImageWithOptionsProtocol.h:
+
+2017-05-04  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Fontconfig 2.11.2 in JHBuild does not build with glibc 2.25+ or gperf 3.1+
+        https://bugs.webkit.org/show_bug.cgi?id=171649
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add two patches picked from the upstream repository to fix building of
+        the Fontconfig module in JHBuild. Additionally, this needed a patch to
+        add "autogen.sh" as it is not included in release tarballs. Also:
+        building the module with srcdir!=builddir prevents "fcobjshash.gperf"
+        being regenerated (which is needed) so this is disabled for the
+        Fontconfig module.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/fontconfig-2.11.1-add-autogen.patch: Added.
+        * gtk/patches/fontconfig-Avoid-conflicts-with-integer-width-macros-from-TS-18661-1-2014.patch: Added.
+        * gtk/patches/fontconfig-Fix-the-build-issue-with-gperf-3.1.patch: Added.
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216172.
+        https://bugs.webkit.org/show_bug.cgi?id=171654
+
+        FTBFS for iOS due to missing WebPageProxy::stopMediaCapture()
+        implementation. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216172
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GStreamer version to 1.10.4 in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171595
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch: Removed.
+        * gtk/patches/gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch: Removed.
+        * gtk/patches/gst-plugins-good-0001-rtpbin-pipeline-gets-an-EOS-when-any-rtpsources-byes.patch: Removed.
+        * gtk/patches/gst-plugins-good-0002-rtpbin-avoid-generating-errors-when-rtcp-messages-ar.patch: Removed.
+        * gtk/patches/gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch:
+        * gtk/patches/gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch: Removed.
+        * gtk/patches/gst-plugins-good-use-the-tfdt-decode-time.patch: Removed.
+
+2017-05-03  Saam Barati  <sbarati@apple.com>
+
+        How we build polymorphic cases is wrong when making a call from Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=171527
+
+        Reviewed by JF Bastien.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserMediaDisabled.mm: Added.
+        (-[UserMediaMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[UserMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (-[UserMediaUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+        (MediaCaptureDisabledTest::SetUp):
+        (MediaCaptureDisabledTest::loadTestAndWaitForMessage):
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/disableGetUserMedia.html: Added.
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        New function to call the clear function that takes a modifiedSince parameter.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216160 and r216161.
+        https://bugs.webkit.org/show_bug.cgi?id=171640
+
+        These changes broke the iOS build. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216160
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216161
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserMediaDisabled.mm: Added.
+        (-[UserMediaMessageHandler userContentController:didReceiveScriptMessage:]):
+        (-[UserMediaUIDelegate _webView:requestUserMediaAuthorizationForDevices:url:mainFrameURL:decisionHandler:]):
+        (-[UserMediaUIDelegate _webView:checkUserMediaPermissionForURL:mainFrameURL:frameIdentifier:decisionHandler:]):
+        (MediaCaptureDisabledTest::SetUp):
+        (MediaCaptureDisabledTest::loadTestAndWaitForMessage):
+        (TEST_F):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/disableGetUserMedia.html: Added.
+
+2017-04-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Add an api test for testing wrapping/unwrapping serialized crypto keys
+        https://bugs.webkit.org/show_bug.cgi?id=171350
+        <rdar://problem/28600836>
+
+        Patched by Brady Eidson.
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/NavigationClientDefaultCrypto.cpp: Added.
+        (TestWebKitAPI::runJavaScriptAlert):
+        (TestWebKitAPI::decidePolicyForNavigationAction):
+        (TestWebKitAPI::decidePolicyForNavigationResponse):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2/navigation-client-default-crypto.html: Added.
+
+2017-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Have WKWebView call _updateVisibleContentRects for the current transaction if possible, rather than always delaying
+        https://bugs.webkit.org/show_bug.cgi?id=171619
+        https://bugs.webkit.org/show_bug.cgi?id=170195
+
+        Reviewed by Tim Horton.
+
+        Re-enable WebKit2.ResizeWithHiddenContentDoesNotHang.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AnimatedResize.mm:
+        (TEST):
+
+2017-05-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        YouTube user agent quirk breaks new YouTube
+        https://bugs.webkit.org/show_bug.cgi?id=171603
+
+        Reviewed by Carlos Garcia Campos.
+
+        Remove the YouTube quirk test.
+
+        * TestWebKitAPI/Tests/WebCore/UserAgentQuirks.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding should be disabled for snapshots, printing and preview
+        https://bugs.webkit.org/show_bug.cgi?id=171467
+
+        Reviewed by Simon Fraser.
+
+        Add a API test for snapshotting with large images. Ensure the images are
+        drawn correctly which implies they should have been synchronously decoded.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/large-red-square-image.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewSnapshot.mm:
+        (TEST):
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Extend processDidCrash delegate to let the client know the reason for the crash
+        https://bugs.webkit.org/show_bug.cgi?id=171565
+        <rdar://problem/31204417>
+
+        Reviewed by Sam Weinig.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/ProcessDidCrashWithReason.cpp: Added.
+        (TestWebKitAPI::didFinishNavigation):
+        (TestWebKitAPI::didCrashWithReason):
+        (TestWebKitAPI::TEST):
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should also keep js-test-post[-async].js in sync
+        <https://webkit.org/b/171568>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/style/checker.py:
+        (_NEVER_SKIPPED_JS_FILES): Add new list that just contains
+        JavaScript files not to be skipped.
+        (_NEVER_SKIPPED_FILES): Update to use _NEVER_SKIPPED_JS_FILES.
+        (CheckerDispatcher._create_checker): Update to use
+        _NEVER_SKIPPED_JS_FILES.
+
+        * Scripts/webkitpy/style/checkers/jstest.py:
+        (ALL_JS_TEST_FUNCTION_FILES): Rename from ALL_JS_TEST_FILES.
+        This is the list of files containing functions that need to be
+        kept in sync.
+        (KEEP_JS_TEST_FILES_IN_SYNC): Change to list-of-lists format so
+        we can keep more sets of files in sync between
+        LayoutTests/resources and LayoutTests/http/tests/resources.
+        (JSTestChecker.check): Update to use KEEP_JS_TEST_FILES_IN_SYNC
+        as list of lists.  Update for ALL_JS_TEST_FUNCTION_FILES rename.
+        (JSTestChecker.check_js_test_files): Add 'file_group' argument
+        for list of files to check instead of using
+        KEEP_JS_TEST_FILES_IN_SYNC.
+        (JSTestChecker.check_js_test_functions): Update for
+        ALL_JS_TEST_FUNCTION_FILES rename.
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py:
+        (JSTestCheckerTestCase):
+        (JSTestCheckerTestCase.test_map_functions_to_dict):
+        - Add test case for map_functions_to_dict() in jstest.py.
+
+2017-05-02  Aakash Jain  <aakash_jain@apple.com>
+
+        ews should indicate in logs when it fails to fetch the attachment
+        https://bugs.webkit.org/show_bug.cgi?id=171583
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/bugzilla/bugzilla.py:
+        (Bugzilla.fetch_attachment): Added log statement.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        Rolling out jstest_unittest.py so it can be reviewed
+
+        Follow-up fix for:
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py: Remove.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a new JSTestChecker for check-webkit-style that keeps these
+        two files in sync:
+
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+
+        And keeps implementations of shouldBe(), shouldNotBe(),
+        shouldNotThrow(), and shouldThrow() in sync across multiple
+        files (with the ability to add more functions later):
+
+            JSTests/stress/resources/standalone-pre.js
+            LayoutTests/http/tests/resources/js-test-pre.js
+            LayoutTests/resources/js-test-pre.js
+            LayoutTests/resources/js-test.js
+            LayoutTests/resources/standalone-pre.js
+
+        * Scripts/webkitpy/style/checker.py: Remove unused import.  Add
+        import for JSTestChecker.
+        (_NEVER_SKIPPED_FILES): Add array of file names that are never
+        skipped regardless of other rules.
+        (_all_categories): Add JSTestChecker categories.
+        (CheckerDispatcher.should_skip_without_warning): Use
+        _NEVER_SKIPPED_FILES.
+        (CheckerDispatcher._create_checker): Return JSTestChecker for
+        the files to check.
+
+        * Scripts/webkitpy/style/checkers/jstest.py: Add.
+        (map_functions_to_dict): Parse JavaScript source by splitting on
+        /^function\s+/ regex.  This is good enough for the sanity checks
+        to keep function implementations in sync.
+        (strip_blank_lines_and_comments): Strips blank lines and lines
+        with comments from the end of a chunk of text representing a
+        function.
+        (JSTestChecker): New checker.
+        (JSTestChecker.__init__):
+        (JSTestChecker.check):
+        (JSTestChecker.check_js_test_files): Keeps whole files in sync.
+        (JSTestChecker.check_js_test_functions): Keeps individual
+        functions in sync.
+
+        * Scripts/webkitpy/style/checkers/jstest_unittest.py: Add test
+        case.
+        (JSTestTestCase):
+        (JSTestTestCase.test_map_functions_to_dict):
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Return "AXUnknownOrientation" when ATK_STATE_VERTICAL and ATK_STATE_HORIZONTAL
+        are both absent from the state set. Before we were returning an empty string
+        which was not consistent with what the Mac port does, thus making shared tests
+        harder.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::orientation):
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using sprintf() in JavaScriptCore debugger
+        <https://webkit.org/b/171512>
+
+        Reviewed by Keith Miller.
+
+        * Scripts/webkitpy/style/checker.py:
+        (_PATH_RULES_SPECIFIER): Ignore some formatting checkers since
+        Source/JavaScriptCore/disassembler/udis86/ is generated code.
+
+2017-05-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose viewport-fit instead of clip-to-safe-area
+        https://bugs.webkit.org/show_bug.cgi?id=171503
+        <rdar://problem/31918249>
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setSafeAreaInsets):
+        (WTR::UIScriptController::setObscuredInsets): Deleted.
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::setSafeAreaInsets):
+        (WTR::UIScriptController::setObscuredInsets): Deleted.
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.h:
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView setOverrideSafeAreaInsets:]):
+        (-[TestRunnerWKWebView _safeAreaInsetsForFrame:inSuperview:]):
+        * WebKitTestRunner/ios/TestControllerIOS.mm:
+        (WTR::TestController::platformResetStateToConsistentValues):
+        * WebKitTestRunner/ios/UIKitSPI.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::setSafeAreaInsets):
+        (WTR::UIScriptController::setObscuredInsets): Deleted.
+        Expose a safe area inset setter instead of obscured insets.
+
+2017-05-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the build on a new internal SDK
+
+        Replace usages of NSItemProviderRepresentationVisibilityAll with
+        UIItemProviderRepresentationOptionsVisibilityAll.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (-[UIItemProvider registerDataRepresentationForTypeIdentifier:withData:]):
+        (TestWebKitAPI::TEST):
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        [Cocoa] Replace uses of [get…Class() alloc] in TestWebKitAPI
+        <https://webkit.org/b/171493>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/Tests/WebKit/ios/AudioSessionCategoryIOS.mm:
+        Remove UIKit soft-link since TestWebKitAPI links to
+        UIKit.framework.
+        (TestWebKitAPI::WebKit1_AudioSessionCategoryIOS_Test): Use
+        UIWindow and UIWebView classes directly.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RequiresUserActionForPlayback.mm:
+        Remove UIKit soft-link since TestWebKitAPI links to
+        UIKit.framework.
+        (RequiresUserActionForPlaybackTest::createWebView): Use UIWindow
+        class directly.
+
+2017-05-01  Brady Eidson  <beidson@apple.com>
+
+        Update names in WKURLSchemeHandler/WKURLSchemeHandlerTask APIs.
+        <rdar://problem/31824838> and https://bugs.webkit.org/show_bug.cgi?id=171508
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm:
+        (-[SchemeHandler webView:startURLSchemeTask:]):
+        (-[SchemeHandler webView:stopURLSchemeTask:]):
+        (-[SchemeHandler webView:startTask:]): Deleted.
+        (-[SchemeHandler webView:stopTask:]): Deleted.
+
+2017-05-01  Jason Marcell  <jmarcell@apple.com>
+
+        Add a new function for getting the Git hash for a pure git directory.
+        https://bugs.webkit.org/show_bug.cgi?id=171450
+
+        Reviewed by David Kilzer.
+
+        * Scripts/VCSUtils.pm:
+        (gitHashForDirectory):
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Expose values of aria-rowcount, aria-colcount, aria-rowindex, aria-colindex, aria-rowspan, and aria-colspan as object attributes
+        https://bugs.webkit.org/show_bug.cgi?id=171496
+
+        Reviewed by Chris Fleizach.
+
+        Add new attribute names so that the values of the object attributes can be tested.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::numberAttributeValue):
+
+2017-05-01  Beth Dakin  <bdakin@apple.com>
+
+        On-screen panel for candidate bar is in the wrong place when the caret is at the 
+        start of a paragraph
+        https://bugs.webkit.org/show_bug.cgi?id=171453
+        -and corresponding-
+        rdar://problem/29779764
+
+        Reviewed by Tim Horton.
+
+        This test hard-codes the y-coordinate for the expected candidateRect. 
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewCandidateTests.mm:
+        (TEST):
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style: Enable sprintf(), strcat(), strcpy() and printf() format checks
+        <https://webkit.org/b/171494>
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_language): Change categories for certain checkers from
+        'runtime/printf' to 'security/printf' so they are no longer
+        filtered.
+        (CppChecker.categories): Add 'security/printf'.
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_insecure_string_operations): Add new test for
+        sprintf(), strcat() and strcpy().
+        (CppStyleTest.test_format_strings): Update test results for new
+        'security/printf' category use.
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [GTK] Add support to query for aria-current
+        https://bugs.webkit.org/show_bug.cgi?id=149016
+
+        Reviewed by Chris Fleizach.
+
+        Implement support for "AXARIACurrent" string attribute value.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        REGRESSION (r216000): test-webkitpy fails after adding new soft-linked class checker
+
+        Unreviewed.
+
+        Follow-up fix for:
+        [Cocoa] Have check-webkit-style advise against use of [get…Class() alloc]
+        https://bugs.webkit.org/show_bug.cgi?id=171486
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_soft_link_class_alloc): Use (\w+) instead of ([^\s]+) to
+        match and capture the function name.  The latter also mistakenly
+        matches C-preprocessor directives.
+        (CppChecker.categories): Add 'runtime/soft-linked-alloc', which
+        is a requirement for the CppChecker class.
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add automation session API
+        https://bugs.webkit.org/show_bug.cgi?id=171428
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add an automation mode to MiniBrowser using the new API and add a unit test too.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (webViewTitleChanged):
+        (webViewDecidePolicy):
+        (newTabCallback):
+        (openPrivateWindow):
+        (browserWindowFinalize):
+        (browser_window_init):
+        (browser_window_get_or_create_web_view_for_automation):
+        * MiniBrowser/gtk/BrowserWindow.h:
+        * MiniBrowser/gtk/main.c:
+        (createBrowserTab):
+        (createWebViewForAutomationCallback):
+        (automationStartedCallback):
+        (main):
+        * TestWebKitAPI/Tests/WebKit2Gtk/CMakeLists.txt:
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAutomationSession.cpp: Added.
+        (testAutomationSessionRequestSession):
+        (beforeAll):
+        (afterAll):
+
 2017-04-30  Dan Bernstein  <mitz@apple.com>
 
         [Cocoa] Have check-webkit-style advise against use of [get…Class() alloc]

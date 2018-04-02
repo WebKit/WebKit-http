@@ -124,6 +124,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitAuthenticationRequest.cpp
     UIProcess/API/gtk/WebKitAuthenticationRequest.h
     UIProcess/API/gtk/WebKitAutocleanups.h
+    UIProcess/API/gtk/WebKitAutomationSession.cpp
+    UIProcess/API/gtk/WebKitAutomationSession.h
+    UIProcess/API/gtk/WebKitAutomationSessionPrivate.h
     UIProcess/API/gtk/WebKitBackForwardList.cpp
     UIProcess/API/gtk/WebKitBackForwardList.h
     UIProcess/API/gtk/WebKitBackForwardListItem.cpp
@@ -300,6 +303,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWindowProperties.h
     UIProcess/API/gtk/WebKitWindowPropertiesPrivate.h
     UIProcess/API/gtk/webkit2.h
+
+    UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp
 
     UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp
 
@@ -533,6 +538,7 @@ set(WebKit2GTK_INSTALLED_HEADERS
     ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/WebKitVersion.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAuthenticationRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAutocleanups.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAutomationSession.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitBackForwardList.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitBackForwardListItem.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitColorChooserRequest.h

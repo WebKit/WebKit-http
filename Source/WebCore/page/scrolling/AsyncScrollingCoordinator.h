@@ -76,7 +76,7 @@ protected:
 
     void updateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, std::optional<FloatPoint> layoutViewportOrigin, bool programmaticScroll, ScrollingLayerPositionAction);
 
-    WEBCORE_EXPORT String scrollingStateTreeAsText() const override;
+    WEBCORE_EXPORT String scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior = ScrollingStateTreeAsTextBehaviorNormal) const override;
     WEBCORE_EXPORT void willCommitTree() override;
 
     bool eventTrackingRegionsDirty() const { return m_eventTrackingRegionsDirty; }
@@ -84,7 +84,6 @@ protected:
 private:
     bool isAsyncScrollingCoordinator() const override { return true; }
 
-    bool supportsFixedPositionLayers() const override { return true; }
     bool hasVisibleSlowRepaintViewportConstrainedObjects(const FrameView&) const override { return false; }
     
     bool visualViewportEnabled() const;

@@ -1,3 +1,925 @@
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * Shared/API/c/WKString.cpp:
+        (WKStringGetCharacters):
+
+2017-05-04  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] -[WKWebsiteDataStore httpCookieStore] is declared in the main @interface but implemented in a category
+        https://bugs.webkit.org/show_bug.cgi?id=171657
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore httpCookieStore]): Moved from the WKPrivate category into the main
+          @implementation block.
+
+2017-05-04  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Add an optional width parameter to -[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]
+        https://bugs.webkit.org/show_bug.cgi?id=171646
+        <rdar://problem/30306321>
+
+        Reviewed by Tim Horton.
+
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.h:
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInNodeHandle.mm:
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:]): Called
+        -renderedImageWithOptions:width: with a nil width.
+        (-[WKWebProcessPlugInNodeHandle renderedImageWithOptions:width:]): Passed an optional width
+        to InjectedBundleNodeHandle::renderedImage().
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect): If a width is specified, create an image graphics context at that
+        width, preserving the aspect ratio of paintingRect.
+        (WebKit::InjectedBundleNodeHandle::renderedImage):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.h:
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216172.
+        https://bugs.webkit.org/show_bug.cgi?id=171654
+
+        FTBFS for iOS due to missing WebPageProxy::stopMediaCapture()
+        implementation. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216172
+
+2017-05-04  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] SHOULD NEVER BE REACHED in WebKit::CompositingRunLoop::updateCompleted
+        https://bugs.webkit.org/show_bug.cgi?id=171336
+
+        Reviewed by Michael Catanzaro.
+
+        We are assuming that all calls to ThreadedCompositor::renderLayerTree() happen because of an scheduled update,
+        but that's not true in the case of ThreadedCompositor::forceRepaint(). In that case we never want to call
+        CompositingRunLoop::updateCompleted().
+
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::forceRepaint):
+        (WebKit::ThreadedCompositor::sceneUpdateFinished):
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+
+2017-05-04  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style exits with an error while parsing Source/WebKit2/Scripts/webkit/ directory: KeyError: 'st'
+        <https://bugs.webkit.org/show_bug.cgi?id=171510>
+
+        Reviewed by Daniel Bates.
+
+        The problem was that 'import parser' was ambiguous since there
+        is a built-in parser module that comes with Python.  Changing
+        'import parser' to 'from webkit import parser' fixed the error
+        in check-webkit-style (and pylint) by forcing it to load the
+        local 'parser' module, but then running messages_unittest.py
+        directly would fail because .../Source/WebKit2/Scripts was not
+        in the module search path by default.  This is fixed by using
+        sys.path.append() to add .../Source/WebKit2/Scripts to the
+        module search path based on the path to messages_unittest.py.
+
+        As an added bonus, this patch also fixes all webkit-style issues
+        in Source/WebKit2/Scripts/webkit/*.py files.
+
+        * Scripts/webkit/messages.py:
+        - Separate local module imports from built-in modules for
+          consistency.
+        - Fix whitespace issues for check-webkit-style, and remove stray
+          semi-colon.
+        * Scripts/webkit/messages_unittest.py:
+        - Update sys.path to find the 'webkit' module based on the path
+          to messages_unittest.py.  This makes 'from webkit import ...'
+          statements work when running messages_unittest.py directly.
+        - Change 'messages' and 'parser' modules to use
+          'from webkit import ...' format for consistency.
+        - Fix whitespace issues for check-webkit-style.
+        * Scripts/webkit/model.py:
+        - Fix whitespace issue for check-webkit-style.
+        * Scripts/webkit/parser.py:
+        - Fix whitespace issue for check-webkit-style.
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMediaCaptureEnabled): New.
+        (WKPageGetMediaCaptureEnabled): New.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setMediaCaptureEnabled:]): New.
+        (-[WKWebView _mediaCaptureEnabled]): New.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler
+        and webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler on macOS
+        and iOS.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        Initialize the rejection timer.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        Call invalidatePendingRequests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidatePendingRequests): Invalidate all
+        pending requests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::rejectionTimerFired): Reject a promise and
+        schedule the timer if there are any others pending.
+        (WebKit::UserMediaPermissionRequestManagerProxy::scheduleNextRejection): 
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame): Don't
+        prompt the user if capture is disabled.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidateRequests): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Stop capture in the current
+        page on iOS.
+        (WebKit::UserMediaProcessManager::setCaptureEnabled):
+        * UIProcess/UserMediaProcessManager.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMediaCaptureEnabled):
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::mediaCaptureEnabled):
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::cancelPendingRequests): New, cancel all pending
+        requests.
+        (WebKit::UserMediaPermissionRequestManager::cancelUserMediaRequest): Deny the request.
+        (WebKit::UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopMediaCapture):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        These are all test infrastructure changes.
+
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.cpp:
+        (WKResourceLoadStatisticsManagerClearInMemoryAndPersistentStoreModifiedSinceHours):
+        * UIProcess/API/C/WKResourceLoadStatisticsManager.h:
+        * UIProcess/WebResourceLoadStatisticsManager.cpp:
+        (WebKit::WebResourceLoadStatisticsManager::clearInMemoryAndPersistentStoreModifiedSinceHours):
+        * UIProcess/WebResourceLoadStatisticsManager.h:
+
+2017-05-03  Timothy Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information imageURL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171639
+
+        Reviewed by Sam Weinig.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        (-[WKContentView _previewItemController:commitPreview:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2017-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216160 and r216161.
+        https://bugs.webkit.org/show_bug.cgi?id=171640
+
+        These changes broke the iOS build. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216160
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216161
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Unreviewed build fix.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::clearUserMediaState):
+        * UIProcess/WebPageProxy.h:
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetMediaCaptureEnabled): New.
+        (WKPageGetMediaCaptureEnabled): New.
+        (WKPageClearUserMediaState): Deleted, unused.
+        * UIProcess/API/C/WKPagePrivate.h:
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _setMediaCaptureEnabled:]): New.
+        (-[WKWebView _mediaCaptureEnabled]): New.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Initialize webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler
+        and webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler on macOS
+        and iOS.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::UserMediaPermissionRequestManagerProxy):
+        Initialize the rejection timer.
+        (WebKit::UserMediaPermissionRequestManagerProxy::~UserMediaPermissionRequestManagerProxy):
+        Call invalidatePendingRequests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidatePendingRequests): Invalidate all
+        pending requests.
+        (WebKit::UserMediaPermissionRequestManagerProxy::stopCapture): New.
+        (WebKit::UserMediaPermissionRequestManagerProxy::rejectionTimerFired): Reject a promise and
+        schedule the timer if there are any others pending.
+        (WebKit::UserMediaPermissionRequestManagerProxy::scheduleNextRejection): 
+        (WebKit::UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame): Don't
+        prompt the user if capture is disabled.
+        (WebKit::UserMediaPermissionRequestManagerProxy::invalidateRequests): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::clearCachedState): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willEnableMediaStreamInPage): Stop capture in the current
+        page on iOS.
+        (WebKit::UserMediaProcessManager::setCaptureEnabled):
+        * UIProcess/UserMediaProcessManager.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setMediaCaptureEnabled):
+        (WebKit::WebPageProxy::clearUserMediaState): Deleted.
+
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::mediaCaptureEnabled):
+
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.cpp:
+        (WebKit::UserMediaPermissionRequestManager::cancelPendingRequests): New, cancel all pending
+        requests.
+        (WebKit::UserMediaPermissionRequestManager::cancelUserMediaRequest): Deny the request.
+        (WebKit::UserMediaPermissionRequestManager::cancelMediaDevicesEnumeration):
+        * WebProcess/MediaStream/UserMediaPermissionRequestManager.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::stopMediaCapture):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-05-03  Tim Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information URL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171623
+
+        Reviewed by Simon Fraser.
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _showAttachmentSheet]):
+        (-[WKContentView _interactionShouldBeginFromPreviewItemController:forPosition:]):
+        (-[WKContentView _dataForPreviewItemController:atPosition:type:]):
+        * UIProcess/ios/WKPDFView.mm:
+        (-[WKPDFView annotation:isBeingPressedAtPoint:controller:]):
+        (-[WKPDFView actionSheetAssistant:performAction:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2017-05-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Have WKWebView call _updateVisibleContentRects for the current transaction if possible, rather than always delaying
+        https://bugs.webkit.org/show_bug.cgi?id=171619
+        
+        Also fixes webkit.org/b/170153 and webkit.org/b/170195
+
+        Reviewed by Tim Horton.
+
+        In r214391 we started adding the pre-commit handler in a dispatch_async() to ensure that
+        the handler would always run, since we couldn't reliably test the phase of the current
+        transaction. Now that problem has been solved (rdar://problem/31253952) we can go back to
+        checking the transaction phase on newer iOS versions. If we're too late for the current transaction
+        we still need to dispatch_async() to get into the next one.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _addUpdateVisibleContentRectPreCommitHandler]):
+        (-[WKWebView _scheduleVisibleContentRectUpdateAfterScrollInView:]):
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r216129): ASSERTION FAILED: m_process->state() == WebProcessProxy::State::Terminated
+        https://bugs.webkit.org/show_bug.cgi?id=171616
+
+        Reviewed by Brady Eidson.
+
+        Stop calling resetStateAfterProcessExited() in WebPageProxy::terminateProcess() as the call to
+        WebProcessProxy::requestTermination() already causes WebPageProxy::processDidCrash() to be called
+        after r216129. WebPageProxy::processDidCrash() already takes care of calling
+        resetStateAfterProcessExited().
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::terminateProcess):
+
+2017-05-03  Brady Eidson  <beidson@apple.com>
+
+        Handle KVO updating of the "hasOnlySecureContent" before a page results in an HTTP auth challenge.
+        https://bugs.webkit.org/show_bug.cgi?id=171607
+
+        Reviewed by Andy Estes.
+        
+        To test this fix we'd need the combination of an HTTPD inside API tests, so no test for now.
+
+        * UIProcess/PageLoadState.cpp:
+        (WebKit::PageLoadState::hasOnlySecureContent): If the state is provisional, check the provisional URL instead.
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Extend processDidCrash delegate to let the client know the reason for the crash
+        https://bugs.webkit.org/show_bug.cgi?id=171565
+        <rdar://problem/31204417>
+
+        Reviewed by Sam Weinig.
+
+        Extend processDidCrash delegate to let the client know the reason for the crash. This
+        is needed by some clients to distinguish actual crashes from terminations due to
+        resource limits.
+
+        * Shared/ProcessCrashReason.h: Added.
+        * UIProcess/API/APINavigationClient.h:
+        (API::NavigationClient::processDidCrash):
+        * UIProcess/API/C/WKAPICast.h:
+        (WebKit::toAPI):
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageNavigationClient):
+        * UIProcess/API/C/WKPageNavigationClient.h:
+        * UIProcess/API/C/WKProcessCrashReason.h: Added.
+        * UIProcess/Cocoa/NavigationState.h:
+        * UIProcess/Cocoa/NavigationState.mm:
+        (WebKit::NavigationState::NavigationClient::processDidCrash):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::processDidCrash):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didClose):
+        (WebKit::WebProcessProxy::requestTermination):
+        (WebKit::diagnosticLoggingKeyForTerminationReason):
+        (WebKit::toProcessCrashReason):
+        (WebKit::WebProcessProxy::terminateProcessDueToResourceLimits):
+        (WebKit::WebProcessProxy::didExceedActiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedInactiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedBackgroundCPULimit):
+        * UIProcess/WebProcessProxy.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add GTK+ implementation of WebAutomationSession
+        https://bugs.webkit.org/show_bug.cgi?id=171431
+
+        Reviewed by Michael Catanzaro.
+
+        Add platform dependent methods for GTK+ to synthesize events.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/gtk/WebKitUIClient.cpp: Always resize the window for web views controlled by automation.
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::performMouseInteraction):
+        (WebKit::WebAutomationSession::performKeyboardInteractions):
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp: Added.
+        (WebKit::modifiersToEventState):
+        (WebKit::mouseButtonToGdkButton):
+        (WebKit::doMouseEvent):
+        (WebKit::doMotionEvent):
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        (WebKit::doKeyStrokeEvent):
+        (WebKit::keyCodeForVirtualKey):
+        (WebKit::WebAutomationSession::platformSimulateKeyStroke):
+        (WebKit::WebAutomationSession::platformSimulateKeySequence):
+        (WebKit::WebAutomationSession::platformGetBase64EncodedPNGData):
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.17.1 release.
+
+        * gtk/NEWS: Add release notes for 2.17.1.
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Soup] Add request headers to network load metrics
+        https://bugs.webkit.org/show_bug.cgi?id=171545
+
+        Reviewed by Sergio Villar Senin.
+
+        This will make the headers to appear in the web inspector.
+
+        Fixes: http/tests/inspector/network/resource-request-headers.html
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::didGetHeaders):
+
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Dynamically added position:fixed element is in the wrong place
+        https://bugs.webkit.org/show_bug.cgi?id=170280
+        rdar://problem/31374008
+
+        Reviewed by Tim Horton.
+
+        Layers for position:fixed elements have their positions reconciled after scrolls
+        via AsyncScrollingCoordinator::reconcileViewportConstrainedLayerPositions() and GraphicsLayerCA::syncPosition(),
+        which updates the GraphicsLayer's position, but does not push it to the PlatformCALayer.
+
+        This bug was a case where a position:fixed element gained a fixed ancestor, so had a GraphicsLayerCA whose
+        position had been updated via syncPosition() in the past. A subsequent layout updated the GraphicsLayerCA position,
+        but to a value that was the same as its pre-sync position, so the PlatformCALayerRemote's position didn't change,
+        but there was no signal to the UI process to restore the layer's pre-scrolled position.
+
+        Fix by avoiding the early return in PlatformCALayerRemote::setPosition(), to ensure that GraphicsLayerCA
+        geometry updates in the web process always send new positions to the UI process.
+
+        * WebProcess/WebPage/mac/PlatformCALayerRemote.cpp:
+        (WebKit::PlatformCALayerRemote::setPosition):
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Drop coordinated surfaces from the compositing thread as soon as possible
+        https://bugs.webkit.org/show_bug.cgi?id=171544
+
+        Reviewed by Žan Doberšek.
+
+        Released coordinated surface from the main thread didn't be freed until
+        next commit message because the deletion of coordinated surfaces is
+        considered as a part of scene state.  We need to release corresponding
+        surfaces whenever the compositing coordinator drops update atlases to
+        reduce memory usages.
+
+        No new tests, only an optimization.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsArgumentCoders.cpp:
+        Remove atlasesToRemove from the GraphicsState. it is not a commit
+        state anymore.
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::syncUpdateAtlases):
+        (WebKit::CoordinatedGraphicsScene::releaseUpdateAtlases):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::CompositingCoordinator::releaseAtlases): Pass the list of
+        released update atlases to the compositing thread right after cleaning
+        up deactivated update atlases.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp:
+        (WebKit::CompositingCoordinator::clearPendingStateChanges):
+        (WebKit::CompositingCoordinator::removeUpdateAtlas):
+        (WebKit::CompositingCoordinator::releaseAtlases):
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::releaseUpdateAtlases):
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+
+2017-05-02  Timothy Horton  <timothy_horton@apple.com>
+
+        Inform clients when viewport-fit state changes, so they can recompute insets
+        https://bugs.webkit.org/show_bug.cgi?id=171573
+        <rdar://problem/31947614>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didChangeAvoidsUnsafeArea]):
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didChangeAvoidsUnsafeArea):
+        For clients who use setObscuredInsets/setUnobscuredSafeAreaInsets
+        themselves, we need to let them know when the current state of
+        viewport-fit changes so that they can recompute the insets.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Recycle textures while handling tiles
+        https://bugs.webkit.org/show_bug.cgi?id=171541
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedBackingStore.cpp:
+        (WebKit::CoordinatedBackingStoreTile::swapBuffers):
+        Whenever we create new tiles or delete tiles, CoordGfx creates and
+        deletes textures accordingly.  We should avoid this kind of heavy
+        operations whenever possible.  This patch modifies to use the texture
+        pool to reduce texture allocations.  Also this patch reduces number of
+        resetting textures, which is also expensive operation.
+        * Shared/CoordinatedGraphics/WebCoordinatedSurface.cpp:
+        (WebKit::WebCoordinatedSurface::copyToTexture):
+        Modified to pass BitmapTexture as a reference.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadSafeCoordinatedSurface.cpp:
+        (WebKit::ThreadSafeCoordinatedSurface::copyToTexture): Ditto.
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using strcpy() in WebProcess::registerWithStateDumper() in WebProcessCocoa.mm
+        <https://webkit.org/b/171520>
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::registerWithStateDumper): Switch from
+        strcpy() to strlcpy(), removing comment in the process.
+
+2017-05-02  Andrew Gold  <agold@apple.com>
+
+        MediaDevices is not enabled for MobileSafari
+        https://bugs.webkit.org/show_bug.cgi?id=171433
+        <rdar://problem/31923178>
+
+        Reviewed by Youenn Fablet.
+
+        Added the Cocoa API for toggling this feature and removed API for toggling
+        MediaStreamEnabled since it will always be on.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _mediaDevicesEnabled]):
+        (-[WKPreferences _setMediaDevicesEnabled:]):
+        (-[WKPreferences _mediaStreamEnabled]): Deleted.
+        (-[WKPreferences _setMediaStreamEnabled:]): Deleted.
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2017-05-02  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r213036): Crash in -[WKContentView _webTouchEventsRecognized:] when a touch event arrives after a WebPageProxy has been invalidated
+        https://bugs.webkit.org/show_bug.cgi?id=171539
+        <rdar://problem/31614982>
+
+        Reviewed by Tim Horton.
+
+        Prior to r213036, the layer tree transaction at last touch start was tracked by
+        WebPageProxy::handleTouchEventSynchronously(), which would ask the drawing area proxy for
+        its most recent transaction ID after ensuring that the WebPageProxy was valid.
+
+        r213036 moved the tracking up to -[WKContentView _webTouchEventsRecognized:], but failed to
+        check if _page was valid before asking for its drawing area proxy's last transaction ID; the
+        drawing area proxy is set to null on WebPageProxy invalidation.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _webTouchEventsRecognized:]): Added an early return if _page isn't valid.
+
+2017-05-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Automation: generate resizeWindowOfBrowsingContext and moveWindowOfBrowsingContext for all platforms
+        https://bugs.webkit.org/show_bug.cgi?id=171107
+
+        Reviewed by Brian Burg.
+
+        The implementation is actually cross-platform, so it could be moved from WebAutomationSessionMac.mm to
+        WebAutomationSession.cpp and simply return a NotImplemented error for iOS. This will allow to use these methods
+        in other platforms.
+
+        * UIProcess/Automation/Automation.json:
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/Automation/mac/WebAutomationSessionMac.mm:
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext): Deleted.
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext): Deleted.
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Use RELEASE_LOG_ERROR() to do process termination logging
+        https://bugs.webkit.org/show_bug.cgi?id=171521
+
+        Reviewed by Andreas Kling.
+
+        Use RELEASE_LOG_ERROR() to do process termination logging instead of RELEASE_LOG().
+        This makes the issue more visible in Console.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didExceedActiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedInactiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedBackgroundCPULimit):
+
+2017-05-01  Brady Eidson  <beidson@apple.com>
+
+        Only try to get sandbox extension handle for IndexedDB directory if it is set.
+        rdar://problem/31925828 and https://bugs.webkit.org/show_bug.cgi?id=171522
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::resolveDirectoriesIfNecessary):
+
+2017-05-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose viewport-fit instead of clip-to-safe-area
+        https://bugs.webkit.org/show_bug.cgi?id=171503
+        <rdar://problem/31918249>
+
+        Reviewed by Simon Fraser.
+
+        * Shared/VisibleContentRectUpdateInfo.cpp:
+        (WebKit::VisibleContentRectUpdateInfo::encode):
+        (WebKit::VisibleContentRectUpdateInfo::decode):
+        (WebKit::operator<<):
+        * Shared/VisibleContentRectUpdateInfo.h:
+        (WebKit::VisibleContentRectUpdateInfo::VisibleContentRectUpdateInfo):
+        (WebKit::VisibleContentRectUpdateInfo::unobscuredSafeAreaInsets):
+        (WebKit::operator==):
+        Plumb the safe area insets down from the UI process to the Web Content
+        process inside the visible content rect update, alongside the obscured
+        insets.
+
+        * Shared/mac/RemoteLayerTreeTransaction.h:
+        (WebKit::RemoteLayerTreeTransaction::avoidsUnsafeArea):
+        (WebKit::RemoteLayerTreeTransaction::setAvoidsUnsafeArea):
+        * Shared/mac/RemoteLayerTreeTransaction.mm:
+        (WebKit::RemoteLayerTreeTransaction::encode):
+        (WebKit::RemoteLayerTreeTransaction::decode):
+        (WebKit::RemoteLayerTreeTransaction::description):
+        * UIProcess/PageClient.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::didChangeAvoidsUnsafeArea):
+        (WebKit::PageClientImpl::didChangeClipToSafeArea): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::didCommitLayerTree):
+        * UIProcess/mac/PageClientImpl.h:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::didChangeClipToSafeArea): Deleted.
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::willCommitLayerTree):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::viewportConfigurationChanged):
+        (WebKit::WebPage::updateVisibleContentRects):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+        (WebKit::WebPageProxy::setAvoidsUnsafeArea):
+        (WebKit::WebPageProxy::setClipToSafeArea): Deleted.
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::avoidsUnsafeArea):
+        (WebKit::WebPageProxy::clipToSafeArea): Deleted.
+        * UIProcess/WebPageProxy.messages.in:
+        Plumb the effective value of viewport-fit (whether or not to avoid
+        the safe area for layout purposes) from the Web Content process
+        to the UI process inside the layer tree transaction.
+        Also, remove clip-to-safe-area plumbing.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+        (-[WKWebView _computedContentInset]):
+        (-[WKWebView _computedUnobscuredSafeAreaInset]):
+        (-[WKWebView _updateVisibleContentRects]):
+        (-[WKWebView _updateScrollViewInsetAdjustmentBehavior]):
+        (-[WKWebView _safeAreaShouldAffectObscuredInsets]):
+        (-[WKWebView _unobscuredSafeAreaInsets]):
+        (-[WKWebView _setUnobscuredSafeAreaInsets:]):
+        (-[WKWebView _contentMayDrawInObscuredInsets]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Make use of the effective value of viewport-fit to decide whether to
+        take the safe area into account when computing the obscured insets,
+        and expose this to clients (in the case that they need to know
+        because they push their own obscured insets down). Also expose a 
+        safe area inset setter for that case as well.
+
+        * UIProcess/ios/WKContentView.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView updateFixedClippingView:]):
+        (-[WKContentView didUpdateVisibleRect:unobscuredRect:unobscuredRectInScrollViewCoordinates:obscuredInsets:unobscuredSafeAreaInsets:inputViewBounds:scale:minimumScale:inStableState:isChangingObscuredInsetsInteractively:enclosedInScrollableAncestorView:]):
+        Remove a piece of the clip-to-safe-area implementation, and plumb
+        safe area insets into the visible content rect update info.
+
+        * UIProcess/ios/WKScrollView.h:
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollView initWithFrame:]):
+        (-[WKScrollView _contentInsetAdjustmentBehaviorWasExternallyOverridden]):
+        (-[WKScrollView _setContentInsetAdjustmentBehavior:]):
+        (-[WKScrollView _setContentInsetAdjustmentBehaviorInternal:]):
+        Keep track of whether the client has ever touched the content inset adjustment
+        behavior; if they have, we won't manage it ourselves.
+
+2017-05-01  Brady Eidson  <beidson@apple.com>
+
+        Update names in WKURLSchemeHandler/WKURLSchemeHandlerTask APIs.
+        <rdar://problem/31824838> and https://bugs.webkit.org/show_bug.cgi?id=171508
+
+        Reviewed by Andy Estes.
+
+        This patch:
+        - Renames WKURLSchemeHandlerTask to WKURLSchemeTask
+        - Renames the method "startTask" to "startURLSchemeTask"
+        - Renames the method "stopTask" to "stopURLSchemeTask"
+
+        To those effects it's basically a global replace.
+
+        * Shared/API/APIObject.h:
+        * Shared/Cocoa/APIObject.mm:
+        (API::Object::newObject):
+        * UIProcess/API/APIURLSchemeTask.cpp: Renamed from Source/WebKit2/UIProcess/API/APIURLSchemeHandlerTask.cpp.
+        (API::URLSchemeTask::create):
+        (API::URLSchemeTask::URLSchemeTask):
+        * UIProcess/API/APIURLSchemeTask.h: Renamed from Source/WebKit2/UIProcess/API/APIURLSchemeHandlerTask.h.
+        * UIProcess/API/Cocoa/WKURLSchemeHandler.h:
+        * UIProcess/API/Cocoa/WKURLSchemeTask.h: Renamed from Source/WebKit2/UIProcess/API/Cocoa/WKURLSchemeHandlerTask.h.
+        * UIProcess/API/Cocoa/WKURLSchemeTask.mm: Renamed from Source/WebKit2/UIProcess/API/Cocoa/WKURLSchemeHandlerTask.mm.
+        (raiseExceptionIfNecessary):
+        (-[WKURLSchemeTaskImpl request]):
+        (-[WKURLSchemeTaskImpl didReceiveResponse:]):
+        (-[WKURLSchemeTaskImpl didReceiveData:]):
+        (-[WKURLSchemeTaskImpl didFinish]):
+        (-[WKURLSchemeTaskImpl didFailWithError:]):
+        (-[WKURLSchemeTaskImpl _apiObject]):
+        * UIProcess/API/Cocoa/WKURLSchemeTaskInternal.h: Renamed from Source/WebKit2/UIProcess/API/Cocoa/WKURLSchemeHandlerTaskInternal.h.
+        (WebKit::wrapper):
+        * UIProcess/Cocoa/WebURLSchemeHandlerCocoa.h:
+        * UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm:
+        (WebKit::WebURLSchemeHandlerCocoa::platformStartTask):
+        (WebKit::WebURLSchemeHandlerCocoa::platformStopTask):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::startURLSchemeTask):
+        (WebKit::WebPageProxy::stopURLSchemeTask):
+        (WebKit::WebPageProxy::startURLSchemeHandlerTask): Deleted.
+        (WebKit::WebPageProxy::stopURLSchemeHandlerTask): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/WebURLSchemeHandler.cpp:
+        (WebKit::WebURLSchemeHandler::startTask):
+        * UIProcess/WebURLSchemeHandler.h:
+        * UIProcess/WebURLSchemeTask.cpp: Renamed from Source/WebKit2/UIProcess/WebURLSchemeHandlerTask.cpp.
+        (WebKit::WebURLSchemeTask::create):
+        (WebKit::WebURLSchemeTask::WebURLSchemeTask):
+        (WebKit::WebURLSchemeTask::didReceiveResponse):
+        (WebKit::WebURLSchemeTask::didReceiveData):
+        (WebKit::WebURLSchemeTask::didComplete):
+        (WebKit::WebURLSchemeTask::pageDestroyed):
+        (WebKit::WebURLSchemeTask::stop):
+        * UIProcess/WebURLSchemeTask.h: Renamed from Source/WebKit2/UIProcess/WebURLSchemeHandlerTask.h.
+        (WebKit::WebURLSchemeTask::identifier):
+        (WebKit::WebURLSchemeTask::request):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::WebLoaderStrategy::addURLSchemeTaskProxy):
+        (WebKit::WebLoaderStrategy::removeURLSchemeTaskProxy):
+        (WebKit::WebLoaderStrategy::remove):
+        (WebKit::WebLoaderStrategy::addURLSchemeHandlerTaskProxy): Deleted.
+        (WebKit::WebLoaderStrategy::removeURLSchemeHandlerTaskProxy): Deleted.
+        * WebProcess/Network/WebLoaderStrategy.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::urlSchemeTaskDidReceiveResponse):
+        (WebKit::WebPage::urlSchemeTaskDidReceiveData):
+        (WebKit::WebPage::urlSchemeTaskDidComplete):
+        (WebKit::WebPage::urlSchemeHandlerTaskDidReceiveResponse): Deleted.
+        (WebKit::WebPage::urlSchemeHandlerTaskDidReceiveData): Deleted.
+        (WebKit::WebPage::urlSchemeHandlerTaskDidComplete): Deleted.
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp:
+        (WebKit::WebURLSchemeHandlerProxy::startNewTask):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidComplete):
+        (WebKit::WebURLSchemeHandlerProxy::taskDidStopLoading):
+        * WebProcess/WebPage/WebURLSchemeHandlerProxy.h:
+        * WebProcess/WebPage/WebURLSchemeTaskProxy.cpp: Renamed from Source/WebKit2/WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.cpp.
+        (WebKit::WebURLSchemeTaskProxy::WebURLSchemeTaskProxy):
+        (WebKit::WebURLSchemeTaskProxy::startLoading):
+        (WebKit::WebURLSchemeTaskProxy::stopLoading):
+        (WebKit::WebURLSchemeTaskProxy::didReceiveResponse):
+        (WebKit::WebURLSchemeTaskProxy::didReceiveData):
+        (WebKit::WebURLSchemeTaskProxy::didComplete):
+        (WebKit::WebURLSchemeTaskProxy::hasLoader):
+        * WebProcess/WebPage/WebURLSchemeTaskProxy.h: Renamed from Source/WebKit2/WebProcess/WebPage/WebURLSchemeHandlerTaskProxy.h.
+        (WebKit::WebURLSchemeTaskProxy::request):
+        (WebKit::WebURLSchemeTaskProxy::identifier):
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Tweak how long we allow a process to go over its background CPU limit
+        https://bugs.webkit.org/show_bug.cgi?id=170460
+        <rdar://problem/31433141>
+
+        Reviewed by Geoffrey Garen.
+
+        Tweak how long we allow a process to go over its background CPU limit. We now use 8 minutes
+        intervals (instead of previously 15). This is less conservative and aligned with our memory
+        kills.
+
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+
+2017-05-01  Beth Dakin  <bdakin@apple.com>
+
+        On-screen panel for candidate bar is in the wrong place when the caret is at the 
+        start of a paragraph
+        https://bugs.webkit.org/show_bug.cgi?id=171453
+        -and corresponding-
+        rdar://problem/29779764
+
+        Reviewed by Tim Horton.
+
+        This bug only happens when the caret is at the beginning of the paragraph, and it 
+        is because Range::absoluteTextQuads() returns no quads in this case. I think it 
+        might be correct that absoluteTextQuads() returns no quads in this case, so this 
+        patch fixes the bug at the call site by using absoluteCaretBounds() in this case.
+
+        SPI for testing.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _candidateRect]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+        Bug fix.
+        * WebProcess/WebPage/mac/WebPageMac.mm:
+        (WebKit::WebPage::platformEditorState):
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add automation session API
+        https://bugs.webkit.org/show_bug.cgi?id=171428
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add new API to allow WebKitGTK+ to be controlled by automation. By default it's disabled, applications have to
+        explicitly call webkit_web_context_set_automation_allowed() to enabled it. When a new automation session is
+        requested, the signal WebKitWebContext::automation-started is emitted with a newly created
+        WebKitAutomationSession, similar to how WebKitWebContext::download-started works. The user should connect to it
+        have access to the WebKitAutomationSession and connect it its signals. When a new web view is requested to be
+        created in a WebKitAutomationSession, the signal WebKitAutomationSession::create-web-view is emitted. The user
+        should connect to it and return a WebKitWebView. The web views used for automation are special ones and need to
+        be created with the new WebKitWebView:is-controlled-by-automation construct property enabled, otherwise we will
+        refuse to create the requested browsing context.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/gtk/WebKitAutomationSession.cpp: Added.
+        (webkitAutomationSessionSetProperty):
+        (webkitAutomationSessionConstructed):
+        (webkit_automation_session_class_init):
+        (webkitAutomationSessionCreate):
+        (webkitAutomationSessionGetSession):
+        (webkit_automation_session_get_id):
+        * UIProcess/API/gtk/WebKitAutomationSession.h: Added.
+        * UIProcess/API/gtk/WebKitAutomationSessionPrivate.h: Added.
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+        (webkit_web_context_class_init):
+        (webkit_web_context_is_automation_allowed):
+        (webkit_web_context_set_automation_allowed):
+        (webkitWebContextCreatePageForWebView):
+        * UIProcess/API/gtk/WebKitWebContext.h:
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewConstructed):
+        (webkitWebViewSetProperty):
+        (webkitWebViewGetProperty):
+        (webkit_web_view_class_init):
+        (webkit_web_view_is_controlled_by_automation):
+        * UIProcess/API/gtk/WebKitWebView.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0.types:
+        * UIProcess/API/gtk/docs/webkit2gtk-docs.sgml:
+        * UIProcess/API/gtk/webkit2.h:
+
+2017-05-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ debug build after r216002.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectList.cpp:
+        (WebKit::wrapClientRectList):
+
 2017-04-30  Chris Dumez  <cdumez@apple.com>
 
         Drop support for legacy ClientRect / ClientRectList

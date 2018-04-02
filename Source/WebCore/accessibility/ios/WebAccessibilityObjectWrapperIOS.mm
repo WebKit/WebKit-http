@@ -872,6 +872,8 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case DocumentNoteRole:
         case DrawerRole:
         case EditableTextRole:
+        case FeedRole:
+        case FigureRole:
         case FooterRole:
         case FormRole:
         case GridRole:
@@ -931,7 +933,9 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         case TabPanelRole:
         case TableRole:
         case TableHeaderContainerRole:
+        case TermRole:
         case TextGroupRole:
+        case TimeRole:
         case TreeRole:
         case TreeItemRole:
         case TreeGridRole:
@@ -1271,6 +1275,17 @@ static void appendStringToResult(NSMutableString *result, NSString *string)
     if (![self _prepareAccessibilityCall])
         return 0;
     return m_object->blockquoteLevel();
+}
+
+- (NSString *)accessibilityDatetimeValue
+{
+    if (![self _prepareAccessibilityCall])
+        return nil;
+    
+    if (auto parent = AccessibilityObject::matchedParent(*m_object, true, [] (const AccessibilityObject& object) { return object.supportsDatetimeAttribute(); }))
+        return parent->datetimeAttributeValue();
+
+    return nil;
 }
 
 - (NSString *)accessibilityPlaceholderValue

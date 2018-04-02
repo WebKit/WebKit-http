@@ -1,3 +1,382 @@
+2017-05-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix compilation with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=171612
+
+        Reviewed by Mark Lam.
+
+        ICU 59.1 has broken source compatibility. Now it defines UChar as
+        char16_t, which does not allow automatic type conversion from unsigned
+        short in C++ code.
+
+        * API/JSStringRef.cpp:
+        (JSStringCreateWithCharacters):
+        (JSStringCreateWithCharactersNoCopy):
+        (JSStringGetCharactersPtr):
+        * runtime/DateConversion.cpp:
+        (JSC::formatDateTime):
+
+2017-05-04  Saam Barati  <sbarati@apple.com>
+
+        stress/call-apply-exponential-bytecode-size.js.no-llint failing on 32-bit debug for OOM on executable memory
+        https://bugs.webkit.org/show_bug.cgi?id=171008
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch lowers the threshold for .call/.apply recursion
+        in an attempt to emit less code and not impact perf.
+        We're currently failing tests on x86-32 by running out
+        of executable memory. If perf gets impacted because of this,
+        then I'll apply a stricter change just to 32-bit platforms.
+        However, if this doesn't negatively impact perf, it's all around
+        better than all platforms emit less bytecode.
+
+        * bytecompiler/NodesCodegen.cpp:
+
+2017-05-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Math unary functions should be handled by DFG
+        https://bugs.webkit.org/show_bug.cgi?id=171269
+
+        Reviewed by Saam Barati.
+
+        ArithSin, ArithCos, and ArithLog are just calling a C runtime function.
+        While handling them in DFG is not very effective for performance, they
+        can drop some type checks & value conversions and mark them as pure
+        operations. It is effective if they are involved in some complex
+        optimization phase. Actually, ArithLog is effective in kraken.
+
+        While a few of Math functions have DFG nodes, basically math functions
+        are pure. And large part of these functions are just calling a C runtime
+        function. This patch generalizes these nodes in DFG as ArithUnary. And
+        we annotate many unary math functions with Intrinsics and convert them
+        to ArithUnary in DFG. It also cleans up duplicate code in ArithSin,
+        ArithCos, and ArithLog. If your math function has some good DFG / FTL
+        optimization rather than calling a C runtime function, you should add
+        a specialized DFG node, like ArithSqrt.
+
+        We also create a new namespace JSC::Math. Inside it, we collect math functions.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArithMode.cpp:
+        (JSC::DFG::arithUnaryFunction):
+        (JSC::DFG::arithUnaryOperation):
+        (WTF::printInternal):
+        * dfg/DFGArithMode.h:
+        * dfg/DFGBackwardsPropagationPhase.cpp:
+        (JSC::DFG::BackwardsPropagationPhase::propagate):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasArithUnaryType):
+        (JSC::DFG::Node::arithUnaryType):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArithUnary):
+        (JSC::DFG::SpeculativeJIT::compileArithCos): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithTan): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithSin): Deleted.
+        (JSC::DFG::SpeculativeJIT::compileArithLog): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithUnary):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithSin): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithCos): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithTan): Deleted.
+        (JSC::FTL::DFG::LowerDFGToB3::compileArithLog): Deleted.
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::doubleUnary):
+        (JSC::FTL::Output::doubleSin): Deleted.
+        (JSC::FTL::Output::doubleCos): Deleted.
+        (JSC::FTL::Output::doubleTan): Deleted.
+        (JSC::FTL::Output::doubleLog): Deleted.
+        * ftl/FTLOutput.h:
+        * runtime/Intrinsic.h:
+        * runtime/MathCommon.cpp:
+        (JSC::Math::log1p):
+        * runtime/MathCommon.h:
+        * runtime/MathObject.cpp:
+        (JSC::MathObject::finishCreation):
+        (JSC::mathProtoFuncACos):
+        (JSC::mathProtoFuncASin):
+        (JSC::mathProtoFuncATan):
+        (JSC::mathProtoFuncCos):
+        (JSC::mathProtoFuncExp):
+        (JSC::mathProtoFuncLog):
+        (JSC::mathProtoFuncSin):
+        (JSC::mathProtoFuncTan):
+        (JSC::mathProtoFuncACosh):
+        (JSC::mathProtoFuncASinh):
+        (JSC::mathProtoFuncATanh):
+        (JSC::mathProtoFuncCbrt):
+        (JSC::mathProtoFuncCosh):
+        (JSC::mathProtoFuncExpm1):
+        (JSC::mathProtoFuncLog1p):
+        (JSC::mathProtoFuncLog10):
+        (JSC::mathProtoFuncLog2):
+        (JSC::mathProtoFuncSinh):
+        (JSC::mathProtoFuncTanh):
+
+2017-05-03  Saam Barati  <sbarati@apple.com>
+
+        How we build polymorphic cases is wrong when making a call from Wasm
+        https://bugs.webkit.org/show_bug.cgi?id=171527
+
+        Reviewed by JF Bastien.
+
+        This patches fixes a bug when we emit a polymorphic call IC from
+        Wasm. We were incorrectly assuming that if we made a call *from wasm*,
+        then the thing we are *calling to* does not have a CodeBlock. This
+        is obviously wrong. This patch fixes the incorrect assumption.
+        
+        This patch also does two more things:
+        1. Add a new option that makes us make calls to JS using a
+        slow path instead of using a call IC.
+        2. Fixes a potential GC bug where we didn't populate JSWebAssemblyCodeBlock's
+        JSWebAssemblyModule pointer.
+
+        * jit/Repatch.cpp:
+        (JSC::linkPolymorphicCall):
+        * runtime/Options.h:
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+        * wasm/js/JSWebAssemblyCodeBlock.cpp:
+        (JSC::JSWebAssemblyCodeBlock::create):
+        (JSC::JSWebAssemblyCodeBlock::finishCreation):
+        * wasm/js/JSWebAssemblyCodeBlock.h:
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::finalizeCreation):
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Array.prototype.sort should also allow a null comparator
+        https://bugs.webkit.org/show_bug.cgi?id=171621
+        <rdar://problem/30757933>
+
+        Reviewed by Michael Saboff.
+
+        It looks like sort not accepting a null comparator
+        causes some pages to stop working. Those pages work in
+        Chrome/Firefox so we should try to match them.
+
+        * builtins/ArrayPrototype.js:
+        (sort):
+
+2017-05-03  Mark Lam  <mark.lam@apple.com>
+
+        Use the CLoop for CPU(ARM64E).
+        https://bugs.webkit.org/show_bug.cgi?id=171620
+        <rdar://problem/31973027>
+
+        Reviewed by Geoffrey Garen.
+
+        * llint/LLIntOfflineAsmConfig.h:
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::SigillCrashAnalyzer::dumpCodeBlock):
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Different behaviour with the .sort(callback) method (unlike Firefox & Chrome)
+        https://bugs.webkit.org/show_bug.cgi?id=47825
+
+        Reviewed by Saam Barati.
+
+        This patch makes our sort function match the behavior of Firefox
+        and Chrome when the result of the comparison function is a
+        boolean. When we first switched to using merge sort, it regressed
+        JQuery sorting of DOM nodes by 30%. The regression was do to the
+        fact that JQuery was using compareDocumentPosition to compare the
+        locations of objects. Since one of the benchmarks would pass a
+        reverse sorted list to the sort function we would end up walking
+        the entire DOM to do comparisons. The solution to this was to
+        merge based on comparison(right, left) rather than
+        comparison(left, right). Although, in practice this does nothing
+        since sort could just as easily receive an already sorted list and
+        we're back in the same spot.
+
+        The downside of sorting with comparison(right, left) is that to
+        maintain stability when sorting, you only want to merge from right
+        when the comparison function returns a negative value. This is
+        where the problem with booleans comes in. Since booleans toNumber
+        false to 0 and true to 1 both values are "equal". This patch fixes
+        this by special casing boolean return values.
+
+
+        * builtins/ArrayPrototype.js:
+        (sort.merge):
+
+2017-05-03  Andy VanWagoner  <thetalecrafter@gmail.com>
+
+        [INTL] Support dashed values in unicode locale extensions
+        https://bugs.webkit.org/show_bug.cgi?id=171480
+
+        Reviewed by JF Bastien.
+
+        Implements the UnicodeExtensionSubtags operation and updates the ResolveLocale operation to use it.
+        This fixes locale extensions with values that include '-'. The following calendars work now:
+        ethiopic-amete-alem
+        islamic-umalqura
+        islamic-tbla
+        islamic-civil
+        islamic-rgsa
+
+        While updating IntlObject, the comments containing spec text were replaced with a single url at the
+        top of each function pointing to the relevant part of ECMA-402.
+
+        * runtime/IntlObject.cpp:
+        (JSC::unicodeExtensionSubTags): Added.
+        (JSC::resolveLocale): Updated to latest standard.
+
+2017-05-02  Don Olmstead  <don.olmstead@am.sony.com>
+
+        Build fix after r216078
+        https://bugs.webkit.org/show_bug.cgi?id=171554
+
+        Reviewed by Saam Barati.
+
+        * API/tests/testapi.c:
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix pedantic C compilers.
+
+        * API/tests/testapi.c:
+        (markingConstraint):
+        (testMarkingConstraints):
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix cmake build.
+
+        * CMakeLists.txt:
+
+2017-05-02  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC C API should expose GC marking constraints and weak references
+        https://bugs.webkit.org/show_bug.cgi?id=171554
+
+        Reviewed by Geoffrey Garen.
+        
+        This exposes an API that lets you participate in the GC's fixpoint. You can ask the GC
+        what is marked and you can tell the GC to mark things. The constraint callback cannot
+        do a whole lot, but it can query marking state and it can dereference weak references.
+        
+        Additionally, this exposes a very simple weak reference API in C.
+
+        * API/JSMarkingConstraintPrivate.cpp: Added.
+        (JSC::isMarked):
+        (JSC::mark):
+        (JSContextGroupRegisterMarkingConstraint):
+        * API/JSMarkingConstraintPrivate.h: Added.
+        * API/JSWeakPrivate.cpp: Added.
+        (OpaqueJSWeak::OpaqueJSWeak):
+        (JSWeakCreate):
+        (JSWeakRetain):
+        (JSWeakRelease):
+        (JSWeakGetObject):
+        * API/JSWeakPrivate.h: Added.
+        * API/tests/testapi.c:
+        (markingConstraint):
+        (testMarkingConstraints):
+        (main):
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/SlotVisitor.h:
+        * heap/SlotVisitorInlines.h:
+        (JSC::SlotVisitor::appendHiddenUnbarriered):
+        (JSC::SlotVisitor::appendHidden):
+
+2017-05-02  Mark Lam  <mark.lam@apple.com>
+
+        JSFixedArray::allocationSize() should not allow for allocation failure.
+        https://bugs.webkit.org/show_bug.cgi?id=171516
+
+        Reviewed by Geoffrey Garen.
+
+        Since JSFixedArray::createFromArray() now handles allocation failures by throwing
+        OutOfMemoryErrors, its helper function allocationSize() (which computes the buffer
+        size to allocate) should also allow for allocation failure on overflow.
+
+        This issue is covered by the stress/js-fixed-array-out-of-memory.js test when
+        run on 32-bit builds.
+
+        * runtime/JSFixedArray.h:
+        (JSC::JSFixedArray::tryCreate):
+        (JSC::JSFixedArray::allocationSize):
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [aarch64][Linux] m_allowScratchRegister assert hit in MacroAssemblerARM64 under B3::Air::CCallSpecial::generate()
+        https://bugs.webkit.org/show_bug.cgi?id=170672
+
+        Reviewed by Filip Pizlo.
+
+        In Air::CCallSpecial::admitsStack() we reject admitting the callee argument on
+        the stack for ARM64 because that can lead to disallowed usage of the scratch
+        register in MacroAssemblerARM64 when generating a call with an address Arg
+        in Air::CCallSpecial::generate().
+
+        The testLinearScanWithCalleeOnStack test is added to testb3. It reproduces the
+        original issue by force-spilling everything on the stack and enforcing the use
+        of the linear scan register allocation by using an optimization level of 1.
+
+        * b3/air/AirCCallSpecial.cpp:
+        (JSC::B3::Air::CCallSpecial::admitsStack):
+        * b3/testb3.cpp:
+        (JSC::B3::testLinearScanWithCalleeOnStack):
+        (JSC::B3::run):
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using sprintf() in JavaScriptCore debugger
+        <https://webkit.org/b/171512>
+
+        Reviewed by Keith Miller.
+
+        * disassembler/udis86/udis86.c:
+        (ud_insn_hex): Switch from sprintf() to snprintf().
+
+2017-04-21  Filip Pizlo  <fpizlo@apple.com>
+
+        Air::fixObviousSpills should remove totally redundant instructions
+        https://bugs.webkit.org/show_bug.cgi?id=171131
+
+        Reviewed by Saam Barati.
+        
+        This is a modest compile-time-neutral improvement to fixObviousSpills. That phase
+        builds up a classic alias analysis data structure over spills and registers and then
+        uses it to remove the most common spill pathologies we encounter. For example, if you
+        use a spill but the spill is aliased to a register or constant, then we can replace the
+        use of the spill with a use of the register or constant.
+        
+        But that phase was missing perhaps one of the most obvious fixups that its analysis
+        allows us to do: if any instruction creates an alias we already know about, then the
+        instruction is redundant. This turned out to be super important for
+        https://bugs.webkit.org/show_bug.cgi?id=171075. That patch didn't work out, but this
+        kind of optimization might be a good clean-up for many other kinds of optimizations.
+
+        * b3/air/AirFixObviousSpills.cpp:
+
 2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         We initialize functions too early in an eval

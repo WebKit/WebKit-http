@@ -113,16 +113,16 @@ public:
     Ref<MutableStyleProperties> styleWithResolvedTextDecorations() const;
     bool textDirection(WritingDirection&) const;
     bool isEmpty() const;
-    void setStyle(PassRefPtr<MutableStyleProperties>);
+    void setStyle(RefPtr<MutableStyleProperties>&&);
     void overrideWithStyle(const StyleProperties*);
     void overrideTypingStyleAt(const EditingStyle&, const Position&);
     void clear();
-    PassRefPtr<EditingStyle> copy() const;
-    PassRefPtr<EditingStyle> extractAndRemoveBlockProperties();
-    PassRefPtr<EditingStyle> extractAndRemoveTextDirection();
+    Ref<EditingStyle> copy() const;
+    Ref<EditingStyle> extractAndRemoveBlockProperties();
+    Ref<EditingStyle> extractAndRemoveTextDirection();
     void removeBlockProperties();
     void removeStyleAddedByNode(Node*);
-    void removeStyleConflictingWithStyleOfNode(Node*);
+    void removeStyleConflictingWithStyleOfNode(Node&);
     template<typename T> void removeEquivalentProperties(T&);
     void collapseTextDecorationProperties();
     enum ShouldIgnoreTextOnlyProperties { IgnoreTextOnlyProperties, DoNotIgnoreTextOnlyProperties };
@@ -147,10 +147,10 @@ public:
     enum CSSPropertyOverrideMode { OverrideValues, DoNotOverrideValues };
     void mergeInlineStyleOfElement(StyledElement*, CSSPropertyOverrideMode, PropertiesToInclude = AllProperties);
     static Ref<EditingStyle> wrappingStyleForSerialization(Node* context, bool shouldAnnotate);
-    void mergeStyleFromRules(StyledElement*);
-    void mergeStyleFromRulesForSerialization(StyledElement*);
-    void removeStyleFromRulesAndContext(StyledElement*, Node* context);
-    void removePropertiesInElementDefaultStyle(Element*);
+    void mergeStyleFromRules(StyledElement&);
+    void mergeStyleFromRulesForSerialization(StyledElement&);
+    void removeStyleFromRulesAndContext(StyledElement&, Node* context);
+    void removePropertiesInElementDefaultStyle(Element&);
     void forceInline();
     bool convertPositionStyle();
     bool isFloating();
@@ -165,7 +165,7 @@ public:
     void setStrikeThroughChange(TextDecorationChange change) { m_strikeThroughChange = static_cast<unsigned>(change); }
     TextDecorationChange strikeThroughChange() const { return static_cast<TextDecorationChange>(m_strikeThroughChange); }
 
-    WEBCORE_EXPORT static PassRefPtr<EditingStyle> styleAtSelectionStart(const VisibleSelection&, bool shouldUseBackgroundColorInEffect = false);
+    WEBCORE_EXPORT static RefPtr<EditingStyle> styleAtSelectionStart(const VisibleSelection&, bool shouldUseBackgroundColorInEffect = false);
     static WritingDirection textDirectionForSelection(const VisibleSelection&, EditingStyle* typingStyle, bool& hasNestedOrMultipleEmbeddings);
 
 private:
@@ -182,7 +182,7 @@ private:
     void extractFontSizeDelta();
     template<typename T> TriState triStateOfStyle(T& styleToCompare, ShouldIgnoreTextOnlyProperties) const;
     bool conflictsWithInlineStyleOfElement(StyledElement*, RefPtr<MutableStyleProperties>* newInlineStyle, EditingStyle* extractedStyle) const;
-    void mergeInlineAndImplicitStyleOfElement(StyledElement*, CSSPropertyOverrideMode, PropertiesToInclude);
+    void mergeInlineAndImplicitStyleOfElement(StyledElement&, CSSPropertyOverrideMode, PropertiesToInclude);
     void mergeStyle(const StyleProperties*, CSSPropertyOverrideMode);
 
     RefPtr<MutableStyleProperties> m_mutableStyle;

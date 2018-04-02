@@ -561,8 +561,6 @@ void AsyncScrollingCoordinator::updateOverflowScrollingNode(ScrollingNodeID node
 
 void AsyncScrollingCoordinator::updateViewportConstrainedNode(ScrollingNodeID nodeID, const ViewportConstraints& constraints, GraphicsLayer* graphicsLayer)
 {
-    ASSERT(supportsFixedPositionLayers());
-
     ScrollingStateNode* node = m_scrollingStateTree->stateNodeForID(nodeID);
     if (!node)
         return;
@@ -626,12 +624,12 @@ bool AsyncScrollingCoordinator::visualViewportEnabled() const
     return m_page->mainFrame().settings().visualViewportEnabled();
 }
 
-String AsyncScrollingCoordinator::scrollingStateTreeAsText() const
+String AsyncScrollingCoordinator::scrollingStateTreeAsText(ScrollingStateTreeAsTextBehavior behavior) const
 {
     if (m_scrollingStateTree->rootStateNode()) {
         if (m_eventTrackingRegionsDirty)
             m_scrollingStateTree->rootStateNode()->setEventTrackingRegions(absoluteEventTrackingRegions());
-        return m_scrollingStateTree->rootStateNode()->scrollingStateTreeAsText();
+        return m_scrollingStateTree->rootStateNode()->scrollingStateTreeAsText(behavior);
     }
 
     return String();

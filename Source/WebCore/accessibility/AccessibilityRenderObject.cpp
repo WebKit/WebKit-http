@@ -1045,7 +1045,7 @@ void AccessibilityRenderObject::determineARIADropEffects(Vector<String>& effects
     
 bool AccessibilityRenderObject::exposesTitleUIElement() const
 {
-    if (!isControl() && !isFigure())
+    if (!isControl() && !isFigureElement())
         return false;
 
     // If this control is ignored (because it's invisible), 
@@ -1082,7 +1082,7 @@ AccessibilityObject* AccessibilityRenderObject::titleUIElement() const
     if (isFieldset())
         return axObjectCache()->getOrCreate(downcast<RenderBlock>(*m_renderer).findFieldsetLegend(RenderBlock::FieldsetIncludeFloatingOrOutOfFlow));
     
-    if (isFigure())
+    if (isFigureElement())
         return captionForFigure();
     
     Node* node = m_renderer->node();
@@ -1249,7 +1249,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (isControl())
         return false;
     
-    if (isFigure())
+    if (isFigureElement())
         return false;
 
     switch (roleValue()) {
@@ -1260,6 +1260,7 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     case DocumentArticleRole:
     case LandmarkRegionRole:
     case ListItemRole:
+    case TimeRole:
     case VideoRole:
         return false;
     default:
@@ -2689,6 +2690,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(fieldsetTag))
         return GroupRole;
 
+    if (node && node->hasTagName(figureTag))
+        return FigureRole;
+
     // Check for Ruby elements
     if (m_renderer->isRubyText())
         return RubyTextRole;
@@ -2793,6 +2797,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
     if (node && node->hasTagName(menuTag) && equalLettersIgnoringASCIICase(getAttribute(typeAttr), "toolbar"))
         return ToolbarRole;
     
+    if (node && node->hasTagName(timeTag))
+        return TimeRole;
+    
     // If the element does not have role, but it has ARIA attributes, or accepts tab focus, accessibility should fallback to exposing it as a group.
     if (supportsARIAAttributes() || canSetFocusAttribute())
         return GroupRole;
@@ -2822,12 +2829,16 @@ AccessibilityOrientation AccessibilityRenderObject::orientation() const
     if (equalLettersIgnoringASCIICase(ariaOrientation, "undefined"))
         return AccessibilityOrientationUndefined;
 
-    // ARIA 1.1 Implicit defaults are defined on some roles.
-    // http://www.w3.org/TR/wai-aria-1.1/#aria-orientation
-    if (isScrollbar() || isComboBox() || isListBox() || isMenu() || isTree())
+    // In ARIA 1.1, the implicit value of aria-orientation changed from horizontal
+    // to undefined on all roles that don't have their own role-specific values. In
+    // addition, the implicit value of combobox became undefined.
+    if (isComboBox() || isRadioGroup() || isTreeGrid())
+        return AccessibilityOrientationUndefined;
+
+    if (isScrollbar() || isListBox() || isMenu() || isTree())
         return AccessibilityOrientationVertical;
     
-    if (isMenuBar() || isSplitter() || isTabList() || isToolbar())
+    if (isMenuBar() || isSplitter() || isTabList() || isToolbar() || isSlider())
         return AccessibilityOrientationHorizontal;
     
     return AccessibilityObject::orientation();

@@ -1,3 +1,1934 @@
+2017-05-04  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION(STP): rgb() with calc() containing variables doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=169939
+
+        Reviewed by Zalan Bujtas.
+
+        Added new test in fast/css/variables.
+
+        * css/CSSCalculationValue.cpp:
+        (WebCore::CSSCalcExpressionNodeParser::parseValue):
+        Treat floats in calcs as integers when we can.
+
+2017-05-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216172.
+        https://bugs.webkit.org/show_bug.cgi?id=171654
+
+        FTBFS for iOS due to missing WebPageProxy::stopMediaCapture()
+        implementation. (Requested by ddkilzer on #webkit).
+
+        Reverted changeset:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216172
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r215686): Incremental reads from SharedBuffer are wrong after r215686
+        https://bugs.webkit.org/show_bug.cgi?id=171602
+
+        Reviewed by Michael Catanzaro.
+
+        In TextTrackLoader::processNewCueData() and PNGImageReader::decode() we changed the patter to read data from a
+        SharedBuffer at a given offset. The new pattern is not correct, because it assumes the whole segment is always
+        read, and the new offset is not correct when that's not the case. This has broken the rendering of png images in
+        the GTK+ port, only the first bytes are correctly decoded and drawn, but not the rest of the image.
+
+        Fixes: editing/pasteboard/paste-image-using-image-data.html
+
+        * loader/TextTrackLoader.cpp:
+        (WebCore::TextTrackLoader::processNewCueData):
+        * platform/image-decoders/png/PNGImageDecoder.cpp:
+        (WebCore::PNGImageReader::decode):
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        No new layout tests, added an API test instead.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::endStream): New, stop all tracks.
+        * Modules/mediastream/MediaStream.h:
+
+        * Modules/mediastream/MediaStreamRegistry.cpp:
+        (WebCore::MediaStreamRegistry::unregisterStream): Minor cleanup.
+        (WebCore::MediaStreamRegistry::forEach): New, call the lambda with each stream.
+        (WebCore::MediaStreamRegistry::MediaStreamRegistry): Deleted, unused.
+        * Modules/mediastream/MediaStreamRegistry.h:
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::stopTrack): Add parameter so caller can specify if an 'ended' 
+        event should be sent or not.
+        (WebCore::MediaStreamTrack::trackMutedChanged): Don't post an event if the track has ended.
+        * Modules/mediastream/MediaStreamTrack.h:
+
+        * dom/Document.cpp:
+        (WebCore::Document::stopMediaCapture): Stop all streams in the document.
+        * dom/Document.h:
+
+        * page/Page.cpp:
+        (WebCore::Page::stopMediaCapture): Stop all streams.
+        * page/Page.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode): Display a black frame
+        when the stream ends.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::activeStatusChanged): Signal a characteristics
+        change to HTMLMediaElement refresh state.
+        * platform/mediastream/MediaStreamPrivate.h:
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::stopProducingData): Don't return early if the session isn't 
+        running, we always need to clear m_session on iOS.
+
+2017-05-03  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Remove all statistics for modifiedSince website data removals
+        https://bugs.webkit.org/show_bug.cgi?id=171584
+        <rdar://problem/24702576>
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html
+
+        * loader/ResourceLoadObserver.cpp:
+        (WebCore::ResourceLoadObserver::clearInMemoryAndPersistentStore):
+            Now clears all regardless of the modifiedSince parameter's value.
+
+2017-05-03  Andy Estes  <aestes@apple.com>
+
+        Try to fix the macOS Public SDK build
+        https://bugs.webkit.org/show_bug.cgi?id=171635
+        <rdar://problem/31812751>
+
+        Unreviewed because the commit queue told me to say this.
+
+        * platform/spi/cocoa/AVKitSPI.h:
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: aria-rowspan value should be ignored if td/th rowspan value is provided
+        https://bugs.webkit.org/show_bug.cgi?id=171214
+
+        Reviewed by Chris Fleizach.
+
+        Return -1 in AccessibilityTableCell::ariaColumnSpan() and ariaRowSpan() if the
+        cell element has an explicit value for the native host language's span attribute.
+        Add checks to AccessibilityTableCell::columnIndexRange() and rowIndexRange() so
+        that we prefer an author-provided ARIA span value over an implicit host-language
+        span value. Similarly, add checks to AccessibilityARIAGridCell::columnIndexRange()
+        and rowIndexRange() so that we fall back on implicit host-language span values
+        when there is no author-provided ARIA span value and the ARIA cell is associated
+        with a cell element.
+
+        Test: accessibility/aria-cellspans-with-native-cellspans.html
+
+        * accessibility/AccessibilityARIAGridCell.cpp:
+        (WebCore::AccessibilityARIAGridCell::ariaRowSpanWithRowIndex):
+        (WebCore::AccessibilityARIAGridCell::columnIndexRange):
+        * accessibility/AccessibilityTableCell.cpp:
+        (WebCore::AccessibilityTableCell::rowIndexRange):
+        (WebCore::AccessibilityTableCell::columnIndexRange):
+        (WebCore::AccessibilityTableCell::ariaColumnSpan):
+        (WebCore::AccessibilityTableCell::ariaRowSpan):
+
+2017-05-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r216160 and r216161.
+        https://bugs.webkit.org/show_bug.cgi?id=171640
+
+        These changes broke the iOS build. (Requested by mlewis13 on
+        #webkit).
+
+        Reverted changesets:
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216160
+
+        "[MediaStream] Allow host application to enable/disable media
+        capture"
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        http://trac.webkit.org/changeset/216161
+
+2017-05-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Allow host application to enable/disable media capture
+        https://bugs.webkit.org/show_bug.cgi?id=171292
+        <rdar://problem/31821492>
+
+        Reviewed by Jer Noble.
+
+        No new layout tests, added an API test instead.
+
+        * Modules/mediastream/MediaStream.cpp:
+        (WebCore::MediaStream::endStream): New, stop all tracks.
+        * Modules/mediastream/MediaStream.h:
+
+        * Modules/mediastream/MediaStreamRegistry.cpp:
+        (WebCore::MediaStreamRegistry::unregisterStream): Minor cleanup.
+        (WebCore::MediaStreamRegistry::forEach): New, call the lambda with each stream.
+        (WebCore::MediaStreamRegistry::MediaStreamRegistry): Deleted, unused.
+        * Modules/mediastream/MediaStreamRegistry.h:
+
+        * Modules/mediastream/MediaStreamTrack.cpp:
+        (WebCore::MediaStreamTrack::stopTrack): Add parameter so caller can specify if an 'ended' 
+        event should be sent or not.
+        (WebCore::MediaStreamTrack::trackMutedChanged): Don't post an event if the track has ended.
+        * Modules/mediastream/MediaStreamTrack.h:
+
+        * dom/Document.cpp:
+        (WebCore::Document::stopMediaCapture): Stop all streams in the document.
+        * dom/Document.h:
+
+        * page/Page.cpp:
+        (WebCore::Page::stopMediaCapture): Stop all streams.
+        * page/Page.h:
+
+        * platform/graphics/avfoundation/objc/MediaPlayerPrivateMediaStreamAVFObjC.mm:
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::currentDisplayMode): Display a black frame
+        when the stream ends.
+        (WebCore::MediaPlayerPrivateMediaStreamAVFObjC::activeStatusChanged): Signal a characteristics
+        change to HTMLMediaElement refresh state.
+        * platform/mediastream/MediaStreamPrivate.h:
+
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::stopProducingData): Don't return early if the session isn't 
+        running, we always need to clear m_session on iOS.
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        SearchInputType could end up with a mismatched renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=171547
+        <rdar://problem/31935047>
+
+        Reviewed by Antti Koivisto.
+
+        Normally we've got the correct renderer by the time we call into SearchInputType.
+        However, since HTMLInputElement::updateType() eagerly updates the type while the associated renderers are done lazily
+        (so we don't get them updated until after the next tree update), we could actually end up
+        with a mismatched renderer (e.g. through form submission).
+
+        Test: fast/forms/change-input-type-and-submit-form-crash.html
+
+        * html/SearchInputType.cpp:
+        (WebCore::SearchInputType::addSearchResult):
+        (WebCore::SearchInputType::didSetValueByUserEdit):
+
+2017-05-03  Jer Noble  <jer.noble@apple.com>
+
+        Make the VPIO audio unit a singleton, shared between multiple CaptureSources
+        https://bugs.webkit.org/show_bug.cgi?id=171622
+
+        Reviewed by Eric Carlson.
+
+        Move the implemnetation of CoreAudioCaptureSource into a shared singleton class, CoreAudioSharedUnit,
+        which will send audio to each of it's client CoreAudioCaptureSources. The first registered client will
+        define the settings used by the shared unit.
+
+        Drive-by fixes: Fix up setUseAVFoundationAudioCapture() to always accept the first value set.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioSharedUnit::isProducingData):
+        (WebCore::CoreAudioSharedUnit::microphoneFormat):
+        (WebCore::CoreAudioSharedUnit::singleton):
+        (WebCore::CoreAudioSharedUnit::addClient):
+        (WebCore::CoreAudioSharedUnit::removeClient):
+        (WebCore::CoreAudioSharedUnit::addEchoCancellationSource):
+        (WebCore::CoreAudioSharedUnit::removeEchoCancellationSource):
+        (WebCore::CoreAudioSharedUnit::preferredIOBufferSize):
+        (WebCore::CoreAudioSharedUnit::setupAudioUnits):
+        (WebCore::CoreAudioSharedUnit::configureMicrophoneProc):
+        (WebCore::CoreAudioSharedUnit::configureSpeakerProc):
+        (WebCore::CoreAudioSharedUnit::checkTimestamps):
+        (WebCore::CoreAudioSharedUnit::provideSpeakerData):
+        (WebCore::CoreAudioSharedUnit::speakerCallback):
+        (WebCore::CoreAudioSharedUnit::processMicrophoneSamples):
+        (WebCore::CoreAudioSharedUnit::microphoneCallback):
+        (WebCore::CoreAudioSharedUnit::cleanupAudioUnits):
+        (WebCore::CoreAudioSharedUnit::startProducingData):
+        (WebCore::CoreAudioSharedUnit::stopProducingData):
+        (WebCore::CoreAudioSharedUnit::suspend):
+        (WebCore::CoreAudioSharedUnit::defaultInputDevice):
+        (WebCore::CoreAudioCaptureSource::create):
+        (WebCore::CoreAudioCaptureSource::factory):
+        (WebCore::CoreAudioCaptureSource::CoreAudioCaptureSource):
+        (WebCore::CoreAudioCaptureSource::~CoreAudioCaptureSource):
+        (WebCore::CoreAudioCaptureSource::addEchoCancellationSource):
+        (WebCore::CoreAudioCaptureSource::removeEchoCancellationSource):
+        (WebCore::CoreAudioCaptureSource::startProducingData):
+        (WebCore::CoreAudioCaptureSource::stopProducingData):
+        (WebCore::CoreAudioCaptureSource::audioSourceProvider):
+        (WebCore::CoreAudioCaptureSource::preferredSampleRate): Deleted.
+        (WebCore::CoreAudioCaptureSource::preferredIOBufferSize): Deleted.
+        (WebCore::CoreAudioCaptureSource::configureMicrophoneProc): Deleted.
+        (WebCore::CoreAudioCaptureSource::configureSpeakerProc): Deleted.
+        (WebCore::CoreAudioCaptureSource::checkTimestamps): Deleted.
+        (WebCore::CoreAudioCaptureSource::provideSpeakerData): Deleted.
+        (WebCore::CoreAudioCaptureSource::speakerCallback): Deleted.
+        (WebCore::CoreAudioCaptureSource::processMicrophoneSamples): Deleted.
+        (WebCore::CoreAudioCaptureSource::microphoneCallback): Deleted.
+        (WebCore::CoreAudioCaptureSource::cleanupAudioUnits): Deleted.
+        (WebCore::CoreAudioCaptureSource::defaultInputDevice): Deleted.
+        (WebCore::CoreAudioCaptureSource::setupAudioUnits): Deleted.
+        (WebCore::CoreAudioCaptureSource::suspend): Deleted.
+        (WebCore::CoreAudioCaptureSource::resume): Deleted.
+        * platform/mediastream/mac/CoreAudioCaptureSource.h:
+        * platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp:
+        (WebCore::RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture):
+
+2017-05-03  Jer Noble  <jer.noble@apple.com>
+
+        getUserMedia() fails because devices list is empty / inactive
+        https://bugs.webkit.org/show_bug.cgi?id=171626
+
+        Reviewed by Eric Carlson.
+
+        When creating a AVAudioSessionCaptureDevice, set the device's enabled state to true if the port description
+        has any items in its dataSources property (which is the best analogue to "isActive" we have in AVAudioSession).
+
+        Also, when creating the generic list of CaptureDevices, use the copy constructor to ensure the enabled state
+        gets copied to the new generic device.
+
+        * platform/mediastream/ios/AVAudioSessionCaptureDevice.mm:
+        (WebCore::AVAudioSessionCaptureDevice::create):
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm:
+        (WebCore::AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices):
+
+2017-05-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Implement the imageready event to reliably test the async image decoding
+        https://bugs.webkit.org/show_bug.cgi?id=171016
+
+        Reviewed by Simon Fraser.
+
+        The event will be fired for each client of the image. Firing the event
+        will happen after finishing the decoding and repainting the client.
+
+        Existing tests will be modified in a separate patch to use this event.
+
+        * dom/Element.cpp:
+        (WebCore::Element::dispatchWebKitImageReadyEventForTesting):
+        * dom/Element.h:
+        * page/Settings.in:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::imageFrameAvailable):
+
+2017-05-03  Tim Horton  <timothy_horton@apple.com>
+
+        Maintain interaction information URL as a URL, not a string
+        https://bugs.webkit.org/show_bug.cgi?id=171623
+
+        Reviewed by Simon Fraser.
+
+        No new tests, not a behavior change.
+
+        * platform/URL.h:
+
+2017-05-03  Yoav Weiss  <yoav@yoav.ws>
+
+        Link preload HTMLPreloadScanner support
+        https://bugs.webkit.org/show_bug.cgi?id=170747
+
+        Reviewed by Youenn Fablet.
+
+        Test: http/tests/preload/preloadscanner_download_resources.html
+
+        * html/parser/HTMLPreloadScanner.cpp:
+        (WebCore::TokenPreloadScanner::StartTagScanner::StartTagScanner): Initialize link preload flag.
+        (WebCore::TokenPreloadScanner::StartTagScanner::createPreloadRequest): Create a request only if the type is known (so ignore
+        preloads with unknown type).
+        (WebCore::TokenPreloadScanner::StartTagScanner::processAttribute): Add handling for link preload and the `as` attribute.
+        (WebCore::TokenPreloadScanner::StartTagScanner::relAttributeIsStyleSheet): Get LinkRelAttribute as input.
+        (WebCore::TokenPreloadScanner::StartTagScanner::resourceType): Return an std::optional, in case the preload type is unknown.
+        (WebCore::TokenPreloadScanner::StartTagScanner::shouldPreload): Return true for the link preload case.
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::preload): Return the resource rather than a nullptr if it's already in m_preloads.
+
+2017-05-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        YouTube user agent quirk breaks new YouTube
+        https://bugs.webkit.org/show_bug.cgi?id=171603
+
+        Reviewed by Carlos Garcia Campos.
+
+        Our user agent quirk to make YouTube 360 work breaks the new YouTube UI, causing it to
+        attempt to use the obsolete custom elements v0 API. WebKit only supports the v1 API. We
+        have to remove this quirk.
+
+        Note this does not affect Safari as Apple ports don't use our user agent quirks.
+
+        * platform/UserAgentQuirks.cpp:
+        (WebCore::urlRequiresChromeBrowser):
+
+2017-05-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: 404 Image Load does not appear as a failure in Web Inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171587
+        <rdar://problem/13222846>
+
+        Reviewed by Matt Baker.
+
+        * inspector/InspectorPageAgent.h:
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::cachedResourceContent):
+        (WebCore::prepareCachedResourceBuffer): Deleted.
+        Inline the function to make this less confusing.
+
+        (WebCore::InspectorPageAgent::buildObjectForFrameTree):
+        Treat a DecodeError as a failure.
+
+2017-05-03  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding should be disabled for snapshots, printing and preview
+        https://bugs.webkit.org/show_bug.cgi?id=171467
+ 
+        Reviewed by Simon Fraser.
+ 
+        Asynchronous image decoding should only be used for window display where
+        RenderElements can be repainted and painted. For cases where there is only
+        one chance to draw the image, synchronous decoding should be used. 
+
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::paintFillLayerExtended):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::paintIntoRect):
+
+2017-05-03  Nan Wang  <n_wang@apple.com>
+
+        AX: VO skips cells after cell with aria-colspan
+        https://bugs.webkit.org/show_bug.cgi?id=171579
+
+        Reviewed by Chris Fleizach.
+
+        We should consider the previous cells' column span value when
+        calculating the column index.
+
+        Test: accessibility/mac/aria-grid-column-span.html
+
+        * accessibility/AccessibilityARIAGridCell.cpp:
+        (WebCore::AccessibilityARIAGridCell::columnIndexRange):
+
+2017-05-03  Jiewen Tan  <jiewen_tan@apple.com>
+
+        ASSERTION FAILED: m_scriptExecutionContext->isContextThread() seen with LayoutTest crypto/workers/crypto-random-values-limits-worker.html
+        https://bugs.webkit.org/show_bug.cgi?id=171462
+        <rdar://problem/31906859>
+
+        Reviewed by Brent Fulgham.
+
+        Covered by existing tests.
+
+        * workers/WorkerGlobalScope.cpp:
+        (WebCore::WorkerGlobalScope::~WorkerGlobalScope):
+        Clear Crypto early in destruction since its ContextDestructionObserver
+        destruction makes checks about the WorkerThread.
+
+2017-05-03  Zalan Bujtas  <zalan@apple.com>
+
+        RenderSearchField should not use isTextField() in SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT
+        https://bugs.webkit.org/show_bug.cgi?id=171608
+
+        Reviewed by Simon Fraser.
+
+        isTextField() is true for any generic single line text control.
+
+        * rendering/RenderObject.h:
+        (WebCore::RenderObject::isSearchField):
+        * rendering/RenderSearchField.h:
+
+2017-05-03  Frederic Wang  <fwang@igalia.com>
+
+        Remove ScrollingCoordinator::supportsFixedPositionLayers()
+        https://bugs.webkit.org/show_bug.cgi?id=171557
+
+        Reviewed by Simon Fraser.
+
+        No new tests, behavior is not changed.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::shouldUpdateCompositingLayersAfterScrolling):
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::updateViewportConstrainedNode):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::synchronousScrollingReasons):
+        * page/scrolling/ScrollingCoordinator.h:
+        (WebCore::ScrollingCoordinator::supportsFixedPositionLayers): Deleted.
+        * page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.cpp:
+        (WebCore::ScrollingCoordinatorCoordinatedGraphics::updateViewportConstrainedNode):
+        * page/scrolling/coordinatedgraphics/ScrollingCoordinatorCoordinatedGraphics.h:
+        (): Deleted.
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+
+2017-05-03  Chris Dumez  <cdumez@apple.com>
+
+        Use PassRefPtr less in CompositeEditCommand
+        https://bugs.webkit.org/show_bug.cgi?id=171590
+
+        Reviewed by Sam Weinig.
+
+        Use PassRefPtr less in CompositeEditCommand.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::hasNoAttributeOrOnlyStyleAttribute):
+        (WebCore::isStyleSpanOrSpanWithOnlyStyleAttribute):
+        (WebCore::isSpanWithoutAttributesOrUnstyledStyleSpan):
+        (WebCore::isEmptyFontTag):
+        (WebCore::ApplyStyleCommand::doApply):
+        (WebCore::ApplyStyleCommand::applyBlockStyle):
+        (WebCore::ApplyStyleCommand::applyRelativeFontStyleChange):
+        (WebCore::dummySpanAncestorForNode):
+        (WebCore::ApplyStyleCommand::cleanupUnstyledAppleStyleSpans):
+        (WebCore::ApplyStyleCommand::removeEmbeddingUpToEnclosingBlock):
+        (WebCore::ApplyStyleCommand::applyInlineStyle):
+        (WebCore::ApplyStyleCommand::fixRangeAndApplyInlineStyle):
+        (WebCore::ApplyStyleCommand::applyInlineStyleToNodeRange):
+        (WebCore::ApplyStyleCommand::shouldApplyInlineStyleToRun):
+        (WebCore::ApplyStyleCommand::removeConflictingInlineStyleFromRun):
+        (WebCore::ApplyStyleCommand::removeInlineStyleFromElement):
+        (WebCore::ApplyStyleCommand::replaceWithSpanOrRemoveIfWithoutAttributes):
+        (WebCore::ApplyStyleCommand::removeImplicitlyStyledElement):
+        (WebCore::ApplyStyleCommand::removeCSSStyle):
+        (WebCore::ApplyStyleCommand::highestAncestorWithConflictingInlineStyle):
+        (WebCore::ApplyStyleCommand::pushDownInlineStyleAroundNode):
+        (WebCore::ApplyStyleCommand::removeInlineStyle):
+        (WebCore::ApplyStyleCommand::shouldSplitTextElement):
+        (WebCore::ApplyStyleCommand::mergeStartWithPreviousIfIdentical):
+        (WebCore::ApplyStyleCommand::mergeEndWithNextIfIdentical):
+        (WebCore::ApplyStyleCommand::surroundNodeRangeWithElement):
+        (WebCore::ApplyStyleCommand::addBlockStyle):
+        (WebCore::ApplyStyleCommand::joinChildTextNodes):
+        * editing/ApplyStyleCommand.h:
+        (WebCore::ApplyStyleCommand::shouldRemoveInlineStyleFromElement):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::removeChildrenInRange):
+        (WebCore::CompositeEditCommand::mergeIdenticalElements):
+        (WebCore::CompositeEditCommand::insertTextIntoNode):
+        (WebCore::CompositeEditCommand::deleteTextFromNode):
+        (WebCore::CompositeEditCommand::replaceTextInNode):
+        (WebCore::CompositeEditCommand::replaceSelectedTextInNode):
+        (WebCore::CompositeEditCommand::replaceTextInNodePreservingMarkers):
+        (WebCore::CompositeEditCommand::removeNodeAttribute):
+        (WebCore::CompositeEditCommand::rebalanceWhitespaceAt):
+        (WebCore::CompositeEditCommand::rebalanceWhitespaceOnTextSubstring):
+        (WebCore::CompositeEditCommand::prepareWhitespaceAtPositionForSplit):
+        (WebCore::CompositeEditCommand::deleteInsignificantText):
+        (WebCore::CompositeEditCommand::removePlaceholderAt):
+        (WebCore::CompositeEditCommand::cleanupAfterDeletion):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/CompositeEditCommand.h:
+        * editing/DeleteFromTextNodeCommand.cpp:
+        (WebCore::DeleteFromTextNodeCommand::DeleteFromTextNodeCommand):
+        (WebCore::DeleteFromTextNodeCommand::doApply):
+        (WebCore::DeleteFromTextNodeCommand::doUnapply):
+        (WebCore::DeleteFromTextNodeCommand::getNodesInCommand):
+        * editing/DeleteFromTextNodeCommand.h:
+        (WebCore::DeleteFromTextNodeCommand::create):
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::deleteTextFromNode):
+        (WebCore::DeleteSelectionCommand::handleGeneralDelete):
+        (WebCore::DeleteSelectionCommand::fixupWhitespace):
+        * editing/DeleteSelectionCommand.h:
+        * editing/EditingAllInOne.cpp:
+        * editing/EditingStyle.cpp:
+        (WebCore::EditingStyle::removeStyleConflictingWithStyleOfNode):
+        (WebCore::elementMatchesAndPropertyIsNotInInlineStyleDecl):
+        (WebCore::EditingStyle::mergeInlineAndImplicitStyleOfElement):
+        (WebCore::EditingStyle::wrappingStyleForSerialization):
+        (WebCore::styleFromMatchedRulesForElement):
+        (WebCore::EditingStyle::mergeStyleFromRules):
+        (WebCore::EditingStyle::mergeStyleFromRulesForSerialization):
+        (WebCore::EditingStyle::removeStyleFromRulesAndContext):
+        (WebCore::EditingStyle::removePropertiesInElementDefaultStyle):
+        * editing/EditingStyle.h:
+        * editing/IndentOutdentCommand.cpp:
+        (WebCore::IndentOutdentCommand::tryIndentingAsListItem):
+        * editing/InsertIntoTextNodeCommand.cpp:
+        (WebCore::InsertIntoTextNodeCommand::InsertIntoTextNodeCommand):
+        (WebCore::InsertIntoTextNodeCommand::getNodesInCommand):
+        * editing/InsertIntoTextNodeCommand.h:
+        (WebCore::InsertIntoTextNodeCommand::create):
+        * editing/InsertLineBreakCommand.cpp:
+        (WebCore::InsertLineBreakCommand::doApply):
+        * editing/InsertListCommand.cpp:
+        (WebCore::InsertListCommand::mergeWithNeighboringLists):
+        (WebCore::InsertListCommand::listifyParagraph):
+        * editing/InsertParagraphSeparatorCommand.cpp:
+        (WebCore::InsertParagraphSeparatorCommand::doApply):
+        * editing/InsertTextCommand.cpp:
+        (WebCore::InsertTextCommand::performOverwrite):
+        (WebCore::InsertTextCommand::doApply):
+        (WebCore::InsertTextCommand::insertTab):
+        * editing/MergeIdenticalElementsCommand.cpp:
+        (WebCore::MergeIdenticalElementsCommand::MergeIdenticalElementsCommand):
+        (WebCore::MergeIdenticalElementsCommand::doApply):
+        (WebCore::MergeIdenticalElementsCommand::doUnapply):
+        (WebCore::MergeIdenticalElementsCommand::getNodesInCommand):
+        * editing/MergeIdenticalElementsCommand.h:
+        (WebCore::MergeIdenticalElementsCommand::create):
+        * editing/RemoveCSSPropertyCommand.cpp: Removed.
+        * editing/RemoveCSSPropertyCommand.h: Removed.
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline):
+        (WebCore::ReplaceSelectionCommand::doApply):
+        (WebCore::ReplaceSelectionCommand::addSpacesForSmartReplace):
+        (WebCore::ReplaceSelectionCommand::mergeTextNodesAroundPosition):
+        * editing/markup.cpp:
+        (WebCore::StyledMarkupAccumulator::appendElement):
+        (WebCore::styleFromMatchedRulesAndInlineDecl):
+        (WebCore::createMarkupInternal):
+
+2017-05-03  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Treat cells with ARIA table cell properties as cells
+        https://bugs.webkit.org/show_bug.cgi?id=171178
+
+        Reviewed by Chris Fleizach.
+
+        Add the following checks to heuristics in AccessibilityTable::isDataTable():
+        1. If the author has provided a valid aria-rowcount or aria-colcount value on
+           the table element, expose it as a data table.
+        2. If the author has provided a valid aria-colindex or aria-rowindex on the
+           cell element, expose it as a data table.
+        3. If the author has provided a valid aria-rowindex on the row element, expose
+           it as a data table.
+        4. If the author has provided a value for aria-colspan or aria-rowspan on a cell,
+           expose it as a data table (even though we are supposed to ignore the value for
+           the purpose of exposing the span via platform accessibility APIs)
+
+        Remove the heuristic that a table with only one cell is "not a good AXTable candidate."
+        It prevents us from ever doing the above checks.
+
+        Test: accessibility/minimal-table-with-aria-is-data-table.html
+
+        * accessibility/AccessibilityTable.cpp:
+        (WebCore::AccessibilityTable::isDataTable):
+
+2017-05-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Cairo] Handle extended colors in gradients
+        https://bugs.webkit.org/show_bug.cgi?id=171596
+
+        Reviewed by Michael Catanzaro.
+
+        Check if every gradient color step is an extended color and use asExtended() instead of getRGBA() in such case.
+
+        Fixes: css3/color/gradients.html
+
+        * platform/graphics/cairo/GradientCairo.cpp:
+        (WebCore::Gradient::platformGradient):
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Abandon the current load once the provisional loader detaches from the frame
+        https://bugs.webkit.org/show_bug.cgi?id=171577
+        <rdar://problem/31581227>
+
+        Reviewed by Brent Fulgham and Brady Eidson.
+
+        We detach all child frames as part of setting our document loader to the provisional
+        document loader when committing a load for a frame. Detaching child frames invokes
+        the unload event handler on the child frames that can run arbitrary JavaScript script.
+        Among other things, such script can initiate a new load in the frame whose current
+        load is being committed. We should stop processing the current load as soon as we
+        detect that updating our document loader has started a new provisional load.
+
+        Test: fast/loader/inner-iframe-loads-data-url-into-parent-on-unload-crash.html
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::transitionToCommitted):
+
+2017-05-03  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: Remove out-of-date comment and null check from DocumentLoader::detachFromFrame()
+        https://bugs.webkit.org/show_bug.cgi?id=171604
+
+        Reviewed by Brady Eidson.
+
+        We no longer want to passively allow DocumentLoader::detachFromFrame() to be called twice.
+        It does not make sense to be called twice and should never be called twice. A release assert
+        in DocumentLoader::cancelPolicyCheckIfNeeded() (added in r187558) called by DocumentLoader::detachFromFrame()
+        enforces this invariant. Therefore we can remove the null check of DocumentLoader::m_frame
+        and the comment that explains the purpose of this null check from DocumentLoader::detachFromFrame().
+
+        * loader/DocumentLoader.cpp:
+        (WebCore::DocumentLoader::detachFromFrame):
+
+2017-05-03  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed attempt to fix the Windows build after r216117.
+        https://bugs.webkit.org/show_bug.cgi?id=171601
+
+        * css/CSSAllInOne.cpp:
+
+2017-05-03  Antti Koivisto  <antti@apple.com>
+
+        Rename StyleInvalidationAnalysis to Style::Invalidator
+        https://bugs.webkit.org/show_bug.cgi?id=171601
+
+        Reviewed by Žan Doberšek.
+
+        Also move it to the 'style' directory.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/StyleInvalidationAnalysis.cpp: Removed.
+        * css/StyleInvalidationAnalysis.h: Removed.
+        * dom/ExtensionStyleSheets.cpp:
+        * style/AttributeChangeInvalidation.cpp:
+        (WebCore::Style::AttributeChangeInvalidation::invalidateDescendants):
+        * style/ClassChangeInvalidation.cpp:
+        (WebCore::Style::ClassChangeInvalidation::invalidateDescendantStyle):
+        * style/StyleInvalidator.cpp: Copied from Source/WebCore/css/StyleInvalidationAnalysis.cpp.
+        (WebCore::Style::Invalidator::Invalidator):
+        (WebCore::Style::Invalidator::invalidateIfNeeded):
+        (WebCore::Style::Invalidator::invalidateStyleForTree):
+        (WebCore::Style::Invalidator::invalidateStyle):
+        (WebCore::shouldDirtyAllStyle): Deleted.
+        (WebCore::StyleInvalidationAnalysis::StyleInvalidationAnalysis): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateIfNeeded): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateStyleForTree): Deleted.
+        (WebCore::StyleInvalidationAnalysis::invalidateStyle): Deleted.
+        * style/StyleInvalidator.h: Copied from Source/WebCore/css/StyleInvalidationAnalysis.h.
+        (WebCore::StyleInvalidationAnalysis::dirtiesAllStyle): Deleted.
+        (WebCore::StyleInvalidationAnalysis::hasShadowPseudoElementRulesInAuthorSheet): Deleted.
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+        (WebCore::Style::Scope::analyzeStyleSheetChange):
+
+2017-05-02  Andrew Gold  <agold@apple.com>
+
+        Typo in AVAudioSessionCaptureDeviceManager.mm
+        https://bugs.webkit.org/show_bug.cgi?id=171572
+
+        Reviewed by Jer Noble.
+
+        We attempt to call +[AVAudioSession sharedSession], but the actual method is 
+        called +[AVAudioSession sharedInstance].
+
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm:
+        (WebCore::AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices):
+
+2017-05-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Improve scrolling tree logging
+        https://bugs.webkit.org/show_bug.cgi?id=171574
+
+        Reviewed by Tim Horton.
+
+        Make a call to showScrollingStateTree() print debugging-related information like node and layer IDs.
+        Required fixing scrolling state tree nodes to respect ScrollingStateTreeAsTextBehavior, and fixing
+        fixed and sticky nodes to call super.
+
+        Also enhance compositing logging to show layer IDs, and to log for layer scrolling tree registration.
+
+        * page/scrolling/AsyncScrollingCoordinator.cpp:
+        (WebCore::AsyncScrollingCoordinator::scrollingStateTreeAsText):
+        * page/scrolling/AsyncScrollingCoordinator.h:
+        * page/scrolling/ScrollingCoordinator.cpp:
+        (WebCore::ScrollingCoordinator::scrollingStateTreeAsText):
+        * page/scrolling/ScrollingCoordinator.h:
+        * page/scrolling/ScrollingStateFixedNode.cpp:
+        (WebCore::ScrollingStateFixedNode::dumpProperties):
+        * page/scrolling/ScrollingStateNode.cpp:
+        (WebCore::ScrollingStateNode::dumpProperties):
+        (WebCore::ScrollingStateNode::scrollingStateTreeAsText):
+        * page/scrolling/ScrollingStateNode.h:
+        * page/scrolling/ScrollingStateScrollingNode.cpp:
+        (WebCore::ScrollingStateScrollingNode::dumpProperties):
+        * page/scrolling/ScrollingStateStickyNode.cpp:
+        (WebCore::ScrollingStateStickyNode::dumpProperties):
+        * page/scrolling/ScrollingStateTree.cpp:
+        (showScrollingStateTree):
+        * page/scrolling/mac/ScrollingCoordinatorMac.mm:
+        (WebCore::ScrollingCoordinatorMac::commitTreeState):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::detachFromScrollingCoordinator):
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::logLayerInfo):
+        (WebCore::RenderLayerCompositor::updateScrollCoordinatedLayer):
+
+2017-05-02  Daniel Bates  <dabates@apple.com>
+
+        Using StringView.split() instead of String.split() in some places
+        https://bugs.webkit.org/show_bug.cgi?id=170925
+
+        Reviewed by Darin Adler and Sam Weinig.
+
+        Replace some uses of String.split() with StringView.split() (added in r211087) as the latter
+        avoids the need to allocate an intermediary Vector of substrings. Instead StringView.split()
+        returns an iterator for traversing the substrings.
+
+        No functionality changed. So, no new tests.
+
+        * accessibility/AccessibilityObject.cpp: Convert some typedefs to modern C++ using declarations.
+        (WebCore::AccessibilityObject::ariaRoleToWebCoreRole): Modified code to use StringView.split().
+        (WebCore::AccessibilityObject::elementsFromAttribute): Ditto.
+        * dom/TreeScope.cpp:
+        (WebCore::TreeScope::getElementById): Added.
+        * dom/TreeScope.h:
+        * html/LinkRelAttribute.cpp:
+        (WebCore::LinkRelAttribute::LinkRelAttribute): Modified code to use StringView.split().
+        * html/parser/XSSAuditor.cpp:
+        (WebCore::semicolonSeparatedValueContainsJavaScriptURL): Ditto.
+        * platform/graphics/avfoundation/CDMPrivateMediaSourceAVFObjC.mm:
+        (WebCore::CDMPrivateMediaSourceAVFObjC::createSession): Ditto.
+        * platform/network/CacheValidation.cpp:
+        (WebCore::collectVaryingRequestHeaders): Simplify code by using the String.split(UChar, Vector<String>&) overload.
+        * svg/SVGAnimationElement.cpp:
+        (WebCore::parseKeyTimes): Modified code to use StringView.split().
+        * svg/SVGToOTFFontConversion.cpp:
+        (WebCore::SVGToOTFFontConverter::SVGToOTFFontConverter): Ditto.
+        * testing/Internals.cpp:
+        (WebCore::Internals::setMediaSessionRestrictions): Ditto.
+        (WebCore::Internals::setMediaElementRestrictions): Ditto.
+        (WebCore::Internals::setAudioContextRestrictions): Ditto.
+        (WebCore::Internals::setPageMuted): Ditto.
+        * testing/Internals.h:
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Drop coordinated surfaces from the compositing thread as soon as possible
+        https://bugs.webkit.org/show_bug.cgi?id=171544
+
+        Reviewed by Žan Doberšek.
+
+        * platform/graphics/texmap/coordinated/CoordinatedGraphicsState.h:
+        Remove atlasesToRemove from the GraphicsState. It is not a commit
+        state anymore.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Recycle textures while handling tiles
+        https://bugs.webkit.org/show_bug.cgi?id=171541
+
+        Reviewed by Žan Doberšek.
+
+        * platform/graphics/texmap/TextureMapperTile.h:
+        Modified m_texture as a protected member to avoid unnessary
+        refcountings from the CoordinatedBackingStore.
+        * platform/graphics/texmap/coordinated/CoordinatedSurface.h:
+        Use reference instead of RefPtr to pass BitmapTexture
+
+        No new tests since there should be no change in behavior.
+
+2017-05-02  Zalan Bujtas  <zalan@apple.com>
+
+        Defer AX cache update when text content changes until after layout is finished.
+        https://bugs.webkit.org/show_bug.cgi?id=171429
+        <rdar://problem/31885984>
+
+        Reviewed by Simon Fraser.
+
+        When the content of the RenderText changes (even as the result of a text-transform change)
+        instead of updating the AX cache eagerly (and trigger layout on a half-backed render tree)
+        we should just defer it until after the subsequent layout is done. 
+
+        Test: accessibility/crash-while-adding-text-child-with-transform.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::remove):
+        (WebCore::AXObjectCache::performDeferredCacheUpdate):
+        (WebCore::AXObjectCache::recomputeDeferredIsIgnored):
+        (WebCore::AXObjectCache::deferTextChanged):
+        (WebCore::AXObjectCache::performDeferredIsIgnoredChange): Deleted.
+        * accessibility/AXObjectCache.h:
+        (WebCore::AXObjectCache::deferTextChanged):
+        (WebCore::AXObjectCache::performDeferredCacheUpdate):
+        (WebCore::AXObjectCache::performDeferredIsIgnoredChange): Deleted.
+        * page/FrameView.cpp:
+        (WebCore::FrameView::performPostLayoutTasks):
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::setText):
+
+2017-05-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove an extraneous call to dispatch_group_async in WebItemProviderPasteboard.mm
+        https://bugs.webkit.org/show_bug.cgi?id=171561
+
+        Reviewed by Tim Horton.
+
+        In -[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:], the lifetime of the dispatch group
+        `fileLoadingGroup` is already guarded by dispatch_group_enter/leave calls when beginning and concluding an
+        item provider load, respectively. As such, the call to dispatch_group_async serves no purpose and should be removed.
+
+        No new tests, since there is no change in behavior.
+
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (-[WebItemProviderPasteboard doAfterLoadingProvidedContentIntoFileURLs:]):
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        [LibWebRTC] Set explicitly logging level in debug mode
+        https://bugs.webkit.org/show_bug.cgi?id=171562
+
+        Reviewed by Eric Carlson.
+
+        No change of behavior.
+
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp:
+        (WebCore::initializePeerConnectionFactoryAndThreads): Setting explictly LibWebRTC logging to Info level for
+        debug builds if WebRTC channel is on.
+
+2017-05-02  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Update implementation of aria-orientation
+        https://bugs.webkit.org/show_bug.cgi?id=171166
+
+        Reviewed by Chris Fleizach.
+
+        Update AccessibilityRenderObject::orientation() to be consistent with what is
+        in the ARIA 1.1 spec. Also add an isTreeGrid() convenience method to be consistent
+        with what we do for other roles.
+
+        Test: accessibility/aria-orientation.html
+
+        * accessibility/AccessibilityARIAGridRow.cpp:
+        (WebCore::AccessibilityARIAGridRow::isARIATreeGridRow):
+        * accessibility/AccessibilityObject.h:
+        (WebCore::AccessibilityObject::isTreeGrid):
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::orientation):
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION (r211382): Partial right-to-left text runs are painted at an offset (breaks Find indicators, Look Up, and custom ::selection style)
+        https://bugs.webkit.org/show_bug.cgi?id=169517
+        <rdar://problem/30652443>
+
+        Reviewed by Dean Jackson.
+
+        FontCascade::getGlyphsAndAdvancesForComplexText() is tasked with calculating paint advances for a
+        subrange of RTL text. It does this by creating a ComplexTextController, telling it to iterate to
+        the beginning of the subrange (outputting to a GlyphBuffer), then telling it to iterate to the end
+        of the subrange (outputting to another GlyphBuffer). Because the text is RTL, the sum of the
+        advances gathered so far is the distance from the right edge of the text to the left edge of the
+        subrange (because we advance in logical order). Therefore, the x-coordinate we are at now is the
+        total width minus the sum of both of the GlyphBuffers. For some reason, when I wrote this code I
+        forgot to add in the contribution from the first GlyphBuffer. Unfortunately, this particular
+        codepath is rarely hit in practice and completely untested, which made me miss it when I wrote it.
+
+        Test: fast/text/complex-text-selection.html
+
+        * platform/graphics/cocoa/FontCascadeCocoa.mm:
+        (WebCore::FontCascade::getGlyphsAndAdvancesForComplexText):
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        [macOS] Flaky Crash under EventTarget::fireEventListeners on imported/blink/paint/deprecatedpaintlayer/non-self-painting-layer-overrides-visibility.html
+        https://bugs.webkit.org/show_bug.cgi?id=171406
+        <rdar://problem/30945281>
+
+        Reviewed by Eric Carlson.
+
+        I was unfortunately unable to reproduce the flaky crash locally. However, the crash trace
+        indicates that one of the EventTarget::scriptExecutionContext() overrides is returning a
+        stale ScriptExecutionContext pointer. Since a GenericEventQueue is involved, the EventTarget
+        is likely a media-related object. I therefore audited media classes that override
+        EventTarget::scriptExecutionContext() and found several that look unsafe. I am fixing those
+        by having them override ContextDestructionObserver, instead of having a raw
+        ScriptExecutionContext pointer member. This makes sure the pointer gets nulled out whenever
+        the scriptexecutioncontext gets destroyed, ensuring that those classes's
+        EventTarget::scriptExecutionContext() overrides can never return a stale pointer.
+
+        * Modules/mediasource/SourceBufferList.cpp:
+        (WebCore::SourceBufferList::SourceBufferList):
+        * Modules/mediasource/SourceBufferList.h:
+        * html/track/TextTrack.cpp:
+        (WebCore::TextTrack::TextTrack):
+        * html/track/TextTrack.h:
+        * html/track/TrackListBase.cpp:
+        (TrackListBase::TrackListBase):
+        * html/track/TrackListBase.h:
+
+2017-05-02  Antti Koivisto  <antti@apple.com>
+
+        Document style resolvers should share user rulesets
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+
+        Reviewed by Andreas Kling.
+
+        Large user stylesheets (like those used by ad blockers) can end up using lots of memory if
+        a document uses large number of shadow trees. User style is inherently per-document and
+        the resulting rulesets can be shared between the document and the shadow trees.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::DocumentRuleSets):
+        (WebCore::DocumentRuleSets::userStyle):
+
+            Return per-document user style for shadow trees.
+
+        (WebCore::DocumentRuleSets::collectFeatures):
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::setUsesSharedUserStyle):
+        (WebCore::DocumentRuleSets::userStyle): Deleted.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::StyleResolver):
+        (WebCore::StyleResolver::initializeUserStyle):
+
+            Separate user style initialization from construction.
+
+        * css/StyleResolver.h:
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+
+            Don't initialize user style for user agents shadow trees.
+
+2017-05-02  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Font Loading API specifies font is loaded but sizing of font after load reports inconsistent values
+        https://bugs.webkit.org/show_bug.cgi?id=168533
+
+        Reviewed by Zalan Bujtas.
+
+        Previously, we were marking all local() fonts as immediately successful,
+        regardless of whether or not they were present on the system. Instead, we
+        should use the load() function to make this determination and mark the font
+        as failed if it doesn't exist. (This is, after all, the whole point of the
+        load() function). This brings us in-line with Firefox's and Chrome's
+        behavior.
+
+        Test: fast/text/font-loading-local.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::pump): Remote loading requires the FontSelector,
+        but it isn't available for local fonts. Now that load() is called for both
+        local and remote fonts, the ASSERT() should be lowered into the load()
+        function and scoped to just the case where we have a remote font.
+        (WebCore::CSSFontFace::font): Ditto.
+        * css/CSSFontFaceSource.cpp:
+        (WebCore::CSSFontFaceSource::CSSFontFaceSource): Don't immediatley set
+        the success/failure state for local fonts.
+        (WebCore::CSSFontFaceSource::load): Move loading logic from font() to
+        load(). None of this code is new; it just is moved.
+        (WebCore::CSSFontFaceSource::font): Delete code moved to load().
+        * css/CSSFontFaceSource.h:
+        * css/FontFace.cpp:
+        (WebCore::FontFace::create):
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Allow media stream based videos with sound to autoplay if the page is already playing sound
+        https://bugs.webkit.org/show_bug.cgi?id=171447
+
+        Reviewed by Eric Carlson.
+
+        Test: http/tests/media/autoplay-if-audio-is-playing.html for ensuring non-mediastream based video will not autoplay.
+        Manual testing for the autoplay of media stream based videos since such a test should happen without using getUserMedia.
+
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::playbackPermitted):
+
+2017-05-02  Chris Dumez  <cdumez@apple.com>
+
+        Use PassRefPtr less in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=171534
+
+        Reviewed by Geoffrey Garen.
+
+        Use PassRefPtr less in editing code.
+
+        * editing/AppendNodeCommand.cpp:
+        (WebCore::AppendNodeCommand::AppendNodeCommand):
+        (WebCore::AppendNodeCommand::getNodesInCommand):
+        * editing/AppendNodeCommand.h:
+        (WebCore::AppendNodeCommand::create):
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::ApplyStyleCommand::surroundNodeRangeWithElement):
+        (WebCore::ApplyStyleCommand::positionToComputeInlineStyleChange):
+        * editing/BreakBlockquoteCommand.cpp:
+        (WebCore::BreakBlockquoteCommand::doApply):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::insertNodeBefore):
+        (WebCore::CompositeEditCommand::insertNodeAfter):
+        (WebCore::CompositeEditCommand::insertNodeAt):
+        (WebCore::CompositeEditCommand::appendNode):
+        (WebCore::CompositeEditCommand::moveRemainingSiblingsToNewParent):
+        (WebCore::CompositeEditCommand::mergeIdenticalElements):
+        (WebCore::CompositeEditCommand::insertNodeAtTabSpanPosition):
+        (WebCore::CompositeEditCommand::appendBlockPlaceholder):
+        (WebCore::CompositeEditCommand::insertBlockPlaceholder):
+        (WebCore::CompositeEditCommand::addBlockPlaceholderIfNeeded):
+        (WebCore::CompositeEditCommand::insertNewDefaultParagraphElementAt):
+        (WebCore::CompositeEditCommand::cloneParagraphUnderNewElement):
+        (WebCore::CompositeEditCommand::moveParagraphs):
+        * editing/CompositeEditCommand.h:
+        * editing/CreateLinkCommand.cpp:
+        (WebCore::CreateLinkCommand::doApply):
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::makeStylingElementsDirectChildrenOfEditableRootToPreventStyleLoss):
+        (WebCore::DeleteSelectionCommand::mergeParagraphs):
+        * editing/FormatBlockCommand.cpp:
+        (WebCore::FormatBlockCommand::formatRange):
+        * editing/IndentOutdentCommand.cpp:
+        (WebCore::IndentOutdentCommand::tryIndentingAsListItem):
+        (WebCore::IndentOutdentCommand::indentIntoBlockquote):
+        (WebCore::IndentOutdentCommand::outdentParagraph):
+        * editing/InsertLineBreakCommand.cpp:
+        (WebCore::InsertLineBreakCommand::doApply):
+        * editing/InsertLineBreakCommand.h:
+        * editing/InsertListCommand.cpp:
+        (WebCore::InsertListCommand::fixOrphanedListChild):
+        (WebCore::InsertListCommand::doApplyForSingleParagraph):
+        (WebCore::InsertListCommand::unlistifyParagraph):
+        (WebCore::InsertListCommand::listifyParagraph):
+        * editing/InsertListCommand.h:
+        * editing/InsertNodeBeforeCommand.cpp:
+        (WebCore::InsertNodeBeforeCommand::InsertNodeBeforeCommand):
+        (WebCore::InsertNodeBeforeCommand::doApply):
+        (WebCore::InsertNodeBeforeCommand::doUnapply):
+        (WebCore::InsertNodeBeforeCommand::getNodesInCommand):
+        * editing/InsertNodeBeforeCommand.h:
+        (WebCore::InsertNodeBeforeCommand::create):
+        * editing/InsertParagraphSeparatorCommand.cpp:
+        (WebCore::InsertParagraphSeparatorCommand::cloneHierarchyUnderNewBlock):
+        (WebCore::InsertParagraphSeparatorCommand::doApply):
+        * editing/InsertParagraphSeparatorCommand.h:
+        * editing/InsertTextCommand.cpp:
+        (WebCore::InsertTextCommand::positionInsideTextNode):
+        (WebCore::InsertTextCommand::insertTab):
+        * editing/ModifySelectionListLevel.cpp:
+        (WebCore::ModifySelectionListLevelCommand::insertSiblingNodeRangeBefore):
+        (WebCore::ModifySelectionListLevelCommand::insertSiblingNodeRangeAfter):
+        (WebCore::ModifySelectionListLevelCommand::appendSiblingNodeRange):
+        (WebCore::IncreaseSelectionListLevelCommand::doApply):
+        * editing/RemoveNodePreservingChildrenCommand.cpp:
+        (WebCore::RemoveNodePreservingChildrenCommand::doApply):
+        * editing/ReplaceSelectionCommand.cpp:
+        (WebCore::ReplaceSelectionCommand::moveNodeOutOfAncestor):
+        (WebCore::ReplaceSelectionCommand::mergeEndIfNeeded):
+        (WebCore::ReplaceSelectionCommand::doApply):
+        (WebCore::ReplaceSelectionCommand::addSpacesForSmartReplace):
+        (WebCore::ReplaceSelectionCommand::insertAsListItems):
+        * editing/SimplifyMarkupCommand.cpp:
+        (WebCore::SimplifyMarkupCommand::pruneSubsequentAncestorsToRemove):
+
+2017-05-02  Ben Kelly <ben@wanderview.com>
+
+        Set Response.blob() type correctly when body is a ReadableStream.
+        https://bugs.webkit.org/show_bug.cgi?id=171489
+
+        Reviewed by Youenn Fablet
+
+        The Fetch API specification requires setting the blob contentType
+        using the Content-Type header value, if present.  Currently WebKit
+        only sets the type on the FetchBodyConsumer when FetchBody::blob()
+        is called.  Unfortunately, this is never called if the body is
+        actually a ReadableStream.
+
+        This change allows WebKit to pass the "Consume response's body: from
+        stream to blob" case in the WPT response-consume.html test.
+
+        Test: http://w3c-test.org/fetch/api/response/response-consume.html
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::startConsumingStream): Modified to call
+        FetchBodyConsumer::setContentType() before processing the stream.
+
+2017-05-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216069.
+
+        This change broke the build.
+
+        Reverted changeset:
+
+        "Document style resolvers should share user rulesets"
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+        http://trac.webkit.org/changeset/216069
+
+2017-05-02  Antti Koivisto  <antti@apple.com>
+
+        Document style resolvers should share user rulesets
+        https://bugs.webkit.org/show_bug.cgi?id=171549
+
+        Reviewed by Andreas Kling.
+
+        Large user stylesheets (like those used by ad blockers) can end up using lots of memory if
+        a document uses large number of shadow trees. User style is inherently per-document and
+        the resulting rulesets can be shared between the document and the shadow trees.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::DocumentRuleSets):
+        (WebCore::DocumentRuleSets::userStyle):
+
+            Return per-document user style for shadow trees.
+
+        (WebCore::DocumentRuleSets::collectFeatures):
+        * css/DocumentRuleSets.h:
+        (WebCore::DocumentRuleSets::setUsesSharedUserStyle):
+        (WebCore::DocumentRuleSets::userStyle): Deleted.
+        * css/StyleResolver.cpp:
+        (WebCore::StyleResolver::StyleResolver):
+        (WebCore::StyleResolver::initializeUserStyle):
+
+            Separate user style initialization from construction.
+
+        * css/StyleResolver.h:
+        * style/StyleScope.cpp:
+        (WebCore::Style::Scope::resolver):
+
+            Don't initialize user style for user agents shadow trees.
+
+2017-05-02  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GTK] Remove undefined nativeImage method from the ImageBuffer's header
+        https://bugs.webkit.org/show_bug.cgi?id=171502
+
+        Unreviewed, remove a dead code accidentally committed in r194630.
+
+        * platform/graphics/ImageBuffer.h: Remove nativeImage method.
+        It is accidentally added during a refectorying at r194630, and there is
+        no definition for this method.
+
+2017-05-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GStreamer] Dailymotion live stream videos don't play
+        https://bugs.webkit.org/show_bug.cgi?id=170767
+
+        Reviewed by Sergio Villar Senin.
+
+        The video shows a message saying that an error occurred and nothing is played. There are actually several
+        problems with dailymotion. The main issue is that URLs are redirected by the server, and GStreamer needs to
+        know the redirected URL. Once GStreamer knows the redirected URL the error message no longer appears, the video
+        starts but it always stops after a few seconds. This is because the source receives an early EOS while still
+        downloading the fragments. The reason of the early EOS is because dailymotion sends a wrong Content-Length header,
+        something that is expected to happen and we correctly handle that case when receiving the data, by updating the
+        size accordingly if the bytes received are longer than the expected content length. This particular case
+        doesn't work well with GStreamer automatic EOS handling, which is the default. At some point, GStreamer detects
+        that the bytes received are at least the expected ones and emits a GST_EVENT_EOS that the GstUriDownloader
+        handles finishing the download early. We should always disable automatic EOS, since we know when EOS actually
+        happens and we already call gst_app_src_end_of_stream(). This patch also emits a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY
+        event to let GStreamer know about the HTTP headers sent and received.
+
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webkit_web_src_init): Disable automatic EOS.
+        (webKitWebSrcGetProperty): Return the redirected URL in case of redirection.
+        (webKitWebSrcStart): Pass the ResourceRequest to the stream clients.
+        (webKitWebSrcQueryWithParent): Set the redirected URL in the query in case of redirection.
+        (webKitWebSrcSetUri): Clear also the redirected URL when setting a new URI.
+        (StreamingClient::StreamingClient): Use GRefPtr for the source and initialize the request too.
+        (StreamingClient::~StreamingClient): Remove explicit unref.
+        (StreamingClient::createReadBuffer):
+        (StreamingClient::handleResponseReceived): Initialize the redirected URL in case of redirection. Create and push
+        the HTTP headers event.
+        (StreamingClient::handleDataReceived):
+        (StreamingClient::handleNotifyFinished):
+        (CachedResourceStreamingClient::CachedResourceStreamingClient):
+        (CachedResourceStreamingClient::responseReceived):
+        (CachedResourceStreamingClient::accessControlCheckFailed):
+        (CachedResourceStreamingClient::loadFailed):
+        (ResourceHandleStreamingClient::ResourceHandleStreamingClient):
+        (ResourceHandleStreamingClient::didFail):
+        (ResourceHandleStreamingClient::wasBlocked):
+        (ResourceHandleStreamingClient::cannotShowURL):
+
+2017-05-02  Youenn Fablet  <youenn@apple.com>
+
+        Adding logging to RTCPeerConnection to allow WebRTC application debugging
+        https://bugs.webkit.org/show_bug.cgi?id=171531
+
+        Reviewed by Jon Lee.
+
+        No change of behavior.
+        This allows easier debugging of webrtc-enabled web pages.
+
+        * Modules/mediastream/PeerConnectionBackend.cpp:
+        (WebCore::PeerConnectionBackend::createOfferSucceeded):
+        (WebCore::PeerConnectionBackend::createOfferFailed):
+        (WebCore::PeerConnectionBackend::createAnswerSucceeded):
+        (WebCore::PeerConnectionBackend::createAnswerFailed):
+        (WebCore::PeerConnectionBackend::setLocalDescriptionSucceeded):
+        (WebCore::PeerConnectionBackend::setLocalDescriptionFailed):
+        (WebCore::PeerConnectionBackend::setRemoteDescriptionSucceeded):
+        (WebCore::PeerConnectionBackend::setRemoteDescriptionFailed):
+        (WebCore::PeerConnectionBackend::addIceCandidateSucceeded):
+        (WebCore::PeerConnectionBackend::addIceCandidateFailed):
+        (WebCore::PeerConnectionBackend::newICECandidate):
+        (WebCore::PeerConnectionBackend::doneGatheringCandidates):
+        * Modules/mediastream/RTCPeerConnection.cpp:
+        (WebCore::RTCPeerConnection::queuedCreateOffer):
+        (WebCore::RTCPeerConnection::queuedCreateAnswer):
+        (WebCore::RTCPeerConnection::queuedSetLocalDescription):
+        (WebCore::RTCPeerConnection::queuedSetRemoteDescription):
+        (WebCore::RTCPeerConnection::queuedAddIceCandidate):
+
+2017-04-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Crash at WebCore::ResourceHandle::clearClient() when streaming live video from dailymotion
+        https://bugs.webkit.org/show_bug.cgi?id=169725
+
+        Reviewed by Michael Catanzaro.
+
+        Make ResourceHandleStreamingClient refcounted and add an invalidate method to do the cleanup in the networking
+        thread while keeping a reference.
+
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webKitWebSrcStop): Call invalidate before reseting client pointer.
+        (webKitWebSrcStart): Ditto.
+        (ResourceHandleStreamingClient::ResourceHandleStreamingClient): Remove all cleanup code after the run loop run call.
+        (ResourceHandleStreamingClient::~ResourceHandleStreamingClient): Just detach the thread.
+        (ResourceHandleStreamingClient::invalidate): Schedule a task on the networking thread to clean up and fiish the
+        run loop, protecting this.
+        (ResourceHandleStreamingClient::setDefersLoading): Protect this.
+        (ResourceHandleStreamingClient::didReceiveResponse): Do nothing if client was invalidated.
+        (ResourceHandleStreamingClient::didReceiveBuffer): Ditto.
+        (ResourceHandleStreamingClient::didFinishLoading): Ditto.
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] ECDSA signing and verification support
+        https://bugs.webkit.org/show_bug.cgi?id=171103
+
+        Reviewed by Carlos Garcia Campos.
+
+        Implement WebCrypto ECDSA support for configurations that
+        are using libgcrypt.
+
+        For signing, the provided data is first hashed with the specified
+        digest algorithm and embedded into a data s-expression. It's then
+        passed to gcry_pk_sign() along with the private key, returning a
+        sig-val s-expression. The r and s parameters are then retrieved from
+        that sig-val and their data extracted and concatenated in the output
+        Vector<>.
+
+        For verification, the data is again hashed and embedded into a data
+        s-expression. The r and s parameters are extracted from the passed-in
+        signature Vector<> and embedded into a sig-val s-expression. The data
+        and sig-val s-expressions are then passed to gcry_pk_verify() along
+        with the public key. The verification succeeds if no error is returned
+        and fails if the returned error code is GPG_ERR_BAD_SIGNATURE.
+
+        * crypto/gcrypt/CryptoAlgorithmECDSAGCrypt.cpp:
+        (WebCore::hashCryptoDigestAlgorithm):
+        (WebCore::hashAlgorithmName):
+        (WebCore::mpiData):
+        (WebCore::gcryptSign):
+        (WebCore::gcryptVerify):
+        (WebCore::CryptoAlgorithmECDSA::platformSign):
+        (WebCore::CryptoAlgorithmECDSA::platformVerify):
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] HKDF bit derivation support
+        https://bugs.webkit.org/show_bug.cgi?id=171074
+
+        Reviewed by Michael Catanzaro.
+
+        Implement bit derivation support for the HKDF algorithm for configurations
+        that use libgcrypt.
+
+        libgcrypt doesn't provide HKDF support out of the box, so we have to
+        implement the two steps manually. In the first one, we retrieve the
+        pseudo-random key by using the specified MAC algorithm with the salt data
+        as the key and the key data as the input keying material.
+
+        In the expand step, we do the required amount of iterations to derive
+        a sufficient amount of data, using the same MAC algorithm with the
+        pseudo-random key from the previous step on the data we compose from the
+        previous block data, the info data, and the current iteration value. The
+        resulting blocks are appended together until they can be clipped to the
+        desired output length.
+
+        * crypto/gcrypt/CryptoAlgorithmHKDFGCrypt.cpp:
+        (WebCore::macAlgorithmForHashFunction):
+        (WebCore::gcryptDeriveBits):
+        (WebCore::CryptoAlgorithmHKDF::platformDeriveBits):
+
+2017-05-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] ECDH bit derivation support
+        https://bugs.webkit.org/show_bug.cgi?id=171070
+
+        Reviewed by Michael Catanzaro.
+
+        Implement bit derivation support for the ECDH algorithm for configurations
+        that use libgcrypt.
+
+        This is done by retrieving the private key data and wrapping it in a new
+        data s-expression. That's then encrypted with the public key, and the
+        returned s-expression contains the shared point data. That data is then
+        decoded into an EC point, from which the x-coordinate is retrieved. This
+        coordinate data is finally our bit derivation result.
+
+        * crypto/gcrypt/CryptoAlgorithmECDHGCrypt.cpp:
+        (WebCore::gcryptDerive):
+        (WebCore::CryptoAlgorithmECDH::platformDeriveBits):
+
+2017-05-01  Youenn Fablet  <youenn@apple.com>
+
+        Ensure RealtimeOutgoingVideoSource sends a black frame when its related source is muted
+        https://bugs.webkit.org/show_bug.cgi?id=171497
+
+        Reviewed by Eric Carlson.
+
+        Covered by updated test.
+
+        When the track is being muted or disabled, send a black frame explicitly.
+        VideoToolBox sometimes does not output a frame until it receives the other.
+        That is why we end up sending two frames, the second asynchronously so that libwebrtc will not skip it.
+        Also storing the rotation so that we keep the same rotation for black frames.
+        Storing width and height for consistency as well.
+
+        * platform/mediastream/mac/RealtimeOutgoingVideoSource.cpp:
+        (WebCore::RealtimeOutgoingVideoSource::RealtimeOutgoingVideoSource):
+        (WebCore::RealtimeOutgoingVideoSource::setSource):
+        (WebCore::RealtimeOutgoingVideoSource::stop):
+        (WebCore::RealtimeOutgoingVideoSource::sourceMutedChanged):
+        (WebCore::RealtimeOutgoingVideoSource::sourceEnabledChanged):
+        (WebCore::RealtimeOutgoingVideoSource::setSizeFromSource):
+        (WebCore::RealtimeOutgoingVideoSource::sendBlackFrame):
+        (WebCore::RealtimeOutgoingVideoSource::sendFrame):
+        (WebCore::RealtimeOutgoingVideoSource::videoSampleAvailable):
+        * platform/mediastream/mac/RealtimeOutgoingVideoSource.h:
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Simplify Resource Timing handling of cached resource
+        https://bugs.webkit.org/show_bug.cgi?id=171526
+
+        Reviewed by Youenn Fablet.
+
+        * loader/DocumentThreadableLoader.cpp:
+        (WebCore::DocumentThreadableLoader::loadRequest):
+        * loader/SubresourceLoader.cpp:
+        (WebCore::SubresourceLoader::init):
+        (WebCore::SubresourceLoader::reportResourceTiming):
+        Use auto in ResourceTiming construction.
+        Eliminate an outdated comment.
+
+        * loader/cache/CachedResourceLoader.cpp:
+        (WebCore::CachedResourceLoader::requestResource):
+        We can avoid the checks around the request.origin. It should already
+        be the cases we were checking and asserting because of login in
+        CachedResourceLoader::prepareFetch.
+
+2017-05-01  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r216024.
+
+        This change caused ios-simulator LayoutTests to exit early
+        with assertion failures.
+
+        Reverted changeset:
+
+        "Add audio device change notifications to AudioSession."
+        https://bugs.webkit.org/show_bug.cgi?id=171403
+        http://trac.webkit.org/changeset/216024
+
+2017-05-01  Timothy Horton  <timothy_horton@apple.com>
+
+        Expose viewport-fit instead of clip-to-safe-area
+        https://bugs.webkit.org/show_bug.cgi?id=171503
+        <rdar://problem/31918249>
+
+        Reviewed by Simon Fraser.
+
+        Tests: fast/viewport/ios/viewport-fit-auto.html
+               fast/viewport/ios/viewport-fit-contain.html
+               fast/viewport/ios/viewport-fit-cover.html
+
+        * dom/ConstantPropertyMap.cpp:
+        (WebCore::ConstantPropertyMap::buildValues):
+        (WebCore::ConstantPropertyMap::updateConstantsForUnobscuredSafeAreaInsets):
+        (WebCore::ConstantPropertyMap::didChangeSafeAreaInsets):
+        (WebCore::ConstantPropertyMap::updateConstantsForObscuredInsets): Deleted.
+        (WebCore::ConstantPropertyMap::didChangeObscuredInsets): Deleted.
+        * dom/ConstantPropertyMap.h:
+        Retrieve the safe area insets from page, instead of assuming that we should
+        just expose the entire obscured inset. Also, do some renames.
+
+        * dom/ViewportArguments.cpp:
+        (WebCore::ViewportArguments::resolve):
+        (WebCore::parseViewportFitValue):
+        (WebCore::setViewportFeature):
+        * dom/ViewportArguments.h:
+        (WebCore::ViewportArguments::operator==):
+        * page/ChromeClient.h:
+        * page/FrameView.cpp:
+        (WebCore::FrameView::enableSpeculativeTilingIfNeeded):
+        (WebCore::FrameView::calculateExtendedBackgroundMode):
+        (WebCore::FrameView::setClipToSafeArea): Deleted.
+        * page/FrameView.h:
+        * page/ViewportConfiguration.cpp:
+        (WebCore::ViewportConfiguration::updateConfiguration):
+        (WebCore::operator<<):
+        (WebCore::ViewportConfiguration::description):
+        (WebCore::ViewportConfiguration::dump):
+        * page/ViewportConfiguration.h:
+        (WebCore::ViewportConfiguration::avoidsUnsafeArea):
+        (WebCore::ViewportConfiguration::Parameters::Parameters):
+        (WebCore::ViewportConfiguration::clipToSafeArea): Deleted.
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::RenderLayerCompositor::updateRootContentLayerClipping):
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::repaintUsingContainer):
+        Un-do changes to support clip-to-safe-area, and instead implement
+        a new viewport-fit argument in the viewport meta tag, which takes
+        "auto", "contain", and "cover". "auto" and "contain" cause web content
+        to lay out excluding the safe area inset from the layout size, while
+        "cover" causes web content to expand into the unsafe area.
+
+        * page/Page.cpp:
+        (WebCore::Page::setUnobscuredSafeAreaInsets):
+        (WebCore::Page::setObscuredInsets): Deleted.
+        * page/Page.h:
+        (WebCore::Page::setObscuredInsets):
+        (WebCore::Page::unobscuredSafeAreaInsets):
+        Keep safe area and obscured insets separately.
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Documents created using DOMParser.parseFromString should inherit their context document's origin / URL
+        https://bugs.webkit.org/show_bug.cgi?id=171499
+
+        Reviewed by Sam Weinig.
+
+        Documents created using DOMParser.parseFromString should inherit their context document's
+        origin / URL:
+        - https://w3c.github.io/DOM-Parsing/#dom-domparser-parsefromstring
+
+        Test: fast/dom/domparser-parsefromstring-origin.html
+
+        * xml/DOMParser.cpp:
+        (WebCore::DOMParser::parseFromString):
+
+2017-05-01  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: ASSERT(!m_startedComposite) fails when recording on non-Cocoa Timeline
+        https://bugs.webkit.org/show_bug.cgi?id=171363
+
+        Reviewed by Matt Baker.
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::flushCompositingStateIncludingSubframes): Add PLATFORM(COCOA) guard.
+
+2017-05-01  David Kilzer  <ddkilzer@apple.com>
+
+        Stop using strcpy() in fullyQualifiedInfoTableName() from Database.cpp
+        <https://webkit.org/b/171517>
+
+        Reviewed by Brady Eidson.
+
+        * Modules/webdatabase/Database.cpp:
+        (WebCore::fullyQualifiedInfoTableName): Switch from strcpy() to
+        snprintf().
+
+2017-05-01  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Support time@datetime for verbosity clarification of dates, times, and durations
+        https://bugs.webkit.org/show_bug.cgi?id=171498
+        <rdar://problem/12985540>
+
+        Reviewed by Joanmarie Diggs.
+
+        Expose the datetime attribute value.
+
+        Test: accessibility/datetime-attribute.html
+
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::AccessibilityObject::datetimeAttributeValue):
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::computeAccessibilityIsIgnored):
+        (WebCore::AccessibilityRenderObject::determineAccessibilityRole):
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper determineIsAccessibilityElement]):
+        (-[WebAccessibilityObjectWrapper accessibilityDatetimeValue]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper additionalAccessibilityAttributeNames]):
+        (createAccessibilityRoleMap):
+        (-[WebAccessibilityObjectWrapper subrole]):
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+
+2017-05-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        RejectedPromiseTracker should produce better callstacks and avoid capturing callstacks unless there is a debugger/inspector
+        https://bugs.webkit.org/show_bug.cgi?id=171416
+        <rdar://problem/31899425>
+
+        Reviewed by Saam Barati and Brian Burg.
+
+        Test: inspector/console/message-stack-trace.html
+
+        * dom/RejectedPromiseTracker.cpp:
+        (WebCore::UnhandledPromise::UnhandledPromise):
+        (WebCore::UnhandledPromise::callStack):
+        Switch to RefPtr to allow not capturing the stack.
+
+        (WebCore::createScriptCallStackFromReason):
+        Use the VM's lastException if the value in the exception is the
+        rejected promise value. Using the Exception call stack is important
+        because uncaught exceptions in promise rejections trigger a built-in
+        try/catch and re-enter JavaScript before passing the Error through
+        to the RejectionTracker. When possible, we don't want to capture the
+        new stack originating from the try/catch. Instead, we want the stack
+        from before the try/catch when the error was created.
+
+        * dom/ScriptExecutionContext.h:
+        * dom/ScriptExecutionContext.cpp:
+        (WebCore::ScriptExecutionContext::reportUnhandledPromiseRejection):
+        Switch to a pointer since the stack could be empty.
+
+2017-05-01  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r216033.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::create):
+
+2017-05-01  Jer Noble  <jer.noble@apple.com>
+
+        Use AVAudioSession to enumerate audio capture devices on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=170861
+        <rdar://problem/31653658>
+
+        Reviewed by Eric Carlson.
+
+        Hook up the new AVAudioSessionCaptureDeviceManager class to CoreAudioCaptureSource and to the (increasingly ill-named)
+        RealtimeMediaSourceCenterMac.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioCaptureSource::create):
+        * platform/mediastream/mac/RealtimeMediaSourceCenterMac.cpp:
+        (WebCore::RealtimeMediaSourceCenterMac::setUseAVFoundationAudioCapture):
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Expose values of aria-rowcount, aria-colcount, aria-rowindex, aria-colindex, aria-rowspan, and aria-colspan as object attributes
+        https://bugs.webkit.org/show_bug.cgi?id=171496
+
+        Reviewed by Chris Fleizach.
+
+        Expose valid, author-provided values as an object attribute. In order to distinguish
+        author-provided values from the default returned by WebCore Accessibility (1), change
+        the default return value to -1. We cannot return 0 because the ARIA spec states that
+        0 is a valid value for authors to provide to indicate that the cell spans the remaining
+        rows in the row group.
+
+        Also removed some legacy code. The "layout-guess" attribute was needed and expected
+        as a way for AT-SPI2-based assistive technologies to identify layout tables. WebCore
+        Accessibility does not expose tables which are purely for layout as accessible tables,
+        and WebKitGtk uses that implementation, thus this attribute is no longer relevant.
+
+        No new tests. Unskipped existing test which is now passing.
+
+        * accessibility/AccessibilityARIAGridCell.cpp:
+        (WebCore::AccessibilityARIAGridCell::ariaRowSpanWithRowIndex):
+        (WebCore::AccessibilityARIAGridCell::columnIndexRange):
+        * accessibility/AccessibilityTableCell.cpp:
+        (WebCore::AccessibilityTableCell::ariaColumnSpan):
+        (WebCore::AccessibilityTableCell::ariaRowSpan):
+        * accessibility/AccessibilityTableCell.h:
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetAttributes):
+
+2017-05-01  Jer Noble  <jer.noble@apple.com>
+
+        Add audio device change notifications to AudioSession.
+        https://bugs.webkit.org/show_bug.cgi?id=171403
+
+        Reviewed by Eric Carlson.
+
+        Add notifications to AudioSession which fire when the current input and output audio devices
+        change. Also add a notification when audio services are lost (which will only fire on iOS).
+        Take this opportunity to make the existing hardwareMutedStateDidChange() notification be
+        platform agnostic, to move the outputDeviceSupportsLowPowerMode() code from AudioHardwareListener,
+        and to do a few more clean-ups of the AudioSession code.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::HTMLMediaElement):
+        (WebCore::HTMLMediaElement::~HTMLMediaElement):
+        * html/HTMLMediaElement.h:
+        * platform/audio/AudioSession.cpp:
+        (WebCore::AudioSession::AudioSession):
+        * platform/audio/AudioSession.h:
+        (WebCore::AudioSession::Observer::hardwareMutedStateDidChange):
+        (WebCore::AudioSession::Observer::audioInputDeviceChanged):
+        (WebCore::AudioSession::Observer::audioOutputDeviceChanged):
+        (WebCore::AudioSession::Observer::audioServicesLost):
+        (WebCore::AudioSession::Observer::audioServicesReset):
+        (WebCore::AudioSession::MutedStateObserver::~MutedStateObserver): Deleted.
+        * platform/audio/ios/AudioSessionIOS.mm:
+        (WebCore::AudioSessionPrivate::AudioSessionPrivate):
+        (WebCore::AudioSession::AudioSession):
+        (WebCore::AudioSession::setCategoryOverride):
+        (WebCore::AudioSession::categoryOverride):
+        (WebCore::AudioSession::isMuted):
+        (WebCore::AudioSession::outputDeviceSupportsLowPowerMode):
+        (WebCore::AudioSession::addObserver):
+        (WebCore::AudioSession::removeObserver):
+        * platform/audio/mac/AudioSessionMac.mm: Renamed from Source/WebCore/platform/audio/mac/AudioSessionMac.cpp.
+        (WebCore::defaultDevice):
+        (WebCore::AudioSessionPrivate::AudioSessionPrivate):
+        (WebCore::AudioSession::AudioSession):
+        (WebCore::AudioSession::~AudioSession):
+        (WebCore::AudioSession::category):
+        (WebCore::AudioSession::setCategory):
+        (WebCore::AudioSession::categoryOverride):
+        (WebCore::AudioSession::setCategoryOverride):
+        (WebCore::AudioSession::sampleRate):
+        (WebCore::AudioSession::bufferSize):
+        (WebCore::AudioSession::numberOfOutputChannels):
+        (WebCore::AudioSession::tryToSetActive):
+        (WebCore::AudioSession::preferredBufferSize):
+        (WebCore::AudioSession::setPreferredBufferSize):
+        (WebCore::AudioSession::isMuted):
+        (WebCore::currentDeviceSupportsLowPowerBufferSize):
+        (WebCore::AudioSession::outputDeviceSupportsLowPowerMode):
+        (WebCore::AudioSession::addObserver):
+        (WebCore::AudioSession::removeObserver):
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Do not dispatch SVG load event in frameless documents
+        https://bugs.webkit.org/show_bug.cgi?id=171505
+        <rdar://problem/31799776>
+
+        Reviewed by Andreas Kling.
+
+        We should not dispatch SVG load events in frameless documents. <https://trac.webkit.org/changeset/173028/webkit>
+        took care of most load events but forgot the SVG load event.
+
+        Test: fast/dom/domparser-parsefromstring-svg-load-event.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::implicitClose):
+
+2017-05-01  Chris Dumez  <cdumez@apple.com>
+
+        Remove some usage of PassRefPtr in editing code
+        https://bugs.webkit.org/show_bug.cgi?id=171490
+
+        Reviewed by Darin Adler.
+
+        Remove some usage of PassRefPtr in editing code.
+
+        * dom/DocumentMarkerController.cpp:
+        (WebCore::DocumentMarkerController::markersInRange):
+        (DocumentMarkerController::hasMarkers):
+        (DocumentMarkerController::clearDescriptionOnMarkersIntersectingRange):
+        * dom/DocumentMarkerController.h:
+        * editing/AlternativeTextController.cpp:
+        (WebCore::AlternativeTextController::isSpellingMarkerAllowed):
+        (WebCore::AlternativeTextController::show):
+        (WebCore::AlternativeTextController::applyAlternativeTextToRange):
+        (WebCore::AlternativeTextController::timerFired):
+        (WebCore::AlternativeTextController::handleAlternativeTextUIResult):
+        (WebCore::AlternativeTextController::recordAutocorrectionResponse):
+        (WebCore::AlternativeTextController::markReversed):
+        (WebCore::AlternativeTextController::markCorrection):
+        (WebCore::AlternativeTextController::recordSpellcheckerResponseForModifiedCorrection):
+        (WebCore::AlternativeTextController::processMarkersOnTextToBeReplacedByResult):
+        (WebCore::AlternativeTextController::applyDictationAlternative):
+        * editing/AlternativeTextController.h:
+        (WebCore::AlternativeTextController::UNLESS_ENABLED):
+        * editing/ApplyStyleCommand.cpp:
+        (WebCore::createFontElement):
+        (WebCore::createStyleSpanElement):
+        (WebCore::ApplyStyleCommand::ApplyStyleCommand):
+        (WebCore::copyStyleOrCreateEmpty):
+        (WebCore::ApplyStyleCommand::applyRelativeFontStyleChange):
+        (WebCore::ApplyStyleCommand::applyInlineStyleToNodeRange):
+        (WebCore::ApplyStyleCommand::removeConflictingInlineStyleFromRun):
+        (WebCore::ApplyStyleCommand::removeInlineStyleFromElement):
+        (WebCore::ApplyStyleCommand::highestAncestorWithConflictingInlineStyle):
+        (WebCore::ApplyStyleCommand::applyInlineStyleToPushDown):
+        (WebCore::ApplyStyleCommand::pushDownInlineStyleAroundNode):
+        (WebCore::ApplyStyleCommand::removeInlineStyle):
+        (WebCore::ApplyStyleCommand::shouldSplitTextElement):
+        (WebCore::ApplyStyleCommand::surroundNodeRangeWithElement):
+        (WebCore::ApplyStyleCommand::addInlineStyleIfNeeded):
+        (WebCore::ApplyStyleCommand::positionToComputeInlineStyleChange):
+        (WebCore::ApplyStyleCommand::applyInlineStyleChange):
+        * editing/ApplyStyleCommand.h:
+        (WebCore::ApplyStyleCommand::create):
+        (WebCore::ApplyStyleCommand::shouldRemoveInlineStyleFromElement):
+        * editing/CompositeEditCommand.cpp:
+        (WebCore::CompositeEditCommand::applyCommandToComposite):
+        (WebCore::CompositeEditCommand::applyStyledElement):
+        (WebCore::CompositeEditCommand::removeStyledElement):
+        (WebCore::CompositeEditCommand::replaceElementWithSpanPreservingChildrenAndAttributes):
+        (WebCore::CompositeEditCommand::inputText):
+        (WebCore::CompositeEditCommand::replaceTextInNodePreservingMarkers):
+        (WebCore::CompositeEditCommand::pushAnchorElementDown):
+        * editing/CompositeEditCommand.h:
+        * editing/DeleteSelectionCommand.cpp:
+        (WebCore::DeleteSelectionCommand::originalStringForAutocorrectionAtBeginningOfSelection):
+        * editing/DictationCommand.cpp:
+        (WebCore::DictationCommand::insertTextRunWithoutNewlines):
+        * editing/EditingStyle.cpp:
+        (WebCore::copyEditingProperties):
+        (WebCore::copyPropertiesFromComputedStyle):
+        (WebCore::extractPropertyValue):
+        (WebCore::HTMLAttributeEquivalent::attributeValueAsCSSValue):
+        (WebCore::HTMLFontSizeEquivalent::attributeValueAsCSSValue):
+        (WebCore::EditingStyle::setStyle):
+        (WebCore::EditingStyle::copy):
+        (WebCore::EditingStyle::extractAndRemoveBlockProperties):
+        (WebCore::EditingStyle::extractAndRemoveTextDirection):
+        (WebCore::EditingStyle::mergeInlineStyleOfElement):
+        (WebCore::extractEditingProperties):
+        (WebCore::EditingStyle::styleAtSelectionStart):
+        (WebCore::getPropertiesNotIn):
+        * editing/EditingStyle.h:
+        * editing/Editor.cpp:
+        (WebCore::Editor::handleTextEvent):
+        (WebCore::Editor::replaceSelectionWithFragment):
+        (WebCore::Editor::insertOrderedList):
+        (WebCore::Editor::insertUnorderedList):
+        (WebCore::Editor::markAllMisspellingsAndBadGrammarInRanges):
+        (WebCore::correctSpellcheckingPreservingTextCheckingParagraph):
+        (WebCore::Editor::markAndReplaceFor):
+        (WebCore::Editor::changeBackToReplacedString):
+        (WebCore::Editor::updateMarkersForWordsAffectedByEditing):
+        (WebCore::Editor::rangeForPoint):
+        * editing/Editor.h:
+        * editing/ModifySelectionListLevel.cpp:
+        (WebCore::IncreaseSelectionListLevelCommand::increaseSelectionListLevel):
+        (WebCore::IncreaseSelectionListLevelCommand::increaseSelectionListLevelOrdered):
+        (WebCore::IncreaseSelectionListLevelCommand::increaseSelectionListLevelUnordered):
+        * editing/ModifySelectionListLevel.h:
+        * editing/SpellChecker.cpp:
+        (WebCore::SpellChecker::requestCheckingFor):
+        (WebCore::SpellChecker::didCheckSucceed):
+        * editing/SpellChecker.h:
+        (WebCore::SpellCheckRequest::checkingRange):
+        (WebCore::SpellCheckRequest::paragraphRange):
+        (WebCore::SpellCheckRequest::rootEditableElement):
+        * editing/SpellingCorrectionCommand.cpp:
+        (WebCore::SpellingCorrectionCommand::SpellingCorrectionCommand):
+        (WebCore::SpellingCorrectionCommand::willApplyCommand):
+        (WebCore::SpellingCorrectionCommand::doApply):
+        (WebCore::SpellingCorrectionCommand::targetRanges):
+        * editing/SpellingCorrectionCommand.h:
+        (WebCore::SpellingCorrectionCommand::create):
+        * editing/SurroundingText.h:
+        * editing/TextCheckingHelper.cpp:
+        (WebCore::TextCheckingParagraph::expandRangeToNextEnd):
+        (WebCore::TextCheckingParagraph::rangeLength):
+        (WebCore::TextCheckingParagraph::paragraphRange):
+        (WebCore::TextCheckingParagraph::subrange):
+        (WebCore::TextCheckingParagraph::offsetTo):
+        (WebCore::TextCheckingParagraph::offsetAsRange):
+        (WebCore::TextCheckingParagraph::text):
+        (WebCore::TextCheckingParagraph::checkingStart):
+        * editing/TextCheckingHelper.h:
+        * editing/TypingCommand.cpp:
+        (WebCore::TypingCommand::insertTextRunWithoutNewlines):
+        * editing/cocoa/HTMLConverter.mm:
+        (HTMLConverterCaches::computedStylePropertyForElement):
+        (HTMLConverterCaches::inlineStylePropertyForElement):
+        * page/ios/FrameIOS.mm:
+        (WebCore::Frame::interpretationsForCurrentRoot):
+
+2017-05-01  Jer Noble  <jer.noble@apple.com>
+
+        Add notifications from CaptureDeviceManager (and subclasses) when device lists change
+        https://bugs.webkit.org/show_bug.cgi?id=171442
+
+        Reviewed by Youenn Fablet.
+
+        Add a new callback-based notification to CaptureDeviceManager which fires when the underlying list
+        of devices changes. Add support for enumerating AVAudioSession capture devices.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/mediastream/CaptureDeviceManager.cpp:
+        (nextObserverToken):
+        (CaptureDeviceManager::addCaptureDeviceChangedObserver):
+        (CaptureDeviceManager::removeCaptureDeviceChangedObserver):
+        * platform/mediastream/CaptureDeviceManager.h:
+        * platform/mediastream/ios/AVAudioSessionCaptureDevice.h: Added.
+        * platform/mediastream/ios/AVAudioSessionCaptureDevice.mm: Added.
+        (WebCore::AVAudioSessionCaptureDevice::create):
+        (WebCore::AVAudioSessionCaptureDevice::AVAudioSessionCaptureDevice):
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.h: Added.
+        * platform/mediastream/ios/AVAudioSessionCaptureDeviceManager.mm: Added.
+        (-[WebAVAudioSessionAvailableInputsListener initWithCallback:]):
+        (-[WebAVAudioSessionAvailableInputsListener invalidate]):
+        (-[WebAVAudioSessionAvailableInputsListener observeValueForKeyPath:ofObject:change:context:]):
+        (WebCore::AVAudioSessionCaptureDeviceManager::singleton):
+        (WebCore::AVAudioSessionCaptureDeviceManager::captureDevices):
+        (WebCore::AVAudioSessionCaptureDeviceManager::audioSessionCaptureDevices):
+        (WebCore::AVAudioSessionCaptureDeviceManager::audioSessionDeviceWithUID):
+        (WebCore::AVAudioSessionCaptureDeviceManager::refreshAudioCaptureDevices):
+        * platform/mediastream/mac/AVCaptureDeviceManager.mm:
+        (WebCore::AVCaptureDeviceManager::deviceConnected):
+        (WebCore::AVCaptureDeviceManager::deviceDisconnected):
+        * platform/mediastream/mac/CoreAudioCaptureDeviceManager.cpp:
+        (WebCore::CoreAudioCaptureDeviceManager::refreshAudioCaptureDevices):
+        (WebCore::CoreAudioCaptureDeviceManager::devicesChanged):
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: AccessibilityTable::ariaRowCount() and ariaColumnCount() should not return -1 unless that is the author-provided value
+        https://bugs.webkit.org/show_bug.cgi?id=171475
+
+        Reviewed by Chris Fleizach.
+
+        If the author has provided a valid value, return it. Otherwise, return 0.
+
+        No new tests needed. Update existing test expectations to reflect the change.
+
+        * accessibility/AccessibilityTable.cpp:
+        (WebCore::AccessibilityTable::ariaColumnCount):
+        (WebCore::AccessibilityTable::ariaRowCount):
+
+2017-05-01  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Implement support for ARIA "figure" and "term" roles; update AXRoleDescription mapping for "feed" role
+        https://bugs.webkit.org/show_bug.cgi?id=171183
+
+        Reviewed by Chris Fleizach.
+
+        Create FeedRole, FigureRole, and TermRole and map them on the Mac and Gtk
+        ports. Also rename AccessibilityObject::isFigure() to isFigureElement()
+        for clarity as this method is specific to the HTML element and not the role.
+
+        No new tests needed: We have existing tests that cover mappings. Add new test cases
+        to roles-exposed.html, xml-roles-exposed.html, and roles-computedRoleString.html.
+
+        * English.lproj/Localizable.strings:
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::captionForFigure):
+        (WebCore::AccessibilityNodeObject::alternativeText):
+        * accessibility/AccessibilityObject.cpp:
+        (WebCore::initializeRoleMap):
+        (WebCore::AccessibilityObject::isFigureElement): Added.
+        (WebCore::AccessibilityObject::isFigure): Deleted.
+        * accessibility/AccessibilityObject.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::exposesTitleUIElement):
+        (WebCore::AccessibilityRenderObject::titleUIElement):
+        (WebCore::AccessibilityRenderObject::computeAccessibilityIsIgnored):
+        (WebCore::AccessibilityRenderObject::determineAccessibilityRole):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (atkRole):
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper determineIsAccessibilityElement]):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (createAccessibilityRoleMap):
+        (-[WebAccessibilityObjectWrapper subrole]):
+        (-[WebAccessibilityObjectWrapper roleDescription]):
+        * platform/LocalizedStrings.cpp:
+        (WebCore::AXFeedText):
+        * platform/LocalizedStrings.h:
+
 2017-04-30  Chris Dumez  <cdumez@apple.com>
 
         Drop support for legacy ClientRect / ClientRectList

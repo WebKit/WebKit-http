@@ -40,6 +40,7 @@
 #include "MessageSender.h"
 #include "NotificationPermissionRequestManagerProxy.h"
 #include "PageLoadState.h"
+#include "ProcessCrashReason.h"
 #include "ProcessThrottler.h"
 #include "SandboxExtension.h"
 #include "ShareableBitmap.h"
@@ -857,7 +858,7 @@ public:
 
     void processDidBecomeUnresponsive();
     void processDidBecomeResponsive();
-    void processDidCrash();
+    void processDidCrash(ProcessCrashReason);
     void willChangeProcessIsResponsive();
     void didChangeProcessIsResponsive();
 
@@ -1202,8 +1203,8 @@ public:
     void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle& fileReadHandle, SandboxExtension::HandleArray& fileUploadHandles);
 #endif
 
-    void setClipToSafeArea(bool);
-    bool clipToSafeArea() const { return m_clipToSafeArea; }
+    void setAvoidsUnsafeArea(bool);
+    bool avoidsUnsafeArea() const { return m_avoidsUnsafeArea; }
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1608,8 +1609,8 @@ private:
 #endif
 #endif
 
-    void startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
-    void stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier);
+    void startURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest&);
+    void stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier);
 
     void handleAutoFillButtonClick(const UserData&);
 
@@ -1995,7 +1996,7 @@ private:
 
     bool m_isUsingHighPerformanceWebGL { false };
 
-    bool m_clipToSafeArea { true };
+    bool m_avoidsUnsafeArea { true };
 
     WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 

@@ -360,12 +360,13 @@ webkit.org/b/161088 imported/w3c/web-platform-tests/resource-timing/resource-tim
 webkit.org/b/168357 imported/w3c/web-platform-tests/resource-timing/rt-initiatorType-media.html [ Failure ]
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-frames.html [ Pass Failure ]
 webkit.org/b/168448 imported/w3c/web-platform-tests/resource-timing/rt-shared-resource-in-workers.html [ Pass Failure ]
+webkit.org/b/171511 imported/w3c/web-platform-tests/resource-timing/rt-revalidate-requests.html [ Pass Failure ]
 imported/w3c/web-platform-tests/resource-timing/test_resource_timing.html [ Pass Failure ]
 
 webkit.org/b/161312 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-link-element/document-without-browsing-context.html [ Failure Pass ]
 
 # rdar://problem/30975761
-[ Debug ] http/tests/fetch/fetch-in-worker-crash.html [ Pass Crash ]
+[ Debug ] http/tests/fetch/fetch-in-worker-crash.html [ Skip ]
 
 imported/w3c/web-platform-tests/XMLHttpRequest/send-conditional-cors.htm [ Failure ]
 imported/w3c/web-platform-tests/fetch/http-cache/partial.html [ Failure ]
@@ -1118,10 +1119,6 @@ webkit.org/b/169264 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 
 webkit.org/b/168066 performance-api/performance-now-api.html [ Pass Failure ]
 webkit.org/b/168005 performance-api/performance-now-time-origin-in-worker.html [ Pass Failure ]
-
-fast/history/page-cache-after-window-open.html [ Skip ]
-fast/history/page-cache-back-navigation-crash.html [ Skip ]
-fast/history/page-cache-with-opener.html [ Skip ]
 
 webkit.org/b/168238 imported/w3c/web-platform-tests/dom/events/EventListener-invoke-legacy.html [ Pass Failure ]
 

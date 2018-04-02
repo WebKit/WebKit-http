@@ -74,6 +74,7 @@ public:
     void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
+    void releaseUpdateAtlases(Vector<uint32_t>&&);
 
     void invalidate();
 
@@ -111,6 +112,7 @@ private:
     ShouldDoFrameSync m_doFrameSync;
     WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
     bool m_needsResize { false };
+    bool m_inForceRepaint { false };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
 

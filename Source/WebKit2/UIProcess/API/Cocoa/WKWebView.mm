@@ -242,6 +242,9 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     BOOL _haveSetObscuredInsets;
     BOOL _isChangingObscuredInsetsInteractively;
 
+    UIEdgeInsets _unobscuredSafeAreaInsets;
+    BOOL _haveSetUnobscuredSafeAreaInsets;
+
     UIInterfaceOrientation _interfaceOrientationOverride;
     BOOL _overridesInterfaceOrientation;
     
@@ -501,12 +504,9 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
-    
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-    if ([_scrollView _contentInsetAdjustmentBehavior] == UIScrollViewContentInsetAdjustmentAutomatic)
-        [_scrollView _setContentInsetAdjustmentBehavior:UIScrollViewContentInsetAdjustmentAlways];
-#endif
 
+    [self _updateScrollViewInsetAdjustmentBehavior];
+    
     [self addSubview:_scrollView.get()];
 
     static uint32_t programSDKVersion = dyld_get_program_sdk_version();
@@ -1349,14 +1349,29 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     UIEdgeInsets insets = [_scrollView contentInset];
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
-    UIEdgeInsets systemInsets = [_scrollView _systemContentInset];
-    insets.top += systemInsets.top;
-    insets.bottom += systemInsets.bottom;
-    insets.left += systemInsets.left;
-    insets.right += systemInsets.right;
+    if (self._safeAreaShouldAffectObscuredInsets) {
+        UIEdgeInsets systemInsets = [_scrollView _systemContentInset];
+        insets.top += systemInsets.top;
+        insets.bottom += systemInsets.bottom;
+        insets.left += systemInsets.left;
+        insets.right += systemInsets.right;
+    }
 #endif
 
     return insets;
+}
+
+- (UIEdgeInsets)_computedUnobscuredSafeAreaInset
+{
+    if (_haveSetUnobscuredSafeAreaInsets)
+        return _unobscuredSafeAreaInsets;
+
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    if (!self._safeAreaShouldAffectObscuredInsets)
+        return self.safeAreaInsets;
+#endif
+
+    return UIEdgeInsetsZero;
 }
 
 - (void)_processDidExit
@@ -2296,6 +2311,16 @@ static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRe
     return isStableState;
 }
 
+- (void)_addUpdateVisibleContentRectPreCommitHandler
+{
+    auto retainedSelf = retainPtr(self);
+    [CATransaction addCommitHandler:[retainedSelf] {
+        WKWebView *webView = retainedSelf.get();
+        [webView _updateVisibleContentRects];
+        webView->_hasScheduledVisibleRectUpdate = NO;
+    } forPhase:kCATransactionPhasePreCommit];
+}
+
 - (void)_scheduleVisibleContentRectUpdateAfterScrollInView:(UIScrollView *)scrollView
 {
     _visibleContentRectUpdateScheduledFromScrollViewInStableState = [self _scrollViewIsInStableState:scrollView];
@@ -2305,13 +2330,17 @@ static WebCore::FloatSize activeMinimumLayoutSize(WKWebView *webView, const CGRe
 
     _hasScheduledVisibleRectUpdate = YES;
     
-    // FIXME: remove the dispatch_async() when we have a fix for rdar://problem/31253952.
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    CATransactionPhase transactionPhase = [CATransaction currentPhase];
+    if (transactionPhase == kCATransactionPhaseNull || transactionPhase == kCATransactionPhasePreLayout) {
+        [self _addUpdateVisibleContentRectPreCommitHandler];
+        return;
+    }
+#endif
+
     dispatch_async(dispatch_get_main_queue(), [retainedSelf = retainPtr(self)] {
-        [CATransaction addCommitHandler:[retainedSelf] {
-            WKWebView *webView = retainedSelf.get();
-            [webView _updateVisibleContentRects];
-            webView->_hasScheduledVisibleRectUpdate = NO;
-        } forPhase:kCATransactionPhasePreCommit];
+        WKWebView *webView = retainedSelf.get();
+        [webView _addUpdateVisibleContentRectPreCommitHandler];
     });
 }
 
@@ -2410,6 +2439,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
         unobscuredRect:unobscuredRectInContentCoordinates
         unobscuredRectInScrollViewCoordinates:unobscuredRect
         obscuredInsets:_obscuredInsets
+        unobscuredSafeAreaInsets:[self _computedUnobscuredSafeAreaInset]
         inputViewBounds:_inputViewBounds
         scale:scaleFactor minimumScale:[_scrollView minimumZoomScale]
         inStableState:inStableState
@@ -2607,6 +2637,24 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 - (WKPasswordView *)_passwordView
 {
     return _passwordView.get();
+}
+
+- (void)_updateScrollViewInsetAdjustmentBehavior
+{
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
+    if (![_scrollView _contentInsetAdjustmentBehaviorWasExternallyOverridden])
+        [_scrollView _setContentInsetAdjustmentBehaviorInternal:self._safeAreaShouldAffectObscuredInsets ? UIScrollViewContentInsetAdjustmentAlways : UIScrollViewContentInsetAdjustmentNever];
+#endif
+}
+
+- (void)_didChangeAvoidsUnsafeArea:(BOOL)avoidsUnsafeArea
+{
+    [self _updateScrollViewInsetAdjustmentBehavior];
+    [self _scheduleVisibleContentRectUpdate];
+
+    id <WKUIDelegatePrivate> uiDelegate = (id <WKUIDelegatePrivate>)[self UIDelegate];
+    if ([uiDelegate respondsToSelector:@selector(_webView:didChangeSafeAreaShouldAffectObscuredInsets:)])
+        [uiDelegate _webView:self didChangeSafeAreaShouldAffectObscuredInsets:avoidsUnsafeArea];
 }
 
 #endif // PLATFORM(IOS)
@@ -4273,9 +4321,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return _page->isShowingNavigationGestureSnapshot();
 }
 
-- (BOOL)_contentMayDrawInObscuredInsets
+- (BOOL)_safeAreaShouldAffectObscuredInsets
 {
-    return !_page->clipToSafeArea();
+    if (!_page)
+        return YES;
+    return _page->avoidsUnsafeArea();
 }
 
 - (_WKLayoutMode)_layoutMode
@@ -4474,6 +4524,28 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
 
     _obscuredInsets = obscuredInsets;
+
+    [self _scheduleVisibleContentRectUpdate];
+}
+
+- (UIEdgeInsets)_unobscuredSafeAreaInsets
+{
+    return _unobscuredSafeAreaInsets;
+}
+
+- (void)_setUnobscuredSafeAreaInsets:(UIEdgeInsets)unobscuredSafeAreaInsets
+{
+    ASSERT(unobscuredSafeAreaInsets.top >= 0);
+    ASSERT(unobscuredSafeAreaInsets.left >= 0);
+    ASSERT(unobscuredSafeAreaInsets.bottom >= 0);
+    ASSERT(unobscuredSafeAreaInsets.right >= 0);
+    
+    _haveSetUnobscuredSafeAreaInsets = YES;
+
+    if (UIEdgeInsetsEqualToEdgeInsets(_unobscuredSafeAreaInsets, unobscuredSafeAreaInsets))
+        return;
+
+    _unobscuredSafeAreaInsets = unobscuredSafeAreaInsets;
 
     [self _scheduleVisibleContentRectUpdate];
 }
@@ -5339,6 +5411,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange
 {
     [self insertText:string replacementRange:replacementRange];
+}
+
+- (NSRect)_candidateRect
+{
+    return _page->editorState().postLayoutData().selectionClipRect;
 }
 
 - (void)_setHeaderBannerHeight:(int)height

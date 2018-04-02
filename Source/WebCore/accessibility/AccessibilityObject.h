@@ -128,6 +128,8 @@ enum AccessibilityRole {
     DocumentNoteRole,
     DrawerRole,
     EditableTextRole,
+    FeedRole,
+    FigureRole,
     FooterRole,
     FormRole,
     GridRole,
@@ -214,6 +216,8 @@ enum AccessibilityRole {
     TableHeaderContainerRole,
     TextAreaRole,
     TextGroupRole,
+    TermRole,
+    TimeRole,
     TreeRole,
     TreeGridRole,
     TreeItemRole,
@@ -563,6 +567,7 @@ public:
     bool isRadioGroup() const { return roleValue() == RadioGroupRole; }
     bool isComboBox() const { return roleValue() == ComboBoxRole; }
     bool isTree() const { return roleValue() == TreeRole; }
+    bool isTreeGrid() const { return roleValue() == TreeGridRole; }
     bool isTreeItem() const { return roleValue() == TreeItemRole; }
     bool isScrollbar() const { return roleValue() == ScrollBarRole; }
     bool isButton() const;
@@ -581,7 +586,7 @@ public:
     bool isStyleFormatGroup() const;
     bool isSubscriptStyleGroup() const;
     bool isSuperscriptStyleGroup() const;
-    bool isFigure() const;
+    bool isFigureElement() const;
     bool isSummary() const { return roleValue() == SummaryRole; }
     bool isOutput() const;
     
@@ -620,7 +625,8 @@ public:
     bool hasHighlighting() const;
 
     bool supportsDatetimeAttribute() const;
-
+    const AtomicString& datetimeAttributeValue() const;
+    
     virtual bool canSetFocusAttribute() const { return false; }
     virtual bool canSetTextRangeAttributes() const { return false; }
     virtual bool canSetValueAttribute() const { return false; }

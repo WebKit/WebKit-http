@@ -1400,7 +1400,6 @@ set(WebCore_SOURCES
     css/SelectorChecker.cpp
     css/SelectorFilter.cpp
     css/StyleColor.cpp
-    css/StyleInvalidationAnalysis.cpp
     css/StyleMedia.cpp
     css/StyleProperties.cpp
     css/StylePropertyShorthand.cpp
@@ -1628,7 +1627,6 @@ set(WebCore_SOURCES
     editing/MergeIdenticalElementsCommand.cpp
     editing/ModifySelectionListLevel.cpp
     editing/MoveSelectionCommand.cpp
-    editing/RemoveCSSPropertyCommand.cpp
     editing/RemoveFormatCommand.cpp
     editing/RemoveNodeCommand.cpp
     editing/RemoveNodePreservingChildrenCommand.cpp
@@ -2742,6 +2740,7 @@ set(WebCore_SOURCES
     style/RenderTreeUpdater.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
+    style/StyleInvalidator.cpp
     style/StylePendingResources.cpp
     style/StyleRelations.cpp
     style/StyleResolveForDocument.cpp

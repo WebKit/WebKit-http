@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2009, 2011, 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -74,6 +74,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/StringView.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/unicode/CharacterNames.h>
 
@@ -2132,8 +2133,8 @@ AccessibilityObject* AccessibilityObject::firstAnonymousBlockChild() const
     return nullptr;
 }
 
-typedef HashMap<String, AccessibilityRole, ASCIICaseInsensitiveHash> ARIARoleMap;
-typedef HashMap<AccessibilityRole, String, DefaultHash<int>::Hash, WTF::UnsignedWithZeroKeyHashTraits<int>> ARIAReverseRoleMap;
+using ARIARoleMap = HashMap<String, AccessibilityRole, ASCIICaseInsensitiveHash>;
+using ARIAReverseRoleMap = HashMap<AccessibilityRole, String, DefaultHash<int>::Hash, WTF::UnsignedWithZeroKeyHashTraits<int>>;
 
 static ARIARoleMap* gAriaRoleMap = nullptr;
 static ARIAReverseRoleMap* gAriaReverseRoleMap = nullptr;
@@ -2202,6 +2203,7 @@ static void initializeRoleMap()
         { "doc-subtitle", HeadingRole },
         { "doc-tip", DocumentNoteRole },
         { "doc-toc", LandmarkNavigationRole },
+        { "figure", FigureRole },
         { "grid", GridRole },
         { "gridcell", GridCellRole },
         { "table", TableRole },
@@ -2210,7 +2212,7 @@ static void initializeRoleMap()
         { "combobox", ComboBoxRole },
         { "definition", DefinitionRole },
         { "document", DocumentRole },
-        { "feed", ApplicationGroupRole },
+        { "feed", FeedRole },
         { "form", FormRole },
         { "rowheader", RowHeaderRole },
         { "group", ApplicationGroupRole },
@@ -2253,6 +2255,7 @@ static void initializeRoleMap()
         { "tabpanel", TabPanelRole },
         { "text", StaticTextRole },
         { "textbox", TextAreaRole },
+        { "term", TermRole },
         { "timer", ApplicationTimerRole },
         { "toolbar", ToolbarRole },
         { "tooltip", UserInterfaceTooltipRole },
@@ -2285,17 +2288,11 @@ static ARIAReverseRoleMap& reverseAriaRoleMap()
 AccessibilityRole AccessibilityObject::ariaRoleToWebCoreRole(const String& value)
 {
     ASSERT(!value.isEmpty());
-    
-    Vector<String> roleVector;
-    value.split(' ', roleVector);
-    AccessibilityRole role = UnknownRole;
-    for (const auto& roleName : roleVector) {
-        role = ariaRoleMap().get(roleName);
-        if (role)
+    for (auto roleName : StringView(value).split(' ')) {
+        if (AccessibilityRole role = ariaRoleMap().get<ASCIICaseInsensitiveStringViewHashTranslator>(roleName))
             return role;
     }
-    
-    return role;
+    return UnknownRole;
 }
 
 String AccessibilityObject::computedRoleString() const
@@ -2378,6 +2375,11 @@ bool AccessibilityObject::supportsDatetimeAttribute() const
     return hasTagName(insTag) || hasTagName(delTag) || hasTagName(timeTag);
 }
 
+const AtomicString& AccessibilityObject::datetimeAttributeValue() const
+{
+    return getAttribute(datetimeAttr);
+}
+    
 Element* AccessibilityObject::element() const
 {
     Node* node = this->node();
@@ -3169,11 +3171,8 @@ void AccessibilityObject::elementsFromAttribute(Vector<Element*>& elements, cons
         return;
 
     idList.replace('\n', ' ');
-    Vector<String> idVector;
-    idList.split(' ', idVector);
-
-    for (const auto& idName : idVector) {
-        if (Element* idElement = treeScope.getElementById(idName))
+    for (auto idName : StringView(idList).split(' ')) {
+        if (auto* idElement = treeScope.getElementById(idName))
             elements.append(idElement);
     }
 }
@@ -3251,7 +3250,7 @@ bool AccessibilityObject::isSuperscriptStyleGroup() const
     return node && node->hasTagName(supTag);
 }
 
-bool AccessibilityObject::isFigure() const
+bool AccessibilityObject::isFigureElement() const
 {
     Node* node = this->node();
     return node && node->hasTagName(figureTag);

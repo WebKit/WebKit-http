@@ -2412,7 +2412,6 @@ void WebPageProxy::terminateProcess()
         return;
 
     m_process->requestTermination();
-    resetStateAfterProcessExited();
 }
 
 SessionState WebPageProxy::sessionState(const std::function<bool (WebBackForwardListItem&)>& filter) const
@@ -5293,7 +5292,7 @@ void WebPageProxy::didChangeProcessIsResponsive()
     m_pageLoadState.didChangeProcessIsResponsive();
 }
 
-void WebPageProxy::processDidCrash()
+void WebPageProxy::processDidCrash(ProcessCrashReason reason)
 {
     ASSERT(m_isValid);
 
@@ -5316,7 +5315,7 @@ void WebPageProxy::processDidCrash()
     navigationState().clearAllNavigations();
 
     if (m_navigationClient)
-        m_navigationClient->processDidCrash(*this);
+        m_navigationClient->processDidCrash(*this, reason);
     else
         m_loaderClient->processDidCrash(*this);
 
@@ -5469,7 +5468,7 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
     requestPointerUnlock();
 #endif
 
-    m_clipToSafeArea = true;
+    m_avoidsUnsafeArea = true;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -6880,7 +6879,7 @@ WebURLSchemeHandler* WebPageProxy::urlSchemeHandlerForScheme(const String& schem
     return m_urlSchemeHandlersByScheme.get(scheme);
 }
 
-void WebPageProxy::startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest& request)
+void WebPageProxy::startURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier, const WebCore::ResourceRequest& request)
 {
     auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
@@ -6888,7 +6887,7 @@ void WebPageProxy::startURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_
     iterator->value->startTask(*this, resourceIdentifier, request);
 }
 
-void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier)
+void WebPageProxy::stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t resourceIdentifier)
 {
     auto iterator = m_urlSchemeHandlersByIdentifier.find(handlerIdentifier);
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
@@ -6896,11 +6895,14 @@ void WebPageProxy::stopURLSchemeHandlerTask(uint64_t handlerIdentifier, uint64_t
     iterator->value->stopTask(*this, resourceIdentifier);
 }
 
-void WebPageProxy::setClipToSafeArea(bool clipToSafeArea)
+void WebPageProxy::setAvoidsUnsafeArea(bool avoidsUnsafeArea)
 {
-    m_clipToSafeArea = clipToSafeArea;
+    if (m_avoidsUnsafeArea == avoidsUnsafeArea)
+        return;
 
-    m_pageClient.didChangeClipToSafeArea(clipToSafeArea);
+    m_avoidsUnsafeArea = avoidsUnsafeArea;
+
+    m_pageClient.didChangeAvoidsUnsafeArea(avoidsUnsafeArea);
 }
 
 } // namespace WebKit

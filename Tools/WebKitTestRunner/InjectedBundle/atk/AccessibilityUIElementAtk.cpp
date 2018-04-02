@@ -71,10 +71,17 @@ enum AttributeDomain {
 enum AttributesIndex {
     // Attribute names.
     InvalidNameIndex = 0,
+    ColumnCount,
+    ColumnIndex,
+    ColumnSpan,
+    RowCount,
+    RowIndex,
+    RowSpan,
     PosInSetIndex,
     SetSizeIndex,
     PlaceholderNameIndex,
     SortNameIndex,
+    CurrentNameIndex,
 
     // Attribute values.
     SortAscendingValueIndex,
@@ -88,10 +95,17 @@ enum AttributesIndex {
 const String attributesMap[][2] = {
     // Attribute names.
     { "AXInvalid", "invalid" },
+    { "AXARIAColumnCount", "colcount" },
+    { "AXARIAColumnIndex", "colindex" },
+    { "AXARIAColumnSpan", "colspan" },
+    { "AXARIARowCount", "rowcount" },
+    { "AXARIARowIndex", "rowindex" },
+    { "AXARIARowSpan", "rowspan" },
     { "AXARIAPosInSet", "posinset" },
     { "AXARIASetSize", "setsize" },
     { "AXPlaceholderValue", "placeholder-text" } ,
     { "AXSortDirection", "sort" },
+    { "AXARIACurrent", "current" },
 
     // Attribute values.
     { "AXAscendingSortDirection", "ascending" },
@@ -132,6 +146,10 @@ String coreAttributeToAtkAttribute(JSStringRef attribute)
 String atkAttributeValueToCoreAttributeValue(AtkAttributeType type, const String& id, const String& value)
 {
     if (type == ObjectAttributeType) {
+        // We don't expose the "current" attribute if there is no author-provided value.
+        if (id == attributesMap[CurrentNameIndex][AtkDomain] && value.isEmpty())
+            return "false";
+
         // We need to translate ATK values exposed for 'aria-sort' (e.g. 'ascending')
         // into those expected by the layout tests (e.g. 'AXAscendingSortDirection').
         if (id == attributesMap[SortNameIndex][AtkDomain] && !value.isEmpty()) {
@@ -1021,6 +1039,12 @@ double AccessibilityUIElement::numberAttributeValue(JSStringRef attribute)
             return attributeValue.toDouble();
     }
 
+    if (atkAttributeName.startsWith("row") || atkAttributeName.startsWith("col")) {
+        String attributeValue = getAttributeSetValueForId(ATK_OBJECT(m_element.get()), ObjectAttributeType, atkAttributeName);
+        if (!attributeValue.isEmpty())
+            return attributeValue.toInt();
+    }
+
     return 0;
 }
 
@@ -1270,9 +1294,8 @@ JSRetainPtr<JSStringRef> AccessibilityUIElement::orientation() const
         axOrientation = "AXOrientation: AXHorizontalOrientation";
     else if (checkElementState(m_element.get(), ATK_STATE_VERTICAL))
         axOrientation = "AXOrientation: AXVerticalOrientation";
-
-    if (!axOrientation)
-        return JSStringCreateWithCharacters(0, 0);
+    else
+        axOrientation = "AXOrientation: AXUnknownOrientation";
 
     return JSStringCreateWithUTF8CString(axOrientation);
 }

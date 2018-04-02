@@ -1,3 +1,328 @@
+2017-05-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Math unary functions should be handled by DFG
+        https://bugs.webkit.org/show_bug.cgi?id=171269
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-acos-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueACosNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesACos):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueACosForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueACosForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueACosForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueACosWithException):
+        (testException):
+        * stress/arith-acosh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueACoshNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesACosh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueACoshForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueACoshForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueACoshForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueACoshWithException):
+        (testException):
+        * stress/arith-asin-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueASinNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesASin):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueASinForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueASinForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueASinForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueASinWithException):
+        (testException):
+        * stress/arith-asinh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueASinhNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesASinh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueASinhForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueASinhForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueASinhForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueASinhWithException):
+        (testException):
+        * stress/arith-atan-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueATanNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesATan):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueATanForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueATanForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueATanForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueATanWithException):
+        (testException):
+        * stress/arith-atanh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueATanhNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesATanh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueATanhForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueATanhForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueATanhForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueATanhWithException):
+        (testException):
+        * stress/arith-cbrt-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueCbrtNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesCbrt):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueCbrtForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueCbrtForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueCbrtForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueCbrtWithException):
+        (testException):
+        * stress/arith-cosh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueCoshNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesCosh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueCoshForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueCoshForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueCoshForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueCoshWithException):
+        (testException):
+        * stress/arith-expm1-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueExpm1NoArgument):
+        (testNoArgument):
+        (opaqueAllTypesExpm1):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueExpm1ForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueExpm1ForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueExpm1ForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueExpm1WithException):
+        (testException):
+        * stress/arith-log10-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueLog10NoArgument):
+        (testNoArgument):
+        (opaqueAllTypesLog10):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueLog10ForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueLog10ForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueLog10ForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueLog10WithException):
+        (testException):
+        * stress/arith-log2-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueLog2NoArgument):
+        (testNoArgument):
+        (opaqueAllTypesLog2):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueLog2ForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueLog2ForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueLog2ForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueLog2WithException):
+        (testException):
+        * stress/arith-sinh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueSinhNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesSinh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueSinhForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueSinhForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueSinhForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueSinhWithException):
+        (testException):
+        * stress/arith-tan-on-various-types.js:
+        (isIdentical):
+        * stress/arith-tanh-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueTanhNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesTanh):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (testConstant):
+        (opaqueTanhForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueTanhForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueTanhForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueTanhWithException):
+        (testException):
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Array.prototype.sort should also allow a null comparator
+        https://bugs.webkit.org/show_bug.cgi?id=171621
+
+        Reviewed by Michael Saboff.
+
+        Add test to make it less likely we revert to the incompatable behavior.
+        Also, fix now incorrect tests.
+
+        * ChakraCore/test/Array/array_sort.baseline-jsc:
+        * stress/array-sort-bad-comparator.js:
+        (test):
+        * stress/sort-null-comparator.js: Added.
+        (assertEq):
+
+2017-05-03  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] remove unneeded asyncFunctionTests.yaml
+        https://bugs.webkit.org/show_bug.cgi?id=171611
+
+        Reviewed by Yusuke Suzuki.
+
+        Async functions have shipped, and those tests are run as part of
+        JSTests/stress and JSTests/test262.yaml. The file is no longer needed.
+
+        * asyncFunctionTests.yaml: Removed.
+        * stress/async-await-long-loop.js:
+        * stress/async-await-throw-loop.js:
+
+2017-05-03  Keith Miller  <keith_miller@apple.com>
+
+        Different behaviour with the .sort(callback) method (unlike Firefox & Chrome)
+        https://bugs.webkit.org/show_bug.cgi?id=47825
+
+        Reviewed by Saam Barati.
+
+        * stress/sorting-boolean-result-comparator.js: Added.
+        (checkArray):
+
+2017-05-02  David Kilzer  <ddkilzer@apple.com>
+
+        check-webkit-style should keep JavaScript test functions in sync
+        <https://webkit.org/b/171424>
+
+        Reviewed by Joseph Pecoraro.
+
+        This change makes shouldBe(), shouldNotBe(), shouldNotThrow()
+        and shouldThrow() in sync with other copies of these methods.
+
+        * stress/resources/standalone-pre.js:
+        (shouldBe): Fix whitespace.  Prefix 'exception' and 'quiet'
+        variables with underscore.
+        (shouldThrow): Fix whitespace.
+
 2017-04-30  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         We initialize functions too early in an eval

@@ -32,6 +32,7 @@
 #include "ThreadedDisplayRefreshMonitor.h"
 #include <WebCore/PlatformDisplay.h>
 #include <WebCore/TransformationMatrix.h>
+#include <wtf/SetForScope.h>
 
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
@@ -180,6 +181,7 @@ void ThreadedCompositor::updateViewport()
 void ThreadedCompositor::forceRepaint()
 {
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
+        SetForScope<bool> change(m_inForceRepaint, true);
         renderLayerTree();
     });
 }
@@ -222,7 +224,7 @@ void ThreadedCompositor::sceneUpdateFinished()
 
     if (shouldDispatchDisplayRefreshCallback)
         m_displayRefreshMonitor->dispatchDisplayRefreshCallback();
-    if (!shouldCoordinateUpdateCompletionWithClient)
+    if (!shouldCoordinateUpdateCompletionWithClient && !m_inForceRepaint)
         m_compositingRunLoop->updateCompleted();
 }
 
@@ -242,6 +244,14 @@ void ThreadedCompositor::updateSceneState(const CoordinatedGraphicsState& state)
     });
 
     m_compositingRunLoop->scheduleUpdate();
+}
+
+void ThreadedCompositor::releaseUpdateAtlases(Vector<uint32_t>&& atlasesToRemove)
+{
+    ASSERT(isMainThread());
+    m_compositingRunLoop->performTask([scene = makeRef(*m_scene), atlasesToRemove = WTFMove(atlasesToRemove)] {
+        scene->releaseUpdateAtlases(atlasesToRemove);
+    });
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)

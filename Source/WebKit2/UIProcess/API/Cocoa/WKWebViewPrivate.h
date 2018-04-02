@@ -155,7 +155,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 // Define the inset of the scrollview unusable by the web page.
 @property (nonatomic, setter=_setObscuredInsets:) UIEdgeInsets _obscuredInsets;
 
-@property (nonatomic, readonly) BOOL _contentMayDrawInObscuredInsets;
+@property (nonatomic, setter=_setUnobscuredSafeAreaInsets:) UIEdgeInsets _unobscuredSafeAreaInsets WK_API_AVAILABLE(ios(WK_IOS_TBA));
+@property (nonatomic, readonly) BOOL _safeAreaShouldAffectObscuredInsets WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 // Override the interface orientation. Clients using _beginAnimatedResizeWithUpdates: must update the interface orientation
 // in the update block.
@@ -357,6 +358,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_didUpdateCandidateListVisibility:(BOOL)visible WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 @property (nonatomic, readonly) BOOL _shouldRequestCandidates WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_insertText:(id)string replacementRange:(NSRange)replacementRange WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (NSRect)_candidateRect WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 
 - (void)_setHeaderBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (void)_setFooterBannerHeight:(int)height WK_API_AVAILABLE(macosx(WK_MAC_TBA));

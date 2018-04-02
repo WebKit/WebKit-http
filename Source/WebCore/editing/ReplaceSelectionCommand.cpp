@@ -510,7 +510,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
                     EditingStyle::DoNotExtractMatchingStyle)) {
                     // e.g. <font size="3" style="font-size: 20px;"> is converted to <font style="font-size: 20px;">
                     for (auto& attribute : attributes)
-                        removeNodeAttribute(element, attribute);
+                        removeNodeAttribute(*element, attribute);
                 }
             }
 
@@ -520,18 +520,18 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
             // styles from blockquoteNode are allowed to override those from the source document, see <rdar://problem/4930986> and <rdar://problem/5089327>.
             Node* blockquoteNode = isMailPasteAsQuotationNode(context) ? context : enclosingNodeOfType(firstPositionInNode(context), isMailBlockquote, CanCrossEditingBoundary);
             if (blockquoteNode)
-                newInlineStyle->removeStyleFromRulesAndContext(element, document().documentElement());
+                newInlineStyle->removeStyleFromRulesAndContext(*element, document().documentElement());
 
-            newInlineStyle->removeStyleFromRulesAndContext(element, context);
+            newInlineStyle->removeStyleFromRulesAndContext(*element, context);
         }
 
         if (!inlineStyle || newInlineStyle->isEmpty()) {
-            if (isStyleSpanOrSpanWithOnlyStyleAttribute(element) || isEmptyFontTag(element, AllowNonEmptyStyleAttribute)) {
+            if (isStyleSpanOrSpanWithOnlyStyleAttribute(*element) || isEmptyFontTag(element, AllowNonEmptyStyleAttribute)) {
                 insertedNodes.willRemoveNodePreservingChildren(element);
                 removeNodePreservingChildren(element);
                 continue;
             }
-            removeNodeAttribute(element, styleAttr);
+            removeNodeAttribute(*element, styleAttr);
         } else if (newInlineStyle->style()->propertyCount() != inlineStyle->propertyCount())
             setNodeAttribute(element, styleAttr, newInlineStyle->style()->asText());
 
@@ -545,7 +545,7 @@ void ReplaceSelectionCommand::removeRedundantStylesAndKeepStyleSpanInline(Insert
         }
 
         if (element->parentNode() && element->parentNode()->hasRichlyEditableStyle())
-            removeNodeAttribute(element, contenteditableAttr);
+            removeNodeAttribute(*element, contenteditableAttr);
 
         // WebKit used to not add display: inline and float: none on copy.
         // Keep this code around for backward compatibility
@@ -670,13 +670,13 @@ void ReplaceSelectionCommand::moveNodeOutOfAncestor(PassRefPtr<Node> prpNode, Pa
     if (positionAtEndOfNode == lastPositionInParagraph) {
         removeNode(node);
         if (ancestor->nextSibling())
-            insertNodeBefore(node, ancestor->nextSibling());
+            insertNodeBefore(node.releaseNonNull(), *ancestor->nextSibling());
         else
-            appendNode(node, ancestor->parentNode());
+            appendNode(node.releaseNonNull(), *ancestor->parentNode());
     } else {
         RefPtr<Node> nodeToSplitTo = splitTreeToNode(node.get(), ancestor.get(), true);
         removeNode(node);
-        insertNodeBefore(node, nodeToSplitTo);
+        insertNodeBefore(node.releaseNonNull(), *nodeToSplitTo);
     }
     if (!ancestor->firstChild()) {
         insertedNodes.willRemoveNode(ancestor.get());
@@ -851,9 +851,10 @@ void ReplaceSelectionCommand::mergeEndIfNeeded()
     // Merging forward could result in deleting the destination anchor node.
     // To avoid this, we add a placeholder node before the start of the paragraph.
     if (endOfParagraph(startOfParagraphToMove) == destination) {
-        RefPtr<Node> placeholder = HTMLBRElement::create(document());
-        insertNodeBefore(placeholder, startOfParagraphToMove.deepEquivalent().deprecatedNode());
-        destination = VisiblePosition(positionBeforeNode(placeholder.get()));
+        auto placeholder = HTMLBRElement::create(document());
+        auto* placeholderPtr = placeholder.ptr();
+        insertNodeBefore(WTFMove(placeholder), *startOfParagraphToMove.deepEquivalent().deprecatedNode());
+        destination = VisiblePosition(positionBeforeNode(placeholderPtr));
     }
 
     moveParagraph(startOfParagraphToMove, endOfParagraph(startOfParagraphToMove), destination);
@@ -1116,7 +1117,7 @@ void ReplaceSelectionCommand::doApply()
         && blockStart && blockStart->renderer()->isListItem())
         refNode = insertAsListItems(downcast<HTMLElement>(refNode.get()), blockStart, insertionPos, insertedNodes);
     else {
-        insertNodeAt(refNode, insertionPos);
+        insertNodeAt(*refNode, insertionPos);
         insertedNodes.respondToNodeInsertion(refNode.get());
     }
 
@@ -1129,7 +1130,7 @@ void ReplaceSelectionCommand::doApply()
     while (node) {
         RefPtr<Node> next = node->nextSibling();
         fragment.removeNode(node.get());
-        insertNodeAfter(node, refNode.get());
+        insertNodeAfter(*node, *refNode);
         insertedNodes.respondToNodeInsertion(node.get());
 
         // Mutation events (bug 22634) may have already removed the inserted content
@@ -1191,7 +1192,7 @@ void ReplaceSelectionCommand::doApply()
         // We insert a placeholder before the newly inserted content to avoid being merged into the inline.
         Node* destinationNode = destination.deepEquivalent().deprecatedNode();
         if (m_shouldMergeEnd && destinationNode != enclosingInline(destinationNode) && enclosingInline(destinationNode)->nextSibling())
-            insertNodeBefore(HTMLBRElement::create(document()), refNode.get());
+            insertNodeBefore(HTMLBRElement::create(document()), *refNode);
         
         // Merging the the first paragraph of inserted content with the content that came
         // before the selection that was pasted into would also move content after 
@@ -1227,7 +1228,7 @@ void ReplaceSelectionCommand::doApply()
                 Node* enclosingNode = enclosingBlock(endOfInsertedContent.deepEquivalent().deprecatedNode());
                 if (isListItem(enclosingNode)) {
                     auto newListItem = HTMLLIElement::create(document());
-                    insertNodeAfter(newListItem.copyRef(), enclosingNode);
+                    insertNodeAfter(newListItem.copyRef(), *enclosingNode);
                     setEndingSelection(VisiblePosition(firstPositionInNode(newListItem.ptr())));
                 } else {
                     // Use a default paragraph element (a plain div) for the empty paragraph, using the last paragraph
@@ -1249,7 +1250,7 @@ void ReplaceSelectionCommand::doApply()
         mergeEndIfNeeded();
 
     if (Node* mailBlockquote = enclosingNodeOfType(positionAtStartOfInsertedContent().deepEquivalent(), isMailPasteAsQuotationNode))
-        removeNodeAttribute(downcast<Element>(mailBlockquote), classAttr);
+        removeNodeAttribute(downcast<Element>(*mailBlockquote), classAttr);
 
     if (shouldPerformSmartReplace())
         addSpacesForSmartReplace();
@@ -1332,13 +1333,13 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
     if (needsTrailingSpace && endNode) {
         bool collapseWhiteSpace = !endNode->renderer() || endNode->renderer()->style().collapseWhiteSpace();
         if (is<Text>(*endNode)) {
-            insertTextIntoNode(downcast<Text>(endNode), endOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
+            insertTextIntoNode(downcast<Text>(*endNode), endOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
             if (m_endOfInsertedContent.containerNode() == endNode)
                 m_endOfInsertedContent.moveToOffset(m_endOfInsertedContent.offsetInContainerNode() + 1);
         } else {
-            RefPtr<Node> node = document().createEditingTextNode(collapseWhiteSpace ? nonBreakingSpaceString() : " ");
-            insertNodeAfter(node, endNode);
-            updateNodesInserted(node.get());
+            auto node = document().createEditingTextNode(collapseWhiteSpace ? nonBreakingSpaceString() : " ");
+            insertNodeAfter(node.copyRef(), *endNode);
+            updateNodesInserted(node.ptr());
         }
     }
 
@@ -1356,15 +1357,16 @@ void ReplaceSelectionCommand::addSpacesForSmartReplace()
     if (needsLeadingSpace && startNode) {
         bool collapseWhiteSpace = !startNode->renderer() || startNode->renderer()->style().collapseWhiteSpace();
         if (is<Text>(*startNode)) {
-            insertTextIntoNode(downcast<Text>(startNode), startOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
+            insertTextIntoNode(downcast<Text>(*startNode), startOffset, collapseWhiteSpace ? nonBreakingSpaceString() : " ");
             if (m_endOfInsertedContent.containerNode() == startNode && m_endOfInsertedContent.offsetInContainerNode())
                 m_endOfInsertedContent.moveToOffset(m_endOfInsertedContent.offsetInContainerNode() + 1);
         } else {
-            RefPtr<Node> node = document().createEditingTextNode(collapseWhiteSpace ? nonBreakingSpaceString() : " ");
+            auto node = document().createEditingTextNode(collapseWhiteSpace ? nonBreakingSpaceString() : " ");
+            auto* nodePtr = node.ptr();
             // Don't updateNodesInserted. Doing so would set m_endOfInsertedContent to be the node containing the leading space,
             // but m_endOfInsertedContent is supposed to mark the end of pasted content.
-            insertNodeBefore(node, startNode);
-            m_startOfInsertedContent = firstPositionInNode(node.get());
+            insertNodeBefore(WTFMove(node), *startNode);
+            m_startOfInsertedContent = firstPositionInNode(nodePtr);
         }
     }
 }
@@ -1426,7 +1428,7 @@ void ReplaceSelectionCommand::mergeTextNodesAroundPosition(Position& position, P
 
     if (is<Text>(text->previousSibling())) {
         Ref<Text> previous(downcast<Text>(*text->previousSibling()));
-        insertTextIntoNode(text, 0, previous->data());
+        insertTextIntoNode(*text, 0, previous->data());
 
         if (positionIsOffsetInAnchor)
             position.moveToOffset(previous->length() + position.offsetInContainerNode());
@@ -1446,7 +1448,7 @@ void ReplaceSelectionCommand::mergeTextNodesAroundPosition(Position& position, P
     if (is<Text>(text->nextSibling())) {
         Ref<Text> next(downcast<Text>(*text->nextSibling()));
         unsigned originalLength = text->length();
-        insertTextIntoNode(text, originalLength, next->data());
+        insertTextIntoNode(*text, originalLength, next->data());
 
         if (!positionIsOffsetInAnchor)
             updatePositionForNodeRemoval(position, next.get());
@@ -1486,10 +1488,10 @@ Node* ReplaceSelectionCommand::insertAsListItems(PassRefPtr<HTMLElement> prpList
     while (RefPtr<Node> listItem = listElement->firstChild()) {
         listElement->removeChild(*listItem);
         if (isStart || isMiddle) {
-            insertNodeBefore(listItem, lastNode);
+            insertNodeBefore(*listItem, *lastNode);
             insertedNodes.respondToNodeInsertion(listItem.get());
         } else if (isEnd) {
-            insertNodeAfter(listItem, lastNode);
+            insertNodeAfter(*listItem, *lastNode);
             insertedNodes.respondToNodeInsertion(listItem.get());
             lastNode = listItem.get();
         } else

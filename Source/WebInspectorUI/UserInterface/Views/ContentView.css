@@ -34,3 +34,21 @@
     margin-left: -16px;
     margin-right: -16px;
 }
+
+.content-view .details-section {
+    font-size: 11px;
+    background-color: initial;
+}
+
+.content-view .details-section > .content {
+    width: auto;
+}
+
+.content-view .details-section > .content > .group > .row.simple > .label {
+    width: auto;
+    font-weight: 600;
+}
+
+.content-view .details-section:last-child {
+    border-bottom: none;
+}
