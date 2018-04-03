@@ -1913,10 +1913,7 @@ void MediaPlayerPrivateGStreamer::didEnd()
     if (!m_player->client().mediaPlayerIsLooping()) {
         m_paused = true;
         m_durationAtEOS = durationMediaTime();
-        // FIXME: there's a bug in playbin handling the context messages that causes replaying a video
-        // not to work if we leave the pipeline in READY state. We set it to NULL here to workaround
-        // that issue, but this should be change back to READY when it gets fixed upstream.
-        changePipelineState(GST_STATE_NULL);
+        changePipelineState(GST_STATE_READY);
         m_downloadFinished = false;
     }
 }
