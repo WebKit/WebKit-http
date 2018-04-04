@@ -30,14 +30,14 @@
 #include <Size.h>
 
 #include <stdio.h>
-#include <wtf/PassRefPtr.h>
+#include <wtf/RefPtr.h>
 #include <wtf/RefCounted.h>
 
 
 class BitmapContext : public RefCounted<BitmapContext> {
 public:
 
-    static PassRefPtr<BitmapContext> createByAdoptingData(BSize size,
+    static RefPtr<BitmapContext> createByAdoptingData(BSize size,
         BBitmap* bitmap)
     {
 		BitmapContext* context = new BitmapContext(size, bitmap);

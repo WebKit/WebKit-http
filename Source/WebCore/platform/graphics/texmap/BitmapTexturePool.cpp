@@ -46,7 +46,7 @@ BitmapTexturePool::BitmapTexturePool(RefPtr<GraphicsContext3D>&& context3D)
 }
 #else
 BitmapTexturePool::BitmapTexturePool()
-    : m_releaseUnusedTexturesTimer(*this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
+    : m_releaseUnusedTexturesTimer(RunLoop::current(), this, &BitmapTexturePool::releaseUnusedTexturesTimerFired)
 {
 }
 #endif

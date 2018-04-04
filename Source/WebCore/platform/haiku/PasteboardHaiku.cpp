@@ -272,7 +272,7 @@ RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& conte
         if (!html.isEmpty()) {
             RefPtr<DocumentFragment> fragment = createFragmentFromMarkup(*frame.document(), html, "", DisallowScriptingContent);
             if (fragment)
-                return fragment.release();
+                return fragment;
         }
     }
 
@@ -285,7 +285,7 @@ RefPtr<DocumentFragment> Pasteboard::documentFragment(Frame& frame, Range& conte
         chosePlainText = true;
         RefPtr<DocumentFragment> fragment = createFragmentFromText(context, plainText);
         if (fragment)
-            return fragment.release();
+            return fragment;
     }
 
     return 0;

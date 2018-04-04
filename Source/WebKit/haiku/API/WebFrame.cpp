@@ -453,15 +453,11 @@ BWebFrame* BWebFrame::AddChild(BWebPage* page, BString name,
         ownerElement->document().frame()->tree().appendChild(*coreFrame.get());
     data->frame->init();
     // TODO? evas_object_smart_member_add(frame, ewkFrame);
-    
+
     // The creation of the frame may have run arbitrary JavaScript that removed
     // it from the page already.
     if (!coreFrame->page()) {
-        coreFrame.release();
         return nullptr;
     }
-
-    coreFrame.release();
-
     return frame;
 }

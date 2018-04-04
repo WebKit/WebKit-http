@@ -31,7 +31,6 @@
 #include "DocumentFragment.h"
 #include "NotImplemented.h"
 #include "Pasteboard.h"
-#include <wtf/PassRefPtr.h>
 
 
 namespace WebCore {

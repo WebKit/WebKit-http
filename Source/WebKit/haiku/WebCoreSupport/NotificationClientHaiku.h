@@ -64,13 +64,13 @@ public:
     void requestPermission(ScriptExecutionContext*, 
             RefPtr<NotificationPermissionCallback>&& callback) override {
         if (callback)
-            callback->handleEvent(Notification::permissionString(PermissionAllowed));
+            callback->handleEvent(NotificationPermission::Granted);
     }
     void cancelRequestsForPermission(ScriptExecutionContext*) override {}
     bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override { return false; }
 
     Permission checkPermission(ScriptExecutionContext*) override {
-        return PermissionAllowed;
+        return NotificationPermission::Granted;
     }
 
 private:

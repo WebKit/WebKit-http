@@ -35,12 +35,12 @@ namespace WebCore {
 
 class StillImage : public Image {
 public:
-    static PassRefPtr<StillImage> create(NativeImagePtr bitmap)
+    static RefPtr<StillImage> create(NativeImagePtr bitmap)
     {
         return adoptRef(new StillImage(bitmap));
     }
 
-    static PassRefPtr<StillImage> createForRendering(NativeImagePtr bitmap)
+    static RefPtr<StillImage> createForRendering(NativeImagePtr bitmap)
     {
         return adoptRef(new StillImage(bitmap));
     }

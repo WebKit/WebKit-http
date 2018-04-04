@@ -821,7 +821,5 @@ int main()
 {
     DumpRenderTreeApp app;
     app.Run();
-
-    gTestRunner.release();
 }
 

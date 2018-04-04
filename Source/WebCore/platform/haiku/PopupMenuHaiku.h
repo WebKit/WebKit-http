@@ -24,7 +24,6 @@
 #include "IntRect.h"
 #include "PopupMenu.h"
 #include "PopupMenuClient.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {

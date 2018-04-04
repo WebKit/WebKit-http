@@ -47,7 +47,7 @@ NotificationClientHaiku::fromDescriptor(Notification* descriptor)
 
     // TODO we should cache the data, in case the notification is re-sent
     // with some changes for an update.
-    BUrl iconURL(descriptor->iconURL());
+    BUrl iconURL(descriptor->icon());
     BUrlRequest* request = BUrlProtocolRoster::MakeRequest(iconURL);
     if (request) {
         SynchronousListener synchronous(*request);

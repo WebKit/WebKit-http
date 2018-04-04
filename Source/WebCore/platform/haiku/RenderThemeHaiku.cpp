@@ -52,9 +52,10 @@ Ref<RenderTheme> RenderThemeHaiku::create()
     return adoptRef(*new RenderThemeHaiku());
 }
 
-Ref<RenderTheme> RenderTheme::themeForPage(Page*)
+RenderTheme& RenderTheme::singleton()
 {
-    return RenderThemeHaiku::create();
+    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeHaiku::create());
+    return theme.get();
 }
 
 RenderThemeHaiku::RenderThemeHaiku()

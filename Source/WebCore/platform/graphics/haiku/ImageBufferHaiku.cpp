@@ -279,7 +279,7 @@ static inline void convertToInternalData(const uint8* sourceRows, unsigned sourc
     }
 }
 
-static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
+static RefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBufferData& imageData, const IntSize& size, bool premultiplied)
 {
     RefPtr<Uint8ClampedArray> result = Uint8ClampedArray::createUninitialized(rect.width() * rect.height() * 4);
 
@@ -337,7 +337,7 @@ static PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const Ima
     convertFromInternalData(sourceRows, sourceBytesPerRow, destRows, destBytesPerRow,
         rows, columns, premultiplied);
 
-    return result.release();
+    return result;
 }
 
 template<typename Unit>

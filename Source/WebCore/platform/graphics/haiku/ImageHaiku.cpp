@@ -145,7 +145,7 @@ void Image::drawPattern(GraphicsContext& context, const FloatRect& dstRect,
     context.restore();
 
     if (imageObserver())
-        imageObserver()->didDraw(this);
+        imageObserver()->didDraw(*this);
 }
 
 NativeImagePtr BitmapImage::getBBitmap()

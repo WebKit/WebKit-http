@@ -40,7 +40,6 @@
 #include <support/Locker.h>
 #include <Socket.h>
 #include <set>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/StreamBuffer.h>
 

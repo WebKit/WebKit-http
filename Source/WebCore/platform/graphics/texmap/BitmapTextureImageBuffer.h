@@ -46,7 +46,7 @@ public:
     virtual void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag);
     virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag);
     virtual void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag);
-    PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&);
+	RefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&);
     ImageBuffer* image() const { return m_image.get(); }
 
 private:
