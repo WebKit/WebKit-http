@@ -1141,8 +1141,22 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 
             gst_pad_link(currentSrcPad.get(), decryptorSinkPad.get());
             currentSrcPad = decryptorSrcPad;
-        } else
+        } else {
             GST_INFO("we don't have a decryptor");
+            gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_EVENT_BOTH,
+                [] (GstPad*, GstPadProbeInfo* info, void*) -> GstPadProbeReturn {
+                    ASSERT(GST_PAD_PROBE_INFO_TYPE(info) & GST_PAD_PROBE_TYPE_EVENT_BOTH);
+                    GstEvent* event = GST_PAD_PROBE_INFO_EVENT(info);
+                    if (GST_EVENT_TYPE(event) == GST_EVENT_PROTECTION) {
+                        GST_WARNING("protection event %d going \"down the sink\"", GST_EVENT_SEQNUM(event));
+                        return GST_PAD_PROBE_DROP;
+                    } else if (GST_EVENT_TYPE(event) == GST_EVENT_CUSTOM_DOWNSTREAM_OOB) {
+                        GST_WARNING("OOB encryption event %s going \"down the sink\"", gst_structure_get_name(gst_event_get_structure(event)));
+                        return GST_PAD_PROBE_DROP;
+                    }
+                    return GST_PAD_PROBE_OK;
+                }, nullptr, nullptr);
+        }
 #endif
 
         gst_pad_add_probe(currentSrcPad.get(), GST_PAD_PROBE_TYPE_BUFFER,
