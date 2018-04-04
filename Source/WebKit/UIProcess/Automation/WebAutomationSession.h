@@ -253,7 +253,9 @@ private:
     RunLoop::Timer<WebAutomationSession> m_loadTimer;
     Vector<String> m_filesToSelectForFileUpload;
 
+#if ENABLE(REMOTE_INSPECTOR)
     Inspector::FrontendChannel* m_remoteChannel { nullptr };
+#endif
 
 #if PLATFORM(IOS) || PLATFORM(GTK)
     // Keep track of currently active modifiers across multiple keystrokes.
