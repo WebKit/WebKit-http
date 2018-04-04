@@ -32,7 +32,7 @@ namespace JSC {
 
 class JSMapIterator;
 
-class JSMap : public HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>> {
+class JSMap final : public HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>> {
     using Base = HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>;
 public:
     friend class JSMapIterator;
@@ -56,6 +56,9 @@ public:
         add(exec, key, value);
     }
 
+    bool canCloneFastAndNonObservable(Structure*);
+    JSMap* clone(ExecState*, VM&, Structure*);
+
 private:
     JSMap(VM& vm, Structure* structure)
         : Base(vm, structure)
@@ -64,5 +67,17 @@ private:
 
     static String toStringName(const JSObject*, ExecState*);
 };
+
+inline bool isJSMap(JSCell* from)
+{
+    static_assert(std::is_final<JSMap>::value, "");
+    return from->type() == JSMapType;
+}
+
+inline bool isJSMap(JSValue from)
+{
+    static_assert(std::is_final<JSMap>::value, "");
+    return from.isCell() && from.asCell()->type() == JSMapType;
+}
 
 } // namespace JSC

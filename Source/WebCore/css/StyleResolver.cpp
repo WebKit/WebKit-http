@@ -87,6 +87,7 @@
 #include "KeyframeList.h"
 #include "LinkHash.h"
 #include "LocaleToScriptMapping.h"
+#include "MathMLElement.h"
 #include "MathMLNames.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
@@ -784,6 +785,47 @@ void StyleResolver::adjustStyleForInterCharacterRuby()
         style->setWritingMode(LeftToRightWritingMode);
 }
 
+static bool hasEffectiveDisplayNoneForDisplayContents(const Element& element)
+{
+    // https://drafts.csswg.org/css-display-3/#unbox-html
+    static NeverDestroyed<HashSet<AtomicString>> tagNames = [] {
+        static const HTMLQualifiedName* const tagList[] = {
+            &brTag,
+            &wbrTag,
+            &meterTag,
+            &appletTag,
+            &progressTag,
+            &canvasTag,
+            &embedTag,
+            &objectTag,
+            &audioTag,
+            &iframeTag,
+            &imgTag,
+            &videoTag,
+            &frameTag,
+            &framesetTag,
+            &inputTag,
+            &textareaTag,
+            &selectTag,
+        };
+        HashSet<AtomicString> set;
+        for (auto& name : tagList)
+            set.add(name->localName());
+        return set;
+    }();
+
+    // https://drafts.csswg.org/css-display-3/#unbox-svg
+    // FIXME: <g>, <use> and <tspan> have special (?) behavior for display:contents in the current draft spec.
+    if (is<SVGElement>(element))
+        return true;
+    // Not sure MathML code can handle it.
+    if (is<MathMLElement>(element))
+        return true;
+    if (!is<HTMLElement>(element))
+        return false;
+    return tagNames.get().contains(element.localName());
+}
+
 void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& parentStyle, const RenderStyle* parentBoxStyle, const Element* element)
 {
     // If the composed tree parent has display:contents, the parent box style will be different from the parent style.
@@ -795,10 +837,11 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
     style.setOriginalDisplay(style.display());
 
     if (style.display() == CONTENTS) {
-        // FIXME: Enable for all elements.
         bool elementSupportsDisplayContents = is<HTMLSlotElement>(element) || RuntimeEnabledFeatures::sharedFeatures().displayContentsEnabled();
         if (!elementSupportsDisplayContents)
             style.setDisplay(INLINE);
+        else if (!element || hasEffectiveDisplayNoneForDisplayContents(*element))
+            style.setDisplay(NONE);
     }
 
     if (style.display() != NONE && style.display() != CONTENTS) {
@@ -1042,10 +1085,10 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
             style.setDisplay(BLOCK);
     }
     
-    adjustStyleForAlignment(style, parentStyle);
+    adjustStyleForAlignment(style, *parentBoxStyle);
 }
     
-void StyleResolver::adjustStyleForAlignment(RenderStyle& style, const RenderStyle& parentStyle)
+void StyleResolver::adjustStyleForAlignment(RenderStyle& style, const RenderStyle& parentBoxStyle)
 {
     // To avoid needing to copy the StyleRareNonInheritedData, we repurpose the 'auto'
     // flag to not just mean 'auto' prior to running adjustRenderStyle but also
@@ -1055,23 +1098,23 @@ void StyleResolver::adjustStyleForAlignment(RenderStyle& style, const RenderStyl
     // 'auto' computes to the the inherited value. Otherwise, 'auto' computes to
     // 'normal'.
     if (style.justifyItems().position() == ItemPositionAuto) {
-        if (parentStyle.justifyItems().positionType() == LegacyPosition)
-            style.setJustifyItems(parentStyle.justifyItems());
+        if (parentBoxStyle.justifyItems().positionType() == LegacyPosition)
+            style.setJustifyItems(parentBoxStyle.justifyItems());
     }
     
     // The 'auto' keyword computes the computed value of justify-items on the
     // parent (minus any legacy keywords), or 'normal' if the box has no parent.
     if (style.justifySelf().position() == ItemPositionAuto) {
-        if (parentStyle.justifyItems().positionType() == LegacyPosition)
-            style.setJustifySelfPosition(parentStyle.justifyItems().position());
-        else if (parentStyle.justifyItems().position() != ItemPositionAuto)
-            style.setJustifySelf(parentStyle.justifyItems());
+        if (parentBoxStyle.justifyItems().positionType() == LegacyPosition)
+            style.setJustifySelfPosition(parentBoxStyle.justifyItems().position());
+        else if (parentBoxStyle.justifyItems().position() != ItemPositionAuto)
+            style.setJustifySelf(parentBoxStyle.justifyItems());
     }
     
     // The 'auto' keyword computes the computed value of align-items on the parent
     // or 'normal' if the box has no parent.
-    if (style.alignSelf().position() == ItemPositionAuto && parentStyle.alignItems().position() != RenderStyle::initialDefaultAlignment().position())
-        style.setAlignSelf(parentStyle.alignItems());
+    if (style.alignSelf().position() == ItemPositionAuto && parentBoxStyle.alignItems().position() != RenderStyle::initialDefaultAlignment().position())
+        style.setAlignSelf(parentBoxStyle.alignItems());
 }
 
 bool StyleResolver::checkRegionStyle(const Element* regionElement)

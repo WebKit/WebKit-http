@@ -31,6 +31,7 @@
 #include "MachineStackMarker.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadMessage.h>
+#include <wtf/threads/Signals.h>
 
 namespace JSC { namespace Wasm {
 
@@ -57,7 +58,7 @@ void resetInstructionCacheOnAllThreads()
 
     const DoublyLinkedList<MachineThreads::MachineThread>& threads = wasmThreads().threadsListHead(locker);
     for (const auto* thread = threads.head(); thread; thread = thread->next()) {
-        sendMessage(thread->m_thread.get(), [] (siginfo_t*, ucontext_t*) {
+        sendMessage(thread->m_thread.get(), [] (const PlatformRegisters&) {
             // It's likely that the signal handler will already reset the instruction cache but we might as well be sure.
             WTF::crossModifyingCodeFence();
         });

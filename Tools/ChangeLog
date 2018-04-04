@@ -1,3 +1,404 @@
+2017-05-31  Keith Miller  <keith_miller@apple.com>
+
+        Reland r216808, underlying lldb bug has been fixed.
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+
+        Unreviewed, relanding old patch. See: rdar://problem/31183352
+
+        * TestWebKitAPI/Tests/WTF/ThreadMessages.cpp:
+        (runThreadMessageTest):
+        (TEST):
+
+2017-05-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r217603.
+
+        This patch broke the internal builds.
+
+        Reverted changeset:
+
+        "Get <chrono> out of StdLibExtras.h"
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+        http://trac.webkit.org/changeset/217603
+
+2017-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Make ResourceLoadStatistics testing more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=172730
+        <rdar://problem/32028373>
+
+        Reviewed by Andy Estes.
+
+        When we tell the UIProcess (WebKitTestRunner) to notify the system about statistics update notifications,
+        we also need to tell the WebProcess to do so, too, or else the test system doesn't get messages.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsNotifyPagesWhenDataRecordsWereScanned):
+
+2017-05-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] run-javascriptcore-tests should use the jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=172757
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        When needed, add the jhbuild wrapper at the beginning of the array
+        that will be invoked to execute the run-jsc-stress-test or testapi
+        commands.
+
+        * Scripts/run-javascriptcore-tests:
+        (runJSCStressTests):
+        * Scripts/webkitdirs.pm:
+        (shouldUseJhbuild):
+
+2017-05-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+
+2017-05-30  Tim Horton  <timothy_horton@apple.com>
+
+        Keyboard autocorrections do not apply with an active selection (but keyboard acts like they did)
+        https://bugs.webkit.org/show_bug.cgi?id=172735
+        <rdar://problem/32015977>
+
+        Reviewed by Enrica Casucci.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::applyAutocorrection):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::applyAutocorrection):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::applyAutocorrection):
+        Expose applyAutocorrection to UIScriptController. Use a WKTesting method
+        because I don't know how to tap the button in the autocorrection bar from a test.
+
+2017-05-30  Daniel Bates  <dabates@apple.com>
+
+        Add unit test for WebKit2 C SPI runBeforeUnloadConfirmPanel()
+        https://bugs.webkit.org/show_bug.cgi?id=172671
+
+        Reviewed by Alex Christensen.
+
+        We should add a unit test to ensure we do not regress the WKPageUIClient runBeforeUnloadConfirmPanel() callback.
+        For completeness, the callback runBeforeUnloadConfirmPanel() existed since inception of WKPageUIClient (WKPageUIClientV0).
+
+        * TestWebKitAPI/Tests/WebKit2/ModalAlertsSPI.cpp:
+        (TestWebKitAPI::analyzeDialogArguments): Test the runBeforeUnloadConfirmPanel() callback last as we need
+        to trigger a navigation to test it.
+        (TestWebKitAPI::runBeforeUnloadConfirmPanel): Added.
+        (TestWebKitAPI::createNewPage): Wire up the runBeforeUnloadConfirmPanel callback.
+
+2017-05-30  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Start servers before setting-up for testing
+        https://bugs.webkit.org/show_bug.cgi?id=172176
+        <rdar://problem/32225538>
+
+        Reviewed by Alexey Proskuryakov.
+
+        On-device testing requires that servers are started before ports set-up their
+        test environments.
+
+        * Scripts/webkitpy/layout_tests/controllers/layout_test_runner.py:
+        (LayoutTestRunner.__init__): Start servers when initializing LayoutTestRunner.
+        Servers are unconditionally stopped on exit.
+        (LayoutTestRunner.run_tests): Move the starting of servers to the initializer. The
+        Manager now stops servers.
+        (LayoutTestRunner.start_servers): Set flag to indicate servers are running.
+        (LayoutTestRunner.stop_servers): Check flag, only shutdown servers if they are shutdown.
+        * Scripts/webkitpy/layout_tests/controllers/manager.py:
+        (Manager.__init__): Delay construction of the test runner until we can determine
+        if servers need to be started.
+        (Manager.run): Determine if servers need to be started and construct the test runner.
+        Shut servers down when the test run is finished.
+        (Manager._run_tests): Move the determination of servers to run into Manager.run.
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (is_wpt_server_running): Server is not running if no config is found.
+        * Scripts/webkitpy/layout_tests/servers/websocket_server.py:
+        (PyWebSocket.is_running): Check if this WebSocket server is running.
+        * Scripts/webkitpy/port/base.py:
+        (Port.__init__): Define secure WebSocket server.
+        (Port.to.is_websocket_server_running): Check if WebSocket servers are defined.
+
+2017-05-30  Daniel Bates  <dabates@apple.com>
+
+        [WK2] Add runBeforeUnloadConfirmPanel WKUIDelegate SPI; support onbeforeunload confirm panel in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=172603
+        <rdar://problem/32471306>
+
+        Reviewed by Brady Eidson.
+
+        Implement the -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler: delegate
+        method in MiniBrowser to show a confirm panel as to whether to allow the unloading of the page when
+        unloading is initiated for a page that registered a onbeforeunload handler.
+
+        Modify TestWebKitAPI/Tests/WebKit2Cocoa/ModalAlerts.mm to test that the -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:
+        is called. Also fix style nit; pass YES instead of true to avoid implicit conversion from bool to BOOL
+        when invoking the completion handler in -_webView:runJavaScriptAlertPanelWithMessage:initiatedByFrame:completionHandler:.
+
+        Until we fix <https://bugs.webkit.org/show_bug.cgi?id=172614> the unit test in TestWebKitAPI/Tests/WebKit2Cocoa/ModalAlerts.mm
+        for -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler: is only run on Mac
+        as we do not have the infrastructure to simulate a click/tap on iOS and a click/tap on the page that
+        registered an onbeforeunload handler is required to show a confirm panel when the page will be unloaded.
+
+        * MiniBrowser/mac/WK2BrowserWindowController.m:
+        (-[WK2BrowserWindowController _webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+        * TestWebKitAPI/Tests/WebKit2/modal-alerts-in-new-about-blank-window.html:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ModalAlerts.mm:
+        (sawDialog):
+        (-[ModalAlertsUIDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (-[ModalAlertsUIDelegate webView:runJavaScriptConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+        (-[ModalAlertsUIDelegate _webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:]):
+
+2017-05-30  Alex Christensen  <achristensen@webkit.org>
+
+        Update libwebrtc configuration
+        https://bugs.webkit.org/show_bug.cgi?id=172727
+
+        Reviewed by Geoffrey Garen.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-05-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] TestWebKitAPI: ASSERTION FAILED: m_eglDisplay == EGL_NO_DISPLAY
+        https://bugs.webkit.org/show_bug.cgi?id=172702
+
+        Reviewed by Alex Christensen.
+
+        EGL PlatformDisplay needs to be shut down before existing a
+        program on Windows.
+
+        * TestWebKitAPI/Tests/WebKit/win/ScaleWebView.cpp:
+        (TestWebKitAPI::ScaleWebView::TearDown): Call shutDownWebKit().
+        * TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp:
+        (TestWebKitAPI::WebViewDestruction::TearDown): Ditto.
+
+2017-05-30  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] fast/shadow-dom/fullscreen-in-slot-fullscreenElement.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172709
+
+        Reviewed by Brent Fulgham.
+
+        Exit fullscreen mode after a fullscreen test.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebViewToConsistentStateBeforeTesting):
+
+2017-05-30  Antti Koivisto  <antti@apple.com>
+
+        ASSERTION FAILED: !needsLayout() in com.apple.WebCore: WebCore::FrameView::paintContents in fast/events/tabindex-focus-blur-all.html on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=172713
+
+        Reviewed by Zalan Bujtas.
+
+        * DumpRenderTree/mac/ResourceLoadDelegate.mm:
+        (-[ResourceLoadDelegate webView:plugInFailedWithError:dataSource:]):
+
+            Remove forced display from plugin resource load delegate. It is testing some long-obsolete
+            Safari WK1 behavior. Forcing display from this resource load delegate will hit the assertion
+            because on Mac WK1 it may get invoked from middle of a layout.
+
+            Painting code skips out after the assert so it doesn't indicate unsafe access of any sort.
+
+2017-05-30  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Add a WPE EWS queue
+        https://bugs.webkit.org/show_bug.cgi?id=172693
+
+        Reviewed by Carlos Garcia Campos.
+
+        * QueueStatusServer/config/queues.py:
+        * QueueStatusServer/model/queues.py: Capitalize the name of the
+        port on the tooltip of the bubbles. Do the same for the GTK port.
+        (Queue.display_name):
+        * Scripts/webkitpy/common/config/ews.json: Update the watcher mail
+        for the GTK+ EWS also. Set for both ports as watcher the alias
+        bugs-noreply@webkitgtk.org that maintainers of both ports follow.
+        * Scripts/webkitpy/common/config/ports.py:
+        (DeprecatedPort.port):
+        (WpePort):
+        (WpePort.build_webkit_command):
+        (WpePort.run_webkit_tests_command):
+        * Scripts/webkitpy/common/config/ports_unittest.py:
+        (DeprecatedPortTest):
+        (DeprecatedPortTest.test_wpe_port):
+        * Scripts/webkitpy/tool/commands/earlywarningsystem_unittest.py:
+        (test_ews_name):
+
+2017-05-29  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Bumping the WPEBackend-mesa dependency version.
+
+        * wpe/jhbuild.modules: Use the latest version that uses proper GLib
+        priorities for IPC communication.
+
+2017-05-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Map and Set constructors should have fast path for cloning
+        https://bugs.webkit.org/show_bug.cgi?id=172413
+
+        Reviewed by Saam Barati.
+
+        * TestWebKitAPI/Tests/WTF/MathExtras.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-27  Zalan Bujtas  <zalan@apple.com>
+
+        enclosingIntRect returns a rect with -1 width/height when the input FloatRect overflows integer.
+        https://bugs.webkit.org/show_bug.cgi?id=172676
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebCore/FloatRect.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-26  Zalan Bujtas  <zalan@apple.com>
+
+        TestWebKitAPI: EnclosingIntRect and RoundedIntRect should use EXPECT_EQ.
+        https://bugs.webkit.org/show_bug.cgi?id=172674
+
+        Reviewed by Simon Fraser.
+
+        * TestWebKitAPI/Tests/WebCore/FloatRect.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-05-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add test resources back into TestWebKitAPI Copy Resources phase
+
+        Rubber-stamped by Beth Dakin.
+
+        Add two files back into the Copy Resources phase after they were unintentionally
+        removed in r217447 and r217496.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+2017-05-26  Beth Dakin  <bdakin@apple.com>
+
+        Media documents inside iframes should not get controls in the TouchBar unless the 
+        video is playing
+        https://bugs.webkit.org/show_bug.cgi?id=172620
+        -and corresponding-
+        rdar://problem/32165477
+
+        Reviewed by Jon Lee.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/VideoControlsManager.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/offscreen-iframe-of-media-document.html: Added.
+
+2017-05-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        _WKUserStyleSheet and WKUserScript leak string data
+        https://bugs.webkit.org/show_bug.cgi?id=172583
+        <rdar://problem/32395209>
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        We should not have been adopting an autoreleased object.
+
+2017-05-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WK1] iframes in layer-backed NSViews are not cleared between successive draws
+        https://bugs.webkit.org/show_bug.cgi?id=172554
+        <rdar://problem/31247133>
+
+        Reviewed by Simon Fraser.
+
+        Previously, there was no way to make DumpRenderTree's views layer-backed. Unfortunately,
+        simply setting [WebView setWantsLayer:] is insufficient; turning it on and then off again
+        leaves some state around inside the NSWindow which isn't easily cleaned up. Instead,
+        we should just tear down and rebuild the window whenever we need a layer-backed WebView.
+        We can also use the "webkit-test-runner" header comment to trigger this new layer-backed
+        codepath.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        (TestOptions::webViewIsCompatibleWithOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (shouldIgnoreWebCoreNodeLeaks):
+        (allowedFontFamilySet):
+        (-[DRTMockScroller rectForPart:]):
+        (-[DRTMockScroller drawKnob]):
+        (-[DRTMockScroller drawRect:]):
+        (createWebViewAndOffscreenWindow):
+        (initializeGlobalsFromCommandLineOptions):
+        (prepareConsistentTestingEnvironment):
+        (dumpRenderTree):
+        (dumpAudio):
+        (dumpHistoryItem):
+        (dumpBackForwardListForWebView):
+        (resetWebViewToConsistentStateBeforeTesting):
+        (WebThreadLockAfterDelegateCallbacksHaveCompleted):
+        (runTest):
+
+2017-05-25  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Use the term 'operation' more consistently
+        https://bugs.webkit.org/show_bug.cgi?id=172601
+
+        Reviewed by Chris Dumez.
+
+        We were using the term 'operation', a WebIDL term for function-like
+        constructs, inconsistently in the code generator. Now, when we use
+        'operation' when referring to the IDL concept (usually the object the
+        parser produces) and 'function' when referring to code being generated.
+
+        * DumpRenderTree/Bindings/CodeGeneratorDumpRenderTree.pm:
+        * WebKitTestRunner/InjectedBundle/Bindings/CodeGeneratorTestRunner.pm:
+
+2017-05-25  Jer Noble  <jer.noble@apple.com>
+
+        Unreviewed build fix after r217447; only run test where JSC's ObjC API is available.
+
+        * TestWebKitAPI/Tests/mac/MediaPlaybackSleepAssertion.mm:
+
+2017-05-25  Jer Noble  <jer.noble@apple.com>
+
+        System sleeps while playing to wireless target, ending stream.
+        https://bugs.webkit.org/show_bug.cgi?id=172541
+
+        Reviewed by Eric Carlson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/MediaPlaybackSleepAssertion.html: Added.
+        * TestWebKitAPI/Tests/mac/MediaPlaybackSleepAssertion.mm: Added.
+        (-[MediaPlaybackSleepAssertionLoadDelegate webView:didCreateJavaScriptContext:forFrame:]):
+        (-[MediaPlaybackSleepAssertionPolicyDelegate webView:decidePolicyForNavigationAction:request:frame:decisionListener:]):
+        (TestWebKitAPI::simulateKeyDown):
+        (TestWebKitAPI::hasAssertionType):
+        (TestWebKitAPI::TEST):
+
+2017-05-25  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217423 and r217424.
+        https://bugs.webkit.org/show_bug.cgi?id=172607
+
+        These caused an api failure on all testers. (Requested by
+        mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "REGRESSION (r216977): 4 leaks introduced in new
+        WebKit2_WKHTTPCookieStoreWithoutProcessPool_Test"
+        https://bugs.webkit.org/show_bug.cgi?id=172558
+        http://trac.webkit.org/changeset/217423
+
+        "REGRESSION (r217423): Fix last-second typo in 'auto'"
+        http://trac.webkit.org/changeset/217424
+
 2017-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
 
         [ATK] Expose doc-footnote ARIA role with ATK_ROLE_FOOTNOTE

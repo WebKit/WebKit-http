@@ -1,3 +1,61 @@
+2017-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Only include DataDetectorsUI headers in iOS
+        https://bugs.webkit.org/show_bug.cgi?id=172633
+
+        Reviewed by David Kilzer.
+
+        Enable data detectors only on iOS and not other variants of iOS.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+
+2017-05-30  Alex Christensen  <achristensen@webkit.org>
+
+        Update libwebrtc configuration
+        https://bugs.webkit.org/show_bug.cgi?id=172727
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Address thread safety issues with ResourceLoadStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=172519
+        <rdar://problem/31707642>
+
+        Reviewed by Chris Dumez.
+
+        Create a new WorkQueue for the ResourceLoadStatistics store to use for processing data.
+
+        * WebView/WebView.mm:
+        (WebKitInitializeApplicationStatisticsStoragePathIfNecessary): Pass WorkQueue to the observer.
+
+2017-05-25  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [WK1] iframes in layer-backed NSViews are not cleared between successive draws
+        https://bugs.webkit.org/show_bug.cgi?id=172554
+        <rdar://problem/31247133>
+
+        Reviewed by Simon Fraser.
+
+        Update an overridden internal AppKit function to the new signature.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inContext:topView:]):
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:shouldChangeFontReferenceColor:_recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]):
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inContext:topView:]): Deleted.
+        (-[WebHTMLView _recursive:displayRectIgnoringOpacity:inGraphicsContext:CGContext:topView:shouldChangeFontReferenceColor:]): Deleted.
+
 2017-05-24  Jer Noble  <jer.noble@apple.com>
 
         Rename DisplaySleepDisabler -> SleepDisabler

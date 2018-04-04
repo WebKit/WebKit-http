@@ -1,5 +1,16 @@
 # These are the layout test expectations for the GTK port of WebKit.
 #
+#
+# If you get different test results than the bots for some tests
+# even when using the internal JHBuild, then you can re-try using a
+# chroot of the same distro and version the bots use (see below).
+# If doing that fixes the issue, it means we need to identify the library
+# that is causing the difference on the results, and add it to the JHBuild.
+#
+# The bots of WebKitGTK+ running layout tests (Release Test, Debug Test, Release Wayland Tests)
+# are currently running on Debian 9 (Stretch) x86_64.
+#
+#
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 #
 # Never add any tests to this file without opening a bug on bugzilla.webkit.org.
@@ -881,6 +892,67 @@ crypto/subtle/hmac-import-raw-key-customized-length.html [ Pass ]
 crypto/subtle/hmac-import-raw-key-export-jwk-key.html [ Pass ]
 crypto/subtle/hmac-import-raw-key-export-raw-key.html [ Pass ]
 crypto/subtle/hmac-import-raw-key.html [ Pass ]
+crypto/subtle/rsa-oaep-decrypt-malformed-parameters.html [ Pass ]
+crypto/subtle/rsa-oaep-encrypt-malformed-parameters.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-export-key-jwk-sha1.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-export-key-jwk-sha224.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-export-key-jwk-sha256.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-export-key-jwk-sha384.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-export-key-jwk-sha512.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-key-encrypt-decrypt.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-key-encrypt-decrypt-label.html [ Pass ]
+crypto/subtle/rsa-oaep-generate-key.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-private-key.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-empty-usages.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-sha1.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-sha224.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-sha256.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-sha384.html [ Pass ]
+crypto/subtle/rsa-oaep-import-jwk-public-key-sha512.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-decrypt.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-decrypt-label.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-encrypt.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-encrypt-label.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-unwrap-jwk-oct-key.html [ Pass ]
+crypto/subtle/rsa-oaep-import-key-wrap-jwk-oct-key.html [ Pass ]
+crypto/subtle/rsa-oaep-plaintext-length.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-jwk.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-generate-key-encrypt-decrypt.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-generate-key-extractable.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-generate-key.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-private-key.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-empty-usages.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-leading-zero.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-minimum.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-jwk-public-key-non-extractable.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-key-decrypt.html [ Pass ]
+crypto/subtle/rsaes-pkcs1-v1_5-import-key-encrypt.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha1.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha224.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha256.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha384.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-jwk-sha512.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-key.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-key-sign-verify.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-private-key.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-empty-usages.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha1.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha224.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha256.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha384.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-jwk-public-key-sha512.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-sign-sha1.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-sign-sha224.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-sign-sha256.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-sign-sha384.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-sign-sha512.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-verify-sha1.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-verify-sha224.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-verify-sha256.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-verify-sha384.html [ Pass ]
+crypto/subtle/rsassa-pkcs1-v1_5-import-key-verify-sha512.html [ Pass ]
 crypto/subtle/import-key-malformed-parameters.html [ Pass ]
 crypto/subtle/pbkdf2-derive-bits-malformed-parametrs.html [ Pass ]
 crypto/subtle/pbkdf2-import-key-derive-bits.html [ Pass ]
@@ -2207,7 +2279,7 @@ webkit.org/b/132266 js/slow-stress/emscripten-memops.html [ Timeout Pass ]
 
 webkit.org/b/133148 accessibility/content-editable-set-inner-text-generates-axvalue-notification.html [ Timeout ]
 
-webkit.org/b/133151 js/cached-window-properties.html [ Timeout Crash Pass ]
+webkit.org/b/133151 js/cached-window-properties.html [ Slow ]
 
 webkit.org/b/133808 media/video-trackmenu-selection.html [ Timeout ]
 
@@ -3047,15 +3119,15 @@ webkit.org/b/136065 css3/shapes/shape-outside/supported-shapes/inset/shape-outsi
 webkit.org/b/136065 css3/shapes/shape-outside/supported-shapes/inset/shape-outside-inset-014.html [ ImageOnlyFailure ]
 webkit.org/b/136065 css3/shapes/shape-outside/supported-shapes/inset/shape-outside-inset-015.html [ ImageOnlyFailure ]
 
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-margin-001.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-004.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-circle-005.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-004.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-ellipse-005.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-inset-003.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-polygon-004.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
-webkit.org/b/136065 imported/w3c/csswg-test/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-027.html [ ImageOnlyFailure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-margin-001.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-circle-004.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-circle-005.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-ellipse-004.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-ellipse-005.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-inset-003.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-polygon-004.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/values/shape-outside-shape-arguments-000.html [ Failure ]
+webkit.org/b/136065 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/supported-shapes/circle/shape-outside-circle-027.html [ ImageOnlyFailure ]
 
 # The backing store is cleared when page cached in GTK
 webkit.org/b/135348 compositing/iframes/page-cache-layer-tree.html [ Skip ]
@@ -3457,7 +3529,7 @@ webkit.org/b/168551 http/tests/misc/slow-loading-animated-image.html [ ImageOnly
 
 webkit.org/b/168552 [ Release ] fast/text/hyphenate-locale.html [ Failure ]
 
-webkit.org/b/168553 imported/w3c/csswg-test/css-shapes-1/test-plan/index.html [ Failure ]
+webkit.org/b/168553 imported/w3c/web-platform-tests/css/css-shapes-1/test-plan/index.html [ Failure ]
 
 webkit.org/b/168554 fast/repaint/layer-child-outline.html [ ImageOnlyFailure ]
 

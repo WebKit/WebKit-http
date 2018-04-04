@@ -37,19 +37,6 @@ using namespace JSC;
 
 namespace WebCore {
 
-bool JSDOMStringMap::deleteProperty(JSCell* cell, ExecState* state, PropertyName propertyName)
-{
-    CustomElementReactionStack customElementReactionStack;
-    if (propertyName.isSymbol())
-        return Base::deleteProperty(cell, state, propertyName);
-    return jsCast<JSDOMStringMap*>(cell)->wrapped().deleteItem(propertyNameToString(propertyName));
-}
-
-bool JSDOMStringMap::deletePropertyByIndex(JSCell* cell, ExecState* state, unsigned index)
-{
-    return deleteProperty(cell, state, Identifier::from(state, index));
-}
-
 bool JSDOMStringMap::putDelegate(ExecState* state, PropertyName propertyName, JSValue value, PutPropertySlot&, bool& putResult)
 {
     VM& vm = state->vm();

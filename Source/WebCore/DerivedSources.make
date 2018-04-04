@@ -98,10 +98,17 @@ JS_BINDING_IDLS = \
 	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/credentials/BasicCredential.idl \
+    $(WebCore)/Modules/credentials/CredentialCreationOptions.idl \
     $(WebCore)/Modules/credentials/CredentialData.idl \
+    $(WebCore)/Modules/credentials/CredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/CredentialUserData.idl \
+    $(WebCore)/Modules/credentials/CredentialsContainer.idl \
+    $(WebCore)/Modules/credentials/FederatedCredential.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialRequestOptions.idl \
+    $(WebCore)/Modules/credentials/FederatedCredentialInit.idl \
+    $(WebCore)/Modules/credentials/NavigatorCredentials.idl \
     $(WebCore)/Modules/credentials/PasswordCredential.idl \
-    $(WebCore)/Modules/credentials/SiteBoundCredential.idl \
-    $(WebCore)/Modules/credentials/SiteBoundCredentialData.idl \
+    $(WebCore)/Modules/credentials/PasswordCredentialData.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/MediaKeySessionType.idl \
@@ -359,6 +366,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DOMPointReadOnly.idl \
     $(WebCore)/dom/DOMRect.idl \
     $(WebCore)/dom/DOMRectInit.idl \
+    $(WebCore)/dom/DOMRectList.idl \
     $(WebCore)/dom/DOMRectReadOnly.idl \
     $(WebCore)/dom/DOMStringList.idl \
     $(WebCore)/dom/DOMStringMap.idl \

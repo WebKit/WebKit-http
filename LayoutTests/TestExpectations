@@ -284,6 +284,8 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 # grid layout tests
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline.html [ ImageOnlyFailure ]
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline-margins.html [ ImageOnlyFailure ]
+webkit.org/b/172590 imported/w3c/web-platform-tests/css/css-grid-1/abspos/orthogonal-positioned-grid-items-013.html [ ImageOnlyFailure ]
+webkit.org/b/172590 imported/w3c/web-platform-tests/css/css-grid-1/abspos/orthogonal-positioned-grid-items-017.html [ ImageOnlyFailure ]
 webkit.org/b/149891 imported/w3c/web-platform-tests/css/css-grid-1/grid-layout-properties.html [ Failure ]
 webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
@@ -733,7 +735,6 @@ media/session [ Skip ]
 
 webrtc/negotiatedneeded-event-addStream.html [ Pass Crash ]
 webrtc/video-replace-track.html [ Pass Failure ]
-webrtc/video-stats.html [ Pass Failure ]
 webrtc/video-getParameters.html [ Failure ]
 webrtc/peer-connection-audio-mute2.html [ Pass Failure ]
 webrtc/peer-connection-remote-audio-mute2.html [ Pass Failure ]
@@ -744,8 +745,10 @@ fast/mediastream/RTCPeerConnection-more-media-to-negotiate.html [ Skip ]
 fast/mediastream/RTCPeerConnection-overloaded-operations-params.html [ Skip ]
 fast/mediastream/RTCRtpSender-replaceTrack.html [ Skip ]
 fast/mediastream/RTCPeerConnection-dtmf.html [ Failure ]
+webrtc/video-rotation.html [ Pass Failure ]
 # libwebrtc backend doesn't generate a=bundle-only lines
 fast/mediastream/RTCPeerConnection-inspect-offer-bundlePolicy-bundle-only.html [ Failure ]
+
 
 # Need updating wptserve
 imported/w3c/web-platform-tests/XMLHttpRequest/setrequestheader-content-type.htm [ Skip ]
@@ -800,9 +803,6 @@ webkit.org/b/148823 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nes
 webkit.org/b/148950 imported/w3c/web-platform-tests/html/semantics/document-metadata/the-base-element/base_href_specified.sub.html [ Skip ]
 
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_zero.html [ Pass Failure ]
-
-[ Debug ] imported/w3c/web-platform-tests/html/semantics/forms/form-control-infrastructure/form_attribute.html [ Skip ]
-[ Debug ] imported/w3c/web-platform-tests/html/semantics/forms/form-control-infrastructure/form_owner_and_table_2.html [ Skip ]
 
 # FIXME: The following failures need individual bugs.
 webkit.org/b/148805 imported/w3c/css/css-multicol-1/multicol-inherit-003.xht [ ImageOnlyFailure ]
@@ -1085,8 +1085,9 @@ webkit.org/b/172056 fast/text/multiglyph-characters.html [ Failure ]
 fast/text/letterpress-different.html [ ImageOnlyFailure ]
 
 # CSS Shapes tests
-webkit.org/b/163706 imported/w3c/csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-010.html [ Skip ]
-webkit.org/b/163706 imported/w3c/csswg-test/css-shapes-1/shape-outside/shape-image/shape-image-024.html [ Skip ]
+webkit.org/b/163706 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/shape-image/shape-image-010.html [ Skip ]
+webkit.org/b/163706 imported/w3c/web-platform-tests/css/css-shapes-1/shape-outside/shape-image/shape-image-024.html [ Skip ]
+webkit.org/b/172537 imported/w3c/web-platform-tests/css/css-shapes-1/spec-examples/shape-outside-018.html [ Pass Failure ]
 imported/blink/http/tests/security/shape-image-cors-disallow-origin.html [ ImageOnlyFailure ]
 imported/blink/http/tests/security/shape-image-cors-port.html [ ImageOnlyFailure ]
 webkit.org/b/163887 svg/as-image/svg-image-with-data-uri-use-data-uri.svg [ Pass Crash ]
@@ -1160,10 +1161,8 @@ webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-co
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-inline-flex-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-before-after-first-letter-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-before-after-001.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-001-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-002-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-flex-003.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-alignment-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-table-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-before-after-002.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-table-002.html [ ImageOnlyFailure ]
@@ -1172,19 +1171,15 @@ webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-co
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-002-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-flex-002.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-before-after-001.html [ ImageOnlyFailure ]
-webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-alignment-002.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-flow-root-001.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-inline-flex-001-inline.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-003-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-table-001-none.html [ ImageOnlyFailure ]
 webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-state-change-001.html [ ImageOnlyFailure ]
-
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-002-inline.html [ Skip ]
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-003-inline.html [ Skip ]
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-inline.html [ Skip ]
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-none.html [ Skip ]
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-multicol-001-inline.html [ Skip ]
-webkit.org/b/172503 imported/w3c/web-platform-tests/css/css-display-3/display-contents-replaced-001.html [ Skip ]
+webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-002-inline.html [ ImageOnlyFailure ]
+webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-flex-003-inline.html [ ImageOnlyFailure ]
+webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-inline.html [ ImageOnlyFailure ]
+webkit.org/b/157477 imported/w3c/web-platform-tests/css/css-display-3/display-contents-dynamic-list-001-none.html [ ImageOnlyFailure ]
 
 ### END OF display: contents failures
 ########################################
@@ -1376,4 +1371,6 @@ webkit.org/b/172378 imported/blink/fast/block/float/float-mark-descendants-for-l
 webkit.org/b/172378 imported/blink/fast/frames/freed-frame.html [ Skip ]
 webkit.org/b/172378 imported/blink/printing/print-document-without-documentElement-crash.html [ Skip ]
 
-webkit.org/b/172514 imported/w3c/web-platform-tests/innerText/getter.html [ Skip ]
+webkit.org/b/172609 fetch/closing-while-fetching-blob.html [ Skip ]
+
+webkit.org/b/172514 [ Debug ] imported/w3c/web-platform-tests/innerText/getter.html [ Skip ]

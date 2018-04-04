@@ -2580,7 +2580,7 @@ webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-reload.html [ Pass Failure ]
 webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Pass Failure ]
 
-webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
+webkit.org/b/172403 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Timeout ]
 
 webkit.org/b/142969 editing/spelling/copy-paste-crash.html
 
@@ -2759,7 +2759,7 @@ webkit.org/b/163291 media/video-fullscreeen-only-playback.html [ Failure ]
 webkit.org/b/163291 media/video-play-audio-require-user-gesture.html [ Failure ]
 webkit.org/b/163291 media/video-play-require-user-gesture.html
 
-webkit.org/b/163755 imported/w3c/csswg-test/css-shapes-1 [ Skip ]
+webkit.org/b/163755 imported/w3c/web-platform-tests/css/css-shapes-1 [ Skip ]
 
 # These font variation tests require a variation font which supports more than 2 axes.
 animations/font-variations/font-variation-settings-order.html [ Pass ImageOnlyFailure Failure ]
@@ -2882,3 +2882,8 @@ webkit.org/b/171760 imported/w3c/i18n/bidi/block-plaintext-005.html [ ImageOnlyF
 webkit.org/b/172019 imported/w3c/web-platform-tests/cssom-view/elementFromPoint.html [ Failure ]
 
 webkit.org/b/172547 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Failure ]
+
+webkit.org/b/172610 media/ios/autoplay-only-in-main-document.html [ Skip ]
+webkit.org/b/172672 fast/events/before-unload-returnValue.html [ Skip ]
+
+webkit.org/b/172518 http/tests/preload/viewport/meta-viewport-link-headers.php [ Pass Failure ]

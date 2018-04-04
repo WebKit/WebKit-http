@@ -28,13 +28,20 @@
 
 namespace WebCore {
 
-PasswordCredential::PasswordCredential(const Data& data)
-    : SiteBoundCredential(data, Type::Password)
+PasswordCredential::PasswordCredential(const PasswordCredentialData& data)
+    : BasicCredential(data, Type::Password)
+    , m_name(data.name)
+    , m_iconURL(data.iconURL)
+    , m_password(data.password)
 {
 }
 
 PasswordCredential::PasswordCredential(const HTMLFormElement&)
-    : SiteBoundCredential(Data(), Type::Password)
+    : BasicCredential(PasswordCredentialData(), Type::Password)
+{
+}
+
+PasswordCredential::~PasswordCredential()
 {
 }
 

@@ -51,7 +51,6 @@
 #import "WKBackForwardListInternal.h"
 #import "WKBackForwardListItemInternal.h"
 #import "WKBrowsingContextHandleInternal.h"
-#import "WKDataDetectorTypesInternal.h"
 #import "WKDragDestinationAction.h"
 #import "WKErrorInternal.h"
 #import "WKHistoryDelegatePrivate.h"
@@ -114,6 +113,10 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
 #import <wtf/spi/darwin/dyldSPI.h>
+
+#if ENABLE(DATA_DETECTION)
+#import "WKDataDetectorTypesInternal.h"
+#endif
 
 #if PLATFORM(IOS)
 #import "InteractionInformationAtPosition.h"
@@ -707,11 +710,11 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
 - (void)setUIDelegate:(id<WKUIDelegate>)UIDelegate
 {
+    _uiDelegate->setDelegate(UIDelegate);
 #if ENABLE(CONTEXT_MENUS)
     _page->setContextMenuClient(_uiDelegate->createContextMenuClient());
 #endif
     _page->setUIClient(_uiDelegate->createUIClient());
-    _uiDelegate->setDelegate(UIDelegate);
 }
 
 - (id <_WKIconLoadingDelegate>)_iconLoadingDelegate
@@ -3860,7 +3863,11 @@ static int32_t activeOrientation(WKWebView *webView)
 
 - (NSArray *)_dataDetectionResults
 {
+#if ENABLE(DATA_DETECTION)
     return [_contentView _dataDetectionResults];
+#else
+    return nil;
+#endif
 }
 
 - (void)_accessibilityRetrieveSpeakSelectionContent
@@ -5261,6 +5268,13 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)keyboardAccessoryBarPrevious
 {
     [_contentView accessoryTab:NO];
+}
+
+- (void)applyAutocorrection:(NSString *)newString toString:(NSString *)oldString withCompletionHandler:(void (^)())completionHandler
+{
+    [_contentView applyAutocorrection:newString toString:oldString withCompletionHandler:[capturedCompletionHandler = makeBlockPtr(completionHandler)] (UIWKAutocorrectionRects *rects) {
+        capturedCompletionHandler();
+    }];
 }
 
 - (void)dismissFormAccessoryView

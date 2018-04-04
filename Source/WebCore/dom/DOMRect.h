@@ -58,6 +58,4 @@ private:
     DOMRect() = default;
 };
 
-WEBCORE_EXPORT Vector<Ref<DOMRect>> createDOMRectVector(const Vector<FloatQuad>&);
-
 }

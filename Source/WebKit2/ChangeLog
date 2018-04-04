@@ -1,3 +1,582 @@
+2017-05-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r217603.
+
+        This patch broke the internal builds.
+
+        Reverted changeset:
+
+        "Get <chrono> out of StdLibExtras.h"
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+        http://trac.webkit.org/changeset/217603
+
+2017-05-31  Brent Fulgham  <bfulgham@apple.com>
+
+        Make ResourceLoadStatistics testing more reliable
+        https://bugs.webkit.org/show_bug.cgi?id=172730
+        <rdar://problem/32028373>
+
+        Reviewed by Andy Estes.
+
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed): Add a convenience method to notify the
+        WebProcess when the UIProcess has finished processing the load statistics data.
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords): Notify clients (if they requested) when
+        statistics have been processed.
+
+2017-05-31  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Saam Barati.
+
+        Only bring in <chrono> and namespace std::literals::chrono_literals when necessary.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        * NetworkProcess/cache/NetworkCacheFileSystem.h:
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoadManager.cpp:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::computeRecordWorth):
+        * Shared/mac/RemoteLayerBackingStoreCollection.mm:
+        * WebProcess/Cookies/WebCookieManager.h:
+
+2017-05-31  Zan Dobersek  <zdobersek@igalia.com>
+
+        CoordinatedLayerTreeHost: properly support async force repaints
+        https://bugs.webkit.org/show_bug.cgi?id=172444
+
+        Reviewed by Carlos Garcia Campos.
+
+        Before these changes the force-repaint callbacks were executed once
+        the next layer flush was performed. This is not appropriate since
+        with the threaded compositor this was done even before the flushed
+        state was handled on the rendering thread.
+
+        Instead, the callback should be invoked once the first following
+        flushed state is rendered through the compositor and the update
+        finish is reported back to CoordinatedLayerTreeHost through invoking
+        the renderNextFrame() method.
+
+        If the force-repaint callback is registered while a state update is
+        already being processed by the renderer (i.e. the threaded compositor),
+        the callback is invoked only after the following flush, which is
+        executed when renderNextFrame() is called for the current state update.
+
+        * WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.h:
+        Add the forceFrameSync() method that forces the following state flush
+        to produce a state update that will be handled by the compositor.
+        This ensures that the compositor informs the CoordinatedLayerTreeHost
+        once this state update is done, invoking renderNextFrame() which would
+        handle the force-repaint callback.
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp:
+        (WebKit::CoordinatedLayerTreeHost::forceRepaintAsync):
+        (WebKit::CoordinatedLayerTreeHost::renderNextFrame):
+        (WebKit::CoordinatedLayerTreeHost::layerFlushTimerFired):
+        * WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.h:
+        Remove the forceRepaintAsync() override that returned false.
+
+2017-05-31  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix copy-paste error added in r217209.
+
+        It seems I pasted twice.
+
+        * UIProcess/API/gtk/WebKitContextMenuItem.h:
+
+2017-05-30  Tim Horton  <timothy_horton@apple.com>
+
+        Keyboard autocorrections do not apply with an active selection (but keyboard acts like they did)
+        https://bugs.webkit.org/show_bug.cgi?id=172735
+        <rdar://problem/32015977>
+
+        Reviewed by Enrica Casucci.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView applyAutocorrection:toString:withCompletionHandler:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        Expose applyAutocorrection on the WKTesting category for use from UIScriptController.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::syncApplyAutocorrection):
+        If there is a range selection and it precisely matches the autocorrection's "before"
+        string, allow the autocorrection to take place.
+
+2017-05-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: images dragged from Inspector to Desktop are named "Unknown.png"
+        https://bugs.webkit.org/show_bug.cgi?id=141515
+        <rdar://problem/9251308>
+
+        Reviewed by Wenson Hsieh.
+
+        In Web Inspector these images are <img src="..."> with data: or blob:
+        content. In these cases we have the image data but the URL does not
+        provide a useful name. In fact the name "Unknown.png" comes from
+        -[NSURLResponse suggestedFilename] for this URL / content.
+
+        To start, improve this situation for drags in Web Inspector pages.
+        If the image element being dragged has a filename attribute use that
+        as the suggested filename for the drag.
+
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::WebDragClient::declareAndWriteDragImage):
+
+2017-05-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Only include DataDetectorsUI headers in iOS
+        https://bugs.webkit.org/show_bug.cgi?id=172633
+
+        Reviewed by David Kilzer.
+
+        Enable data detectors only on iOS and not other variants of iOS.
+
+        * Platform/spi/ios/ManagedConfigurationSPI.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _dataDetectionResults]):
+        * UIProcess/ios/WKActionSheetAssistant.h:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant showDataDetectorsSheet]):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _actionForLongPressFromPositionInformation:]):
+        (-[WKContentView _didNotHandleTapAsClick:]):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInRangeHandle.mm:
+        (-[WKWebProcessPlugInRangeHandle detectDataWithTypes:context:]):
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::handleTap):
+        (WebKit::WebPage::handleTwoFingerTapAtPoint):
+        (WebKit::WebPage::commitPotentialTap):
+
+2017-05-30  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(r215946): Can't reference a table cell in Google spreadsheet
+        https://bugs.webkit.org/show_bug.cgi?id=172703
+        <rdar://problem/32458086>
+
+        Reviewed by Ryosuke Niwa.
+
+        Fix GObject bindings accordingly.
+
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectList.cpp:
+        (WebKit::kit):
+        (WebKit::core):
+        (WebKit::wrapDOMRectList):
+        (webkit_dom_client_rect_list_constructed):
+        (webkit_dom_client_rect_list_item):
+        (webkit_dom_client_rect_list_get_length):
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMClientRectListPrivate.h:
+        * WebProcess/InjectedBundle/API/gtk/DOM/WebKitDOMElement.cpp:
+        (webkit_dom_element_get_client_rects):
+
+2017-05-30  Daniel Bates  <dabates@apple.com>
+
+        [WK2] Add runBeforeUnloadConfirmPanel WKUIDelegate SPI; support onbeforeunload confirm panel in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=172603
+        <rdar://problem/32471306>
+
+        Reviewed by Brady Eidson.
+
+        A page loaded in MiniBrowser using WebKit2 cannot show a beforeunload confirm panel (by registering
+        an onbeforeunload event handler) when it is unloaded. The same page loaded in MiniBrowser using
+        WebKit1 can show such a confirm panel. We need to add WKUIDelegate SPI so that an embedding client,
+        such as MiniBrowser, can register to receive a callback to show a beforeunload confirm panel.
+
+        * UIProcess/API/APIUIClient.h:
+        (API::UIClient::runBeforeUnloadConfirmPanel): Modified to take a SecurityOriginData object. This
+        makes the API consistent with the existing JavaScript dialog callbacks.
+        * UIProcess/API/C/WKPage.cpp:
+        (WKPageSetPageUIClient):
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h: Add SPI -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:.
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView setUIDelegate:]): Set the delegate of WebKit::UIDelegate to the specified WKUIDelegate
+        before we set the UI client on the page so as to ensure that API::UIClient callbacks that depend
+        -respondsToSelector: checks (e.g. API::UIClient::canRunBeforeUnloadConfirmPanel()) return the correct
+        result. To elaborate further, a API::UIClient client must override both canRunBeforeUnloadConfirmPanel()
+        and runBeforeUnloadConfirmPanel() to support running a beforeunload confirm dialog. When mapping
+        the Cocoa SPI, WKUIDelegatePrivate, to API::UIClient we implement API::UIClient::canRunBeforeUnloadConfirmPanel()
+        in terms of whether the Cocoa delegate responds at runtime to the selector -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:.
+        We need to do such runtime checks before we pass the API::UIClient to the page. Otherwise, querying
+        API::UIClient::canRunBeforeUnloadConfirmPanel() will return the wrong result.
+        * UIProcess/API/gtk/WebKitUIClient.cpp: Modified runBeforeUnloadConfirmPanel() to take a SecurityOriginData object.
+        * UIProcess/Cocoa/UIDelegate.h: Add declarations for API::UIClient overrides: canRunBeforeUnloadConfirmPanel()
+        and runBeforeUnloadConfirmPanel(). Add a bit to m_delegateMethods as to whether the Cocoa delegate
+        responds to selector -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:.
+        * UIProcess/Cocoa/UIDelegate.mm:
+        (WebKit::UIDelegate::setDelegate): Set the above m_delegateMethods bit if the Cocoa delegate responds
+        to selector -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:.
+        (WebKit::UIDelegate::UIClient::canRunBeforeUnloadConfirmPanel): Return whether the above m_delegateMethods
+        bit was set.
+        (WebKit::UIDelegate::UIClient::runBeforeUnloadConfirmPanel): Turn around and call -_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler: (if applicable).
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::runBeforeUnloadConfirmPanel): Modified to take a SecurityOriginData object
+        and pass it to API::UIClient::runBeforeUnloadConfirmPanel().
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in: Add SecurityOriginData argument to message RunBeforeUnloadConfirmPanel.
+        Also pass the message for the panel as the last argument so as to make the order of arguments to message
+        RunBeforeUnloadConfirmPanel more closely match the order of arguments passed to other JavaScript dialog
+        messages (e.g. RunJavaScriptAlert) for consistency.
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::runBeforeUnloadConfirmPanel): Include the SecurityOriginData object for the
+        frame in message RunBeforeUnloadConfirmPanel.
+
+2017-05-30  Alex Christensen  <achristensen@webkit.org>
+
+        Update libwebrtc configuration
+        https://bugs.webkit.org/show_bug.cgi?id=172727
+
+        Reviewed by Geoffrey Garen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-05-30  Tim Horton  <timothy_horton@apple.com>
+
+        Dictionary lookup disappears after a few seconds on observer.com
+        https://bugs.webkit.org/show_bug.cgi?id=172725
+        <rdar://problem/32328324>
+
+        Reviewed by Beth Dakin.
+
+        Only dismiss content-relative child windows on main frame loads,
+        not all subframes. This was causing e.g. dictionary popovers
+        relative to main-frame content to be dismissed when subframe
+        ads finished loading, which is likely the cause of most incidents
+        of this problem.
+
+        If the popover is relative to subframe content and the subframe
+        navigates out from under the popover, the popover will persist until
+        dismissed by the user (or one of the other automatic dismissal
+        mechanisms), but that seems preferable to the old behavior.
+
+        * UIProcess/Cocoa/WebViewImpl.h:
+        Remove an unimplemented and unused declaration.
+
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::processDidExit):
+        Move dismissContentRelativeChildWindows call here from WebPageProxy.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::didCommitLoadForFrame):
+        (WebKit::WebPageProxy::resetStateAfterProcessExited):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::didCommitLoadForMainFrame):
+        (WebKit::PageClientImpl::navigationGestureDidBegin):
+        (WebKit::PageClientImpl::dismissContentRelativeChildWindows):
+        Remove dismissContentRelativeChildWindows from PageClient(Impl),
+        call it from inside PageClientImpl and other Mac-specific places
+        instead of inside ifdefs in WebPageProxy.
+
+2017-05-30  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Don't use designated initializers in WebBackForwardListProxy.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=172667
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/WebPage/WebBackForwardListProxy.cpp:
+        (WebKit::WebBackForwardListProxy::addItemFromUIProcess):
+        (WebKit::WebBackForwardListProxy::addItem):
+
+2017-05-30  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r191402?): Safari, Mail crash at com.apple.WebKit: WebKit::WebContextMenuListenerProxy::invalidate + 4
+        https://bugs.webkit.org/show_bug.cgi?id=172704
+
+        Reviewed by Andreas Kling.
+
+        r191402 made WebContextMenuProxy non-refcounted. However there are several potential ways for WebContextMenuProxyMac::show()
+        to re-enter WebPageProxy and delete itself. This patch partially reverts r191402 bringing refcounting back and protects
+        WebContextMenuProxy during show().
+
+        Speculative fix. No test, can't repro the crash.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/WebContextMenuProxy.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::internalShowContextMenu):
+
+            Protect WebContextMenuProxy during show().
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/gtk/WebContextMenuProxyGtk.h:
+        (WebKit::WebContextMenuProxyGtk::create):
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createContextMenuProxy):
+        * UIProcess/mac/WebContextMenuProxyMac.h:
+        (WebKit::WebContextMenuProxyMac::create):
+
+2017-05-30  Zan Dobersek  <zdobersek@igalia.com>
+
+        Invalidate the LayerTreeHost when destroying the DrawingAreaWPE object.
+
+        Rubber-stamped by Carlos Garcia Campos.
+
+        * WebProcess/WebPage/wpe/DrawingAreaWPE.cpp:
+        (WebKit::DrawingAreaWPE::~DrawingAreaWPE): Invalidate the LayerTreeHost
+        object, properly deconstructing the graphics pipeline.
+
+2017-05-29  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Remove unneeded forward declaration
+
+        Rubber-stamped by Zan Dobersek.
+
+        * UIProcess/API/C/gtk/WKAPICastGtk.h: Remove WebGrammarDetail as
+        its header is included in the same file.
+
+2017-05-29  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Build fix after r217531
+
+        Unreviewed.
+
+        * UIProcess/API/C/wpe/WKAPICastWPE.h:
+        (WebKit::toAPI): Add missing WebGrammarDetail API cast.
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+        * UIProcess/API/C/WKAPICast.h: Moved GTK-only definitions that used WebGrammarDetail.h to
+          WKAPICastGtk.h. This had the effect of no longer including APIArray.h from this header.
+
+        * UIProcess/API/C/gtk/WKAPICastGtk.h: Moved GTK-only definitions to here.
+        (WebKit::toAPI):
+        * UIProcess/WebGrammarDetail.h: Replaced include of APIArray.h with a forward declaration.
+
+        * Shared/API/c/WKRenderLayer.cpp:
+        * Shared/API/c/WKRenderObject.cpp:
+        * UIProcess/API/C/WKApplicationCacheManager.cpp:
+        * UIProcess/API/C/WKContext.cpp:
+        * UIProcess/API/C/WKContextConfigurationRef.cpp:
+        * UIProcess/API/C/WKCookieManager.cpp:
+        * UIProcess/API/C/WKKeyValueStorageManager.cpp:
+        * UIProcess/API/C/WKNotificationManager.cpp:
+        * UIProcess/API/C/WKOpenPanelResultListener.cpp:
+        * UIProcess/API/C/WKPageGroup.cpp:
+        * UIProcess/API/C/WKResourceCacheManager.cpp:
+        * UIProcess/API/C/WKUserContentControllerRef.cpp:
+        * UIProcess/API/gtk/WebKitBackForwardList.cpp:
+        * UIProcess/WebContextMenuListenerProxy.cpp:
+
+          Added #include "APIArray.h" to these files now that WKAPICast.h does not include it.
+
+2017-05-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Simply some NSNumber usage
+        https://bugs.webkit.org/show_bug.cgi?id=172677
+
+        Reviewed by Sam Weinig.
+
+        * PluginProcess/mac/PluginControllerProxyMac.mm:
+        (WebKit::PluginControllerProxy::platformGeometryDidChange):
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::registerUserDefaultsIfNeeded):
+        * WebProcess/WebPage/mac/WKAccessibilityWebPageObjectMac.mm:
+        (-[WKAccessibilityWebPageObject accessibilityAttributeValue:]):
+
+2017-05-26  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Address thread safety issues with ResourceLoadStatistics
+        https://bugs.webkit.org/show_bug.cgi?id=172519
+        <rdar://problem/31707642>
+
+        Reviewed by Chris Dumez.
+
+        Address some thread safety issues with the ResourceLoadStatistics architecture.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords): Assert that this is never called on the main thread. Also
+        ensure that coreStore is only accessed on the statistics queue, not the main thread.
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords): Dispatch coreStore-accessing code
+        on the statistics queue.
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated): Assert we do not hit this method
+        on the main thread.
+        (WebKit::WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver): Assert that this is being called on the
+        main thread. Also ensure that coreStore is only accessed on the statistics queue, not the main thread.
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData): Dispatch coreStore-accessing code
+        on the statistics queue.
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded): Lock data before operating on it.
+        (WebKit::WebResourceLoadStatisticsStore::writeStoreToDisk): Assert we do not hit this method on the main thread.
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk): Ditto.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * WebProcess/WebProcess.cpp: Add a queue for the local WebProcess ResourceLoadStatisticsStore to use while processing data.
+        (WebKit::m_statisticsQueue): Added.
+        * WebProcess/WebProcess.h:
+
+2017-05-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Cocoa] Simplify some WebViewImpl pasteboard code
+        https://bugs.webkit.org/show_bug.cgi?id=172668
+
+        Reviewed by Tim Horton.
+
+        * Shared/mac/PasteboardTypes.mm:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        (WebKit::WebViewImpl::setFileAndURLTypes):
+        (WebKit::WebViewImpl::setPromisedDataForAttachment):
+
+2017-05-26  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Improve the reliability of automatically pausing in auto-attach
+        https://bugs.webkit.org/show_bug.cgi?id=172664
+        <rdar://problem/32362933>
+
+        Reviewed by Matt Baker.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::connect):
+        * UIProcess/Automation/WebAutomationSession.h:
+        Special connection options are ignored in automation sessions.
+
+2017-05-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217479.
+        https://bugs.webkit.org/show_bug.cgi?id=172642
+
+        Exposes an underlying bug in WPEBackend-mesa that we have to
+        resolve separately (Requested by zdobersek on #webkit).
+
+        Reverted changeset:
+
+        "[WPE] Use AcceleratedDrawingArea instead of its fork"
+        https://bugs.webkit.org/show_bug.cgi?id=172496
+        http://trac.webkit.org/changeset/217479
+
+2017-05-26  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Unreviewed Mac cmake buildfix after r217137, just for fun.
+        https://bugs.webkit.org/show_bug.cgi?id=172362
+
+        * PlatformMac.cmake:
+
+2017-05-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Use AcceleratedDrawingArea instead of its fork
+        https://bugs.webkit.org/show_bug.cgi?id=172496
+
+        Reviewed by Žan Doberšek.
+
+        WPE uses its own drawing area implementation, which is actually a fork of AcceleratedDrawingArea, but simplified
+        for the case of compositing being always forced. AcceleratedDrawingArea already handles the case of compositing
+        being forced, so now that WPE is upstream we could simply use AcceleratedDrawingArea instead.
+
+        * PlatformWPE.cmake:
+        * Shared/DrawingAreaInfo.h: Remove DrawingAreaTypeWPE type.
+        * UIProcess/API/wpe/DrawingAreaProxyWPE.cpp: Removed.
+        * UIProcess/API/wpe/DrawingAreaProxyWPE.h: Removed.
+        * UIProcess/API/wpe/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::createDrawingAreaProxy): Create an AcceleratedDrawingAreaProxy.
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::mainFrameContentSizeChanged): Moved from DrawingAreaImpl since it actually
+        belongs here.
+        * WebProcess/WebPage/DrawingArea.cpp:
+        (WebKit::DrawingArea::create): Create an AcceleratedDrawingArea for WPE port.
+        * WebProcess/WebPage/DrawingAreaImpl.cpp: Remove mainFrameContentSizeChanged() that doesn't belong here.
+        * WebProcess/WebPage/DrawingAreaImpl.h:
+        * WebProcess/WebPage/wpe/DrawingAreaWPE.cpp: Removed.
+        * WebProcess/WebPage/wpe/DrawingAreaWPE.h: Removed.
+
+2017-05-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        [iOS] Disbale async image decoding when synchronously painting a newly parented WebView
+        https://bugs.webkit.org/show_bug.cgi?id=172626
+
+        Reviewed by Simon Fraser.
+
+        Large images have to be synchronously decoded when bringing a WebView to 
+        the foreground because the whole page will be painted when we unblock the
+        UI process.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext): Get nextFlushIsForImmediatePaint
+        from RemoteLayerTreeContext and pass the correct GraphicsLayerPaintFlags
+        to drawLayerContents().
+        * WebProcess/WebPage/mac/RemoteLayerTreeContext.h:
+        (WebKit::RemoteLayerTreeContext::setNextFlushIsForImmediatePaint):
+        (WebKit::RemoteLayerTreeContext::nextFlushIsForImmediatePaint):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::flushLayers): Pass
+        m_nextFlushIsForImmediatePaint to RemoteLayerTreeContext and then reset it.
+        (WebKit::RemoteLayerTreeDrawingArea::activityStateDidChange):
+        Set m_nextFlushIsForImmediatePaint to true to say that in the next flush,
+        large images have to be synchronously decoded.
+
+2017-05-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        _WKUserStyleSheet and WKUserScript leak string data
+        https://bugs.webkit.org/show_bug.cgi?id=172583
+        <rdar://problem/32395209>
+
+        Reviewed by Sam Weinig.
+
+        * UIProcess/API/Cocoa/WKUserScript.mm:
+        (-[WKUserScript dealloc]):
+        * UIProcess/API/Cocoa/_WKUserStyleSheet.mm:
+        (-[_WKUserStyleSheet dealloc]):
+        Follow the pattern of destructing the internal API object.
+
+        * UIProcess/API/Cocoa/WKUserScriptInternal.h:
+        * UIProcess/API/Cocoa/_WKUserStyleSheetInternal.h:
+        Remove unnecessary includes.
+
+2017-05-25  Chris Dumez  <cdumez@apple.com>
+
+        ASSERT(m_websiteDataStore->websiteDataStore().sessionID() == m_sessionID) in PageConfiguration::sessionID()
+        https://bugs.webkit.org/show_bug.cgi?id=172615
+        <rdar://problem/32277488>
+
+        Reviewed by Brady Eidson.
+
+        Fix assertion added in r215923 to take into account the fact that the PageConfiguration's sessionID
+        is SessionID::legacyPrivateSessionID() when private browsing is enabled, instead of being the
+        WebsiteDataStore's sessionID.
+
+        See code in WebProcessPool::createWebPage():
+        """
+        pageConfiguration->setSessionID(pageConfiguration->preferences()->privateBrowsingEnabled() ? SessionID::legacyPrivateSessionID() : m_websiteDataStore->websiteDataStore().sessionID());
+        """
+
+        * UIProcess/API/APIPageConfiguration.cpp:
+        (API::PageConfiguration::sessionID):
+
+2017-05-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][iOS] Add a mach-lookup exception for 'com.apple.lsd.mapdb' to Network sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=172465
+        <rdar://problem/32332836>
+
+        Reviewed by Alex Christensen.
+
+        Expand sandbox to allow lookup of the mapdb that contains UTI information used
+        by the Network process.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+
+2017-05-25  Youenn Fablet  <youenn@apple.com>
+
+        com.apple.coremedia.videoencoder XPC service should be allowed by WebProcess sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=172599
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
 2017-05-25  Simon Fraser  <simon.fraser@apple.com>
 
         [iOS WK2] Avoid setting contentsScale and rasterizationScale on CATransformLayers

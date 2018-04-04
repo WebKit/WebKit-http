@@ -1,3 +1,134 @@
+2017-05-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: BackForwardArrows.svg is not shown
+        https://bugs.webkit.org/show_bug.cgi?id=172741
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/BackForwardArrows.svg: Renamed id names to match with Apple's images.
+
+2017-05-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: images dragged from Inspector to Desktop are named "Unknown.png"
+        https://bugs.webkit.org/show_bug.cgi?id=141515
+        <rdar://problem/9251308>
+
+        Reviewed by Wenson Hsieh.
+
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WebInspector.ImageResourceContentView.prototype.contentAvailable):
+        Set a non-standard "filename" attribute to provide a suggested filename
+        for this <img> containing data: or blob: content.
+
+2017-05-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add DOM breakpoint image for GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=169326
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/DOMBreakpoint.svg: Added.
+
+2017-05-28  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ALWAYS_SEARCH_USER_PATHS is set to YES
+        https://bugs.webkit.org/show_bug.cgi?id=172691
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Set ALWAYS_SEARCH_USER_PATHS to NO.
+
+2017-05-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Reloading the page after switching from the Resource tab switches back
+        https://bugs.webkit.org/show_bug.cgi?id=172622
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WebInspector.SearchSidebarPanel.prototype._treeSelectionDidChange):
+        Don't show the newly selected tree element's represented object if the sidebar is not visible.
+
+2017-05-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: New Tab contents have extra vertical spacing when wrapped
+        https://bugs.webkit.org/show_bug.cgi?id=172530
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/NewTabContentView.css:
+        (.new-tab.tab.content-view):
+
+2017-05-26  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add new GTK+ icons for Web Sockets
+        https://bugs.webkit.org/show_bug.cgi?id=172296
+
+        Reviewed by Carlos Garcia Campos.
+
+        Add more free icons for the Web Inspector of GTK+ port.
+
+        * UserInterface/Images/gtk/WebSocket.png: Added.
+        * UserInterface/Images/gtk/WebSocket@2x.png: Added.
+        * UserInterface/Images/gtk/WebSocketLarge.png: Added.
+        * UserInterface/Images/gtk/WebSocketLarge@2x.png: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.resource-icon.resource-type-websocket .icon):
+        (.large .resource-icon.resource-type-websocket .icon):
+        (body:matches(.mac-platform, .windows-platform) .resource-icon.resource-type-websocket .icon): Deleted.
+        (body:matches(.mac-platform, .windows-platform) .large .resource-icon.resource-type-websocket .icon): Deleted.
+
+2017-05-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Don't create DetailsSidebarPanel classes until they are needed by a Tab
+        https://bugs.webkit.org/show_bug.cgi?id=172393
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        Remove global instantiation of all DetailsSidebarPanel objects.
+
+        (WebInspector.instanceForClass):
+        Utility function for creating and accessing an instance of a given class.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView):
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WebInspector.DebuggerTabContentView):
+        (WebInspector.DebuggerTabContentView.prototype.showDetailsSidebarPanels):
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView):
+        * UserInterface/Views/NetworkTabContentView.js:
+        (WebInspector.NetworkTabContentView):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView):
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView):
+        * UserInterface/Views/StorageTabContentView.js:
+        (WebInspector.StorageTabContentView):
+        * UserInterface/Views/TabContentView.js:
+        (WebInspector.TabContentView):
+        (WebInspector.TabContentView.prototype.get detailsSidebarPanels):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WebInspector.TimelineTabContentView):
+        Now accepts an array of DetailsSidebarPanel classes that are all instantiated when they are
+        about to be added to the DetailsSidebar.
+
+2017-05-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Changing the width of a Sidebar when it's collapsed shouldn't trigger a layout
+        https://bugs.webkit.org/show_bug.cgi?id=172606
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Sidebar.js:
+        (WebInspector.Sidebar.prototype._recalculateWidth):
+
 2017-05-25  Fujii Hironori  <Hironori.Fujii@sony.com>
 
         [GTK] Web Inspector: Add ListStylePositionInside.svg and ListStylePositionOutside.svg
