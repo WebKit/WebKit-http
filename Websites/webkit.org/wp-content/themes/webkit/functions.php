@@ -290,7 +290,7 @@ function html_select_options(array $list, $selected = null, $values = false, $ap
             if ( is_array($text) ) {
                 $label = $value;
                 $_ .= '<optgroup label="' . esc_attr($label) . '">';
-                $_ .= self::menuoptions($text, $selected, $values);
+                $_ .= html_select_options($text, $selected, $values);
                 $_ .= '</optgroup>';
                 continue;
             } else $_ .= "<option$value_attr$selected_attr>$text</option>";
@@ -419,7 +419,7 @@ class Front_Page_Posts {
             self::$object = new self;
 
         if ( empty(self::$wp_query) )
-            self::$wp_query = new WP_Query(array('post_type' => 'post'));
+            self::$wp_query = new WP_Query(array('post_type' => 'post', 'posts_per_page' => 16));
 
         return self::$object;
     }

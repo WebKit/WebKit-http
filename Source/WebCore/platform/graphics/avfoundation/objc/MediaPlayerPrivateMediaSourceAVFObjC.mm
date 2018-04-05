@@ -28,6 +28,7 @@
 
 #if ENABLE(MEDIA_SOURCE) && USE(AVFOUNDATION)
 
+#import "AVAssetTrackUtilities.h"
 #import "AVFoundationMIMETypeCache.h"
 #import "AVFoundationSPI.h"
 #import "CDMSessionAVStreamSession.h"
@@ -214,19 +215,23 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaSourceAVFObjC::supportsType(con
         return MediaPlayer::IsNotSupported;
 #endif
 
-    if (parameters.type.isEmpty() || !AVFoundationMIMETypeCache::singleton().types().contains(parameters.type))
+    if (parameters.type.isEmpty() || !AVFoundationMIMETypeCache::singleton().types().contains(parameters.type.containerType()))
         return MediaPlayer::IsNotSupported;
 
     // The spec says:
     // "Implementors are encouraged to return "maybe" unless the type can be confidently established as being supported or not."
-    if (parameters.codecs.isEmpty())
+    auto codecs = parameters.type.parameter(ContentType::codecsParameter());
+    if (codecs.isEmpty())
         return MediaPlayer::MayBeSupported;
 
-    NSString *outputCodecs = parameters.codecs;
+    NSString *outputCodecs = codecs;
     if ([getAVStreamDataParserClass() respondsToSelector:@selector(outputMIMECodecParameterForInputMIMECodecParameter:)])
         outputCodecs = [getAVStreamDataParserClass() outputMIMECodecParameterForInputMIMECodecParameter:outputCodecs];
 
-    NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)parameters.type, (NSString *)outputCodecs];
+    if (!contentTypeMeetsHardwareDecodeRequirements(parameters.type, parameters.contentTypesRequiringHardwareSupport))
+        return MediaPlayer::IsNotSupported;
+
+    NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)parameters.type.containerType(), (NSString *)outputCodecs];
     return [getAVURLAssetClass() isPlayableExtendedMIMEType:typeString] ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;;
 }
 
@@ -630,7 +635,7 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::supportsAcceleratedRendering() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::acceleratedRenderingStateChanged()
 {
-    if (!m_hasBeenAskedToPaintGL && m_player->visible() && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
+    if (!m_hasBeenAskedToPaintGL && m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player)) {
         destroyDecompressionSession();
         ensureLayer();
     } else {
@@ -947,6 +952,11 @@ void MediaPlayerPrivateMediaSourceAVFObjC::keyNeeded(Uint8Array* initData)
     m_player->keyNeeded(initData);
 }
 #endif
+
+const Vector<ContentType>& MediaPlayerPrivateMediaSourceAVFObjC::mediaContentTypesRequiringHardwareSupport() const
+{
+    return m_player->mediaContentTypesRequiringHardwareSupport();
+}
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setReadyState(MediaPlayer::ReadyState readyState)
 {

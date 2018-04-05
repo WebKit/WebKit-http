@@ -84,12 +84,8 @@
 #include "VirtualRegister.h"
 #include "Watchdog.h"
 #include <atomic>
-#if !OS(WINDOWS)
-#include <dlfcn.h>
-#endif
 #include <unordered_set>
 #include <wtf/Box.h>
-#include <wtf/ProcessID.h>
 
 namespace JSC { namespace FTL {
 
@@ -3027,7 +3023,7 @@ private:
             result = sanitizeResult(atomicValue);
             break;
         case AtomicsLoad:
-            atomicValue = loadFromIntTypedArray(pointer, type);
+            atomicValue = m_out.atomicXchgAdd(m_out.int32Zero, pointer, width);
             result = sanitizeResult(atomicValue);
             break;
         case AtomicsOr:
@@ -3035,7 +3031,7 @@ private:
             result = sanitizeResult(atomicValue);
             break;
         case AtomicsStore:
-            atomicValue = m_out.store(args[0], pointer, storeType(type));
+            atomicValue = m_out.atomicXchg(args[0], pointer, width);
             result = args[0];
             break;
         case AtomicsSub:
@@ -10197,6 +10193,10 @@ private:
         // after that opcode. You don't have to also prove to AI that your opcode does not return.
         // Hence, there is nothing to do here but emit code that will crash, so that we catch
         // cases where you said Unreachable but you lied.
+        //
+        // It's also also worth noting that some clients emit this opcode because they're not 100% sure
+        // if the code is unreachable, but they would really prefer if we crashed rather than kept going
+        // if it did turn out to be reachable. Hence, this needs to deterministically crash.
         
         crash();
     }

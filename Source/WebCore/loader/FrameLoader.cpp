@@ -1306,9 +1306,9 @@ SubstituteData FrameLoader::defaultSubstituteDataForURL(const URL& url)
 {
     if (!shouldTreatURLAsSrcdocDocument(url))
         return SubstituteData();
-    String srcdoc = m_frame.ownerElement()->attributeWithoutSynchronization(srcdocAttr);
+    auto& srcdoc = m_frame.ownerElement()->attributeWithoutSynchronization(srcdocAttr);
     ASSERT(!srcdoc.isNull());
-    CString encodedSrcdoc = srcdoc.utf8();
+    CString encodedSrcdoc = srcdoc.string().utf8();
 
     ResourceResponse response(URL(), ASCIILiteral("text/html"), encodedSrcdoc.length(), ASCIILiteral("UTF-8"));
     return SubstituteData(SharedBuffer::create(encodedSrcdoc.data(), encodedSrcdoc.length()), URL(), response, SubstituteData::SessionHistoryVisibility::Hidden);
@@ -3160,7 +3160,9 @@ void FrameLoader::continueLoadAfterNewWindowPolicy(const ResourceRequest& reques
     if (!mainFrame)
         return;
 
-    mainFrame->loader().forceSandboxFlags(frame->loader().effectiveSandboxFlags());
+    SandboxFlags sandboxFlags = frame->loader().effectiveSandboxFlags();
+    if (sandboxFlags & SandboxPropagatesToAuxiliaryBrowsingContexts)
+        mainFrame->loader().forceSandboxFlags(sandboxFlags);
 
     if (!equalIgnoringASCIICase(frameName, "_blank"))
         mainFrame->tree().setName(frameName);
@@ -3704,7 +3706,8 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
 
     RefPtr<Frame> frame = &page->mainFrame();
 
-    frame->loader().forceSandboxFlags(openerFrame.document()->sandboxFlags());
+    if (isDocumentSandboxed(openerFrame, SandboxPropagatesToAuxiliaryBrowsingContexts))
+        frame->loader().forceSandboxFlags(openerFrame.document()->sandboxFlags());
 
     if (!equalIgnoringASCIICase(request.frameName(), "_blank"))
         frame->tree().setName(request.frameName());

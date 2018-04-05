@@ -1,3 +1,253 @@
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Update WorkQueue::concurrentApply() to take a WTF::Function instead of an std::function
+        https://bugs.webkit.org/show_bug.cgi?id=173165
+
+        Reviewed by Saam Barati.
+
+        Update WorkQueue::concurrentApply() to take a WTF::Function instead of an std::function
+        as std::function has issues with regards to thread safety.
+
+        * wtf/WorkQueue.h:
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::WorkQueue::concurrentApply):
+
+2017-06-08  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        MediaTime class has rounding issues in different platforms
+        https://bugs.webkit.org/show_bug.cgi?id=172640
+
+        Reviewed by Jer Noble.
+
+        The way a timescale is set when creating a MediaTime from a double
+        can create rounding issues in different platforms because in some
+        rounding is made and in others, it truncates. This way we ensure a
+        common behavior.
+
+        Dumping MediaTimes is also confusing and by the output you don't
+        know if it's containing a double or a fraction. Now, if it
+        contains a double, it only prints the double because printing the
+        fraction is misleading (it currently prints the double read as an
+        integer) and if it contains a fraction it shows the fraction and
+        its double representation separated by an = instead of a ,.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithDouble): When creating MediaTime from
+        double, we round instead of leaving it to the cast operation.
+        (WTF::MediaTime::dump):
+
+2017-06-07  Jer Noble  <jer.noble@apple.com>
+
+        Refactoring: MediaEngineSupportParameters should take a ContentType rather than separate type & codecs strings
+        https://bugs.webkit.org/show_bug.cgi?id=173038
+
+        Reviewed by Eric Carlson.
+
+        Drive by fix: add a version of split that takes a UChar and returns a Vector<String>.
+
+        * wtf/text/WTFString.h:
+        (WTF::String::split):
+
+2017-06-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] RSA-PSS support
+        https://bugs.webkit.org/show_bug.cgi?id=172856
+
+        Reviewed by Jiewen Tan.
+
+        * wtf/Platform.h: Define HAVE_RSA_PSS to 1 for USE(GCRYPT). Support for RSA-PSS
+        is provided by default through the libgcrypt library.
+
+2017-06-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r214974.
+
+        Causes some tabs to start using a huge amount of CPU after 8
+        minutes in the background
+
+        Reverted changeset:
+
+        "Make inactive web processes behave as though under memory
+        pressure."
+        https://bugs.webkit.org/show_bug.cgi?id=170042
+        http://trac.webkit.org/changeset/214974
+
+2017-06-06  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WebCore] Enable REQUEST_ANIMATION_FRAME_TIMER for all ports
+        https://bugs.webkit.org/show_bug.cgi?id=172780
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-06-06  Darin Adler  <darin@apple.com>
+
+        Cut down use of WTF_ARRAY_LENGTH
+        https://bugs.webkit.org/show_bug.cgi?id=172997
+
+        Reviewed by Chris Dumez.
+
+        * wtf/DateMath.cpp:
+        (WTF::equalLettersIgnoringASCIICase): Added helper function template.
+        (WTF::parseDateFromNullTerminatedCharacters): Use a modern for loop instead of
+        WTF_ARRAY_LENGTH. Use startsWithLettersIgnoringASCIICase and
+        equalLettersIgnoringASCIICase instead of strncasecmp.
+
+        * wtf/text/IntegerToStringConversion.h:
+        (WTF::numberToStringImpl): Use std::end instead of WTF_ARRAY_LENGTH.
+        (WTF::writeNumberToBufferImpl): Ditto.
+
+2017-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        index out of bound in bytecodebasicblock
+        https://bugs.webkit.org/show_bug.cgi?id=172963
+
+        Reviewed by Saam Barati and Mark Lam.
+
+        * wtf/Assertions.h:
+        (UNREACHABLE_FOR_PLATFORM):
+
+2017-06-05  Jer Noble  <jer.noble@apple.com>
+
+        Allow clients to specify a list of codecs which should require hardware decode support.
+        https://bugs.webkit.org/show_bug.cgi?id=172787
+
+        Reviewed by Alex Christensen.
+
+        Add a couple of convenience methods:
+        - a String::split() that returns a vector (rather than taking an out-reference to a vector).
+        - A Vector::map() template which takes a Callable and returns a Vector of a different type.
+
+        * wtf/Vector.h:
+        (WTF::Vector::map):
+        * wtf/text/WTFString.h:
+        (WTF::String::split):
+
+2017-06-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix build of Windows-specific code with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=172729
+
+        Reviewed by Darin Adler.
+
+        * wtf/text/win/WCharStringExtras.h: Added new header file wuth helper
+        functions for conversion between WTF::String and wchart_t*.
+        (WTF::stringToNullTerminatedWChar):
+        (WTF::wcharToString):
+        (WTF::nullTerminatedWCharToString):
+
+2017-06-02  Stephan Szabo  <stephan.szabo@am.sony.com>
+
+        [JSCOnly] Build static jsc.exe on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=172833
+
+        Reviewed by Konstantin Tokarev.
+
+        * wtf/PlatformJSCOnly.cmake:
+
+2017-06-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Zalan Bujtas.
+
+        We hates std::chrono. Don't include it everywhere to discourage use.
+
+        * wtf/StdLibExtras.h:
+
+2017-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.load and Atomics.store need to be fully fenced
+        https://bugs.webkit.org/show_bug.cgi?id=172844
+
+        Reviewed by Keith Miller.
+        
+        Add loadFullyFenced and storeFullyFenced to Atomic<>.
+
+        * wtf/Atomics.h:
+        (WTF::Atomic::loadFullyFenced):
+        (WTF::Atomic::storeRelaxed):
+        (WTF::Atomic::storeFullyFenced):
+        (WTF::atomicLoadFullyFenced):
+        (WTF::atomicStoreFullyFenced):
+
+2017-06-01  Keith Miller  <keith_miller@apple.com>
+
+        Undo rollout in r217638 with bug fix
+        https://bugs.webkit.org/show_bug.cgi?id=172824
+
+        Unreviewed, reland patch with unused set_state code removed.
+
+        * Configurations/WTF.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Platform.h:
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::StackBounds):
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageUsingSignal):
+        (WTF::sendMessageUsingMach):
+        (WTF::deliverMessagesUsingMach):
+        (WTF::sendMessageScoped):
+        * wtf/ThreadMessage.h:
+        (WTF::sendMessage):
+        * wtf/Threading.h:
+        (WTF::Thread::machThread):
+        * wtf/mac/MachExceptions.defs: Copied from Source/WTF/wtf/ThreadMessage.h.
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::handleSignalsWithMach):
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::unregisterThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+
+2017-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217611 and r217631.
+        https://bugs.webkit.org/show_bug.cgi?id=172785
+
+        "caused wasm-hashset-many.html to become flaky." (Requested by
+        keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Reland r216808, underlying lldb bug has been fixed."
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+        http://trac.webkit.org/changeset/217611
+
+        "Use dispatch queues for mach exceptions"
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+        http://trac.webkit.org/changeset/217631
+
+2017-05-31  Keith Miller  <keith_miller@apple.com>
+
+        Use dispatch queues for mach exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds support for using a dispatch queue to handle our
+        mach exceptions. We use a high priority concurrent dispatch queue
+        to handle our mach exceptions. We don't know the priority of the
+        thread whose exception we are handling so the most conservative
+        answer is to respond with a high priority. These events are both
+        rare and usually quite fast so it is likely not a significant cost
+        when the thread with an exception has a low priority.
+
+        * wtf/threads/Signals.cpp:
+        (WTF::startMachExceptionHandlerThread):
+
 2017-05-31  Keith Miller  <keith_miller@apple.com>
 
         Reland r216808, underlying lldb bug has been fixed.

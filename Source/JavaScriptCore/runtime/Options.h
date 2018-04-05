@@ -176,6 +176,7 @@ typedef const char* optionString;
     v(bool, validateGraphAtEachPhase, false, Normal, nullptr) \
     v(bool, verboseValidationFailure, false, Normal, nullptr) \
     v(bool, verboseOSR, false, Normal, nullptr) \
+    v(bool, verboseDFGOSRExit, false, Normal, nullptr) \
     v(bool, verboseFTLOSRExit, false, Normal, nullptr) \
     v(bool, verboseCallLink, false, Normal, nullptr) \
     v(bool, verboseCompilationQueue, false, Normal, nullptr) \
@@ -187,6 +188,7 @@ typedef const char* optionString;
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
+    v(bool, verboseDFGFailure, false, Normal, nullptr) \
     v(bool, verboseFTLToJSThunk, false, Normal, nullptr) \
     v(bool, verboseFTLFailure, false, Normal, nullptr) \
     v(bool, alwaysComputeHash, false, Normal, nullptr) \
@@ -362,7 +364,7 @@ typedef const char* optionString;
     v(gcLogLevel, logGC, GCLogging::None, Normal, "debugging option to log GC activity (0 = None, 1 = Basic, 2 = Verbose)") \
     v(bool, useGC, true, Normal, nullptr) \
     v(bool, gcAtEnd, false, Normal, "If true, the jsc CLI will do a GC before exiting") \
-    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.")\
+    v(bool, forceGCSlowPaths, false, Normal, "If true, we will force all JIT fast allocations down their slow paths.") \
     v(unsigned, gcMaxHeapSize, 0, Normal, nullptr) \
     v(unsigned, forceRAMSize, 0, Normal, nullptr) \
     v(bool, recordGCPauseTimes, false, Normal, nullptr) \

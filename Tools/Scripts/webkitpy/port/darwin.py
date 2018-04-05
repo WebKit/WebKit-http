@@ -107,17 +107,17 @@ class DarwinPort(ApplePort):
         return logs
 
     def _look_for_all_crash_logs_in_log_dir(self, newer_than):
-        crash_log = CrashLogs(self.host, self.path_to_crash_logs())
+        crash_log = CrashLogs(self.host, self.path_to_crash_logs(), crash_logs_to_skip=self._crash_logs_to_skip_for_host.get(self.host, []))
         return crash_log.find_all_logs(include_errors=True, newer_than=newer_than)
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True, target_host=None):
         # Note that we do slow-spin here and wait, since it appears the time
         # ReportCrash takes to actually write and flush the file varies when there are
         # lots of simultaneous crashes going on.
         time_fn = time_fn or time.time
         sleep_fn = sleep_fn or time.sleep
         crash_log = ''
-        crash_logs = CrashLogs(self.host, self.path_to_crash_logs())
+        crash_logs = CrashLogs(target_host or self.host, self.path_to_crash_logs(), crash_logs_to_skip=self._crash_logs_to_skip_for_host.get(target_host or self.host, []))
         now = time_fn()
         deadline = now + 5 * int(self.get_option('child_processes', 1))
         while not crash_log and now <= deadline:
@@ -154,24 +154,25 @@ class DarwinPort(ApplePort):
     def sample_process(self, name, pid, target_host=None):
         host = target_host or self.host
         tempdir = host.filesystem.mkdtemp()
-        exit_status = host.executive.run_command([
-            "/usr/bin/sudo",
-            "-n",
-            "/usr/sbin/spindump",
+        command = [
+            '/usr/sbin/spindump',
             pid,
             10,
             10,
-            "-file",
+            '-file',
             DarwinPort.spindump_file_path(host, name, pid, str(tempdir)),
-        ], return_exit_code=True)
+        ]
+        if self.host.platform.is_mac():
+            command = ['/usr/bin/sudo', '-n'] + command
+        exit_status = host.executive.run_command(command, return_exit_code=True)
         if exit_status:
             try:
                 host.executive.run_command([
-                    "/usr/bin/sample",
+                    '/usr/bin/sample',
                     pid,
                     10,
                     10,
-                    "-file",
+                    '-file',
                     DarwinPort.sample_file_path(host, name, pid, str(tempdir)),
                 ])
                 host.filesystem.move_to_base_host(DarwinPort.sample_file_path(host, name, pid, str(tempdir)),
@@ -238,10 +239,16 @@ class DarwinPort(ApplePort):
             return fallback
 
     @memoized
-    def app_identifier_from_bundle(self, app_bundle):
+    def _plist_data_from_bundle(self, app_bundle, entry):
         plist_path = self._filesystem.join(app_bundle, 'Info.plist')
         if not self._filesystem.exists(plist_path):
             plist_path = self._filesystem.join(app_bundle, 'Contents', 'Info.plist')
         if not self._filesystem.exists(plist_path):
             return None
-        return self._executive.run_command(['/usr/libexec/PlistBuddy', '-c', 'Print CFBundleIdentifier', plist_path]).rstrip()
+        return self._executive.run_command(['/usr/libexec/PlistBuddy', '-c', 'Print {}'.format(entry), plist_path]).rstrip()
+
+    def app_identifier_from_bundle(self, app_bundle):
+        return self._plist_data_from_bundle(app_bundle, 'CFBundleIdentifier')
+
+    def app_executable_from_bundle(self, app_bundle):
+        return self._plist_data_from_bundle(app_bundle, 'CFBundleExecutable')

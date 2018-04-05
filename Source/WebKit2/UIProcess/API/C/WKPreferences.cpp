@@ -1373,12 +1373,12 @@ bool WKPreferencesGetPeerConnectionEnabled(WKPreferencesRef preferencesRef)
 
 void WKPreferencesSetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef, bool enabled)
 {
-    toImpl(preferencesRef)->setWebRTCLegacyAPIEnabled(enabled);
+    toImpl(preferencesRef)->setWebRTCLegacyAPIDisabled(!enabled);
 }
 
 bool WKPreferencesGetWebRTCLegacyAPIEnabled(WKPreferencesRef preferencesRef)
 {
-    return toImpl(preferencesRef)->webRTCLegacyAPIEnabled();
+    return !toImpl(preferencesRef)->webRTCLegacyAPIDisabled();
 }
 
 void WKPreferencesSetSpatialNavigationEnabled(WKPreferencesRef preferencesRef, bool enabled)
@@ -1731,6 +1731,16 @@ bool WKPreferencesGetLinkPreloadEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->linkPreloadEnabled();
 }
 
+void WKPreferencesSetMediaPreloadingEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setMediaPreloadingEnabled(flag);
+}
+
+bool WKPreferencesGetMediaPreloadingEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaPreloadingEnabled();
+}
+
 void WKPreferencesSetLargeImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setLargeImageAsyncDecodingEnabled(flag);
@@ -1770,3 +1780,14 @@ bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef prefe
 {
     return toImpl(preferencesRef)->mediaUserGestureInheritsFromDocument();
 }
+
+void WKPreferencesSetMediaContentTypesRequiringHardwareSupport(WKPreferencesRef preferencesRef, WKStringRef codecs)
+{
+    toImpl(preferencesRef)->setMediaContentTypesRequiringHardwareSupport(toWTFString(codecs));
+}
+
+WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPreferencesRef preferencesRef)
+{
+    return toCopiedAPI(toImpl(preferencesRef)->mediaContentTypesRequiringHardwareSupport());
+}
+

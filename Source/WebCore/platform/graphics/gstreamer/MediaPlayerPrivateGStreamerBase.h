@@ -58,7 +58,7 @@ class VideoTextureCopierGStreamer;
 void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
-#if USE(COORDINATED_GRAPHICS_THREADED) || (USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
+#if USE(TEXTURE_MAPPER_GL)
     , public PlatformLayer
 #endif
 {
@@ -107,7 +107,7 @@ public:
 
     void acceleratedRenderingStateChanged() override;
 
-#if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS)
+#if USE(TEXTURE_MAPPER_GL)
     PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
 #if PLATFORM(WIN_CAIRO)
     // FIXME: Accelerated rendering has not been implemented for WinCairo yet.
@@ -115,21 +115,6 @@ public:
 #else
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
-    void paintToTextureMapper(TextureMapper&, const FloatRect&, const TransformationMatrix&, float) override;
-#endif
-
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    PlatformLayer* platformLayer() const override { return const_cast<MediaPlayerPrivateGStreamerBase*>(this); }
-    bool supportsAcceleratedRendering() const override { return true; }
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void needKey(RefPtr<Uint8Array>);
-    void setCDMSession(CDMSession*) override;
-    void keyAdded() override;
-    virtual void dispatchDecryptionKey(GstBuffer*);
-    void handleProtectionEvent(GstEvent*);
-    void receivedGenerateKeyRequest(const String&);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -158,6 +143,13 @@ protected:
     GstGLDisplay* gstGLDisplay() const { return m_glDisplay.get(); }
 #endif
 
+#if USE(TEXTURE_MAPPER_GL)
+    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
+    RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
+    void swapBuffersIfNeeded() override { };
+    void pushTextureToCompositor();
+#endif
+
     GstElement* videoSink() const { return m_videoSink.get(); }
 
     void setStreamVolumeElement(GstStreamVolume*);
@@ -168,8 +160,10 @@ protected:
 
     void triggerRepaint(GstSample*);
     void repaint();
+    void cancelRepaint();
 
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
+    static void repaintCancelledCallback(MediaPlayerPrivateGStreamerBase*);
 
     void notifyPlayerOfVolumeChange();
     void notifyPlayerOfMute();
@@ -200,45 +194,27 @@ protected:
     IntSize m_size;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
-    RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
-#endif
-    mutable FloatSize m_videoSize;
-    bool m_usingFallbackVideoSink;
-    bool m_renderingCanBeAccelerated { false };
-#if USE(TEXTURE_MAPPER_GL)
-    void updateTexture(BitmapTextureGL&, GstVideoInfo&);
-#endif
-#if USE(GSTREAMER_GL)
-    GRefPtr<GstGLContext> m_glContext;
-    GRefPtr<GstGLDisplay> m_glDisplay;
-#endif
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    RefPtr<TextureMapperPlatformLayerProxy> proxy() const override { return m_platformLayerProxy.copyRef(); }
-    void swapBuffersIfNeeded() override { };
-    void pushTextureToCompositor();
+    mutable FloatSize m_videoSize;
+    bool m_usingFallbackVideoSink { false };
+    bool m_renderingCanBeAccelerated { false };
+
+    Condition m_drawCondition;
+    Lock m_drawMutex;
+    RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
+
+#if USE(TEXTURE_MAPPER_GL)
+    RefPtr<GraphicsContext3D> m_context3D;
     RefPtr<TextureMapperPlatformLayerProxy> m_platformLayerProxy;
 #endif
 
-#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
-    RefPtr<GraphicsContext3D> m_context3D;
-    Condition m_drawCondition;
-    Lock m_drawMutex;
+#if USE(GSTREAMER_GL)
+    GRefPtr<GstGLContext> m_glContext;
+    GRefPtr<GstGLDisplay> m_glDisplay;
+    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 
     ImageOrientation m_videoSourceOrientation;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) override;
-    CDMSession* m_cdmSession;
-    Lock m_protectionMutex;
-    Condition m_protectionCondition;
-    String m_lastGenerateKeyRequestKeySystemUuid;
-    HashSet<uint32_t> m_handledProtectionEvents;
-#endif
-#if USE(GSTREAMER_GL)
-    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
-#endif
 };
 
 }

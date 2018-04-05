@@ -182,6 +182,7 @@
 #define WebKitPeerConnectionEnabledPreferenceKey @"WebKitPeerConnectionEnabled"
 #define WebKitWebRTCLegacyAPIEnabledPreferenceKey @"WebKitWebRTCLegacyAPIEnabled"
 #define WebKitLinkPreloadEnabledPreferenceKey @"WebKitLinkPreloadEnabled"
+#define WebKitMediaPreloadingEnabledPreferenceKey @"WebKitMediaPreloadingEnabled"
 #define WebKitCredentialManagementEnabledPreferenceKey @"WebKitCredentialManagementEnabled"
 #define WebKitMediaUserGestureInheritsFromDocument @"WebKitMediaUserGestureInheritsFromDocument"
 
@@ -228,6 +229,7 @@
 #define WebKitEnableInheritURIQueryComponentPreferenceKey @"WebKitEnableInheritURIQueryComponent"
 #define WebKitMediaDataLoadsAutomaticallyPreferenceKey @"WebKitMediaDataLoadsAutomatically"
 #define WebKitMockCaptureDevicesEnabledPreferenceKey @"WebKitMockCaptureDevicesEnabled"
+#define WebKitMockCaptureDevicesPromptEnabledPreferenceKey @"WebKitMockCaptureDevicesPromptEnabled"
 #define WebKitEnumeratingAllNetworkInterfacesEnabledPreferenceKey @"WebKitEnumeratingAllNetworkInterfacesEnabled"
 #define WebKitICECandidateFilteringEnabledPreferenceKey @"WebKitICECandidateFilteringEnabled"
 #define WebKitMediaCaptureRequiresSecureConnectionPreferenceKey @"WebKitMediaCaptureRequiresSecureConnection"
@@ -236,3 +238,4 @@
 #define WebKitDisplayContentsEnabledPreferenceKey @"WebKitDisplayContentsEnabled"
 #define WebKitUserTimingEnabledPreferenceKey @"WebKitUserTimingEnabled"
 #define WebKitResourceTimingEnabledPreferenceKey @"WebKitResourceTimingEnabled"
+#define WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey @"WebKitMediaContentTypesRequiringHardwareSupport"

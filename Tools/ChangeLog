@@ -1,3 +1,753 @@
+2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable ENCRYPTED_MEDIA for build-webkit builds
+        https://bugs.webkit.org/show_bug.cgi?id=173103
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable ENCRYPTED_MEDIA flag
+        when building the WPE port through build-webkit.
+
+2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable MEDIA_SOURCE for build-webkit builds
+        https://bugs.webkit.org/show_bug.cgi?id=173136
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Scripts/webkitperl/FeatureList.pm: Enable the MEDIA_SOURCE feature for WPE.
+
+2017-06-08  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::FormClient instead of the C API in WebKitFormClient
+        https://bugs.webkit.org/show_bug.cgi?id=173098
+
+        Reviewed by Žan Doberšek.
+
+        Fix memory leak and runtime warning when running /webkit2/WebKitWebView/submit-form. The web extension is
+        assuming that all tests containing forms define ids for the form elements like
+        /webkit2/WebKitWebExtension/form-controls-associated-signal does.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/WebExtensionTest.cpp:
+        (formControlsAssociatedCallback):
+
+2017-06-08  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Run sample/spindump on iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=171881
+        <rdar://problem/32084602>
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.sample_process): Only add sudo prefix if the platform is Mac, which
+        requires sudo to run spindump.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.look_for_new_samples): Deleted.
+        (IOSDevicePort.sample_process): Deleted.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest): iOS devices use 'ios' and their os_name.
+        (IOSDeviceTest.test_spindump):
+        (IOSDeviceTest.test_sample_process):
+        (IOSDeviceTest.test_sample_process_exception):
+        * Scripts/webkitpy/port/ios_simulator_unittest.py:
+        (IOSSimulatorTest): iOS Simulators run on Mac and use 'mac' as their os_name.
+
+2017-06-08  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: We should only create wrappers for functions that can be exported
+        https://bugs.webkit.org/show_bug.cgi?id=173088
+
+        Reviewed by Saam Barati.
+
+        Add quick mode for wasm tests.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-06-08  Darin Adler  <darin@apple.com>
+
+        WTF tests have incorrect RefLogger lifetimes making it impossible to test with Address Sanitizer
+        https://bugs.webkit.org/show_bug.cgi?id=173106
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WTF/HashCountedSet.cpp: Define RefLogger objects first, so they are
+        destroyed last.
+        * TestWebKitAPI/Tests/WTF/HashMap.cpp: Ditto.
+        * TestWebKitAPI/Tests/WTF/HashSet.cpp: Ditto.
+
+2017-06-07  Dan Bernstein  <mitz@apple.com>
+
+        [Cocoa] additionalReadAccessAllowedURLs doesn’t preserve non-Latin1 paths
+        https://bugs.webkit.org/show_bug.cgi?id=173086
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AdditionalReadAccessAllowedURLs.mm:
+        (TEST):
+
+2017-06-07  Alexey Proskuryakov  <ap@apple.com>
+
+        Add High Sierra support to WebKit tools
+        https://bugs.webkit.org/show_bug.cgi?id=173080
+
+        Rubber-stamped by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/HighSierra.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/HighSierra@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        Added dashboard support.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        Trigger the right build queues on check-in.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        * Scripts/webkitpy/common/system/platforminfo_unittest.py:
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        * Scripts/webkitpy/port/mac.py:
+        * Scripts/webkitpy/port/mac_unittest.py:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        Added cases for Sierra, and updated tests for new baseline search paths.
+
+2017-06-07  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217902.
+
+        This change appears to have caused imported/w3c/web-platform-
+        tests/fetch/api/cors tests to fail on El Capitan.
+
+        Reverted changeset:
+
+        "Teach run-webkit-tests how to run HTTPS Web Platform Tests"
+        https://bugs.webkit.org/show_bug.cgi?id=172930
+        http://trac.webkit.org/changeset/217902
+
+2017-06-07  Daniel Bates  <dabates@apple.com>
+
+        Teach run-webkit-tests how to run HTTPS Web Platform Tests
+        https://bugs.webkit.org/show_bug.cgi?id=172930
+        <rdar://problem/32570201>
+
+        Reviewed by Youenn Fablet.
+
+        Some web platform tests need to be run from an HTTPS server in order to exercise functionality
+        that is conditioned on the page being delivered over a secure protocol. One example of such
+        a test is LayoutTests/imported/w3c/web-platform-tests/WebCryptoAPI/secure_context/crypto-subtle-secure-context-available.https.sub.html.
+
+        Ideally we should look to use wptrunner to run Web Platform Tests. For now, modify run-webkit-tests
+        to access web platform tests from an HTTPS server when the filename of the test contains ".https.".
+        This makes run-webkit-test match the behavior of wptrunner: <https://github.com/w3c/web-platform-tests/blob/7ce469d1c46dd45aacfe1b408bf2ad36a630e089/tools/manifest/item.py#L42>.
+
+        * Scripts/webkitpy/layout_tests/servers/web_platform_test_server.py:
+        (https_base_url): Parses the Web Platform Tests JSON configuration and returns the base URL
+        to the Web Platform Tests HTTPS server.
+        * Scripts/webkitpy/port/base.py:
+        (Port.to.web_platform_test_server_https_base_url): Turns around and calls https_base_url().
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.__init__): Caches the base URL to the Web Platform Tests HTTPS server. Also rename
+        instance variables web_platform_test_server_doc_root, web_platform_test_server_base_url to
+        _web_platform_test_server_doc_root and _web_platform_test_server_base_url, respectively to
+        indicate that they should be considered private instance variables.
+        (Driver.is_web_platform_test): Update code for renamed instance variables.
+        (Driver):
+        (Driver._web_platform_test_base_url_for_test): Returns the URL to access the specified test.
+        (Driver.test_to_uri): Modified to use Driver._web_platform_test_base_url_for_test() to
+        determine the base URL to use to access the test.
+        (Driver.uri_to_test): Added logic to compute the filesystem local test name from a Web
+        Platform Tests HTTPS URL. Also updated code for renamed instance variables.
+
+2017-06-07  Per Arne Vollan  <pvollan@apple.com>
+
+        Support removal of authentication data through the Website data store API.
+        https://bugs.webkit.org/show_bug.cgi?id=171217
+
+        Reviewed by Brady Eidson.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::didReceiveMessageToPage):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::removeAllSessionCredentials):
+        (WTR::TestRunner::callDidRemoveAllSessionCredentialsCallback):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        (WTR::TestInvocation::didRemoveAllSessionCredentials):
+        * WebKitTestRunner/TestInvocation.h:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::removeAllSessionCredentials):
+
+2017-06-07  Charlie Turner  <cturner@igalia.com>
+
+        Add Charlie Turner as contributor
+        https://bugs.webkit.org/show_bug.cgi?id=173055
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        I also ran the Tools/Scripts/validate-committer-lists --canonicalize command at the suggestion
+        of webkit-patch upload, which reordered some fields and removed a newline.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-06-06  Chris Dumez  <cdumez@apple.com>
+
+        RELEASE_ASSERT(static_cast<size_t>(enumerationValue) < WTF_ARRAY_LENGTH(values)) hit in convertEnumerationToJS<WebCore::History::ScrollRestoration>()
+        https://bugs.webkit.org/show_bug.cgi?id=173033
+        <rdar://problem/32591099>
+
+        Reviewed by Simon Fraser.
+
+        Add API test coverage to make sure History's scrollRestoration is properly saved / restored via the
+        WKPageCopySessionState() / WKPageRestoreFromSessionState() C API.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/RestoreSessionState.cpp: Added.
+        (TestWebKitAPI::didFinishLoadForFrame):
+        (TestWebKitAPI::setPageLoaderClient):
+        (TestWebKitAPI::createSessionStateDataContainingScrollRestoration):
+        (TestWebKitAPI::TEST):
+
+2017-06-06  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r199558): WKWebView upload file which name contains Chinese character results in garbled code
+        https://bugs.webkit.org/show_bug.cgi?id=172849
+        <rdar://problem/32567454>
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/RunOpenPanel.mm: Added.
+        (-[RunOpenPanelUIDelegate webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:]):
+        (TestWebKitAPI::TEST):
+
+2017-06-06  Yoav Weiss  <yoav@yoav.ws>
+
+        [preload] Conditional support for media preloading and align media `as` values.
+        https://bugs.webkit.org/show_bug.cgi?id=172501
+
+        Reviewed by Dean Jackson.
+
+        Turn on media preloading preference for tests.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm: Turn on media preloading preference.
+        * DumpRenderTree/win/DumpRenderTree.cpp: Turn on media preloading preference.
+        * WebKitTestRunner/TestController.cpp: Turn on media preloading preference.
+
+2017-06-06  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Return correct process names from SimulatorProcess
+        https://bugs.webkit.org/show_bug.cgi?id=172940
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort.plist_data_from_bundle): Share plist access code for accessing different plist entries.
+        (DarwinPort.app_identifier_from_bundle): Use plist_data_from_bundle.
+        (DarwinPort.app_executable_from_bundle): Access name of app executable from provided app bundle.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver.has_crashed): Use _server_process.process_name() instead of _server_process.name() since
+        _server_process.name() will not return the correct process name for iOS.
+        (Driver._check_for_driver_crash_or_unresponsiveness): Ditto.
+        (Driver._read_block): Ditto.
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_check_for_driver_crash.FakeServerProcess.process_name): Update since Driver uses
+        process_name() instead of name().
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._start): Use process_name() instead of name().
+        (ServerProcess.stop): Ditto.
+        (ServerProcess.name): Deleted.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.process_name): Check the provided bundle for the process name.
+
+2017-06-06  Dean Johnson  <dean_johnson@apple.com>
+
+        test-webkitpy: stop forking unsafely from within a spawned process
+        https://bugs.webkit.org/show_bug.cgi?id=172774
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/common/net/buildbot/buildbot.py:
+        (Builder.__init__): We don't use mechanize.Browser() as part of testing, so only initialize it when
+        it's going to be used.
+        (Builder.force_build):
+
+2017-06-06  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Process crash-logs for iOS devices
+        https://bugs.webkit.org/show_bug.cgi?id=171976
+        <rdar://problem/32134551>
+
+        Reviewed by David Kilzer.
+
+        When running layout tests on an iOS device, crash logs should be processed.
+        Implement crash log searching and parsing for iOS devices.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs): Moved process regular expression for Darwin to class variable.
+        (CrashLogs.__init__): Accept optional list of crash logs to ignore.
+        (CrashLogs.find_newest_log): Add iOS as a potential platform.
+        (CrashLogs.find_all_logs): Ditto.
+        (CrashLogs._parse_darwin_crash_log): Share code for parsing of Darwin crash logs.
+        Do not assume that a Darwin crash log starts with the process.
+        (CrashLogs._find_newest_log_darwin): Remove .app in process name for iOS, use
+        shared code for parsing Darwin crash logs.
+        (CrashLogs._find_newest_log_darwin.is_crash_log): Skip crash logs passed into this
+        object so that crash logs already on the system before testing are not parsed.
+        (CrashLogs._find_newest_log_win.is_crash_log): Ditto.
+        (CrashLogs._find_all_logs_darwin.is_crash_log): Ditto.
+        (CrashLogs._find_all_logs_darwin): Use shared code for parsing Darwin crash logs.
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        (make_mock_crash_report_darwin): Crash logs may not have their process on the first line.
+        * Scripts/webkitpy/common/system/systemhost.py:
+        (SystemHost.symbolicate_crash_log_if_needed): The symbolicated crash log for most
+        systems is just the crashlog, use this behavior by default.
+        * Scripts/webkitpy/common/system/systemhost_mock.py:
+        (MockSystemHost.symbolicate_crash_log_if_needed): The symbolicated crash log for most
+        systems is just the crashlog, use this behavior by default.
+        * Scripts/webkitpy/port/apple.py:
+        (ApplePort): Add a dictionary mapping hosts to a list of crash logs to be skipped.
+        (ApplePort.setup_test_run): Set the list of crash logs to be skipped to the crash logs on
+        the system before testing begins
+        * Scripts/webkitpy/port/base.py:
+        (Port._get_crash_log): Pass optional target host when getting crash logs.
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort._look_for_all_crash_logs_in_log_dir): Pass list of crash logs to be skipped to
+        CrashLogs object.
+        (DarwinPort._get_crash_log): Pass optional target host when getting crash logs, pass list of crash
+        logs to be skipped to CrashLogs object.
+        * Scripts/webkitpy/port/darwin_testcase.py:
+        (DarwinTest.test_get_crash_log): Removed unused local function.
+        (DarwinTest.test_get_crash_log.fake_time_cb): Deleted.
+        * Scripts/webkitpy/port/device.py:
+        (Device.symbolicate_crash_log_if_needed): If the platform device has a function with this
+        name, call it. Otherwise, assume the default behavior and read the file at the provided path.
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._get_crash_log): Pass optional target host when getting crash logs.
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort._get_crash_log): Pass optional target host when getting crash logs.
+        * Scripts/webkitpy/port/ios.py: Ditto.
+        (IOSPort.setup_test_run): Each device is treated as an independent host. Set the list of crash logs
+        to be skipped for each host.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.path_to_crash_logs): Consult apple_additions for the path to crash logs.
+        (IOSDevicePort._look_for_all_crash_logs_in_log_dir): Search every connected device for
+        crash logs and pass list of crash logs to ignore to each instance of CrashLogs.
+        (IOSDevicePort._get_crash_log): Search the specified target host for a crash log if a target
+        host is specified. Else, search all connected devices for the specified crash-log.
+        (IOSDevicePort.look_for_new_crash_logs): Deleted.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_crashlog_path): Without apple_additions, an exception should be raised.
+        (IOSDeviceTest.test_get_crash_log): Ditto.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.process_name): Check the provided bundle for the process name.
+        * Scripts/webkitpy/port/win.py:
+        (WinPort._get_crash_log): Pass optional target host when getting crash logs, pass list of crash
+        logs to be skipped to CrashLogs object.
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._get_crash_log): Pass optional target host when getting crash logs.
+
+2017-06-06  David Kilzer  <ddkilzer@apple.com>
+
+        Move WTF_ATTRIBUTE_PRINTF() from implementation to declaration
+        <https://webkit.org/b/172804>
+
+        Reviewed by Darin Adler.
+
+        WTF_ATTRIBUTE_PRINTF() only works outside the current
+        compilation unit if it's on the declaration, not the
+        implementation, of a function or class method.
+
+        * DumpRenderTree/TestNetscapePlugIn/PluginObject.cpp:
+        * DumpRenderTree/TestNetscapePlugIn/PluginObject.h:
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.cpp:
+        * DumpRenderTree/TestNetscapePlugIn/PluginTest.h:
+        - Move WTF_ATTRIBUTE_PRINTF() macro to declaration.
+        * DumpRenderTree/TestNetscapePlugIn/main.cpp:
+        - Remove redundant CRASH() macro definition.  Use the one from
+          <wtf/Assertions.h> instead.
+
+2017-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Move Resource Timing / User Timing from experimental features into main preferences
+        https://bugs.webkit.org/show_bug.cgi?id=172950
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        Move out no longer experimental features to the main list.
+
+2017-06-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE] Add an install-dependencies script
+        https://bugs.webkit.org/show_bug.cgi?id=172948
+
+        Reviewed by Žan Doberšek.
+
+        It is based on the gtk/install-dependencies script.
+        Includes support for Debian based distrubutions, Fedora and Arch.
+        It has been tested on a minimal Debian 9 chroot.
+
+        * wpe/install-dependencies: Added.
+
+2017-06-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor -[WebItemProviderPasteboard valuesForPasteboardType:inItemSet:] to check readable types
+        https://bugs.webkit.org/show_bug.cgi?id=172891
+        <rdar://problem/32204540>
+
+        Reviewed by Darin Adler.
+
+        Adds 2 new API tests to exercise data interaction of HTML data and an attributed string into a rich
+        contenteditable. See WebCore ChangeLog for more details.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-06-05  Daniel Bates  <dabates@apple.com>
+
+        webkitpy: Abstract Executive class
+        https://bugs.webkit.org/show_bug.cgi?id=172928
+        <rdar://problem/32569531>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds an AbstractExecutive class and makes Executive extend AbstractExecutive.
+        This will make it straightforward to create additional derived classes that
+        adhere to the same interface, say for iOS on-device testing.
+
+        * Scripts/webkitpy/common/system/abstractexecutive.py: Added.
+        (AbstractExecutive):
+        (AbstractExecutive.run_and_throw_if_fail):
+        (AbstractExecutive.cpu_count):
+        (AbstractExecutive.interpreter_for_script):
+        (AbstractExecutive.shell_command_for_script):
+        (AbstractExecutive.kill_process):
+        (AbstractExecutive.check_running_pid):
+        (AbstractExecutive.running_pids):
+        (AbstractExecutive.wait_newest):
+        (AbstractExecutive.wait_limited):
+        (AbstractExecutive.interrupt):
+        (AbstractExecutive.default_error_handler):
+        (AbstractExecutive.ignore_error):
+        (AbstractExecutive._stringify_args):
+        (AbstractExecutive.command_for_printing):
+        (AbstractExecutive.run_command):
+        (AbstractExecutive.popen):
+        (AbstractExecutive.run_in_parallel):
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive):
+        (Executive.cpu_count):
+        (Executive.running_pids):
+        (Executive.kill_all):
+        (Executive._compute_stdin):
+        (Executive.interpreter_for_script): Deleted.
+        (Executive.shell_command_for_script): Deleted.
+        (Executive.wait_newest): Deleted.
+        (Executive.wait_limited): Deleted.
+        (Executive.default_error_handler): Deleted.
+        (Executive.ignore_error): Deleted.
+        (Executive.command_for_printing): Deleted.
+
+2017-06-05  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add iOS to platform
+        https://bugs.webkit.org/show_bug.cgi?id=172931
+
+        Reviewed by Daniel Bates.
+
+        * Scripts/webkitpy/common/system/platforminfo.py:
+        PlatformInfo.__init__): Use platform_module.release() as the os_version for iOS device.
+        (PlatformInfo.is_ios): Added.
+        (PlatformInfo._determine_os_name): A platform name of 'ios' means that the os name is 'ios'.
+        * Scripts/webkitpy/common/system/platforminfo_mock.py:
+        (MockPlatformInfo.is_ios): Added.
+
+2017-06-05  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [WPE][JHBuild] Switch github repository from git:// to https://
+        https://bugs.webkit.org/show_bug.cgi?id=172921
+
+        Reviewed by Alex Christensen.
+
+        * wpe/jhbuild.modules:
+
+2017-06-05  Tim Horton  <timothy_horton@apple.com>
+
+        ASSERTION FAILED: m_currentScriptCallbackID in UIScriptContext::requestUIScriptCompletion(JSStringRef) running fast/events/ios/autocorrect-with-range-selection.html
+        https://bugs.webkit.org/show_bug.cgi?id=172887
+        <rdar://problem/32546061>
+
+        Reviewed by Sam Weinig.
+
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::applyAutocorrection):
+        applyAutocorrection can call its completion handler synchronously,
+        which makes UIScriptController unhappy (see bug 172884).
+
+2017-06-03  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Add contextmanager to disable logging for a block
+        https://bugs.webkit.org/show_bug.cgi?id=172876
+
+        Reviewed by Daniel Bates.
+
+        Add a context manager which will use an OutputCapture object to capture logging
+        in a block and hold it in a variable.
+
+        * Scripts/webkitpy/common/system/outputcapture.py:
+        (OutputCaptureScope):
+        (OutputCaptureScope.__init__): Construct with OutputCapture object.
+        (OutputCaptureScope.__enter__): Begin capturing output. 
+        (OutputCaptureScope.__exit__): Restore output and save captured output to a variable.
+        output and retain the resulting log.
+        * Scripts/webkitpy/common/system/outputcapture_unittest.py:
+        (OutputCaptureTest.test_output_capture_scope): Added.
+
+2017-06-02  Zalan Bujtas  <zalan@apple.com>
+
+        Cleanup FrameView::autoSizeIfEnabled.
+        https://bugs.webkit.org/show_bug.cgi?id=172889
+        <rdar://problem/32550783>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AutoLayoutIntegration.mm:
+        (-[AutoLayoutWKWebView load:withWidth:expectingContentSize:resettingWidth:]): progression.
+        (TEST):
+
+2017-06-02  Chris Dumez  <cdumez@apple.com>
+
+        ResourceLoadStatistics are not using unique paths during test runs
+        https://bugs.webkit.org/show_bug.cgi?id=172861
+        <rdar://problem/32442251>
+
+        Reviewed by Darin Adler.
+
+        Make sure WebKitTestRunner sets a temporary path for saving resource
+        load statistics.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::generateContextConfiguration):
+
+2017-06-02  Brady Eidson  <beidson@apple.com>
+
+        Prevent scheme handlers from handling all built-in URL schemes.
+        <rdar://problem/32404790> and https://bugs.webkit.org/show_bug.cgi?id=172869
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm:
+
+2017-06-02  Stephan Szabo  <stephan.szabo@am.sony.com>
+
+        [JSCOnly] Build static jsc.exe on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=172833
+
+        Reviewed by Konstantin Tokarev.
+
+        * CMakeLists.txt:
+        * Scripts/build-jsc:
+
+2017-06-02  Zalan Bujtas  <zalan@apple.com>
+
+        Disable ViewportSizeForViewportUnits tests on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=172872
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2/ViewportSizeForViewportUnits.mm:
+
+2017-06-02  Zalan Bujtas  <zalan@apple.com>
+
+        Allow clients to override viewport size for CSS viewport units.
+        https://bugs.webkit.org/show_bug.cgi?id=172838
+        <rdar://problem/32523441>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/ViewportSizeForViewportUnits.mm: Added.
+        (TEST):
+
+2017-06-02  Simon Fraser  <simon.fraser@apple.com>
+
+        Get <chrono> out of StdLibExtras.h
+        https://bugs.webkit.org/show_bug.cgi?id=172744
+
+        Reviewed by Zalan Bujtas.
+
+        * TestWebKitAPI/Tests/WTF/WorkQueue.cpp:
+
+2017-06-02  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable SUBTLE_CRYPTO
+        https://bugs.webkit.org/show_bug.cgi?id=172756
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitperl/FeatureList.pm: Set ENABLE_SUBTLE_CRYPTO to 1 for WPE.
+        * wpe/jhbuild.modules: Add libgpg-error and libgcrypt dependencies.
+        * wpe/patches/libgcrypt-use-only-dev-urandom-for-testing.patch: Added. Prevents
+        exhausting entropy when running the crypto layout tests.
+
+2017-06-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump GTK+ and its dependencies in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171918
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * WebKitTestRunner/InjectedBundle/gtk/ActivateFontsGtk.cpp:
+        (WTR::initializeGtkSettings):
+        * gtk/jhbuild.modules:
+        * gtk/patches/gtk+-configure-fix-detecting-CUPS-2.x.patch: Removed.
+        * gtk/patches/librsvg-2.36.1-bump-up-config.guess-to-support-aarch64.patch: Removed.
+
+2017-06-01  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bump wayland and weston in jhbuild
+        https://bugs.webkit.org/show_bug.cgi?id=171921
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/weston-libweston-include-weston-egl-ext.h-in-drm-x11-and-wa.patch: Added.
+
+2017-06-01  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r217626): ENABLE_APPLE_PAY_SESSION_V3 was disabled by mistake
+        https://bugs.webkit.org/show_bug.cgi?id=172828
+
+        Reviewed by Beth Dakin.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-06-01  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Remove unneeded simulator teardown
+        https://bugs.webkit.org/show_bug.cgi?id=171891
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.clean_up_test_run): Remove FIFO deletion since TCP is used
+        for communication between Python and WebKitTestRunner/DumpRenderTree.
+
+2017-06-01  Keith Miller  <keith_miller@apple.com>
+
+        Undo rollout in r217638 with bug fix
+        https://bugs.webkit.org/show_bug.cgi?id=172824
+
+        Unreviewed, reland patch with unused set_state code removed.
+
+        * TestWebKitAPI/Tests/WTF/ThreadMessages.cpp:
+        (runThreadMessageTest):
+        (TEST):
+
+2017-06-01  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Do not send 0 or -1 as a pid to kill_process
+        https://bugs.webkit.org/show_bug.cgi?id=172818
+
+        Reviewed by Darin Adler.
+
+        Sending a signal to process 0 will result in all processes in the group receiving 
+        the signal. Sending a signal to process -1 will result in all non-system processes
+        receiving the signal. Both Executive.kill_process and Executive.check_running_pid
+        should consider these cases
+
+        * Scripts/webkitpy/common/system/executive.py:
+        (Executive.kill_process): Throw exception if pid is undefined, 0 or negative.
+        (Executive.check_running_pid): An undefined pid, pid 0 or a negative pid will
+        never be running, although os.kill may succeed.
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.stop): Do not kill process if it is undefined.
+
+2017-05-31  Alexey Proskuryakov  <ap@apple.com>
+
+        JSC EWS bot does not run on WTF only patches
+        https://bugs.webkit.org/show_bug.cgi?id=172777
+        rdar://problem/32495975
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/tool/steps/checkpatchrelevance.py:
+        (CheckPatchRelevance): Add a missing comma.
+
+2017-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217611 and r217631.
+        https://bugs.webkit.org/show_bug.cgi?id=172785
+
+        "caused wasm-hashset-many.html to become flaky." (Requested by
+        keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Reland r216808, underlying lldb bug has been fixed."
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+        http://trac.webkit.org/changeset/217611
+
+        "Use dispatch queues for mach exceptions"
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+        http://trac.webkit.org/changeset/217631
+
+2017-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        EWS bots should reboot themselves more frequently
+        https://bugs.webkit.org/show_bug.cgi?id=172402
+
+        Reviewed by Alexey Proskuryakov.
+
+        Instead of rebooting once a day, EWS bots will reboot after running 10 iterations.
+
+        * EWSTools/start-queue-mac.sh: Remove the restriction placed on the time that the bot will perform a reboot.
+
+2017-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Reallocate hardware for iOS bots.
+        https://bugs.webkit.org/show_bug.cgi?id=172657
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2017-05-31  Andy Estes  <aestes@apple.com>
+
+        Rename ENABLE_APPLE_PAY_DELEGATE to ENABLE_APPLE_PAY_SESSION_V3 and bump the supported version number
+        https://bugs.webkit.org/show_bug.cgi?id=172366
+
+        Reviewed by Daniel Bates.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-05-31  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add Jiewen Tan as a reviewer
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-05-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] MiniBrowser's browser_window_get_or_create_web_view_for_automation never creates new windows
+        https://bugs.webkit.org/show_bug.cgi?id=172770
+
+        Reviewed by Michael Catanzaro.
+
+        * MiniBrowser/gtk/BrowserWindow.c:
+        (browser_window_get_or_create_web_view_for_automation): Removed stray semicolon
+        which caused the body of the if-clause to be accidentally empty.
+
 2017-05-31  Keith Miller  <keith_miller@apple.com>
 
         Reland r216808, underlying lldb bug has been fixed.

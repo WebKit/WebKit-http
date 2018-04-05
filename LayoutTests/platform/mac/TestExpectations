@@ -1543,3 +1543,30 @@ webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-stream
 webkit.org/b/172469 [ ElCapitan ] imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Timeout ]
 
 webkit.org/b/172720 [ Sierra+ ] js/intl-datetimeformat.html [ Failure ]
+
+# This test tests a feature that only exists on iOS.
+webkit.org/b/172737 fast/text/accessibility-bold-system-font-2.html [ ImageOnlyFailure ]
+
+# The modern-media-controls tests are disabled due to past flakiness and some major code changes.
+# As a result, a host of tests need to be updated and being turned on selectively here.
+media/modern-media-controls/airplay-button [ Pass ]
+media/modern-media-controls/airplay-placard [ Pass ]
+media/modern-media-controls/airplay-support [ Pass ]
+media/modern-media-controls/audio [ Pass ]
+media/modern-media-controls/background-tint [ Pass ]
+media/modern-media-controls/button [ Pass ]
+media/modern-media-controls/buttons-container [ Pass ]
+media/modern-media-controls/controls-visibility-support [ Pass ]
+media/modern-media-controls/forward-button [ Pass ]
+media/modern-media-controls/fullscreen-button [ Pass ]
+media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button.html [ Pass ]
+media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html [ Pass ]
+media/modern-media-controls/volume-up-support [ Pass ]
+
+# These tests are iOS-specific
+media/modern-media-controls/audio/audio-controls-styles.html [ Skip ]
+
+webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
+
+# This test is only valid on platforms which have multiple emoji fonts.
+webkit.org/b/173043 [ ElCapitan ] fast/text/system-font-fallback-emoji.html [ Failure ]

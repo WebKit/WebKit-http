@@ -124,6 +124,7 @@
 #include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/LengthBox.h>
 #include <WebCore/MIMETypeRegistry.h>
+#include <WebCore/PerformanceLoggingClient.h>
 #include <WebCore/PublicSuffix.h>
 #include <WebCore/RenderEmbeddedObject.h>
 #include <WebCore/SerializedCryptoKeyWrap.h>
@@ -340,7 +341,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_userContentController(*m_configuration->userContentController())
     , m_visitedLinkStore(*m_configuration->visitedLinkStore())
     , m_websiteDataStore(m_configuration->websiteDataStore()->websiteDataStore())
-    , m_mainFrame(nullptr)
     , m_userAgent(standardUserAgent())
     , m_overrideContentSecurityPolicy { m_configuration->overrideContentSecurityPolicy() }
     , m_treatsSHA1CertificatesAsInsecure(m_configuration->treatsSHA1SignedCertificatesAsInsecure())
@@ -349,99 +349,21 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
 #endif
     , m_geolocationPermissionRequestManager(*this)
     , m_notificationPermissionRequestManager(*this)
-    , m_activityState(ActivityState::NoFlags)
-    , m_viewWasEverInWindow(false)
 #if PLATFORM(IOS)
     , m_alwaysRunsAtForegroundPriority(m_configuration->alwaysRunsAtForegroundPriority())
 #endif
     , m_initialCapitalizationEnabled(m_configuration->initialCapitalizationEnabled())
     , m_cpuLimit(m_configuration->cpuLimit())
     , m_backForwardList(WebBackForwardList::create(*this))
-    , m_maintainsInactiveSelection(false)
     , m_waitsForPaintAfterViewDidMoveToWindow(m_configuration->waitsForPaintAfterViewDidMoveToWindow())
-    , m_isEditable(false)
-    , m_textZoomFactor(1)
-    , m_pageZoomFactor(1)
-    , m_pageScaleFactor(1)
-    , m_pluginZoomFactor(1)
-    , m_pluginScaleFactor(1)
-    , m_intrinsicDeviceScaleFactor(1)
-    , m_customDeviceScaleFactor(0)
-    , m_topContentInset(0)
-    , m_layerHostingMode(LayerHostingMode::InProcess)
-    , m_drawsBackground(true)
-    , m_useFixedLayout(false)
-    , m_suppressScrollbarAnimations(false)
-    , m_paginationMode(Pagination::Unpaginated)
-    , m_paginationBehavesLikeColumns(false)
-    , m_pageLength(0)
-    , m_gapBetweenPages(0)
-    , m_paginationLineGridEnabled(false)
-    , m_isValid(true)
-    , m_isClosed(false)
-    , m_canRunModal(false)
-    , m_isInPrintingMode(false)
-    , m_isPerformingDOMPrintOperation(false)
-    , m_processingMouseMoveEvent(false)
     , m_pageID(pageID)
     , m_sessionID(m_configuration->sessionID())
-    , m_isPageSuspended(false)
-    , m_addsVisitedLinks(true)
     , m_controlledByAutomation(m_configuration->isControlledByAutomation())
-#if ENABLE(REMOTE_INSPECTOR)
-    , m_allowsRemoteInspection(true)
-#endif
 #if PLATFORM(COCOA)
     , m_isSmartInsertDeleteEnabled(TextChecker::isSmartInsertDeleteEnabled())
 #endif
-#if PLATFORM(GTK)
-    , m_backgroundColor(Color::white)
-#endif
-    , m_spellDocumentTag(0)
-    , m_hasSpellDocumentTag(false)
-    , m_pendingLearnOrIgnoreWordMessageCount(0)
-    , m_mainFrameHasCustomContentProvider(false)
-#if ENABLE(DRAG_SUPPORT)
-    , m_currentDragOperation(DragOperationNone)
-    , m_currentDragIsOverFileInput(false)
-    , m_currentDragNumberOfFilesToBeAccepted(0)
-#endif
     , m_pageLoadState(*this)
-    , m_delegatesScrolling(false)
-    , m_mainFrameHasHorizontalScrollbar(false)
-    , m_mainFrameHasVerticalScrollbar(false)
-    , m_canShortCircuitHorizontalWheelEvents(true)
-    , m_mainFrameIsPinnedToLeftSide(true)
-    , m_mainFrameIsPinnedToRightSide(true)
-    , m_mainFrameIsPinnedToTopSide(true)
-    , m_mainFrameIsPinnedToBottomSide(true)
-    , m_shouldUseImplicitRubberBandControl(false)
-    , m_rubberBandsAtLeft(true)
-    , m_rubberBandsAtRight(true)
-    , m_rubberBandsAtTop(true)
-    , m_rubberBandsAtBottom(true)
-    , m_enableVerticalRubberBanding(true)
-    , m_enableHorizontalRubberBanding(true)
-    , m_backgroundExtendsBeyondPage(false)
-    , m_shouldRecordNavigationSnapshots(false)
-    , m_isShowingNavigationGestureSnapshot(false)
-    , m_pageCount(0)
-    , m_renderTreeSize(0)
-    , m_sessionRestorationRenderTreeSize(0)
-    , m_hitRenderTreeSizeThreshold(false)
-    , m_suppressVisibilityUpdates(false)
-    , m_autoSizingShouldExpandToViewHeight(false)
-    , m_mediaVolume(1)
-    , m_mayStartMediaWhenInWindow(true)
-    , m_waitingForDidUpdateActivityState(false)
-#if PLATFORM(COCOA)
-    , m_scrollPerformanceDataCollectionEnabled(false)
-#endif
-    , m_scrollPinningBehavior(DoNotPin)
-    , m_navigationID(0)
     , m_configurationPreferenceValues(m_configuration->preferenceValues())
-    , m_potentiallyChangedActivityStateFlags(ActivityState::NoFlags)
-    , m_activityStateChangeWantsSynchronousReply(false)
     , m_weakPtrFactory(this)
 {
     m_webProcessLifetimeTracker.addObserver(m_visitedLinkStore);
@@ -793,11 +715,6 @@ void WebPageProxy::initializeWebPage()
         m_scrollingCoordinatorProxy->setPropagatesMainFrameScrolls(false);
 #endif
     }
-#endif
-
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_preferences->developerExtrasEnabled())
-        inspector()->enableRemoteInspection();
 #endif
 
     process().send(Messages::WebProcess::CreateWebPage(m_pageID, creationParameters()), 0);
@@ -1524,6 +1441,9 @@ void WebPageProxy::dispatchActivityStateChange()
     updateActivityState(m_potentiallyChangedActivityStateFlags);
     ActivityState::Flags changed = m_activityState ^ previousActivityState;
 
+    if ((m_potentiallyChangedActivityStateFlags & ActivityState::IsVisible) && isViewVisible())
+        viewIsBecomingVisible();
+
     bool isNowInWindow = (changed & ActivityState::IsInWindow) && isInWindow();
     // We always want to wait for the Web process to reply if we've been in-window before and are coming back in-window.
     if (m_viewWasEverInWindow && isNowInWindow) {
@@ -1966,7 +1886,7 @@ void WebPageProxy::handleWheelEvent(const NativeWebWheelEvent& event)
 
     if (!m_currentlyProcessedWheelEvents.isEmpty()) {
         m_wheelEventQueue.append(event);
-        if (m_wheelEventQueue.size() < wheelEventQueueSizeThreshold)
+        if (!shouldProcessWheelEventNow(event))
             return;
         // The queue has too many wheel events, so push a new event.
     }
@@ -2005,6 +1925,27 @@ void WebPageProxy::sendWheelEvent(const WebWheelEvent& event)
     // Manually ping the web process to check for responsiveness since our wheel
     // event will dispatch to a non-main thread, which always responds.
     m_process->isResponsive(nullptr);
+}
+
+bool WebPageProxy::shouldProcessWheelEventNow(const WebWheelEvent& event) const
+{
+#if PLATFORM(GTK)
+    // Don't queue events representing a non-trivial scrolling phase to
+    // avoid having them trapped in the queue, potentially preventing a
+    // scrolling session to beginning or end correctly.
+    // This is only needed by platforms whose WebWheelEvent has this phase
+    // information (Cocoa and GTK+) but Cocoa was fine without it.
+    if (event.phase() == WebWheelEvent::Phase::PhaseNone
+        || event.phase() == WebWheelEvent::Phase::PhaseChanged
+        || event.momentumPhase() == WebWheelEvent::Phase::PhaseNone
+        || event.momentumPhase() == WebWheelEvent::Phase::PhaseChanged)
+        return true;
+#else
+    UNUSED_PARAM(event);
+#endif
+    if (m_wheelEventQueue.size() >= wheelEventQueueSizeThreshold)
+        return true;
+    return false;
 }
 
 void WebPageProxy::handleKeyboardEvent(const NativeWebKeyboardEvent& event)
@@ -3071,11 +3012,6 @@ void WebPageProxy::preferencesDidChange()
     if (!isValid())
         return;
 
-#if ENABLE(INSPECTOR_SERVER)
-    if (m_preferences->developerExtrasEnabled())
-        inspector()->enableRemoteInspection();
-#endif
-
     updateThrottleState();
     updateHiddenPageThrottlingAutoIncreases();
 
@@ -3519,6 +3455,22 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t 
 
     if (isMainFrame)
         m_pageClient.didSameDocumentNavigationForMainFrame(navigationType);
+}
+
+void WebPageProxy::didChangeMainDocument(uint64_t frameID)
+{
+#if ENABLE(MEDIA_STREAM)
+    userMediaPermissionRequestManager().resetAccess(frameID);
+#else
+    UNUSED_PARAM(frameID);
+#endif
+}
+
+void WebPageProxy::viewIsBecomingVisible()
+{
+#if ENABLE(MEDIA_STREAM)
+    userMediaPermissionRequestManager().processPregrantedRequests();
+#endif
 }
 
 void WebPageProxy::didReceiveTitleForFrame(uint64_t frameID, const String& title, const UserData& userData)
@@ -4183,7 +4135,7 @@ void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
 
 #if ENABLE(MEDIA_STREAM)
     if (!(state & WebCore::MediaProducer::CaptureDevicesAreMuted))
-        UserMediaProcessManager::singleton().willEnableMediaStreamInPage(*this);
+        UserMediaProcessManager::singleton().muteCaptureMediaStreamsExceptIn(*this);
 #endif
 
     m_process->send(Messages::WebPage::SetMuted(state), m_pageID);
@@ -5211,6 +5163,26 @@ void WebPageProxy::logDiagnosticMessageWithEnhancedPrivacy(const String& message
     m_diagnosticLoggingClient->logDiagnosticMessageWithEnhancedPrivacy(this, message, description);
 }
 
+void WebPageProxy::logScrollingEvent(uint32_t eventType, MonotonicTime timestamp, uint64_t data)
+{
+    PerformanceLoggingClient::ScrollingEvent event = static_cast<PerformanceLoggingClient::ScrollingEvent>(eventType);
+
+    switch (event) {
+    case PerformanceLoggingClient::ScrollingEvent::ExposedTilelessArea:
+        WTFLogAlways("SCROLLING: Exposed tileless area. Time: %f Unfilled Pixels: %llu\n", timestamp.secondsSinceEpoch().value(), (unsigned long long)data);
+        break;
+    case PerformanceLoggingClient::ScrollingEvent::FilledTile:
+        WTFLogAlways("SCROLLING: Filled visible fresh tile. Time: %f Unfilled Pixels: %llu\n", timestamp.secondsSinceEpoch().value(), (unsigned long long)data);
+        break;
+    case PerformanceLoggingClient::ScrollingEvent::SwitchedScrollingMode:
+        if (data)
+            WTFLogAlways("SCROLLING: Switching to main-thread scrolling mode. Time: %f Reason(s): %s\n", timestamp.secondsSinceEpoch().value(), PerformanceLoggingClient::synchronousScrollingReasonsAsString(data).utf8().data());
+        else
+            WTFLogAlways("SCROLLING: Switching to threaded scrolling mode. Time: %f\n", timestamp.secondsSinceEpoch().value());
+        break;
+    }
+}
+
 void WebPageProxy::rectForCharacterRangeCallback(const IntRect& rect, const EditingRange& actualRange, uint64_t callbackID)
 {
     MESSAGE_CHECK(actualRange.isValid());
@@ -5560,6 +5532,7 @@ WebPageCreationParameters WebPageProxy::creationParameters()
     parameters.mayStartMediaWhenInWindow = m_mayStartMediaWhenInWindow;
     parameters.minimumLayoutSize = m_minimumLayoutSize;
     parameters.autoSizingShouldExpandToViewHeight = m_autoSizingShouldExpandToViewHeight;
+    parameters.viewportSizeForCSSViewportUnits = m_viewportSizeForCSSViewportUnits;
     parameters.scrollPinningBehavior = m_scrollPinningBehavior;
     if (m_scrollbarOverlayStyle)
         parameters.scrollbarOverlayStyle = m_scrollbarOverlayStyle.value();
@@ -6082,6 +6055,19 @@ void WebPageProxy::setAutoSizingShouldExpandToViewHeight(bool shouldExpand)
         return;
 
     m_process->send(Messages::WebPage::SetAutoSizingShouldExpandToViewHeight(shouldExpand), m_pageID);
+}
+
+void WebPageProxy::setViewportSizeForCSSViewportUnits(const IntSize& viewportSize)
+{
+    if (m_viewportSizeForCSSViewportUnits && *m_viewportSizeForCSSViewportUnits == viewportSize)
+        return;
+
+    m_viewportSizeForCSSViewportUnits = viewportSize;
+
+    if (!isValid())
+        return;
+
+    m_process->send(Messages::WebPage::SetViewportSizeForCSSViewportUnits(viewportSize), m_pageID);
 }
 
 #if USE(AUTOMATIC_TEXT_REPLACEMENT)

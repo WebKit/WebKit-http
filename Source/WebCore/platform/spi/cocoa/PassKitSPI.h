@@ -43,6 +43,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300
+@class PKPaymentAuthorizationResult;
+@class PKPaymentRequestPaymentMethodUpdate;
+@class PKPaymentRequestShippingMethodUpdate;
+@class PKPaymentRequestShippingContactUpdate;
+#endif
+
 typedef NS_OPTIONS(NSUInteger, PKAddressField) {
     PKAddressFieldNone = 0UL,
     PKAddressFieldPostalAddress = 1UL << 0,
@@ -168,6 +175,9 @@ typedef NSString * PKPaymentNetwork NS_EXTENSIBLE_STRING_ENUM;
 @property (nonatomic, copy, nullable) NSArray<PKShippingMethod *> *shippingMethods;
 @property (nonatomic, assign) PKShippingType shippingType;
 @property (nonatomic, copy, nullable) NSData *applicationData;
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+@property (nonatomic, copy, nullable) NSSet<NSString *> *supportedCountries;
+#endif
 @end
 
 @interface PKPaymentAuthorizationViewController : NSViewController

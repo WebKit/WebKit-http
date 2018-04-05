@@ -28,6 +28,7 @@
 
 #if ENABLE(VIDEO) && USE(AVFOUNDATION)
 
+#import "AVAssetTrackUtilities.h"
 #import "AVFoundationMIMETypeCache.h"
 #import "AVFoundationSPI.h"
 #import "AVTrackPrivateAVFObjCImpl.h"
@@ -944,9 +945,9 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
         [options setObject:@YES forKey:AVURLAssetRequiresCustomURLLoadingKey];
 #endif
 
-    auto& type = player()->contentMIMEType();
+    auto type = player()->contentMIMEType();
     if (AVURLAssetOutOfBandMIMETypeKey && !type.isEmpty() && !player()->contentMIMETypeWasInferredFromExtension()) {
-        auto& codecs = player()->contentTypeCodecs();
+        auto codecs = player()->contentTypeCodecs();
         if (!codecs.isEmpty()) {
             NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)type, (NSString *)codecs];
             [options setObject:typeString forKey:AVURLAssetOutOfBandMIMETypeKey];
@@ -1146,7 +1147,7 @@ void MediaPlayerPrivateAVFoundationObjC::checkPlayability()
     LOG(Media, "MediaPlayerPrivateAVFoundationObjC::checkPlayability(%p)", this);
     auto weakThis = createWeakPtr();
 
-    [m_avAsset.get() loadValuesAsynchronouslyForKeys:[NSArray arrayWithObject:@"playable"] completionHandler:^{
+    [m_avAsset.get() loadValuesAsynchronouslyForKeys:[NSArray arrayWithObjects:@"playable", @"tracks", nil] completionHandler:^{
         callOnMainThread([weakThis] {
             if (weakThis)
                 weakThis->scheduleMainThreadNotification(MediaPlayerPrivateAVFoundation::Notification::AssetPlayabilityKnown);
@@ -1469,6 +1470,24 @@ double MediaPlayerPrivateAVFoundationObjC::rate() const
     return m_cachedRate;
 }
 
+double MediaPlayerPrivateAVFoundationObjC::seekableTimeRangesLastModifiedTime() const
+{
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
+    return [m_avPlayerItem seekableTimeRangesLastModifiedTime];
+#else
+    return 0;
+#endif
+}
+
+double MediaPlayerPrivateAVFoundationObjC::liveUpdateInterval() const
+{
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
+    return [m_avPlayerItem liveUpdateInterval];
+#else
+    return 0;
+#endif
+}
+
 void MediaPlayerPrivateAVFoundationObjC::setPreservesPitch(bool preservesPitch)
 {
     if (m_avPlayerItem)
@@ -1589,7 +1608,17 @@ MediaPlayerPrivateAVFoundation::AssetStatus MediaPlayerPrivateAVFoundationObjC::
             return MediaPlayerAVAssetStatusCancelled; // Loading of at least one key was cancelled.
     }
 
-    if ([[m_avAsset.get() valueForKey:@"playable"] boolValue])
+    if (!m_tracksArePlayable) {
+        m_tracksArePlayable = true;
+        for (AVAssetTrack *track in [m_avAsset tracks]) {
+            if (!assetTrackMeetsHardwareDecodeRequirements(track, player()->mediaContentTypesRequiringHardwareSupport())) {
+                m_tracksArePlayable = false;
+                break;
+            }
+        }
+    }
+
+    if ([[m_avAsset.get() valueForKey:@"playable"] boolValue] && m_tracksArePlayable.value())
         return MediaPlayerAVAssetStatusPlayable;
 
     return MediaPlayerAVAssetStatusLoaded;
@@ -1704,18 +1733,23 @@ MediaPlayer::SupportsType MediaPlayerPrivateAVFoundationObjC::supportsType(const
     if (parameters.isMediaStream)
         return MediaPlayer::IsNotSupported;
 #endif
-    if (isUnsupportedMIMEType(parameters.type))
+
+    auto containerType = parameters.type.containerType();
+    if (isUnsupportedMIMEType(containerType))
         return MediaPlayer::IsNotSupported;
 
-    if (!staticMIMETypeList().contains(parameters.type) && !AVFoundationMIMETypeCache::singleton().types().contains(parameters.type))
+    if (!staticMIMETypeList().contains(containerType) && !AVFoundationMIMETypeCache::singleton().types().contains(containerType))
         return MediaPlayer::IsNotSupported;
 
     // The spec says:
     // "Implementors are encouraged to return "maybe" unless the type can be confidently established as being supported or not."
-    if (parameters.codecs.isEmpty())
+    if (parameters.type.codecs().isEmpty())
         return MediaPlayer::MayBeSupported;
 
-    NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)parameters.type, (NSString *)parameters.codecs];
+    if (!contentTypeMeetsHardwareDecodeRequirements(parameters.type, parameters.contentTypesRequiringHardwareSupport))
+        return MediaPlayer::IsNotSupported;
+
+    NSString *typeString = [NSString stringWithFormat:@"%@; codecs=\"%@\"", (NSString *)containerType, (NSString *)parameters.type.parameter(ContentType::codecsParameter())];
     return [AVURLAsset isPlayableExtendedMIMEType:typeString] ? MediaPlayer::IsSupported : MediaPlayer::MayBeSupported;
 }
 

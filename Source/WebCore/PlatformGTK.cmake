@@ -63,6 +63,7 @@ list(APPEND WebCore_SOURCES
     page/linux/ResourceUsageThreadLinux.cpp
 
     platform/KillRingNone.cpp
+    platform/ScrollAnimationKinetic.cpp
     platform/StaticPasteboard.cpp
     platform/UserAgentQuirks.cpp
 
@@ -173,6 +174,7 @@ list(APPEND WebCorePlatformGTK_SOURCES
     platform/gtk/PlatformScreenGtk.cpp
     platform/gtk/PlatformWheelEventGtk.cpp
     platform/gtk/RenderThemeGadget.cpp
+    platform/gtk/RenderThemeWidget.cpp
     platform/gtk/ScrollbarThemeGtk.cpp
     platform/gtk/SoundGtk.cpp
     platform/gtk/WidgetGtk.cpp
@@ -375,6 +377,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSA_PSSGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp
         crypto/gcrypt/CryptoKeyECGCrypt.cpp
         crypto/gcrypt/CryptoKeyRSAGCrypt.cpp

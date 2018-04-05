@@ -162,6 +162,13 @@ void AcceleratedDrawingArea::mainFrameContentSizeChanged(const IntSize& size)
             m_layerTreeHost->sizeDidChange(size);
         else if (m_previousLayerTreeHost)
             m_previousLayerTreeHost->sizeDidChange(size);
+    } else {
+#if USE(COORDINATED_GRAPHICS_THREADED)
+        if (m_layerTreeHost)
+            m_layerTreeHost->contentsSizeChanged(size);
+        else if (m_previousLayerTreeHost)
+            m_previousLayerTreeHost->contentsSizeChanged(size);
+#endif
     }
     m_webPage.mainFrame()->pageOverlayController().didChangeDocumentSize();
 }

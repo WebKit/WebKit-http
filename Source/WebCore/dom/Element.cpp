@@ -1530,9 +1530,10 @@ void Element::parserDidSetAttributes()
 {
 }
 
-void Element::didMoveToNewDocument(Document& oldDocument)
+void Element::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
 {
-    Node::didMoveToNewDocument(oldDocument);
+    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    Node::didMoveToNewDocument(oldDocument, newDocument);
 
     if (oldDocument.inQuirksMode() != document().inQuirksMode()) {
         // ElementData::m_classNames or ElementData::m_idForStyleResolution need to be updated with the right case.
@@ -1543,7 +1544,7 @@ void Element::didMoveToNewDocument(Document& oldDocument)
     }
 
     if (UNLIKELY(isDefinedCustomElement()))
-        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, document());
+        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, newDocument);
 }
 
 bool Element::hasAttributes() const
@@ -2127,7 +2128,6 @@ void Element::attachAttributeNodeIfNeeded(Attr& attrNode)
     NoEventDispatchAssertion assertNoEventDispatch;
 
     attrNode.attachToElement(*this);
-    treeScope().adoptIfNeeded(attrNode);
     ensureAttrNodeListForElement(*this).append(&attrNode);
 }
 
@@ -3412,7 +3412,7 @@ Ref<Attr> Element::ensureAttr(const QualifiedName& name)
     RefPtr<Attr> attrNode = findAttrNodeInList(attrNodeList, name);
     if (!attrNode) {
         attrNode = Attr::create(*this, name);
-        treeScope().adoptIfNeeded(*attrNode);
+        attrNode->setTreeScopeRecursively(treeScope());
         attrNodeList.append(attrNode);
     }
     return attrNode.releaseNonNull();

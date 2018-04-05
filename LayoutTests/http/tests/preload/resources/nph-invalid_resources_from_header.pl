@@ -7,9 +7,9 @@ Link: <   ../resources/dummy.js >; rel=preload; as=script
 Link: <../משאבים/dummy.css>; rel=preload; as=style
 Link: <../résôûrcès/dummy.css>; rel=preload; as=style
 Link: <../resources/Ahem{.ttf,.woff}>; rel=preload; as=font; crossorigin
-Link: <../resources/test\f.mp4>; rel=preload; as=media
+Link: <../resources/test\f.mp4>; rel=preload; as=video
 Link: <../security/resources/cap\ttions.vtt>; rel=preload; as=track
-Link: <../resources/dummy   .xml>; rel=preload;
+Link: <../resources/dummy   .xml>; rel=preload; as=fetch
 Link: <../resources/dumm>y.xml>; rel=preload
 Content-Security-Policy: img-src 'none'
 Link: <http://localhost:8000/preload/resources/square.png>; rel=preload; as=image

@@ -169,29 +169,10 @@ static MessageStatus sendMessageUsingMach(Thread& thread, const ThreadMessage& m
     if (!result)
         return MessageStatus::ThreadExited;
 
-#if CPU(X86)
-    unsigned userCount = sizeof(PlatformRegisters) / sizeof(int);
-    thread_state_flavor_t flavor = i386_THREAD_STATE;
-#elif CPU(X86_64)
-    unsigned userCount = x86_THREAD_STATE64_COUNT;
-    thread_state_flavor_t flavor = x86_THREAD_STATE64;
-#elif CPU(ARM)
-    unsigned userCount = ARM_THREAD_STATE_COUNT;
-    thread_state_flavor_t flavor = ARM_THREAD_STATE;
-#elif CPU(ARM64)
-    unsigned userCount = ARM_THREAD_STATE64_COUNT;
-    thread_state_flavor_t flavor = ARM_THREAD_STATE64;
-#else
-#error Unknown Architecture
-#endif
-
     PlatformRegisters registers;
-    thread_state_t state = reinterpret_cast<thread_state_t>(&registers);
-    thread_get_state(thread.machThread(), flavor, state, &userCount);
+    thread.getRegisters(registers);
 
     message(registers);
-
-    thread_set_state(thread.machThread(), flavor, state, userCount);
 
     thread.resume();
     return MessageStatus::MessageRan;

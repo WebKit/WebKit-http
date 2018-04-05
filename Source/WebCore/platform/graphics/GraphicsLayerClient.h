@@ -72,6 +72,7 @@ enum LayerTreeAsTextBehaviorFlags {
     LayerTreeAsTextIncludeContentLayers         = 1 << 5,
     LayerTreeAsTextIncludePageOverlayLayers     = 1 << 6,
     LayerTreeAsTextIncludeAcceleratesDrawing    = 1 << 7,
+    LayerTreeAsTextIncludeBackingStoreAttached  = 1 << 8,
 };
 typedef unsigned LayerTreeAsTextBehavior;
 
@@ -127,6 +128,8 @@ public:
     virtual bool needsPixelAligment() const { return false; }
 
     virtual bool needsIOSDumpRenderTreeMainFrameRenderViewLayerIsAlwaysOpaqueHack(const GraphicsLayer&) const { return false; }
+
+    virtual void logFilledVisibleFreshTile(unsigned) { };
 
 #ifndef NDEBUG
     // RenderLayerBacking overrides this to verify that it is not

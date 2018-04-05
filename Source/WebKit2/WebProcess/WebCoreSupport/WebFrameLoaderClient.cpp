@@ -336,6 +336,15 @@ void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
     webPage->send(Messages::WebPageProxy::DidSameDocumentNavigationForFrame(m_frame->frameID(), navigationID, SameDocumentNavigationAnchorNavigation, m_frame->coreFrame()->document()->url().string(), UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
+void WebFrameLoaderClient::dispatchDidChangeMainDocument()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    webPage->send(Messages::WebPageProxy::DidChangeMainDocument(m_frame->frameID()));
+}
+
 void WebFrameLoaderClient::dispatchDidPushStateWithinPage()
 {
     WebPage* webPage = m_frame->page();
@@ -1365,6 +1374,8 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
             m_frame->coreFrame()->view()->setAutoSizeFixedMinimumHeight(webPage->size().height());
     }
 
+    if (auto viewportSizeForViewportUnits = webPage->viewportSizeForCSSViewportUnits())
+        m_frame->coreFrame()->view()->setViewportSizeForCSSViewportUnits(*viewportSizeForViewportUnits);
     m_frame->coreFrame()->view()->setProhibitsScrolling(shouldDisableScrolling);
     m_frame->coreFrame()->view()->setVisualUpdatesAllowedByClient(!webPage->shouldExtendIncrementalRenderingSuppression());
 #if PLATFORM(COCOA)

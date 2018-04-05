@@ -381,6 +381,9 @@ public:
 
     void terminateNetworkProcess();
 
+    void removeAllSessionCredentials(JSValueRef);
+    void callDidRemoveAllSessionCredentialsCallback();
+
 private:
     TestRunner();
 

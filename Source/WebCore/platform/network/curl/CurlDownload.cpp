@@ -204,6 +204,7 @@ void CurlDownloadManager::downloadThread(void* data)
 
         CurlDownload* download = 0;
         CURLcode err = curl_easy_getinfo(msg->easy_handle, CURLINFO_PRIVATE, &download);
+        UNUSED_PARAM(err);
 
         if (msg->msg == CURLMSG_DONE) {
             if (download) {
@@ -339,7 +340,7 @@ void CurlDownload::moveFileToDestination()
     if (m_destination.isEmpty())
         return;
 
-    ::MoveFileEx(m_tempPath.charactersWithNullTermination().data(), m_destination.charactersWithNullTermination().data(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+    moveFile(m_tempPath, m_destination);
 }
 
 void CurlDownload::writeDataToFile(const char* data, int size)
@@ -389,6 +390,7 @@ void CurlDownload::didReceiveHeader(const String& header)
 
         long httpCode = 0;
         CURLcode err = curl_easy_getinfo(m_curlHandle, CURLINFO_RESPONSE_CODE, &httpCode);
+        UNUSED_PARAM(err);
 
         if (httpCode >= 200 && httpCode < 300) {
             URL url = getCurlEffectiveURL(m_curlHandle);

@@ -774,11 +774,10 @@ static void enableExperimentalFeatures(IWebPreferences* preferences)
     // FIXME: SpringTimingFunction
     // FIXME: Gamepads
     prefsPrivate4->setLinkPreloadEnabled(TRUE);
+    prefsPrivate4->setMediaPreloadingEnabled(TRUE);
     // FIXME: ModernMediaControls
     // FIXME: InputEvents
-    prefsPrivate4->setResourceTimingEnabled(TRUE);
     // FIXME: SubtleCrypto
-    prefsPrivate4->setUserTimingEnabled(TRUE);
     prefsPrivate4->setWebAnimationsEnabled(TRUE);
     // FIXME: WebGL2
     // FIXME: WebRTC
@@ -880,6 +879,8 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate4->setShadowDOMEnabled(TRUE);
     prefsPrivate4->setCustomElementsEnabled(TRUE);
     prefsPrivate4->setModernMediaControlsEnabled(FALSE);
+    prefsPrivate4->setResourceTimingEnabled(TRUE);
+    prefsPrivate4->setUserTimingEnabled(TRUE);
     prefsPrivate4->clearNetworkLoaderSession();
 
     setAlwaysAcceptCookies(false);

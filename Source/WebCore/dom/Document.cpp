@@ -616,11 +616,11 @@ Document::~Document()
     if (hasRareData())
         clearRareData();
 
-    ASSERT(!m_listsInvalidatedAtDocument.size());
-    ASSERT(!m_collectionsInvalidatedAtDocument.size());
+    ASSERT(m_listsInvalidatedAtDocument.isEmpty());
+    ASSERT(m_collectionsInvalidatedAtDocument.isEmpty());
 
-    for (unsigned i = 0; i < WTF_ARRAY_LENGTH(m_nodeListAndCollectionCounts); ++i)
-        ASSERT(!m_nodeListAndCollectionCounts[i]);
+    for (unsigned count : m_nodeListAndCollectionCounts)
+        ASSERT_UNUSED(count, !count);
 }
 
 void Document::removedLastRef()
@@ -991,7 +991,7 @@ ExceptionOr<Ref<Node>> Document::adoptNode(Node& source)
         ASSERT_WITH_SECURITY_IMPLICATION(!source.parentNode());
     }
 
-    adoptIfNeeded(source);
+    source.setTreeScopeRecursively(*this);
 
     return Ref<Node> { source };
 }
@@ -1062,18 +1062,79 @@ Ref<Element> Document::createElement(const QualifiedName& name, bool createdByPa
     return element.releaseNonNull();
 }
 
+// https://html.spec.whatwg.org/#valid-custom-element-name
+
+struct UnicodeCodePointRange {
+    UChar32 minimum;
+    UChar32 maximum;
+};
+
+#if !ASSERT_DISABLED
+
+static inline bool operator<(const UnicodeCodePointRange& a, const UnicodeCodePointRange& b)
+{
+    ASSERT(a.minimum <= a.maximum);
+    ASSERT(b.minimum <= b.maximum);
+    return a.maximum < b.minimum;
+}
+
+#endif
+
+static inline bool operator<(const UnicodeCodePointRange& a, UChar32 b)
+{
+    ASSERT(a.minimum <= a.maximum);
+    return a.maximum < b;
+}
+
+static inline bool operator<(UChar32 a, const UnicodeCodePointRange& b)
+{
+    ASSERT(b.minimum <= b.maximum);
+    return a < b.minimum;
+}
+
+static inline bool isPotentialCustomElementNameCharacter(UChar32 character)
+{
+    static const UnicodeCodePointRange ranges[] = {
+        { '-', '.' },
+        { '0', '9' },
+        { '_', '_' },
+        { 'a', 'z' },
+        { 0xB7, 0xB7 },
+        { 0xC0, 0xD6 },
+        { 0xD8, 0xF6 },
+        { 0xF8, 0x37D },
+        { 0x37F, 0x1FFF },
+        { 0x200C, 0x200D },
+        { 0x203F, 0x2040 },
+        { 0x2070, 0x218F },
+        { 0x2C00, 0x2FEF },
+        { 0x3001, 0xD7FF },
+        { 0xF900, 0xFDCF },
+        { 0xFDF0, 0xFFFD },
+        { 0x10000, 0xEFFFF },
+    };
+
+    ASSERT(std::is_sorted(std::begin(ranges), std::end(ranges)));
+    return std::binary_search(std::begin(ranges), std::end(ranges), character);
+}
+
 CustomElementNameValidationStatus Document::validateCustomElementName(const AtomicString& localName)
 {
+    if (!isASCIILower(localName[0]))
+        return CustomElementNameValidationStatus::FirstCharacterIsNotLowercaseASCIILetter;
+
     bool containsHyphen = false;
-    for (auto character : StringView(localName).codeUnits()) {
+    for (auto character : StringView(localName).codePoints()) {
         if (isASCIIUpper(character))
-            return CustomElementNameValidationStatus::ContainsUpperCase;
+            return CustomElementNameValidationStatus::ContainsUppercaseASCIILetter;
+        if (!isPotentialCustomElementNameCharacter(character))
+            return CustomElementNameValidationStatus::ContainsDisallowedCharacter;
         if (character == '-')
             containsHyphen = true;
     }
 
     if (!containsHyphen)
-        return CustomElementNameValidationStatus::NoHyphen;
+        return CustomElementNameValidationStatus::ContainsNoHyphen;
 
 #if ENABLE(MATHML)
     const auto& annotationXmlLocalName = MathMLNames::annotation_xmlTag.localName();
@@ -1089,7 +1150,7 @@ CustomElementNameValidationStatus Document::validateCustomElementName(const Atom
         || localName == SVGNames::font_face_uriTag.localName()
         || localName == SVGNames::missing_glyphTag.localName()
         || localName == annotationXmlLocalName)
-        return CustomElementNameValidationStatus::ConflictsWithBuiltinNames;
+        return CustomElementNameValidationStatus::ConflictsWithStandardElementName;
 
     return CustomElementNameValidationStatus::Valid;
 }
@@ -1547,7 +1608,7 @@ void Document::visibilityStateChanged()
     for (auto* client : m_visibilityStateCallbackClients)
         client->visibilityStateChanged();
 
-    notifyVisibilityChangedToMediaCapture();
+    notifyMediaCaptureOfVisibilityChanged();
 }
 
 auto Document::visibilityState() const -> VisibilityState
@@ -7005,10 +7066,19 @@ void Document::orientationChanged(int orientation)
     m_orientationNotifier.orientationChanged(orientation);
 }
 
-void Document::notifyVisibilityChangedToMediaCapture()
+void Document::notifyMediaCaptureOfVisibilityChanged()
 {
 #if ENABLE(MEDIA_STREAM)
-    RealtimeMediaSourceCenter::singleton().setVisibility(!hidden());
+    if (!page() || page()->isMediaCaptureMuted()) {
+        m_videoCaptureMutedForVisibilityChange = false;
+        return;
+    }
+
+    if (!hidden() && !m_videoCaptureMutedForVisibilityChange)
+        return;
+
+    m_videoCaptureMutedForVisibilityChange = hidden();
+    RealtimeMediaSourceCenter::singleton().setVideoCaptureMutedForPageVisibility(m_videoCaptureMutedForVisibilityChange);
 #endif
 }
 

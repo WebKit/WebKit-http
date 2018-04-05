@@ -130,14 +130,19 @@ void WebPlaybackSessionModelMediaElement::updateForEventName(const WTF::AtomicSt
         || eventName == eventNames().timeupdateEvent) {
         auto currentTime = this->currentTime();
         auto anchorTime = [[NSProcessInfo processInfo] systemUptime];
+        for (auto client : m_clients)
+            client->currentTimeChanged(currentTime, anchorTime);
+    }
+
+    if (all
+        || eventName == eventNames().progressEvent) {
         auto bufferedTime = this->bufferedTime();
         auto seekableRanges = this->seekableRanges();
-
+        auto seekableTimeRangesLastModifiedTime = this->seekableTimeRangesLastModifiedTime();
+        auto liveUpdateInterval = this->liveUpdateInterval();
         for (auto client : m_clients) {
-            client->currentTimeChanged(currentTime, anchorTime);
             client->bufferedTimeChanged(bufferedTime);
-            // FIXME: 130788 - find a better event from which to update seekable ranges.
-            client->seekableRangesChanged(seekableRanges);
+            client->seekableRangesChanged(seekableRanges, seekableTimeRangesLastModifiedTime, liveUpdateInterval);
         }
     }
 
@@ -340,6 +345,7 @@ const Vector<AtomicString>& WebPlaybackSessionModelMediaElement::observedEventNa
         eventNames().playEvent,
         eventNames().ratechangeEvent,
         eventNames().timeupdateEvent,
+        eventNames().progressEvent,
         eventNames().addtrackEvent,
         eventNames().removetrackEvent,
         eventNames().volumechangeEvent,
@@ -356,7 +362,9 @@ const AtomicString&  WebPlaybackSessionModelMediaElement::eventNameAll()
 
 double WebPlaybackSessionModelMediaElement::duration() const
 {
-    return m_mediaElement ? m_mediaElement->duration() : 0;
+    if (!m_mediaElement)
+        return 0;
+    return m_mediaElement->supportsSeeking() ? m_mediaElement->duration() : std::numeric_limits<double>::quiet_NaN();
 }
 
 double WebPlaybackSessionModelMediaElement::currentTime() const
@@ -384,6 +392,16 @@ Ref<TimeRanges> WebPlaybackSessionModelMediaElement::seekableRanges() const
     return m_mediaElement ? m_mediaElement->seekable() : TimeRanges::create();
 }
 
+double WebPlaybackSessionModelMediaElement::seekableTimeRangesLastModifiedTime() const
+{
+    return m_mediaElement ? m_mediaElement->seekableTimeRangesLastModifiedTime() : 0;
+}
+
+double WebPlaybackSessionModelMediaElement::liveUpdateInterval() const
+{
+    return m_mediaElement ? m_mediaElement->liveUpdateInterval() : 0;
+}
+    
 bool WebPlaybackSessionModelMediaElement::canPlayFastReverse() const
 {
     return m_mediaElement ? m_mediaElement->minFastReverseRate() < 0.0 : false;

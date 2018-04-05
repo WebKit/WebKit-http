@@ -40,6 +40,7 @@
 #import "_WKVisitedLinkStore.h"
 #import "_WKWebsiteDataStoreInternal.h"
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/Settings.h>
 #import <WebCore/URLParser.h>
 #import <wtf/RetainPtr.h>
 
@@ -137,6 +138,7 @@ private:
     BOOL _needsStorageAccessFromFileURLsQuirk;
 
     NSString *_overrideContentSecurityPolicy;
+    RetainPtr<NSString> _mediaContentTypesRequiringHardwareSupport;
 }
 
 - (instancetype)init
@@ -198,6 +200,8 @@ private:
     _selectionGranularity = WKSelectionGranularityDynamic;
     _allowsBlockSelection = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitDebugAllowBlockSelection"];
 #endif
+
+    _mediaContentTypesRequiringHardwareSupport = Settings::defaultMediaContentTypesRequiringHardwareSupport();
 
     return self;
 }
@@ -330,6 +334,7 @@ private:
     configuration->_overrideContentSecurityPolicy = self->_overrideContentSecurityPolicy;
 
     configuration->_urlSchemeHandlers.set(adoptNS([self._urlSchemeHandlers mutableCopyWithZone:zone]));
+    configuration->_mediaContentTypesRequiringHardwareSupport = self._mediaContentTypesRequiringHardwareSupport;
 
     return configuration;
 }
@@ -814,6 +819,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setOverrideContentSecurityPolicy:(NSString *)overrideContentSecurityPolicy
 {
     _overrideContentSecurityPolicy = overrideContentSecurityPolicy;
+}
+
+- (NSString *)_mediaContentTypesRequiringHardwareSupport
+{
+    return _mediaContentTypesRequiringHardwareSupport.get();
+}
+
+- (void)_setMediaContentTypesRequiringHardwareSupport:(NSString *)mediaContentTypesRequiringHardwareSupport
+{
+    _mediaContentTypesRequiringHardwareSupport = mediaContentTypesRequiringHardwareSupport;
 }
 
 @end

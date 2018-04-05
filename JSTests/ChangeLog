@@ -1,3 +1,265 @@
+2017-06-08  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: We should only create wrappers for functions that can be exported
+        https://bugs.webkit.org/show_bug.cgi?id=173088
+
+        Reviewed by Saam Barati.
+
+        Remove a bunch of old tests that are actually duplicates of the spec-tests and rely
+        on the old testWasmModuleFunctions api, which has been removed.
+
+        * wasm/function-tests/copysign.js: Removed.
+        * wasm/function-tests/ctz.js: Removed.
+        * wasm/function-tests/drop.js: Removed.
+        * wasm/function-tests/dumb-eq-if-then-else.js: Removed.
+        * wasm/function-tests/dumb-less-than-fallthrough.js: Removed.
+        * wasm/function-tests/dumb-less-than-ite.js: Removed.
+        * wasm/function-tests/eqz.js: Removed.
+        * wasm/function-tests/i32-trunc-s-f32.js: Removed.
+        * wasm/function-tests/i32-trunc-s-f64.js: Removed.
+        * wasm/function-tests/i32-trunc-u-f32.js: Removed.
+        * wasm/function-tests/i32-trunc-u-f64.js: Removed.
+        * wasm/function-tests/i64-trunc-s-f32.js: Removed.
+        * wasm/function-tests/i64-trunc-s-f64.js: Removed.
+        * wasm/function-tests/i64-trunc-u-f32.js: Removed.
+        * wasm/function-tests/i64-trunc-u-f64.js: Removed.
+        * wasm/function-tests/if-then-else-fallthrough.js: Removed.
+        * wasm/function-tests/if-then-fallthrough.js: Removed.
+        * wasm/function-tests/int-to-floating-point.js: Removed.
+        * wasm/function-tests/loop-mult.js:
+        * wasm/function-tests/loop-sum.js:
+        * wasm/function-tests/max.js: Removed.
+        * wasm/function-tests/min.js: Removed.
+        * wasm/function-tests/nearest.js: Removed.
+        * wasm/function-tests/nop.js: Removed.
+        * wasm/function-tests/popcnt.js: Removed.
+        * wasm/function-tests/ret5.js:
+        * wasm/function-tests/select.js: Removed.
+        * wasm/function-tests/tee-local.js: Removed.
+        * wasm/function-tests/trunc.js: Removed.
+
+2017-06-07  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: test imports and exports with 16-bit characters
+        https://bugs.webkit.org/show_bug.cgi?id=165977
+        <rdar://problem/29760130>
+
+        Reviewed by Saam Barati.
+
+        The output for import failure was improved, so many tests need to
+        be updated here. Only one has new tests as noted below.
+
+        * wasm/function-tests/memory-import-and-grow.js:
+        * wasm/js-api/Instance.imports.exports.unicode.js: Added. Main new test.
+        (idxModule):
+        * wasm/js-api/global-error.js:
+        (new.Number):
+        (assert.throws):
+        * wasm/js-api/table.js:
+        (assert.throws):
+        (new.WebAssembly.Table):
+        * wasm/js-api/test_memory.js:
+        (test):
+        * wasm/js-api/wasm-to-wasm-bad-signature.js:
+        (BadSignatureDropStartParams.):
+        (BadSignatureDropStartParams):
+        (BadSignatureDropEndParams.):
+        (BadSignatureSwapParam.):
+        (BadSignatureRet.):
+        * wasm/js-api/web-assembly-instantiate.js:
+        (assert.asyncTest.async.test):
+        (assert.asyncTest):
+        * wasm/js-api/wrapper-function.js:
+        (return.new.WebAssembly.Module):
+
+2017-06-07  Mark Lam  <mark.lam@apple.com>
+
+        Restrict the regress-173035.js test to only run on Darwin x86-64.
+        https://bugs.webkit.org/show_bug.cgi?id=173075
+
+        Reviewed by Saam Barati.
+
+        This is because the 32-bit x86 build will fail to mmap the 0x3f900000 bytes that
+        this test will require to succeed.  Here's an example of this failure:
+        https://build.webkit.org/builders/Apple%20Sierra%2032-bit%20JSC%20%28BuildAndTest%29/builds/866/steps/webkit-32bit-jsc-test/logs/stdio
+
+        Since the issue is due to allocation of a very large amount of memory, the test
+        will probably fail on iOS and other platforms as well.  Hence, we should just
+        skip this test for any platforms that is not Darwin x86-64.
+
+        * stress/regress-173035.js:
+
+2017-06-07  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION failure: !masqueradesAsUndefinedWatchpointIsStillValid() || !isKnownCell(operand.node())
+        https://bugs.webkit.org/show_bug.cgi?id=168587
+
+        Not reviewed.
+
+        Unskipping the test because the issue has been fixed in https://bugs.webkit.org/show_bug.cgi?id=172673.
+
+        * stress/test-finally.js:
+
+2017-06-06  Mark Lam  <mark.lam@apple.com>
+
+        Contiguous storage butterfly length should not exceed MAX_STORAGE_VECTOR_LENGTH.
+        https://bugs.webkit.org/show_bug.cgi?id=173035
+        <rdar://problem/32554593>
+
+        Reviewed by Geoffrey Garen and Filip Pizlo.
+
+        * stress/regress-173035.js: Added.
+
+2017-06-06  Saam Barati  <sbarati@apple.com>
+
+        Make sure we restore SP when doing calls that could be to JS
+        https://bugs.webkit.org/show_bug.cgi?id=172946
+        <rdar://problem/32579026>
+
+        Reviewed by JF Bastien.
+
+        * wasm/function-tests/many-args-tail-call-sp-restored.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.f1):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.end):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.f2):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.let.instance.new.WebAssembly.Instance.new.WebAssembly.Module.builder.WebAssembly):
+
+2017-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r217807. Caused a test to crash.
+
+        * heapProfiler/class-names.js: Removed.
+        * heapProfiler/driver/driver.js:
+        (CheapHeapSnapshotNode):
+        (CheapHeapSnapshot):
+        (createCheapHeapSnapshot):
+        (HeapSnapshot):
+        (createHeapSnapshot):
+        * typeProfiler/inheritance.js:
+        (wrapper.A):
+        (wrapper.B):
+        (wrapper.C):
+        (wrapper):
+
+2017-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        index out of bound in bytecodebasicblock
+        https://bugs.webkit.org/show_bug.cgi?id=172963
+
+        Reviewed by Saam Barati and Mark Lam.
+
+        * stress/dfg-call-class-constructor.js: Added.
+        (Foo):
+        (i.catch):
+
+2017-06-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve ES6 Class instances in Heap Snapshot instances view
+        https://bugs.webkit.org/show_bug.cgi?id=172848
+        <rdar://problem/25709212>
+
+        Reviewed by Saam Barati.
+
+        * typeProfiler/inheritance.js:
+        Rewrite the test slightly for clarity. The hoisting was confusing.
+
+        * heapProfiler/class-names.js: Added.
+        (MyES5Class):
+        (MyES6Class):
+        (MyES6Subclass):
+        Test object types and improved class names.
+
+        * heapProfiler/driver/driver.js:
+        (CheapHeapSnapshotNode):
+        (CheapHeapSnapshot):
+        (createCheapHeapSnapshot):
+        (HeapSnapshot):
+        (createHeapSnapshot):
+        Update snapshot parsing from version 1 to version 2.
+
+2017-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ASSERTION FAILED: "We should only declare a function as a lexically scoped variable in scopes where var declarations aren't allowed. ..." for function redeclaration with async function module export
+        https://bugs.webkit.org/show_bug.cgi?id=168844
+
+        Reviewed by Saam Barati.
+
+        * modules/async-function-export.js: Added.
+        (f):
+        (export.async.f):
+
+2017-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ES2015 modules - Export default function hoisting
+        https://bugs.webkit.org/show_bug.cgi?id=170174
+
+        Reviewed by Saam Barati.
+
+        This issue itself is solved by fixing function declaration hoisting rules.
+        This patch just adds the specific test to modules tests to ensure the bug
+        is fixed.
+
+        * modules/export-default-function-hoisting.js: Added.
+        * modules/export-default-function-hoisting/cappuccino.js: Added.
+        (import.drinkCocoa.from.string_appeared_here.export.default.drinkCappuccino):
+        * modules/export-default-function-hoisting/cocoa.js: Added.
+        (export.default.drinkCocoa):
+
+2017-06-01  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Class Proxy can't be extended
+        https://bugs.webkit.org/show_bug.cgi?id=169040
+
+        Reviewed by Saam Barati.
+
+        Adding tests that check correctness of Proxy to ES6 `class`
+        Bug is already fixed in https://bugs.webkit.org/show_bug.cgi?id=164849
+
+        * stress/proxy-class.js: Added.
+        (assert):
+        (throw.new.Error.SuperClass):
+        (throw.new.Error.A):
+        (throw.new.Error):
+
+2017-05-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement String.prototype.concat in JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=172798
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/string-concat-convert.js: Added.
+        (test):
+        * microbenchmarks/string-concat-long-convert.js: Added.
+        (test):
+        * microbenchmarks/string-concat-long.js: Added.
+        (test):
+        * microbenchmarks/string-concat.js: Added.
+        (test):
+
+2017-05-31  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Rolling out: Prevent async methods named 'function'
+        https://bugs.webkit.org/show_bug.cgi?id=172776
+
+        Reviewed by Mark Lam.
+
+        * stress/async-await-syntax.js:
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode):
+        (prototype.testTopLevelAsyncAwaitSyntaxStrictMode.testSyntax):
+        (prototype.testTopLevelAsyncAwaitSyntaxStrictMode):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntaxError):
+
+2017-05-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test stress/test-finally.js
+        https://bugs.webkit.org/show_bug.cgi?id=168587
+
+        Unreviewed test gardening.
+
+        * stress/test-finally.js:
+
 2017-05-30  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         Prevent async methods named 'function' in Object literal

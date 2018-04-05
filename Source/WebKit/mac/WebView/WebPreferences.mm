@@ -618,6 +618,7 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMockCaptureDevicesPromptEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaCaptureRequiresSecureConnectionPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
@@ -670,6 +671,7 @@ public:
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitCredentialManagementEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
+        (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -2813,6 +2815,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitLinkPreloadEnabledPreferenceKey];
 }
 
+- (BOOL)mediaPreloadingEnabled
+{
+    return [self _boolValueForKey:WebKitMediaPreloadingEnabledPreferenceKey];
+}
+
+- (void)setMediaPreloadingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaPreloadingEnabledPreferenceKey];
+}
+
 - (void)setMetaRefreshEnabled:(BOOL)enabled
 {
     [self setHTTPEquivEnabled:enabled];
@@ -2881,6 +2893,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (BOOL)mockCaptureDevicesPromptEnabled
+{
+    return [self _boolValueForKey:WebKitMockCaptureDevicesPromptEnabledPreferenceKey];
+}
+
+- (void)setMockCaptureDevicesPromptEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesPromptEnabledPreferenceKey];
 }
 
 - (BOOL)enumeratingAllNetworkInterfacesEnabled
@@ -3085,6 +3107,15 @@ static NSString *classIBCreatorID = nil;
 }
 #endif
 
+- (NSString *)mediaContentTypesRequiringHardwareSupport
+{
+    return [self _stringValueForKey:WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey];
+}
+
+- (void)setMediaContentTypesRequiringHardwareSupport:(NSString *)value
+{
+    [self _setStringValue:value forKey:WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey];
+}
 @end
 
 @implementation WebPreferences (WebInternal)

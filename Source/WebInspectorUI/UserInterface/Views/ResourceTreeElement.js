@@ -161,6 +161,21 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
 
     populateContextMenu(contextMenu, event)
     {
+        if (this._resource.type === WebInspector.Resource.Type.WebSocket) {
+            contextMenu.appendItem(WebInspector.UIString("Log WebSocket"), () => {
+                WebInspector.RemoteObject.resolveWebSocket(this._resource, WebInspector.RuntimeManager.ConsoleObjectGroup, (remoteObject) => {
+                    if (!remoteObject)
+                        return;
+
+                    const text = WebInspector.UIString("Selected WebSocket");
+                    const addSpecialUserLogClass = true;
+                    WebInspector.consoleLogViewController.appendImmediateExecutionWithResult(text, remoteObject, addSpecialUserLogClass);
+                });
+            });
+
+            contextMenu.appendSeparator();
+        }
+
         WebInspector.appendContextMenuItemsForSourceCode(contextMenu, this._resource);
 
         super.populateContextMenu(contextMenu, event);
@@ -177,10 +192,12 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
 
         if (this._resource.finished || this._resource.failed) {
             // Remove the spinner.
-            this.status = "";
+            if (this.status && this.status[WebInspector.ResourceTreeElement.SpinnerSymbol])
+                this.status = "";
         } else {
             let spinner = new WebInspector.IndeterminateProgressSpinner;
             this.status = spinner.element;
+            this.status[WebInspector.ResourceTreeElement.SpinnerSymbol] = true;
         }
     }
 
@@ -206,3 +223,5 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
 
 WebInspector.ResourceTreeElement.ResourceIconStyleClassName = "resource-icon";
 WebInspector.ResourceTreeElement.FailedStyleClassName = "failed";
+
+WebInspector.ResourceTreeElement.SpinnerSymbol = Symbol("spinner");

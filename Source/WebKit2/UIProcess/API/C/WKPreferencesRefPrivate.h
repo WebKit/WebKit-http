@@ -486,6 +486,10 @@ WK_EXPORT void WKPreferencesSetLinkPreloadEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetLinkPreloadEnabled(WKPreferencesRef);
 
 // Defaults to false
+WK_EXPORT void WKPreferencesSetMediaPreloadingEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetMediaPreloadingEnabled(WKPreferencesRef);
+
+// Defaults to false
 WK_EXPORT void WKPreferencesSetCredentialManagementEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetCredentialManagementEnabled(WKPreferencesRef);
 
@@ -496,6 +500,10 @@ WK_EXPORT bool WKPreferencesGetInvisibleMediaAutoplayPermitted(WKPreferencesRef)
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetMediaUserGestureInheritsFromDocument(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreferencesRef);
+
+// Defaults to an empty string
+WK_EXPORT void WKPreferencesSetMediaContentTypesRequiringHardwareSupport(WKPreferencesRef, WKStringRef);
+WK_EXPORT WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

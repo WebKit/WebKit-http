@@ -241,7 +241,7 @@ class Driver(object):
             crashed_pid=self._crashed_pid, crash_log=crash_log, pid=pid)
 
     def _get_crash_log(self, stdout, stderr, newer_than):
-        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than)
+        return self._port._get_crash_log(self._crashed_process_name, self._crashed_pid, stdout, stderr, newer_than, target_host=self._target_host)
 
     def _command_wrapper(self):
         # Hook for injecting valgrind or other runtime instrumentation, used by e.g. tools/valgrind/valgrind_tests.py.
@@ -312,7 +312,7 @@ class Driver(object):
         if self._crashed_process_name:
             return True
         if self._server_process.has_crashed():
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         return False
@@ -453,7 +453,7 @@ class Driver(object):
     def _check_for_driver_crash_or_unresponsiveness(self, error_line):
         crashed_check = error_line.rstrip('\r\n')
         if crashed_check == "#CRASHED":
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
             return True
         elif error_line.startswith("#CRASHED - "):
@@ -607,7 +607,7 @@ class Driver(object):
                     self.error_from_test += err_line
 
         if asan_violation_detected and not self._crashed_process_name:
-            self._crashed_process_name = self._server_process.name()
+            self._crashed_process_name = self._server_process.process_name()
             self._crashed_pid = self._server_process.pid()
 
         block.decode_content()

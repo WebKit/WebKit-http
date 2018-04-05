@@ -79,9 +79,9 @@ void UserMediaPermissionRequestManagerProxy::clearCachedState()
     invalidatePendingRequests();
 }
 
-Ref<UserMediaPermissionRequestProxy> UserMediaPermissionRequestManagerProxy::createRequest(uint64_t userMediaID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<String>&& audioDeviceUIDs, Vector<String>&& videoDeviceUIDs, String&& deviceIDHashSalt)
+Ref<UserMediaPermissionRequestProxy> UserMediaPermissionRequestManagerProxy::createRequest(uint64_t userMediaID, uint64_t mainFrameID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, Vector<String>&& audioDeviceUIDs, Vector<String>&& videoDeviceUIDs, String&& deviceIDHashSalt)
 {
-    auto request = UserMediaPermissionRequestProxy::create(*this, userMediaID, frameID, WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin), WTFMove(audioDeviceUIDs), WTFMove(videoDeviceUIDs), WTFMove(deviceIDHashSalt));
+    auto request = UserMediaPermissionRequestProxy::create(*this, userMediaID, mainFrameID, frameID, WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin), WTFMove(audioDeviceUIDs), WTFMove(videoDeviceUIDs), WTFMove(deviceIDHashSalt));
     m_pendingUserMediaRequests.add(userMediaID, request.ptr());
     return request;
 }
@@ -127,6 +127,9 @@ void UserMediaPermissionRequestManagerProxy::userMediaAccessWasDenied(uint64_t u
     if (!request)
         return;
 
+    if (reason == UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::PermissionDenied)
+        m_deniedRequests.append(DeniedRequest { request->mainFrameID(), request->userMediaDocumentSecurityOrigin(), request->topLevelDocumentSecurityOrigin(), request->requiresAudio(), request->requiresVideo() });
+
     denyRequest(userMediaID, reason, emptyString());
 }
 
@@ -154,14 +157,77 @@ void UserMediaPermissionRequestManagerProxy::userMediaAccessWasGranted(uint64_t 
     if (!request)
         return;
 
-    UserMediaProcessManager::singleton().willCreateMediaStream(*this, !audioDeviceUID.isEmpty(), !videoDeviceUID.isEmpty());
-    m_page.process().send(Messages::WebPage::UserMediaAccessWasGranted(userMediaID, audioDeviceUID, videoDeviceUID, request->deviceIdentifierHashSalt()), m_page.pageID());
+    grantAccess(userMediaID, audioDeviceUID, videoDeviceUID, request->deviceIdentifierHashSalt());
+    m_grantedRequests.append(request.releaseNonNull());
 #else
     UNUSED_PARAM(userMediaID);
     UNUSED_PARAM(audioDeviceUID);
     UNUSED_PARAM(videoDeviceUID);
 #endif
 }
+
+#if ENABLE(MEDIA_STREAM)
+void UserMediaPermissionRequestManagerProxy::resetAccess(uint64_t frameID)
+{
+    m_grantedRequests.removeAllMatching([frameID](const auto& grantedRequest) {
+        return grantedRequest->mainFrameID() == frameID;
+    });
+    m_pregrantedRequests.clear();
+    m_deniedRequests.clear();
+}
+
+const UserMediaPermissionRequestProxy* UserMediaPermissionRequestManagerProxy::searchForGrantedRequest(uint64_t frameID, const WebCore::SecurityOrigin& userMediaDocumentOrigin, const WebCore::SecurityOrigin& topLevelDocumentOrigin, bool needsAudio, bool needsVideo) const
+{
+    if (m_page.isMediaStreamCaptureMuted())
+        return nullptr;
+
+    bool checkForAudio = needsAudio;
+    bool checkForVideo = needsVideo;
+    for (const auto& grantedRequest : m_grantedRequests) {
+        if (!grantedRequest->userMediaDocumentSecurityOrigin().isSameSchemeHostPort(userMediaDocumentOrigin))
+            continue;
+        if (!grantedRequest->topLevelDocumentSecurityOrigin().isSameSchemeHostPort(topLevelDocumentOrigin))
+            continue;
+        if (grantedRequest->frameID() != frameID)
+            continue;
+
+        if (!grantedRequest->videoDeviceUIDs().isEmpty())
+            checkForVideo = false;
+
+        if (!grantedRequest->audioDeviceUIDs().isEmpty())
+            checkForAudio = false;
+
+        if (checkForVideo || checkForAudio)
+            continue;
+
+        return grantedRequest.ptr();
+    }
+    return nullptr;
+}
+
+bool UserMediaPermissionRequestManagerProxy::wasRequestDenied(uint64_t mainFrameID, const WebCore::SecurityOrigin& userMediaDocumentOrigin, const WebCore::SecurityOrigin& topLevelDocumentOrigin, bool needsAudio, bool needsVideo)
+{
+    for (const auto& deniedRequest : m_deniedRequests) {
+        if (!deniedRequest.userMediaDocumentOrigin->isSameSchemeHostPort(userMediaDocumentOrigin))
+            continue;
+        if (!deniedRequest.topLevelDocumentOrigin->isSameSchemeHostPort(topLevelDocumentOrigin))
+            continue;
+        if (deniedRequest.mainFrameID != mainFrameID)
+            continue;
+        if (deniedRequest.isAudioDenied && needsAudio)
+            return true;
+        if (deniedRequest.isVideoDenied && needsVideo)
+            return true;
+    }
+    return false;
+}
+
+void UserMediaPermissionRequestManagerProxy::grantAccess(uint64_t userMediaID, const String& audioDeviceUID, const String& videoDeviceUID, const String& deviceIdentifierHashSalt)
+{
+    UserMediaProcessManager::singleton().willCreateMediaStream(*this, !audioDeviceUID.isEmpty(), !videoDeviceUID.isEmpty());
+    m_page.process().send(Messages::WebPage::UserMediaAccessWasGranted(userMediaID, audioDeviceUID, videoDeviceUID, deviceIdentifierHashSalt), m_page.pageID());
+}
+#endif
 
 void UserMediaPermissionRequestManagerProxy::rejectionTimerFired()
 {
@@ -178,6 +244,11 @@ void UserMediaPermissionRequestManagerProxy::scheduleNextRejection()
     const double mimimumDelayBeforeReplying = .25;
     if (!m_rejectionTimer.isActive())
         m_rejectionTimer.startOneShot(Seconds(mimimumDelayBeforeReplying + randomNumber()));
+}
+
+static inline void allowRequest(UserMediaPermissionRequestProxy& request)
+{
+    request.allow(request.audioDeviceUIDs().isEmpty() ? String() : request.audioDeviceUIDs()[0], request.videoDeviceUIDs().isEmpty() ? String() : request.videoDeviceUIDs()[0]);
 }
 
 void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, Ref<WebCore::SecurityOrigin>&& userMediaDocumentOrigin, Ref<WebCore::SecurityOrigin>&& topLevelDocumentOrigin, const WebCore::MediaConstraints& audioConstraints, const WebCore::MediaConstraints& videoConstraints)
@@ -197,7 +268,7 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
     };
 
     WebCore::RealtimeMediaSourceCenter::ValidConstraintsHandler validHandler = [this, userMediaID, frameID, userMediaDocumentOrigin = userMediaDocumentOrigin.copyRef(), topLevelDocumentOrigin = topLevelDocumentOrigin.copyRef()](Vector<String>&& audioDeviceUIDs, Vector<String>&& videoDeviceUIDs, String&& deviceIdentifierHashSalt) mutable {
-        if (!m_page.isValid())
+        if (!m_page.isValid() || !m_page.mainFrame())
             return;
 
         if (videoDeviceUIDs.isEmpty() && audioDeviceUIDs.isEmpty()) {
@@ -205,9 +276,30 @@ void UserMediaPermissionRequestManagerProxy::requestUserMediaPermissionForFrame(
             return;
         }
 
+        if (wasRequestDenied(m_page.mainFrame()->frameID(), userMediaDocumentOrigin.get(), topLevelDocumentOrigin.get(), !audioDeviceUIDs.isEmpty(), !videoDeviceUIDs.isEmpty())) {
+            denyRequest(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::PermissionDenied, emptyString());
+            return;
+        }
+
+        auto* grantedRequest = searchForGrantedRequest(frameID, userMediaDocumentOrigin.get(), topLevelDocumentOrigin.get(), !audioDeviceUIDs.isEmpty(), !videoDeviceUIDs.isEmpty());
+        if (grantedRequest) {
+            if (m_page.isViewVisible())
+            // We select the first available devices, but the current client API allows client to select which device to pick.
+            // FIXME: Remove the possiblity for the client to do the device selection.
+                grantAccess(userMediaID, audioDeviceUIDs.isEmpty() ? String() : audioDeviceUIDs[0], videoDeviceUIDs.isEmpty() ? String() : videoDeviceUIDs[0], grantedRequest->deviceIdentifierHashSalt());
+            else
+                m_pregrantedRequests.append(createRequest(userMediaID, m_page.mainFrame()->frameID(), frameID, WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin), WTFMove(audioDeviceUIDs), WTFMove(videoDeviceUIDs), String(grantedRequest->deviceIdentifierHashSalt())));
+            return;
+        }
         auto userMediaOrigin = API::SecurityOrigin::create(userMediaDocumentOrigin.get());
         auto topLevelOrigin = API::SecurityOrigin::create(topLevelDocumentOrigin.get());
-        auto request = createRequest(userMediaID, frameID, WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin), WTFMove(audioDeviceUIDs), WTFMove(videoDeviceUIDs), WTFMove(deviceIdentifierHashSalt));
+
+        auto request = createRequest(userMediaID, m_page.mainFrame()->frameID(), frameID, WTFMove(userMediaDocumentOrigin), WTFMove(topLevelDocumentOrigin), WTFMove(audioDeviceUIDs), WTFMove(videoDeviceUIDs), WTFMove(deviceIdentifierHashSalt));
+
+        if (m_page.preferences().mockCaptureDevicesEnabled() && !m_page.preferences().mockCaptureDevicesPromptEnabled()) {
+            allowRequest(request);
+            return;
+        }
 
         if (!m_page.uiClient().decidePolicyForUserMediaPermissionRequest(m_page, *m_page.process().webFrame(frameID), WTFMove(userMediaOrigin), WTFMove(topLevelOrigin), request.get()))
             userMediaAccessWasDenied(userMediaID, UserMediaPermissionRequestProxy::UserMediaAccessDenialReason::UserMediaDisabled);
@@ -308,6 +400,13 @@ void UserMediaPermissionRequestManagerProxy::endedCaptureSession()
 #if ENABLE(MEDIA_STREAM)
     UserMediaProcessManager::singleton().endedCaptureSession(*this);
 #endif
+}
+
+void UserMediaPermissionRequestManagerProxy::processPregrantedRequests()
+{
+    for (auto& request : m_pregrantedRequests)
+        allowRequest(request.get());
+    m_pregrantedRequests.clear();
 }
 
 } // namespace WebKit

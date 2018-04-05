@@ -184,7 +184,6 @@ public:
 // error state
     WEBCORE_EXPORT MediaError* error() const;
 
-    void setSrc(const String&);
     const URL& currentSrc() const { return m_currentSrc; }
 
     const MediaProvider& srcObject() const { return m_mediaProvider; }
@@ -233,6 +232,8 @@ public:
     WEBCORE_EXPORT void setWebkitPreservesPitch(bool);
     Ref<TimeRanges> played() override;
     Ref<TimeRanges> seekable() const override;
+    double seekableTimeRangesLastModifiedTime() const;
+    double liveUpdateInterval() const;
     WEBCORE_EXPORT bool ended() const;
     bool autoplay() const;
     bool isAutoplaying() const { return m_autoplaying; }
@@ -411,8 +412,8 @@ public:
 
     MediaControls* mediaControls() const;
 
-    void sourceWasRemoved(HTMLSourceElement*);
-    void sourceWasAdded(HTMLSourceElement*);
+    void sourceWasRemoved(HTMLSourceElement&);
+    void sourceWasAdded(HTMLSourceElement&);
 
     void privateBrowsingStateDidChange() override;
 
@@ -519,6 +520,8 @@ public:
     bool hasMediaStreamSrcObject() const { return !!m_mediaStreamSrcObject; }
 #endif
 
+    bool supportsSeeking() const override;
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLMediaElement();
@@ -531,7 +534,7 @@ protected:
     void willDetachRenderers() override;
     void didDetachRenderers() override;
 
-    void didMoveToNewDocument(Document& oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
     enum DisplayMode { Unknown, None, Poster, PosterWaitingForVideo, Video };
     DisplayMode displayMode() const { return m_displayMode; }
@@ -680,6 +683,7 @@ private:
     double mediaPlayerRequestedPlaybackRate() const final;
     VideoFullscreenMode mediaPlayerFullscreenMode() const final { return fullscreenMode(); }
     bool mediaPlayerShouldDisableSleep() const final { return shouldDisableSleep() == SleepType::Display; }
+    const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const final;
 
 #if USE(GSTREAMER)
     void requestInstallMissingPlugins(const String& details, const String& description, MediaPlayerRequestInstallMissingPluginsCallback&) final;
@@ -817,7 +821,6 @@ private:
     double mediaSessionCurrentTime() const override { return currentTime(); }
     bool canReceiveRemoteControlCommands() const override { return true; }
     void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override;
-    bool supportsSeeking() const override;
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
     bool canProduceAudio() const final;
@@ -999,10 +1002,6 @@ private:
     bool m_sentEndEvent : 1;
 
     bool m_pausedInternal : 1;
-
-    // Not all media engines provide enough information about a file to be able to
-    // support progress events so setting m_sendProgressEvents disables them 
-    bool m_sendProgressEvents : 1;
 
     bool m_closedCaptionsVisible : 1;
     bool m_webkitLegacyClosedCaptionOverride : 1;

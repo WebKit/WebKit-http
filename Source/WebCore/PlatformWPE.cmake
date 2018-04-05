@@ -51,6 +51,9 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
+    page/linux/ResourceUsageOverlayLinux.cpp
+    page/linux/ResourceUsageThreadLinux.cpp
+
     page/scrolling/ScrollingStateStickyNode.cpp
     page/scrolling/ScrollingThread.cpp
     page/scrolling/ScrollingTreeNode.cpp
@@ -222,6 +225,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
         crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
         crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+        crypto/algorithms/CryptoAlgorithmRSA_PSS.cpp
         crypto/algorithms/CryptoAlgorithmSHA1.cpp
         crypto/algorithms/CryptoAlgorithmSHA224.cpp
         crypto/algorithms/CryptoAlgorithmSHA256.cpp
@@ -241,6 +245,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/gcrypt/CryptoAlgorithmRSAES_PKCS1_v1_5GCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRSASSA_PKCS1_v1_5GCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRSA_OAEPGCrypt.cpp
+        crypto/gcrypt/CryptoAlgorithmRSA_PSSGCrypt.cpp
         crypto/gcrypt/CryptoAlgorithmRegistryGCrypt.cpp
         crypto/gcrypt/CryptoKeyECGCrypt.cpp
         crypto/gcrypt/CryptoKeyRSAGCrypt.cpp

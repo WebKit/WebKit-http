@@ -30,6 +30,7 @@
 #include "AXObjectCache.h"
 #include "ActiveDOMCallbackMicrotask.h"
 #include "ApplicationCacheStorage.h"
+#include "AudioSession.h"
 #include "Autofill.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
@@ -195,6 +196,7 @@
 #endif
 
 #if ENABLE(MEDIA_STREAM)
+#include "MediaStream.h"
 #include "MockRealtimeMediaSourceCenter.h"
 #endif
 
@@ -477,7 +479,7 @@ Internals::Internals(Document& document)
 #endif
 
 #if ENABLE(WEB_RTC)
-#if PLATFORM(GTK)
+#if USE(OPENWEBRTC)
     enableMockMediaEndpoint();
 #endif
 #if USE(LIBWEBRTC)
@@ -1264,13 +1266,12 @@ void Internals::enableMockSpeechSynthesizer()
 
 #if ENABLE(WEB_RTC)
 
+#if USE(OPENWEBRTC)
 void Internals::enableMockMediaEndpoint()
 {
-    if (!LibWebRTCProvider::webRTCAvailable())
-        return;
-
     MediaEndpoint::create = MockMediaEndpoint::create;
 }
+#endif
 
 void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
 {
@@ -2270,6 +2271,8 @@ static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
         layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
     if (flags & Internals::LAYER_TREE_INCLUDES_ACCELERATES_DRAWING)
         layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
+    if (flags & Internals::LAYER_TREE_INCLUDES_BACKING_STORE_ATTACHED)
+        layerTreeFlags |= LayerTreeFlagsIncludeBackingStoreAttached;
 
     return layerTreeFlags;
 }
@@ -4086,6 +4089,39 @@ void Internals::delayMediaStreamTrackSamples(MediaStreamTrack& track, float dela
     track.source().delaySamples(delay);
 }
 
+void Internals::setMediaStreamTrackMuted(MediaStreamTrack& track, bool muted)
+{
+    track.source().setMuted(muted);
+}
+
+void Internals::removeMediaStreamTrack(MediaStream& stream, MediaStreamTrack& track)
+{
+    stream.internalRemoveTrack(track.id(), MediaStream::StreamModifier::Platform);
+}
+
 #endif
+
+String Internals::audioSessionCategory() const
+{
+#if USE(AUDIO_SESSION)
+    switch (AudioSession::sharedSession().category()) {
+    case AudioSession::AmbientSound:
+        return ASCIILiteral("AmbientSound");
+    case AudioSession::SoloAmbientSound:
+        return ASCIILiteral("SoloAmbientSound");
+    case AudioSession::MediaPlayback:
+        return ASCIILiteral("MediaPlayback");
+    case AudioSession::RecordAudio:
+        return ASCIILiteral("RecordAudio");
+    case AudioSession::PlayAndRecord:
+        return ASCIILiteral("PlayAndRecord");
+    case AudioSession::AudioProcessing:
+        return ASCIILiteral("AudioProcessing");
+    case AudioSession::None:
+        return ASCIILiteral("None");
+    }
+#endif
+    return emptyString();
+}
 
 } // namespace WebCore

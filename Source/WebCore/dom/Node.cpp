@@ -68,7 +68,6 @@
 #include "TemplateContentDocumentFragment.h"
 #include "TextEvent.h"
 #include "TouchEvent.h"
-#include "TreeScopeAdopter.h"
 #include "WheelEvent.h"
 #include "XMLNSNames.h"
 #include "XMLNames.h"
@@ -286,7 +285,7 @@ Node::~Node()
     liveNodeSet.remove(this);
 #endif
 
-    ASSERT(!renderer());
+    ASSERT_WITH_SECURITY_IMPLICATION(!renderer());
     ASSERT(!parentNode());
     ASSERT(!m_previous);
     ASSERT(!m_next);
@@ -1249,10 +1248,9 @@ Node& Node::getRootNode(const GetRootNodeOptions& options) const
 
 Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPoint)
 {
-    ASSERT(insertionPoint.isConnected() || isContainerNode());
     if (insertionPoint.isConnected())
         setFlag(IsConnectedFlag);
-    if (parentOrShadowHostNode()->isInShadowTree())
+    if (insertionPoint.isInShadowTree())
         setFlag(IsInShadowTreeFlag);
 
     invalidateStyle(Style::Validity::SubtreeAndRenderersInvalid);
@@ -1262,7 +1260,6 @@ Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPo
 
 void Node::removedFrom(ContainerNode& insertionPoint)
 {
-    ASSERT(insertionPoint.isConnected() || isContainerNode());
     if (insertionPoint.isConnected())
         clearFlag(IsConnectedFlag);
     if (isInShadowTree() && !treeScope().rootNode().isShadowRoot())
@@ -1925,14 +1922,139 @@ EventTargetInterface Node::eventTargetInterface() const
     return NodeEventTargetInterfaceType;
 }
 
-void Node::didMoveToNewDocument(Document& oldDocument)
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
+class DidMoveToNewDocumentAssertionScope {
+public:
+    DidMoveToNewDocumentAssertionScope(Node& node, Document& oldDocument, Document& newDocument)
+        : m_node(node)
+        , m_oldDocument(oldDocument)
+        , m_newDocument(newDocument)
+        , m_previousScope(s_scope)
+    {
+        s_scope = this;
+    }
+
+    ~DidMoveToNewDocumentAssertionScope()
+    {
+        ASSERT_WITH_SECURITY_IMPLICATION(m_called);
+        s_scope = m_previousScope;
+    }
+
+    static void didRecieveCall(Node& node, Document& oldDocument, Document& newDocument)
+    {
+        ASSERT_WITH_SECURITY_IMPLICATION(s_scope);
+        ASSERT_WITH_SECURITY_IMPLICATION(!s_scope->m_called);
+        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_node == &node);
+        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_oldDocument == &oldDocument);
+        ASSERT_WITH_SECURITY_IMPLICATION(&s_scope->m_newDocument == &newDocument);
+        s_scope->m_called = true;
+    }
+
+private:
+    Node& m_node;
+    Document& m_oldDocument;
+    Document& m_newDocument;
+    bool m_called { false };
+    DidMoveToNewDocumentAssertionScope* m_previousScope;
+
+    static DidMoveToNewDocumentAssertionScope* s_scope;
+};
+
+DidMoveToNewDocumentAssertionScope* DidMoveToNewDocumentAssertionScope::s_scope = nullptr;
+
+#else
+class DidMoveToNewDocumentAssertionScope {
+public:
+    DidMoveToNewDocumentAssertionScope(Node&, Document&, Document&) { }
+    static void didRecieveCall(Node&, Document&, Document&) { }
+};
+#endif
+
+static ALWAYS_INLINE void moveNodeToNewDocument(Node& node, Document& oldDocument, Document& newDocument)
 {
-    TreeScopeAdopter::ensureDidMoveToNewDocumentWasCalled(oldDocument);
+    ASSERT(!node.isConnected() || &oldDocument != &newDocument);
+    DidMoveToNewDocumentAssertionScope scope(node, oldDocument, newDocument);
+    node.didMoveToNewDocument(oldDocument, newDocument);
+}
+
+static void moveShadowTreeToNewDocument(ShadowRoot& shadowRoot, Document& oldDocument, Document& newDocument)
+{
+    for (Node* node = &shadowRoot; node; node = NodeTraversal::next(*node, &shadowRoot)) {
+        moveNodeToNewDocument(*node, oldDocument, newDocument);
+        if (auto* shadow = node->shadowRoot())
+            moveShadowTreeToNewDocument(*shadow, oldDocument, newDocument);
+    }
+}
+
+void Node::moveTreeToNewScope(Node& root, TreeScope& oldScope, TreeScope& newScope)
+{
+    ASSERT(&oldScope != &newScope);
+    ASSERT_WITH_SECURITY_IMPLICATION(&root.treeScope() == &oldScope);
+
+    // If an element is moved from a document and then eventually back again the collection cache for
+    // that element may contain stale data as changes made to it will have updated the DOMTreeVersion
+    // of the document it was moved to. By increasing the DOMTreeVersion of the donating document here
+    // we ensure that the collection cache will be invalidated as needed when the element is moved back.
+    Document& oldDocument = oldScope.documentScope();
+    Document& newDocument = newScope.documentScope();
+    bool shouldUpdateDocumentScope = &oldDocument != &newDocument;
+    if (shouldUpdateDocumentScope) {
+        oldDocument.incrementReferencingNodeCount();
+        oldDocument.incDOMTreeVersion();
+    }
+
+    for (Node* node = &root; node; node = NodeTraversal::next(*node, &root)) {
+        ASSERT(!node->isTreeScope());
+        ASSERT(&node->treeScope() == &oldScope);
+        node->setTreeScope(newScope);
+
+        if (shouldUpdateDocumentScope)
+            moveNodeToNewDocument(*node, oldDocument, newDocument);
+        else if (node->hasRareData()) {
+            if (auto* nodeLists = node->rareData()->nodeLists())
+                nodeLists->adoptTreeScope();
+        }
+
+        if (!is<Element>(*node))
+            continue;
+        Element& element = downcast<Element>(*node);
+
+        if (element.hasSyntheticAttrChildNodes()) {
+            for (auto& attr : element.attrNodeList())
+                moveTreeToNewScope(*attr, oldScope, newScope);
+        }
+
+        if (auto* shadow = element.shadowRoot()) {
+            ASSERT_WITH_SECURITY_IMPLICATION(&shadow->document() == &oldDocument);
+            shadow->setParentTreeScope(newScope);
+            if (shouldUpdateDocumentScope)
+                moveShadowTreeToNewDocument(*shadow, oldDocument, newDocument);
+        }
+    }
+
+    if (shouldUpdateDocumentScope)
+        oldDocument.decrementReferencingNodeCount();
+}
+
+void Node::didMoveToNewDocument(Document& oldDocument, Document& newDocument)
+{
+    ASSERT_WITH_SECURITY_IMPLICATION(&document() == &newDocument);
+    DidMoveToNewDocumentAssertionScope::didRecieveCall(*this, oldDocument, newDocument);
+
+    newDocument.incrementReferencingNodeCount();
+    oldDocument.decrementReferencingNodeCount();
+
+    if (hasRareData()) {
+        if (auto* nodeLists = rareData()->nodeLists())
+            nodeLists->adoptDocument(oldDocument, newDocument);
+    }
+
+    oldDocument.moveNodeIteratorsToNewDocument(*this, newDocument);
 
     if (auto* eventTargetData = this->eventTargetData()) {
         if (!eventTargetData->eventListenerMap.isEmpty()) {
             for (auto& type : eventTargetData->eventListenerMap.eventTypes())
-                document().addListenerTypeIfNeeded(type);
+                newDocument.addListenerTypeIfNeeded(type);
         }
     }
 
@@ -1944,7 +2066,7 @@ void Node::didMoveToNewDocument(Document& oldDocument)
     unsigned numWheelEventHandlers = eventListeners(eventNames().mousewheelEvent).size() + eventListeners(eventNames().wheelEvent).size();
     for (unsigned i = 0; i < numWheelEventHandlers; ++i) {
         oldDocument.didRemoveWheelEventHandler(*this);
-        document().didAddWheelEventHandler(*this);
+        newDocument.didAddWheelEventHandler(*this);
     }
 
     unsigned numTouchEventListeners = 0;
@@ -1953,11 +2075,11 @@ void Node::didMoveToNewDocument(Document& oldDocument)
 
     for (unsigned i = 0; i < numTouchEventListeners; ++i) {
         oldDocument.didRemoveTouchEventHandler(*this);
-        document().didAddTouchEventHandler(*this);
+        newDocument.didAddTouchEventHandler(*this);
 
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
         oldDocument.removeTouchEventListener(*this);
-        document().addTouchEventListener(*this);
+        newDocument.addTouchEventListener(*this);
 #endif
     }
 
@@ -1968,18 +2090,18 @@ void Node::didMoveToNewDocument(Document& oldDocument)
 
     for (unsigned i = 0; i < numGestureEventListeners; ++i) {
         oldDocument.removeTouchEventHandler(*this);
-        document().addTouchEventHandler(*this);
+        newDocument.addTouchEventHandler(*this);
     }
 #endif
 
     if (auto* registry = mutationObserverRegistry()) {
         for (auto& registration : *registry)
-            document().addMutationObserverTypes(registration->mutationTypes());
+            newDocument.addMutationObserverTypes(registration->mutationTypes());
     }
 
     if (auto* transientRegistry = transientMutationObserverRegistry()) {
         for (auto& registration : *transientRegistry)
-            document().addMutationObserverTypes(registration->mutationTypes());
+            newDocument.addMutationObserverTypes(registration->mutationTypes());
     }
 
 #if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)

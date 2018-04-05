@@ -1,3 +1,964 @@
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Add verboseDFGOSRExit
+        https://bugs.webkit.org/show_bug.cgi?id=173156
+
+        Reviewed by Saam Barati.
+
+        This patch adds verboseDFGOSRExit which is similar to verboseFTLOSRExit.
+
+        * dfg/DFGOSRExitCompiler.cpp:
+        * runtime/Options.h:
+
+2017-06-09  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC][MIPS] Add MacroAssemblerMIPS::xor32(Address, RegisterID) implementation
+        https://bugs.webkit.org/show_bug.cgi?id=173170
+
+        Reviewed by Yusuke Suzuki.
+
+        MIPS does not build since r217711 because it is missing this
+        implementation. This patch fixes the build.
+
+        * assembler/MacroAssemblerMIPS.h:
+        (JSC::MacroAssemblerMIPS::xor32):
+
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] FTL does not require dlfcn
+        https://bugs.webkit.org/show_bug.cgi?id=173143
+
+        Reviewed by Darin Adler.
+
+        We no longer use LLVM library. Thus, dlfcn.h is not necessary.
+        Also, ProcessID is not used in FTLLowerDFGToB3.cpp.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Add --verboseDFGFailure
+        https://bugs.webkit.org/show_bug.cgi?id=173155
+
+        Reviewed by Sam Weinig.
+
+        Similar to verboseFTLFailure, JSC should have verboseDFGFailure flag to show DFG failures quickly.
+
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::verboseCapabilities):
+        (JSC::DFG::debugFail):
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+        * runtime/Options.h:
+
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop OS(DARWIN) for VM_TAG_FOR_WEBASSEMBLY_MEMORY
+        https://bugs.webkit.org/show_bug.cgi?id=173147
+
+        Reviewed by JF Bastien.
+
+        Because this value becomes -1 in non-Darwin environments.
+        Thus, we do not need to use OS(DARWIN) here.
+
+        * wasm/WasmMemory.cpp:
+
+2017-06-09  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Reduce compiler warnings
+        https://bugs.webkit.org/show_bug.cgi?id=172078
+
+        Reviewed by Yusuke Suzuki.
+
+        * runtime/IntlDateTimeFormat.h:
+
+2017-06-08  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Cocoa] JSWrapperMap leaks for all JSContexts
+        https://bugs.webkit.org/show_bug.cgi?id=173110
+        <rdar://problem/32602198>
+
+        Reviewed by Geoffrey Garen.
+
+        * API/JSContext.mm:
+        (-[JSContext ensureWrapperMap]):
+        Ensure this allocation gets released.
+
+2017-06-08  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION: js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-5.html has a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=161156
+
+        Reviewed by Saam Barati.
+        
+        Since LLInt does not register impure property watchpoints for self property accesses, it
+        shouldn't try to cache accesses that require a watchpoint.
+        
+        This manifested as a flaky failure because the test would fire the watchpoint after we had
+        usually already tiered up. Without concurrent JIT, we would have always tiered up before
+        getting to the bad case. With concurrent JIT, we would sometimes not tier up by that time. This
+        also adds a test that deterministically failed in LLInt without this change; it does so by just
+        running a lot shorter.
+
+        * llint/LLIntSlowPaths.cpp:
+        (JSC::LLInt::LLINT_SLOW_PATH_DECL):
+
+2017-06-08  Keith Miller  <keith_miller@apple.com>
+
+        WebAssembly: We should only create wrappers for functions that can be exported
+        https://bugs.webkit.org/show_bug.cgi?id=173088
+
+        Reviewed by Saam Barati.
+
+        This patch makes it so we only create wrappers for WebAssembly functions that
+        can actually be exported. It appears to be a ~2.5% speedup on WasmBench compile times.
+
+        This patch also removes most of the old testWasmModuleFunctions api from the jsc CLI.
+        Most of the tests were duplicates of ones in the spec-tests directory. The others I
+        have converted to use the normal API.
+
+        * jsc.cpp:
+        (GlobalObject::finishCreation):
+        (valueWithTypeOfWasmValue): Deleted.
+        (box): Deleted.
+        (callWasmFunction): Deleted.
+        (functionTestWasmModuleFunctions): Deleted.
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::createJSToWasmWrapper):
+        (JSC::Wasm::parseAndCompile):
+        * wasm/WasmB3IRGenerator.h:
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::prepare):
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        (JSC::Wasm::BBQPlan::complete):
+        * wasm/WasmBBQPlan.h:
+        * wasm/WasmBBQPlanInlines.h:
+        (JSC::Wasm::BBQPlan::initializeCallees):
+        * wasm/WasmCodeBlock.cpp:
+        (JSC::Wasm::CodeBlock::CodeBlock):
+        * wasm/WasmCodeBlock.h:
+        (JSC::Wasm::CodeBlock::jsEntrypointCalleeFromFunctionIndexSpace):
+        * wasm/WasmFormat.h:
+        * wasm/WasmOMGPlan.cpp:
+        (JSC::Wasm::OMGPlan::work):
+
+2017-06-07  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: test imports and exports with 16-bit characters
+        https://bugs.webkit.org/show_bug.cgi?id=165977
+        <rdar://problem/29760130>
+
+        Reviewed by Saam Barati.
+
+        Add the missing UTF-8 conversions. Improve import failure error
+        messages, otherwise it's hard to figure out which import is wrong.
+
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::finishCreation):
+        (JSC::WebAssemblyModuleRecord::link):
+
+2017-06-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add ContextMenu item to log WebSocket object to console
+        https://bugs.webkit.org/show_bug.cgi?id=172878
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Network.json:
+        Add resolveWebSocket command.
+
+2017-06-07  Jon Davis  <jond@apple.com>
+
+        Update feature status for features Supported In Preview
+        https://bugs.webkit.org/show_bug.cgi?id=173071
+
+        Reviewed by Darin Adler.
+
+        Updated Media Capture and Streams, Performance Observer, Resource Timing Level 2,
+        User Timing Level 2, Web Cryptography API, WebGL 2, WebRTC.
+
+        * features.json:
+
+2017-06-07  Saam Barati  <sbarati@apple.com>
+
+        Assertion failure in com.apple.WebKit.WebContent.Development in com.apple.JavaScriptCore: JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranchNullOrUndefined + 141
+        https://bugs.webkit.org/show_bug.cgi?id=172673
+        <rdar://problem/32250144>
+
+        Reviewed by Mark Lam.
+
+        This patch simply removes this assertion. It's faulty because it
+        races with the main thread when doing concurrent compilation.
+        
+        Consider a program with:
+        - a FrozenValue over an object O and Structure S1. S1 starts off as dfgWatchable() being true.
+        - Structure S2
+        
+        The DFG IR is like so:
+          a: JSConstant(O) // FrozenValue {O, S1}
+          b: CheckStructure(@a, S2)
+          c: ToThis(@a)
+          d: CheckEq(@c, nullConstant)
+          Branch(@d)
+        
+        The AbstractValue for @a will start off as having a finite structure because S1 is dfgWatchable().
+        When running AI, we'll notice that node @b will OSR exit, so nodes after
+        @b are unreachable. Later in the compilation, S1 is no longer dfgWatchable().
+        Now, when running AI, @a will have Top for its structure set. No longer will
+        we think @b exits.
+        
+        The DFG backend asserts that under such a situation, we should have simplified
+        the CheckEq to false. However, this is a racy thing to assert, since the
+        transition from dfgWatchable() to !dfgWatchable() can happen right before we
+        enter the backend. Hence, this assertion is not valid.
+        
+        (Note, the generated code for the above program will never actually execute.
+        Since we noticed S1 as dfgWatchable(), we make the compilation dependent on
+        S1 not transitioning. S1 transitions, so we won't actually run the code that
+        gets compiled.)
+
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::nonSpeculativePeepholeBranchNullOrUndefined):
+
+2017-06-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] has_generic_property never accepts non-String
+        https://bugs.webkit.org/show_bug.cgi?id=173057
+
+        Reviewed by Darin Adler.
+
+        We never pass non-String value to has_generic_property bytecode.
+
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+
+2017-06-06  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win][x86-64] Some callee saved registers aren't preserved
+        https://bugs.webkit.org/show_bug.cgi?id=171266
+
+        Reviewed by Saam Barati.
+
+        * jit/RegisterSet.cpp:
+        (JSC::RegisterSet::calleeSaveRegisters): Added edi and esi for X86_64 Windows.
+
+2017-06-06  Mark Lam  <mark.lam@apple.com>
+
+        Contiguous storage butterfly length should not exceed MAX_STORAGE_VECTOR_LENGTH.
+        https://bugs.webkit.org/show_bug.cgi?id=173035
+        <rdar://problem/32554593>
+
+        Reviewed by Geoffrey Garen and Filip Pizlo.
+
+        Also added and fixed up some assertions.
+
+        * runtime/ArrayConventions.h:
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::setLength):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::createInitialIndexedStorage):
+        (JSC::JSObject::ensureLengthSlow):
+        (JSC::JSObject::reallocateAndShrinkButterfly):
+        * runtime/JSObject.h:
+        (JSC::JSObject::ensureLength):
+        * runtime/RegExpObject.cpp:
+        (JSC::collectMatches):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::regExpProtoFuncSplitFast):
+
+2017-06-06  Saam Barati  <sbarati@apple.com>
+
+        Make sure we restore SP when doing calls that could be to JS
+        https://bugs.webkit.org/show_bug.cgi?id=172946
+        <rdar://problem/32579026>
+
+        Reviewed by JF Bastien.
+
+        I was worried that there was a bug where we'd call JS, JS would tail call,
+        and we'd end up with a bogus SP. However, this bug does not exist since wasm
+        always calls to JS through a stub, and the stub treats SP as a callee save.
+        
+        I wrote a test for this, and also made a note that this is the needed ABI.
+
+        * wasm/WasmBinding.cpp:
+        (JSC::Wasm::wasmToJs):
+
+2017-06-06  Keith Miller  <keith_miller@apple.com>
+
+        OMG tier up checks should be a patchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=172944
+
+        Reviewed by Saam Barati.
+
+        Tier up checks in BBQ should be done as a patchpoint rather than individual B3 opcodes.
+        In order to reduce code generated out of line in each function. We generate a single stub
+        that pushes all the callee-saves. This looks like a 5-10% compile time speedup.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitTierUpCheck):
+        (JSC::Wasm::B3IRGenerator::addLoop):
+        * wasm/WasmThunks.cpp:
+        (JSC::Wasm::triggerOMGTierUpThunkGenerator):
+        * wasm/WasmThunks.h:
+
+2017-06-06  Darin Adler  <darin@apple.com>
+
+        Cut down use of WTF_ARRAY_LENGTH
+        https://bugs.webkit.org/show_bug.cgi?id=172997
+
+        Reviewed by Chris Dumez.
+
+        * parser/Lexer.cpp:
+        (JSC::singleEscape): Use WTF_ARRAY_LENGTH instead of ARRAY_SIZE.
+
+        * runtime/NumberPrototype.cpp:
+        (JSC::toStringWithRadix): Use std::end instead of WTF_ARRAY_LENGTH.
+
+2017-06-06  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Add missing <functional> includes
+        https://bugs.webkit.org/show_bug.cgi?id=173017
+
+        Patch by Thiago Macieira <thiago.macieira@intel.com>
+        Reviewed by Yusuke Suzuki.
+
+        This patch fixes compilation with GCC 7.
+
+        * inspector/InspectorBackendDispatcher.h:
+
+2017-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, fix 32-bit build.
+
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_unreachable):
+
+2017-06-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Unreviewed rollout r217807. Caused a test to crash.
+
+        * heap/HeapSnapshotBuilder.cpp:
+        (JSC::HeapSnapshotBuilder::buildSnapshot):
+        (JSC::HeapSnapshotBuilder::json):
+        (): Deleted.
+        * heap/HeapSnapshotBuilder.h:
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+
+2017-06-06  Filip Pizlo  <fpizlo@apple.com>
+
+        index out of bound in bytecodebasicblock
+        https://bugs.webkit.org/show_bug.cgi?id=172963
+
+        Reviewed by Saam Barati and Mark Lam.
+        
+        We were leaving an unterminated basic block when generating CodeForCall for a class
+        constructor. This was mostly benign since that unterminated block was not reachable, but it
+        does cause an ASSERT.
+        
+        This fixes the issue by appending op_unreachable to that block. I added op_unreachable because
+        this really is the cleanest and most idiomatic way to solve this problem, so even though it
+        makes the change bigger it's probabably worth it.
+
+        * bytecode/BytecodeDumper.cpp:
+        (JSC::BytecodeDumper<Block>::dumpBytecode):
+        * bytecode/BytecodeList.json:
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        (JSC::computeDefsForBytecodeOffset):
+        * bytecode/Opcode.h:
+        (JSC::isTerminal):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::generate):
+        (JSC::BytecodeGenerator::emitUnreachable):
+        * bytecompiler/BytecodeGenerator.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGCapabilities.cpp:
+        (JSC::DFG::capabilityLevel):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileUnreachable):
+        * jit/JIT.cpp:
+        (JSC::JIT::privateCompileMainPass):
+        * jit/JIT.h:
+        * jit/JITOpcodes.cpp:
+        (JSC::JIT::emit_op_unreachable):
+        * llint/LowLevelInterpreter.asm:
+        * runtime/CommonSlowPaths.cpp:
+        (JSC::SLOW_PATH_DECL):
+        * runtime/CommonSlowPaths.h:
+
+2017-06-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r217812.
+
+        This change caused test failures on arm64.
+
+        Reverted changeset:
+
+        "OMG tier up checks should be a patchpoint"
+        https://bugs.webkit.org/show_bug.cgi?id=172944
+        http://trac.webkit.org/changeset/217812
+
+2017-06-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Enable remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=172971
+
+        Reviewed by Žan Doberšek.
+
+        We can just build the current glib remote inspector, without adding a frontend implementation and using a
+        WebKitGTK+ browser as frontend for now.
+
+        * PlatformWPE.cmake: Add remote inspector files to compilation.
+        * inspector/remote/glib/RemoteInspectorUtils.cpp:
+        (Inspector::backendCommands): Load the inspector resources library.
+
+2017-06-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GLIB] Make remote inspector DBus protocol common to all glib based ports
+        https://bugs.webkit.org/show_bug.cgi?id=172970
+
+        Reviewed by Žan Doberšek.
+
+        We are currently using "webkitgtk" in the names of DBus interfaces and object paths inside an ifdef with the
+        idea that other ports could use their own names. However, the protocol is the same, so we could use the same
+        names and make all glib based ports compatible to each other. This way we could use the GTK+ MiniBrowser to
+        debug WPE, without having to implement the frontend part in WPE yet.
+
+        * inspector/remote/glib/RemoteInspectorGlib.cpp: Use webkit instead of webkitgtk and reomve platform idfeds.
+        * inspector/remote/glib/RemoteInspectorServer.cpp: Ditto.
+
+2017-06-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Web Process deadlock when closing the remote inspector frontend
+        https://bugs.webkit.org/show_bug.cgi?id=172973
+
+        Reviewed by Žan Doberšek.
+
+        We are taking the remote inspector mutex twice. First close message is received, and receivedCloseMessage()
+        takes the mutex. Then RemoteConnectionToTarget::close() is called that, when connected, calls
+        PageDebuggable::disconnect() that ends up calling RemoteInspector::updateTarget() that also takes the remote
+        inspector mutex. We should release the mutex before calling RemoteConnectionToTarget::close().
+
+        * inspector/remote/glib/RemoteInspectorGlib.cpp:
+        (Inspector::RemoteInspector::receivedCloseMessage):
+
+2017-06-05  Saam Barati  <sbarati@apple.com>
+
+        Try to fix features.json by adding an ESNext section.
+
+        Unreviewed.
+
+        * features.json:
+
+2017-06-05  David Kilzer  <ddkilzer@apple.com>
+
+        Follow-up: Update JSC's features.json
+        https://bugs.webkit.org/show_bug.cgi?id=172942
+
+        Rubber-stamped by Jon Davis.
+
+        * features.json: Change "Supported in preview" to
+        "Supported" to try to fix <https://webkit.org/status/>.
+
+2017-06-05  Saam Barati  <sbarati@apple.com>
+
+        We don't properly parse init_expr when the opcode is an unexpected opcode
+        https://bugs.webkit.org/show_bug.cgi?id=172945
+
+        Reviewed by JF Bastien.
+
+        The bug is a simple typo. It should use the constant
+        `true` instead of `false` when invoking the WASM_PARSER_FAIL_IF
+        macro. This failure is already caught by spec tests that fail
+        on arm64 devices.
+
+        * wasm/WasmModuleParser.cpp:
+
+2017-06-05  Keith Miller  <keith_miller@apple.com>
+
+        OMG tier up checks should be a patchpoint
+        https://bugs.webkit.org/show_bug.cgi?id=172944
+
+        Reviewed by Saam Barati.
+
+        Tier up checks in BBQ should be done as a patchpoint rather than individual B3 opcodes.
+        In order to reduce code generated out of line in each function. We generate a single stub
+        that pushes all the callee-saves. This looks like a 5-10% compile time speedup.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        (JSC::Wasm::B3IRGenerator::B3IRGenerator):
+        (JSC::Wasm::B3IRGenerator::emitTierUpCheck):
+        (JSC::Wasm::B3IRGenerator::addLoop):
+        * wasm/WasmThunks.cpp:
+        (JSC::Wasm::triggerOMGTierUpThunkGenerator):
+        * wasm/WasmThunks.h:
+
+2017-06-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused VM members
+        https://bugs.webkit.org/show_bug.cgi?id=172941
+
+        Reviewed by Mark Lam.
+
+        * runtime/HashMapImpl.h:
+        (JSC::HashMapImpl::selectStructure): Deleted.
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        * runtime/VM.h:
+
+2017-06-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Improve ES6 Class instances in Heap Snapshot instances view
+        https://bugs.webkit.org/show_bug.cgi?id=172848
+        <rdar://problem/25709212>
+
+        Reviewed by Saam Barati.
+
+        * heap/HeapSnapshotBuilder.h:
+        * heap/HeapSnapshotBuilder.cpp:
+        Update the snapshot version. Change the node's 0 | 1 internal value
+        to be a 32bit bit flag. This is nice in that it is both compatible
+        with the previous snapshot version and the same size. We can use more
+        flags in the future.
+
+        (JSC::HeapSnapshotBuilder::json):
+        In cases where the classInfo gives us "Object" check for a better
+        class name by checking (o).__proto__.constructor.name. We avoid this
+        check in cases where (o).hasOwnProperty("constructor") which is the
+        case for most Foo.prototype objects. Otherwise this would get the
+        name of the Foo superclass for the Foo.prototype object.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::calculatedClassName):
+        Handle some possible edge cases that were not handled before. Such
+        as a JSObject without a GlobalObject, and an object which doesn't
+        have a default getPrototype. Try to make the code a little clearer.
+
+2017-06-05  Saam Barati  <sbarati@apple.com>
+
+        Update JSC's features.json
+        https://bugs.webkit.org/show_bug.cgi?id=172942
+
+        Rubber stamped by Mark Lam.
+
+        * features.json:
+
+2017-06-04  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fix build of Windows-specific code with ICU 59.1
+        https://bugs.webkit.org/show_bug.cgi?id=172729
+
+        Reviewed by Darin Adler.
+
+        Fix conversions from WTF::String to wchar_t* and vice versa.
+
+        * jsc.cpp:
+        (currentWorkingDirectory):
+        (fetchModuleFromLocalFileSystem):
+        * runtime/DateConversion.cpp:
+        (JSC::formatDateTime):
+
+2017-06-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop unnecessary USE(CF) guard for getenv
+        https://bugs.webkit.org/show_bug.cgi?id=172903
+
+        Reviewed by Sam Weinig.
+
+        getenv is not related to USE(CF) and OS(UNIX). It seems that this
+        ifdef only hits in WinCairo, but WinCairo can use getenv.
+        Moreover, in VM::VM, we already use getenv without any ifdef guard.
+
+        This patch just drops it.
+
+        * runtime/VM.cpp:
+        (JSC::enableAssembler):
+
+2017-06-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop OS(DARWIN) for uintptr_t type conflict
+        https://bugs.webkit.org/show_bug.cgi?id=172904
+
+        Reviewed by Sam Weinig.
+
+        In non-Darwin environment, uintptr_t may have the same type
+        to uint64_t. We avoided the compile error by using OS(DARWIN).
+        But, since it depends on cstdint implementaion rather than OS, it is flaky.
+        Instead, we just use template parameter IntegralType.
+        And we describe the type constraint in a SFINAE manner.
+
+        * dfg/DFGOpInfo.h:
+        (JSC::DFG::OpInfo::OpInfo):
+
+2017-06-03  Csaba Osztrogonác  <ossy@webkit.org>
+
+        [ARM] Unreviewed buildfix after r217711.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::xor32):
+
+2017-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ASSERTION FAILED: "We should only declare a function as a lexically scoped variable in scopes where var declarations aren't allowed. ..." for function redeclaration with async function module export
+        https://bugs.webkit.org/show_bug.cgi?id=168844
+
+        Reviewed by Saam Barati.
+
+        As the same to the exported function declaration, we should set statementDepth = 1 for exported async function declaration.
+
+        * parser/Parser.cpp:
+        (JSC::DepthManager::DepthManager):
+        (JSC::Parser<LexerType>::parseExportDeclaration):
+        * parser/Parser.h:
+        (JSC::Parser::DepthManager::DepthManager): Deleted.
+        (JSC::Parser::DepthManager::~DepthManager): Deleted.
+
+2017-06-02  Keith Miller  <keith_miller@apple.com>
+
+        Defer installing mach breakpoint handler until watchdog is actually called
+        https://bugs.webkit.org/show_bug.cgi?id=172885
+
+        Reviewed by Saam Barati.
+
+        Eagerly installing the mach breakpoint handler causes issues with Xcode GUI debugging.
+        This hides the issue, so it won't occur as often.
+
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::SignalSender::send):
+        (JSC::VMTraps::VMTraps): Deleted.
+        * runtime/VMTraps.h:
+
+2017-06-02  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.load and Atomics.store need to be fully fenced
+        https://bugs.webkit.org/show_bug.cgi?id=172844
+
+        Reviewed by Keith Miller.
+        
+        Implement fully fenced loads and stores in FTL using AtomicXchgAdd(0, ptr) for the load and
+        AtomicXchg(value, ptr) for the store.
+        
+        DFG needed no changes because it implements all atomics using a CAS loop.
+        
+        AtomicsObject.cpp now uses new Atomic<> API for fully fences loads and stores.
+        
+        Prior to this change, we used half fences (acquire/release) for atomic loads and stores. This
+        is not correct according to my current understanding of the SAB memory model, which requires
+        that atomic operations are SC with respect to everything not just other atomics.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileAtomicsReadModifyWrite):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::atomicWeakCAS):
+        * ftl/FTLOutput.h:
+        * runtime/AtomicsObject.cpp:
+
+2017-06-02  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, attempt to fix the iOS build after r217711.
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::xor32):
+        (JSC::MacroAssemblerARM64::xor64):
+
+2017-06-01  Filip Pizlo  <fpizlo@apple.com>
+
+        GC should use scrambled free-lists
+        https://bugs.webkit.org/show_bug.cgi?id=172793
+
+        Reviewed by Mark Lam.
+        
+        Previously, our bump'n'pop allocator would use a conventional linked-list for the free-list.
+        The linked-list would be threaded through free memory, as is the usual convention.
+        
+        This scrambles the next pointers of that free-list. It also scrambles the head pointer, because
+        this leads to a more natural fast-path structure and saves one register on ARM64.
+        
+        The secret with which pointers are scrambled is per-allocator. Allocators choose a new secret
+        every time they do a sweep-to-pop.
+        
+        This doesn't change the behavior of the bump part of bump'n'pop, but it does refactor the code
+        quite a bit. Previously, there were four copies of the allocator fast path: two in
+        MarkedAllocatorInlines.h, one in MarkedAllocator.cpp, and one in AssemblyHelpers.h. The JIT one
+        was obviously different-looking, but the other three were almost identical. This moves all of
+        that logic into FreeList. There are now just two copies of the allocator: FreeListInlines.h and
+        AssemblyHelpers.h.
+        
+        This appears to be just as fast as our previously allocator.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * heap/FreeList.cpp:
+        (JSC::FreeList::FreeList):
+        (JSC::FreeList::~FreeList):
+        (JSC::FreeList::clear):
+        (JSC::FreeList::initializeList):
+        (JSC::FreeList::initializeBump):
+        (JSC::FreeList::contains):
+        (JSC::FreeList::dump):
+        * heap/FreeList.h:
+        (JSC::FreeList::allocationWillFail):
+        (JSC::FreeList::originalSize):
+        (JSC::FreeList::addressOfList):
+        (JSC::FreeList::offsetOfBlock):
+        (JSC::FreeList::offsetOfList):
+        (JSC::FreeList::offsetOfIndex):
+        (JSC::FreeList::offsetOfPayloadEnd):
+        (JSC::FreeList::offsetOfRemaining):
+        (JSC::FreeList::offsetOfOriginalSize):
+        (JSC::FreeList::FreeList): Deleted.
+        (JSC::FreeList::list): Deleted.
+        (JSC::FreeList::bump): Deleted.
+        (JSC::FreeList::operator==): Deleted.
+        (JSC::FreeList::operator!=): Deleted.
+        (JSC::FreeList::operator bool): Deleted.
+        * heap/FreeListInlines.h: Added.
+        (JSC::FreeList::addFreeCell):
+        (JSC::FreeList::allocate):
+        (JSC::FreeList::forEach):
+        (JSC::FreeList::toOffset):
+        (JSC::FreeList::fromOffset):
+        * heap/IncrementalSweeper.cpp:
+        (JSC::IncrementalSweeper::sweepNextBlock):
+        * heap/MarkedAllocator.cpp:
+        (JSC::MarkedAllocator::MarkedAllocator):
+        (JSC::MarkedAllocator::didConsumeFreeList):
+        (JSC::MarkedAllocator::tryAllocateWithoutCollecting):
+        (JSC::MarkedAllocator::tryAllocateIn):
+        (JSC::MarkedAllocator::allocateSlowCaseImpl):
+        (JSC::MarkedAllocator::stopAllocating):
+        (JSC::MarkedAllocator::prepareForAllocation):
+        (JSC::MarkedAllocator::resumeAllocating):
+        (JSC::MarkedAllocator::sweep):
+        (JSC::MarkedAllocator::setFreeList): Deleted.
+        * heap/MarkedAllocator.h:
+        (JSC::MarkedAllocator::freeList):
+        (JSC::MarkedAllocator::isFreeListedCell): Deleted.
+        * heap/MarkedAllocatorInlines.h:
+        (JSC::MarkedAllocator::isFreeListedCell):
+        (JSC::MarkedAllocator::tryAllocate):
+        (JSC::MarkedAllocator::allocate):
+        * heap/MarkedBlock.cpp:
+        (JSC::MarkedBlock::Handle::stopAllocating):
+        (JSC::MarkedBlock::Handle::lastChanceToFinalize):
+        (JSC::MarkedBlock::Handle::resumeAllocating):
+        (JSC::MarkedBlock::Handle::zap):
+        (JSC::MarkedBlock::Handle::sweep):
+        (JSC::MarkedBlock::Handle::isFreeListedCell):
+        (JSC::MarkedBlock::Handle::forEachFreeCell): Deleted.
+        * heap/MarkedBlock.h:
+        * heap/MarkedBlockInlines.h:
+        (JSC::MarkedBlock::Handle::specializedSweep):
+        (JSC::MarkedBlock::Handle::finishSweepKnowingSubspace):
+        (JSC::MarkedBlock::Handle::isFreeListedCell): Deleted.
+        * heap/Subspace.cpp:
+        (JSC::Subspace::finishSweep):
+        * heap/Subspace.h:
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::emitAllocateWithNonNullAllocator):
+        * runtime/JSDestructibleObjectSubspace.cpp:
+        (JSC::JSDestructibleObjectSubspace::finishSweep):
+        * runtime/JSDestructibleObjectSubspace.h:
+        * runtime/JSSegmentedVariableObjectSubspace.cpp:
+        (JSC::JSSegmentedVariableObjectSubspace::finishSweep):
+        * runtime/JSSegmentedVariableObjectSubspace.h:
+        * runtime/JSStringSubspace.cpp:
+        (JSC::JSStringSubspace::finishSweep):
+        * runtime/JSStringSubspace.h:
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.cpp:
+        (JSC::JSWebAssemblyCodeBlockSubspace::finishSweep):
+        * wasm/js/JSWebAssemblyCodeBlockSubspace.h:
+
+2017-06-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use @globalPrivate for concatSlowPath
+        https://bugs.webkit.org/show_bug.cgi?id=172802
+
+        Reviewed by Darin Adler.
+
+        Use @globalPrivate instead of manually putting it to JSGlobalObject.
+
+        * builtins/ArrayPrototype.js:
+        (concatSlowPath): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+
+2017-06-01  Andy Estes  <aestes@apple.com>
+
+        REGRESSION (r217626): ENABLE_APPLE_PAY_SESSION_V3 was disabled by mistake
+        https://bugs.webkit.org/show_bug.cgi?id=172828
+
+        Reviewed by Beth Dakin.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-01  Keith Miller  <keith_miller@apple.com>
+
+        Undo rollout in r217638 with bug fix
+        https://bugs.webkit.org/show_bug.cgi?id=172824
+
+        Unreviewed, reland patch with unused set_state code removed.
+
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        (dispatchTermitateCallback):
+        (testExecutionTimeLimit):
+        * runtime/JSLock.cpp:
+        (JSC::JSLock::didAcquireLock):
+        * runtime/Options.cpp:
+        (JSC::overrideDefaults):
+        (JSC::Options::initialize):
+        * runtime/Options.h:
+        * runtime/VMTraps.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::adjustPCToPointToTrappingInstruction):
+        (JSC::installSignalHandler):
+        (JSC::VMTraps::SignalSender::send):
+        * tools/SigillCrashAnalyzer.cpp:
+        (JSC::SignalContext::SignalContext):
+        (JSC::SignalContext::dump):
+        (JSC::installCrashHandler):
+        * wasm/WasmBBQPlan.cpp:
+        (JSC::Wasm::BBQPlan::compileFunctions):
+        * wasm/WasmFaultSignalHandler.cpp:
+        (JSC::Wasm::trapHandler):
+        (JSC::Wasm::enableFastMemory):
+        * wasm/WasmMachineThreads.cpp:
+        (JSC::Wasm::resetInstructionCacheOnAllThreads):
+
+2017-06-01  Guillaume Emont  <guijemont@igalia.com>
+
+        [JSC][MIPS] SamplingProfiler::timerLoop() sleeps for 4000+ seconds
+        https://bugs.webkit.org/show_bug.cgi?id=172800
+
+        Reviewed by Saam Barati.
+
+        This fixes a static_cast<uint64_t> by making it a cast to int64_t
+        instead, which looks like the original intent. This fixes the
+        sampling-profiler tests in JSTests/stress.
+
+        * runtime/SamplingProfiler.cpp:
+        (JSC::SamplingProfiler::timerLoop):
+
+2017-06-01  Tomas Popela  <tpopela@redhat.com>, Mark Lam  <mark.lam@apple.com>
+
+        RELEASE_ASSERT_NOT_REACHED() in InferredType::kindForFlags() on Big-Endians
+        https://bugs.webkit.org/show_bug.cgi?id=170945
+
+        Reviewed by Mark Lam.
+
+        Re-define PutByIdFlags as a int32_t enum explicitly because it is
+        stored as an int32_t value in UnlinkedInstruction.  This prevents
+        a bug on 64-bit big endian architectures where the word order is
+        inverted (when we convert the UnlinkedInstruction into a CodeBlock
+        Instruction), resulting in the PutByIdFlags value not being stored in
+        the 32-bit word that the rest of the code expects it to be in.
+
+        * bytecode/PutByIdFlags.h:
+
+2017-05-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement String.prototype.concat in JS builtins
+        https://bugs.webkit.org/show_bug.cgi?id=172798
+
+        Reviewed by Sam Weinig.
+
+        Since we have highly effective + operation for strings,
+        implementing String.prototype.concat in JS simplifies the
+        implementation and improves performance by using speculated
+        types.
+
+        Added microbenchmarks show performance improvement.
+
+        string-concat-long-convert     1063.2787+-12.9101    ^    109.0855+-2.8083        ^ definitely 9.7472x faster
+        string-concat-convert          1111.1366+-12.2363    ^     99.3402+-1.9874        ^ definitely 11.1852x faster
+        string-concat                   131.7377+-3.8359     ^     54.3949+-0.9580        ^ definitely 2.4219x faster
+        string-concat-long               79.4726+-1.9644     ^     64.6301+-1.4941        ^ definitely 1.2297x faster
+
+        * builtins/StringPrototype.js:
+        (globalPrivate.stringConcatSlowPath):
+        (concat):
+        * runtime/StringPrototype.cpp:
+        (JSC::StringPrototype::finishCreation):
+        (JSC::stringProtoFuncConcat): Deleted.
+
+2017-05-31  Mark Lam  <mark.lam@apple.com>
+
+        Remove overrides of visitChildren() that do not add any functionality.
+        https://bugs.webkit.org/show_bug.cgi?id=172789
+        <rdar://problem/32500865>
+
+        Reviewed by Andreas Kling.
+
+        * bytecode/UnlinkedModuleProgramCodeBlock.cpp:
+        (JSC::UnlinkedModuleProgramCodeBlock::visitChildren): Deleted.
+        * bytecode/UnlinkedModuleProgramCodeBlock.h:
+        * bytecode/UnlinkedProgramCodeBlock.cpp:
+        (JSC::UnlinkedProgramCodeBlock::visitChildren): Deleted.
+        * bytecode/UnlinkedProgramCodeBlock.h:
+        * wasm/js/WebAssemblyFunction.cpp:
+        (JSC::WebAssemblyFunction::visitChildren): Deleted.
+        * wasm/js/WebAssemblyFunction.h:
+        * wasm/js/WebAssemblyInstanceConstructor.cpp:
+        (JSC::WebAssemblyInstanceConstructor::visitChildren): Deleted.
+        * wasm/js/WebAssemblyInstanceConstructor.h:
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::WebAssemblyMemoryConstructor::visitChildren): Deleted.
+        * wasm/js/WebAssemblyMemoryConstructor.h:
+        * wasm/js/WebAssemblyModuleConstructor.cpp:
+        (JSC::WebAssemblyModuleConstructor::visitChildren): Deleted.
+        * wasm/js/WebAssemblyModuleConstructor.h:
+        * wasm/js/WebAssemblyTableConstructor.cpp:
+        (JSC::WebAssemblyTableConstructor::visitChildren): Deleted.
+        * wasm/js/WebAssemblyTableConstructor.h:
+
+2017-05-31  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r217611 and r217631.
+        https://bugs.webkit.org/show_bug.cgi?id=172785
+
+        "caused wasm-hashset-many.html to become flaky." (Requested by
+        keith_miller on #webkit).
+
+        Reverted changesets:
+
+        "Reland r216808, underlying lldb bug has been fixed."
+        https://bugs.webkit.org/show_bug.cgi?id=172759
+        http://trac.webkit.org/changeset/217611
+
+        "Use dispatch queues for mach exceptions"
+        https://bugs.webkit.org/show_bug.cgi?id=172775
+        http://trac.webkit.org/changeset/217631
+
+2017-05-31  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Rolling out: Prevent async methods named 'function'
+        https://bugs.webkit.org/show_bug.cgi?id=172776
+
+        Reviewed by Mark Lam.
+
+        Rolling out https://bugs.webkit.org/show_bug.cgi?id=172660 r217578, 
+        https://bugs.webkit.org/show_bug.cgi?id=172598  r217478
+        PR to spec was closed, so changes need to roll out. See
+        https://github.com/tc39/ecma262/pull/884#issuecomment-305212494 
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseClass):
+        (JSC::Parser<LexerType>::parsePropertyMethod):
+
+2017-05-31  Andy Estes  <aestes@apple.com>
+
+        Rename ENABLE_APPLE_PAY_DELEGATE to ENABLE_APPLE_PAY_SESSION_V3 and bump the supported version number
+        https://bugs.webkit.org/show_bug.cgi?id=172366
+
+        Reviewed by Daniel Bates.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-05-31  Keith Miller  <keith_miller@apple.com>
 
         Reland r216808, underlying lldb bug has been fixed.

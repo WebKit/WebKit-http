@@ -311,9 +311,18 @@ bool NPJSObject::invoke(ExecState* exec, JSGlobalObject* globalObject, JSValue f
 
     JSValue value = JSC::call(exec, function, callType, callData, m_jsObject.get(), argumentList);
 
+    if (UNLIKELY(scope.exception())) {
+        scope.clearException();
+        return false;
+    }
+
     // Convert and return the result of the function call.
     m_objectMap->convertJSValueToNPVariant(exec, value, *result);
-    scope.clearException();
+
+    if (UNLIKELY(scope.exception())) {
+        scope.clearException();
+        return false;
+    }
     
     return true;
 }

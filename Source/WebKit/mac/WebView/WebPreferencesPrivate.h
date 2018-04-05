@@ -493,6 +493,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setGamepadsEnabled:(BOOL)flag;
 - (BOOL)gamepadsEnabled;
 
+- (void)setMediaPreloadingEnabled:(BOOL)flag;
+- (BOOL)mediaPreloadingEnabled;
+
 - (void)setMediaKeysStorageDirectory:(NSString *)directory;
 - (NSString *)mediaKeysStorageDirectory;
 
@@ -504,6 +507,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
+
+- (void)setMockCaptureDevicesPromptEnabled:(BOOL)flag;
+- (BOOL)mockCaptureDevicesPromptEnabled;
 
 - (void)setEnumeratingAllNetworkInterfacesEnabled:(BOOL)flag;
 - (BOOL)enumeratingAllNetworkInterfacesEnabled;
@@ -562,5 +568,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 #if TARGET_OS_IPHONE
 @property (nonatomic) BOOL quickLookDocumentSavingEnabled;
 #endif
+
+@property (nonatomic) NSString *mediaContentTypesRequiringHardwareSupport;
 
 @end

@@ -30,6 +30,7 @@
 #include "GraphicsTypes3D.h"
 
 #include "AudioTrackPrivate.h"
+#include "ContentType.h"
 #include "LegacyCDMSession.h"
 #include "InbandTextTrackPrivate.h"
 #include "IntRect.h"
@@ -109,11 +110,11 @@ struct MediaEngineSupportParameters {
 
     MediaEngineSupportParameters() { }
 
-    String type;
-    String codecs;
+    ContentType type;
     URL url;
     bool isMediaSource { false };
     bool isMediaStream { false };
+    Vector<ContentType> contentTypesRequiringHardwareSupport;
 };
 
 extern const PlatformMedia NoPlatformMedia;
@@ -273,6 +274,7 @@ public:
 #endif
 
     virtual bool mediaPlayerShouldDisableSleep() const { return false; }
+    virtual const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
 };
 
 class MediaPlayerSupportsTypeClient {
@@ -386,6 +388,9 @@ public:
     std::unique_ptr<PlatformTimeRanges> seekable();
     MediaTime minTimeSeekable();
     MediaTime maxTimeSeekable();
+
+    double seekableTimeRangesLastModifiedTime();
+    double liveUpdateInterval();
 
     bool didLoadingProgress();
 
@@ -583,9 +588,11 @@ public:
     void setShouldDisableSleep(bool);
     bool shouldDisableSleep() const;
 
-    const String& contentMIMEType() const { return m_contentMIMEType; }
-    const String& contentTypeCodecs() const { return m_contentTypeCodecs; }
+    String contentMIMEType() const { return m_contentType.containerType(); }
+    String contentTypeCodecs() const { return m_contentType.parameter(ContentType::codecsParameter()); }
     bool contentMIMETypeWasInferredFromExtension() const { return m_contentMIMETypeWasInferredFromExtension; }
+
+    const Vector<ContentType>& mediaContentTypesRequiringHardwareSupport() const;
 
 private:
     MediaPlayer(MediaPlayerClient&);
@@ -599,8 +606,7 @@ private:
     std::unique_ptr<MediaPlayerPrivateInterface> m_private;
     const MediaPlayerFactory* m_currentMediaEngine;
     URL m_url;
-    String m_contentMIMEType;
-    String m_contentTypeCodecs;
+    ContentType m_contentType;
     String m_keySystem;
     IntSize m_size;
     Preload m_preload;

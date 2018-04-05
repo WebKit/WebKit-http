@@ -90,6 +90,7 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
 
+    UIProcess/AcceleratedDrawingAreaProxy.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
@@ -105,13 +106,10 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/wpe/WKView.cpp
 
     UIProcess/API/wpe/CompositingManagerProxy.cpp
-    UIProcess/API/wpe/DrawingAreaProxyWPE.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/ScrollGestureController.cpp
     UIProcess/API/wpe/WPEView.cpp
     UIProcess/API/wpe/WPEViewClient.cpp
-
-    UIProcess/InspectorServer/soup/WebSocketServerSoup.cpp
 
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
 
@@ -152,6 +150,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebEditorClientWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
+    WebProcess/WebPage/AcceleratedDrawingArea.cpp
     WebProcess/WebPage/AcceleratedSurface.cpp
 
     WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
@@ -164,7 +163,6 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebPage/wpe/AcceleratedSurfaceWPE.cpp
     WebProcess/WebPage/wpe/CompositingManager.cpp
-    WebProcess/WebPage/wpe/DrawingAreaWPE.cpp
     WebProcess/WebPage/wpe/WebInspectorUIWPE.cpp
     WebProcess/WebPage/wpe/WebPageWPE.cpp
 
@@ -320,17 +318,8 @@ add_custom_command(
     VERBATIM
 )
 
-add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
-    DEPENDS ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
-            ${WEBKIT2_DIR}/UIProcess/InspectorServer/front-end/inspectorPageIndex.html
-    COMMAND glib-compile-resources --generate --sourcedir=${WEBKIT2_DIR}/UIProcess/InspectorServer/front-end --target=${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKit2InspectorGResourceBundle.xml
-    VERBATIM
-)
-
 list(APPEND WPEWebInspectorResources_DERIVED_SOURCES
     ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/InspectorGResourceBundle.c
-    ${DERIVED_SOURCES_WEBINSPECTORUI_DIR}/WebKit2InspectorGResourceBundle.c
 )
 
 list(APPEND WPEWebInspectorResources_LIBRARIES

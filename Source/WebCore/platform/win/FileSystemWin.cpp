@@ -177,6 +177,13 @@ bool deleteEmptyDirectory(const String& path)
     return !!RemoveDirectoryW(filename.charactersWithNullTermination().data());
 }
 
+bool moveFile(const String& oldPath, const String& newPath)
+{
+    String oldFilename = oldPath;
+    String newFilename = newPath;
+    return !!::MoveFileEx(oldFilename.charactersWithNullTermination().data(), newFilename.charactersWithNullTermination().data(), MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
+}
+
 String pathByAppendingComponent(const String& path, const String& component)
 {
     Vector<UChar> buffer(MAX_PATH);
@@ -339,10 +346,12 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
 {
     DWORD desiredAccess = 0;
     DWORD creationDisposition = 0;
+    DWORD shareMode = 0;
     switch (mode) {
     case OpenForRead:
         desiredAccess = GENERIC_READ;
         creationDisposition = OPEN_EXISTING;
+        shareMode = FILE_SHARE_READ;
         break;
     case OpenForWrite:
         desiredAccess = GENERIC_WRITE;
@@ -353,7 +362,7 @@ PlatformFileHandle openFile(const String& path, FileOpenMode mode)
     }
 
     String destination = path;
-    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, 0, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
+    return CreateFile(destination.charactersWithNullTermination().data(), desiredAccess, shareMode, 0, creationDisposition, FILE_ATTRIBUTE_NORMAL, 0);
 }
 
 void closeFile(PlatformFileHandle& handle)

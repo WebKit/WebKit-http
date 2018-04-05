@@ -170,6 +170,14 @@ public:
         : SetForScope<bool>(scope->m_isGenerator, shouldParseAsGenerator) { }
 };
 
+struct DepthManager : private SetForScope<int> {
+public:
+    DepthManager(int* depth)
+        : SetForScope<int>(*depth, *depth)
+    {
+    }
+};
+
 template <typename LexerType>
 Parser<LexerType>::~Parser()
 {
@@ -2691,7 +2699,6 @@ parseMethod:
                 parseMode = SourceParseMode::AsyncMethodMode;
                 semanticFailIfTrue(*ident == m_vm->propertyNames->prototype, "Cannot declare an async method named 'prototype'");
                 semanticFailIfTrue(*ident == m_vm->propertyNames->constructor, "Cannot declare an async method named 'constructor'");
-                semanticFailIfTrue(*ident == m_vm->propertyNames->functionKeyword, "Cannot declare an async method named 'function'");
             } else if (isGenerator) {
                 isConstructor = false;
                 parseMode = SourceParseMode::GeneratorWrapperMethodMode;
@@ -3320,11 +3327,14 @@ template <class TreeBuilder> TreeStatement Parser<LexerType>::parseExportDeclara
             result = parseClassDeclaration(context, ExportType::Exported);
             break;
 
-        case ASYNC:
+        case ASYNC: {
             next();
             semanticFailIfFalse(match(FUNCTION) && !m_lexer->prevTerminator(), "Expected 'function' keyword following 'async' keyword with no preceding line terminator");
+            DepthManager statementDepth(&m_statementDepth);
+            m_statementDepth = 1;
             result = parseAsyncFunctionDeclaration(context, ExportType::Exported);
             break;
+        }
 
         default:
             failWithMessage("Expected either a declaration or a variable statement");
@@ -3808,7 +3818,6 @@ template <class TreeBuilder> TreeExpression Parser<LexerType>::parsePropertyMeth
     unsigned methodStart = tokenStart();
     ParserFunctionInfo<TreeBuilder> methodInfo;
     methodInfo.name = methodName;
-    semanticFailIfTrue(isAsyncMethod && *methodName == m_vm->propertyNames->functionKeyword, "Cannot declare an async method named 'function'");
     SourceParseMode parseMode = isGenerator ? SourceParseMode::GeneratorWrapperMethodMode : isAsyncMethod ? SourceParseMode::AsyncMethodMode : SourceParseMode::MethodMode;
     failIfFalse((parseFunctionInfo(context, FunctionNameRequirements::Unnamed, parseMode, false, ConstructorKind::None, SuperBinding::Needed, methodStart, methodInfo, FunctionDefinitionType::Method)), "Cannot parse this method");
     return context.createMethodDefinition(methodLocation, methodInfo);

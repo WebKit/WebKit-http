@@ -1173,7 +1173,6 @@ set(WebCore_SOURCES
     bindings/js/JSDOMGuardedObject.cpp
     bindings/js/JSDOMMapLike.cpp
     bindings/js/JSDOMPromiseDeferred.cpp
-    bindings/js/JSDOMStringMapCustom.cpp
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
     bindings/js/JSDOMWindowProperties.cpp
@@ -1196,8 +1195,6 @@ set(WebCore_SOURCES
     bindings/js/JSHTMLEmbedElementCustom.cpp
     bindings/js/JSHTMLFrameSetElementCustom.cpp
     bindings/js/JSHTMLObjectElementCustom.cpp
-    bindings/js/JSHTMLOptionsCollectionCustom.cpp
-    bindings/js/JSHTMLSelectElementCustom.cpp
     bindings/js/JSHTMLTemplateElementCustom.cpp
     bindings/js/JSHistoryCustom.cpp
     bindings/js/JSIDBCursorCustom.cpp
@@ -1465,6 +1462,7 @@ set(WebCore_SOURCES
     dom/DOMError.cpp
     dom/DOMImplementation.cpp
     dom/DOMNamedFlowCollection.cpp
+    dom/DOMPointReadOnly.cpp
     dom/DOMRectList.cpp
     dom/DOMStringList.cpp
     dom/DataTransfer.cpp
@@ -1541,6 +1539,7 @@ set(WebCore_SOURCES
     dom/PromiseRejectionEvent.cpp
     dom/PseudoElement.cpp
     dom/QualifiedName.cpp
+    dom/QualifiedNameCache.cpp
     dom/RadioButtonGroups.cpp
     dom/Range.cpp
     dom/RejectedPromiseTracker.cpp
@@ -1575,7 +1574,6 @@ set(WebCore_SOURCES
     dom/TransitionEvent.cpp
     dom/Traversal.cpp
     dom/TreeScope.cpp
-    dom/TreeScopeAdopter.cpp
     dom/TreeWalker.cpp
     dom/UIEvent.cpp
     dom/UIEventWithKeyState.cpp
@@ -2091,6 +2089,7 @@ set(WebCore_SOURCES
     page/Performance.cpp
     page/PerformanceEntry.cpp
     page/PerformanceLogging.cpp
+    page/PerformanceLoggingClient.cpp
     page/PerformanceMonitor.cpp
     page/PerformanceNavigation.cpp
     page/PerformanceObserver.cpp

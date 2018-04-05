@@ -1,3 +1,104 @@
+2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable ENCRYPTED_MEDIA for build-webkit builds
+        https://bugs.webkit.org/show_bug.cgi?id=173103
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * Source/cmake/OptionsWPE.cmake: Expose the ENABLE_ENCRYPTED_MEDIA
+        configuration option, keeping it disabled by default.
+
+2017-06-09  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        [GStreamer][EME] Remove the legacy code that was not even official and is deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=173096
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsWPE.cmake: Remove LEGACY_ENCRYPTED_MEDIA support
+
+2017-06-07  Ryosuke Niwa  <rniwa@webkit.org>
+
+        IsInShadowTreeFlag does not get updated for a non-container node
+        https://bugs.webkit.org/show_bug.cgi?id=173084
+
+        Reviewed by Antti Koivisto.
+
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2017-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Enable resource usage
+        https://bugs.webkit.org/show_bug.cgi?id=173054
+
+        Reviewed by Žan Doberšek.
+
+        Add private option for resource usage enabled by default.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Remove legacy INSPECTOR_SERVER implementation
+        https://bugs.webkit.org/show_bug.cgi?id=172966
+
+        Reviewed by Žan Doberšek.
+
+        * Source/PlatformWin.cmake:
+
+2017-06-07  Loïc Yhuel  <loic.yhuel@softathome.com>
+
+        [CMake] Only force response files for Ninja with CMake < 3.2 on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=173066
+
+        Reviewed by Michael Catanzaro.
+
+        CMake automatically uses response files when needed, but the limit was
+        wrong on Linux before 3.2.
+
+        * Source/cmake/OptionsCommon.cmake:
+
+2017-06-07  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] RSA-PSS support
+        https://bugs.webkit.org/show_bug.cgi?id=172856
+
+        Reviewed by Jiewen Tan.
+
+        * Source/cmake/OptionsGTK.cmake: Set and expose the USE_GCRYPT preprocessor macro when
+        SUBTLE_CRYPTO is enabled.
+        * Source/cmake/OptionsWPE.cmake: Match the GTK+ port in demanding at least version 1.7.0
+        of libgcrypt. Also set and expose the USE_GCRYPT preprocessor macro.
+
+2017-06-06  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Enable remote inspector
+        https://bugs.webkit.org/show_bug.cgi?id=172971
+
+        Reviewed by Žan Doberšek.
+
+        Add private option for remote inspector enabled by default.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-02  Stephan Szabo  <stephan.szabo@am.sony.com>
+
+        [JSCOnly] Build static jsc.exe on Windows
+        https://bugs.webkit.org/show_bug.cgi?id=172833
+
+        Reviewed by Konstantin Tokarev.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+
+2017-05-31  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [CMake] Do not pass -Wno-expansion-to-defined to Clang <4.0.0
+        https://bugs.webkit.org/show_bug.cgi?id=172750
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/OptionsCommon.cmake:
+
 2017-05-31  Adrian Perez de Castro  <aperez@igalia.com>
 
         Consider enabling -Wno-expansion-to-defined for gcc 7

@@ -1,3 +1,532 @@
+2017-06-09  Frederic Wang  <fwang@igalia.com>
+
+        Add flag allow-popups-to-escape-sandbox to iframe sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=158875
+
+        Reviewed by Chris Dumez.
+
+        Update expected results for iframe popup escaping tests.
+
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-1-expected.txt: This test passes.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-2-expected.txt: This test passes.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_popups_escaping-3-expected.txt: Remove error message from text expectation.
+
+2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Enable ENCRYPTED_MEDIA for build-webkit builds
+        https://bugs.webkit.org/show_bug.cgi?id=173103
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        * web-platform-tests/encrypted-media/idlharness-expected.txt:
+        Update the idlharness.html baseline. All the test cases pass.
+
+2017-06-07  Chris Dumez  <cdumez@apple.com>
+
+        CSSStyleRule.style / CSSPageRule.style / CSSKeyframeRule.style should be settable
+        https://bugs.webkit.org/show_bug.cgi?id=164537
+        <rdar://problem/29181773>
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/cssom/CSSKeyframeRule-expected.txt:
+        * web-platform-tests/cssom/CSSKeyframeRule.html:
+        * web-platform-tests/cssom/CSSStyleRule-expected.txt:
+        * web-platform-tests/cssom/CSSStyleRule.html:
+        Re-sync web-platform tests after:
+        - https://github.com/w3c/web-platform-tests/pull/6181
+        - https://github.com/w3c/web-platform-tests/pull/6184
+        This extends test coverage.
+
+        * web-platform-tests/cssom/interfaces-expected.txt:
+        Rebaseline now that more checks are passing.
+
+2017-06-07  Chris Dumez  <cdumez@apple.com>
+
+        Align <col span>/<colgroup span> limits with the latest HTML specification
+        https://bugs.webkit.org/show_bug.cgi?id=173049
+
+        Reviewed by Daniel Bates.
+
+        Resync web-platform-tests after:
+        https://github.com/w3c/web-platform-tests/pull/6172
+
+        This helps gain coverage for the change in this patch.
+
+        * resources/import-expectations.json:
+        * web-platform-tests/html/dom/elements-tabular.js:
+        * web-platform-tests/html/dom/reflection-tabular-expected.txt:
+        * web-platform-tests/html/semantics/tabular-data/processing-model-1/col-span-limits-expected.txt: Added.
+        * web-platform-tests/html/semantics/tabular-data/processing-model-1/col-span-limits.html: Added.
+        * web-platform-tests/html/semantics/tabular-data/processing-model-1/w3c-import.log:
+
+2017-06-05  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] PutForwards is not implemented to spec as illustrated by the WPT WebIDL/ecmascript-binding/put-forwards.html
+        https://bugs.webkit.org/show_bug.cgi?id=172956
+
+        Reviewed by Chris Dumez.
+
+        Update results to show we now implement [PutForwards] correctly.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/put-forwards-expected.txt:
+
+2017-06-06  Darin Adler  <darin@apple.com>
+
+        Update to slightly stricter rules for custom element names from more recent standard draft
+        https://bugs.webkit.org/show_bug.cgi?id=173019
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/html/semantics/interfaces-expected.txt: Expect more PASS.
+
+2017-06-04  Chris Dumez  <cdumez@apple.com>
+
+        Implement DOMMatrixReadOnly.transformPoint()
+        https://bugs.webkit.org/show_bug.cgi?id=172900
+
+        Reviewed by Simon Fraser.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-newobject-expected.txt:
+
+2017-06-03  Chris Dumez  <cdumez@apple.com>
+
+        Implement DOMMatrix's fromFloat32Array / fromFloat64Array & toFloat32Array / toFloat64Array
+        https://bugs.webkit.org/show_bug.cgi?id=172898
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline web-platform-test now that more checks are passing.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-newobject-expected.txt:
+
+2017-06-03  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement DOMPointReadOnly.matrixTransform()
+        https://bugs.webkit.org/show_bug.cgi?id=172896
+
+        Reviewed by Chris Dumez.
+
+        New baselines.
+
+        * web-platform-tests/css/geometry-1/DOMPoint-002-expected.txt:
+        * web-platform-tests/css/geometry-1/historical-expected.txt:
+
+2017-06-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Script modules should be able to import data urls
+        https://bugs.webkit.org/show_bug.cgi?id=171594
+
+        Reviewed by Youenn Fablet.
+
+        * web-platform-tests/html/semantics/scripting-1/the-script-element/data-url-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/compile-error-data-url-expected.txt:
+        * web-platform-tests/html/webappapis/scripting/processing-model-2/runtime-error-data-url-expected.txt:
+
+2017-06-02  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Margin wrong applied when stretching an orthogonal item in fixed size track
+        https://bugs.webkit.org/show_bug.cgi?id=172590
+
+        Reviewed by Sergio Villar Senin.
+
+        All the test cases of these tests pass with this change, so updating their expectations accordingly.
+
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-006-expected.txt:
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-006-expected.txt:
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-006-expected.txt:
+
+2017-06-01  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-grid] Update W3C web platform tests for the CSS Grid Layout feature
+        https://bugs.webkit.org/show_bug.cgi?id=172783
+
+        Reviewed by Manuel Rego Casasnovas.
+
+        Imported the last CSS Grid Layout web platform tests (ed50cf49ed).
+
+        * resources/import-expectations.json:
+        * web-platform-tests/css/css-grid-1/OWNERS:
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-001.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-002.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-003.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-004.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-005.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-006.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-007.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-008.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-009-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-009.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-010-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-010.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-011-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-011.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-012-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-012.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-013-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-013.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-014-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-014.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-015-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-015.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-016-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-016.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-001.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-002.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-003.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-004.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-005.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-006.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-007.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-008.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-009-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-009.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-010-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-010.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-011-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-011.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-012-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-012.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-013-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-013.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-014-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-014.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-015-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-015.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-016-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-lr-016.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-001.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-002-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-002.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-003-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-003.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-004-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-004.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-005-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-005.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-006-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-006.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-007-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-007.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-008-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-008.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-009-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-009.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-010-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-010.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-011-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-011.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-012-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-012.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-013-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-013.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-014-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-014.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-015-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-015.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-016-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/alignment/grid-self-alignment-stretch-vertical-rl-016.html: Added.
+        * web-platform-tests/css/css-grid-1/alignment/w3c-import.log:
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-flexible-lengths-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-grid-template-areas-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-grid-template-columns-rows-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-named-grid-lines-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-repeat-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-support-repeat-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-inline-template-columns-rows-resolved-values-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-flexible-lengths-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-flexible-lengths-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-grid-template-areas-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-grid-template-areas-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-grid-template-columns-rows-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-named-grid-lines-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-named-grid-lines-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-repeat-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-support-repeat-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-template-columns-rows-resolved-values-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-definition/w3c-import.log:
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-inline-blocks-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-items-inline-blocks-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-auto-placement-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-order-property-painting-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-inline-z-axis-ordering-overlapped-items-006.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-inline-blocks-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-items-inline-blocks-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-006.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-006.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-007.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-007.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-008.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-008.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-009.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-009.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-minimum-size-grid-items-021.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-004-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-004-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-005-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-005-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-auto-placement-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-order-property-painting-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-004.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-005.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/grid-z-axis-ordering-overlapped-items-006.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-items/support/500x500-green.png: Added.
+        * web-platform-tests/css/css-grid-1/grid-items/support/w3c-import.log:
+        * web-platform-tests/css/css-grid-1/grid-items/w3c-import.log:
+        * web-platform-tests/css/css-grid-1/grid-model/grid-computed-value-display-floated-items-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-computed-value-display-floated-items-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-display-grid-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-display-grid-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-display-inline-grid-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-display-inline-grid-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-letter-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-first-line-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-float-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-float-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-floats-no-intrude-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-floats-no-intrude-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-letter-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-002-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-002-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-002.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-002.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-003-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-003-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-003.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-first-line-003.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-float-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-float-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-floats-no-intrude-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-floats-no-intrude-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-margins-no-collapse-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-margins-no-collapse-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-margins-no-collapse-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-margins-no-collapse-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-multicol-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-multicol-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-vertical-align-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-inline-vertical-align-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-margins-no-collapse-001-expected.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-margins-no-collapse-001-expected.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-margins-no-collapse-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-margins-no-collapse-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-multicol-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-multicol-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-support-display-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-support-display-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-vertical-align-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-model/grid-vertical-align-001.xht: Removed.
+        * web-platform-tests/css/css-grid-1/grid-model/w3c-import.log:
+        * web-platform-tests/css/css-grid-1/support/check-layout-th.js: Added.
+        (checkSubtreeExpectedValues):
+        (checkAttribute):
+        (assert_tolerance):
+        (checkExpectedValues):
+        (window.checkLayout):
+        * web-platform-tests/css/css-grid-1/support/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/css/css-grid-1/grid-items/support/w3c-import.log.
+
 2017-05-31  Manuel Rego Casasnovas  <rego@igalia.com>
 
         Move css-shapes-1 test suite to WPT

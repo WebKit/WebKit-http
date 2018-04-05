@@ -81,6 +81,7 @@ fast/attachment/attachment-subtitle-resize.html
 
 # This test only makes sense on iOS
 fast/attachment/attachment-wrapping-action.html
+fast/attachment/attachment-borderless.html
 editing/selection/character-granularity-selected-range-after-dismissing-selection.html [ Skip ]
 editing/selection/character-granularity-select-text-with-click-handler.html [ Skip ]
 editing/selection/caret-after-tap-in-editable-selection.html [ Skip ]
@@ -96,6 +97,7 @@ fast/media/mq-inverted-colors-live-update.html [ Skip ]
 fast/media/mq-inverted-colors-live-update-in-subframes.html [ Skip ]
 fast/media/mq-monochrome-live-update.html [ Skip ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Skip ]
+http/tests/loading/basic-auth-remove-credentials.html [ Skip ]
 
 # ApplePay is only available on iOS (greater than iOS 10) and macOS (greater than macOS 10.12) and only for WebKit2.
 http/tests/ssl/applepay/ [ Skip ]
@@ -284,8 +286,6 @@ webkit.org/b/136754 css3/flexbox/csswg/ttwf-reftest-flex-wrap.html [ ImageOnlyFa
 # grid layout tests
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline.html [ ImageOnlyFailure ]
 webkit.org/b/165062 fast/css-grid-layout/grid-baseline-margins.html [ ImageOnlyFailure ]
-webkit.org/b/172590 imported/w3c/web-platform-tests/css/css-grid-1/abspos/orthogonal-positioned-grid-items-013.html [ ImageOnlyFailure ]
-webkit.org/b/172590 imported/w3c/web-platform-tests/css/css-grid-1/abspos/orthogonal-positioned-grid-items-017.html [ ImageOnlyFailure ]
 webkit.org/b/149891 imported/w3c/web-platform-tests/css/css-grid-1/grid-layout-properties.html [ Failure ]
 webkit.org/b/169271 imported/w3c/web-platform-tests/css/css-grid-1/grid-items/grid-items-sizing-alignment-001.html [ ImageOnlyFailure ]
 
@@ -1123,8 +1123,6 @@ webkit.org/b/165460 compositing/repaint/scroll-fixed-layer-out-of-view.html [ Fa
 webkit.org/b/166911 fast/dom/Window/window-properties-performance.html [ Pass Failure ]
 webkit.org/b/166911 fast/dom/Window/window-properties-performance-resource-timing.html [ Pass Failure ]
 
-webkit.org/b/167428 fast/backgrounds/background-repeat-x-y-parse.html [ Failure ]
-
 imported/w3c/web-platform-tests/html/semantics/interactive-elements/the-details-element/toggleEvent.html [ Pass Failure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-skip-no-boxes.html [ ImageOnlyFailure ]
 webkit.org/b/168175 imported/w3c/web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-menu.html [ ImageOnlyFailure ]
@@ -1336,8 +1334,6 @@ media/modern-media-controls [ Skip ]
 ### END OF -disabled tests
 ########################################
 
-webkit.org/b/168409 media/modern-media-controls/airplay-button/airplay-button.html [ Pass Timeout ]
-
 webkit.org/b/169625 imported/w3c/web-platform-tests/cors/status.htm [ Pass Failure ]
 
 webkit.org/b/170130 fast/events/before-unload-adopt-subframe-to-outside.html [ Pass Timeout ]
@@ -1360,7 +1356,7 @@ webkit.org/b/171031 imported/w3c/web-platform-tests/XMLHttpRequest/getallrespons
 
 webkit.org/b/170701 webrtc/datachannel/bufferedAmountLowThreshold.html [ Pass Failure ]
 
-webkit.org/b/170835 fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events.html [ Pass Failure ]
+webkit.org/b/172961 fast/mediacapturefromelement/CanvasCaptureMediaStream-2d-events.html [ Pass Timeout ]
 
 webkit.org/b/172378 fast/loader/recursive-before-unload-crash.html [ Skip ]
 webkit.org/b/172378 fast/repaint/table-hover-on-link.html [ Skip ]
@@ -1374,3 +1370,6 @@ webkit.org/b/172378 imported/blink/printing/print-document-without-documentEleme
 webkit.org/b/172609 fetch/closing-while-fetching-blob.html [ Skip ]
 
 webkit.org/b/172514 [ Debug ] imported/w3c/web-platform-tests/innerText/getter.html [ Skip ]
+
+webkit.org/b/172827 webrtc/audio-peer-connection-webaudio.html [ Pass Failure ]
+webkit.org/b/172649 webrtc/peer-connection-audio-mute.html [ Pass Failure ]

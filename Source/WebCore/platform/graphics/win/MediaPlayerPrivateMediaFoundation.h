@@ -111,6 +111,7 @@ private:
     bool m_hasAudio;
     bool m_hasVideo;
     bool m_preparingToPlay;
+    float m_volume;
     HWND m_hwndVideo;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
@@ -119,6 +120,9 @@ private:
     class MediaPlayerListener;
     HashSet<MediaPlayerListener*> m_listeners;
     Lock m_mutexListeners;
+
+    FloatSize m_cachedNaturalSize;
+    mutable Lock m_cachedNaturalSizeLock;
 
     WeakPtrFactory<MediaPlayerPrivateMediaFoundation> m_weakPtrFactory;
     COMPtr<IMFMediaSession> m_mediaSession;
@@ -157,9 +161,12 @@ private:
 
     void addListener(MediaPlayerListener*);
     void removeListener(MediaPlayerListener*);
+    void setNaturalSize(const FloatSize&);
     void notifyDeleted();
 
     static LRESULT CALLBACK VideoViewWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
+    bool setAllChannelVolumes(float);
 
     class MediaPlayerListener {
     public:

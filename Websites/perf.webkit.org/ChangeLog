@@ -1,3 +1,50 @@
+2017-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Don't shouldn't create a request to build a patch if there is no patch to build
+        https://bugs.webkit.org/show_bug.cgi?id=172791
+
+        Reviewed by Chris Dumez.
+
+        When a commit set doesn't have a patch specified, don't create a request to build. For example, when we're comparing
+        WebKit in the system to WebKit with a patch, there is nothing to build for the first commit set.
+
+        However, when conducting an A/B testing, it's advisible to compare WebKit built with and without a patch on a single
+        machine with the same version of Xcode, etc... For this reason, we still create a request to build for a commit set
+        if there is another commit set with a patch which uses the same repository group.
+
+        * public/privileged-api/create-test-group.php:
+        (main): Fixed the bug. Only create a build request to build if there is a matching repository group with a patch.
+        * server-tests/privileged-api-create-test-group-tests.js: Added a test case.
+
+2017-05-31  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Allow sync-buildbot.js to set a buildbot property only when patches are built
+        https://bugs.webkit.org/show_bug.cgi?id=172743
+
+        Rubber-stamped by Chris Dumez.
+
+        Added the ability to specify a buildbot property only when there are build requests to build a patch.
+
+        * tools/js/buildbot-syncer.js:
+        (BuildbotSyncer.prototype.scheduleRequest): Pass in the list of build requests that belong to the same test group.
+        (BuildbotSyncer.prototype.scheduleRequestInGroupIfAvailable): Ditto.
+        (BuildbotSyncer.prototype._propertiesForBuildRequest): Added the support for specifying a conditional property.
+        For the condition type of "built", we check if there was any other 
+        (BuildbotSyncer._parseRepositoryGroup): Added the support for "ifBuilt" conditional.
+
+        * tools/js/buildbot-triggerable.js:
+        (BuildbotTriggerable.prototype._scheduleRequestIfSlaveIsAvailable): Pass in the list of build requests that
+        belong to the same test group.
+        (BuildbotTriggerable.prototype._scheduleRequestWithLog): Ditto.
+
+        * unit-tests/buildbot-syncer-tests.js:  Added test case for newly added "ifBuilt" as well as specifying a patch.
+        Updated the various test cases per the addition of new argument to scheduleRequest, _propertiesForBuildRequest,
+        and scheduleRequestInGroupIfAvailable.
+        (createSampleBuildRequestWithPatch): Added.
+
+        * unit-tests/resources/mock-v3-models.js:
+        (MockModels.inject): Made "ios-svn-webkit" accept a WebKit patch and roots to allow new testing.
+
 2017-05-30  Ryosuke Niwa  <rniwa@webkit.org>
 
         sync-builedbot.js fails to schedule the second request to test with a patch

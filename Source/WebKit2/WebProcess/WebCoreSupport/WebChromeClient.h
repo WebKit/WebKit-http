@@ -189,10 +189,6 @@ private:
     void setCursorHiddenUntilMouseMoves(bool) final;
 #endif
 
-#if !USE(REQUEST_ANIMATION_FRAME_TIMER)
-    void scheduleAnimation() final;
-#endif
-    
 #if ENABLE(POINTER_LOCK)
     bool requestPointerLock() final;
     void requestPointerUnlock() final;
@@ -225,6 +221,9 @@ private:
             VideoTrigger |
             PluginTrigger|
             CanvasTrigger |
+#if PLATFORM(MAC)
+            ScrollableNonMainFrameTrigger |
+#endif
 #if PLATFORM(IOS)
             AnimatedOpacityTrigger | // Allow opacity animations to trigger compositing mode for iPhone: <rdar://problem/7830677>
 #endif

@@ -811,7 +811,7 @@ void WebSocketChannel::abortOutgoingFrameQueue()
     }
 }
 
-void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data, size_t dataLength, Function<void(bool)> completionHandler)
+void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data, size_t dataLength, WTF::Function<void(bool)> completionHandler)
 {
     ASSERT(m_handle);
     ASSERT(!m_suspended);
@@ -829,6 +829,21 @@ void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data
     frame.makeFrameData(frameData);
 
     m_handle->sendData(frameData.data(), frameData.size(), WTFMove(completionHandler));
+}
+
+ResourceRequest WebSocketChannel::clientHandshakeRequest() const
+{
+    return m_handshake->clientHandshakeRequest();
+}
+
+const ResourceResponse& WebSocketChannel::serverHandshakeResponse() const
+{
+    return m_handshake->serverHandshakeResponse();
+}
+
+WebSocketHandshake::Mode WebSocketChannel::handshakeMode() const
+{
+    return m_handshake->mode();
 }
 
 }  // namespace WebCore

@@ -1520,6 +1520,12 @@ void JIT::emit_op_get_argument(Instruction* currentInstruction)
     emitPutVirtualRegister(dst, resultRegs);
 }
 
+void JIT::emit_op_unreachable(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_unreachable);
+    slowPathCall.call();
+}
+
 } // namespace JSC
 
 #endif // ENABLE(JIT)

@@ -1030,14 +1030,6 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 m_player->client().requestInstallMissingPlugins(String::fromUTF8(detail.get()), String::fromUTF8(description.get()), *m_missingPluginsCallback);
             }
         }
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-        else if (gst_structure_has_name(structure, "drm-key-needed")) {
-            GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
-            GRefPtr<GstEvent> event;
-            gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
-            handleProtectionEvent(event.get());
-        }
-#endif
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
         else {
             GstMpegtsSection* section = gst_message_parse_mpegts_section(message);
@@ -1902,12 +1894,12 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (parameters.isMediaStream)
         return result;
 
-    if (parameters.type.isNull() || parameters.type.isEmpty())
+    if (parameters.type.isEmpty())
         return result;
 
     // spec says we should not return "probably" if the codecs string is empty
-    if (mimeTypeSet().contains(parameters.type))
-        result = parameters.codecs.isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
+    if (mimeTypeSet().contains(parameters.type.containerType()))
+        result = parameters.type.codecs().isEmpty() ? MediaPlayer::MayBeSupported : MediaPlayer::IsSupported;
 
     return extendedSupportsType(parameters, result);
 }

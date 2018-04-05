@@ -116,10 +116,11 @@ SOFT_LINK_CLASS_OPTIONAL(AVKit, AVFunctionBarMediaSelectionOption)
 
 - (BOOL)canBeginTouchBarScrubbing
 {
-    // It's not ideal to return YES all the time here. The intent of the API is that we return NO when the
-    // media is being scrubbed via the on-screen scrubber. But we can only possibly get the right answer for
-    // media that uses the default controls.
-    return YES;
+    // At this time, we return YES for all media that is not a live stream and media that is not Netflix. (A Netflix
+    // quirk means we pretend Netflix is a live stream for Touch Bar.) It's not ideal to return YES all the time for
+    // other media. The intent of the API is that we return NO when the media is being scrubbed via the on-screen scrubber.
+    // But we can only possibly get the right answer for media that uses the default controls.
+    return std::isfinite(_contentDuration);;
 }
 
 - (void)beginTouchBarScrubbing
@@ -337,14 +338,12 @@ static RetainPtr<NSMutableArray> mediaSelectionOptions(const Vector<MediaSelecti
 }
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-
 - (void)togglePictureInPicture
 {
     if (_webPlaybackSessionInterfaceMac && _webPlaybackSessionInterfaceMac->webPlaybackSessionModel())
         _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->togglePictureInPicture();
 }
-
-#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
+#endif
 
 #pragma clang diagnostic pop
 

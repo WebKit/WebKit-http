@@ -70,12 +70,8 @@ public:
     size_t largeSize(std::lock_guard<StaticMutex>&, void*);
     void shrinkLarge(std::lock_guard<StaticMutex>&, const Range&, size_t);
 
-    void scavenge(std::unique_lock<StaticMutex>&);
+    void scavenge(std::lock_guard<StaticMutex>&);
 
-    size_t memoryFootprint();
-    double percentAvailableMemoryInUse();
-    bool isUnderMemoryPressure();
-    
 #if BOS(DARWIN)
     void setScavengerThreadQOSClass(qos_class_t overrideClass) { m_requestedScavengerThreadQOSClass = overrideClass; }
 #endif
@@ -100,8 +96,10 @@ private:
         size_t sizeClass, BumpAllocator&, BumpRangeCache&);
 
     SmallPage* allocateSmallPage(std::lock_guard<StaticMutex>&, size_t sizeClass);
-
     void deallocateSmallLine(std::lock_guard<StaticMutex>&, Object);
+
+    void allocateSmallChunk(std::lock_guard<StaticMutex>&, size_t pageClass);
+    void deallocateSmallChunk(Chunk*, size_t pageClass);
 
     void mergeLarge(BeginTag*&, EndTag*&, Range&);
     void mergeLargeLeft(EndTag*&, BeginTag*&, Range&, bool& inVMHeap);
@@ -113,19 +111,14 @@ private:
     void scheduleScavengerIfUnderMemoryPressure(size_t);
     
     void concurrentScavenge();
-    void scavengeSmallPages(std::unique_lock<StaticMutex>&);
-    void scavengeLargeObjects(std::unique_lock<StaticMutex>&);
     
-#if BPLATFORM(IOS)
-    void updateMemoryInUseParameters();
-#endif
-
     size_t m_vmPageSizePhysical;
     Vector<LineMetadata> m_smallLineMetadata;
     std::array<size_t, sizeClassCount> m_pageClasses;
 
-    std::array<List<SmallPage>, sizeClassCount> m_smallPagesWithFreeLines;
-    std::array<List<SmallPage>, pageClassCount> m_smallPages;
+    std::array<List<SmallPage>, sizeClassCount> m_freeLines;
+    std::array<List<Chunk>, pageClassCount> m_freePages;
+    std::array<List<Chunk>, pageClassCount> m_chunkCache;
 
     Map<void*, size_t, LargeObjectHash> m_largeAllocated;
     LargeMap m_largeFree;
@@ -139,12 +132,6 @@ private:
 
     Environment m_environment;
     DebugHeap* m_debugHeap;
-
-#if BPLATFORM(IOS)
-    size_t m_maxAvailableMemory;
-    size_t m_memoryFootprint;
-    double m_percentAvailableMemoryInUse;
-#endif
 
     VMHeap m_vmHeap;
 
@@ -169,31 +156,6 @@ inline void Heap::derefSmallLine(std::lock_guard<StaticMutex>& lock, Object obje
         return;
     deallocateSmallLine(lock, object);
 }
-
-inline bool Heap::isUnderMemoryPressure()
-{
-#if BPLATFORM(IOS)
-    return percentAvailableMemoryInUse() > memoryPressureThreshold;
-#else
-    return false;
-#endif
-}
-    
-#if BPLATFORM(IOS)
-inline size_t Heap::memoryFootprint()
-{
-    updateMemoryInUseParameters();
-
-    return m_memoryFootprint;
-}
-
-inline double Heap::percentAvailableMemoryInUse()
-{
-    updateMemoryInUseParameters();
-
-    return m_percentAvailableMemoryInUse;
-}
-#endif
 
 } // namespace bmalloc
 

@@ -29,6 +29,8 @@
 #include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include "TransformationMatrix.h"
+#include <runtime/Float32Array.h>
+#include <runtime/Float64Array.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Variant.h>
 #include <wtf/Vector.h>
@@ -37,6 +39,8 @@
 namespace WebCore {
 
 class DOMMatrix;
+class DOMPoint;
+struct DOMPointInit;
 
 class DOMMatrixReadOnly : public ScriptWrappable, public RefCounted<DOMMatrixReadOnly> {
     WTF_MAKE_FAST_ALLOCATED;
@@ -62,6 +66,9 @@ public:
     }
 
     static ExceptionOr<Ref<DOMMatrixReadOnly>> fromMatrix(DOMMatrixInit&&);
+
+    static ExceptionOr<Ref<DOMMatrixReadOnly>> fromFloat32Array(Ref<Float32Array>&&);
+    static ExceptionOr<Ref<DOMMatrixReadOnly>> fromFloat64Array(Ref<Float64Array>&&);
 
     double a() const { return m_matrix.a(); }
     double b() const { return m_matrix.b(); }
@@ -106,7 +113,14 @@ public:
     Ref<DOMMatrix> skewY(double sy = 0); // Angle is in degrees.
     Ref<DOMMatrix> inverse() const;
 
+    Ref<DOMPoint> transformPoint(DOMPointInit&&);
+
+    ExceptionOr<Ref<Float32Array>> toFloat32Array() const;
+    ExceptionOr<Ref<Float64Array>> toFloat64Array() const;
+
     ExceptionOr<String> toString() const;
+
+    const TransformationMatrix& transformationMatrix() const { return m_matrix; }
 
 protected:
     DOMMatrixReadOnly() = default;

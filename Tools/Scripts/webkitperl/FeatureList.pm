@@ -215,7 +215,7 @@ my @features = (
       define => "ENABLE_DOWNLOAD_ATTRIBUTE", default => (isGtk() || isHaiku()), value => \$downloadAttributeSupport },
 
     { option => "encrypted-media", desc => "Toggle EME V3 support",
-      define => "ENABLE_ENCRYPTED_MEDIA", default => 0, value => \$encryptedMediaSupport },
+      define => "ENABLE_ENCRYPTED_MEDIA", default => isWPE(), value => \$encryptedMediaSupport },
 
     { option => "fetch-api", desc => "Toggle Fetch API support",
       define => "ENABLE_FETCH_API", default => 1, value => \$fetchAPISupport },
@@ -296,7 +296,7 @@ my @features = (
       define => "ENABLE_MEDIA_CAPTURE", default => 0, value => \$mediaCaptureSupport },
 
     { option => "media-source", desc => "Toggle Media Source support",
-      define => "ENABLE_MEDIA_SOURCE", default => isGtk(), value => \$mediaSourceSupport },
+      define => "ENABLE_MEDIA_SOURCE", default => (isGtk() || isWPE()), value => \$mediaSourceSupport },
 
     { option => "media-statistics", desc => "Toggle Media Statistics support",
       define => "ENABLE_MEDIA_STATISTICS", default => 0, value => \$mediaStatisticsSupport },
@@ -353,7 +353,7 @@ my @features = (
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
-      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isHaiku() || isAppleCocoaWebKit() || isIOSWebKit()), value => \$subtleCrypto },
+      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isHaiku() || isAppleCocoaWebKit() || isIOSWebKit() || isWPE()), value => \$subtleCrypto },
 
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },

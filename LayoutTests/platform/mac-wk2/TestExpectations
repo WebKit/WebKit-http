@@ -24,9 +24,12 @@ fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
 [ Sierra+ ] http/tests/ssl/applepay/ [ Pass ]
 http/tests/ssl/applepay/ApplePayError.html [ Skip ]
+http/tests/ssl/applepay/ApplePaySessionV3.html [ Skip ]
 
 fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
 fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
+
+http/tests/loading/basic-auth-remove-credentials.html [ Pass ]
 
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
@@ -494,7 +497,7 @@ webkit.org/b/158639 [ Release Yosemite ] imported/blink/storage/indexeddb/blob-d
 [ Sierra+ ] media/controls/picture-in-picture.html [ Pass ]
 [ Sierra+ ] media/controls/pip-placeholder-without-video-controls.html [ Pass ]
 [ Sierra+ ] media/element-containing-pip-video-going-into-fullscreen.html [ Pass Timeout ]
-[ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Pass ]
+webkit.org/b/172998 [ Sierra+ ] media/fullscreen-api-enabled-media-with-presentation-mode.html [ Failure ]
 [ Sierra+ ] media/fullscreen-video-going-into-pip.html [ Pass ]
 [ Sierra+ ] media/navigate-with-pip-should-not-crash.html [ Pass ]
 [ Sierra+ ] media/pip-video-going-into-fullscreen.html [ Pass ]
@@ -563,8 +566,6 @@ webkit.org/b/161539 [ Release ] http/tests/security/cross-origin-plugin-allowed.
 webkit.org/b/161742 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/keyorder.htm [ Pass Failure ]
 
 webkit.org/b/161547 [ Debug ] tiled-drawing/scrolling/fixed/four-bars-zoomed.html [ Pass Failure ]
-
-webkit.org/b/161549 fast/scrolling/arrow-key-scroll-in-rtl-document.html [ Pass Failure ]
 
 webkit.org/b/162081 editing/inserting/typing-space-to-trigger-smart-link.html [ Failure ]
 webkit.org/b/162081 editing/inserting/smart-quote-with-all-configurations.html [ Failure ]
@@ -637,14 +638,10 @@ webkit.org/b/169640 imported/w3c/web-platform-tests/html/webappapis/scripting/ev
 
 webkit.org/b/170203 fast/images/animated-image-different-dest-size.html [ Pass ImageOnlyFailure ]
 
-webkit.org/b/170410 fast/images/animated-gif-webkit-transform.html [ Pass Failure ]
-
 # Media loading via network cache requires Sierra or newer.
 [ ElCapitan ] http/tests/cache/disk-cache/disk-cache-media-small.html [ Failure ]
 
 compositing/tiling/non-visible-window-tile-coverage.html [ Pass ]
-
-webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
 
 webkit.org/b/170629 [ Sierra Debug ] memory/memory-pressure-simulation.html [ Pass Failure ]
 
@@ -672,7 +669,7 @@ webkit.org/b/171862 [ Sierra Debug ] storage/indexeddb/modern/idbtransaction-obj
 
 webkit.org/b/170870 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
 
-webkit.org/b/171895 webrtc/audio-replace-track.html [ Pass Failure Timeout ]
+webkit.org/b/171895 webrtc/audio-replace-track.html [ Pass Failure ]
 
 webkit.org/b/171930 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-idl.html [ Pass Failure ]
 
@@ -690,4 +687,10 @@ webkit.org/b/172034 [ Sierra Release ] webrtc/closing-peerconnection.html [ Pass
 
 webkit.org/b/171061 webrtc/datachannel/filter-ice-candidate.html [ Pass Timeout ]
 
-webkit.org/b/172f21 imported/w3c/web-platform-tests/webrtc/getstats.html [ Pass Failure ]
+webkit.org/b/172521 imported/w3c/web-platform-tests/webrtc/getstats.html [ Pass Failure ]
+
+webkit.org/b/172054 [ Sierra Debug ] loader/stateobjects/replacestate-size-iframe.html [ Pass Timeout ]
+
+webkit.org/b/172454 http/tests/navigation/statistics.html [ Pass Failure ]
+
+webkit.org/b/172666 [ Debug ] fast/images/slower-decoding-than-animation-image.html [ Pass Failure ]

@@ -275,7 +275,14 @@ enum class HttpEquivPolicy {
     DisabledByContentDispositionAttachmentSandbox
 };
 
-enum class CustomElementNameValidationStatus { Valid, ConflictsWithBuiltinNames, NoHyphen, ContainsUpperCase };
+enum class CustomElementNameValidationStatus {
+    Valid,
+    FirstCharacterIsNotLowercaseASCIILetter,
+    ContainsNoHyphen,
+    ContainsUppercaseASCIILetter,
+    ContainsDisallowedCharacter,
+    ConflictsWithStandardElementName
+};
 
 class Document
     : public ContainerNode
@@ -1603,7 +1610,7 @@ private:
     void clearScriptedAnimationController();
     RefPtr<ScriptedAnimationController> m_scriptedAnimationController;
 
-    void notifyVisibilityChangedToMediaCapture();
+    void notifyMediaCaptureOfVisibilityChanged();
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
     std::unique_ptr<DeviceMotionClient> m_deviceMotionClient;
@@ -1770,6 +1777,7 @@ private:
     HashSet<HTMLMediaElement*> m_mediaStreamStateChangeElements;
     String m_idHashSalt;
     bool m_hasHadActiveMediaStreamTrack { false };
+    bool m_videoCaptureMutedForVisibilityChange { false };
 #endif
 
 #ifndef NDEBUG
@@ -1803,11 +1811,6 @@ inline AXObjectCache* Document::existingAXObjectCache() const
 }
 
 // These functions are here because they require the Document class definition and we want to inline them.
-
-inline bool Node::isDocumentNode() const
-{
-    return this == &document();
-}
 
 inline ScriptExecutionContext* Node::scriptExecutionContext() const
 {
