@@ -69,10 +69,10 @@
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
 #include <runtime/JSCInlines.h>
+#include <wtf/JSONValues.h>
 #include <wtf/Lock.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Stopwatch.h>
@@ -178,10 +178,10 @@ void InspectorNetworkAgent::willDestroyFrontendAndBackend(Inspector::DisconnectR
     disable(unused);
 }
 
-static Ref<InspectorObject> buildObjectForHeaders(const HTTPHeaderMap& headers)
+static Ref<JSON::Object> buildObjectForHeaders(const HTTPHeaderMap& headers)
 {
-    Ref<InspectorObject> headersObject = InspectorObject::create();
-    
+    Ref<JSON::Object> headersObject = JSON::Object::create();
+
     for (const auto& header : headers)
         headersObject->setString(header.key, header.value);
     return headersObject;
@@ -287,7 +287,7 @@ RefPtr<Inspector::Protocol::Network::Response> InspectorNetworkAgent::buildObjec
         return nullptr;
 
     double status = response.httpStatusCode();
-    Ref<InspectorObject> headers = buildObjectForHeaders(response.httpHeaderFields());
+    Ref<JSON::Object> headers = buildObjectForHeaders(response.httpHeaderFields());
 
     auto responseObject = Inspector::Protocol::Network::Response::create()
         .setUrl(response.url().string())
@@ -701,7 +701,7 @@ void InspectorNetworkAgent::disable(ErrorString&)
     m_pageAgent->page().setResourceCachingDisabledOverride(false);
 }
 
-void InspectorNetworkAgent::setExtraHTTPHeaders(ErrorString&, const InspectorObject& headers)
+void InspectorNetworkAgent::setExtraHTTPHeaders(ErrorString&, const JSON::Object& headers)
 {
     for (auto& entry : headers) {
         String stringValue;
@@ -855,7 +855,7 @@ static Ref<Inspector::Protocol::Page::SearchResult> buildObjectForSearchResult(c
     return searchResult;
 }
 
-void InspectorNetworkAgent::searchOtherRequests(const JSC::Yarr::RegularExpression& regex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>& result)
+void InspectorNetworkAgent::searchOtherRequests(const JSC::Yarr::RegularExpression& regex, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::SearchResult>>& result)
 {
     Vector<NetworkResourcesData::ResourceData*> resources = m_resourcesData->resources();
     for (auto* resourceData : resources) {
@@ -867,7 +867,7 @@ void InspectorNetworkAgent::searchOtherRequests(const JSC::Yarr::RegularExpressi
     }
 }
 
-void InspectorNetworkAgent::searchInRequest(ErrorString& errorString, const String& requestId, const String& query, bool caseSensitive, bool isRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
+void InspectorNetworkAgent::searchInRequest(ErrorString& errorString, const String& requestId, const String& query, bool caseSensitive, bool isRegex, RefPtr<JSON::ArrayOf<Inspector::Protocol::GenericTypes::SearchMatch>>& results)
 {
     NetworkResourcesData::ResourceData const* resourceData = m_resourcesData->data(requestId);
     if (!resourceData) {

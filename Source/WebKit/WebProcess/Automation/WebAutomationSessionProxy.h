@@ -23,10 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebAutomationSessionProxy_h
-#define WebAutomationSessionProxy_h
+#pragma once
 
 #include "Connection.h"
+#include "CoordinateSystem.h"
 #include <JavaScriptCore/JSBase.h>
 #include <wtf/text/WTFString.h>
 
@@ -64,9 +64,9 @@ private:
     void resolveChildFrameWithName(uint64_t pageID, uint64_t frameID, const String& name, uint64_t callbackID);
     void resolveParentFrame(uint64_t pageID, uint64_t frameID, uint64_t callbackID);
     void focusFrame(uint64_t pageID, uint64_t frameID);
-    void computeElementLayout(uint64_t pageID, uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, bool useViewportCoordinates, uint64_t callbackID);
+    void computeElementLayout(uint64_t pageID, uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, CoordinateSystem, uint64_t callbackID);
     void selectOptionElement(uint64_t pageID, uint64_t frameID, String nodeHandle, uint64_t callbackID);
-    void takeScreenshot(uint64_t pageID, uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, uint64_t callbackID);
+    void takeScreenshot(uint64_t pageID, uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, bool clipToViewport, uint64_t callbackID);
     void getCookiesForFrame(uint64_t pageID, uint64_t frameID, uint64_t callbackID);
     void deleteCookie(uint64_t pageID, uint64_t frameID, String cookieName, uint64_t callbackID);
 
@@ -77,5 +77,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // WebAutomationSessionProxy_h

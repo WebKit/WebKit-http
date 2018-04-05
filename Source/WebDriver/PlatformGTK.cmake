@@ -9,6 +9,7 @@ list(APPEND WebDriver_SYSTEM_INCLUDE_DIRECTORIES
 
 list(APPEND WebDriver_SOURCES
     glib/SessionHostGlib.cpp
+    glib/WebDriverServiceGLib.cpp
 
     gtk/WebDriverServiceGtk.cpp
 

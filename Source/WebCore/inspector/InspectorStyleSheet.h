@@ -27,8 +27,8 @@
 #include "CSSPropertySourceData.h"
 #include "CSSStyleDeclaration.h"
 #include <inspector/InspectorProtocolObjects.h>
-#include <inspector/InspectorValues.h>
 #include <wtf/HashMap.h>
+#include <wtf/JSONValues.h>
 #include <wtf/Vector.h>
 
 class ParsedStyleSheet;
@@ -51,7 +51,7 @@ class InspectorCSSId {
 public:
     InspectorCSSId() { }
 
-    explicit InspectorCSSId(const Inspector::InspectorObject& value)
+    explicit InspectorCSSId(const JSON::Object& value)
     {
         if (!value.getString(ASCIILiteral("styleSheetId"), m_styleSheetId))
             return;
@@ -127,7 +127,7 @@ public:
 
     CSSStyleDeclaration& cssStyle() const { return m_style.get(); }
     RefPtr<Inspector::Protocol::CSS::CSSStyle> buildObjectForStyle() const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSComputedStyleProperty>> buildArrayForComputedStyle() const;
+    Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSComputedStyleProperty>> buildArrayForComputedStyle() const;
 
     ExceptionOr<String> text() const;
     ExceptionOr<void> setText(const String&);
@@ -213,7 +213,7 @@ private:
     bool originalStyleSheetText(String* result) const;
     bool resourceStyleSheetText(String* result) const;
     bool inlineStyleSheetText(String* result) const;
-    Ref<Inspector::Protocol::Array<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
+    Ref<JSON::ArrayOf<Inspector::Protocol::CSS::CSSRule>> buildArrayForRuleList(CSSRuleList*);
     Ref<Inspector::Protocol::CSS::CSSSelector> buildObjectForSelector(const CSSSelector*, Element*);
     Ref<Inspector::Protocol::CSS::SelectorList> buildObjectForSelectorList(CSSStyleRule*, Element*, int& endingLine);
 

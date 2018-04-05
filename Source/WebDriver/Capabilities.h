@@ -47,6 +47,8 @@ enum class PageLoadStrategy {
 enum class UnhandledPromptBehavior {
     Dismiss,
     Accept,
+    DismissAndNotify,
+    AcceptAndNotify,
     Ignore
 };
 
@@ -55,12 +57,15 @@ struct Capabilities {
     std::optional<String> browserVersion;
     std::optional<String> platformName;
     std::optional<bool> acceptInsecureCerts;
+    std::optional<bool> setWindowRect;
     std::optional<Timeouts> timeouts;
     std::optional<PageLoadStrategy> pageLoadStrategy;
     std::optional<UnhandledPromptBehavior> unhandledPromptBehavior;
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
     std::optional<String> browserBinary;
     std::optional<Vector<String>> browserArguments;
+#endif
+#if PLATFORM(GTK)
     std::optional<bool> useOverlayScrollbars;
 #endif
 };

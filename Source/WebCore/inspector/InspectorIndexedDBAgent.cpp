@@ -65,11 +65,11 @@
 #include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <inspector/InspectorFrontendRouter.h>
-#include <inspector/InspectorValues.h>
+#include <wtf/JSONValues.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Vector.h>
 
-using Inspector::Protocol::Array;
+using JSON::ArrayOf;
 using Inspector::Protocol::IndexedDB::DatabaseWithObjectStores;
 using Inspector::Protocol::IndexedDB::DataEntry;
 using Inspector::Protocol::IndexedDB::Key;
@@ -175,7 +175,7 @@ static RefPtr<KeyPath> keyPathFromIDBKeyPath(const std::optional<IDBKeyPath>& id
         keyPath->setString(string);
         return keyPath;
     }, [](const Vector<String>& vector) {
-        auto array = Inspector::Protocol::Array<String>::create();
+        auto array = JSON::ArrayOf<String>::create();
         for (auto& string : vector)
             array->addItem(string);
         RefPtr<KeyPath> keyPath = KeyPath::create().setType(KeyPath::Type::Array).release();
@@ -224,14 +224,14 @@ public:
             return;
     
         auto& databaseInfo = database.info();
-        auto objectStores = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStore>::create();
+        auto objectStores = JSON::ArrayOf<Inspector::Protocol::IndexedDB::ObjectStore>::create();
         auto objectStoreNames = databaseInfo.objectStoreNames();
         for (auto& name : objectStoreNames) {
             auto* objectStoreInfo = databaseInfo.infoForExistingObjectStore(name);
             if (!objectStoreInfo)
                 continue;
 
-            auto indexes = Inspector::Protocol::Array<Inspector::Protocol::IndexedDB::ObjectStoreIndex>::create();
+            auto indexes = JSON::ArrayOf<Inspector::Protocol::IndexedDB::ObjectStoreIndex>::create();
     
             for (auto& indexInfo : objectStoreInfo->indexMap().values()) {
                 auto objectStoreIndex = ObjectStoreIndex::create()
@@ -268,7 +268,7 @@ private:
     Ref<RequestDatabaseCallback> m_requestCallback;
 };
 
-static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
+static RefPtr<IDBKey> idbKeyFromInspectorObject(JSON::Object* key)
 {
     String type;
     if (!key->getString("type", type))
@@ -297,12 +297,12 @@ static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
         idbKey = IDBKey::createDate(date);
     } else if (type == arrayType) {
         Vector<RefPtr<IDBKey>> keyArray;
-        RefPtr<InspectorArray> array;
+        RefPtr<JSON::Array> array;
         if (!key->getArray("array", array))
             return nullptr;
         for (size_t i = 0; i < array->length(); ++i) {
-            RefPtr<InspectorValue> value = array->get(i);
-            RefPtr<InspectorObject> object;
+            RefPtr<JSON::Value> value = array->get(i);
+            RefPtr<JSON::Object> object;
             if (!value->asObject(object))
                 return nullptr;
             keyArray.append(idbKeyFromInspectorObject(object.get()));
@@ -314,10 +314,10 @@ static RefPtr<IDBKey> idbKeyFromInspectorObject(InspectorObject* key)
     return idbKey;
 }
 
-static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const InspectorObject* keyRange)
+static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const JSON::Object* keyRange)
 {
     RefPtr<IDBKey> idbLower;
-    RefPtr<InspectorObject> lower;
+    RefPtr<JSON::Object> lower;
     if (keyRange->getObject(ASCIILiteral("lower"), lower)) {
         idbLower = idbKeyFromInspectorObject(lower.get());
         if (!idbLower)
@@ -325,7 +325,7 @@ static RefPtr<IDBKeyRange> idbKeyRangeFromKeyRange(const InspectorObject* keyRan
     }
 
     RefPtr<IDBKey> idbUpper;
-    RefPtr<InspectorObject> upper;
+    RefPtr<JSON::Object> upper;
     if (keyRange->getObject(ASCIILiteral("upper"), upper)) {
         idbUpper = idbKeyFromInspectorObject(upper.get());
         if (!idbUpper)
@@ -418,14 +418,14 @@ private:
         : EventListener(EventListener::CPPEventListenerType)
         , m_injectedScript(injectedScript)
         , m_requestCallback(WTFMove(requestCallback))
-        , m_result(Array<DataEntry>::create())
+        , m_result(JSON::ArrayOf<DataEntry>::create())
         , m_skipCount(skipCount)
         , m_pageSize(pageSize)
     {
     }
     InjectedScript m_injectedScript;
     Ref<RequestDataCallback> m_requestCallback;
-    Ref<Array<DataEntry>> m_result;
+    Ref<JSON::ArrayOf<DataEntry>> m_result;
     int m_skipCount;
     unsigned m_pageSize;
 };
@@ -581,7 +581,7 @@ void InspectorIndexedDBAgent::requestDatabaseNames(ErrorString& errorString, con
         if (!callback->isActive())
             return;
 
-        Ref<Inspector::Protocol::Array<String>> databaseNameArray = Inspector::Protocol::Array<String>::create();
+        Ref<JSON::ArrayOf<String>> databaseNameArray = JSON::ArrayOf<String>::create();
         for (auto& databaseName : databaseNames)
             databaseNameArray->addItem(databaseName);
 
@@ -604,7 +604,7 @@ void InspectorIndexedDBAgent::requestDatabase(ErrorString& errorString, const St
     databaseLoader->start(idbFactory, &document->securityOrigin(), databaseName);
 }
 
-void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const InspectorObject* keyRange, Ref<RequestDataCallback>&& requestCallback)
+void InspectorIndexedDBAgent::requestData(ErrorString& errorString, const String& securityOrigin, const String& databaseName, const String& objectStoreName, const String& indexName, int skipCount, int pageSize, const JSON::Object* keyRange, Ref<RequestDataCallback>&& requestCallback)
 {
     Frame* frame = m_pageAgent->findFrameWithSecurityOrigin(securityOrigin);
     Document* document = assertDocument(errorString, frame);

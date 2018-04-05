@@ -106,6 +106,14 @@ class AutoinstallImportHook(object):
             self.install_chromedriver()
         elif '.geckodriver' in fullname:
             self.install_geckodriver()
+        elif '.mozlog' in fullname:
+            self._install_mozlog()
+        elif '.mozprocess' in fullname:
+            self._install_mozprocess()
+        elif '.pytest_timeout' in fullname:
+            self._install_pytest_timeout()
+        elif '.pytest' in fullname:
+            self._install_pytest()
 
     def _install_mechanize(self):
         self._install("https://pypi.python.org/packages/source/m/mechanize/mechanize-0.2.5.tar.gz",
@@ -118,6 +126,28 @@ class AutoinstallImportHook(object):
     def _install_pep8(self):
         self._install("https://pypi.python.org/packages/source/p/pep8/pep8-0.5.0.tar.gz#md5=512a818af9979290cd619cce8e9c2e2b",
                              "pep8-0.5.0/pep8.py")
+
+    def _install_mozlog(self):
+        self._ensure_autoinstalled_dir_is_in_sys_path()
+        self._install("https://pypi.python.org/packages/10/d5/d286b5dc3f40e32d2a9b3cab0b5b20a05d704958b44b4c5a9aed6472deab/mozlog-3.5.tar.gz#md5=3282c70e7037266f83d8c80119129b75",
+                              "mozlog-3.5/mozlog")
+
+    def _install_mozprocess(self):
+        self._ensure_autoinstalled_dir_is_in_sys_path()
+        self._install("https://pypi.python.org/packages/cb/26/144dbc28d1f40e392f8a0cbee771ba624a61017f016c77ad88424d84b230/mozprocess-0.25.tar.gz#md5=07a04e6ae1a705705e4b44969fe7a182",
+                              "mozprocess-0.25/mozprocess")
+
+    def _install_pytest_timeout(self):
+        self._install("https://pypi.python.org/packages/cc/b7/b2a61365ea6b6d2e8881360ae7ed8dad0327ad2df89f2f0be4a02304deb2/pytest-timeout-1.2.0.tar.gz#md5=83607d91aa163562c7ee835da57d061d",
+                              "pytest-timeout-1.2.0/pytest_timeout.py")
+
+    def _install_pytest(self):
+        self._install("https://pypi.python.org/packages/90/e3/e075127d39d35f09a500ebb4a90afd10f9ef0a1d28a6d09abeec0e444fdd/py-1.5.2.tar.gz#md5=279ca69c632069e1b71e11b14641ca28",
+                              "py-1.5.2/py")
+        self._install("https://pypi.python.org/packages/1f/f8/8cd74c16952163ce0db0bd95fdd8810cbf093c08be00e6e665ebf0dc3138/pytest-3.2.5.tar.gz#md5=6dbe9bb093883f75394a689a1426ac6f",
+                              "pytest-3.2.5/_pytest")
+        self._install("https://pypi.python.org/packages/1f/f8/8cd74c16952163ce0db0bd95fdd8810cbf093c08be00e6e665ebf0dc3138/pytest-3.2.5.tar.gz#md5=6dbe9bb093883f75394a689a1426ac6f",
+                              "pytest-3.2.5/pytest.py")
 
     def _install_pylint(self):
         self._ensure_autoinstalled_dir_is_in_sys_path()

@@ -47,17 +47,17 @@ String AutomationSessionClient::sessionIdentifier() const {
 void AutomationSessionClient::didDisconnectFromRemote(WebKit::WebAutomationSession&) { 
 }
 
-WebKit::WebPageProxy* AutomationSessionClient::didRequestNewWindow(WebKit::WebAutomationSession& webAutomationSession) { 
-
+void AutomationSessionClient::requestNewPageWithOptions(WebKit::WebAutomationSession& webAutomationSession, API::AutomationSessionBrowsingContextOptions, CompletionHandler<void(WebKit::WebPageProxy*)>&& completionHandler) { 
     for (auto& process : webAutomationSession.processPool()->processes()) {
         for (auto* page : process->pages()) {
             ASSERT(page);
             if (!page->isControlledByAutomation())
                 continue;
-            return page;
+            completionHandler(page);
+            return;
         }
     }
-    return nullptr; 
+    completionHandler(nullptr); 
 }
 
 bool AutomationSessionClient::isShowingJavaScriptDialogOnPage(WebKit::WebAutomationSession&, WebKit::WebPageProxy&) { 

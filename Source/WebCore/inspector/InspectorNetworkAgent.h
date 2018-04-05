@@ -35,11 +35,11 @@
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <wtf/HashSet.h>
+#include <wtf/JSONValues.h>
 #include <wtf/text/WTFString.h>
 #include <yarr/RegularExpression.h>
 
 namespace Inspector {
-class InspectorObject;
 class InjectedScriptManager;
 }
 
@@ -98,15 +98,15 @@ public:
     void setInitialScriptContent(unsigned long identifier, const String& sourceString);
     void didScheduleStyleRecalculation(Document&);
 
-    void searchOtherRequests(const JSC::Yarr::RegularExpression&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Page::SearchResult>>&);
-    void searchInRequest(ErrorString&, const String& requestId, const String& query, bool caseSensitive, bool isRegex, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::GenericTypes::SearchMatch>>&);
+    void searchOtherRequests(const JSC::Yarr::RegularExpression&, RefPtr<JSON::ArrayOf<Inspector::Protocol::Page::SearchResult>>&);
+    void searchInRequest(ErrorString&, const String& requestId, const String& query, bool caseSensitive, bool isRegex, RefPtr<JSON::ArrayOf<Inspector::Protocol::GenericTypes::SearchMatch>>&);
 
     RefPtr<Inspector::Protocol::Network::Initiator> buildInitiatorObject(Document*);
 
     // Called from frontend.
     void enable(ErrorString&) override;
     void disable(ErrorString&) override;
-    void setExtraHTTPHeaders(ErrorString&, const Inspector::InspectorObject& headers) override;
+    void setExtraHTTPHeaders(ErrorString&, const JSON::Object& headers) override;
     void getResponseBody(ErrorString&, const String& requestId, String* content, bool* base64Encoded) override;
     void setResourceCachingDisabled(ErrorString&, bool disabled) override;
     void loadResource(ErrorString&, const String& frameId, const String& url, Ref<LoadResourceCallback>&&) override;
