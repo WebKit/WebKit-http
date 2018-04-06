@@ -43,6 +43,8 @@
 #include <QFileDialog>
 #endif
 #include <QMenuBar>
+#include <QMessageBox>
+#include <QNetworkReply>
 
 MainWindow::MainWindow()
     : m_page(new WebPage(this))
@@ -85,6 +87,7 @@ void MainWindow::buildUI()
     connect(page()->mainFrame(), SIGNAL(loadStarted()), this, SLOT(onLoadStarted()));
     connect(page()->mainFrame(), SIGNAL(iconChanged()), this, SLOT(onIconChanged()));
     connect(page()->mainFrame(), SIGNAL(titleChanged(QString)), this, SLOT(onTitleChanged(QString)));
+    connect(page()->networkAccessManager(), SIGNAL(sslErrors(QNetworkReply*, const QList<QSslError>&)), this, SLOT(onSSLErrors(QNetworkReply*, const QList<QSslError>&)));
     connect(page(), SIGNAL(windowCloseRequested()), this, SLOT(close()));
 
 #ifndef QT_NO_SHORTCUT
@@ -248,4 +251,21 @@ void MainWindow::onTitleChanged(const QString& title)
         setWindowTitle(QCoreApplication::applicationName());
     else
         setWindowTitle(QString::fromLatin1("%1 - %2").arg(title).arg(QCoreApplication::applicationName()));
+}
+
+void MainWindow::onSSLErrors(QNetworkReply* reply,const QList<QSslError>& errors)
+{
+    QString errorStrings = "<ul>";
+    for (const QSslError& error : errors)
+        errorStrings += "<li>" + error.errorString() + "</li>";
+    errorStrings += "</ul>";
+
+    QMessageBox sslWarningBox;
+    sslWarningBox.setText("SSL handshake problem");
+    sslWarningBox.setInformativeText(errorStrings);
+    sslWarningBox.setStandardButtons(QMessageBox::Abort | QMessageBox::Ignore);
+    sslWarningBox.setDefaultButton(QMessageBox::Abort);
+    sslWarningBox.setIcon(QMessageBox::Warning);
+    if (sslWarningBox.exec() == QMessageBox::Ignore)
+        reply->ignoreSslErrors();
 }
