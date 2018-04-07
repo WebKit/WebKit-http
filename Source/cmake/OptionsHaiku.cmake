@@ -191,6 +191,13 @@ endif()
 add_definitions(-DUSE_TEXTURE_MAPPER=1)
 add_definitions(-DUSE_COORDINATED_GRAPHICS=0)
 
+if (ENABLE_SUBTLE_CRYPTO)
+    if (LIBGCRYPT_VERSION VERSION_LESS 1.7.0)
+        message(FATAL_ERROR "libgcrypt 1.7.0 is required to enable Web Crypto API support.")
+    endif ()
+    SET_AND_EXPOSE_TO_BUILD(USE_GCRYPT TRUE)
+endif ()
+
 if (ENABLE_WEBGL)
     set(ENABLE_WEBGL 1)
     if (USE_GRAPHICS_SURFACE)
