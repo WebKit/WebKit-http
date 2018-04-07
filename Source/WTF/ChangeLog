@@ -1,3 +1,226 @@
+2017-06-14  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        MediaSource duration attribute should not be equal to Infinity when set to a value greater than 2^64
+        https://bugs.webkit.org/show_bug.cgi?id=171668
+
+        Reviewed by Jer Noble.
+
+        MediaSource duration attribute is a double represented in MediaSource by a MediaTime instance created with
+        MediaTime::CreateWithDouble(). This method implements an overflow control mechanism which sets MediaTime to
+        Infinity when the double value passed as argument is greater than 2^64.
+
+        This patch removes the overflow control mechanism when time value is represented as a double. This patch also
+        modifies the behavior of mathematical operations between a double MediaTime and rational MediaTime: the rational
+        MediaTime is converted to a double before applying the operation. Double MediaTime precision is the same as for
+        double. Overflow mechanisms still apply to the conversion of a double MediaTime to rational with setTimescale()
+        method. No behavior change for rational MediaTime.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+
+2017-06-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Use CMAKE_THREAD_LIBS_INIT in WTF platform CMake files
+        https://bugs.webkit.org/show_bug.cgi?id=173310
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        In the WTF platform CMake files for the GTK+ and WPE ports, use the
+        CMAKE_THREAD_LIBS_INIT variable to specify the threading library we
+        should be linking against. On some platforms this variable will be
+        empty because the given compiler will automatically handle the -pthread
+        compiler flag and sort out linking on its own.
+
+        The same approach is already used for the JSCOnly configuration.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformWPE.cmake:
+
+2017-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Filter SDP from ICE candidates in case of local ICE candidate filtering
+        https://bugs.webkit.org/show_bug.cgi?id=173120
+
+        Reviewed by Eric Carlson.
+
+        Adding split helper routine with functor parameter.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::String::split):
+        * wtf/text/WTFString.h:
+        (WTF::String::contains):
+
+2017-06-13  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Remove redundant includes in config.h
+        https://bugs.webkit.org/show_bug.cgi?id=173292
+
+        Reviewed by Alex Christensen.
+
+        * config.h:
+        * wtf/ExportMacros.h:
+
+2017-06-12  Jer Noble  <jer.noble@apple.com>
+
+        Screen sleeps while doing WebRTC video
+        https://bugs.webkit.org/show_bug.cgi?id=173278
+
+        Reviewed by Eric Carlson.
+
+        Drive-by fix: add some generic methods for iterating over collections.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Algorithms.h: Added.
+        (WTF::forEach):
+        (WTF::anyOf):
+        (WTF::allOf):
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move WebKit GType macros to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173249
+
+        Reviewed by Žan Doberšek.
+
+        They can be used by glib-based ports and eventually by JavaScriptCore glib bindings too.
+
+        * wtf/glib/WTFGType.h: Copied from Source/WebKit2/UIProcess/API/gtk/WebKitPrivate.h.
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Make ThreadMessage portable
+        https://bugs.webkit.org/show_bug.cgi?id=172073
+
+        Reviewed by Keith Miller.
+
+        Recently, we change ThreadMessage semantics: message handler
+        can be executed in the sender thread.
+        This allows ThreadMessage to be implemented in a portable way.
+
+        This patch implements ThreadMessage for all the platforms.
+        We use platform-independent Thread APIs, suspend(), resume(),
+        and getRegisters().
+
+        * wtf/PlatformRegisters.h:
+        (WTF::registersFromUContext):
+        * wtf/ThreadMessage.cpp:
+        (WTF::sendMessageScoped):
+        (WTF::ThreadMessageData::ThreadMessageData): Deleted.
+        (): Deleted.
+        (WTF::initializeThreadMessages): Deleted.
+        (WTF::sendMessageUsingSignal): Deleted.
+        (WTF::sendMessageUsingMach): Deleted.
+        (WTF::deliverMessagesUsingMach): Deleted.
+        * wtf/ThreadMessage.h:
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::threadMessages): Deleted.
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::signalHandlerSuspendResume):
+        (WTF::threadStateMetadata):
+        (WTF::Thread::getRegisters):
+        * wtf/threads/Signals.cpp:
+        (WTF::handleSignalsWithMach):
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop unnecessary includes in Threading.h
+        https://bugs.webkit.org/show_bug.cgi?id=173167
+
+        Reviewed by Darin Adler.
+
+        Threading.h includes bunch of headers. But some of them are not necessary.
+        This patch cleans up it a bit.
+
+        * wtf/Assertions.cpp:
+        * wtf/LocklessBag.h:
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add RegisteredSymbolImpl
+        https://bugs.webkit.org/show_bug.cgi?id=173230
+
+        Reviewed by Mark Lam.
+
+        Most symbols are not registered in SymbolRegistry. However, we currently always
+        allocate a pointer member to point to a SymbolRegistry, and this pointer is always null.
+        SymbolImpl is immutable, and it will never be registered with a SymbolRegistry
+        after it is created. Hence, this member is wasteful.
+
+        Instead, we add a new derived class RegisteredSymbolImpl, which will set a flag in
+        SymbolImpl to indicate that it is registered with a SymbolRegistry. The only way to
+        create a RegisteredSymbolImpl is via a factory method provided by the SymbolRegistry.
+        The factory method will pass the SymbolRegistry this pointer to the RegisteredSymbolImpl's
+        constructor for initializing the RegisteredSymbolImpl's m_symbolRegistry field.
+        By doing so,
+
+        1. We do not need to set m_symbolRegistry after creating a Symbol. It is clean.
+        2. We reduce the size of SymbolImpls that do not need to be registered.
+
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.cpp:
+        (WTF::SymbolImpl::create):
+        (WTF::RegisteredSymbolImpl::create):
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::hashForSymbol):
+        (WTF::SymbolImpl::isRegistered):
+        (WTF::SymbolImpl::SymbolImpl):
+        (WTF::RegisteredSymbolImpl::symbolRegistry):
+        (WTF::RegisteredSymbolImpl::clearSymbolRegistry):
+        (WTF::RegisteredSymbolImpl::RegisteredSymbolImpl):
+        (WTF::SymbolImpl::symbolRegistry):
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::~SymbolRegistry):
+        (WTF::SymbolRegistry::symbolForKey):
+        (WTF::SymbolRegistry::keyForSymbol):
+        (WTF::SymbolRegistry::remove):
+        * wtf/text/SymbolRegistry.h:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Update Thread::create() to take in a WTF::Function instead of a std::function
+        https://bugs.webkit.org/show_bug.cgi?id=173175
+
+        Reviewed by Mark Lam.
+
+        Update Thread::create() to take in a WTF::Function instead of a std::function. Unlike
+        std::function, WTF:Function is not copyable and does not make implicit copies of captured
+        variables. Doing captures such as [string = string.isolatedCopy()] when passing an
+        std::function to another thread has lead to bugs in the past due to implicit copying of
+        the captured string.
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::create):
+        * wtf/Threading.h:
+
 2017-06-09  Chris Dumez  <cdumez@apple.com>
 
         Update WorkQueue::concurrentApply() to take a WTF::Function instead of an std::function

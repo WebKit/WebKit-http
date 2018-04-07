@@ -130,7 +130,6 @@ public:
     void setAsynchronousSpellCheckingEnabled(bool);
     void setAllowsAnySSLCertificate(bool);
     void setEncryptedMediaAPIEnabled(bool);
-    void setSubtleCryptoEnabled(bool);
     void setMediaDevicesEnabled(bool);
     void setWebRTCLegacyAPIEnabled(bool);
 

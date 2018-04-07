@@ -1453,7 +1453,7 @@ NPObject* PluginView::windowScriptNPObject()
         return 0;
     }
 
-    return m_npRuntimeObjectMap.getOrCreateNPObject(pluginWorld().vm(), frame()->script().windowShell(pluginWorld())->window());
+    return m_npRuntimeObjectMap.getOrCreateNPObject(pluginWorld().vm(), frame()->script().windowProxy(pluginWorld())->window());
 }
 
 NPObject* PluginView::pluginElementNPObject()
@@ -1594,7 +1594,7 @@ void PluginView::setCookiesForURL(const String& urlString, const String& cookieS
 
 bool PluginView::getAuthenticationInfo(const ProtectionSpace& protectionSpace, String& username, String& password)
 {
-    RefPtr<Document> contentDocument = m_pluginElement->contentDocument();
+    auto* contentDocument = m_pluginElement->contentDocument();
     if (!contentDocument)
         return false;
 

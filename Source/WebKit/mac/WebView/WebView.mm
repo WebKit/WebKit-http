@@ -3052,15 +3052,12 @@ static bool needsSelfRetainWhileLoadingQuirk()
 #endif
     RuntimeEnabledFeatures::sharedFeatures().setDisplayContentsEnabled(preferences.displayContentsEnabled);
 
-#if ENABLE(SUBTLE_CRYPTO)
-    RuntimeEnabledFeatures::sharedFeatures().setSubtleCryptoEnabled([preferences subtleCryptoEnabled]);
-#endif
-
     RuntimeEnabledFeatures::sharedFeatures().setUserTimingEnabled(preferences.userTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setResourceTimingEnabled(preferences.resourceTimingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setLinkPreloadEnabled(preferences.linkPreloadEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(preferences.mediaPreloadingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
+    RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(preferences.isSecureContextAttributeEnabled);
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)

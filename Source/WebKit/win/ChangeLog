@@ -1,3 +1,95 @@
+2017-06-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebKit fails to paint the bottom lines of the window at 125% scale.
+        https://bugs.webkit.org/show_bug.cgi?id=173318
+
+        Reviewed by Darin Adler.
+
+        The logical frame size is currently calculated by scaling the frame size in pixels,
+        and rounding the coordinates to the nearest integers. The computed logical frame
+        size will in some cases be smaller than the scaled frame size in pixels, since it is
+        represented as an IntSize. In these cases, the bottom line will not be painted.
+        Instead of calculating the logical frame size by rounding the scaled frame in
+        pixels, find the enclosing rectangle of the scaled frame rectangle in pixels.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::transitionToCommittedForNewPage):
+
+2017-06-13  Daniel Bates  <dabates@apple.com>
+
+        Implement W3C Secure Contexts Draft Specification
+        https://bugs.webkit.org/show_bug.cgi?id=158121
+        <rdar://problem/26012994>
+
+        Reviewed by Brent Fulgham.
+
+        Part 4
+
+        Adds a preference to toggle the runtime enabled feature flag isSecureContextAttributeEnabled.
+
+        * Interfaces/IWebPreferencesPrivate.idl: Bump the version.
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::QueryInterface):
+        (WebPreferences::setIsSecureContextAttributeEnabled):
+        (WebPreferences::isSecureContextAttributeEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-06-13  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebKit fails to paint the bottom lines of the window at 125% scale.
+        https://bugs.webkit.org/show_bug.cgi?id=173318
+
+        Reviewed by Alex Christensen.
+
+        The logical frame size is currently calculated by scaling the frame size in pixels,
+        and rounding the coordinates to the nearest integers. The computed logical frame
+        size will in some cases be smaller than the scaled frame size in pixels, since it is
+        represented as an IntSize. In these cases, the bottom line will not be painted.
+        Instead of calculating the logical frame size by rounding the scaled frame in
+        pixels, find the enclosing rectangle of the scaled frame rectangle in pixels.
+ 
+        * WebView.cpp:
+        (WebView::sizeChanged):
+
+2017-06-13  Sam Weinig  <sam@webkit.org>
+
+        Rename JSDOMWindowShell to JSDOMWindowProxy to match the HTML5 spec.
+        https://bugs.webkit.org/show_bug.cgi?id=80733
+
+        Reviewed by Chris Dumez.
+
+        * WebFrame.cpp:
+        (WebFrame::stringByEvaluatingJavaScriptInScriptWorld):
+
+2017-06-12  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Remove WebCore::unloadModule and related data types
+        https://bugs.webkit.org/show_bug.cgi?id=173231
+
+        Reviewed by Darin Adler.
+
+        * Plugins/PlatformModule.h: Added.
+        (WebCore::PlatformModuleVersion::PlatformModuleVersion):
+        * Plugins/PluginPackage.cpp:
+        (WebCore::PluginPackage::freeLibraryTimerFired):
+        * Plugins/PluginPackage.h:
+
+2017-06-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Add a hook to perform two-step drops in editable content
+        https://bugs.webkit.org/show_bug.cgi?id=172992
+        <rdar://problem/32590174>
+
+        Reviewed by Tim Horton.
+
+        Add a stub implementation for performTwoStepDrop on Windows.
+
+        * WebCoreSupport/WebEditorClient.h:
+
 2017-06-04  Konstantin Tokarev  <annulen@yandex.ru>
 
         Fix build of Windows-specific code with ICU 59.1

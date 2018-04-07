@@ -29,6 +29,7 @@
 #include "WKAPICast.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebGeolocationPosition.h"
+#include "WebGeolocationProvider.h"
 
 using namespace WebKit;
 
@@ -39,7 +40,7 @@ WKTypeID WKGeolocationManagerGetTypeID()
 
 void WKGeolocationManagerSetProvider(WKGeolocationManagerRef geolocationManagerRef, const WKGeolocationProviderBase* wkProvider)
 {
-    toImpl(geolocationManagerRef)->initializeProvider(wkProvider);
+    toImpl(geolocationManagerRef)->setProvider(std::make_unique<WebGeolocationProvider>(wkProvider));
 }
 
 void WKGeolocationManagerProviderDidChangePosition(WKGeolocationManagerRef geolocationManagerRef, WKGeolocationPositionRef positionRef)

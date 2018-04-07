@@ -1,0 +1,4 @@
+http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html - didFinishLoading
+http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html - willSendRequest <NSURLRequest URL http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html, main document URL http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html, http method GET> redirectResponse (null)
+http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html - didReceiveResponse <NSURLResponse http://127.0.0.1:8000/security/contentSecurityPolicy/block-favicon.html, http status code 200>
+

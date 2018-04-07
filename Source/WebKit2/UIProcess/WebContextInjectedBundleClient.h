@@ -26,7 +26,8 @@
 #pragma once
 
 #include "APIClient.h"
-#include "WKContext.h"
+#include "APIInjectedBundleClient.h"
+#include "WKContextInjectedBundleClient.h"
 #include <wtf/Forward.h>
 
 namespace API {
@@ -41,11 +42,13 @@ namespace WebKit {
 
 class WebProcessPool;
 
-class WebContextInjectedBundleClient : public API::Client<WKContextInjectedBundleClientBase> {
+class WebContextInjectedBundleClient : public API::InjectedBundleClient, public API::Client<WKContextInjectedBundleClientBase> {
 public:
-    void didReceiveMessageFromInjectedBundle(WebProcessPool*, const String&, API::Object*);
-    void didReceiveSynchronousMessageFromInjectedBundle(WebProcessPool*, const String&, API::Object*, RefPtr<API::Object>& returnData);
-    RefPtr<API::Object> getInjectedBundleInitializationUserData(WebProcessPool*);
+    explicit WebContextInjectedBundleClient(const WKContextInjectedBundleClientBase*);
+
+    void didReceiveMessageFromInjectedBundle(WebProcessPool&, const WTF::String&, API::Object*) override;
+    void didReceiveSynchronousMessageFromInjectedBundle(WebProcessPool&, const WTF::String&, API::Object*, RefPtr<API::Object>&) override;
+    RefPtr<API::Object> getInjectedBundleInitializationUserData(WebProcessPool&) override;
 };
 
 } // namespace WebKit

@@ -41,6 +41,7 @@
 #include "RTCSessionDescription.h"
 #include "RealtimeIncomingAudioSource.h"
 #include "RealtimeIncomingVideoSource.h"
+#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -250,6 +251,11 @@ LibWebRTCPeerConnectionBackend::VideoReceiver LibWebRTCPeerConnectionBackend::vi
     }
     auto source = RealtimeIncomingVideoSource::create(nullptr, WTFMove(trackId));
     auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+
+    auto transceiver = RTCRtpTransceiver::create(RTCRtpSender::create("video", { }, m_peerConnection), receiver.copyRef());
+    transceiver->disableSendingDirection();
+    m_peerConnection.addTransceiver(WTFMove(transceiver));
+
     return { WTFMove(receiver), WTFMove(source) };
 }
 
@@ -267,6 +273,11 @@ LibWebRTCPeerConnectionBackend::AudioReceiver LibWebRTCPeerConnectionBackend::au
     }
     auto source = RealtimeIncomingAudioSource::create(nullptr, WTFMove(trackId));
     auto receiver = createReceiverForSource(*m_peerConnection.scriptExecutionContext(), source.copyRef());
+
+    auto transceiver = RTCRtpTransceiver::create(RTCRtpSender::create("audio", { }, m_peerConnection), receiver.copyRef());
+    transceiver->disableSendingDirection();
+    m_peerConnection.addTransceiver(WTFMove(transceiver));
+
     return { WTFMove(receiver), WTFMove(source) };
 }
 
@@ -277,7 +288,10 @@ std::unique_ptr<RTCDataChannelHandler> LibWebRTCPeerConnectionBackend::createDat
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentLocalDescription() const
 {
-    return m_endpoint->currentLocalDescription();
+    auto description = m_endpoint->currentLocalDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentRemoteDescription() const
@@ -287,7 +301,10 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::currentRemoteDescr
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingLocalDescription() const
 {
-    return m_endpoint->pendingLocalDescription();
+    auto description = m_endpoint->pendingLocalDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingRemoteDescription() const
@@ -297,7 +314,10 @@ RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::pendingRemoteDescr
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::localDescription() const
 {
-    return m_endpoint->localDescription();
+    auto description = m_endpoint->localDescription();
+    if (description)
+        description->setSdp(filterSDP(String(description->sdp())));
+    return description;
 }
 
 RefPtr<RTCSessionDescription> LibWebRTCPeerConnectionBackend::remoteDescription() const

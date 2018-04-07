@@ -244,6 +244,9 @@
         "web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/navigation-changed-iframe.html",
         "web-platform-tests/html/semantics/embedded-content/the-iframe-element/support/sandbox_allow_script.html",
         "web-platform-tests/html/semantics/embedded-content/the-img-element/environment-changes/iframed.sub.html",
+        "web-platform-tests/html/semantics/embedded-content/the-img-element/ismap/img-ismap-coordinates-iframe-after.html",
+        "web-platform-tests/html/semantics/embedded-content/the-img-element/ismap/img-ismap-coordinates-iframe-before.html",
+        "web-platform-tests/html/semantics/embedded-content/the-img-element/ismap/img-ismap-coordinates-iframe-inside.html",
         "web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/sizes-iframed.sub.html",
         "web-platform-tests/html/semantics/embedded-content/the-object-element/test0.html",
         "web-platform-tests/html/semantics/embedded-content/the-object-element/test1.html",
@@ -285,6 +288,11 @@
         "web-platform-tests/html/webappapis/scripting/events/onerroreventhandler-frame.html",
         "web-platform-tests/mathml/relations/html5-tree/unique-identifier-1-iframe.html",
         "web-platform-tests/resource-timing/iframe-setdomain.sub.html",
+        "web-platform-tests/secure-contexts/postMessage-helper.html",
+        "web-platform-tests/secure-contexts/postMessage-helper.https.html",
+        "web-platform-tests/secure-contexts/support/https-subframe-dedicated.html",
+        "web-platform-tests/secure-contexts/support/https-subframe-shared.html",
+        "web-platform-tests/secure-contexts/support/shared-worker-insecure-popup.html",
         "web-platform-tests/test_keys_wdspec.html",
         "web-platform-tests/upgrade-insecure-requests/support/post-origin-to-parent.html"
     ]

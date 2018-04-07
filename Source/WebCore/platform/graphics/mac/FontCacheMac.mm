@@ -50,17 +50,45 @@
 
 #import "SoftLinking.h"
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-SOFT_LINK_FRAMEWORK(CoreText);
-SOFT_LINK_MAY_FAIL(CoreText, CTFontDescriptorCreateLastResort, CTFontDescriptorRef, (), ());
-#endif
-
 namespace WebCore {
 
 #if PLATFORM(MAC)
 
-RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest, float size)
+static CGFloat toNSFontWeight(FontSelectionValue fontWeight)
 {
+    if (fontWeight < FontSelectionValue(150))
+        return NSFontWeightUltraLight;
+    if (fontWeight < FontSelectionValue(250))
+        return NSFontWeightThin;
+    if (fontWeight < FontSelectionValue(350))
+        return NSFontWeightLight;
+    if (fontWeight < FontSelectionValue(450))
+        return NSFontWeightRegular;
+    if (fontWeight < FontSelectionValue(550))
+        return NSFontWeightMedium;
+    if (fontWeight < FontSelectionValue(650))
+        return NSFontWeightSemibold;
+    if (fontWeight < FontSelectionValue(750))
+        return NSFontWeightBold;
+    if (fontWeight < FontSelectionValue(850))
+        return NSFontWeightHeavy;
+    return NSFontWeightBlack;
+}
+
+RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& family, FontSelectionRequest request, float size)
+{
+    if (equalLettersIgnoringASCIICase(family, "-webkit-system-font") || equalLettersIgnoringASCIICase(family, "-apple-system") || equalLettersIgnoringASCIICase(family, "-apple-system-font") || equalLettersIgnoringASCIICase(family, "system-ui")) {
+        RetainPtr<CTFontRef> result = toCTFont([NSFont systemFontOfSize:size weight:toNSFontWeight(request.weight)]);
+        if (isItalic(request.slope)) {
+            CTFontSymbolicTraits desiredTraits = kCTFontItalicTrait;
+            if (isFontWeightBold(request.weight))
+                desiredTraits |= kCTFontBoldTrait;
+            if (auto italicizedFont = adoptCF(CTFontCreateCopyWithSymbolicTraits(result.get(), size, nullptr, desiredTraits, desiredTraits)))
+                result = italicizedFont;
+        }
+        return result;
+    }
+
     if (equalLettersIgnoringASCIICase(family, "-apple-system-monospaced-numbers")) {
         int numberSpacingType = kNumberSpacingType;
         int monospacedNumbersSelector = kMonospacedNumbersSelector;
@@ -87,14 +115,13 @@ RetainPtr<CTFontRef> platformFontWithFamilySpecialCase(const AtomicString& famil
 
     if (equalLettersIgnoringASCIICase(family, "lastresort")) {
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
-        if (canLoadCTFontDescriptorCreateLastResort()) {
-            static NeverDestroyed<RetainPtr<CTFontDescriptorRef>> lastResort = adoptCF(CTFontDescriptorCreateLastResort());
-            return adoptCF(CTFontCreateWithFontDescriptor(lastResort.get().get(), size, nullptr));
-        }
-#endif
+        static NeverDestroyed<RetainPtr<CTFontDescriptorRef>> lastResort = adoptCF(CTFontDescriptorCreateLastResort());
+        return adoptCF(CTFontCreateWithFontDescriptor(lastResort.get().get(), size, nullptr));
+#else
         // LastResort is special, so it's important to look this exact string up, and not some case-folded version.
         // We handle this here so any caching and case folding we do in our general text codepath is bypassed.
         return adoptCF(CTFontCreateWithName(CFSTR("LastResort"), size, nullptr));
+#endif
     }
 
     return nullptr;

@@ -41,8 +41,6 @@ webkit.org/b/120839 animations/cross-fade-background-image.html [ ImageOnlyFailu
 
 webkit.org/b/111612 animations/animation-delay-changed.html [ Failure Pass ]
 
-Bug(WPE) transforms/hittest-translated-content-off-to-infinity-and-back.html [ Failure ]
-
 Bug(WPE) canvas/philip/tests/2d.composite.operation.clear.html [ Failure ]
 Bug(WPE) canvas/philip/tests/2d.composite.operation.darker.html [ Failure ]
 Bug(WPE) canvas/philip/tests/2d.drawImage.animated.poster.html [ Failure ]
@@ -178,6 +176,8 @@ Bug(WPE) imported/w3c/css [ Skip ]
 Bug(WPE) imported/w3c/web-platform-tests [ Skip ]
 
 Bug(WPE) imported/w3c/IndexedDB-private-browsing/idb_webworkers.html [ Failure ]
+webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash ]
+webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash ]
 
 Bug(WPE) fast/ [ Skip ]
 
@@ -214,9 +214,8 @@ Bug(WPE) fast/shapes/shape-outside-floats/shape-outside-clip-path-selection.html
 Bug(WPE) fast/shapes/shape-outside-floats/shape-outside-floats-shape-margin-percent.html [ ImageOnlyFailure ]
 
 Bug(WPE) fast/url [ Pass ]
-Bug(WPE) fast/url/user-visible/cyrillic-NFD.html [ Failure ]
-Bug(WPE) fast/url/user-visible/rf.html [ Failure ]
-Bug(WPE) fast/url/user-visible/srb.html [ Failure ]
+# These are Mac specific for now.
+fast/url/user-visible [ Skip ]
 
 Bug(WPE) fast/viewport [ Pass ]
 Bug(WPE) fast/viewport/ios [ Failure ]
@@ -310,8 +309,8 @@ Bug(WPE) fast/dom/beforeload [ Pass ]
 Bug(WPE) fast/dom/getElementsByClassName [ Pass ]
 Bug(WPE) fast/dom/nodesFromRect [ Pass ]
 
-Bug(WPE) storage/indexeddb/modern/idbkey-array-equality.html [ Crash ]
 Bug(WPE) storage/indexeddb/modern/index-3-private.html [ Crash ]
+Bug(WPE) storage/indexeddb/modern/worker-getall.html [ Timeout ]
 Bug(WPE) storage/domstorage/events/basic-body-attribute.html [ Failure ]
 Bug(WPE) storage/domstorage/localstorage/blocked-file-access.html [ Failure ]
 Bug(WPE) storage/domstorage/sessionstorage/blocked-file-access.html [ Failure ]
@@ -384,7 +383,6 @@ Bug(WPE) css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
 Bug(WPE) css3/zoom-coords.xhtml [ Failure ]
 
 webkit.org/b/133151 js/cached-window-properties.html [ Slow ]
-webkit.org/b/119264 transitions/created-while-suspended.html [ Pass Slow ]
 webkit.org/b/159754 workers/bomb.html [ Slow ]
 
 # We won't be supporting the deprecated interfaces.

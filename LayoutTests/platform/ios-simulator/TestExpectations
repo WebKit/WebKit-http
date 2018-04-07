@@ -3,6 +3,9 @@
 # See http://trac.webkit.org/wiki/TestExpectations for more information on this file.
 #
 
+css3/font-variant-small-caps-synthesis-coverage.html [ ImageOnlyFailure ]
+fast/frames/flattening/scrolling-in-object.html [ ImageOnlyFailure ]
+fast/frames/sandboxed-iframe-close-top-noclose.html [ Failure ]
 fast/multicol/flexbox-rows.html [ Skip ]
 workers/wasm-mem-post-message.html [ Failure ]
 
@@ -52,6 +55,14 @@ fast/css/sticky/sticky-top-margins.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-top-zoomed.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-top.html [ ImageOnlyFailure ]
 fast/css/sticky/sticky-writing-mode-horizontal-bt.html [ ImageOnlyFailure ]
+ietestcenter/css3/namespaces/syntax-021.xml [ ImageOnlyFailure ]
+
+media/track/track-in-band-legacy-api.html [ Failure ]
+media/track/video-track-alternate-groups.html [ Failure ]
+
+svg/filters/filter-hidden-content.svg [ Failure ]
+
+transforms/hittest-translated-content-off-to-infinity-and-back.html [ Pass ImageOnlyFailure ]
 
 # The modern-media-controls tests are disabled due to past flakiness and some major code changes.
 # As a result, a host of tests need to be updated and being turned on selectively here.
@@ -64,14 +75,40 @@ media/modern-media-controls/buttons-container [ Pass ]
 media/modern-media-controls/controls-visibility-support [ Pass ]
 media/modern-media-controls/forward-button [ Pass ]
 media/modern-media-controls/fullscreen-button [ Pass ]
+media/modern-media-controls/fullscreen-support [ Pass ]
+media/modern-media-controls/icon-service [ Pass ]
+media/modern-media-controls/invalid-placard [ Pass ]
+media/modern-media-controls/layout-item [ Pass ]
+media/modern-media-controls/layout-node [ Pass ]
+media/modern-media-controls/mute-button [ Pass ]
+media/modern-media-controls/mute-support [ Pass ]
+media/modern-media-controls/pip-button [ Pass ]
+media/modern-media-controls/pip-placard [ Pass ]
+media/modern-media-controls/placard [ Pass ]
+media/modern-media-controls/placard-support [ Pass ]
+media/modern-media-controls/play-pause-button [ Pass ]
+media/modern-media-controls/rewind-button [ Pass ]
+media/modern-media-controls/scheduler [ Pass ]
+media/modern-media-controls/scrubber [ Pass ]
+media/modern-media-controls/skip-back-button [ Pass ]
+media/modern-media-controls/skip-forward-button [ Pass ]
+media/modern-media-controls/slider [ Pass ]
+media/modern-media-controls/status-label [ Pass ]
+media/modern-media-controls/time-control [ Pass ]
+media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/tracks-button [ Pass ]
 
 # AirPlay cannot be tested on iOS
 webkit.org/b/166062 media/modern-media-controls/airplay-support [ Skip ]
 webkit.org/b/166062 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
+webkit.org/b/166062 media/modern-media-controls/placard-support/placard-support-airplay.html [ Skip ]
 
 # These tests use touch events and don't work in OpenSource
 media/modern-media-controls/button/button.html [ Skip ]
 media/modern-media-controls/button/button-active-state.html [ Skip ]
+media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Skip ]
+media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Skip ]
+media/modern-media-controls/placard-support/ipad [ Skip ]
 
 # These tests rely on fullscreen which do not use the WebKit media controls on iOS
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
@@ -80,6 +117,13 @@ media/modern-media-controls/controls-visibility-support/controls-visibility-supp
 # These tests specifically test iOS-only media controls features
 media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-button-padding.html [ Pass ]
 
+# These tests are designed to work only on macOS
+media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+
 webkit.org/b/172965 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Failure ]
 
 webkit.org/b/156718 storage/websql/alter-to-info-table.html [ Failure ]
+
+# This test relies on Arial being used to draw Arabic. However, on iOS,
+# we explicitly disallow this because this font is too slow.
+fast/text/initial-advance-in-intermediate-run-complex.html [ ImageOnlyFailure ]

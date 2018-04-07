@@ -40,7 +40,6 @@
 #include "NativeWebWheelEvent.h"
 #include "PageClientImpl.h"
 #include "WebEventFactory.h"
-#include "WebFullScreenClientGtk.h"
 #include "WebInspectorProxy.h"
 #include "WebKit2Initialize.h"
 #include "WebKitAuthenticationDialog.h"
@@ -189,11 +188,8 @@ struct _WebKitWebViewBasePrivate {
     ActivityState::Flags activityStateFlagsToUpdate { 0 };
     RunLoop::Timer<WebKitWebViewBasePrivate> updateActivityStateTimer;
 
-    WebKitWebViewBaseDownloadRequestHandler downloadHandler { 0 };
-
 #if ENABLE(FULLSCREEN_API)
     bool fullScreenModeActive { false };
-    WebFullScreenClientGtk fullScreenClient;
     GRefPtr<GDBusProxy> screenSaverProxy;
     GRefPtr<GCancellable> screenSaverInhibitCancellable;
     unsigned screenSaverCookie { 0 };
@@ -1324,11 +1320,7 @@ void webkitWebViewBaseEnterFullScreen(WebKitWebViewBase* webkitWebViewBase)
 {
 #if ENABLE(FULLSCREEN_API)
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
-    if (priv->fullScreenModeActive)
-        return;
-
-    if (!priv->fullScreenClient.willEnterFullScreen())
-        return;
+    ASSERT(priv->fullScreenModeActive);
 
     WebFullScreenManagerProxy* fullScreenManagerProxy = priv->pageProxy->fullScreenManager();
     fullScreenManagerProxy->willEnterFullScreen();
@@ -1346,11 +1338,7 @@ void webkitWebViewBaseExitFullScreen(WebKitWebViewBase* webkitWebViewBase)
 {
 #if ENABLE(FULLSCREEN_API)
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
-    if (!priv->fullScreenModeActive)
-        return;
-
-    if (!priv->fullScreenClient.willExitFullScreen())
-        return;
+    ASSERT(!priv->fullScreenModeActive);
 
     WebFullScreenManagerProxy* fullScreenManagerProxy = priv->pageProxy->fullScreenManager();
     fullScreenManagerProxy->willExitFullScreen();
@@ -1364,9 +1352,13 @@ void webkitWebViewBaseExitFullScreen(WebKitWebViewBase* webkitWebViewBase)
 #endif
 }
 
-void webkitWebViewBaseInitializeFullScreenClient(WebKitWebViewBase* webkitWebViewBase, const WKFullScreenClientGtkBase* wkClient)
+bool webkitWebViewBaseIsFullScreen(WebKitWebViewBase* webkitWebViewBase)
 {
-    webkitWebViewBase->priv->fullScreenClient.initialize(wkClient);
+#if ENABLE(FULLSCREEN_API)
+    return webkitWebViewBase->priv->fullScreenModeActive;
+#else
+    return false;
+#endif
 }
 
 void webkitWebViewBaseSetInspectorViewSize(WebKitWebViewBase* webkitWebViewBase, unsigned size)
@@ -1443,17 +1435,6 @@ bool webkitWebViewBaseIsVisible(WebKitWebViewBase* webViewBase)
 bool webkitWebViewBaseIsInWindow(WebKitWebViewBase* webViewBase)
 {
     return webViewBase->priv->activityState & ActivityState::IsInWindow;
-}
-
-void webkitWebViewBaseSetDownloadRequestHandler(WebKitWebViewBase* webViewBase, WebKitWebViewBaseDownloadRequestHandler downloadHandler)
-{
-    webViewBase->priv->downloadHandler = downloadHandler;
-}
-
-void webkitWebViewBaseHandleDownloadRequest(WebKitWebViewBase* webViewBase, DownloadProxy* download)
-{
-    if (webViewBase->priv->downloadHandler)
-        webViewBase->priv->downloadHandler(webViewBase, download);
 }
 
 void webkitWebViewBaseSetInputMethodState(WebKitWebViewBase* webkitWebViewBase, bool enabled)

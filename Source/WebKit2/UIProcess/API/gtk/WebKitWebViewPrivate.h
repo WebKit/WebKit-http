@@ -24,16 +24,20 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebKitWebViewPrivate_h
-#define WebKitWebViewPrivate_h
+#pragma once
 
+#include "APIPageConfiguration.h"
 #include "InstallMissingMediaPluginsPermissionRequest.h"
 #include "WebContextMenuItemData.h"
 #include "WebHitTestResultData.h"
 #include "WebImage.h"
+#include "WebKitPrivate.h"
 #include "WebKitWebView.h"
+#include "WebPageProxy.h"
 #include <wtf/text/CString.h>
 
+void webkitWebViewCreatePage(WebKitWebView*, Ref<API::PageConfiguration>&&);
+WebKit::WebPageProxy& webkitWebViewGetPage(WebKitWebView*);
 void webkitWebViewLoadChanged(WebKitWebView*, WebKitLoadEvent);
 void webkitWebViewLoadFailed(WebKitWebView*, WebKitLoadEvent, const char* failingURI, GError*);
 void webkitWebViewLoadFailedWithTLSErrors(WebKitWebView*, const char* failingURI, GError*, GTlsCertificateFlags, GTlsCertificate*);
@@ -48,14 +52,15 @@ bool webkitWebViewRunJavaScriptBeforeUnloadConfirm(WebKitWebView*, const CString
 void webkitWebViewMakePermissionRequest(WebKitWebView*, WebKitPermissionRequest*);
 void webkitWebViewMakePolicyDecision(WebKitWebView*, WebKitPolicyDecisionType, WebKitPolicyDecision*);
 void webkitWebViewMouseTargetChanged(WebKitWebView*, const WebKit::WebHitTestResultData&, unsigned modifiers);
+void webkitWebViewHandleDownloadRequest(WebKitWebView*, WebKit::DownloadProxy*);
 void webkitWebViewPrintFrame(WebKitWebView*, WebKit::WebFrameProxy*);
 void webkitWebViewResourceLoadStarted(WebKitWebView*, WebKit::WebFrameProxy*, uint64_t resourceIdentifier, WebKitURIRequest*);
 void webkitWebViewRunFileChooserRequest(WebKitWebView*, WebKitFileChooserRequest*);
 WebKitWebResource* webkitWebViewGetLoadingWebResource(WebKitWebView*, uint64_t resourceIdentifier);
 void webKitWebViewDidReceiveSnapshot(WebKitWebView*, uint64_t callbackID, WebKit::WebImage*);
 void webkitWebViewRemoveLoadingWebResource(WebKitWebView*, uint64_t resourceIdentifier);
-bool webkitWebViewEnterFullScreen(WebKitWebView*);
-bool webkitWebViewLeaveFullScreen(WebKitWebView*);
+void webkitWebViewEnterFullScreen(WebKitWebView*);
+void webkitWebViewExitFullScreen(WebKitWebView*);
 void webkitWebViewPopulateContextMenu(WebKitWebView*, const Vector<WebKit::WebContextMenuItemData>& proposedMenu, const WebKit::WebHitTestResultData&, GVariant*);
 void webkitWebViewSubmitFormRequest(WebKitWebView*, WebKitFormSubmissionRequest*);
 void webkitWebViewHandleAuthenticationChallenge(WebKitWebView*, WebKit::AuthenticationChallengeProxy*);
@@ -67,5 +72,3 @@ void webkitWebViewIsPlayingAudioChanged(WebKitWebView*);
 void webkitWebViewSelectionDidChange(WebKitWebView*);
 void webkitWebViewRequestInstallMissingMediaPlugins(WebKitWebView*, WebKit::InstallMissingMediaPluginsPermissionRequest&);
 WebKitWebsiteDataManager* webkitWebViewGetWebsiteDataManager(WebKitWebView*);
-
-#endif // WebKitWebViewPrivate_h

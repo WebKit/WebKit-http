@@ -746,7 +746,6 @@ void MediaPlayerPrivateAVFoundationObjC::createAVPlayerLayer()
 
     m_videoLayer = adoptNS([[AVPlayerLayer alloc] init]);
     [m_videoLayer setPlayer:m_avPlayer.get()];
-    [m_videoLayer setBackgroundColor:cachedCGColor(Color::black)];
 
 #ifndef NDEBUG
     [m_videoLayer setName:@"MediaPlayerPrivate AVPlayerLayer"];
@@ -1472,7 +1471,7 @@ double MediaPlayerPrivateAVFoundationObjC::rate() const
 
 double MediaPlayerPrivateAVFoundationObjC::seekableTimeRangesLastModifiedTime() const
 {
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
     return [m_avPlayerItem seekableTimeRangesLastModifiedTime];
 #else
     return 0;
@@ -1481,7 +1480,7 @@ double MediaPlayerPrivateAVFoundationObjC::seekableTimeRangesLastModifiedTime() 
 
 double MediaPlayerPrivateAVFoundationObjC::liveUpdateInterval() const
 {
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000)
     return [m_avPlayerItem liveUpdateInterval];
 #else
     return 0;

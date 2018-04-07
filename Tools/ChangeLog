@@ -1,3 +1,590 @@
+2017-06-14  Chris Dumez  <cdumez@apple.com>
+
+        WebKit falsely reports that a web process is unresponsive if you close a page shortly after stopping a load
+        https://bugs.webkit.org/show_bug.cgi?id=173384
+        <rdar://problem/32723779>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/ResponsivenessTimer.cpp: Added.
+        Add API test coverage.
+
+        * TestWebKitAPI/cocoa/UtilitiesCocoa.mm:
+        (TestWebKitAPI::Util::sleep):
+        Update implementation of Util::sleep() so that we actually run the run loop.
+        Otherwise, we don't process events while sleeping.
+
+2017-06-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for immediate injection of user scripts
+        https://bugs.webkit.org/show_bug.cgi?id=173342
+        <rdar://problem/29202285>
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/UserContentController.mm:
+        (waitForMessage):
+        (TEST):
+
+2017-06-14  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Add WPE to the flakiness dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=173365
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * TestResultServer/static-dashboards/builders.jsonp:
+        * TestResultServer/static-dashboards/flakiness_dashboard.js:
+        * TestResultServer/static-dashboards/flakiness_dashboard_unittests.js:
+        (resetGlobals):
+        * TestResultServer/static-dashboards/loader_unittests.js:
+
+2017-06-14  Brady Eidson  <beidson@apple.com>
+
+        WKIconLoadingDelegate never gets asked about the default favicon if touch/touch-precomposed icons are in the <head>
+        <rdar://problem/32614328> and https://bugs.webkit.org/show_bug.cgi?id=173376
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IconLoadingDelegate.mm: Added.
+        (-[IconLoadingDelegate webView:shouldLoadIconWithParameters:completionHandler:]):
+        (-[IconLoadingSchemeHandler initWithData:mimeType:]):
+        (-[IconLoadingSchemeHandler webView:startURLSchemeTask:]):
+        (-[IconLoadingSchemeHandler webView:stopURLSchemeTask:]):
+        (TEST):
+
+2017-06-14  Tim Horton  <timothy_horton@apple.com>
+
+        WKContentViewEditingActions API test always fails
+        https://bugs.webkit.org/show_bug.cgi?id=173374
+
+        Reviewed by Wenson Hsieh.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKContentViewEditingActions.mm:
+        (TEST):
+        selectAll isn't working, because canPerformAction for selectAll returns NO
+        if selectionIsNone (which is true in the non-contenteditable case).
+        Instead, make use of r218180's test page, which knows how to select itself.
+        Also, reset the pasteboard at the beginning of the test to reduce confusion
+        (I landed the test broken because my simulator had the correct text
+        stuck in its pasteboard).
+
+2017-06-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Configure screen scale for running layout tests on plus devices
+        https://bugs.webkit.org/show_bug.cgi?id=173319
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/DumpRenderTree.xcodeproj/project.pbxproj: Include UIKitTestSPI.h in project.
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (dumpRenderTree): Set screen scale to 2.0.
+        * TestRunnerShared/spi/UIKitTestSPI.h: Copied from Tools/WebKitTestRunner/ios/UIKitSPI.h,
+        add _setScale for UIScreen.
+        * WebKitTestRunner/WebKitTestRunner.xcodeproj/project.pbxproj: Include UIKitTestSPI.h in project.
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm: Import UIKitTestSPI.h instead of UIKitSPI.h.
+        * WebKitTestRunner/ios/HIDEventGenerator.h: Ditto.
+        * WebKitTestRunner/ios/HIDEventGenerator.mm: Ditto.
+        * WebKitTestRunner/ios/PlatformWebViewIOS.mm: Ditto.
+        * WebKitTestRunner/ios/TestControllerIOS.mm: Ditto.
+        (WTR::TestController::platformInitialize): Set screen scale to 2.0.
+        * WebKitTestRunner/ios/UIKitSPI.h: Moved to TestRunnerShared/spi/UIKitTestSPI.h.
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm: Import UIKitTestSPI.h instead of UIKitSPI.h.
+        * WebKitTestRunner/ios/mainIOS.mm: Ditto.
+
+2017-06-14  Alexey Proskuryakov  <ap@apple.com>
+
+        Add iOS 11 support to the bot watcher's dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=173369
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11Simulator.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/IOS11Simulator@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+
+2017-06-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] Raise the timeout values for layout tests
+        https://bugs.webkit.org/show_bug.cgi?id=173368
+
+        Reviewed by Carlos Garcia Campos.
+
+        Raise the values to 15 seconds in Release builds and 30 seconds (2x) in Debug builds.
+        When running under valgrind a 10x multiplier is applied.
+
+        * Scripts/webkitpy/port/gtk.py:
+        (GtkPort.default_timeout_ms):
+        * Scripts/webkitpy/port/gtk_unittest.py:
+        (GtkPortTest.test_default_timeout_ms):
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort.default_timeout_ms):
+        * Scripts/webkitpy/port/wpe_unittest.py: Copied from Tools/Scripts/webkitpy/port/gtk_unittest.py.
+        (WPEPortTest):
+        (WPEPortTest.make_port):
+        (WPEPortTest.test_default_timeout_ms):
+        (WPEPortTest.test_get_crash_log):
+
+2017-06-14  Alex Christensen  <achristensen@webkit.org>
+
+        Test persistent WKHTTPCookieStorages on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=173284
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+        Make the bots green again for now. There's still a problem, and I'll investigate and fix.
+
+2017-06-14  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DRT should not use disk cache.
+        https://bugs.webkit.org/show_bug.cgi?id=173361
+
+        Reviewed by Darin Adler.
+
+        Like on macOS/iOS, DRT on Windows should only use memory cache.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (setDefaultsToConsistentValuesForTesting):
+        (prepareConsistentTestingEnvironment):
+
+2017-06-14  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        MediaSource duration attribute should not be equal to Infinity when set to a value greater than 2^64
+        https://bugs.webkit.org/show_bug.cgi?id=171668
+
+        Reviewed by Jer Noble.
+
+        MediaSource duration attribute is a double represented in MediaSource by a MediaTime instance created with
+        MediaTime::CreateWithDouble(). This method implements an overflow control mechanism which sets MediaTime to
+        Infinity when the double value passed as argument is greater than 2^64.
+
+        This patch removes the overflow control mechanism when time value is represented as a double. This patch also
+        modifies the behavior of mathematical operations between a double MediaTime and rational MediaTime: the rational
+        MediaTime is converted to a double before applying the operation. Double MediaTime precision is the same as for
+        double. Overflow mechanisms still apply to the conversion of a double MediaTime to rational with setTimescale()
+        method. No behavior change for rational MediaTime.
+
+        * TestWebKitAPI/Tests/WTF/MediaTime.cpp: Add tests to check operation results between double and rational MediaTime.
+        (TestWebKitAPI::TEST):
+
+2017-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Test persistent WKHTTPCookieStorages on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=173284
+        <rdar://problem/32260156>
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2017-06-13  Matt Rajca  <mrajca@apple.com>
+
+        WebsitePolicies: let clients select specific autoplay quirks
+        https://bugs.webkit.org/show_bug.cgi?id=173343
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (-[AutoplayPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST): Updated tests.
+
+2017-06-13  Daniel Bates  <dabates@apple.com>
+
+        Implement W3C Secure Contexts Draft Specification
+        https://bugs.webkit.org/show_bug.cgi?id=158121
+        <rdar://problem/26012994>
+
+        Reviewed by Brent Fulgham.
+
+        Part 4
+
+        Expose the isSecureContext attribute by default in DumpRenderTree and WebKitTestRunner.
+        Teach DumpRenderTree for Mac and WebKitTestRunner to parse the test option enableIsSecureContextAttribute
+        to toggle the runtime enabled feature flag isSecureContextAttributeEnabled.
+
+        * DumpRenderTree/TestOptions.h:
+        * DumpRenderTree/TestOptions.mm:
+        (TestOptions::TestOptions):
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setWebPreferencesForTestOptions):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        (WTR::updateTestOptionsFromTestHeader):
+        * WebKitTestRunner/TestOptions.h:
+        (WTR::TestOptions::hasSameInitializationOptions):
+
+2017-06-13  Alex Christensen  <achristensen@webkit.org>
+
+        Test persistent WKHTTPCookieStorages on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=173284
+        <rdar://problem/32260156>
+
+        Reviewed by Alexey Proskuryakov.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Blob download doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=172442
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Add a unit test to check blob downloads.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (testBlobDownload):
+        (beforeAll):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not include WTR, DumpRendererTree and ImageDiff in tarballs
+        https://bugs.webkit.org/show_bug.cgi?id=173316
+
+        Reviewed by Alex Christensen.
+
+        It's not really possible to run layout tests from the tarball, so it's better not to include those files.
+
+        * gtk/manifest.txt.in:
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WTR] Crash in WebGeolocationManagerProxy::~WebGeolocationManagerProxy() when running several tests
+        https://bugs.webkit.org/show_bug.cgi?id=173315
+
+        Reviewed by Darin Adler.
+
+        This has started to happen after r218165, but I don't think it's a regression, but that r218165 revealed the bug
+        somehow in WTR. The problem is that GeolocationProviderMock keeps a pointer to the WKGeolocationManagerRef
+        returned by WKContextGetGeolocationManager. But in TestController::generatePageConfiguration() the context is
+        freed before the GeolocationProviderMock. When the GeolocationProviderMock is then destroyed, it calls
+        WKGeolocationManagerSetProvider(m_geolocationManager, 0); but the WKGeolocationManagerRef has already been
+        destroyed. GeolocationProviderMock should keep a reference to the WKContext to ensure the
+        WKGeolocationManagerRef is not destroyed.
+
+        * WebKitTestRunner/GeolocationProviderMock.cpp:
+        (WTR::GeolocationProviderMock::GeolocationProviderMock):
+        * WebKitTestRunner/GeolocationProviderMock.h:
+
+2017-06-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to paste text that was copied from a page into the universal search field
+        https://bugs.webkit.org/show_bug.cgi?id=173293
+        <rdar://problem/32440918>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adds 2 new unit tests for copying plain and rich selected web content.
+        See WebCore and WebKit ChangeLogs for more detail.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/rich-and-plain-text.html: Added.
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm: Added.
+        (TestWebKitAPI::dataForPasteboardType):
+        (TestWebKitAPI::setUpWebViewForPasteboardTests):
+        (TestWebKitAPI::TEST):
+
+2017-06-13  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Implement missing AtkRelation types
+        https://bugs.webkit.org/show_bug.cgi?id=155494
+
+        Reviewed by Darin Adler.
+
+        Add additional methods to test ARIA properties which are exposed via
+        AtkRelation. Implement ATK support for ariaOwnsElementAtIndex().
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        (WTR::AccessibilityUIElement::ariaLabelledByElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDescribedByElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaOwnsReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaFlowToReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaControlsReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaLabelledByReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDescribedByReferencingElementAtIndex):
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::ariaOwnsElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaOwnsReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaFlowToReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaControlsReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaLabelledByElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaLabelledByReferencingElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDescribedByElementAtIndex):
+        (WTR::AccessibilityUIElement::ariaDescribedByReferencingElementAtIndex):
+
+2017-06-12  Daniel Bates  <dabates@apple.com>
+
+        Add unit tests for SecurityOrigin::IsPotentiallyTrustworthy()
+        https://bugs.webkit.org/show_bug.cgi?id=173286
+        <rdar://problem/32726102>
+
+        Reviewed by Brent Fulgham.
+
+        * TestWebKitAPI/Tests/WebCore/SecurityOrigin.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-06-12  Lucas Forschler  <lforschler@apple.com>
+
+        <rdar://problem/32683422>
+        Teach copy-webkitlibraries-to-product-directory script about updated libraries.
+
+        Reviewed by Conrad Schultz.
+
+        * Scripts/copy-webkitlibraries-to-product-directory:
+
+2017-06-12  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS] Cmd-C doesn't copy text from WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=173277
+        <rdar://problem/32396742>
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * Tests/WebKit2Cocoa/WKContentViewEditingActions.mm:
+        Add a test ensuring that -copy on WKContentView will cause text to be copied.
+
+2017-06-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Remove experimental feature flag of SubtleCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=173197
+        <rdar://problem/32688148>
+
+        Reviewed by Brent Fulgham.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setSubtleCryptoEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Allow the injected bundle to add client data when writing an image to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=173238
+        <rdar://problem/31943370>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Add a new unit test to verify that data inserted by the injected bundle when beginning a drag on an image
+        element is plumbed across to the UI delegate. Also refactors injected bundle unit tests to use the new version
+        of adjustedDataInteractionItemProvidersForItemProvider: that takes representing objects and additional data.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _webView:adjustedDataInteractionItemProvidersForItemProvider:representingObjects:additionalData:]):
+        (-[DataInteractionSimulator _webView:adjustedDataInteractionItemProviders:]): Deleted.
+
+2017-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        WebItemProviderPasteboard should call its completion block immediately after a synchronous load
+        https://bugs.webkit.org/show_bug.cgi?id=173225
+        <rdar://problem/32713144>
+
+        Reviewed by Tim Horton.
+
+        Adds a new unit test to verify whether the completion block is called synchronously or asynchronously, in both
+        cases where the synchronous timeout is very large, and the synchronous timeout is not used (0).
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-06-12  Jonathan Bedard  <jbedard@apple.com>
+
+        Return correct process names for iOS on-device testing
+        https://bugs.webkit.org/show_bug.cgi?id=173263
+
+        Reviewed by Alex Christensen.
+
+        When running tests on iOS devices, process names do not end with '.Development'
+        as they do on Mac and iOS simulator.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::webProcessName): Return correct process name without '.Development'
+        for iOS on-device testing.
+        (WTR::TestController::networkProcessName): Ditto.
+        (WTR::TestController::databaseProcessName): Ditto.
+
+2017-06-12  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r217867): Legacy SessionHistoryEntryData format should not change
+        https://bugs.webkit.org/show_bug.cgi?id=173267
+        <rdar://problem/32701257>
+
+        Reviewed by Simon Fraser.
+
+        Restrict test to stop covering saving / restore of scrollRestoration via the legacy
+        SessionHistoryEntryData. Maintain coverage for the default value of scrollRestoration
+        though as this covers the crash that r217867 was fixing.
+
+        * TestWebKitAPI/Tests/WebKit2/RestoreSessionState.cpp:
+        (TestWebKitAPI::createSessionStateData):
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::createSessionStateDataContainingScrollRestoration): Deleted.
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Stop dismissing menus attached to the web view for every injected event
+        https://bugs.webkit.org/show_bug.cgi?id=172708
+
+        Reviewed by Alex Christensen.
+
+        It's a workaround we added in r184015 that has worked so far for the context menu, but doesn't really work now
+        that we also attach popup menus to the web view. We really need to be able to show a popup menu, and then send
+        events while the menu is open.
+
+        * WebKitTestRunner/InjectedBundle/EventSendingController.cpp:
+        (WTR::EventSendingController::contextClick): Use WKBundlePageCopyContextMenuAtPointInWindow() also in GTK+ port.
+        * WebKitTestRunner/gtk/EventSenderProxyGtk.cpp:
+        (WTR::EventSenderProxy::dispatchEvent): Stop calling PlatformWebView::dismissAllPopupMenus().
+
+2017-06-12  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][WPE] Enable GStreamer GL on development builds
+        https://bugs.webkit.org/show_bug.cgi?id=173248
+
+        Enable GStreamer GL for GTK and WPE.
+
+        Reviewed by Carlos Garcia Campos.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ test /webkit2/WebKitWebView/notification after r216641.
+
+        Notifications are no longer cleared on page navigation.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewNotification):
+
+2017-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ test /webkit2/WebKitAutomationSession/request-session after r217831.
+
+        DBus interface and object path names were updated in r217831.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestAutomationSession.cpp:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * ImageDiff/cg/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * MobileMiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * ContentExtensionTester/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * ImageDiff/cg/Configurations/DebugRelease.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * MobileMiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * WebEditingTester/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Reduce polling in ServerProcess
+        https://bugs.webkit.org/show_bug.cgi?id=173116
+
+        Reviewed by Ryosuke Niwa.
+
+        We should be smarter about polling. We do not need to poll every time a line is read from
+        stdout and stderr since lines are usually read from cached data. We should only poll
+        when extracting that cached data from stdout and stderr.
+
+        * Scripts/webkitpy/port/driver.py:
+        (Driver._read_block): Rely on output of the ServerProcess to detect a crash or a timeout
+        and on ServerProcess to poll the process if not data is available in stdout and stderr.
+        * Scripts/webkitpy/port/driver_unittest.py:
+        (DriverTest.test_read_block_crashed_process): Test that the Driver will handle a crashing
+        ServerProcess.
+        * Scripts/webkitpy/port/server_process.py:
+        (ServerProcess._read): Allow for data to be read from _output even if the process has
+        crashed. Only poll the process if data needs to be extracted from stdout or stderr. 
+        * Scripts/webkitpy/port/server_process_mock.py:
+        (MockServerProcess): Add number_of_times_polled.
+        (MockServerProcess.poll): Increment number_of_times_polled.
+        (MockServerProcess.has_crashed): Poll before returning crash state.
+        (MockServerProcess.read_stdout_line): MockServerProcess should return None if it has crashed,
+        just like a ServerProcess would.
+        (MockServerProcess.read_stdout): Ditto.
+        * Scripts/webkitpy/port/server_process_unittest.py:
+        (TestServerProcess.test_basic): Use stdin.readline() instead of time.sleep() to prevent the
+        process from ending before stdout and stderr are read. This is the reason this test was flakey.
+        (TestServerProcess):
+        (TestServerProcess.test_process_crashing): Test that when a process crashes, data can be read until
+        the processes is polled.
+        (TestServerProcess.test_process_crashing_no_data): Test that when a process which has not output any
+        data to stdout and stderr crashes, ServerProcess._read(...) polls the process to detect the crash.
+
+2017-06-10  Andy Estes  <aestes@apple.com>
+
+        [QuickLook] PreviewLoader needs to check if its ResourceLoader has reached the terminal state before calling didReceiveResponse() and friends
+        https://bugs.webkit.org/show_bug.cgi?id=173190
+        <rdar://problem/31360659>
+
+        Reviewed by Brady Eidson.
+        
+        Added a release assert that tries to create a proper test failure if the web process crashes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/QuickLook.mm:
+        (-[QuickLookDecidePolicyDelegate _webViewWebProcessDidCrash:]):
+
+2017-06-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Add a hook to perform two-step drops in editable content
+        https://bugs.webkit.org/show_bug.cgi?id=172992
+        <rdar://problem/32590174>
+
+        Reviewed by Tim Horton.
+
+        Adds 2 new API tests to cover using the injected editing bundle to override performTwoStepDrop.
+        Tests:  DataInteractionTests.InjectedBundleOverridePerformTwoStepDrop
+                DataInteractionTests.InjectedBundleAllowPerformTwoStepDrop
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleEditingDelegatePlugIn.mm:
+        (-[BundleEditingDelegatePlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        (-[BundleEditingDelegatePlugIn _webProcessPlugInBrowserContextController:performTwoStepDrop:atDestination:isMove:]):
+
+        Allow the BundleOverridePerformTwoStepDrop bundle parameter to determine whether or not two-step drops should
+        be overridden. Currently, this is overridden to just return true.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::InjectedBundlePage):
+
 2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
 
         [WPE] Enable ENCRYPTED_MEDIA for build-webkit builds

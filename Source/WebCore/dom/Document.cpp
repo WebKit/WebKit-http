@@ -5321,6 +5321,19 @@ bool Document::isContextThread() const
     return isMainThread();
 }
 
+bool Document::isSecureContext() const
+{
+    if (!m_frame)
+        return true;
+    if (!securityOrigin().isPotentionallyTrustworthy())
+        return false;
+    for (Frame* frame = m_frame->tree().parent(); frame; frame = frame->tree().parent()) {
+        if (!frame->document()->securityOrigin().isPotentionallyTrustworthy())
+            return false;
+    }
+    return true;
+}
+
 void Document::updateURLForPushOrReplaceState(const URL& url)
 {
     Frame* f = frame();
@@ -6455,7 +6468,7 @@ bool Document::processingUserGestureForMedia() const
         return topDocument().hasHadUserInteraction();
 
     auto* loader = this->loader();
-    if (loader && loader->allowsAutoplayQuirks())
+    if (loader && loader->allowedAutoplayQuirks().contains(AutoplayQuirk::InheritedUserGestures))
         return topDocument().hasHadUserInteraction();
 
     return false;
@@ -7069,16 +7082,10 @@ void Document::orientationChanged(int orientation)
 void Document::notifyMediaCaptureOfVisibilityChanged()
 {
 #if ENABLE(MEDIA_STREAM)
-    if (!page() || page()->isMediaCaptureMuted()) {
-        m_videoCaptureMutedForVisibilityChange = false;
-        return;
-    }
-
-    if (!hidden() && !m_videoCaptureMutedForVisibilityChange)
+    if (!page())
         return;
 
-    m_videoCaptureMutedForVisibilityChange = hidden();
-    RealtimeMediaSourceCenter::singleton().setVideoCaptureMutedForPageVisibility(m_videoCaptureMutedForVisibilityChange);
+    RealtimeMediaSourceCenter::singleton().setVideoCapturePageState(hidden(), page()->isMediaCaptureMuted());
 #endif
 }
 

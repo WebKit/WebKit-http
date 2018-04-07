@@ -1401,8 +1401,6 @@ webkit.org/b/161142 [ Release ] imported/w3c/web-platform-tests/html/dom/interfa
 
 webkit.org/b/161144 http/tests/media/hls/hls-accessiblity-describes-video-menu.html [ Skip ]
 
-webkit.org/b/161156 js/dom/prototype-chain-caching-with-impure-get-own-property-slot-traps-5.html [ Pass Failure ]
-
 webkit.org/b/161883 imported/w3c/web-platform-tests/dom/nodes/ProcessingInstruction-escapes-1.xhtml [ Pass Failure ]
 
 webkit.org/b/162308 imported/w3c/web-platform-tests/media-source/mediasource-duration.html [ Pass Failure ]
@@ -1542,8 +1540,6 @@ webkit.org/b/171886 imported/w3c/web-platform-tests/streams/readable-byte-stream
 
 webkit.org/b/172469 [ ElCapitan ] imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Timeout ]
 
-webkit.org/b/172720 [ Sierra+ ] js/intl-datetimeformat.html [ Failure ]
-
 # This test tests a feature that only exists on iOS.
 webkit.org/b/172737 fast/text/accessibility-bold-system-font-2.html [ ImageOnlyFailure ]
 
@@ -1559,14 +1555,39 @@ media/modern-media-controls/buttons-container [ Pass ]
 media/modern-media-controls/controls-visibility-support [ Pass ]
 media/modern-media-controls/forward-button [ Pass ]
 media/modern-media-controls/fullscreen-button [ Pass ]
+media/modern-media-controls/fullscreen-support [ Pass ]
+media/modern-media-controls/icon-service [ Pass ]
+media/modern-media-controls/invalid-placard [ Pass ]
+media/modern-media-controls/layout-item [ Pass ]
+media/modern-media-controls/layout-node [ Pass ]
 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button.html [ Pass ]
 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html [ Pass ]
+media/modern-media-controls/mute-button [ Pass ]
+media/modern-media-controls/mute-support [ Pass ]
+media/modern-media-controls/pip-button [ Pass ]
+media/modern-media-controls/pip-placard [ Pass ]
+media/modern-media-controls/placard [ Pass ]
+media/modern-media-controls/placard-support [ Pass ]
+media/modern-media-controls/play-pause-button [ Pass ]
+media/modern-media-controls/rewind-button [ Pass ]
+media/modern-media-controls/scheduler [ Pass ]
+media/modern-media-controls/scrubber [ Pass ]
+media/modern-media-controls/skip-back-button [ Pass ]
+media/modern-media-controls/skip-forward-button [ Pass ]
+media/modern-media-controls/slider [ Pass ]
+media/modern-media-controls/status-label [ Pass ]
+media/modern-media-controls/time-control [ Pass ]
+media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/tracks-button [ Pass ]
 media/modern-media-controls/volume-up-support [ Pass ]
 
 # These tests are iOS-specific
 media/modern-media-controls/audio/audio-controls-styles.html [ Skip ]
+media/modern-media-controls/placard-support/ipad [ Skip ]
+
+# These tests use Picture-in-Picture which isn't supported on El Capitan.
+[ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
 
 webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
 
-# This test is only valid on platforms which have multiple emoji fonts.
-webkit.org/b/173043 [ ElCapitan ] fast/text/system-font-fallback-emoji.html [ Failure ]
+webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html [ Pass Failure ]

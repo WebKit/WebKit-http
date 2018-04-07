@@ -67,7 +67,6 @@
 #include <WebCore/TimingFunction.h>
 #include <WebCore/TransformationMatrix.h>
 #include <WebCore/URL.h>
-#include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/ViewportArguments.h>
 #include <WebCore/WindowFeatures.h>
@@ -1426,6 +1425,33 @@ bool ArgumentCoder<PasteboardURL>::decode(Decoder& decoder, PasteboardURL& conte
     return true;
 }
 
+static void encodeClientTypesAndData(Encoder& encoder, const Vector<String>& types, const Vector<RefPtr<SharedBuffer>>& data)
+{
+    ASSERT(types.size() == data.size());
+    encoder << types;
+    encoder << static_cast<uint64_t>(data.size());
+    for (size_t i = 0, size = types.size(); i < size; ++i)
+        encodeSharedBuffer(encoder, data[i].get());
+}
+
+static bool decodeClientTypesAndData(Decoder& decoder, Vector<String>& types, Vector<RefPtr<SharedBuffer>>& data)
+{
+    if (!decoder.decode(types))
+        return false;
+
+    uint64_t clientDataSize;
+    if (!decoder.decode(clientDataSize))
+        return false;
+
+    if (clientDataSize)
+        data.resize(clientDataSize);
+
+    for (size_t i = 0; i < clientDataSize; i++)
+        decodeSharedBuffer(decoder, data[i]);
+
+    return true;
+}
+
 void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const PasteboardWebContent& content)
 {
     encoder << content.canSmartCopyOrDelete;
@@ -1436,10 +1462,7 @@ void ArgumentCoder<PasteboardWebContent>::encode(Encoder& encoder, const Pastebo
     encodeSharedBuffer(encoder, content.dataInRTFFormat.get());
     encodeSharedBuffer(encoder, content.dataInAttributedStringFormat.get());
 
-    encoder << content.clientTypes;
-    encoder << static_cast<uint64_t>(content.clientData.size());
-    for (size_t i = 0; i < content.clientData.size(); i++)
-        encodeSharedBuffer(encoder, content.clientData[i].get());
+    encodeClientTypesAndData(encoder, content.clientTypes, content.clientData);
 }
 
 bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWebContent& content)
@@ -1456,15 +1479,8 @@ bool ArgumentCoder<PasteboardWebContent>::decode(Decoder& decoder, PasteboardWeb
         return false;
     if (!decodeSharedBuffer(decoder, content.dataInAttributedStringFormat))
         return false;
-    if (!decoder.decode(content.clientTypes))
+    if (!decodeClientTypesAndData(decoder, content.clientTypes, content.clientData))
         return false;
-    uint64_t clientDataSize;
-    if (!decoder.decode(clientDataSize))
-        return false;
-    if (clientDataSize)
-        content.clientData.resize(clientDataSize);
-    for (size_t i = 0; i < clientDataSize; i++)
-        decodeSharedBuffer(decoder, content.clientData[i]);
     return true;
 }
 
@@ -1477,6 +1493,7 @@ void ArgumentCoder<PasteboardImage>::encode(Encoder& encoder, const PasteboardIm
     encoder << pasteboardImage.suggestedName;
     if (pasteboardImage.resourceData)
         encodeSharedBuffer(encoder, pasteboardImage.resourceData.get());
+    encodeClientTypesAndData(encoder, pasteboardImage.clientTypes, pasteboardImage.clientData);
 }
 
 bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& pasteboardImage)
@@ -1492,6 +1509,8 @@ bool ArgumentCoder<PasteboardImage>::decode(Decoder& decoder, PasteboardImage& p
     if (!decoder.decode(pasteboardImage.suggestedName))
         return false;
     if (!decodeSharedBuffer(decoder, pasteboardImage.resourceData))
+        return false;
+    if (!decodeClientTypesAndData(decoder, pasteboardImage.clientTypes, pasteboardImage.clientData))
         return false;
     return true;
 }
@@ -1716,46 +1735,6 @@ bool ArgumentCoder<MediaSessionMetadata>::decode(Decoder& decoder, MediaSessionM
     return true;
 }
 #endif
-
-void ArgumentCoder<UserScript>::encode(Encoder& encoder, const UserScript& userScript)
-{
-    encoder << userScript.source();
-    encoder << userScript.url();
-    encoder << userScript.whitelist();
-    encoder << userScript.blacklist();
-    encoder.encodeEnum(userScript.injectionTime());
-    encoder.encodeEnum(userScript.injectedFrames());
-}
-
-bool ArgumentCoder<UserScript>::decode(Decoder& decoder, UserScript& userScript)
-{
-    String source;
-    if (!decoder.decode(source))
-        return false;
-
-    URL url;
-    if (!decoder.decode(url))
-        return false;
-
-    Vector<String> whitelist;
-    if (!decoder.decode(whitelist))
-        return false;
-
-    Vector<String> blacklist;
-    if (!decoder.decode(blacklist))
-        return false;
-
-    UserScriptInjectionTime injectionTime;
-    if (!decoder.decodeEnum(injectionTime))
-        return false;
-
-    UserContentInjectedFrames injectedFrames;
-    if (!decoder.decodeEnum(injectedFrames))
-        return false;
-
-    userScript = UserScript(source, url, WTFMove(whitelist), WTFMove(blacklist), injectionTime, injectedFrames);
-    return true;
-}
 
 void ArgumentCoder<ScrollableAreaParameters>::encode(Encoder& encoder, const ScrollableAreaParameters& parameters)
 {

@@ -465,10 +465,6 @@ WK_EXPORT bool WKPreferencesGetUserTimingEnabled(WKPreferencesRef);
 WK_EXPORT void WKPreferencesSetResourceTimingEnabled(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetResourceTimingEnabled(WKPreferencesRef);
 
-// Defaults to true
-WK_EXPORT void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef, bool flag);
-WK_EXPORT bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef);
-
 // Defaults to true.
 WK_EXPORT void WKPreferencesSetLargeImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetLargeImageAsyncDecodingEnabled(WKPreferencesRef preferencesRef);
@@ -504,6 +500,10 @@ WK_EXPORT bool WKPreferencesGetMediaUserGestureInheritsFromDocument(WKPreference
 // Defaults to an empty string
 WK_EXPORT void WKPreferencesSetMediaContentTypesRequiringHardwareSupport(WKPreferencesRef, WKStringRef);
 WK_EXPORT WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPreferencesRef);
+
+// Defaults to false.
+WK_EXPORT void WKPreferencesSetIsSecureContextAttributeEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetIsSecureContextAttributeEnabled(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

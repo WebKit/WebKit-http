@@ -652,9 +652,6 @@ public:
 #endif
 
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
-#if ENABLE(SUBTLE_CRYPTO)
-        [NSNumber numberWithBool:YES], WebKitSubtleCryptoEnabledPreferenceKey,
-#endif
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaDevicesEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitMediaStreamEnabledPreferenceKey,
@@ -671,6 +668,7 @@ public:
         @NO, WebKitResourceTimingEnabledPreferenceKey,
         @NO, WebKitCredentialManagementEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
+        @NO, WebKitIsSecureContextAttributeEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         nil];
 
@@ -2755,16 +2753,6 @@ static NSString *classIBCreatorID = nil;
     [self _setStringValue:directory forKey:WebKitMediaKeysStorageDirectoryKey];
 }
 
-- (BOOL)subtleCryptoEnabled
-{
-    return [self _boolValueForKey:WebKitSubtleCryptoEnabledPreferenceKey];
-}
-
-- (void)setSubtleCryptoEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitSubtleCryptoEnabledPreferenceKey];
-}
-
 - (BOOL)mediaDevicesEnabled
 {
     return [self _boolValueForKey:WebKitMediaDevicesEnabledPreferenceKey];
@@ -3116,6 +3104,17 @@ static NSString *classIBCreatorID = nil;
 {
     [self _setStringValue:value forKey:WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey];
 }
+
+- (BOOL)isSecureContextAttributeEnabled
+{
+    return [self _boolValueForKey:WebKitIsSecureContextAttributeEnabledPreferenceKey];
+}
+
+- (void)setIsSecureContextAttributeEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitIsSecureContextAttributeEnabledPreferenceKey];
+}
+
 @end
 
 @implementation WebPreferences (WebInternal)

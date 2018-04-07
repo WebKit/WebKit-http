@@ -1176,7 +1176,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMWindowBase.cpp
     bindings/js/JSDOMWindowCustom.cpp
     bindings/js/JSDOMWindowProperties.cpp
-    bindings/js/JSDOMWindowShell.cpp
+    bindings/js/JSDOMWindowProxy.cpp
     bindings/js/JSDOMWrapper.cpp
     bindings/js/JSDOMWrapperCache.cpp
     bindings/js/JSDocumentCustom.cpp
@@ -1193,7 +1193,6 @@ set(WebCore_SOURCES
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
     bindings/js/JSHTMLEmbedElementCustom.cpp
-    bindings/js/JSHTMLFrameSetElementCustom.cpp
     bindings/js/JSHTMLObjectElementCustom.cpp
     bindings/js/JSHTMLTemplateElementCustom.cpp
     bindings/js/JSHistoryCustom.cpp

@@ -1,3 +1,511 @@
+2017-06-14  Claudio Saavedra  <csaavedra@igalia.com>
+
+        REGRESSION: 15 new jsc failures in WPE and GTK+
+        https://bugs.webkit.org/show_bug.cgi?id=173349
+
+        Reviewed by JF Bastien.
+
+        Recent changes to generateWasm.py are not accounted for from
+        CMake, which leads to WasmOps.h not being regenerated in partial
+        builds. Make generateWasm.py an additional dependency.
+        * CMakeLists.txt:
+
+2017-06-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Debugger has unexpected effect on program correctness
+        https://bugs.webkit.org/show_bug.cgi?id=172683
+
+        Reviewed by Saam Barati.
+
+        * inspector/InjectedScriptSource.js:
+        (InjectedScript.RemoteObject.prototype._appendPropertyPreviews):
+        (InjectedScript.RemoteObject.prototype._isPreviewableObjectInternal):
+        (BasicCommandLineAPI):
+        Eliminate for..of use with Arrays from InjectedScriptSource as it can be observable.
+        We still use it for Set / Map iteration which we can eliminate when moving to builtins.
+
+2017-06-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: fix erroneous signature comment
+        https://bugs.webkit.org/show_bug.cgi?id=173334
+
+        Reviewed by Keith Miller.
+
+        * wasm/WasmSignature.h:
+
+2017-06-13  Michael Saboff  <msaboff@apple.com>
+
+        Refactor AbsenceOfSetter to AbsenceOfSetEffects
+        https://bugs.webkit.org/show_bug.cgi?id=173322
+
+        Reviewed by Filip Pizlo.
+
+        * bytecode/ObjectPropertyCondition.h:
+        (JSC::ObjectPropertyCondition::absenceOfSetEffectWithoutBarrier):
+        (JSC::ObjectPropertyCondition::absenceOfSetEffect):
+        (JSC::ObjectPropertyCondition::absenceOfSetterWithoutBarrier): Deleted.
+        (JSC::ObjectPropertyCondition::absenceOfSetter): Deleted.
+        * bytecode/ObjectPropertyConditionSet.cpp:
+        (JSC::generateConditionsForPropertySetterMiss):
+        (JSC::generateConditionsForPropertySetterMissConcurrently):
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::dumpInContext):
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint):
+        (JSC::PropertyCondition::isStillValid):
+        (WTF::printInternal):
+        * bytecode/PropertyCondition.h:
+        (JSC::PropertyCondition::absenceOfSetEffectWithoutBarrier):
+        (JSC::PropertyCondition::absenceOfSetEffect):
+        (JSC::PropertyCondition::hasPrototype):
+        (JSC::PropertyCondition::hash):
+        (JSC::PropertyCondition::operator==):
+        (JSC::PropertyCondition::absenceOfSetterWithoutBarrier): Deleted.
+        (JSC::PropertyCondition::absenceOfSetter): Deleted.
+
+2017-06-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: import updated spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=173287
+        <rdar://problem/32725975>
+
+        Reviewed by Saam Barati.
+
+        Import spec tests as of 31c641cc15f2aedbec2fa45a5185f68416df578b,
+        with a few modifications so things work.
+
+        Fix a bunch of bugs found through this process, and punt a few tests (which I
+        marked as blocked by this bug).
+
+        Fixes:
+
+        Fix load / store alignment: r216908 erroneously implemented it as bit alignment
+        instead of byte alignment. It was also missing memory-alignment.js despite it
+        being in the ChangeLog, so add it too. This allows spec-test/align.wast.js to
+        pass.
+
+        Tables can be imported or in a section. There can be only one, but sections can
+        be empty. An Elements section can exist if there's no Table, as long as it is
+        also empty.
+
+        Memories can be imported or in a section. There can be only one, but sections
+        can be empty. A Data section can exist if there's no Memory, as long as it is
+        also empty.
+
+        Prototypes: stringify without .prototype. in the string.
+
+        WebAssembly.Table.prototype.grow was plain wrong: it takes a delta parameter,
+        not a final size, and throws a RangeError on failure, not a TypeError.
+
+        Fix compile / instantiate so the reject the promise if given an argument of the
+        wrong type (instead of failing instantly).
+
+        Fix async on neuter test.
+
+        Element section shouldn't affect any Table if any of the elements are out of
+        bounds. We need to process it in two passes.
+
+        Segment section shouldn't affect any Data if any of the segments are out of
+        bounds. We need to process it in two passes.
+
+        Empty data segments are valid, but only when there is no memory. Their index
+        still gets validated, and has to be zero.
+
+        Punts:
+
+        Error messages with context, the test seems overly restrictive but this is
+        minor.
+
+        compile/instantiate/validate property descriptors.
+
+        UTF-8 bugs.
+
+        Temporarily disable NaN tests. We need to go back and implement the following
+        semantics: https://github.com/WebAssembly/spec/pull/414 This doesn't matter as
+        much as getting all the other tests passing.
+
+        Worth noting for NaNs: f64.no_fold_mul_one (also a NaN test) as well as
+        no_fold_promote_demote (an interesting corner case which we get wrong). mul by
+        one is (assert_return (invoke \"f64.no_fold_mul_one\" (i64.const
+        0x7ff4000000000000)) (i64.const 0x7ff8000000000000)) which means converting sNaN
+        to qNaN, and promote/demote is (assert_return (invoke \"no_fold_promote_demote\"
+        (i32.const 0x7fa00000)) (i32.const 0x7fc00000)) which is the same. I'm not sure
+        why they're not allowed.
+
+        * wasm/WasmB3IRGenerator.cpp:
+        * wasm/WasmFunctionParser.h:
+        * wasm/WasmModuleParser.cpp:
+        * wasm/WasmModuleParser.h:
+        * wasm/WasmParser.h:
+        (JSC::Wasm::Parser<SuccessType>::consumeUTF8String):
+        * wasm/generateWasm.py:
+        (memoryLog2Alignment):
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::grow):
+        * wasm/js/JSWebAssemblyTable.h:
+        * wasm/js/WebAssemblyCompileErrorPrototype.cpp:
+        * wasm/js/WebAssemblyInstancePrototype.cpp:
+        * wasm/js/WebAssemblyLinkErrorPrototype.cpp:
+        * wasm/js/WebAssemblyMemoryPrototype.cpp:
+        * wasm/js/WebAssemblyModulePrototype.cpp:
+        * wasm/js/WebAssemblyModuleRecord.cpp:
+        (JSC::WebAssemblyModuleRecord::evaluate):
+        * wasm/js/WebAssemblyPrototype.cpp:
+        (JSC::webAssemblyCompileFunc):
+        (JSC::resolve):
+        (JSC::instantiate):
+        (JSC::compileAndInstantiate):
+        (JSC::webAssemblyInstantiateFunc):
+        * wasm/js/WebAssemblyRuntimeErrorPrototype.cpp:
+        * wasm/js/WebAssemblyTablePrototype.cpp:
+        (JSC::webAssemblyTableProtoFuncGrow):
+
+2017-06-13  Michael Saboff  <msaboff@apple.com>
+
+        DFG doesn't properly handle a property that is change to read only in a prototype
+        https://bugs.webkit.org/show_bug.cgi?id=173321
+
+        Reviewed by Filip Pizlo.
+
+        We need to check for ReadOnly as well as a not being a Setter when checking
+        an AbsenceOfSetter.
+
+        * bytecode/PropertyCondition.cpp:
+        (JSC::PropertyCondition::isStillValidAssumingImpurePropertyWatchpoint):
+
+2017-06-13  Daniel Bates  <dabates@apple.com>
+
+        Implement W3C Secure Contexts Draft Specification
+        https://bugs.webkit.org/show_bug.cgi?id=158121
+        <rdar://problem/26012994>
+
+        Reviewed by Brent Fulgham.
+
+        Part 4
+
+        Adds isSecureContext to the list of common identifiers as needed to support
+        toggling its exposure from a runtime enabled feature flag.
+
+        * runtime/CommonIdentifiers.h:
+
+2017-06-13  Don Olmstead  <don.olmstead@sony.com>
+
+        [JSC] Remove redundant includes in config.h
+        https://bugs.webkit.org/show_bug.cgi?id=173294
+
+        Reviewed by Alex Christensen.
+
+        * config.h:
+
+2017-06-12  Saam Barati  <sbarati@apple.com>
+
+        We should not claim that SpecEmpty is filtered out of cell checks on 64 bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=172957
+        <rdar://problem/32602704>
+
+        Reviewed by Filip Pizlo.
+
+        Consider this program:
+        ```
+        block#1:
+        n: GetClosureVar(..., |this|) // this will load empty JSValue()
+        SetLocal(Cell:@n, locFoo) // Cell check succeeds because JSValue() looks like a cell
+        Branch(#2, #3)
+        
+        Block#3:
+        x: GetLocal(locFoo)
+        y: CheckNotEmpty(@x)
+        ```
+        
+        If we claim that a cell check filters out the empty value, we will
+        incorrectly eliminate the CheckNotEmpty node @y. This patch fixes AI,
+        FTLLowerDFGToB3, and DFGSpeculativeJIT to no longer make this claim.
+        
+        On 64 bit platforms:
+        - Cell use kind *now allows* the empty value to pass through.
+        - CellOrOther use kind *now allows* for the empty value to pass through
+        - NotCell use kind *no longer allows* the empty value to pass through.
+
+        * assembler/CPU.h:
+        (JSC::isARMv7IDIVSupported):
+        (JSC::isARM64):
+        (JSC::isX86):
+        (JSC::isX86_64):
+        (JSC::is64Bit):
+        (JSC::is32Bit):
+        (JSC::isMIPS):
+        Make these functions constexpr so we can use them in static variable assignment.
+
+        * bytecode/SpeculatedType.h:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileValueToInt32):
+        (JSC::DFG::SpeculativeJIT::compileDoubleRep):
+        (JSC::DFG::SpeculativeJIT::compileLogicalNotStringOrOther):
+        (JSC::DFG::SpeculativeJIT::emitStringOrOtherBranch):
+        (JSC::DFG::SpeculativeJIT::speculateCell):
+        (JSC::DFG::SpeculativeJIT::speculateCellOrOther):
+        (JSC::DFG::SpeculativeJIT::speculateObjectOrOther):
+        (JSC::DFG::SpeculativeJIT::speculateString):
+        (JSC::DFG::SpeculativeJIT::speculateStringOrOther):
+        (JSC::DFG::SpeculativeJIT::speculateSymbol):
+        (JSC::DFG::SpeculativeJIT::speculateNotCell):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::fillSpeculateCell):
+        (JSC::DFG::SpeculativeJIT::compileObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compilePeepHoleObjectToObjectOrOtherEquality):
+        (JSC::DFG::SpeculativeJIT::compileObjectOrOtherLogicalNot):
+        (JSC::DFG::SpeculativeJIT::emitObjectOrOtherBranch):
+        * dfg/DFGUseKind.h:
+        (JSC::DFG::typeFilterFor):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileDoubleRep):
+        (JSC::FTL::DFG::LowerDFGToB3::numberOrNotCellToInt32):
+        (JSC::FTL::DFG::LowerDFGToB3::compareEqObjectOrOtherToObject):
+        (JSC::FTL::DFG::LowerDFGToB3::boolify):
+        (JSC::FTL::DFG::LowerDFGToB3::equalNullOrUndefined):
+        (JSC::FTL::DFG::LowerDFGToB3::lowCell):
+        (JSC::FTL::DFG::LowerDFGToB3::lowNotCell):
+        (JSC::FTL::DFG::LowerDFGToB3::isCellOrMisc):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotCellOrMisc):
+        (JSC::FTL::DFG::LowerDFGToB3::isNotCell):
+        (JSC::FTL::DFG::LowerDFGToB3::isCell):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateCellOrOther):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateObjectOrOther):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateString):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateStringOrOther):
+        (JSC::FTL::DFG::LowerDFGToB3::speculateSymbol):
+
+2017-06-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, suppress invalid register alloation validation assertion in 32 bit
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+
+2017-06-12  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        We incorrectly allow escaped characters in keyword tokens
+        https://bugs.webkit.org/show_bug.cgi?id=171310
+
+        Reviewed by Yusuke Suzuki.
+
+        According spec it is not allow to use escaped characters in 
+        keywords. https://tc39.github.io/ecma262/#sec-reserved-words
+        Current patch implements this requirements.
+
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<CharacterType>::parseIdentifierSlowCase):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::printUnexpectedTokenText):
+        * parser/ParserTokens.h:
+
+2017-06-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, add branch64(Cond, BaseIndex, RegisterID) for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+
+        * assembler/MacroAssemblerARM64.h:
+        (JSC::MacroAssemblerARM64::branch64):
+        (JSC::MacroAssemblerARM64::branchPtr):
+
+2017-06-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218093.
+        https://bugs.webkit.org/show_bug.cgi?id=173259
+
+        Break builds (Requested by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "Unreviewed, build fix for ARM64"
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+        http://trac.webkit.org/changeset/218093
+
+2017-06-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Add ArrayIndexOf intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+
+        Reviewed by Saam Barati.
+
+        This patch introduces ArrayIndexOfInstrinsic for DFG and FTL optimizations.
+        We emit array check and go fast path if the array is Array::Int32, Array::Double
+        or Array::Continugous. In addition, for Array::Int32 and Array::Double case,
+        we have inlined fast paths.
+
+        With updated ARES-6 Babylon,
+
+        Before
+            firstIteration:     45.76 +- 3.87 ms
+            averageWorstCase:   24.41 +- 2.17 ms
+            steadyState:        8.01 +- 0.22 ms
+        After
+            firstIteration:     45.64 +- 4.23 ms
+            averageWorstCase:   23.03 +- 3.34 ms
+            steadyState:        7.33 +- 0.34 ms
+
+        In SixSpeed.
+                                         baseline                  patched
+
+            map-set-lookup.es5      734.4701+-10.4383    ^    102.0968+-2.6357        ^ definitely 7.1939x faster
+            map-set.es5              41.1396+-1.0558     ^     33.1916+-0.7986        ^ definitely 1.2395x faster
+            map-set-object.es5       62.8317+-1.2518     ^     45.6944+-0.8369        ^ definitely 1.3750x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::handleIntrinsicCall):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::hasArrayMode):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileArrayIndexOf):
+        (JSC::DFG::SpeculativeJIT::speculateObject):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        (JSC::DFG::SpeculativeJIT::speculateInt32):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileArrayIndexOf):
+        * jit/JITOperations.h:
+        * runtime/ArrayPrototype.cpp:
+        (JSC::ArrayPrototype::finishCreation):
+        * runtime/Intrinsic.cpp:
+        (JSC::intrinsicName):
+        * runtime/Intrinsic.h:
+
+2017-06-11  Keith Miller  <keith_miller@apple.com>
+
+        TypedArray constructor with string shouldn't throw
+        https://bugs.webkit.org/show_bug.cgi?id=173181
+
+        Reviewed by JF Bastien.
+
+        We should be coercing primitive arguments to numbers in the various
+        TypedArray constructors.
+
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewWithArguments):
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Make ThreadMessage portable
+        https://bugs.webkit.org/show_bug.cgi?id=172073
+
+        Reviewed by Keith Miller.
+
+        * runtime/MachineContext.h:
+        (JSC::MachineContext::stackPointer):
+        * tools/CodeProfiling.cpp:
+        (JSC::profilingTimer):
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Shrink Structure size
+        https://bugs.webkit.org/show_bug.cgi?id=173239
+
+        Reviewed by Mark Lam.
+
+        We find that the size of our Structure is slightly enlarged due to paddings.
+        By changing the order of members, we can reduce the size from 120 to 112.
+        This is good because 120 and 112 are categorized into different size classes.
+        For 120, we allocate 128 bytes. And for 112, we allocate 112 bytes.
+        We now save 16 bytes per Structure for free.
+
+        * runtime/ConcurrentJSLock.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::Structure):
+        * runtime/Structure.h:
+
+2017-06-11  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Unreviewed, attempt to fix JSC tests on Win after r217771
+
+        * jsc.cpp:
+        (currentWorkingDirectory): buffer is not NULL-terminated
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add RegisteredSymbolImpl
+        https://bugs.webkit.org/show_bug.cgi?id=173230
+
+        Reviewed by Mark Lam.
+
+        * runtime/SymbolConstructor.cpp:
+        (JSC::symbolConstructorKeyFor):
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Update RegExp.prototype.[@@search]] implementation according to the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=173227
+
+        Reviewed by Mark Lam.
+
+        The latest spec introduces slight change to RegExp.prototype.[@@search].
+        This patch applies this change. Basically, this change is done in the slow path of
+        the RegExp.prototype[@@search].
+        https://tc39.github.io/ecma262/#sec-regexp.prototype-@@search
+
+        * builtins/RegExpPrototype.js:
+        (search):
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Update Thread::create() to take in a WTF::Function instead of a std::function
+        https://bugs.webkit.org/show_bug.cgi?id=173175
+
+        Reviewed by Mark Lam.
+
+        * API/tests/CompareAndSwapTest.cpp:
+        (testCompareAndSwap):
+
 2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [DFG] Add verboseDFGOSRExit

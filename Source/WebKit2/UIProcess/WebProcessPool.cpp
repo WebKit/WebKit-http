@@ -31,6 +31,7 @@
 #include "APICustomProtocolManagerClient.h"
 #include "APIDownloadClient.h"
 #include "APIHTTPCookieStore.h"
+#include "APIInjectedBundleClient.h"
 #include "APILegacyContextHistoryClient.h"
 #include "APIPageConfiguration.h"
 #include "APIProcessPoolConfiguration.h"
@@ -217,6 +218,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_haveInitialEmptyProcess(false)
     , m_processWithPageCache(0)
     , m_defaultPageGroup(WebPageGroup::createNonNull())
+    , m_injectedBundleClient(std::make_unique<API::InjectedBundleClient>())
     , m_automationClient(std::make_unique<API::AutomationClient>())
     , m_downloadClient(std::make_unique<API::DownloadClient>())
     , m_historyClient(std::make_unique<API::LegacyContextHistoryClient>())
@@ -330,9 +332,12 @@ void WebProcessPool::initializeClient(const WKContextClientBase* client)
     m_client.initialize(client);
 }
 
-void WebProcessPool::initializeInjectedBundleClient(const WKContextInjectedBundleClientBase* client)
+void WebProcessPool::setInjectedBundleClient(std::unique_ptr<API::InjectedBundleClient>&& client)
 {
-    m_injectedBundleClient.initialize(client);
+    if (!client)
+        m_injectedBundleClient = std::make_unique<API::InjectedBundleClient>();
+    else
+        m_injectedBundleClient = WTFMove(client);
 }
 
 void WebProcessPool::initializeConnectionClient(const WKContextConnectionClientBase* client)
@@ -340,7 +345,7 @@ void WebProcessPool::initializeConnectionClient(const WKContextConnectionClientB
     m_connectionClient.initialize(client);
 }
 
-void WebProcessPool::setHistoryClient(std::unique_ptr<API::LegacyContextHistoryClient> historyClient)
+void WebProcessPool::setHistoryClient(std::unique_ptr<API::LegacyContextHistoryClient>&& historyClient)
 {
     if (!historyClient)
         m_historyClient = std::make_unique<API::LegacyContextHistoryClient>();
@@ -348,7 +353,7 @@ void WebProcessPool::setHistoryClient(std::unique_ptr<API::LegacyContextHistoryC
         m_historyClient = WTFMove(historyClient);
 }
 
-void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient> downloadClient)
+void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient>&& downloadClient)
 {
     if (!downloadClient)
         m_downloadClient = std::make_unique<API::DownloadClient>();
@@ -356,7 +361,7 @@ void WebProcessPool::setDownloadClient(std::unique_ptr<API::DownloadClient> down
         m_downloadClient = WTFMove(downloadClient);
 }
 
-void WebProcessPool::setAutomationClient(std::unique_ptr<API::AutomationClient> automationClient)
+void WebProcessPool::setAutomationClient(std::unique_ptr<API::AutomationClient>&& automationClient)
 {
     if (!automationClient)
         m_automationClient = std::make_unique<API::AutomationClient>();
@@ -715,7 +720,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 
 #if ENABLE(NOTIFICATIONS)
     // FIXME: There should be a generic way for supplements to add to the intialization parameters.
-    supplement<WebNotificationManagerProxy>()->populateCopyOfNotificationPermissions(parameters.notificationPermissions);
+    parameters.notificationPermissions = supplement<WebNotificationManagerProxy>()->notificationPermissions();
 #endif
 
     parameters.plugInAutoStartOriginHashes = m_plugInAutoStartProvider.autoStartOriginHashesCopy();
@@ -756,7 +761,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
     // Add any platform specific parameters
     platformInitializeWebProcess(parameters);
 
-    RefPtr<API::Object> injectedBundleInitializationUserData = m_injectedBundleClient.getInjectedBundleInitializationUserData(this);
+    RefPtr<API::Object> injectedBundleInitializationUserData = m_injectedBundleClient->getInjectedBundleInitializationUserData(*this);
     if (!injectedBundleInitializationUserData)
         injectedBundleInitializationUserData = m_injectedBundleInitializationUserData;
     parameters.initializationUserData = UserData(process->transformObjectsToHandles(injectedBundleInitializationUserData.get()));
@@ -974,7 +979,8 @@ void WebProcessPool::pageRemovedFromProcess(WebPageProxy& page)
             return;
 
         // The last user of this non-default SessionID is gone, so clean it up in the child processes.
-        networkProcess()->send(Messages::NetworkProcess::DestroySession(sessionID), 0);
+        if (networkProcess())
+            networkProcess()->send(Messages::NetworkProcess::DestroySession(sessionID), 0);
         page.process().send(Messages::WebProcess::DestroySession(sessionID), 0);
     }
 }
@@ -1428,7 +1434,7 @@ void WebProcessPool::handleMessage(IPC::Connection& connection, const String& me
     auto* webProcessProxy = webProcessProxyFromConnection(connection, m_processes);
     if (!webProcessProxy)
         return;
-    m_injectedBundleClient.didReceiveMessageFromInjectedBundle(this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get());
+    m_injectedBundleClient->didReceiveMessageFromInjectedBundle(*this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get());
 }
 
 void WebProcessPool::handleSynchronousMessage(IPC::Connection& connection, const String& messageName, const UserData& messageBody, UserData& returnUserData)
@@ -1438,7 +1444,7 @@ void WebProcessPool::handleSynchronousMessage(IPC::Connection& connection, const
         return;
 
     RefPtr<API::Object> returnData;
-    m_injectedBundleClient.didReceiveSynchronousMessageFromInjectedBundle(this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get(), returnData);
+    m_injectedBundleClient->didReceiveSynchronousMessageFromInjectedBundle(*this, messageName, webProcessProxy->transformHandlesToObjects(messageBody.object()).get(), returnData);
     returnUserData = UserData(webProcessProxy->transformObjectsToHandles(returnData.get()));
 }
 

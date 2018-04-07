@@ -22,6 +22,8 @@
 
 #include "BitmapTexture.h"
 #include "GraphicsContext.h"
+#include "Color.h"
+#include "GraphicsTypes3D.h"
 #include "IntRect.h"
 #include "IntSize.h"
 #include "TransformationMatrix.h"
@@ -81,6 +83,7 @@ public:
     virtual void endClip() = 0;
     virtual IntRect clipBounds() = 0;
     virtual Ref<BitmapTexture> createTexture() = 0;
+    virtual Ref<BitmapTexture> createTexture(GC3Dint internalFormat) = 0;
 
     void setImageInterpolationQuality(InterpolationQuality quality) { m_interpolationQuality = quality; }
     void setTextDrawingMode(TextDrawingModeFlags mode) { m_textDrawingMode = mode; }

@@ -60,6 +60,7 @@
 #import "_WKRenderingProgressEventsInternal.h"
 #import "_WKSameDocumentNavigationTypeInternal.h"
 #import <WebCore/Document.h>
+#import <WebCore/DocumentFragment.h>
 #import <WebCore/Frame.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLInputElement.h>
@@ -254,7 +255,7 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
     client.didLayoutForFrame = didLayoutForFrame;
     client.didLayout = didReachLayoutMilestone;
 
-    page.initializeInjectedBundleLoaderClient(&client.base);
+    WKBundlePageSetPageLoaderClient(toAPI(&page), &client.base);
 }
 
 static WKURLRequestRef willSendRequestForFrame(WKBundlePageRef, WKBundleFrameRef frame, uint64_t resourceIdentifier, WKURLRequestRef request, WKURLResponseRef redirectResponse, const void* clientInfo)
@@ -348,7 +349,7 @@ static void setUpResourceLoadClient(WKWebProcessPlugInBrowserContextController *
         setUpPageLoaderClient(self, *_page);
         setUpResourceLoadClient(self, *_page);
     } else {
-        _page->initializeInjectedBundleLoaderClient(nullptr);
+        WKBundlePageSetPageLoaderClient(toAPI(_page.get()), nullptr);
         _page->initializeInjectedBundleResourceLoadClient(nullptr);
     }
 }
@@ -658,6 +659,16 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextControllerDidWriteToPasteboard:m_controller];
         }
 
+        bool performTwoStepDrop(WebKit::WebPage&, WebCore::DocumentFragment& fragment, WebCore::Range& range, bool isMove) final
+        {
+            if (!m_delegateMethods.performTwoStepDrop)
+                return false;
+
+            auto rangeHandle = InjectedBundleRangeHandle::getOrCreate(&range);
+            auto nodeHandle = InjectedBundleNodeHandle::getOrCreate(&fragment);
+            return [m_controller->_editingDelegate.get() _webProcessPlugInBrowserContextController:m_controller performTwoStepDrop:wrapper(*nodeHandle) atDestination:wrapper(*rangeHandle) isMove:isMove];
+        }
+
         WKWebProcessPlugInBrowserContextController *m_controller;
         const struct DelegateMethods {
             DelegateMethods(RetainPtr<id <WKWebProcessPlugInEditingDelegate>> delegate)
@@ -667,6 +678,7 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
                 , willWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:willWriteRangeToPasteboard:)])
                 , getPasteboardDataForRange([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:pasteboardDataForRange:)])
                 , didWriteToPasteboard([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextControllerDidWriteToPasteboard:)])
+                , performTwoStepDrop([delegate respondsToSelector:@selector(_webProcessPlugInBrowserContextController:performTwoStepDrop:atDestination:isMove:)])
             {
             }
 
@@ -676,6 +688,7 @@ static inline WKEditorInsertAction toWK(EditorInsertAction action)
             bool willWriteToPasteboard;
             bool getPasteboardDataForRange;
             bool didWriteToPasteboard;
+            bool performTwoStepDrop;
         } m_delegateMethods;
     };
 

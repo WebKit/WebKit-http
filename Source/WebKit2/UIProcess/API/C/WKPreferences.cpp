@@ -1711,16 +1711,6 @@ void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef prefer
     WebKit::toImpl(preferencesRef)->setApplePayCapabilityDisclosureAllowed(allowed);
 }
 
-void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef preferencesRef, bool flag)
-{
-    toImpl(preferencesRef)->setSubtleCryptoEnabled(flag);
-}
-
-bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef preferencesRef)
-{
-    return toImpl(preferencesRef)->subtleCryptoEnabled();
-}
-
 void WKPreferencesSetLinkPreloadEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setLinkPreloadEnabled(flag);
@@ -1791,3 +1781,12 @@ WKStringRef WKPreferencesCopyMediaContentTypesRequiringHardwareSupport(WKPrefere
     return toCopiedAPI(toImpl(preferencesRef)->mediaContentTypesRequiringHardwareSupport());
 }
 
+void WKPreferencesSetIsSecureContextAttributeEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setIsSecureContextAttributeEnabled(flag);
+}
+
+bool WKPreferencesGetIsSecureContextAttributeEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->isSecureContextAttributeEnabled();
+}

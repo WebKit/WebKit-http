@@ -1039,9 +1039,10 @@ void WebView::sizeChanged(const IntSize& newSize)
     deleteBackingStore();
 
     if (Frame* coreFrame = core(topLevelFrame())) {
-        IntSize logicalSize = newSize;
+        FloatSize logicalSize = newSize;
         logicalSize.scale(1.0f / deviceScaleFactor());
-        coreFrame->view()->resize(logicalSize);
+        auto clientRect = enclosingIntRect(FloatRect(FloatPoint(), logicalSize));
+        coreFrame->view()->resize(clientRect.size());
     }
 
 #if USE(CA)
@@ -5190,7 +5191,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setShouldDisplayTextDescriptions(enabled);
 #endif
 
-    COMPtr<IWebPreferencesPrivate4> prefsPrivate(Query, preferences);
+    COMPtr<IWebPreferencesPrivate5> prefsPrivate { Query, preferences };
     if (prefsPrivate) {
         hr = prefsPrivate->localStorageDatabasePath(&str);
         if (FAILED(hr))
@@ -5285,6 +5286,11 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(!!enabled);
+
+    hr = prefsPrivate->isSecureContextAttributeEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(!!enabled);
 
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))

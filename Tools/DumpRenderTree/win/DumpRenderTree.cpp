@@ -768,19 +768,20 @@ static bool shouldEnableDeveloperExtras(const char* pathOrURL)
 
 static void enableExperimentalFeatures(IWebPreferences* preferences)
 {
-    COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, preferences);    
+    COMPtr<IWebPreferencesPrivate5> prefsPrivate { Query, preferences };
 
     // FIXME: CSSGridLayout
     // FIXME: SpringTimingFunction
     // FIXME: Gamepads
-    prefsPrivate4->setLinkPreloadEnabled(TRUE);
-    prefsPrivate4->setMediaPreloadingEnabled(TRUE);
+    prefsPrivate->setLinkPreloadEnabled(TRUE);
+    prefsPrivate->setMediaPreloadingEnabled(TRUE);
     // FIXME: ModernMediaControls
     // FIXME: InputEvents
     // FIXME: SubtleCrypto
-    prefsPrivate4->setWebAnimationsEnabled(TRUE);
+    prefsPrivate->setWebAnimationsEnabled(TRUE);
     // FIXME: WebGL2
     // FIXME: WebRTC
+    prefsPrivate->setIsSecureContextAttributeEnabled(TRUE);
 }
 
 static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
@@ -929,9 +930,6 @@ static void setDefaultsToConsistentValuesForTesting()
     CFPreferencesSetAppValue(WebDatabaseDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "Databases").createCFString().get(), appId.get());
     CFPreferencesSetAppValue(WebStorageDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalStorage").createCFString().get(), appId.get());
     CFPreferencesSetAppValue(WebKitLocalCacheDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalCache").createCFString().get(), appId.get());
-
-    // Create separate cache for each DRT instance
-    setCacheFolder();
 #endif
 }
 
@@ -1467,6 +1465,9 @@ static void prepareConsistentTestingEnvironment(IWebPreferences* standardPrefere
     ASSERT(standardPreferences);
     ASSERT(standardPreferencesPrivate);
     standardPreferences->setAutosaves(FALSE);
+
+    auto newCache = adoptCF(CFURLCacheCreate(kCFAllocatorDefault, 1024 * 1024, 0, nullptr));
+    CFURLCacheSetSharedURLCache(newCache.get());
 
     COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, standardPreferences);
     prefsPrivate4->switchNetworkLoaderToNewTestingSession();

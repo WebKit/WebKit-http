@@ -105,6 +105,7 @@
 #import "DumpRenderTreeBrowserView.h"
 #import "IOSLayoutTestCommunication.h"
 #import "UIKitSPI.h"
+#import "UIKitTestSPI.h"
 #import <QuartzCore/QuartzCore.h>
 #import <WebCore/CoreGraphicsSPI.h>
 #import <WebKit/WAKWindow.h>
@@ -845,7 +846,6 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setLinkPreloadEnabled:YES];
     [preferences setMediaPreloadingEnabled:YES];
     // FIXME: InputEvents
-    [preferences setSubtleCryptoEnabled:YES];
     [preferences setWebAnimationsEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
@@ -975,6 +975,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.intersectionObserverEnabled = options.enableIntersectionObserver;
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;
     preferences.credentialManagementEnabled = options.enableCredentialManagement;
+    preferences.isSecureContextAttributeEnabled = options.enableIsSecureContextAttribute;
 }
 
 // Called once on DumpRenderTree startup.
@@ -1242,6 +1243,7 @@ void dumpRenderTree(int argc, const char *argv[])
 #if PLATFORM(IOS)
     setUpIOSLayoutTestCommunication();
     [UIApplication sharedApplication].idleTimerDisabled = YES;
+    [[UIScreen mainScreen] _setScale:2.0];
 #endif
 
     signal(SIGILL, &writeCrashedMessageOnFatalError);

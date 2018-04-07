@@ -726,6 +726,9 @@ private:
         case ArraySlice:
             compileArraySlice();
             break;
+        case ArrayIndexOf:
+            compileArrayIndexOf();
+            break;
         case CreateActivation:
             compileCreateActivation();
             break;
@@ -1327,7 +1330,7 @@ private:
                 m_out.appendTo(convertBooleanFalseCase, continuation);
 
                 LValue valueIsNotBooleanFalse = m_out.notEqual(value, m_out.constInt64(ValueFalse));
-                FTL_TYPE_CHECK(jsValueValue(value), m_node->child1(), ~SpecCell, valueIsNotBooleanFalse);
+                FTL_TYPE_CHECK(jsValueValue(value), m_node->child1(), ~SpecCellCheck, valueIsNotBooleanFalse);
                 ValueFromBlock convertedFalse = m_out.anchor(m_out.constDouble(0));
                 m_out.jump(continuation);
 
@@ -4050,6 +4053,111 @@ private:
         mutatorFence();
         setJSValue(arrayResult.array);
     }
+
+    void compileArrayIndexOf()
+    {
+        LValue storage = lowStorage(m_node->numChildren() == 3 ? m_graph.varArgChild(m_node, 2) : m_graph.varArgChild(m_node, 3));
+        LValue length = m_out.load32(storage, m_heaps.Butterfly_publicLength);
+
+        LValue startIndex;
+        if (m_node->numChildren() == 4) {
+            startIndex = lowInt32(m_graph.varArgChild(m_node, 2));
+            startIndex = m_out.select(m_out.greaterThanOrEqual(startIndex, m_out.int32Zero),
+                m_out.select(m_out.above(startIndex, length), length, startIndex),
+                m_out.select(m_out.lessThan(m_out.add(length, startIndex), m_out.int32Zero), m_out.int32Zero, m_out.add(length, startIndex)));
+        } else
+            startIndex = m_out.int32Zero;
+
+        Edge& searchElementEdge = m_graph.varArgChild(m_node, 1);
+        switch (searchElementEdge.useKind()) {
+        case Int32Use:
+        case ObjectUse:
+        case DoubleRepUse: {
+            LBasicBlock loopHeader = m_out.newBlock();
+            LBasicBlock loopBody = m_out.newBlock();
+            LBasicBlock loopNext = m_out.newBlock();
+            LBasicBlock notFound = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            LValue searchElement;
+            if (searchElementEdge.useKind() == Int32Use) {
+                ASSERT(m_node->arrayMode().type() == Array::Int32);
+                speculate(searchElementEdge);
+                searchElement = lowJSValue(searchElementEdge, ManualOperandSpeculation);
+            } else if (searchElementEdge.useKind() == ObjectUse) {
+                ASSERT(m_node->arrayMode().type() == Array::Contiguous);
+                searchElement = lowObject(searchElementEdge);
+            } else {
+                ASSERT(m_node->arrayMode().type() == Array::Double);
+                searchElement = lowDouble(searchElementEdge);
+            }
+
+            startIndex = m_out.zeroExtPtr(startIndex);
+            length = m_out.zeroExtPtr(length);
+
+            ValueFromBlock initialStartIndex = m_out.anchor(startIndex);
+            m_out.jump(loopHeader);
+
+            LBasicBlock lastNext = m_out.appendTo(loopHeader, loopBody);
+            LValue index = m_out.phi(pointerType(), initialStartIndex);
+            m_out.branch(m_out.notEqual(index, length), unsure(loopBody), unsure(notFound));
+
+            m_out.appendTo(loopBody, loopNext);
+            ValueFromBlock foundResult = m_out.anchor(index);
+            if (searchElementEdge.useKind() == Int32Use) {
+                // Empty value is ignored because of TagTypeNumber.
+                LValue value = m_out.load64(m_out.baseIndex(m_heaps.indexedInt32Properties, storage, index));
+                m_out.branch(m_out.equal(value, searchElement), unsure(continuation), unsure(loopNext));
+            } else if (searchElementEdge.useKind() == ObjectUse) {
+                // Empty value never matches against object pointers.
+                LValue value = m_out.load64(m_out.baseIndex(m_heaps.indexedContiguousProperties, storage, index));
+                m_out.branch(m_out.equal(value, searchElement), unsure(continuation), unsure(loopNext));
+            } else {
+                // Empty value is ignored because of NaN.
+                LValue value = m_out.loadDouble(m_out.baseIndex(m_heaps.indexedDoubleProperties, storage, index));
+                m_out.branch(m_out.doubleEqual(value, searchElement), unsure(continuation), unsure(loopNext));
+            }
+
+            m_out.appendTo(loopNext, notFound);
+            LValue nextIndex = m_out.add(index, m_out.intPtrOne);
+            m_out.addIncomingToPhi(index, m_out.anchor(nextIndex));
+            m_out.jump(loopHeader);
+
+            m_out.appendTo(notFound, continuation);
+            ValueFromBlock notFoundResult = m_out.anchor(m_out.constIntPtr(-1));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            setInt32(m_out.castToInt32(m_out.phi(pointerType(), notFoundResult, foundResult)));
+            break;
+        }
+
+        case StringUse:
+            ASSERT(m_node->arrayMode().type() == Array::Contiguous);
+            setInt32(vmCall(Int32, m_out.operation(operationArrayIndexOfString), m_callFrame, storage, lowString(searchElementEdge), startIndex));
+            break;
+
+        case UntypedUse:
+            switch (m_node->arrayMode().type()) {
+            case Array::Double:
+                setInt32(vmCall(Int32, m_out.operation(operationArrayIndexOfValueDouble), m_callFrame, storage, lowJSValue(searchElementEdge), startIndex));
+                break;
+            case Array::Int32:
+            case Array::Contiguous:
+                setInt32(vmCall(Int32, m_out.operation(operationArrayIndexOfValueInt32OrContiguous), m_callFrame, storage, lowJSValue(searchElementEdge), startIndex));
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
+            }
+            break;
+
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+    }
+
     
     void compileArrayPop()
     {
@@ -9516,7 +9624,7 @@ private:
             
             m_out.appendTo(notNumberCase, continuation);
             
-            FTL_TYPE_CHECK(jsValueValue(value), edge, ~SpecCell, isCell(value));
+            FTL_TYPE_CHECK(jsValueValue(value), edge, ~SpecCellCheck, isCell(value));
             
             LValue specialResult = m_out.select(
                 m_out.equal(value, m_out.constInt64(JSValue::encode(jsBoolean(true)))),
@@ -10401,13 +10509,13 @@ private:
             unsure(leftCellCase), unsure(leftNotCellCase));
         
         LBasicBlock lastNext = m_out.appendTo(leftCellCase, leftNotCellCase);
-        speculateTruthyObject(leftChild, leftValue, SpecObject | (~SpecCell));
+        speculateTruthyObject(leftChild, leftValue, SpecObject | (~SpecCellCheck));
         ValueFromBlock cellResult = m_out.anchor(m_out.equal(rightCell, leftValue));
         m_out.jump(continuation);
         
         m_out.appendTo(leftNotCellCase, continuation);
         FTL_TYPE_CHECK(
-            jsValueValue(leftValue), leftChild, SpecOther | SpecCell, isNotOther(leftValue));
+            jsValueValue(leftValue), leftChild, SpecOther | SpecCellCheck, isNotOther(leftValue));
         ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
         m_out.jump(continuation);
         
@@ -11177,14 +11285,14 @@ private:
             
             LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
             
-            FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCell) | SpecString, isNotString(value));
+            FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCellCheck) | SpecString, isNotString(value));
             LValue length = m_out.load32NonNegative(value, m_heaps.JSString_length);
             ValueFromBlock cellResult = m_out.anchor(m_out.notEqual(length, m_out.int32Zero));
             m_out.jump(continuation);
             
             m_out.appendTo(notCellCase, continuation);
             
-            FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+            FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCellCheck | SpecOther, isNotOther(value));
             ValueFromBlock notCellResult = m_out.anchor(m_out.booleanFalse);
             m_out.jump(continuation);
             m_out.appendTo(continuation, lastNext);
@@ -11327,7 +11435,7 @@ private:
             break;
         case CellCaseSpeculatesObject:
             FTL_TYPE_CHECK(
-                jsValueValue(value), edge, (~SpecCell) | SpecObject, isNotObject(value));
+                jsValueValue(value), edge, (~SpecCellCheck) | SpecObject, isNotObject(value));
             break;
         }
         
@@ -11372,7 +11480,7 @@ private:
             break;
         case SpeculateNullOrUndefined:
             FTL_TYPE_CHECK(
-                jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+                jsValueValue(value), edge, SpecCellCheck | SpecOther, isNotOther(value));
             primitiveResult = m_out.booleanTrue;
             break;
         }
@@ -12436,11 +12544,11 @@ private:
         if (isValid(value)) {
             LValue uncheckedValue = value.value();
             FTL_TYPE_CHECK(
-                jsValueValue(uncheckedValue), edge, SpecCell, isNotCell(uncheckedValue));
+                jsValueValue(uncheckedValue), edge, SpecCellCheck, isNotCell(uncheckedValue));
             return uncheckedValue;
         }
         
-        DFG_ASSERT(m_graph, m_node, !(provenType(edge) & SpecCell));
+        DFG_ASSERT(m_graph, m_node, !(provenType(edge) & SpecCellCheck));
         terminate(Uncountable);
         return m_out.intPtrZero;
     }
@@ -12595,7 +12703,7 @@ private:
     LValue lowNotCell(Edge edge)
     {
         LValue result = lowJSValue(edge, ManualOperandSpeculation);
-        FTL_TYPE_CHECK(jsValueValue(result), edge, ~SpecCell, isCell(result));
+        FTL_TYPE_CHECK(jsValueValue(result), edge, ~SpecCellCheck, isCell(result));
         return result;
     }
     
@@ -12696,13 +12804,13 @@ private:
     
     LValue isCellOrMisc(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, SpecCell | SpecMisc))
+        if (LValue proven = isProvenValue(type, SpecCellCheck | SpecMisc))
             return proven;
         return m_out.testIsZero64(jsValue, m_tagTypeNumber);
     }
     LValue isNotCellOrMisc(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, ~(SpecCell | SpecMisc)))
+        if (LValue proven = isProvenValue(type, ~(SpecCellCheck | SpecMisc)))
             return proven;
         return m_out.testNonZero64(jsValue, m_tagTypeNumber);
     }
@@ -12803,14 +12911,14 @@ private:
     
     LValue isNotCell(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, ~SpecCell))
+        if (LValue proven = isProvenValue(type, ~SpecCellCheck))
             return proven;
         return m_out.testNonZero64(jsValue, m_tagMask);
     }
     
     LValue isCell(LValue jsValue, SpeculatedType type = SpecFullTop)
     {
-        if (LValue proven = isProvenValue(type, SpecCell))
+        if (LValue proven = isProvenValue(type, SpecCellCheck))
             return proven;
         return m_out.testIsZero64(jsValue, m_tagMask);
     }
@@ -13020,7 +13128,7 @@ private:
         m_out.branch(isCell(value, provenType(edge)), unsure(continuation), unsure(isNotCell));
 
         LBasicBlock lastNext = m_out.appendTo(isNotCell, continuation);
-        FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+        FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCellCheck | SpecOther, isNotOther(value));
         m_out.jump(continuation);
 
         m_out.appendTo(continuation, lastNext);
@@ -13254,14 +13362,14 @@ private:
         LBasicBlock lastNext = m_out.appendTo(cellCase, primitiveCase);
         
         FTL_TYPE_CHECK(
-            jsValueValue(value), edge, (~SpecCell) | SpecObject, isNotObject(value));
+            jsValueValue(value), edge, (~SpecCellCheck) | SpecObject, isNotObject(value));
         
         m_out.jump(continuation);
         
         m_out.appendTo(primitiveCase, continuation);
         
         FTL_TYPE_CHECK(
-            jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+            jsValueValue(value), edge, SpecCellCheck | SpecOther, isNotOther(value));
         
         m_out.jump(continuation);
         
@@ -13336,7 +13444,7 @@ private:
     
     void speculateString(Edge edge, LValue cell)
     {
-        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecString | ~SpecCell, isNotString(cell));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecString, isNotString(cell));
     }
     
     void speculateString(Edge edge)
@@ -13354,12 +13462,12 @@ private:
 
         LBasicBlock lastNext = m_out.appendTo(cellCase, notCellCase);
 
-        FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCell) | SpecString, isNotString(value));
+        FTL_TYPE_CHECK(jsValueValue(value), edge, (~SpecCellCheck) | SpecString, isNotString(value));
 
         m_out.jump(continuation);
         m_out.appendTo(notCellCase, continuation);
 
-        FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCell | SpecOther, isNotOther(value));
+        FTL_TYPE_CHECK(jsValueValue(value), edge, SpecCellCheck | SpecOther, isNotOther(value));
 
         m_out.jump(continuation);
         m_out.appendTo(continuation, lastNext);
@@ -13440,7 +13548,7 @@ private:
 
     void speculateSymbol(Edge edge, LValue cell)
     {
-        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol | ~SpecCell, isNotSymbol(cell));
+        FTL_TYPE_CHECK(jsValueValue(cell), edge, SpecSymbol, isNotSymbol(cell));
     }
 
     void speculateSymbol(Edge edge)

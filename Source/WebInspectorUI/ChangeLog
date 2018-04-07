@@ -1,3 +1,155 @@
+2017-06-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Console: Message icons overlay source location
+        https://bugs.webkit.org/show_bug.cgi?id=173291
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ConsoleMessageView.css:
+        (.console-message-location.call-frame):
+        This should be a safe change since a method name and a source link already have
+        max-width set to 20vw and 30vw respectively.
+
+2017-06-13  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Don't use -webkit-user-modify CSS property
+        https://bugs.webkit.org/show_bug.cgi?id=173232
+
+        Reviewed by Devin Rousso.
+
+        Replace -webkit-user-modify CSS property with contentEditable HTML attribute.
+
+        * UserInterface/Views/Editing.css:
+        (.editing):
+        * UserInterface/Views/EditingSupport.js:
+        (cleanUpAfterEditing):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.css:
+        (.item.visual-style-selector-item:not(.dom-element-icon).editable > .titles > .title):
+        * UserInterface/Views/VisualStyleSelectorTreeItem.js:
+        (WebInspector.VisualStyleSelectorTreeItem.prototype.ondeselect):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._handleMainTitleMouseDown):
+        (WebInspector.VisualStyleSelectorTreeItem.prototype._commitSelector):
+
+2017-06-13  Sam Weinig  <sam@webkit.org>
+
+        Rename JSDOMWindowShell to JSDOMWindowProxy to match the HTML5 spec.
+        https://bugs.webkit.org/show_bug.cgi?id=80733
+
+        Reviewed by Chris Dumez.
+
+        * UserInterface/Workers/HeapSnapshot/HeapSnapshot.js:
+        (HeapSnapshot.prototype._isNodeGlobalObject):
+
+2017-06-12  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add grid to images to clarify transparency and image size
+        https://bugs.webkit.org/show_bug.cgi?id=173184
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Setting.js:
+        Add setting for controlling the image grid.
+
+        * UserInterface/Images/NavigationItemCheckers.svg: Added.
+
+        * UserInterface/Views/ImageResourceContentView.css:
+        (.content-view.resource.image):
+        (.content-view.resource.image img):
+        Replace the border spacing around the image with padding on the container.  This is required
+        because a border will extend the area that is effected by `background-image`, meaning that
+        the checkerboard would appear in that area as well, giving misleading information as to the
+        size of the image.
+
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WebInspector.ImageResourceContentView):
+        (WebInspector.ImageResourceContentView.prototype.get navigationItems): Added.
+        (WebInspector.ImageResourceContentView.prototype.contentAvailable):
+        (WebInspector.ImageResourceContentView.prototype.shown): Added.
+        (WebInspector.ImageResourceContentView.prototype._toggleImageGrid): Added.
+        (WebInspector.ImageResourceContentView.prototype._showGridButtonClicked): Added.
+        (WebInspector.ImageResourceContentView.prototype.get imageElement): Deleted.
+        Apply the CSS class for showing the grid when the added navigation item is activated.
+
+        * UserInterface/Views/Main.css:
+        (img.show-grid):
+        Generates a checkerboard pattern via `background-image` using the following process:
+         - four `linear-gradients` are drawn, one in each corner
+         - each draws one half of a 20x20 square, specified by `background-size`
+         - they are then repositioned using `background-position` so that the two halfs align
+            +------+      \--2
+            |1 /\ 2|      |\ |
+            | /  \ |  =>  | \|
+            |/    \|  =>  4--\
+            |\    /|  =>      1--/
+            | \  / |  =>      | /|
+            |4 \/ 3|          |/ |
+            +------+          /--3
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r217749): Event listeners are removed even if they haven't been added
+        https://bugs.webkit.org/show_bug.cgi?id=173185
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype.set resource):
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._applyResourceEventListeners):
+        Maintain a member variable flag such that event listeners are only removed if it is true.
+        It is only set to true once the event listeners are added.
+
+2017-06-09  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION(r217258): Misspelled variable names
+        https://bugs.webkit.org/show_bug.cgi?id=173189
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.tabContentViewClassForRepresentedObject):
+        * UserInterface/Views/ResourceIcons.css:
+        (.large :matches(.resource-icon.resource-type-stylesheet, .stylesheet-icon) .icon):
+        (.large .resource-icon.resource-type-stylesheet .icon): Deleted.
+
+2017-06-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Web inspector does not show non-shadow children of an element with a shadow root (e.g. <video>)
+        https://bugs.webkit.org/show_bug.cgi?id=173121
+        <rdar://problem/30948943>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode):
+        Only populate _children when we have both the shadowRoots and
+        actual children payloads. Backends always send shadowRoots but
+        only send children when requested. So if we have shadowRoots
+        but expect actual children, don't populate _children until we
+        request the child nodes.
+
 2017-06-07  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Remove legacy INSPECTOR_SERVER implementation

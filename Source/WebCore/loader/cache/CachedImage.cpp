@@ -119,7 +119,7 @@ void CachedImage::didAddClient(CachedResourceClient& client)
         static_cast<CachedImageClient&>(client).imageChanged(this);
 
     if (m_image)
-        m_image->startAnimation();
+        m_image->startAnimationAsynchronously();
 
     CachedResource::didAddClient(client);
 }
@@ -373,7 +373,6 @@ inline void CachedImage::clearImage()
         m_imageObserver->cachedImages().remove(this);
 
         if (m_imageObserver->cachedImages().isEmpty()) {
-            ASSERT(m_image->hasOneRef());
             ASSERT(m_imageObserver->hasOneRef());
             m_image->setImageObserver(nullptr);
         }

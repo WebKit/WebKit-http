@@ -1061,6 +1061,7 @@ public:
     bool loadEventFinished() const { return m_loadEventFinished; }
 
     bool isContextThread() const final;
+    bool isSecureContext() const final;
     bool isJSExecutionForbidden() const final { return false; }
 
     void enqueueWindowEvent(Ref<Event>&&);
@@ -1777,7 +1778,6 @@ private:
     HashSet<HTMLMediaElement*> m_mediaStreamStateChangeElements;
     String m_idHashSalt;
     bool m_hasHadActiveMediaStreamTrack { false };
-    bool m_videoCaptureMutedForVisibilityChange { false };
 #endif
 
 #ifndef NDEBUG

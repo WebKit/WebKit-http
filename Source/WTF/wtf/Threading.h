@@ -31,21 +31,12 @@
 #ifndef Threading_h
 #define Threading_h
 
-// FIXME: Not sure why there are so many includes here.
-// Is this intended to be convenience so that others don't have to include the individual files?
-// Nothing in this header depends on Assertions, Atomics, Locker, Noncopyable, ThreadSafeRefCounted, or ThreadingPrimitives.
-
-#include <functional>
 #include <mutex>
 #include <stdint.h>
-#include <wtf/Assertions.h>
 #include <wtf/Atomics.h>
 #include <wtf/Expected.h>
-#include <wtf/Locker.h>
-#include <wtf/LocklessBag.h>
-#include <wtf/Noncopyable.h>
+#include <wtf/Function.h>
 #include <wtf/PlatformRegisters.h>
-#include <wtf/PrintStream.h>
 #include <wtf/RefPtr.h>
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/ThreadingPrimitives.h>
@@ -73,7 +64,7 @@ public:
 
     // Returns nullptr if thread creation failed.
     // The thread name must be a literal since on some platforms it's passed in to the thread.
-    WTF_EXPORT_PRIVATE static RefPtr<Thread> create(const char* threadName, std::function<void()>);
+    WTF_EXPORT_PRIVATE static RefPtr<Thread> create(const char* threadName, Function<void()>&&);
     WTF_EXPORT_PRIVATE static RefPtr<Thread> create(ThreadFunction entryPoint, void* data, const char* name);
 
     // Returns Thread object.
@@ -136,12 +127,8 @@ public:
 
     static void initializePlatformThreading();
 
-#if USE(PTHREADS)
-    LocklessBag<ThreadMessageData*>& threadMessages() { return m_threadMessages; }
-
 #if OS(DARWIN)
     mach_port_t machThread() { return m_platformThread; }
-#endif
 #endif
 
 protected:
@@ -190,7 +177,6 @@ protected:
 #if USE(PTHREADS)
     pthread_t m_handle;
 
-    LocklessBag<ThreadMessageData*> m_threadMessages;
 #if OS(DARWIN)
     mach_port_t m_platformThread;
 #else

@@ -1,3 +1,1548 @@
+2017-06-14  Chris Dumez  <cdumez@apple.com>
+
+        WebKit falsely reports that a web process is unresponsive if you close a page shortly after stopping a load
+        https://bugs.webkit.org/show_bug.cgi?id=173384
+        <rdar://problem/32723779>
+
+        Reviewed by Dan Bernstein.
+
+        WebKit falsely reports that a web process is unresponsive if you close a page shortly after stopping a load.
+        This is because WebPageProxy::stopLoad() starts the responsiveness timer and expects a StopResponsinessTimer
+        IPC from the WebProcess to stop the timer so we don't report the process as unresponsive. However, if
+        WebPageProxy::close() is called before the StopResponsinessTimer IPC has been received, the page will remove
+        itself from the message receiver map and we would no longer be able to receive the StopResponsinessTimer
+        IPC and stop the timer, even if the WebProcess sent it to the UIProcess.
+
+        To address the issue, we now send the IPC Message to the WebProcessProxy instead of the WebPageProxy, so we
+        can stop the responsiveness timer, even after the WebPageProxy has been called.
+
+        * UIProcess/WebPageProxy.cpp:
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebPageProxy.messages.in:
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::stopResponsivenessTimer):
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebProcessProxy.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::SendStopResponsivenessTimer::~SendStopResponsivenessTimer):
+        (WebKit::WebPage::tryClose):
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::loadDataImpl):
+        (WebKit::WebPage::stopLoading):
+        (WebKit::WebPage::reload):
+        (WebKit::WebPage::goForward):
+        (WebKit::WebPage::goBack):
+        (WebKit::WebPage::goToBackForwardItem):
+
+2017-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218263, r218265, and r218266.
+        https://bugs.webkit.org/show_bug.cgi?id=173383
+
+        "These revisions caused multiple API test to Time out on
+        macOS" (Requested by mlewis13 on #webkit).
+
+        Reverted changesets:
+
+        "Add API::InjectedBundle::Client"
+        https://bugs.webkit.org/show_bug.cgi?id=173357
+        http://trac.webkit.org/changeset/218263
+
+        "[GTK] Use API::InjectedBundle::Client in WebKitWebExtension"
+        https://bugs.webkit.org/show_bug.cgi?id=173358
+        http://trac.webkit.org/changeset/218265
+
+        "Add API::InjectedBundle::ResourceLoadClient"
+        https://bugs.webkit.org/show_bug.cgi?id=173362
+        http://trac.webkit.org/changeset/218266
+
+2017-06-14  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][iOS] Remove dead-code "import "removed-dev-nodes.sb” from sandboxes (173378)
+        https://bugs.webkit.org/show_bug.cgi?id=173378
+        <rdar://problem/32773230>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Clean up the sandboxes to remove a couple of dead functions (and imports):
+        1. Remove the import "removed-dev-nodes.sb" from the sandbox, since this file is now empty.
+        2. Also remove the call to "instruments-support" as this is a no-op function in modern iOS.
+
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Databases.sb:
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.Networking.sb:
+        * Resources/SandboxProfiles/ios/com.apple.WebKit.WebContent.sb:
+
+2017-06-14  Alex Christensen  <achristensen@webkit.org>
+
+        Add SPI for immediate injection of user scripts
+        https://bugs.webkit.org/show_bug.cgi?id=173342
+        <rdar://problem/29202285>
+
+        Reviewed by Brady Eidson.
+
+        * UIProcess/API/C/WKPageGroup.cpp:
+        (WKPageGroupAddUserScript):
+        * UIProcess/API/C/WKUserContentControllerRef.cpp:
+        (WKUserContentControllerAddUserScript):
+        * UIProcess/API/Cocoa/WKUserContentController.mm:
+        (-[WKUserContentController addUserScript:]):
+        (-[WKUserContentController _addUserScriptImmediately:]):
+        * UIProcess/API/Cocoa/WKUserContentControllerPrivate.h:
+        * UIProcess/UserContent/WebUserContentControllerProxy.cpp:
+        (WebKit::WebUserContentControllerProxy::addUserScript):
+        * UIProcess/UserContent/WebUserContentControllerProxy.h:
+        * WebProcess/UserContent/WebUserContentController.cpp:
+        (WebKit::WebUserContentController::addUserScripts):
+        (WebKit::WebUserContentController::addUserScriptInternal):
+        If we are to inject the script internally, inject it into the appropriate pages.
+        If we're injecting into the top frame only, there's no need to traverse the frame tree.
+        (WebKit::WebUserContentController::addUserScript):
+        * WebProcess/UserContent/WebUserContentController.h:
+        * WebProcess/UserContent/WebUserContentController.messages.in:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::m_cpuLimit):
+
+2017-06-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Configure screen scale for running layout tests on plus devices
+        https://bugs.webkit.org/show_bug.cgi?id=173319
+
+        Reviewed by Tim Horton.
+
+        * Platform/spi/ios/UIKitSPI.h: Both this and UIKitTestSPI.h define UIKeyboard. Use
+        a define guard to prevent re-definition.
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::InjectedBundle::ResourceLoadClient in WebKitWebPage
+        https://bugs.webkit.org/show_bug.cgi?id=173364
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of the C API.
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp:
+        (webkitWebPageCreate):
+        (didInitiateLoadForResource): Deleted.
+        (willSendRequestForFrame): Deleted.
+        (didReceiveResponseForResource): Deleted.
+        (didReceiveContentLengthForResource): Deleted.
+        (didFinishLoadForResource): Deleted.
+        (didFailLoadForResource): Deleted.
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::InjectedBundle::ResourceLoadClient
+        https://bugs.webkit.org/show_bug.cgi?id=173362
+
+        Reviewed by Alex Christensen.
+
+        It will be used by the GTK+ port instead of the C API.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageResourceLoadClient.h: Copied from Source/WebKit2/WebProcess/InjectedBundle/InjectedBundlePageResourceLoadClient.h.
+        (API::InjectedBundle::ResourceLoadClient::didInitiateLoadForResource):
+        (API::InjectedBundle::ResourceLoadClient::willSendRequestForFrame):
+        (API::InjectedBundle::ResourceLoadClient::didReceiveResponseForResource):
+        (API::InjectedBundle::ResourceLoadClient::didReceiveContentLengthForResource):
+        (API::InjectedBundle::ResourceLoadClient::didFinishLoadForResource):
+        (API::InjectedBundle::ResourceLoadClient::didFailLoadForResource):
+        (API::InjectedBundle::ResourceLoadClient::shouldCacheResponse):
+        (API::InjectedBundle::ResourceLoadClient::shouldUseCredentialStorage):
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePageSetResourceLoadClient):
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (setUpResourceLoadClient):
+        (-[WKWebProcessPlugInBrowserContextController setLoadDelegate:]):
+        * WebProcess/InjectedBundle/InjectedBundlePageResourceLoadClient.cpp:
+        (WebKit::InjectedBundlePageResourceLoadClient::InjectedBundlePageResourceLoadClient):
+        (WebKit::InjectedBundlePageResourceLoadClient::didInitiateLoadForResource):
+        (WebKit::InjectedBundlePageResourceLoadClient::willSendRequestForFrame):
+        (WebKit::InjectedBundlePageResourceLoadClient::didReceiveResponseForResource):
+        (WebKit::InjectedBundlePageResourceLoadClient::didReceiveContentLengthForResource):
+        (WebKit::InjectedBundlePageResourceLoadClient::didFinishLoadForResource):
+        (WebKit::InjectedBundlePageResourceLoadClient::didFailLoadForResource):
+        (WebKit::InjectedBundlePageResourceLoadClient::shouldCacheResponse):
+        (WebKit::InjectedBundlePageResourceLoadClient::shouldUseCredentialStorage):
+        * WebProcess/InjectedBundle/InjectedBundlePageResourceLoadClient.h:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::assignIdentifierToInitialRequest):
+        (WebKit::WebFrameLoaderClient::dispatchWillSendRequest):
+        (WebKit::WebFrameLoaderClient::shouldUseCredentialStorage):
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveResponse):
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveContentLength):
+        (WebKit::WebFrameLoaderClient::dispatchDidFinishLoading):
+        (WebKit::WebFrameLoaderClient::dispatchDidFailLoading):
+        (WebKit::WebFrameLoaderClient::willCacheResponse):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setInjectedBundleResourceLoadClient):
+        (WebKit::WebPage::close):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::injectedBundleResourceLoadClient):
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::InjectedBundle::Client in WebKitWebExtension
+        https://bugs.webkit.org/show_bug.cgi?id=173358
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of the C API.
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp:
+        (webkitWebExtensionCreate):
+        (webkitWebExtensionPageCreated): Deleted.
+        (webkitWebExtensionPageDestroy): Deleted.
+        (webkitWebExtensionDidReceiveMessage): Deleted.
+        (didCreatePage): Deleted.
+        (willDestroyPage): Deleted.
+        (didReceiveMessage): Deleted.
+        (didReceiveMessageToPage): Deleted.
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::InjectedBundle::Client
+        https://bugs.webkit.org/show_bug.cgi?id=173357
+
+        Reviewed by Alex Christensen.
+
+        It will be used by the GTK+ port instead of the C API.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/InjectedBundle/API/APIInjectedBundleBundleClient.h: Copied from Source/WebKit2/WebProcess/InjectedBundle/InjectedBundleClient.h.
+        (API::InjectedBundle::Client::didCreatePage):
+        (API::InjectedBundle::Client::willDestroyPage):
+        (API::InjectedBundle::Client::didInitializePageGroup):
+        (API::InjectedBundle::Client::didReceiveMessage):
+        (API::InjectedBundle::Client::didReceiveMessageToPage):
+        * WebProcess/InjectedBundle/API/c/WKBundle.cpp:
+        (WKBundleSetClient):
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebExtension.cpp:
+        (webkitWebExtensionPageCreated): Deleted.
+        (webkitWebExtensionPageDestroy): Deleted.
+        (webkitWebExtensionDidReceiveMessage): Deleted.
+        (didCreatePage): Deleted.
+        (willDestroyPage): Deleted.
+        (didReceiveMessage): Deleted.
+        (didReceiveMessageToPage): Deleted.
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::setClient):
+        (WebKit::InjectedBundle::didCreatePage):
+        (WebKit::InjectedBundle::willDestroyPage):
+        (WebKit::InjectedBundle::didInitializePageGroup):
+        (WebKit::InjectedBundle::didReceiveMessage):
+        (WebKit::InjectedBundle::didReceiveMessageToPage):
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/InjectedBundle/InjectedBundleClient.cpp:
+        (WebKit::InjectedBundleClient::InjectedBundleClient):
+        (WebKit::InjectedBundleClient::didCreatePage):
+        (WebKit::InjectedBundleClient::willDestroyPage):
+        (WebKit::InjectedBundleClient::didInitializePageGroup):
+        (WebKit::InjectedBundleClient::didReceiveMessage):
+        (WebKit::InjectedBundleClient::didReceiveMessageToPage):
+        * WebProcess/InjectedBundle/InjectedBundleClient.h:
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::InjectedBundleClient in WebKitInjectedBundleClient
+        https://bugs.webkit.org/show_bug.cgi?id=173351
+
+        Reviewed by Michael Catanzaro.
+
+        Instead of the C API.
+
+        * UIProcess/API/gtk/WebKitInjectedBundleClient.cpp:
+        (attachInjectedBundleClientToContext):
+        (didReceiveWebViewMessageFromInjectedBundle): Deleted.
+        (didReceiveMessageFromInjectedBundle): Deleted.
+        (getInjectedBundleInitializationUserData): Deleted.
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::InjectedBundleClient
+        https://bugs.webkit.org/show_bug.cgi?id=173350
+
+        Reviewed by Alex Christensen.
+
+        It will be used by the GTK+ port instead of the C API.
+
+        * UIProcess/API/APIInjectedBundleClient.h: Copied from Source/WebKit2/UIProcess/WebContextInjectedBundleClient.h.
+        (API::InjectedBundleClient::didReceiveMessageFromInjectedBundle):
+        (API::InjectedBundleClient::didReceiveSynchronousMessageFromInjectedBundle):
+        (API::InjectedBundleClient::getInjectedBundleInitializationUserData):
+        * UIProcess/API/C/WKContext.cpp:
+        (WKContextSetInjectedBundleClient):
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextDispose):
+        * UIProcess/WebContextInjectedBundleClient.cpp:
+        (WebKit::WebContextInjectedBundleClient::WebContextInjectedBundleClient):
+        (WebKit::WebContextInjectedBundleClient::didReceiveMessageFromInjectedBundle):
+        (WebKit::WebContextInjectedBundleClient::didReceiveSynchronousMessageFromInjectedBundle):
+        (WebKit::WebContextInjectedBundleClient::getInjectedBundleInitializationUserData):
+        * UIProcess/WebContextInjectedBundleClient.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+        (WebKit::WebProcessPool::setInjectedBundleClient):
+        (WebKit::WebProcessPool::createNewWebProcess):
+        (WebKit::WebProcessPool::handleMessage):
+        (WebKit::WebProcessPool::handleSynchronousMessage):
+        * UIProcess/WebProcessPool.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::NotificationProvider
+        https://bugs.webkit.org/show_bug.cgi?id=173309
+
+        Reviewed by Alex Christensen.
+
+        It will be used by the GTK+ port instead of the C API.
+
+        * UIProcess/API/APINotificationProvider.h: Copied from Source/WebKit2/UIProcess/Notifications/WebNotificationProvider.h.
+        (API::NotificationProvider::show):
+        (API::NotificationProvider::cancel):
+        (API::NotificationProvider::didDestroyNotification):
+        (API::NotificationProvider::clearNotifications):
+        (API::NotificationProvider::addNotificationManager):
+        (API::NotificationProvider::removeNotificationManager):
+        (API::NotificationProvider::notificationPermissions):
+        * UIProcess/API/C/WKNotificationManager.cpp:
+        (WKNotificationManagerSetProvider):
+        * UIProcess/Notifications/WebNotificationManagerProxy.cpp:
+        (WebKit::WebNotificationManagerProxy::WebNotificationManagerProxy):
+        (WebKit::WebNotificationManagerProxy::setProvider):
+        (WebKit::WebNotificationManagerProxy::processPoolDestroyed):
+        (WebKit::WebNotificationManagerProxy::notificationPermissions):
+        (WebKit::WebNotificationManagerProxy::show):
+        (WebKit::WebNotificationManagerProxy::cancel):
+        (WebKit::WebNotificationManagerProxy::didDestroyNotification):
+        (WebKit::WebNotificationManagerProxy::clearNotifications):
+        * UIProcess/Notifications/WebNotificationManagerProxy.h:
+        * UIProcess/Notifications/WebNotificationProvider.cpp:
+        (WebKit::WebNotificationProvider::WebNotificationProvider):
+        (WebKit::WebNotificationProvider::show):
+        (WebKit::WebNotificationProvider::cancel):
+        (WebKit::WebNotificationProvider::didDestroyNotification):
+        (WebKit::WebNotificationProvider::addNotificationManager):
+        (WebKit::WebNotificationProvider::removeNotificationManager):
+        (WebKit::WebNotificationProvider::notificationPermissions):
+        * UIProcess/Notifications/WebNotificationProvider.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        API clients should not be passed by value to the setters
+        https://bugs.webkit.org/show_bug.cgi?id=173266
+
+        Reviewed by Alex Christensen.
+
+        By using a rvalue reference we make it more explicit that the ownership is transferred and we avoid the
+        parameter construction.
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::setClient):
+        * UIProcess/Automation/WebAutomationSession.h:
+        * UIProcess/WebGeolocationManagerProxy.cpp:
+        (WebKit::WebGeolocationManagerProxy::setProvider):
+        * UIProcess/WebGeolocationManagerProxy.h:
+        * UIProcess/WebIconDatabase.cpp:
+        (WebKit::WebIconDatabase::setClient):
+        * UIProcess/WebIconDatabase.h:
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setHistoryClient):
+        (WebKit::WebPageProxy::setNavigationClient):
+        (WebKit::WebPageProxy::setLoaderClient):
+        (WebKit::WebPageProxy::setPolicyClient):
+        (WebKit::WebPageProxy::setFormClient):
+        (WebKit::WebPageProxy::setUIClient):
+        (WebKit::WebPageProxy::setIconLoadingClient):
+        (WebKit::WebPageProxy::setFindClient):
+        (WebKit::WebPageProxy::setFindMatchesClient):
+        (WebKit::WebPageProxy::setDiagnosticLoggingClient):
+        (WebKit::WebPageProxy::setContextMenuClient):
+        (WebKit::WebPageProxy::close):
+        (WebKit::WebPageProxy::setFullscreenClient):
+        (WebKit::WebPageProxy::getLoadDecisionForIcon):
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::setHistoryClient):
+        (WebKit::WebProcessPool::setDownloadClient):
+        (WebKit::WebProcessPool::setAutomationClient):
+        * UIProcess/WebProcessPool.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setInjectedBundleContextMenuClient):
+        (WebKit::WebPage::setInjectedBundleEditorClient):
+        (WebKit::WebPage::setInjectedBundleFormClient):
+        (WebKit::WebPage::setInjectedBundlePageLoaderClient):
+        (WebKit::WebPage::setInjectedBundleUIClient):
+        * WebProcess/WebPage/WebPage.h:
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::InjectedBundle::EditorClient in WebKitWebEditor
+        https://bugs.webkit.org/show_bug.cgi?id=173355
+
+        Reviewed by Žan Doberšek.
+
+        Instead of the C API.
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebEditor.cpp:
+        (webkitWebEditorCreate):
+        (didChangeSelection): Deleted.
+
+2017-06-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ build with GCC 4.9 after r218244.
+
+        It seems that GCC 4.9 gets confused by enum named General and value of Print enum named General too. This
+        renames the Print enum value as Generic.
+
+        * Shared/API/APIError.h:
+        * Shared/gtk/WebErrorsGtk.cpp:
+        (WebKit::printError):
+        * UIProcess/API/gtk/WebKitPrivate.cpp:
+        (toWebKitError):
+        (toWebCoreError):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Do not mix C and C++ API error constants
+        https://bugs.webkit.org/show_bug.cgi?id=173311
+
+        Reviewed by Alex Christensen.
+
+        In r214934 I added error constants to API::Error, but not for all errors exposed in the C API. Because of this
+        we are mixing both constants in WebErrors and in GTk+ WebKitPrivate.
+
+        * Shared/API/APIError.h:
+        * Shared/WebErrors.cpp:
+        (WebKit::blockedError):
+        (WebKit::blockedByContentBlockerError):
+        (WebKit::cannotShowURLError):
+        (WebKit::interruptedForPolicyChangeError):
+        (WebKit::blockedByContentFilterError):
+        (WebKit::cannotShowMIMETypeError):
+        (WebKit::pluginWillHandleLoadError):
+        (WebKit::internalError):
+        * UIProcess/API/gtk/WebKitPrivate.cpp:
+        (toWebKitError):
+        (toWebCoreError):
+
+2017-06-13  Matt Rajca  <mrajca@apple.com>
+
+        WebsitePolicies: let clients select specific autoplay quirks
+        https://bugs.webkit.org/show_bug.cgi?id=173343
+
+        Reviewed by Alex Christensen.
+        
+        Replace the 'allowsAutoplayQuirks' bool with an OptionSet so clients can selectively
+        pick auto-play quirks.
+
+        * Shared/WebsitePolicies.h:
+        (WebKit::WebsitePolicies::encode):
+        (WebKit::WebsitePolicies::decode):
+        * UIProcess/API/APIWebsitePolicies.h:
+        * UIProcess/API/C/WKWebsitePolicies.cpp:
+        (WKWebsitePoliciesSetAllowedAutoplayQuirks):
+        (WKWebsitePoliciesGetAllowedAutoplayQuirks):
+        (WKWebsitePoliciesSetAllowsAutoplayQuirks): Deleted.
+        (WKWebsitePoliciesGetAllowsAutoplayQuirks): Deleted.
+        * UIProcess/API/C/WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.h:
+        * UIProcess/API/Cocoa/_WKWebsitePolicies.mm:
+        (-[_WKWebsitePolicies setAllowedAutoplayQuirks:]):
+        (-[_WKWebsitePolicies allowedAutoplayQuirks]):
+        (-[_WKWebsitePolicies setAllowsAutoplayQuirks:]): Deleted.
+        (-[_WKWebsitePolicies allowsAutoplayQuirks]): Deleted.
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updateWebsitePolicies):
+
+2017-06-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add missing availability declarations to SPI in WKUIDelegatePrivate.h
+        https://bugs.webkit.org/show_bug.cgi?id=173336
+
+        Reviewed by Tim Horton.
+
+        Add missing availability macros to two recently-introduced SPI delegate methods.
+        No change in behavior.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+2017-06-13  Chris Dumez  <cdumez@apple.com>
+
+        Add API::InjectedBundle::PageLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=173265
+
+        Reviewed by Alex Christensen.
+
+        Add missing null check that is causing crashes on iOS.
+
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::userAgentForURL):
+
+2017-06-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Allow AppleEvents in Citrix View Plugin
+        https://bugs.webkit.org/show_bug.cgi?id=173280
+        <rdar://problem/31913624>
+
+        Reviewed by Alexey Proskuryakov.
+
+        A slightly better fix: Allow AppleEvents for non-sandboxed plugins. This should
+        avoid inadvertently breaking custom plugins, etc.
+
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::platformInitializeProcess): Switch check from a specific Citrix
+        test, to just allowing non-sandboxed plugins to use AppleEvents.
+
+2017-06-13  Chris Dumez  <cdumez@apple.com>
+
+        Include PID in some UIProcess-side release logging that relates to a particular WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=173299
+
+        Reviewed by Ryosuke Niwa.
+
+        * UIProcess/BackgroundProcessResponsivenessTimer.cpp:
+        (WebKit::BackgroundProcessResponsivenessTimer::setResponsive):
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::didExceedActiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedInactiveMemoryLimit):
+        (WebKit::WebProcessProxy::didExceedCPULimit):
+
+2017-06-13  Daniel Bates  <dabates@apple.com>
+
+        Implement W3C Secure Contexts Draft Specification
+        https://bugs.webkit.org/show_bug.cgi?id=158121
+        <rdar://problem/26012994>
+
+        Reviewed by Brent Fulgham.
+
+        Part 4
+
+        Adds a preference to toggle the runtime enabled feature flag isSecureContextAttributeEnabled.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetIsSecureContextAttributeEnabled):
+        (WKPreferencesGetIsSecureContextAttributeEnabled):
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-06-13  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Allow AppleEvents in Citrix View Plugin
+        https://bugs.webkit.org/show_bug.cgi?id=173280
+        <rdar://problem/31913624>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Allow the Citrix Viewer plugin to issue Apple Events.
+
+        * PluginProcess/mac/PluginProcessMac.mm:
+        (WebKit::PluginProcess::platformInitializeProcess): Allow AppleEvents for the Citrix Viewer plugin.
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Blob download doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=172442
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        GTK+ API uses URIs for download destination paths, and passes that URIs to the WebKit internals. But WebKit
+        expects download destination location to be a local path. This is not a problem for normal downloads, because
+        the soup backend handles the cases of download destination being a URI and a path. For blob downloads
+        NetworkDataTaskBlob is used, and it always expects the download destination to be a local path, failing in
+        FileSystem::openFile() when a URI is passed. We need to keep using local files internally and convert to URIs
+        only when exposing those paths to the API.
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::download): Stop handling URIs here, we should always expect local files.
+        * UIProcess/API/gtk/WebKitDownload.cpp:
+        (webkitDownloadDecideDestinationWithSuggestedFilename): Convert destination URI to filanme before pasing it to DownloadClient.
+        (webkitDownloadDestinationCreated): Convert the destination path to a URI before passing it to WebKitDownload::created-destionation signal.
+        * UIProcess/API/gtk/WebKitDownloadClient.cpp:
+        * UIProcess/API/gtk/WebKitDownloadPrivate.h:
+
+2017-06-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unable to paste text that was copied from a page into the universal search field
+        https://bugs.webkit.org/show_bug.cgi?id=173293
+        <rdar://problem/32440918>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add boilerplate SPI on WKPreferences to enable JavaScript access to copy and paste.
+
+        * UIProcess/API/Cocoa/WKPreferences.mm:
+        (-[WKPreferences _setJavaScriptCanAccessClipboard:]):
+        (-[WKPreferences _javaScriptCanAccessClipboard]):
+        * UIProcess/API/Cocoa/WKPreferencesPrivate.h:
+
+2017-06-13  Sam Weinig  <sam@webkit.org>
+
+        Rename JSDOMWindowShell to JSDOMWindowProxy to match the HTML5 spec.
+        https://bugs.webkit.org/show_bug.cgi?id=80733
+
+        Reviewed by Chris Dumez.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::windowScriptNPObject):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Remove unused code from GTK+ WebKitPrivate.
+
+        * UIProcess/API/gtk/WebKitPrivate.cpp:
+        (wkEventModifiersToGdkModifiers): Deleted.
+        (wkEventMouseButtonToWebKitMouseButton): Deleted.
+        * UIProcess/API/gtk/WebKitPrivate.h:
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix return value of PageLoaderClient::shouldGoToBackForwardListItem after r218164.
+
+        It should return true as InjectedBundlePageLoaderClient does. This caused several timeouts in GTK+ unit tests
+        after r218171.
+
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageLoaderClient.h:
+        (API::InjectedBundle::PageLoaderClient::shouldGoToBackForwardListItem):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::GeolocationProvider in WebKitGeolocationProvider
+        https://bugs.webkit.org/show_bug.cgi?id=173151
+
+        Reviewed by Žan Doberšek.
+
+        Also cleanup a bit the WebKitGeolocationProvider implementation, it doesn't need to be refcounted.
+
+        * UIProcess/API/gtk/WebKitGeolocationProvider.cpp:
+        (WebKit::GeolocationProvider::GeolocationProvider):
+        (WebKit::WebKitGeolocationProvider::~WebKitGeolocationProvider):
+        (WebKit::WebKitGeolocationProvider::WebKitGeolocationProvider):
+        (toGeolocationProvider): Deleted.
+        (startUpdatingCallback): Deleted.
+        (stopUpdatingCallback): Deleted.
+        (WebKitGeolocationProvider::~WebKitGeolocationProvider): Deleted.
+        (WebKitGeolocationProvider::create): Deleted.
+        (WebKitGeolocationProvider::WebKitGeolocationProvider): Deleted.
+        (WebKitGeolocationProvider::startUpdating): Deleted.
+        (WebKitGeolocationProvider::stopUpdating): Deleted.
+        (WebKitGeolocationProvider::notifyPositionChanged): Deleted.
+        (WebKitGeolocationProvider::notifyErrorOccurred): Deleted.
+        * UIProcess/API/gtk/WebKitGeolocationProvider.h:
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed):
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::IconDatabaseClient in WebKitFaviconDatabase
+        https://bugs.webkit.org/show_bug.cgi?id=173146
+
+        Reviewed by Žan Doberšek.
+
+        * UIProcess/API/gtk/WebKitFaviconDatabase.cpp:
+        (_WebKitFaviconDatabasePrivate::~_WebKitFaviconDatabasePrivate):
+        (webkitFaviconDatabaseCreate):
+        (didChangeIconForPageURLCallback): Deleted.
+        (iconDataReadyForPageURLCallback): Deleted.
+
+2017-06-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use API::InjectedBundle::PageLoaderClient in WebKitWebPage
+        https://bugs.webkit.org/show_bug.cgi?id=173304
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebPage.cpp:
+        (webkitWebPageCreate):
+        (getDocumentLoaderURL): Deleted.
+        (didStartProvisionalLoadForFrame): Deleted.
+        (didReceiveServerRedirectForProvisionalLoadForFrame): Deleted.
+        (didSameDocumentNavigationForFrame): Deleted.
+        (didCommitLoadForFrame): Deleted.
+        (didFinishDocumentLoadForFrame): Deleted.
+        (didClearWindowObjectForFrame): Deleted.
+
+2017-06-13  Gwang Yoon Hwang  <yoon@igalia.com>
+
+        [GStreamerGL] Release GstVideoFrame when there is a flush event from the pipeline
+        https://bugs.webkit.org/show_bug.cgi?id=172427
+
+        Reviewed by Žan Doberšek.
+
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.cpp:
+        (WebKit::CoordinatedGraphicsScene::texmapGL):
+        * Shared/CoordinatedGraphics/CoordinatedGraphicsScene.h:
+        Provides current texmapGL to platform layer proxies to create and copy
+        bitmap textures.
+
+2017-06-13  Youenn Fablet  <youenn@apple.com>
+
+        Switch off Legacy WebRTC API flag by default
+        https://bugs.webkit.org/show_bug.cgi?id=173241
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::GeolocationProvider
+        https://bugs.webkit.org/show_bug.cgi?id=173150
+
+        Reviewed by Alex Christensen.
+
+        It will be used by GTK+ port instead of the C API.
+
+        * UIProcess/API/APIGeolocationProvider.h: Added.
+        (API::GeolocationProvider::~GeolocationProvider):
+        (API::GeolocationProvider::startUpdating):
+        (API::GeolocationProvider::stopUpdating):
+        (API::GeolocationProvider::setEnableHighAccuracy):
+        * UIProcess/API/C/WKGeolocationManager.cpp:
+        (WKGeolocationManagerSetProvider):
+        * UIProcess/WebGeolocationManagerProxy.cpp:
+        (WebKit::WebGeolocationManagerProxy::WebGeolocationManagerProxy):
+        (WebKit::WebGeolocationManagerProxy::setProvider):
+        (WebKit::WebGeolocationManagerProxy::processPoolDestroyed):
+        (WebKit::WebGeolocationManagerProxy::startUpdating):
+        (WebKit::WebGeolocationManagerProxy::removeRequester):
+        (WebKit::WebGeolocationManagerProxy::setEnableHighAccuracy):
+        * UIProcess/WebGeolocationManagerProxy.h:
+        * UIProcess/WebGeolocationProvider.cpp:
+        (WebKit::WebGeolocationProvider::WebGeolocationProvider):
+        (WebKit::WebGeolocationProvider::startUpdating):
+        (WebKit::WebGeolocationProvider::stopUpdating):
+        (WebKit::WebGeolocationProvider::setEnableHighAccuracy):
+        * UIProcess/WebGeolocationProvider.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::InjectedBundle::PageLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=173265
+
+        Reviewed by Alex Christensen.
+
+        It will be used by the GTK+ port instead of the C API.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/InjectedBundle/API/APIInjectedBundlePageLoaderClient.h: Added.
+        (API::InjectedBundle::PageLoaderClient::willLoadURLRequest):
+        (API::InjectedBundle::PageLoaderClient::willLoadDataRequest):
+        (API::InjectedBundle::PageLoaderClient::shouldGoToBackForwardListItem):
+        (API::InjectedBundle::PageLoaderClient::didStartProvisionalLoadForFrame):
+        (API::InjectedBundle::PageLoaderClient::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFailProvisionalLoadWithErrorForFrame):
+        (API::InjectedBundle::PageLoaderClient::didCommitLoadForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFinishDocumentLoadForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFinishLoadForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFinishProgress):
+        (API::InjectedBundle::PageLoaderClient::didFailLoadWithErrorForFrame):
+        (API::InjectedBundle::PageLoaderClient::didSameDocumentNavigationForFrame):
+        (API::InjectedBundle::PageLoaderClient::didReceiveTitleForFrame):
+        (API::InjectedBundle::PageLoaderClient::didRemoveFrameFromHierarchy):
+        (API::InjectedBundle::PageLoaderClient::didDisplayInsecureContentForFrame):
+        (API::InjectedBundle::PageLoaderClient::didRunInsecureContentForFrame):
+        (API::InjectedBundle::PageLoaderClient::didDetectXSSForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFirstLayoutForFrame):
+        (API::InjectedBundle::PageLoaderClient::didFirstVisuallyNonEmptyLayoutForFrame):
+        (API::InjectedBundle::PageLoaderClient::didLayoutForFrame):
+        (API::InjectedBundle::PageLoaderClient::didReachLayoutMilestone):
+        (API::InjectedBundle::PageLoaderClient::didClearWindowObjectForFrame):
+        (API::InjectedBundle::PageLoaderClient::didCancelClientRedirectForFrame):
+        (API::InjectedBundle::PageLoaderClient::willPerformClientRedirectForFrame):
+        (API::InjectedBundle::PageLoaderClient::didHandleOnloadEventsForFrame):
+        (API::InjectedBundle::PageLoaderClient::globalObjectIsAvailableForFrame):
+        (API::InjectedBundle::PageLoaderClient::willDisconnectDOMWindowExtensionFromGlobalObject):
+        (API::InjectedBundle::PageLoaderClient::didReconnectDOMWindowExtensionToGlobalObject):
+        (API::InjectedBundle::PageLoaderClient::willDestroyGlobalObjectForDOMWindowExtension):
+        (API::InjectedBundle::PageLoaderClient::shouldForceUniversalAccessFromLocalURL):
+        (API::InjectedBundle::PageLoaderClient::featuresUsedInPage):
+        (API::InjectedBundle::PageLoaderClient::willDestroyFrame):
+        (API::InjectedBundle::PageLoaderClient::userAgentForURL):
+        (API::InjectedBundle::PageLoaderClient::layoutMilestones):
+        * WebProcess/InjectedBundle/API/c/WKBundlePage.cpp:
+        (WKBundlePageSetPageLoaderClient):
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.cpp:
+        (WebKit::InjectedBundlePageLoaderClient::InjectedBundlePageLoaderClient):
+        (WebKit::InjectedBundlePageLoaderClient::willLoadURLRequest):
+        (WebKit::InjectedBundlePageLoaderClient::willLoadDataRequest):
+        (WebKit::InjectedBundlePageLoaderClient::shouldGoToBackForwardListItem):
+        (WebKit::InjectedBundlePageLoaderClient::didStartProvisionalLoadForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didReceiveServerRedirectForProvisionalLoadForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFailProvisionalLoadWithErrorForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didCommitLoadForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFinishDocumentLoadForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFinishLoadForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFinishProgress):
+        (WebKit::InjectedBundlePageLoaderClient::didFailLoadWithErrorForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didSameDocumentNavigationForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didReceiveTitleForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didRemoveFrameFromHierarchy):
+        (WebKit::InjectedBundlePageLoaderClient::didDisplayInsecureContentForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didRunInsecureContentForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didDetectXSSForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFirstLayoutForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didFirstVisuallyNonEmptyLayoutForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didLayoutForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didReachLayoutMilestone):
+        (WebKit::InjectedBundlePageLoaderClient::didClearWindowObjectForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didCancelClientRedirectForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::willPerformClientRedirectForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::didHandleOnloadEventsForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::globalObjectIsAvailableForFrame):
+        (WebKit::InjectedBundlePageLoaderClient::willDisconnectDOMWindowExtensionFromGlobalObject):
+        (WebKit::InjectedBundlePageLoaderClient::didReconnectDOMWindowExtensionToGlobalObject):
+        (WebKit::InjectedBundlePageLoaderClient::willDestroyGlobalObjectForDOMWindowExtension):
+        (WebKit::InjectedBundlePageLoaderClient::shouldForceUniversalAccessFromLocalURL):
+        (WebKit::InjectedBundlePageLoaderClient::featuresUsedInPage):
+        (WebKit::InjectedBundlePageLoaderClient::userAgentForURL):
+        (WebKit::InjectedBundlePageLoaderClient::layoutMilestones):
+        * WebProcess/InjectedBundle/InjectedBundlePageLoaderClient.h:
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::detachedFromParent2):
+        (WebKit::WebFrameLoaderClient::dispatchDidDispatchOnloadEvents):
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidCancelClientRedirect):
+        (WebKit::WebFrameLoaderClient::dispatchWillPerformClientRedirect):
+        (WebKit::WebFrameLoaderClient::dispatchDidChangeLocationWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPushStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidReplaceStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidPopStateWithinPage):
+        (WebKit::WebFrameLoaderClient::dispatchDidStartProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidReceiveTitle):
+        (WebKit::WebFrameLoaderClient::dispatchDidCommitLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidFailProvisionalLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidFailLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidFinishDocumentLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidFinishLoad):
+        (WebKit::WebFrameLoaderClient::dispatchDidReachLayoutMilestone):
+        (WebKit::WebFrameLoaderClient::dispatchDidLayout):
+        (WebKit::WebFrameLoaderClient::shouldGoToHistoryItem):
+        (WebKit::WebFrameLoaderClient::didDisplayInsecureContent):
+        (WebKit::WebFrameLoaderClient::didRunInsecureContent):
+        (WebKit::WebFrameLoaderClient::didDetectXSS):
+        (WebKit::WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld):
+        (WebKit::WebFrameLoaderClient::dispatchGlobalObjectAvailable):
+        (WebKit::WebFrameLoaderClient::dispatchWillDisconnectDOMWindowExtensionFromGlobalObject):
+        (WebKit::WebFrameLoaderClient::dispatchDidReconnectDOMWindowExtensionToGlobalObject):
+        (WebKit::WebFrameLoaderClient::dispatchWillDestroyGlobalObjectForDOMWindowExtension):
+        (WebKit::WebFrameLoaderClient::shouldForceUniversalAccessFromLocalURL):
+        * WebProcess/WebCoreSupport/WebProgressTrackerClient.cpp:
+        (WebKit::WebProgressTrackerClient::progressFinished):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::setInjectedBundlePageLoaderClient):
+        (WebKit::WebPage::close):
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::loadDataImpl):
+        (WebKit::WebPage::userAgent):
+        (WebKit::WebPage::reportUsedFeatures):
+        (WebKit::WebPage::dispatchDidReachLayoutMilestone):
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::injectedBundleLoaderClient):
+
+2017-06-12  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] Peeking on an image could result in a preview at the wrong size
+        https://bugs.webkit.org/show_bug.cgi?id=173274
+        rdar://problem/30404627
+
+        Reviewed by Tim Horton.
+
+        There were a couple of issues with the way the page scale is communicated between the web process
+        and the UI process.
+
+        Generally, the page scale is computed by the web process, and sent to the UI process via
+        layer tree commits. UI-side scale is them communicated back to the web process via visibleContentRect
+        updates. When receiving a new scale, WebPage has a "scale was set by the UI process" flag to handle
+        the case where user interaction overrides the viewport-computed page scale. However, this flag would
+        get set erroneously in a couple of situations.
+
+        First, during page loading, layer flushing is suspended temporarily, so web process scale changes never
+        make it to the UI process. In that scenario, the UI process could send an old scale back to the web process,
+        setting the "scale was set by the UI process" when it really wasn't.
+
+        Secondly, web -> UI layer commit messages, and UI -> web updateVisibleContentRect messages can be in flight at the
+        same time, again causing a stale scale to reach the web process.
+
+        Fix this by only setting the "scale was set by the UI process" when we know the UI scale should be in sync, by comparing
+        commit IDs of sent and received scales.
+
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::scaleFromUIProcess):
+        (WebKit::WebPage::updateVisibleContentRects):
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.h:
+        (WebKit::RemoteLayerTreeDrawingArea::lastCommittedTransactionID):
+
+2017-06-12  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize UserScript.h
+        https://bugs.webkit.org/show_bug.cgi?id=173273
+
+        Reviewed by Tim Horton.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<UserScript>::encode): Deleted.
+        (IPC::ArgumentCoder<UserScript>::decode): Deleted.
+        * Shared/WebCoreArgumentCoders.h:
+        * UIProcess/API/C/WKPageGroup.cpp:
+        (WKPageGroupAddUserScript):
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::addUserScript):
+        * WebProcess/InjectedBundle/InjectedBundle.h:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::addUserScript):
+        * WebProcess/WebPage/WebPage.h:
+
+2017-06-12  Tim Horton  <timothy_horton@apple.com>
+
+        [iOS] Cmd-C doesn't copy text from WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=173277
+        <rdar://problem/32396742>
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _lookupForWebView:]):
+        (-[WKContentView _shareForWebView:]):
+        (-[WKContentView _addShortcutForWebView:]):
+        (-[WKContentView _promptForReplaceForWebView:]):
+        (-[WKContentView _transliterateChineseForWebView:]):
+        (-[WKContentView _reanalyzeForWebView:]):
+        (-[WKContentView replaceForWebView:]):
+        (-[WKContentView canPerformAction:withSender:]):
+        (-[WKContentView copyForWebView:]):
+        (-[WKContentView cutForWebView:]):
+        (-[WKContentView pasteForWebView:]):
+        (-[WKContentView selectForWebView:]):
+        (-[WKContentView selectAllForWebView:]):
+        (-[WKContentView toggleBoldfaceForWebView:]):
+        (-[WKContentView toggleItalicsForWebView:]):
+        (-[WKContentView toggleUnderlineForWebView:]):
+        (-[WKContentView _showTextStyleOptionsForWebView:]):
+        (-[WKContentView _defineForWebView:]):
+        (-[WKContentView _arrowKeyForWebView:]):
+        (-[WKContentView _lookup:]): Deleted.
+        (-[WKContentView _share:]): Deleted.
+        (-[WKContentView _addShortcut:]): Deleted.
+        (-[WKContentView _promptForReplace:]): Deleted.
+        (-[WKContentView _transliterateChinese:]): Deleted.
+        (-[WKContentView _reanalyze:]): Deleted.
+        (-[WKContentView replace:]): Deleted.
+        (-[WKContentView copy:]): Deleted.
+        (-[WKContentView cut:]): Deleted.
+        (-[WKContentView paste:]): Deleted.
+        (-[WKContentView select:]): Deleted.
+        (-[WKContentView selectAll:]): Deleted.
+        (-[WKContentView toggleBoldface:]): Deleted.
+        (-[WKContentView toggleItalics:]): Deleted.
+        (-[WKContentView toggleUnderline:]): Deleted.
+        (-[WKContentView _showTextStyleOptions:]): Deleted.
+        (-[WKContentView _define:]): Deleted.
+        (-[WKContentView _arrowKey:]): Deleted.
+        Similar to what r211897 did for canPerformAction, and other patches
+        have done for other selectors, forward methods for standard editing
+        commands from WKContentView up to WKWebView, and back down to WKContentView.
+
+        This is necessary because these are not treated as normal
+        responder-chain-respecting methods, so they do not bubble up the view tree.
+        
+        In 211897, WKContentView (who is usually first responder and thus receives
+        the actions) stopped claiming to be able to perform these actions, depending
+        on this non-existent bubbling behavior to keep them working.
+
+2017-06-12  Chris Dumez  <cdumez@apple.com>
+
+        Null dereference under WebProcessPool::pageRemovedFromProcess()
+        https://bugs.webkit.org/show_bug.cgi?id=173271
+        <rdar://problem/32038814>
+
+        Reviewed by Ryosuke Niwa.
+
+        Null-check networkProcess() before dereferencing it in WebProcessPool::pageRemovedFromProcess().
+        This is the only place in this class where we failed to null check before dereferencing
+        networkProcess(). To my knowledge, there is no guarantee there is a network process.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::pageRemovedFromProcess):
+
+2017-06-12  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Remove experimental feature flag of SubtleCrypto
+        https://bugs.webkit.org/show_bug.cgi?id=173197
+        <rdar://problem/32688148>
+
+        Reviewed by Brent Fulgham.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/API/C/WKPreferences.cpp:
+        (WKPreferencesSetSubtleCryptoEnabled): Deleted.
+        (WKPreferencesGetSubtleCryptoEnabled): Deleted.
+        * UIProcess/API/C/WKPreferencesRefPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Allow the injected bundle to add client data when writing an image to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=173238
+        <rdar://problem/31943370>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Send PasteboardImage.clientTypes and PasteboardImage.clientData over IPC.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::encodeClientTypesAndData):
+        (IPC::decodeClientTypesAndData):
+
+        Factor out common logic used to encode and decode client types and data into static helpers.
+
+        (IPC::ArgumentCoder<PasteboardWebContent>::encode):
+        (IPC::ArgumentCoder<PasteboardWebContent>::decode):
+        (IPC::ArgumentCoder<PasteboardImage>::encode):
+        (IPC::ArgumentCoder<PasteboardImage>::decode):
+
+2017-06-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Introduce hooks to override targeted drag previews when lifting and cancelling
+        https://bugs.webkit.org/show_bug.cgi?id=173240
+        <rdar://problem/31943370>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Adds two new delegate hooks: _webView:previewForLiftingItem:session: and
+        _webView:previewForCancellingItem:withDefault:.
+
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+
+2017-06-12  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r217867): Legacy SessionHistoryEntryData format should not change
+        https://bugs.webkit.org/show_bug.cgi?id=173267
+        <rdar://problem/32701257>
+
+        Reviewed by Simon Fraser.
+
+        Revert changes to Legacy SessionHistoryEntryData format that were made in r217867,
+        as this apparently breaks compatiblity.
+
+        * UIProcess/mac/LegacySessionStateCoding.cpp:
+        (WebKit::encodeFrameStateNode):
+        (WebKit::decodeBackForwardTreeNode):
+
+2017-06-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Alow iokit-get-properties for additional media features
+        https://bugs.webkit.org/show_bug.cgi?id=173082
+        <rdar://problem/32597547>
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/com.apple.WebProcess.sb.in:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add API::IconDatabaseClient
+        https://bugs.webkit.org/show_bug.cgi?id=173145
+
+        Reviewed by Alex Christensen.
+
+        It will be used by GTK+ port instead of the C API.
+
+        * UIProcess/API/APIIconDatabaseClient.h:
+        (API::IconDatabaseClient::~IconDatabaseClient):
+        (API::IconDatabaseClient::didChangeIconForPageURL):
+        (API::IconDatabaseClient::didRemoveAllIcons):
+        (API::IconDatabaseClient::iconDataReadyForPageURL):
+        * UIProcess/API/C/WKIconDatabase.cpp:
+        (WKIconDatabaseSetIconDatabaseClient):
+        * UIProcess/WebIconDatabase.cpp:
+        (WebKit::WebIconDatabase::WebIconDatabase):
+        (WebKit::WebIconDatabase::setClient):
+        (WebKit::WebIconDatabase::didChangeIconForPageURL):
+        (WebKit::WebIconDatabase::didRemoveAllIcons):
+        (WebKit::WebIconDatabase::notifyIconDataReadyForPageURL):
+        * UIProcess/WebIconDatabase.h:
+        * UIProcess/WebIconDatabaseClient.cpp:
+        (WebKit::WebIconDatabaseClient::WebIconDatabaseClient):
+        (WebKit::WebIconDatabaseClient::didChangeIconForPageURL):
+        (WebKit::WebIconDatabaseClient::didRemoveAllIcons):
+        (WebKit::WebIconDatabaseClient::iconDataReadyForPageURL):
+        * UIProcess/WebIconDatabaseClient.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Stop dismissing menus attached to the web view for every injected event
+        https://bugs.webkit.org/show_bug.cgi?id=172708
+
+        Reviewed by Alex Christensen.
+
+        To actually simulate a right-click event we should also send the button release after the press, and let the page
+        handle the events in addition to sending the event to the context menu controller, like we do with normal
+        events. So, this is mostly the same as a real right-click event but without actually showing the menu.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::contextMenuAtPointInWindow):
+
+2017-06-12  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        [CoordinatedGraphics] Behavior change of DrawingAreaImpl after r217779
+        https://bugs.webkit.org/show_bug.cgi?id=173153
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebProcess/WebPage/AcceleratedDrawingArea.cpp:
+        (WebKit::AcceleratedDrawingArea::mainFrameContentSizeChanged):
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Prefer to use private WebKitWebView API over WebKitWebViewBase
+        https://bugs.webkit.org/show_bug.cgi?id=173254
+
+        Reviewed by Žan Doberšek.
+
+        WebKitWebViewBase is specific to the GTK+ API, but WebKitWebView should be present in any glib-based API. Add
+        webkitWebViewCreatePage() and webkitWebViewGetPage() and use them when possible instead of the WebKitWebViewBase
+        ones.
+
+        * UIProcess/API/gtk/WebKitAutomationSession.cpp:
+        * UIProcess/API/gtk/WebKitContextMenuClient.cpp:
+        (attachContextMenuClientToView):
+        * UIProcess/API/gtk/WebKitFindController.cpp:
+        (getPage):
+        (webkitFindControllerDispose):
+        (webkitFindControllerConstructed):
+        (webKitFindControllerPerform):
+        (webkit_find_controller_search_finish):
+        * UIProcess/API/gtk/WebKitFormClient.cpp:
+        (attachFormClientToView):
+        * UIProcess/API/gtk/WebKitLoaderClient.cpp:
+        (attachLoaderClientToView):
+        * UIProcess/API/gtk/WebKitPolicyClient.cpp:
+        (attachPolicyClientToView):
+        * UIProcess/API/gtk/WebKitPrintOperation.cpp:
+        (drawPagesForPrintingCompleted):
+        (webkitPrintOperationPrintPagesForFrame):
+        (webkit_print_operation_run_dialog):
+        (webkit_print_operation_print):
+        * UIProcess/API/gtk/WebKitUIClient.cpp:
+        (attachUIClientToView):
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextCreatePageForWebView):
+        (webkitWebContextWebViewDestroyed):
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewCreatePage):
+        (webkitWebViewGetPage):
+        * UIProcess/API/gtk/WebKitWebViewPrivate.h:
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] getPage() in WebKitWebView should return a reference instead of a pointer
+        https://bugs.webkit.org/show_bug.cgi?id=173251
+
+        Reviewed by Žan Doberšek.
+
+        The WebPageProxy is created on WebKitWebView construction, so getPage() can only return nullptr if it's called
+        during construction. And that can only happen when construct properties are set. It's better to check that the
+        view has been constructed only in these particular cases and make getPage() return a reference.
+
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewCreateJavaScriptDialog):
+        (allowModalDialogsChanged): Settings signals are only connected after the page has been created, so we don't
+        need to check page is available here.
+        (zoomTextOnlyChanged):
+        (userAgentChanged):
+        (webkitWebViewIsConstructed): Helper method to check if the view has been constructed.
+        (webkitWebViewUpdateSettings): Return early if view hasn't been constructed.
+        (webkitWebViewDisconnectSettingsSignalHandlers): Ditto.
+        (webkitWebViewConstructed):
+        (webkitWebViewDispose):
+        (webkitWebViewCreateNewPage):
+        (webkitWebViewSelectionDidChange):
+        (webkit_web_view_try_close):
+        (webkit_web_view_load_uri):
+        (webkit_web_view_load_html):
+        (webkit_web_view_load_alternate_html):
+        (webkit_web_view_load_plain_text):
+        (webkit_web_view_load_bytes):
+        (webkit_web_view_load_request):
+        (webkit_web_view_get_page_id):
+        (webkit_web_view_reload):
+        (webkit_web_view_reload_bypass_cache):
+        (webkit_web_view_stop_loading):
+        (webkit_web_view_is_playing_audio):
+        (webkit_web_view_go_back):
+        (webkit_web_view_can_go_back):
+        (webkit_web_view_go_forward):
+        (webkit_web_view_can_go_forward):
+        (webkit_web_view_get_custom_charset):
+        (webkit_web_view_set_custom_charset):
+        (webkit_web_view_get_estimated_load_progress):
+        (webkit_web_view_go_to_back_forward_list_item):
+        (webkit_web_view_set_zoom_level):
+        (webkit_web_view_get_zoom_level):
+        (webkit_web_view_can_execute_editing_command):
+        (webkit_web_view_execute_editing_command):
+        (webkit_web_view_execute_editing_command_with_argument):
+        (webkit_web_view_run_javascript):
+        (resourcesStreamReadCallback):
+        (webkit_web_view_get_inspector):
+        (webkit_web_view_can_show_mime_type):
+        (webkit_web_view_save):
+        (webkit_web_view_save_to_file):
+        (webkit_web_view_download_uri):
+        (webkit_web_view_get_tls_info):
+        (webkit_web_view_get_snapshot):
+        (webkit_web_view_set_background_color):
+        (webkit_web_view_get_background_color):
+        (webkit_web_view_is_editable):
+        (webkit_web_view_set_editable):
+        (webkit_web_view_get_editor_state):
+        (webkit_web_view_get_session_state):
+        (webkit_web_view_restore_session_state):
+
+2017-06-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move WebKit GType macros to WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173249
+
+        Reviewed by Žan Doberšek.
+
+        Moving to a common place where they could be shared by all ports using a glib-based API.
+
+        * UIProcess/API/gtk/WebKitPrivate.h:
+
+2017-06-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove WKInspectorClientGtk
+        https://bugs.webkit.org/show_bug.cgi?id=173142
+
+        Reviewed by Michael Catanzaro.
+
+        It's only used internally in GTk+ API, we can simplify it by using a C++ client instead.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/C/gtk/WKInspectorClientGtk.cpp: Removed.
+        * UIProcess/API/C/gtk/WKInspectorClientGtk.h: Removed.
+        * UIProcess/API/gtk/WebKitPrivate.h:
+        * UIProcess/API/gtk/WebKitWebInspector.cpp:
+        (_WebKitWebInspectorPrivate::~_WebKitWebInspectorPrivate):
+        (webkitWebInspectorCreate):
+        * UIProcess/WebInspectorProxy.cpp:
+        * UIProcess/WebInspectorProxy.h:
+        * UIProcess/gtk/WebInspectorClientGtk.cpp: Removed.
+        * UIProcess/gtk/WebInspectorProxyClient.h: Renamed from Source/WebKit2/UIProcess/gtk/WebInspectorClientGtk.h.
+        * UIProcess/gtk/WebInspectorProxyGtk.cpp:
+        (WebKit::WebInspectorProxy::setClient):
+        (WebKit::WebInspectorProxy::createInspectorWindow):
+        (WebKit::WebInspectorProxy::platformDidClose):
+        (WebKit::WebInspectorProxy::platformBringToFront):
+        (WebKit::WebInspectorProxy::platformInspectedURLChanged):
+        (WebKit::WebInspectorProxy::platformAttach):
+        (WebKit::WebInspectorProxy::platformDetach):
+        (WebKit::WebInspectorProxy::platformSetAttachedWindowHeight):
+        (WebKit::WebInspectorProxy::platformSetAttachedWindowWidth):
+        (WebKit::WebInspectorProxy::platformAttachAvailabilityChanged):
+
+2017-06-11  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r217870): Null deref under PageOverlayController::uninstallPageOverlay using find in page
+        https://bugs.webkit.org/show_bug.cgi?id=173196
+        <rdar://problem/32686871>
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebPage/ios/FindControllerIOS.mm:
+        (WebKit::FindController::updateFindIndicator):
+        The reason this caused a crash instead of just a missing indicator
+        is that FindControllerIOS would early return after uninstalling
+        the old overlay, before installing a new one, and leave m_isShowingFindIndicator
+        set to true. Instead, reset it (and m_findIndicatorOverlay, which
+        we would never re-use but might as well be freed immediately).
+
+        This likely already crashed in other less reproducible cases where a
+        TextIndicator was not created for a find match, so clean it up.
+
+2017-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Remove WKFullScreenClientGtk
+        https://bugs.webkit.org/show_bug.cgi?id=173140
+
+        Reviewed by Michael Catanzaro.
+
+        It's only used internally in the GTK+ API. Implementation is a lot simpler without using it, we can simply use
+        either WebKitWebView or WebKitWebViewBase from PageClient directly.
+
+        * PlatformGTK.cmake:
+        * UIProcess/API/C/gtk/WKFullScreenClientGtk.cpp: Removed.
+        * UIProcess/API/C/gtk/WKFullScreenClientGtk.h: Removed.
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::isFullScreen):
+        (WebKit::PageClientImpl::enterFullScreen):
+        (WebKit::PageClientImpl::exitFullScreen):
+        * UIProcess/API/gtk/WebKitFullscreenClient.cpp: Removed.
+        * UIProcess/API/gtk/WebKitFullscreenClient.h: Removed.
+        * UIProcess/API/gtk/WebKitPrivate.h:
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewConstructed):
+        (webkitWebViewEnterFullScreen):
+        (webkitWebViewExitFullScreen):
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseEnterFullScreen):
+        (webkitWebViewBaseExitFullScreen):
+        (webkitWebViewBaseIsFullScreen):
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/API/gtk/WebKitWebViewPrivate.h:
+        * UIProcess/gtk/WebFullScreenClientGtk.cpp: Removed.
+        * UIProcess/gtk/WebFullScreenClientGtk.h: Removed.
+
+2017-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Handle page download request in WebKitWebView directly
+        https://bugs.webkit.org/show_bug.cgi?id=173137
+
+        Reviewed by Žan Doberšek.
+
+        We don't need to pass through WebKitWebViewBase, since the base doesn't have an implementation.
+
+        * UIProcess/API/gtk/PageClientImpl.cpp:
+        (WebKit::PageClientImpl::handleDownloadRequest):
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewConstructed):
+        (webkitWebViewHandleDownloadRequest):
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseSetDownloadRequestHandler): Deleted.
+        (webkitWebViewBaseHandleDownloadRequest): Deleted.
+        * UIProcess/API/gtk/WebKitWebViewBasePrivate.h:
+        * UIProcess/API/gtk/WebKitWebViewPrivate.h:
+
+2017-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Use a lambda in webkit_cookie_manager_get_accept_policy instead of toGenericCallbackFunction
+        https://bugs.webkit.org/show_bug.cgi?id=173134
+
+        Reviewed by Žan Doberšek.
+
+        It's simpler and easier to read.
+
+        * UIProcess/API/gtk/WebKitCookieManager.cpp:
+        (webkit_cookie_manager_get_accept_policy):
+        (webkitCookieManagerGetAcceptPolicyCallback): Deleted.
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r218056 because it made the IDE reindex constantly.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] With Xcode 9 developer beta, everything rebuilds when switching between command-line and IDE
+        https://bugs.webkit.org/show_bug.cgi?id=173223
+
+        Reviewed by Sam Weinig.
+
+        The rebuilds were happening due to a difference in the compiler options that the IDE and
+        xcodebuild were specifying. Only the IDE was passing the -index-store-path option. To make
+        xcodebuild pass that option, too, set CLANG_INDEX_STORE_ENABLE to YES if it is unset, and
+        specify an appropriate path in CLANG_INDEX_STORE_PATH.
+
+        * Configurations/DebugRelease.xcconfig:
+
+2017-06-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Crash inside WebKit::PluginView::getAuthenticationInfo
+        https://bugs.webkit.org/show_bug.cgi?id=173083
+        <rdar://problem/32513144>
+
+        Address Darin's review comment.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::getAuthenticationInfo):
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in NetworkProcess code
+        https://bugs.webkit.org/show_bug.cgi?id=173182
+
+        Reviewed by Alex Christensen.
+
+        Use WTF::Function instead of std::function in NetworkProcess code to avoid
+        unnecessary copying.
+
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/cache/NetworkCacheIOChannel.h:
+        * NetworkProcess/cache/NetworkCacheIOChannelCocoa.mm:
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::IOChannel::write):
+        * NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp:
+        (WebKit::NetworkCache::IOChannel::read):
+        (WebKit::NetworkCache::IOChannel::readSyncInThread):
+        (WebKit::NetworkCache::IOChannel::write):
+        * NetworkProcess/cache/NetworkCacheSpeculativeLoad.h:
+        * NetworkProcess/cache/NetworkCacheStatistics.h:
+        * NetworkProcess/cocoa/NetworkProcessCocoa.mm:
+        (WebKit::clearNSURLCache):
+        (WebKit::NetworkProcess::clearDiskCache):
+        * NetworkProcess/soup/NetworkProcessSoup.cpp:
+        (WebKit::NetworkProcess::clearDiskCache):
+
+2017-06-09  Tim Horton  <timothy_horton@apple.com>
+
+        REGRESSION (r213584): WeChat app can not switch to next text field
+        https://bugs.webkit.org/show_bug.cgi?id=173183
+        <rdar://problem/32323478>
+
+        Reviewed by Wenson Hsieh.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/InputViewUpdateDeferrer.mm:
+        (WebKit::InputViewUpdateDeferrer::~InputViewUpdateDeferrer):
+        It turns out that _endIgnoringReloadInputViews doesn't actually perform
+        the update if there was one ignored. It does, however, return whether
+        there was a change ignored, and we can force an update.
+
+        This remains untestable without sizable additional API test infrastructure
+        for the same reasons as the original patch.
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Make sure we protect |this| in lambdas in WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
+        https://bugs.webkit.org/show_bug.cgi?id=173174
+        <rdar://problem/32598919>
+
+        Reviewed by Darin Adler.
+
+        Follow-up fix to r218006, which caused a crash on the bots. We cannot WTFMove() protectedThis
+        here because the callback gets called several times.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver):
+
+2017-06-09  Jer Noble  <jer.noble@apple.com>
+
+        Crash in -[WKWebView _initializeWithConfiguration:]
+        https://bugs.webkit.org/show_bug.cgi?id=173126
+        <rdar://problem/32664993>
+
+        Reviewed by Darin Adler.
+
+        Follow up to previous fix; when setting NSString properties, store a copy of
+        the string rather than the NSString itself.
+
+        * UIProcess/API/Cocoa/WKWebViewConfiguration.mm:
+        (-[WKWebViewConfiguration copyWithZone:]):
+        (-[WKWebViewConfiguration _overrideContentSecurityPolicy]):
+        (-[WKWebViewConfiguration _setOverrideContentSecurityPolicy:]):
+        (-[WKWebViewConfiguration _setMediaContentTypesRequiringHardwareSupport:]):
+
+2017-06-09  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in StorageManager
+        https://bugs.webkit.org/show_bug.cgi?id=173177
+
+        Reviewed by Brady Eidson.
+
+        Use WTF::Function instead of std::function in StorageManager. This eliminates some
+        potential implicit copying of captured variables, which is important here because
+        we pass those lambdas to other threads.
+
+        * UIProcess/Storage/StorageManager.cpp:
+        (WebKit::StorageManager::getSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageOrigins):
+        (WebKit::StorageManager::deleteSessionStorageEntriesForOrigins):
+        (WebKit::StorageManager::getLocalStorageOrigins):
+        (WebKit::StorageManager::getLocalStorageOriginDetails):
+        (WebKit::StorageManager::deleteLocalStorageOriginsModifiedSince):
+        (WebKit::StorageManager::deleteLocalStorageEntriesForOrigins):
+        * UIProcess/Storage/StorageManager.h:
+
+2017-06-09  Daniel Bates  <dabates@apple.com>
+
+        CSP: Apply img-src directive to favicon loads
+        https://bugs.webkit.org/show_bug.cgi?id=172733
+        <rdar://problem/32082654>
+
+        Reviewed by Brady Eidson.
+
+        Return 0 seconds for the maximum buffering time for favicons (no change in behavior).
+
+        * WebProcess/Network/WebLoaderStrategy.cpp:
+        (WebKit::maximumBufferingTime):
+
+2017-06-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Add a hook to perform two-step drops in editable content
+        https://bugs.webkit.org/show_bug.cgi?id=172992
+        <rdar://problem/32590174>
+
+        Reviewed by Tim Horton.
+
+        Add plumbing to support an injected bundle hook for overriding two-step drops. See WebCore ChangeLog.
+
+        * WebProcess/InjectedBundle/API/APIInjectedBundleEditorClient.h:
+        (API::InjectedBundle::EditorClient::performTwoStepDrop):
+        * WebProcess/InjectedBundle/API/Cocoa/WKWebProcessPlugInEditingDelegate.h:
+        * WebProcess/InjectedBundle/API/c/WKBundlePageEditorClient.h:
+        * WebProcess/InjectedBundle/API/mac/WKWebProcessPlugInBrowserContextController.mm:
+        (-[WKWebProcessPlugInBrowserContextController _setEditingDelegate:]):
+        * WebProcess/InjectedBundle/InjectedBundlePageEditorClient.cpp:
+        (WebKit::InjectedBundlePageEditorClient::performTwoStepDrop):
+        * WebProcess/InjectedBundle/InjectedBundlePageEditorClient.h:
+        * WebProcess/WebCoreSupport/WebEditorClient.cpp:
+        (WebKit::WebEditorClient::performTwoStepDrop):
+        * WebProcess/WebCoreSupport/WebEditorClient.h:
+
+2017-06-09  Brent Fulgham  <bfulgham@apple.com>
+
+        Use Function rather than std::function for thread safety in WebsiteDataStore
+        https://bugs.webkit.org/show_bug.cgi?id=173172
+
+        Reviewed by Chris Dumez.
+        <rdar://problem/32679311>
+
+        Remove a few more instances of std::function in the WebsiteDataStore, and WTFMove completion handler to
+        avoid unnecessary copies.
+
+        * Shared/WebsiteData/WebsiteDataType.h: Remove redundant WebsiteDataType from name.
+        * UIProcess/API/Cocoa/WKWebsiteDataRecordInternal.h:
+        (WebKit::toWebsiteDataType): Update for revised name.
+        (WebKit::toWKWebsiteDataTypes): Ditto.
+        * UIProcess/WebProcessProxy.cpp:
+        (WebKit::WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores): ASSERT that
+        this function, as well as its completion handler, are getting called from the main thread.
+        (WebKit::WebProcessProxy::topPrivatelyControlledDomainsWithWebiteData): Ditto.
+        (WebKit::WebProcessProxy::fetchWebsiteData): Move the completionHandler.
+        (WebKit::WebProcessProxy::deleteWebsiteData): Ditto.
+        (WebKit::WebProcessProxy::deleteWebsiteDataForOrigins): Ditto.
+        * UIProcess/WebProcessProxy.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::fetchData): Switch to Function, and move completion handler.
+        (WebKit::WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains): Ditto.
+        (WebKit::WebsiteDataStore::topPrivatelyControlledDomainsWithWebsiteData): Ditto.
+        (WebKit::WebsiteDataStore::removeData): Ditto.
+        (WebKit::WebsiteDataStore::removeDataForTopPrivatelyControlledDomains): Ditto.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
 2017-06-09  Chris Dumez  <cdumez@apple.com>
 
         Make sure we protect |this| in lambdas in WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()

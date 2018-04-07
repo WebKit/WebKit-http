@@ -67,6 +67,7 @@
 		2D1C04A71D76298B000A6816 /* TestNavigationDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D1C04A61D76298B000A6816 /* TestNavigationDelegate.mm */; };
 		2D4CF8BD1D8360CC0001CE8D /* WKThumbnailView.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D4CF8BC1D8360CC0001CE8D /* WKThumbnailView.mm */; };
 		2D51A0C71C8BF00C00765C45 /* DOMHTMLVideoElementWrapper.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D51A0C51C8BF00400765C45 /* DOMHTMLVideoElementWrapper.mm */; };
+		2D838B1F1EEF3A5C009B980E /* WKContentViewEditingActions.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2D838B1E1EEF3A5B009B980E /* WKContentViewEditingActions.mm */; };
 		2DB0232F1E4E871800707123 /* InteractionDeadlockAfterCrash.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2DB0232E1E4E871800707123 /* InteractionDeadlockAfterCrash.mm */; };
 		2DC4CF771D2D9DD800ECCC94 /* DataDetection.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2DC4CF761D2D9DD800ECCC94 /* DataDetection.mm */; };
 		2DC60E231E79F88C00FA6C7D /* DoAfterNextPresentationUpdateAfterCrash.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2DC60E221E79F88C00FA6C7D /* DoAfterNextPresentationUpdateAfterCrash.mm */; };
@@ -162,6 +163,7 @@
 		51A5877D1D1B49CD004BA9AF /* IndexedDBMultiProcess-3.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51A5877C1D1B3D8D004BA9AF /* IndexedDBMultiProcess-3.html */; };
 		51A587851D2739E3004BA9AF /* IndexedDBDatabaseProcessKill-1.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51A587821D272EB5004BA9AF /* IndexedDBDatabaseProcessKill-1.html */; };
 		51A587861D273AA9004BA9AF /* IndexedDBDatabaseProcessKill.mm in Sources */ = {isa = PBXBuildFile; fileRef = 51A587841D272EF3004BA9AF /* IndexedDBDatabaseProcessKill.mm */; };
+		51AF23DF1EF1A3730072F281 /* IconLoadingDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 51AF23DE1EF1A3720072F281 /* IconLoadingDelegate.mm */; };
 		51B1EE961C80FAEF0064FB98 /* IndexedDBPersistence-1.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51B1EE941C80FADD0064FB98 /* IndexedDBPersistence-1.html */; };
 		51B1EE971C80FAEF0064FB98 /* IndexedDBPersistence-2.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51B1EE951C80FADD0064FB98 /* IndexedDBPersistence-2.html */; };
 		51BCEE4E1C84F53B0042C82E /* IndexedDBMultiProcess-1.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 51BCEE4C1C84F52C0042C82E /* IndexedDBMultiProcess-1.html */; };
@@ -482,6 +484,7 @@
 		8361F1781E610B4E00759B25 /* link-with-download-attribute-with-slashes.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 8361F1771E610B2100759B25 /* link-with-download-attribute-with-slashes.html */; };
 		837A35F11D9A1E7D00663C57 /* DownloadRequestBlobURL.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 837A35F01D9A1E6400663C57 /* DownloadRequestBlobURL.html */; };
 		83B6DE6F1EE75221001E792F /* RestoreSessionState.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83B6DE6E1EE7520F001E792F /* RestoreSessionState.cpp */; };
+		83DE134D1EF1C50800C1B355 /* ResponsivenessTimer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83DE134C1EF1C4FE00C1B355 /* ResponsivenessTimer.cpp */; };
 		8E4A85371E1D1AB200F53B0F /* GridPosition.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8E4A85361E1D1AA100F53B0F /* GridPosition.cpp */; };
 		930AD402150698D00067970F /* lots-of-text.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 930AD401150698B30067970F /* lots-of-text.html */; };
 		9329AA291DE3F81E003ABD07 /* TextBreakIterator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 9329AA281DE3F81E003ABD07 /* TextBreakIterator.cpp */; };
@@ -620,6 +623,8 @@
 		F42DA5161D8CEFE400336F40 /* large-input-field-focus-onload.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F42DA5151D8CEFDB00336F40 /* large-input-field-focus-onload.html */; };
 		F4451C761EB8FD890020C5DA /* two-paragraph-contenteditable.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F4451C751EB8FD7C0020C5DA /* two-paragraph-contenteditable.html */; };
 		F4538EF71E8473E600B5C953 /* large-red-square.png in Copy Resources */ = {isa = PBXBuildFile; fileRef = F4538EF01E846B4100B5C953 /* large-red-square.png */; };
+		F46849BE1EEF58E400B937FE /* UIPasteboardTests.mm in Sources */ = {isa = PBXBuildFile; fileRef = F46849BD1EEF58E400B937FE /* UIPasteboardTests.mm */; };
+		F46849C01EEF5EF300B937FE /* rich-and-plain-text.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F46849BF1EEF5EDC00B937FE /* rich-and-plain-text.html */; };
 		F46A095A1ED8A6E600D4AA55 /* apple.gif in Copy Resources */ = {isa = PBXBuildFile; fileRef = F47D30EB1ED28619000482E1 /* apple.gif */; };
 		F46A095B1ED8A6E600D4AA55 /* gif-and-file-input.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F47D30ED1ED28A6C000482E1 /* gif-and-file-input.html */; };
 		F47728991E4AE3C1007ABF6A /* full-page-contenteditable.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = F47728981E4AE3AD007ABF6A /* full-page-contenteditable.html */; };
@@ -704,6 +709,7 @@
 			dstPath = TestWebKitAPI.resources;
 			dstSubfolderSpec = 7;
 			files = (
+				F46849C01EEF5EF300B937FE /* rich-and-plain-text.html in Copy Resources */,
 				93E2D2761ED7D53200FA76F6 /* offscreen-iframe-of-media-document.html in Copy Resources */,
 				F46A095A1ED8A6E600D4AA55 /* apple.gif in Copy Resources */,
 				F46A095B1ED8A6E600D4AA55 /* gif-and-file-input.html in Copy Resources */,
@@ -999,6 +1005,7 @@
 		2D51A0C51C8BF00400765C45 /* DOMHTMLVideoElementWrapper.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DOMHTMLVideoElementWrapper.mm; sourceTree = "<group>"; };
 		2D640B5417875DFF00BFAF99 /* ScrollPinningBehaviors.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ScrollPinningBehaviors.cpp; sourceTree = "<group>"; };
 		2D8104CB1BEC13E70020DA46 /* FindInPage.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FindInPage.mm; sourceTree = "<group>"; };
+		2D838B1E1EEF3A5B009B980E /* WKContentViewEditingActions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKContentViewEditingActions.mm; sourceTree = "<group>"; };
 		2D9A53AE1B31FA8D0074D5AA /* ShrinkToFit.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ShrinkToFit.mm; sourceTree = "<group>"; };
 		2DB0232E1E4E871800707123 /* InteractionDeadlockAfterCrash.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = InteractionDeadlockAfterCrash.mm; sourceTree = "<group>"; };
 		2DC4CF761D2D9DD800ECCC94 /* DataDetection.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DataDetection.mm; sourceTree = "<group>"; };
@@ -1135,6 +1142,7 @@
 		51A5877C1D1B3D8D004BA9AF /* IndexedDBMultiProcess-3.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "IndexedDBMultiProcess-3.html"; sourceTree = "<group>"; };
 		51A587821D272EB5004BA9AF /* IndexedDBDatabaseProcessKill-1.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "IndexedDBDatabaseProcessKill-1.html"; sourceTree = "<group>"; };
 		51A587841D272EF3004BA9AF /* IndexedDBDatabaseProcessKill.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = IndexedDBDatabaseProcessKill.mm; sourceTree = "<group>"; };
+		51AF23DE1EF1A3720072F281 /* IconLoadingDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = IconLoadingDelegate.mm; sourceTree = "<group>"; };
 		51B1EE8D1C80F5880064FB98 /* IndexedDBPersistence.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = IndexedDBPersistence.mm; sourceTree = "<group>"; };
 		51B1EE941C80FADD0064FB98 /* IndexedDBPersistence-1.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "IndexedDBPersistence-1.html"; sourceTree = "<group>"; };
 		51B1EE951C80FADD0064FB98 /* IndexedDBPersistence-2.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "IndexedDBPersistence-2.html"; sourceTree = "<group>"; };
@@ -1286,6 +1294,7 @@
 		837A35F01D9A1E6400663C57 /* DownloadRequestBlobURL.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = DownloadRequestBlobURL.html; sourceTree = "<group>"; };
 		83B6DE6E1EE7520F001E792F /* RestoreSessionState.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RestoreSessionState.cpp; sourceTree = "<group>"; };
 		83B88A331C80056D00BB2418 /* HTMLParserIdioms.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HTMLParserIdioms.cpp; sourceTree = "<group>"; };
+		83DE134C1EF1C4FE00C1B355 /* ResponsivenessTimer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResponsivenessTimer.cpp; sourceTree = "<group>"; };
 		86BD19971A2DB05B006DCF0A /* RefCounter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = RefCounter.cpp; sourceTree = "<group>"; };
 		8A2C750D16CED9550024F352 /* ResizeWindowAfterCrash.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ResizeWindowAfterCrash.cpp; sourceTree = "<group>"; };
 		8A3AF93A16C9ED2700D248C1 /* ReloadPageAfterCrash.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ReloadPageAfterCrash.cpp; sourceTree = "<group>"; };
@@ -1549,6 +1558,8 @@
 		F42DA5151D8CEFDB00336F40 /* large-input-field-focus-onload.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = "large-input-field-focus-onload.html"; path = "Tests/WebKit2Cocoa/large-input-field-focus-onload.html"; sourceTree = SOURCE_ROOT; };
 		F4451C751EB8FD7C0020C5DA /* two-paragraph-contenteditable.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "two-paragraph-contenteditable.html"; sourceTree = "<group>"; };
 		F4538EF01E846B4100B5C953 /* large-red-square.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "large-red-square.png"; sourceTree = "<group>"; };
+		F46849BD1EEF58E400B937FE /* UIPasteboardTests.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = UIPasteboardTests.mm; sourceTree = "<group>"; };
+		F46849BF1EEF5EDC00B937FE /* rich-and-plain-text.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "rich-and-plain-text.html"; sourceTree = "<group>"; };
 		F47728981E4AE3AD007ABF6A /* full-page-contenteditable.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "full-page-contenteditable.html"; sourceTree = "<group>"; };
 		F47D30EB1ED28619000482E1 /* apple.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = apple.gif; sourceTree = "<group>"; };
 		F47D30ED1ED28A6C000482E1 /* gif-and-file-input.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "gif-and-file-input.html"; sourceTree = "<group>"; };
@@ -1755,6 +1766,7 @@
 				3F1B52681D3D7129008D60C4 /* FullscreenLayoutConstraints.mm */,
 				CDE195B31CFE0ADE0053D256 /* FullscreenTopContentInset.mm */,
 				631EFFF51E7B5E8D00D2EBB8 /* Geolocation.mm */,
+				51AF23DE1EF1A3720072F281 /* IconLoadingDelegate.mm */,
 				510477751D298E03009747EB /* IDBDeleteRecovery.mm */,
 				5110FCEF1E01CBAA006F8D0B /* IDBIndexUpgradeToV2.mm */,
 				51A587841D272EF3004BA9AF /* IndexedDBDatabaseProcessKill.mm */,
@@ -1803,6 +1815,7 @@
 				5120C83C1E6750790025B250 /* WebsiteDataStoreCustomPaths.mm */,
 				5C9E56841DF9143D00C9EE33 /* WebsitePolicies.mm */,
 				1F83571A1D3FFB0E00E3967B /* WKBackForwardList.mm */,
+				2D838B1E1EEF3A5B009B980E /* WKContentViewEditingActions.mm */,
 				51D124971E763AF8002B2820 /* WKHTTPCookieStore.mm */,
 				375E0E151D66674400EFEC2C /* WKNSNumber.mm */,
 				37B47E2E1D64E7CA005F4EFF /* WKObject.mm */,
@@ -1896,6 +1909,7 @@
 				F4D4F3B71E4E36E400BB2767 /* DataInteractionTests.mm */,
 				7560917719259C59009EF06E /* MemoryCacheAddImageToCacheIOS.mm */,
 				F4D7BCD61EA574DD00C421D3 /* PositionInformationTests.mm */,
+				F46849BD1EEF58E400B937FE /* UIPasteboardTests.mm */,
 			);
 			path = ios;
 			sourceTree = "<group>";
@@ -2016,6 +2030,7 @@
 				A1409AD81E7254AC004949D9 /* password-protected.pages */,
 				F415086C1DA040C10044BE9B /* play-audio-on-click.html */,
 				A12DDBFF1E8373C100CF6CAE /* rendered-image-excluding-overflow.html */,
+				F46849BF1EEF5EDC00B937FE /* rich-and-plain-text.html */,
 				C9B4AD291ECA6EA500F5FEA0 /* silence-long.m4a */,
 				F4F405BB1D4C0CF8007A9707 /* skinny-autoplaying-video-with-audio.html */,
 				515BE16E1D4288FF00DD7C68 /* StoreBlobToBeDeleted.html */,
@@ -2176,6 +2191,7 @@
 				8A3AF93A16C9ED2700D248C1 /* ReloadPageAfterCrash.cpp */,
 				2DD7D3A9178205D00026E1E3 /* ResizeReversePaginatedWebView.cpp */,
 				8A2C750D16CED9550024F352 /* ResizeWindowAfterCrash.cpp */,
+				83DE134C1EF1C4FE00C1B355 /* ResponsivenessTimer.cpp */,
 				C0BD669C131D3CF700E18F2A /* ResponsivenessTimerDoesntFireEarly.cpp */,
 				C0BD669E131D3CFF00E18F2A /* ResponsivenessTimerDoesntFireEarly_Bundle.cpp */,
 				83B6DE6E1EE7520F001E792F /* RestoreSessionState.cpp */,
@@ -2913,6 +2929,7 @@
 				2D51A0C71C8BF00C00765C45 /* DOMHTMLVideoElementWrapper.mm in Sources */,
 				46397B951DC2C850009A78AE /* DOMNode.mm in Sources */,
 				5198A2401EA7E59F008910B7 /* InitialWarmedProcessUsed.mm in Sources */,
+				2D838B1F1EEF3A5C009B980E /* WKContentViewEditingActions.mm in Sources */,
 				7CCE7EBC1A411A7E00447C4C /* DOMNodeFromJSObject.mm in Sources */,
 				7CCE7EBD1A411A7E00447C4C /* DOMRangeOfString.mm in Sources */,
 				115EB3431EE0BA03003C2C0A /* ViewportSizeForViewportUnits.mm in Sources */,
@@ -2969,6 +2986,7 @@
 				7A95BDE11E9BEC5F00865498 /* InjectedBundleAppleEvent.cpp in Sources */,
 				510477781D29923B009747EB /* IDBDeleteRecovery.mm in Sources */,
 				5110FCFA1E01CDB8006F8D0B /* IDBIndexUpgradeToV2.mm in Sources */,
+				83DE134D1EF1C50800C1B355 /* ResponsivenessTimer.cpp in Sources */,
 				51A587861D273AA9004BA9AF /* IndexedDBDatabaseProcessKill.mm in Sources */,
 				7C83E0BE1D0A651300FEBCF3 /* IndexedDBMultiProcess.mm in Sources */,
 				7C83E0BF1D0A652200FEBCF3 /* IndexedDBPersistence.mm in Sources */,
@@ -3030,6 +3048,7 @@
 				7CCE7EC71A411A7E00447C4C /* PageVisibilityStateWithWindowChanges.mm in Sources */,
 				7CCE7F091A411AE600447C4C /* ParentFrame.cpp in Sources */,
 				7C83E0511D0A641800FEBCF3 /* ParsedContentRange.cpp in Sources */,
+				51AF23DF1EF1A3730072F281 /* IconLoadingDelegate.mm in Sources */,
 				7CCE7F0A1A411AE600447C4C /* PasteboardNotifications.mm in Sources */,
 				7C83E0531D0A643A00FEBCF3 /* PendingAPIRequestURL.cpp in Sources */,
 				7CCE7EAF1A411A3800447C4C /* PlatformUtilities.cpp in Sources */,
@@ -3148,6 +3167,7 @@
 				5C7964101EB0278D0075D74C /* EventModifiers.cpp in Sources */,
 				2D4CF8BD1D8360CC0001CE8D /* WKThumbnailView.mm in Sources */,
 				5CE354D91E70DA5C00BEFE3B /* WKContentExtensionStore.mm in Sources */,
+				F46849BE1EEF58E400B937FE /* UIPasteboardTests.mm in Sources */,
 				2EFF06D71D8AF34A0004BB30 /* WKWebViewCandidateTests.mm in Sources */,
 				A14FC5851B89739100D107EB /* WKWebViewConfigurationExtras.mm in Sources */,
 				7C417F331D19E14800B8EF53 /* WKWebViewDefaultNavigationDelegate.mm in Sources */,

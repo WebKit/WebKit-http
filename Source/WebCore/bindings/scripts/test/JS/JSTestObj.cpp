@@ -38,7 +38,7 @@
 #include "JSDOMStringList.h"
 #include "JSDOMWindow.h"
 #include "JSDOMWindowBase.h"
-#include "JSDOMWindowShell.h"
+#include "JSDOMWindowProxy.h"
 #include "JSDOMWrapperCache.h"
 #include "JSDocument.h"
 #include "JSElement.h"
@@ -57,6 +57,7 @@
 #include "JSTestSubObj.h"
 #include "JSXPathNSResolver.h"
 #include "RuntimeEnabledFeatures.h"
+#include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
 #include "URL.h"
@@ -1006,6 +1007,11 @@ JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionWorldSpecificMethod(
 #if ENABLE(TEST_FEATURE)
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation(JSC::ExecState*);
 #endif
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSecretBoolean(JSC::ExecState*);
+#if ENABLE(TEST_FEATURE)
+JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean(JSC::ExecState*);
+#endif
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethod(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionVoidMethodWithArgs(JSC::ExecState*);
 JSC::EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionByteMethod(JSC::ExecState*);
@@ -1669,6 +1675,13 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
+    { "calculateSecretResult", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionCalculateSecretResult), (intptr_t) (0) } },
+    { "getSecretBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionGetSecretBoolean), (intptr_t) (0) } },
+#if ENABLE(TEST_FEATURE)
+    { "testFeatureGetSecretBoolean", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean), (intptr_t) (0) } },
+#else
+    { 0, 0, NoIntrinsic, { 0, 0 } },
+#endif
     { "voidMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethod), (intptr_t) (0) } },
     { "voidMethodWithArgs", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionVoidMethodWithArgs), (intptr_t) (3) } },
     { "byteMethod", JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjPrototypeFunctionByteMethod), (intptr_t) (0) } },
@@ -1854,24 +1867,41 @@ void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
     reifyStaticProperties(vm, JSTestObjPrototypeTableValues, *this);
 #if ENABLE(TEST_FEATURE)
     if (!RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled()) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeOperation"), strlen("enabledAtRuntimeOperation"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeOperation"), strlen("enabledAtRuntimeOperation"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
 #endif
     if (!(worldForDOMObject(this).someWorld() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledInSpecificWorldWhenRuntimeFeatureEnabled"), strlen("enabledInSpecificWorldWhenRuntimeFeatureEnabled"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledInSpecificWorldWhenRuntimeFeatureEnabled"), strlen("enabledInSpecificWorldWhenRuntimeFeatureEnabled"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
     if (!worldForDOMObject(this).someWorld()) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("worldSpecificMethod"), strlen("worldSpecificMethod"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("worldSpecificMethod"), strlen("worldSpecificMethod"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("calculateSecretResult"), strlen("calculateSecretResult"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+    if (!jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext()) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("getSecretBoolean"), strlen("getSecretBoolean"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
 #if ENABLE(TEST_FEATURE)
+    if (!(jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext()->isSecureContext() && RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled())) {
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("testFeatureGetSecretBoolean"), strlen("testFeatureGetSecretBoolean"));
+        VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
+        JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
+    }
+#endif
+#if ENABLE(TEST_FEATURE)
     if (!(RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled() && RuntimeEnabledFeatures::sharedFeatures().testFeature1Enabled())) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeAttribute"), strlen("enabledAtRuntimeAttribute"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeAttribute"), strlen("enabledAtRuntimeAttribute"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject()->globalExec(), propertyName);
     }
@@ -1880,14 +1910,14 @@ void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
     ASSERT(!context || context->isDocument());
 #if ENABLE(TEST_FEATURE)
     if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingOperation"), strlen("enabledBySettingOperation"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingOperation"), strlen("enabledBySettingOperation"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject.globalExec(), propertyName);
     }
 #endif
 #if ENABLE(TEST_FEATURE)
     if (!context || !downcast<Document>(*context).settings().testSettingEnabled()) {
-        Identifier propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingAttribute"), strlen("enabledBySettingAttribute"));
+        auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledBySettingAttribute"), strlen("enabledBySettingAttribute"));
         VM::DeletePropertyModeScope scope(vm, VM::DeletePropertyMode::IgnoreConfigurable);
         JSObject::deleteProperty(this, globalObject.globalExec(), propertyName);
     }
@@ -1941,35 +1971,37 @@ bool JSTestObj::getOwnPropertySlot(JSObject* object, ExecState* state, PropertyN
 {
     auto* thisObject = jsCast<JSTestObj*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    auto optionalIndex = parseIndex(propertyName);
-    if (optionalIndex && optionalIndex.value() < thisObject->wrapped().length()) {
-        auto index = optionalIndex.value();
-        slot.setValue(thisObject, ReadOnly, toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index)));
-        return true;
+    if (auto index = parseIndex(propertyName)) {
+        if (index.value() < thisObject->wrapped().length()) {
+            auto value = toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index.value()));
+            slot.setValue(thisObject, ReadOnly, value);
+            return true;
+        }
     }
-    if (Base::getOwnPropertySlot(thisObject, state, propertyName, slot))
-        return true;
-    return false;
+    return JSObject::getOwnPropertySlot(object, state, propertyName, slot);
 }
 
 bool JSTestObj::getOwnPropertySlotByIndex(JSObject* object, ExecState* state, unsigned index, PropertySlot& slot)
 {
     auto* thisObject = jsCast<JSTestObj*>(object);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    if (LIKELY(index < thisObject->wrapped().length())) {
-        slot.setValue(thisObject, ReadOnly, toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index)));
-        return true;
+    if (LIKELY(index <= MAX_ARRAY_INDEX)) {
+        if (index < thisObject->wrapped().length()) {
+            auto value = toJS<IDLNullable<IDLDOMString>>(*state, thisObject->wrapped().nullableStringSpecialMethod(index));
+            slot.setValue(thisObject, ReadOnly, value);
+            return true;
+        }
     }
-    return Base::getOwnPropertySlotByIndex(thisObject, state, index, slot);
+    return JSObject::getOwnPropertySlotByIndex(object, state, index, slot);
 }
 
 void JSTestObj::getOwnPropertyNames(JSObject* object, ExecState* state, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     auto* thisObject = jsCast<JSTestObj*>(object);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
+    ASSERT_GC_OBJECT_INHERITS(object, info());
     for (unsigned i = 0, count = thisObject->wrapped().length(); i < count; ++i)
         propertyNames.add(Identifier::from(state, i));
-    Base::getOwnPropertyNames(thisObject, state, propertyNames, mode);
+    JSObject::getOwnPropertyNames(object, state, propertyNames, mode);
 }
 
 static inline EncodedJSValue callJSTestObj1(ExecState* state)
@@ -4965,6 +4997,49 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionEnabledBySettingOperation
 
 #endif
 
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionCalculateSecretResultBody(JSC::ExecState* state, typename IDLOperationReturningPromise<JSTestObj>::ClassParameter castedThis, Ref<DeferredPromise>&& promise, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    impl.calculateSecretResult(WTFMove(promise));
+    return JSValue::encode(jsUndefined());
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionCalculateSecretResult(ExecState* state)
+{
+    return IDLOperationReturningPromise<JSTestObj>::call<jsTestObjPrototypeFunctionCalculateSecretResultBody, PromiseExecutionScope::WindowOnly>(*state, "calculateSecretResult");
+}
+
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionGetSecretBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLBoolean>(impl.getSecretBoolean()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionGetSecretBoolean(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionGetSecretBooleanBody>(*state, "getSecretBoolean");
+}
+
+#if ENABLE(TEST_FEATURE)
+static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionTestFeatureGetSecretBooleanBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
+{
+    UNUSED_PARAM(state);
+    UNUSED_PARAM(throwScope);
+    auto& impl = castedThis->wrapped();
+    return JSValue::encode(toJS<IDLBoolean>(impl.testFeatureGetSecretBoolean()));
+}
+
+EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionTestFeatureGetSecretBoolean(ExecState* state)
+{
+    return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionTestFeatureGetSecretBooleanBody>(*state, "testFeatureGetSecretBoolean");
+}
+
+#endif
+
 static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVoidMethodBody(JSC::ExecState* state, typename IDLOperation<JSTestObj>::ClassParameter castedThis, JSC::ThrowScope& throwScope)
 {
     UNUSED_PARAM(state);
@@ -6651,7 +6726,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethodOver
             return jsTestObjPrototypeFunctionOverloadedMethod6Body(state, castedThis, throwScope);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSTestObj::info()))
             return jsTestObjPrototypeFunctionOverloadedMethod8Body(state, castedThis, throwScope);
-        if (distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(vm, JSDOMWindowShell::info()) || asObject(distinguishingArg)->inherits(vm, JSDOMWindow::info())))
+        if (distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(vm, JSDOMWindowProxy::info()) || asObject(distinguishingArg)->inherits(vm, JSDOMWindow::info())))
             return jsTestObjPrototypeFunctionOverloadedMethod9Body(state, castedThis, throwScope);
         if (distinguishingArg.isObject() && asObject(distinguishingArg)->inherits(vm, JSBlob::info()))
             return jsTestObjPrototypeFunctionOverloadedMethod13Body(state, castedThis, throwScope);

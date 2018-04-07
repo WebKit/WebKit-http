@@ -90,6 +90,7 @@
 #include "UserGestureIndicator.h"
 #include <limits>
 #include <runtime/Uint8Array.h>
+#include <wtf/Algorithms.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MathExtras.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -414,6 +415,7 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
     , m_initiallyMuted(false)
     , m_paused(true)
     , m_seeking(false)
+    , m_seekRequested(false)
     , m_sentStalledEvent(false)
     , m_sentEndEvent(false)
     , m_pausedInternal(false)
@@ -598,7 +600,7 @@ static bool needsAutoplayPlayPauseEventsQuirk(const Document& document)
         return false;
 
     auto* loader = document.loader();
-    return loader && loader->allowsAutoplayQuirks();
+    return loader && loader->allowedAutoplayQuirks().contains(AutoplayQuirk::SynthesizedPauseEvents);
 }
 
 HTMLMediaElement* HTMLMediaElement::bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose purpose)
@@ -1019,6 +1021,7 @@ void HTMLMediaElement::scheduleNotifyAboutPlaying()
 
 void HTMLMediaElement::notifyAboutPlaying()
 {
+    Ref<HTMLMediaElement> protectedThis(*this); // The 'playing' event can make arbitrary DOM mutations.
     m_playbackStartedTime = currentMediaTime().toDouble();
     dispatchEvent(Event::create(eventNames().playingEvent, false, true));
     resolvePendingPlayPromises();
@@ -2361,7 +2364,7 @@ void HTMLMediaElement::setReadyState(MediaPlayer::ReadyState state)
             scheduleEvent(eventNames().waitingEvent);
 
         // 4.8.10.10 step 14 & 15.
-        if (!m_player->seeking() && m_readyState >= HAVE_CURRENT_DATA)
+        if (m_seekRequested && !m_player->seeking() && m_readyState >= HAVE_CURRENT_DATA)
             finishSeek();
     } else {
         if (wasPotentiallyPlaying && m_readyState < HAVE_FUTURE_DATA) {
@@ -2752,6 +2755,7 @@ void HTMLMediaElement::seekTask()
     scheduleEvent(eventNames().seekingEvent);
 
     // 11 - Set the current playback position to the given new playback position
+    m_seekRequested = true;
     m_player->seekWithTolerance(time, negativeTolerance, positiveTolerance);
 
     // 12 - Wait until the user agent has established whether or not the media data for the new playback
@@ -2762,6 +2766,7 @@ void HTMLMediaElement::seekTask()
 void HTMLMediaElement::clearSeeking()
 {
     m_seeking = false;
+    m_seekRequested = false;
     m_pendingSeekType = NoSeek;
     invalidateCachedTime();
 }
@@ -4415,7 +4420,7 @@ void HTMLMediaElement::mediaPlayerTimeChanged(MediaPlayer*)
     bool wasSeeking = seeking();
 
     // 4.8.10.9 step 14 & 15.  Needed if no ReadyState change is associated with the seek.
-    if (m_seeking && m_readyState >= HAVE_CURRENT_DATA && !m_player->seeking())
+    if (m_seekRequested && m_readyState >= HAVE_CURRENT_DATA && !m_player->seeking())
         finishSeek();
     
     // Always call scheduleTimeupdateEvent when the media engine reports a time discontinuity, 
@@ -6354,6 +6359,14 @@ HTMLMediaElement::SleepType HTMLMediaElement::shouldDisableSleep() const
         return SleepType::System;
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+    if (m_mediaStreamSrcObject) {
+        // Do not block system from sleeping if element is only rendering local (capture) sources.
+        if (WTF::allOf(m_mediaStreamSrcObject->getTracks(), [] (RefPtr<MediaStreamTrack>& track) { return track && track->isCaptureTrack(); }))
+            return SleepType::None;
+    }
+#endif
+
     if (!hasVideo() || !hasAudio())
         return SleepType::None;
 
@@ -7022,6 +7035,11 @@ bool HTMLMediaElement::canProduceAudio() const
         return false;
 
     return m_player && m_readyState >= HAVE_METADATA && hasAudio();
+}
+
+bool HTMLMediaElement::isSuspended() const
+{
+    return document().activeDOMObjectsAreSuspended() || document().activeDOMObjectsAreStopped();
 }
 
 #if ENABLE(MEDIA_SOURCE)

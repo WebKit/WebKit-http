@@ -1,3 +1,393 @@
+2017-06-14  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: remove empty test files
+        https://bugs.webkit.org/show_bug.cgi?id=173382
+
+        Reviewed by Saam Barati.
+
+        The following files:
+                JSTests/wasm/function-tests/call-indirect-params.js
+                JSTests/wasm/function-tests/call-indirect.js
+                JSTests/wasm/js-api/call-indirect-results.js
+        Were changed to empty files in https://trac.webkit.org/changeset/209771
+
+        They were testing call_indirect with the wrong semantics, before
+        we implemented tables. That change implemented tables and
+        therefore removed the erroneous tests.
+
+        We have a few tests for call_indirect which already do the right thing:
+                JSTests/wasm/function-tests/context-switch.js
+                JSTests/wasm/function-tests/exceptions.js
+                JSTests/wasm/function-tests/grow-memory-2.js
+                JSTests/wasm/function-tests/stack-overflow.js
+                JSTests/wasm/function-tests/table-basic-2.js
+                JSTests/wasm/function-tests/table-basic.js
+                JSTests/wasm/js-api/call-indirect.js
+                JSTests/wasm/js-api/table.js
+                JSTests/wasm/js-api/unique-signature.js
+                JSTests/wasm/js-api/wrapper-function.js
+
+        I also just imported the updated spec tests which, among other
+        things, test call_indirect:
+                core/br.wast
+                core/br_table.wast
+                core/call_indirect.wast
+                core/func.wast
+                core/func_ptrs.wast
+                core/imports.wast
+                core/left-to-right.wast
+                core/linking.wast
+                core/nop.wast
+                core/return.wast
+                core/typecheck.wast
+                core/unreachable.wast
+
+        So I think it's OK to just delete the tests which should just have
+        been deleted back when tables were added.
+
+        * wasm/function-tests/call-indirect-params.js: Removed.
+        * wasm/function-tests/call-indirect.js: Removed.
+        * wasm/js-api/call-indirect-results.js: Removed.
+
+2017-06-13  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: import updated spec tests
+        https://bugs.webkit.org/show_bug.cgi?id=173287
+        <rdar://problem/32725975>
+
+        Reviewed by Saam Barati.
+
+        Import spec tests as of 31c641cc15f2aedbec2fa45a5185f68416df578b,
+        with a few modifications so things work.
+
+        Fix a bunch of bugs found through this process, and punt a few tests (which I
+        marked as blocked by this bug).
+
+        Fixes:
+
+        Fix load / store alignment: r216908 erroneously implemented it as bit alignment
+        instead of byte alignment. It was also missing memory-alignment.js despite it
+        being in the ChangeLog, so add it too. This allows spec-test/align.wast.js to
+        pass.
+
+        Tables can be imported or in a section. There can be only one, but sections can
+        be empty. An Elements section can exist if there's no Table, as long as it is
+        also empty.
+
+        Memories can be imported or in a section. There can be only one, but sections
+        can be empty. A Data section can exist if there's no Memory, as long as it is
+        also empty.
+
+        Prototypes: stringify without .prototype. in the string.
+
+        WebAssembly.Table.prototype.grow was plain wrong: it takes a delta parameter,
+        not a final size, and throws a RangeError on failure, not a TypeError.
+
+        Fix compile / instantiate so the reject the promise if given an argument of the
+        wrong type (instead of failing instantly).
+
+        Fix async on neuter test.
+
+        Element section shouldn't affect any Table if any of the elements are out of
+        bounds. We need to process it in two passes.
+
+        Segment section shouldn't affect any Data if any of the segments are out of
+        bounds. We need to process it in two passes.
+
+        Empty data segments are valid, but only when there is no memory. Their index
+        still gets validated, and has to be zero.
+
+        Punts:
+
+        Error messages with context, the test seems overly restrictive but this is
+        minor.
+
+        compile/instantiate/validate property descriptors.
+
+        UTF-8 bugs.
+
+        Temporarily disable NaN tests. We need to go back and implement the following
+        semantics: https://github.com/WebAssembly/spec/pull/414 This doesn't matter as
+        much as getting all the other tests passing.
+
+        Worth noting for NaNs: f64.no_fold_mul_one (also a NaN test) as well as
+        no_fold_promote_demote (an interesting corner case which we get wrong). mul by
+        one is (assert_return (invoke \"f64.no_fold_mul_one\" (i64.const
+        0x7ff4000000000000)) (i64.const 0x7ff8000000000000)) which means converting sNaN
+        to qNaN, and promote/demote is (assert_return (invoke \"no_fold_promote_demote\"
+        (i32.const 0x7fa00000)) (i32.const 0x7fc00000)) which is the same. I'm not sure
+        why they're not allowed.
+
+        * wasm.yaml:
+        * wasm/function-tests/i32-load8-s.js:
+        * wasm/function-tests/memory-access-past-4gib.js:
+        (const.op.of.WASM.opcodes):
+        * wasm/function-tests/memory-alignment.js: Added.
+        (const.op.of.WASM.opcodes):
+        * wasm/function-tests/memory-section-and-import.js:
+        * wasm/js-api/Module-compile.js:
+        (async.testPromiseAPI):
+        * wasm/js-api/dont-mmap-zero-byte-memory.js:
+        (testMems):
+        * wasm/js-api/element.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        * wasm/js-api/neutered-inputs.js:
+        (const.testFunction): Deleted.
+        (const.testConstructor): Deleted.
+        * wasm/js-api/table.js:
+        (assert.throws.new.WebAssembly.Module.builder.WebAssembly):
+        (new.WebAssembly.Module):
+        (assert.throws):
+        (assertBadTableImport):
+        (assert.throws.WebAssembly.Table.prototype.grow):
+        (assertBadTableInstance): Deleted.
+        * wasm/js-api/test_Data.js:
+        (DataSectionWithoutMemory):
+        * wasm/spec-harness/index.js:
+        (module):
+        (uniqueTest): Deleted.
+        (assert_invalid): Deleted.
+        (assert_soft_invalid): Deleted.
+        (register): Deleted.
+        (call): Deleted.
+        (get instance): Deleted.
+        (exports): Deleted.
+        (run): Deleted.
+        (assert_unlinkable): Deleted.
+        (assert_uninstantiable): Deleted.
+        (assert_trap): Deleted.
+        (try.f): Deleted.
+        (catch): Deleted.
+        (assert_exhaustion): Deleted.
+        (assert_return): Deleted.
+        (assert_return_nan): Deleted.
+        * wasm/spec-harness/testharness.css: Removed.
+        * wasm/spec-harness/testharness.js: Removed.
+        * wasm/spec-harness/testharnessreport.js: Removed.
+        * wasm/spec-harness/wasm-constants.js:
+        (assertTraps):
+        (assertWasmThrows):
+        * wasm/spec-harness/wasm-module-builder.js:
+        (Binary.prototype.emit_section):
+        (Binary):
+        (WasmFunctionBuilder.prototype.addBody):
+        (WasmFunctionBuilder.prototype.end):
+        (WasmFunctionBuilder):
+        (WasmModuleBuilder.prototype.stringToBytes):
+        (WasmModuleBuilder.prototype.addCustomSection):
+        (WasmModuleBuilder.prototype.addFunctionTableInit):
+        (WasmModuleBuilder.prototype.appendToTable):
+        (WasmModuleBuilder.prototype.toArray):
+        (WasmModuleBuilder.prototype.toBuffer):
+        (WasmModuleBuilder.prototype.instantiate):
+        (WasmModuleBuilder):
+        * wasm/spec-tests/address.wast.js:
+        * wasm/spec-tests/align.wast.js: Added.
+        * wasm/spec-tests/binary.wast.js:
+        * wasm/spec-tests/block.wast.js:
+        * wasm/spec-tests/br.wast.js:
+        * wasm/spec-tests/br_if.wast.js:
+        * wasm/spec-tests/br_table.wast.js:
+        * wasm/spec-tests/call.wast.js:
+        * wasm/spec-tests/call_indirect.wast.js:
+        * wasm/spec-tests/comments.wast.js:
+        * wasm/spec-tests/const.wast.js: Added.
+        * wasm/spec-tests/conversions.wast.js: Added.
+        * wasm/spec-tests/custom_section.wast.js:
+        * wasm/spec-tests/exports.wast.js:
+        * wasm/spec-tests/f32.wast.js: Added.
+        * wasm/spec-tests/f64.wast.js: Added.
+        * wasm/spec-tests/fac.wast.js:
+        * wasm/spec-tests/float_exprs.wast.js: Added.
+        * wasm/spec-tests/float_misc.wast.js: Added.
+        * wasm/spec-tests/func.wast.js:
+        * wasm/spec-tests/globals.wast.js:
+        * wasm/spec-tests/if.wast.js:
+        * wasm/spec-tests/imports.wast.js:
+        * wasm/spec-tests/inline-module.wast.js: Added.
+        * wasm/spec-tests/jsapi.js:
+        (testJSAPI.test):
+        (testJSAPI):
+        * wasm/spec-tests/labels.wast.js:
+        * wasm/spec-tests/loop.wast.js:
+        * wasm/spec-tests/memory.wast.js:
+        * wasm/spec-tests/memory_trap.wast.js: Added.
+        * wasm/spec-tests/names.wast.js:
+        * wasm/spec-tests/nop.wast.js:
+        * wasm/spec-tests/return.wast.js:
+        * wasm/spec-tests/stack.wast.js:
+        * wasm/spec-tests/token.wast.js: Added.
+        * wasm/spec-tests/type.wast.js: Added.
+        * wasm/spec-tests/typecheck.wast.js:
+        * wasm/spec-tests/unreachable.wast.js:
+        * wasm/spec-tests/unreached-invalid.wast.js:
+        * wasm/spec-tests/unwind.wast.js:
+        * wasm/spec-tests/utf8-custom-section-id.wast.js: Added.
+        * wasm/spec-tests/utf8-import-field.wast.js: Added.
+        * wasm/spec-tests/utf8-import-module.wast.js: Added.
+
+2017-06-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed JSC test gardening.
+
+        * stress/check-string-ident.js:
+        * stress/new-largeish-contiguous-array-with-size.js:
+
+2017-06-13  Michael Saboff  <msaboff@apple.com>
+
+        DFG doesn't properly handle a property that is change to read only in a prototype
+        https://bugs.webkit.org/show_bug.cgi?id=173321
+
+        Reviewed by Filip Pizlo.
+
+        * ChakraCore.yaml: Renabled fieldopts/objtypespec-newobj-invalidation.1.js.
+        * stress/regress-173321.js: Added new regression test.
+        (shouldBe):
+        (SimpleObject):
+        (test):
+
+2017-06-12  Saam Barati  <sbarati@apple.com>
+
+        Update test262 test expectation since r218082 makes new tests pass.
+
+        * test262.yaml:
+
+2017-06-12  Saam Barati  <sbarati@apple.com>
+
+        We should not claim that SpecEmpty is filtered out of cell checks on 64 bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=172957
+        <rdar://problem/32602704>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/spec-empty-flows-through-cell-checks.js: Added.
+        (A):
+        (B):
+        (i.catch):
+
+2017-06-12  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        We incorrectly allow escaped characters in keyword tokens
+        https://bugs.webkit.org/show_bug.cgi?id=171310
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/destructuring-assignment-syntax.js:
+        * stress/error-messages-for-in-operator-should-not-crash.js:
+        (catch):
+        * stress/reserved-word-with-escape.js:
+        (testSyntaxError.String.raw.v):
+        (String.raw.SyntaxError.Cannot.use.the.keyword.string_appeared_here.as.a.name):
+        (testSyntaxError.String.raw.a):
+        * JSTests/ChakraCore/test/Basics/IdsWithEscapes.baseline-jsc:
+
+2017-06-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Add ArrayIndexOf intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=172421
+
+        Reviewed by Saam Barati.
+
+        * stress/array-indexof-array-prototype-change.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        * stress/array-indexof-have-a-bad-time-getter.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        * stress/array-indexof-have-a-bad-time.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        * stress/array-indexof-hole-with-prototype.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-hole.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-index.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        (indexOfDouble):
+        (indexOfString):
+        (indexOfObject):
+        (indexOfValue):
+        * stress/array-indexof-negative-index.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        (indexOfDouble):
+        (indexOfString):
+        (indexOfObject):
+        (indexOfValue):
+        * stress/array-indexof-non-int32-start-index.js: Added.
+        (shouldBe):
+        (indexOf):
+        (object.valueOf):
+        * stress/array-indexof-object-prototype-change.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        * stress/array-indexof-object.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-original-array.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        * stress/array-indexof-string.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-structure-change-convert.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-structure-change.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof.js: Added.
+        (shouldBe):
+        (indexOf):
+
+2017-06-11  Keith Miller  <keith_miller@apple.com>
+
+        TypedArray constructor with string shouldn't throw
+        https://bugs.webkit.org/show_bug.cgi?id=173181
+
+        Reviewed by JF Bastien.
+
+        We should be coercing primitive arguments to numbers in the various
+        TypedArray constructors.
+
+        * stress/typedarray-constructor.js:
+
+2017-06-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, update test results part 3
+        https://bugs.webkit.org/show_bug.cgi?id=173227
+
+        * microbenchmarks/regexp-prototype-search-observable-side-effects.js:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, update test results part 2
+        https://bugs.webkit.org/show_bug.cgi?id=173227
+
+        * test262.yaml:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, update test results
+        https://bugs.webkit.org/show_bug.cgi?id=173227
+
+        * microbenchmarks/string-prototype-search-observable-side-effects.js:
+        * test262.yaml:
+
+2017-06-10  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Update RegExp.prototype.[@@search]] implementation according to the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=173227
+
+        Reviewed by Mark Lam.
+
+        Update the test.
+
+        * es6/Proxy_internal_get_calls_RegExp.prototype[Symbol.search].js:
+
 2017-06-08  Keith Miller  <keith_miller@apple.com>
 
         WebAssembly: We should only create wrappers for functions that can be exported
