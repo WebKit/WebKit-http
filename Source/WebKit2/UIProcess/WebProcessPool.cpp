@@ -974,9 +974,11 @@ void WebProcessPool::pageAddedToProcess(WebPageProxy& page)
         sendToNetworkingProcess(Messages::NetworkProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()));
         page.process().send(Messages::WebProcess::AddWebsiteDataStore(page.websiteDataStore().parameters()), 0);
 
+#if ENABLE(INDEXED_DATABASE)
         auto databaseParameters = page.websiteDataStore().databaseProcessParameters();
         if (!databaseParameters.indexedDatabaseDirectory.isEmpty())
             sendToDatabaseProcessRelaunchingIfNecessary(Messages::DatabaseProcess::InitializeWebsiteDataStore(databaseParameters));
+#endif
     }
 }
 
@@ -1109,6 +1111,12 @@ void WebProcessPool::setShouldUseFontSmoothing(bool useFontSmoothing)
 {
     m_shouldUseFontSmoothing = useFontSmoothing;
     sendToAllProcesses(Messages::WebProcess::SetShouldUseFontSmoothing(useFontSmoothing));
+}
+
+void WebProcessPool::setResourceLoadStatisticsEnabled(bool enabled)
+{
+    m_resourceLoadStatisticsEnabled = enabled;
+    sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(enabled));
 }
 
 void WebProcessPool::registerURLSchemeAsEmptyDocument(const String& urlScheme)

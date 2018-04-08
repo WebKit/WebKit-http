@@ -222,6 +222,11 @@ void TestController::removeAllSessionCredentials()
 }
 
 #if WK_API_ENABLED
+void TestController::setStatisticsLastSeen(WKStringRef hostName, double seconds)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetLastSeen:seconds forHost:toNSString(hostName)];
+}
+    
 void TestController::setStatisticsPrevalentResource(WKStringRef hostName, bool value)
 {
     [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetIsPrevalentResource:value forHost:toNSString(hostName)];
@@ -301,24 +306,24 @@ void TestController::setStatisticsTimeToLiveCookiePartitionFree(double seconds)
     [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetTimeToLiveCookiePartitionFree:seconds];
 }
 
-void TestController::statisticsFireDataModificationHandler()
+void TestController::statisticsProcessStatisticsAndDataRecords()
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsFireDataModificationHandler];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsProcessStatisticsAndDataRecords];
 }
 
-void TestController::statisticsFireShouldPartitionCookiesHandler()
+void TestController::statisticsUpdateCookiePartitioning()
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsFireShouldPartitionCookiesHandler];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning];
 }
 
-void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value)
+void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef hostName, bool value)
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsFireShouldPartitionCookiesHandlerForOneDomain:value forHost:toNSString(hostName)];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:value forHost:toNSString(hostName)];
 }
 
-void TestController::statisticsFireTelemetryHandler()
+void TestController::statisticsSubmitTelemetry()
 {
-    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsFireTelemetryHandler];
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSubmitTelemetry];
 }
 
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
@@ -346,6 +351,16 @@ void TestController::setStatisticsGrandfatheringTime(double seconds)
     [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetGrandfatheringTime:seconds];
 }
 
+void TestController::setStatisticsMaxStatisticsEntries(unsigned entries)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetMaxStatisticsEntries:entries];
+}
+    
+void TestController::setStatisticsPruneEntriesDownTo(unsigned entries)
+{
+    [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsSetPruneEntriesDownTo:entries];
+}
+    
 void TestController::statisticsClearInMemoryAndPersistentStore()
 {
     [globalWebViewConfiguration.websiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore];

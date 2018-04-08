@@ -1,3 +1,492 @@
+2017-07-10  Saam Barati  <sbarati@apple.com>
+
+        Allocation sinking phase should consider a CheckStructure that would fail as an escape
+        https://bugs.webkit.org/show_bug.cgi?id=174321
+        <rdar://problem/32604963>
+
+        Reviewed by Filip Pizlo.
+
+        When the allocation sinking phase was generating stores to materialize
+        objects in a cycle with each other, it would assume that each materialized
+        object had a valid, non empty, set of structures. This is an OK assumption for
+        the phase to make because how do you materialize an object with no structure?
+        
+        The abstract interpretation part of the phase will model what's in the heap.
+        However, it would sometimes model that a CheckStructure would fail. The phase
+        did nothing special for this; it just stored the empty set of structures for
+        its representation of a particular allocation. However, what the phase proved
+        in such a scenario is that, had the CheckStructure executed, it would have exited.
+        
+        This patch treats such CheckStructures and MultiGetByOffsets as escape points.
+        This will cause the allocation in question to be materialized just before
+        the CheckStructure, and then at execution time, the CheckStructure will exit.
+        
+        I wasn't able to write a test case for this. However, I was able to reproduce
+        this crash by manually editing the IR. I've opened a separate bug to help us
+        create a testing framework for writing tests for hard to reproduce bugs like this:
+        https://bugs.webkit.org/show_bug.cgi?id=174322
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-07-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight matching CSS canvas clients when hovering contexts in the Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=174279
+
+        Reviewed by Matt Baker.
+
+        * inspector/protocol/DOM.json:
+        Add `highlightNodeList` command that will highlight each node in the given list.
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * CMakeLists.txt:
+        * Configurations/FeatureDefines.xcconfig:
+        * DerivedSources.make:
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * inspector/protocol/Replay.json: Removed.
+        * replay/EmptyInputCursor.h: Removed.
+        * replay/EncodedValue.cpp: Removed.
+        * replay/EncodedValue.h: Removed.
+        * replay/InputCursor.h: Removed.
+        * replay/JSInputs.json: Removed.
+        * replay/NondeterministicInput.h: Removed.
+        * replay/scripts/CodeGeneratorReplayInputs.py: Removed.
+        * replay/scripts/CodeGeneratorReplayInputsTemplates.py: Removed.
+        * replay/scripts/tests/expected/fail-on-c-style-enum-no-storage.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-duplicate-enum-type.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-duplicate-input-names.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-duplicate-type-names.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-enum-type-missing-values.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-missing-input-member-name.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-missing-input-name.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-missing-input-queue.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-missing-type-mode.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-missing-type-name.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-unknown-input-queue.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-unknown-member-type.json-error: Removed.
+        * replay/scripts/tests/expected/fail-on-unknown-type-mode.json-error: Removed.
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers-with-guarded-values.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-enum-encoding-helpers.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-enum-with-guard.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-enums-with-same-base-name.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-event-loop-shape-types.json-error: Removed.
+        * replay/scripts/tests/expected/generate-input-with-guard.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-input-with-guard.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-input-with-vector-members.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-inputs-with-flags.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-inputs-with-flags.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/expected/generate-memoized-type-modes.json-TestReplayInputs.cpp: Removed.
+        * replay/scripts/tests/expected/generate-memoized-type-modes.json-TestReplayInputs.h: Removed.
+        * replay/scripts/tests/fail-on-c-style-enum-no-storage.json: Removed.
+        * replay/scripts/tests/fail-on-duplicate-enum-type.json: Removed.
+        * replay/scripts/tests/fail-on-duplicate-input-names.json: Removed.
+        * replay/scripts/tests/fail-on-duplicate-type-names.json: Removed.
+        * replay/scripts/tests/fail-on-enum-type-missing-values.json: Removed.
+        * replay/scripts/tests/fail-on-missing-input-member-name.json: Removed.
+        * replay/scripts/tests/fail-on-missing-input-name.json: Removed.
+        * replay/scripts/tests/fail-on-missing-input-queue.json: Removed.
+        * replay/scripts/tests/fail-on-missing-type-mode.json: Removed.
+        * replay/scripts/tests/fail-on-missing-type-name.json: Removed.
+        * replay/scripts/tests/fail-on-unknown-input-queue.json: Removed.
+        * replay/scripts/tests/fail-on-unknown-member-type.json: Removed.
+        * replay/scripts/tests/fail-on-unknown-type-mode.json: Removed.
+        * replay/scripts/tests/generate-enum-encoding-helpers-with-guarded-values.json: Removed.
+        * replay/scripts/tests/generate-enum-encoding-helpers.json: Removed.
+        * replay/scripts/tests/generate-enum-with-guard.json: Removed.
+        * replay/scripts/tests/generate-enums-with-same-base-name.json: Removed.
+        * replay/scripts/tests/generate-event-loop-shape-types.json: Removed.
+        * replay/scripts/tests/generate-input-with-guard.json: Removed.
+        * replay/scripts/tests/generate-input-with-vector-members.json: Removed.
+        * replay/scripts/tests/generate-inputs-with-flags.json: Removed.
+        * replay/scripts/tests/generate-memoized-type-modes.json: Removed.
+        * runtime/DateConstructor.cpp:
+        (JSC::constructDate):
+        (JSC::dateNow):
+        (JSC::deterministicCurrentTime): Deleted.
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::setInputCursor): Deleted.
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::inputCursor): Deleted.
+
+2017-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Move make-js-file-arrays.py from WebCore to JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=174024
+
+        Reviewed by Michael Catanzaro.
+
+        It's currently used only by WebCore, but it depends on other JavaScriptCore scripts and it's not WebCore
+        specific at all. I plan to use it to compile the JavaScript atoms used by the WebDriver implementation.
+        Added command line option to pass the namespace to use instead of using WebCore.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+        * Scripts/make-js-file-arrays.py: Renamed from Source/WebCore/Scripts/make-js-file-arrays.py.
+        (main):
+
+2017-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop LineNumberAdder since we no longer treat <LF><CR> (not <CR><LF>) as one line terminator
+        https://bugs.webkit.org/show_bug.cgi?id=174296
+
+        Reviewed by Mark Lam.
+
+        Previously, we treat <LF><CR> as one line terminator. So we increase line number by one.
+        It caused a problem in scanning template literals. While template literals normalize
+        <LF><CR> to <LF><LF>, we still needed to increase line number by only one.
+        To handle it correctly, LineNumberAdder is introduced.
+
+        As of r219263, <LF><CR> is counted as two line terminators. So we do not need to have
+        LineNumberAdder. Let's just use shiftLineTerminator() instead.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::parseTemplateLiteral):
+        (JSC::LineNumberAdder::LineNumberAdder): Deleted.
+        (JSC::LineNumberAdder::clear): Deleted.
+        (JSC::LineNumberAdder::add): Deleted.
+
+2017-07-09  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] ICU headers aren’t treated as system headers after r219155
+        https://bugs.webkit.org/show_bug.cgi?id=174299
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/JavaScriptCore.xcconfig: Pass --system-header-prefix=unicode/ to the C and
+          C++ compilers.
+
+* runtime/IntlCollator.cpp: Removed documentation warning suppression.
+        * runtime/IntlDateTimeFormat.cpp: Ditto.
+        * runtime/JSGlobalObject.cpp: Ditto.
+        * runtime/StringPrototype.cpp: Ditto.
+
+2017-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use fastMalloc / fastFree for STL containers
+        https://bugs.webkit.org/show_bug.cgi?id=174297
+
+        Reviewed by Sam Weinig.
+
+        In some places, we intentionally use STL containers over WTF containers.
+        For example, we sometimes use std::unordered_{set,map} instead of WTF::Hash{Set,Map}
+        because we do not have effective empty / deleted representations in the space of key's value.
+        But just using STL container means using libc's malloc instead of our fast malloc (bmalloc if it is enabled).
+
+        We introduce WTF::FastAllocator. This is C++ allocator implementation using fastMalloc and fastFree.
+        We specify this allocator to STL containers' template parameter to allocate memory from fastMalloc.
+
+        This WTF::FastAllocator gives us a chance to use STL containers if it is necessary
+        without compromising memory allocation throughput.
+
+        * dfg/DFGGraph.h:
+        * dfg/DFGIntegerCheckCombiningPhase.cpp:
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::switchStringSlow):
+        * runtime/FunctionHasExecutedCache.h:
+        * runtime/TypeLocationCache.h:
+
+2017-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop NOSNIFF compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=174289
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-07  AJ Ringer  <aringer@apple.com>
+
+        Lower the max_protection for the separated heap
+        https://bugs.webkit.org/show_bug.cgi?id=174281
+
+        Reviewed by Oliver Hunt.
+
+        Switch to vm_protect so we can set maximum page protection.
+
+        * jit/ExecutableAllocator.cpp:
+        (JSC::FixedVMPoolExecutableAllocator::initializeSeparatedWXHeaps):
+        (JSC::ExecutableAllocator::allocate):
+
+2017-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Show all elements currently using a given CSS Canvas
+        https://bugs.webkit.org/show_bug.cgi?id=173965
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Canvas.json:
+         - Add `requestCSSCanvasClientNodes` command for getting the node IDs all nodes using this
+           canvas via -webkit-canvas.
+         - Add `cssCanvasClientNodesChanged` event that is dispatched whenever a node is
+           added/removed from the list of -webkit-canvas clients.
+
+2017-07-07  Mark Lam  <mark.lam@apple.com>
+
+        \n\r is not the same as \r\n.
+        https://bugs.webkit.org/show_bug.cgi?id=173053
+
+        Reviewed by Keith Miller.
+
+        * parser/Lexer.cpp:
+        (JSC::Lexer<T>::shiftLineTerminator):
+        (JSC::LineNumberAdder::add):
+
+2017-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219238, r219239, and r219241.
+        https://bugs.webkit.org/show_bug.cgi?id=174265
+
+        "fast/workers/dedicated-worker-lifecycle.html is flaky"
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Implement WTF::ThreadGroup"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219238
+
+        "Unreviewed, build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219239
+
+        "Unreviewed, CLoop build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219241
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, CLoop build fix after r219238
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        * heap/MachineStackMarker.cpp:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        Large part of MachineThreads are now removed and replaced with WTF::ThreadGroup.
+        And SamplingProfiler and others interact with WTF::Thread directly.
+
+        * API/tests/ExecutionTimeLimitTest.cpp:
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThreads):
+        (JSC::captureStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStack):
+        (JSC::MachineThreads::tryCopyOtherThreadStacks):
+        (JSC::MachineThreads::gatherConservativeRoots):
+        (JSC::ActiveMachineThreadsManager::Locker::Locker): Deleted.
+        (JSC::ActiveMachineThreadsManager::add): Deleted.
+        (JSC::ActiveMachineThreadsManager::remove): Deleted.
+        (JSC::ActiveMachineThreadsManager::contains): Deleted.
+        (JSC::ActiveMachineThreadsManager::ActiveMachineThreadsManager): Deleted.
+        (JSC::activeMachineThreadsManager): Deleted.
+        (JSC::MachineThreads::~MachineThreads): Deleted.
+        (JSC::MachineThreads::addCurrentThread): Deleted.
+        (): Deleted.
+        (JSC::MachineThreads::removeThread): Deleted.
+        (JSC::MachineThreads::removeThreadIfFound): Deleted.
+        (JSC::MachineThreads::MachineThread::MachineThread): Deleted.
+        (JSC::MachineThreads::MachineThread::getRegisters): Deleted.
+        (JSC::MachineThreads::MachineThread::Registers::stackPointer): Deleted.
+        (JSC::MachineThreads::MachineThread::Registers::framePointer): Deleted.
+        (JSC::MachineThreads::MachineThread::Registers::instructionPointer): Deleted.
+        (JSC::MachineThreads::MachineThread::Registers::llintPC): Deleted.
+        (JSC::MachineThreads::MachineThread::captureStack): Deleted.
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::addCurrentThread):
+        (JSC::MachineThreads::getLock):
+        (JSC::MachineThreads::threads):
+        (JSC::MachineThreads::MachineThread::suspend): Deleted.
+        (JSC::MachineThreads::MachineThread::resume): Deleted.
+        (JSC::MachineThreads::MachineThread::threadID): Deleted.
+        (JSC::MachineThreads::MachineThread::stackBase): Deleted.
+        (JSC::MachineThreads::MachineThread::stackEnd): Deleted.
+        (JSC::MachineThreads::threadsListHead): Deleted.
+        * runtime/SamplingProfiler.cpp:
+        (JSC::FrameWalker::isValidFramePointer):
+        (JSC::SamplingProfiler::SamplingProfiler):
+        (JSC::SamplingProfiler::takeSample):
+        (JSC::SamplingProfiler::noticeCurrentThreadAsJSCExecutionThread):
+        * runtime/SamplingProfiler.h:
+        * wasm/WasmMachineThreads.cpp:
+        (JSC::Wasm::resetInstructionCacheOnAllThreads):
+
+2017-07-06  Saam Barati  <sbarati@apple.com>
+
+        We are missing places where we invalidate the for-in context
+        https://bugs.webkit.org/show_bug.cgi?id=174184
+
+        Reviewed by Geoffrey Garen.
+
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::invalidateForInContextForLocal):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::EmptyLetExpression::emitBytecode):
+        (JSC::ForInNode::emitLoopHeader):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::BindingNode::bindValue):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, suppress warnings in GCC environment
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * runtime/IntlCollator.cpp:
+        * runtime/IntlDateTimeFormat.cpp:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/StringPrototype.cpp:
+
+2017-07-05  Saam Barati  <sbarati@apple.com>
+
+        NewArray in FTLLowerDFGToB3 does not handle speculating on doubles when having a bad time
+        https://bugs.webkit.org/show_bug.cgi?id=174188
+        <rdar://problem/30581423>
+
+        Reviewed by Mark Lam.
+
+        We were calling lowJSValue(edge) when we were speculating the
+        edge as double. This isn't allowed. We should have been using
+        lowDouble.
+        
+        This patch also adds a new option, called useArrayAllocationProfiling,
+        which defaults to true. When false, it will make the array allocation
+        profile not actually sample seen arrays. It'll force the allocation
+        profile's predicted indexing type to be ArrayWithUndecided. Adding
+        this option made it trivial to write a test for this bug.
+
+        * bytecode/ArrayAllocationProfile.cpp:
+        (JSC::ArrayAllocationProfile::updateIndexingType):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewArray):
+        * runtime/Options.h:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Keith Miller.
+
+        There is a site in JSC that try to walk another thread's stack.
+        Currently, stack bounds are stored in WTFThreadData which is located
+        in TLS. Thus, only the thread itself can access its own WTFThreadData.
+        We workaround this situation by holding StackBounds in MachineThread in JSC,
+        but StackBounds should be put in WTF::Thread instead.
+
+        This patch moves StackBounds from WTFThreadData to WTF::Thread. StackBounds
+        information is tightly coupled with Thread. Thus putting it in WTF::Thread
+        is natural choice.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::MachineThread):
+        (JSC::MachineThreads::MachineThread::captureStack):
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::MachineThread::stackBase):
+        (JSC::MachineThreads::MachineThread::stackEnd):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::updateStackLimits):
+        (JSC::VM::committedStackByteCount):
+        * runtime/VM.h:
+        (JSC::VM::isSafeToRecurse):
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        * runtime/VMTraps.cpp:
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::isSafeToRecurse):
+
+2017-07-05  Keith Miller  <keith_miller@apple.com>
+
+        Crashing with information should have an abort reason
+        https://bugs.webkit.org/show_bug.cgi?id=174185
+
+        Reviewed by Saam Barati.
+
+        Add crash information for the abstract interpreter and add an enum
+        value for object allocation sinking.
+
+        * assembler/AbortReason.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::verifyEdge):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::logDFGAssertionFailure):
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Use WTF's copy of ICU headers.
+
+        * Configurations/Base.xcconfig:
+        * icu/unicode/localpointer.h: Removed.
+        * icu/unicode/parseerr.h: Removed.
+        * icu/unicode/platform.h: Removed.
+        * icu/unicode/ptypes.h: Removed.
+        * icu/unicode/putil.h: Removed.
+        * icu/unicode/uchar.h: Removed.
+        * icu/unicode/ucnv.h: Removed.
+        * icu/unicode/ucnv_err.h: Removed.
+        * icu/unicode/ucol.h: Removed.
+        * icu/unicode/uconfig.h: Removed.
+        * icu/unicode/ucurr.h: Removed.
+        * icu/unicode/uenum.h: Removed.
+        * icu/unicode/uiter.h: Removed.
+        * icu/unicode/uloc.h: Removed.
+        * icu/unicode/umachine.h: Removed.
+        * icu/unicode/unorm.h: Removed.
+        * icu/unicode/unorm2.h: Removed.
+        * icu/unicode/urename.h: Removed.
+        * icu/unicode/uscript.h: Removed.
+        * icu/unicode/uset.h: Removed.
+        * icu/unicode/ustring.h: Removed.
+        * icu/unicode/utf.h: Removed.
+        * icu/unicode/utf16.h: Removed.
+        * icu/unicode/utf8.h: Removed.
+        * icu/unicode/utf_old.h: Removed.
+        * icu/unicode/utypes.h: Removed.
+        * icu/unicode/uvernum.h: Removed.
+        * icu/unicode/uversion.h: Removed.
+        * runtime/IntlCollator.cpp:
+        * runtime/IntlDateTimeFormat.cpp:
+        (JSC::IntlDateTimeFormat::partTypeString):
+        * runtime/JSGlobalObject.cpp:
+        * runtime/StringPrototype.cpp:
+        (JSC::normalize):
+        (JSC::stringProtoFuncNormalize):
+
+2017-07-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Allow users to log any tracked canvas context
+        https://bugs.webkit.org/show_bug.cgi?id=173397
+        <rdar://problem/33111581>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Canvas.json:
+        Add `resolveCanvasContext` command that returns a RemoteObject for the given canvas context.
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Add WebKitPrivateFrameworkStubs for iOS 11

@@ -76,7 +76,6 @@ WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::Session
     , m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
     , m_storageManager(StorageManager::create(m_configuration.localStorageDirectory))
-    , m_resourceLoadStatistics(WebResourceLoadStatisticsStore::create(m_configuration.resourceLoadStatisticsDirectory))
     , m_queue(WorkQueue::create("com.apple.WebKit.WebsiteDataStore"))
 {
     platformInitialize();
@@ -815,7 +814,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
 #endif
 
     if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics) && m_resourceLoadStatistics)
-        m_resourceLoadStatistics->clearInMemoryAndPersistent(modifiedSince);
+        m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent(modifiedSince);
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
@@ -1084,7 +1083,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
 #endif
 
     if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics) && m_resourceLoadStatistics)
-        m_resourceLoadStatistics->clearInMemoryAndPersistent();
+        m_resourceLoadStatistics->scheduleClearInMemoryAndPersistent();
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
@@ -1100,10 +1099,10 @@ void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<Webs
 }
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-void WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)
+void WebsiteDataStore::updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst shouldClearFirst)
 {
-    for (auto& processPool : WebProcessPool::allProcessPools())
-        processPool->sendToNetworkingProcess(Messages::NetworkProcess::ShouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, clearFirst));
+    for (auto& processPool : processPools())
+        processPool->sendToNetworkingProcess(Messages::NetworkProcess::UpdateCookiePartitioningForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, shouldClearFirst == ShouldClearFirst::Yes));
 }
 #endif
 
@@ -1254,38 +1253,27 @@ void WebsiteDataStore::removeMediaKeys(const String& mediaKeysStorageDirectory, 
 
 bool WebsiteDataStore::resourceLoadStatisticsEnabled() const
 {
-    return m_resourceLoadStatistics ? m_resourceLoadStatistics->resourceLoadStatisticsEnabled() : false;
+    return !!m_resourceLoadStatistics;
 }
 
 void WebsiteDataStore::setResourceLoadStatisticsEnabled(bool enabled)
 {
-    if (!m_resourceLoadStatistics)
-        return;
-
     if (enabled == resourceLoadStatisticsEnabled())
         return;
 
-    m_resourceLoadStatistics->setResourceLoadStatisticsEnabled(enabled);
-
-    for (auto& processPool : WebProcessPool::allProcessPools()) {
-        processPool->setResourceLoadStatisticsEnabled(enabled);
-        processPool->sendToAllProcesses(Messages::WebProcess::SetResourceLoadStatisticsEnabled(enabled));
-    }
-}
-
-void WebsiteDataStore::registerSharedResourceLoadObserver()
-{
-    if (!m_resourceLoadStatistics)
-        return;
-    
+    if (enabled) {
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    m_resourceLoadStatistics->registerSharedResourceLoadObserver(
-        [this] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst) {
-            this->shouldPartitionCookiesForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, clearFirst);
+        m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(m_configuration.resourceLoadStatisticsDirectory, [this] (const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst shouldClearFirst) {
+            updateCookiePartitioningForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, shouldClearFirst);
         });
 #else
-    m_resourceLoadStatistics->registerSharedResourceLoadObserver();
+        m_resourceLoadStatistics = WebResourceLoadStatisticsStore::create(m_configuration.resourceLoadStatisticsDirectory);
 #endif
+    } else
+        m_resourceLoadStatistics = nullptr;
+
+    for (auto& processPool : processPools())
+        processPool->setResourceLoadStatisticsEnabled(enabled);
 }
 
 DatabaseProcessCreationParameters WebsiteDataStore::databaseProcessParameters()

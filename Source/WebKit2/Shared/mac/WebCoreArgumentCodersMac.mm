@@ -46,8 +46,8 @@
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #import <WebCore/AVFoundationSPI.h>
 #import <WebCore/MediaPlaybackTargetContext.h>
-#import <WebCore/SoftLinking.h>
 #import <objc/runtime.h>
+#import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 SOFT_LINK_CLASS(AVFoundation, AVOutputContext)
@@ -85,6 +85,7 @@ void ArgumentCoder<ResourceRequest>::encodePlatformData(Encoder& encoder, const 
     // The fallback array is part of CFURLRequest, but it is not encoded by WKCFURLRequestCreateSerializableRepresentation.
     encoder << resourceRequest.responseContentDispositionEncodingFallbackArray();
     encoder.encodeEnum(resourceRequest.requester());
+    encoder.encodeEnum(resourceRequest.cachePolicy());
 }
 #else
 void ArgumentCoder<ResourceRequest>::encodePlatformData(Encoder& encoder, const ResourceRequest& resourceRequest)

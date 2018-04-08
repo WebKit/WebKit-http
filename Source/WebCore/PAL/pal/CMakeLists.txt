@@ -2,6 +2,7 @@ set(PAL_SOURCES
 )
 
 set(PAL_INCLUDE_DIRECTORIES
+    "${CMAKE_BINARY_DIR}"
     "${PAL_DIR}"
 )
 
@@ -9,6 +10,7 @@ set(PAL_PRIVATE_INCLUDE_DIRECTORIES
     "${PAL_DIR}/pal"
     "${PAL_DIR}/pal/crypto"
     "${PAL_DIR}/pal/system"
+    "${PAL_DIR}/pal/text"
 )
 
 set(PAL_LIBRARIES

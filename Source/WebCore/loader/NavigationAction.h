@@ -41,8 +41,8 @@ class Event;
 class NavigationAction {
 public:
     NavigationAction();
-    WEBCORE_EXPORT NavigationAction(Document&, const ResourceRequest&, NavigationType = NavigationType::Other, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, Event* = nullptr, const AtomicString& downloadAttribute = nullAtom);
-    NavigationAction(Document&, const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event* = nullptr, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, const AtomicString& downloadAttribute = nullAtom);
+    WEBCORE_EXPORT NavigationAction(Document&, const ResourceRequest&, NavigationType = NavigationType::Other, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, Event* = nullptr, const AtomicString& downloadAttribute = nullAtom());
+    NavigationAction(Document&, const ResourceRequest&, FrameLoadType, bool isFormSubmission, Event* = nullptr, ShouldOpenExternalURLsPolicy = ShouldOpenExternalURLsPolicy::ShouldNotAllow, const AtomicString& downloadAttribute = nullAtom());
 
     WEBCORE_EXPORT ~NavigationAction();
 
@@ -68,6 +68,7 @@ public:
     RefPtr<UserGestureToken> userGestureToken() const { return m_userGestureToken; }
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy() const { return m_shouldOpenExternalURLsPolicy; }
+    NavigationInitiatedByMainFrame navigationInitiatedByMainFrame() const { return m_navigationInitiatedByMainFrame; }
 
     const AtomicString& downloadAttribute() const { return m_downloadAttribute; }
 
@@ -76,6 +77,7 @@ private:
     ResourceRequest m_resourceRequest;
     NavigationType m_type;
     ShouldOpenExternalURLsPolicy m_shouldOpenExternalURLsPolicy;
+    NavigationInitiatedByMainFrame m_navigationInitiatedByMainFrame;
     RefPtr<Event> m_event;
     RefPtr<UserGestureToken> m_userGestureToken { UserGestureIndicator::currentUserGesture() };
     AtomicString m_downloadAttribute;

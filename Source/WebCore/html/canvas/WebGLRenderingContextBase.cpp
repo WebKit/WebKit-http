@@ -731,7 +731,8 @@ bool WebGLRenderingContextBase::clearIfComposited(GC3Dbitfield mask)
         return false;
 
     if (!m_context->layerComposited() || m_layerCleared
-        || m_attributes.preserveDrawingBuffer || (mask && m_framebufferBinding))
+        || m_attributes.preserveDrawingBuffer || (mask && m_framebufferBinding)
+        || m_preventBufferClearForInspector)
         return false;
 
     auto contextAttributes = getContextAttributes();
@@ -3620,7 +3621,9 @@ ExceptionOr<void> WebGLRenderingContextBase::texSubImage2D(GC3Denum target, GC3D
         else
             texSubImage2DImpl(target, level, xoffset, yoffset, format, type, canvas->copiedImage(), GraphicsContext3D::HtmlDomCanvas, m_unpackFlipY, m_unpackPremultiplyAlpha);
         return { };
-    }, [&](const RefPtr<HTMLVideoElement>& video) -> ExceptionOr<void> {
+    }
+#if ENABLE(VIDEO)
+    , [&](const RefPtr<HTMLVideoElement>& video) -> ExceptionOr<void> {
         ExceptionCode ec = 0;
         if (isContextLostOrPending() || !validateHTMLVideoElement("texSubImage2D", video.get(), ec))
             return ec ? Exception { ec } : ExceptionOr<void> { };
@@ -3643,7 +3646,9 @@ ExceptionOr<void> WebGLRenderingContextBase::texSubImage2D(GC3Denum target, GC3D
             return { };
         texSubImage2DImpl(target, level, xoffset, yoffset, format, type, image.get(), GraphicsContext3D::HtmlDomVideo, m_unpackFlipY, m_unpackPremultiplyAlpha);
         return { };
-    });
+    }
+#endif
+    );
 
     return WTF::visit(visitor, source.value());
 }
@@ -4130,7 +4135,9 @@ ExceptionOr<void> WebGLRenderingContextBase::texImage2D(GC3Denum target, GC3Dint
         else
             texImage2DImpl(target, level, internalformat, format, type, canvas->copiedImage(), GraphicsContext3D::HtmlDomCanvas, m_unpackFlipY, m_unpackPremultiplyAlpha);
         return { };
-    }, [&](const RefPtr<HTMLVideoElement>& video) -> ExceptionOr<void> {
+    }
+#if ENABLE(VIDEO)
+    , [&](const RefPtr<HTMLVideoElement>& video) -> ExceptionOr<void> {
         ExceptionCode ec = 0;
         if (isContextLostOrPending() || !validateHTMLVideoElement("texImage2D", video.get(), ec)
             || !validateTexFunc("texImage2D", TexImage, SourceHTMLVideoElement, target, level, internalformat, video->videoWidth(), video->videoHeight(), 0, format, type, 0, 0))
@@ -4160,7 +4167,9 @@ ExceptionOr<void> WebGLRenderingContextBase::texImage2D(GC3Denum target, GC3Dint
             return { };
         texImage2DImpl(target, level, internalformat, format, type, image.get(), GraphicsContext3D::HtmlDomVideo, m_unpackFlipY, m_unpackPremultiplyAlpha);
         return { };
-    });
+    }
+#endif
+    );
 
     return WTF::visit(visitor, source.value());
 }

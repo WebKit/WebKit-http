@@ -36,6 +36,7 @@ http/tests/fullscreen
 # WebGPU is not enabled on iOS Simulator.
 fast/canvas/webgpu
 inspector/canvas/create-context-webgpu.html [ Skip ]
+inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # Encrypted Media Extensions are not enabled
 media/encrypted-media/
@@ -2718,6 +2719,7 @@ webkit.org/b/164594 http/tests/cache/disk-cache/disk-cache-request-headers.html 
 webkit.org/b/163046 js/regress-141098.html [ Pass Failure ]
 
 # Test relies on window.scrollTo
+fast/dom/elementFromPoint-scaled-scrolled.html [ Skip ]
 fast/zooming/client-rect-in-fixed-zoomed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-to-anchor-in-position-fixed.html [ Skip ]
 fast/visual-viewport/zoomed-scroll-into-view-fixed.html [ Skip ]
@@ -2816,8 +2818,6 @@ webkit.org/b/124933 svg/animations/getCurrentTime-pause-unpause.html [ Pass Fail
 webkit.org/b/171760 imported/w3c/i18n/bidi/bidi-plaintext-011.html [ ImageOnlyFailure ]
 webkit.org/b/171760 imported/w3c/i18n/bidi/block-plaintext-005.html [ ImageOnlyFailure ]
 
-webkit.org/b/172019 imported/w3c/web-platform-tests/cssom-view/elementFromPoint.html [ Failure ]
-
 webkit.org/b/172547 http/tests/xmlhttprequest/xmlhttprequest-50ms-download-dispatch.html [ Failure ]
 
 webkit.org/b/172610 media/ios/autoplay-only-in-main-document.html [ Skip ]
@@ -2863,3 +2863,6 @@ webgl/1.0.2/conformance/ogles/GL/sin/sin_001_to_006.html [ Skip ]
 webgl/1.0.2/conformance/reading/read-pixels-test.html [ Skip ]
 webgl/1.0.2/conformance/rendering/multisample-corruption.html [ Skip ]
 webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Skip ]
+
+webkit.org/b/174120 http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html [ Skip ]
+

@@ -77,7 +77,6 @@
 #import <WebCore/PathUtilities.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Scrollbar.h>
-#import <WebCore/SoftLinking.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/TextStream.h>
 #import <WebCore/VisibleSelection.h>
@@ -87,6 +86,7 @@
 #import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
+#import <wtf/SoftLinking.h>
 
 #if ENABLE(DRAG_SUPPORT)
 // FIXME: Move private headers to UIKitSPI.h and add declarations as needed for building on OpenSource against the iOS 11 SDK.
@@ -4050,9 +4050,22 @@ static bool isAssistableInputType(InputType type)
 
 #pragma mark - Implementation of UIWebTouchEventsGestureRecognizerDelegate.
 
+// FIXME: Remove once -gestureRecognizer:shouldIgnoreWebTouchWithEvent: is in UIWebTouchEventsGestureRecognizer.h. Refer to <rdar://problem/33217525> for more details.
 - (BOOL)shouldIgnoreWebTouch
 {
     return NO;
+}
+
+- (BOOL)gestureRecognizer:(UIWebTouchEventsGestureRecognizer *)gestureRecognizer shouldIgnoreWebTouchWithEvent:(UIEvent *)event
+{
+    _canSendTouchEventsAsynchronously = NO;
+
+    NSSet<UITouch *> *touches = [event touchesForGestureRecognizer:gestureRecognizer];
+    for (UITouch *touch in touches) {
+        if ([touch.view isKindOfClass:[UIScrollView class]] && [(UIScrollView *)touch.view _isInterruptingDeceleration])
+            return YES;
+    }
+    return self._scroller._isInterruptingDeceleration;
 }
 
 - (BOOL)isAnyTouchOverActiveArea:(NSSet *)touches
@@ -4523,6 +4536,27 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 #pragma mark - UIDragInteractionDelegate
 
+- (BOOL)_dragInteraction:(UIDragInteraction *)interaction shouldDelayCompetingGestureRecognizer:(UIGestureRecognizer *)competingGestureRecognizer
+{
+    if (_highlightLongPressGestureRecognizer == competingGestureRecognizer) {
+        // Since 3D touch still recognizes alongside the drag lift, and also requires the highlight long press
+        // gesture to be active to support cancelling when `touchstart` is prevented, we should also allow the
+        // highlight long press to recognize simultaneously, and manually cancel it when the drag lift is
+        // recognized (see _dragInteraction:prepareForSession:completion:).
+        return NO;
+    }
+    return [competingGestureRecognizer isKindOfClass:[UILongPressGestureRecognizer class]];
+}
+
+- (NSInteger)_dragInteraction:(UIDragInteraction *)interaction dataOwnerForSession:(id <UIDragSession>)session
+{
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    NSInteger dataOwner = 0;
+    if ([uiDelegate respondsToSelector:@selector(_webView:dataOwnerForDragSession:)])
+        dataOwner = [uiDelegate _webView:_webView dataOwnerForDragSession:session];
+    return dataOwner;
+}
+
 - (void)_dragInteraction:(UIDragInteraction *)interaction prepareForSession:(id <UIDragSession>)session completion:(dispatch_block_t)completion
 {
     [self _cancelLongPressGestureRecognizer];
@@ -4697,6 +4731,15 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
 
 #pragma mark - UIDropInteractionDelegate
 
+- (NSInteger)_dropInteraction:(UIDropInteraction *)interaction dataOwnerForSession:(id <UIDropSession>)session
+{
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    NSInteger dataOwner = 0;
+    if ([uiDelegate respondsToSelector:@selector(_webView:dataOwnerForDropSession:)])
+        dataOwner = [uiDelegate _webView:_webView dataOwnerForDropSession:session];
+    return dataOwner;
+}
+
 - (BOOL)dropInteraction:(UIDropInteraction *)interaction canHandleSession:(id<UIDropSession>)session
 {
     // FIXME: Support multiple simultaneous drop sessions in the future.
@@ -4828,9 +4871,9 @@ static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDrop
     [self dropInteraction:_dataOperation.get() sessionDidEnter:session];
 }
 
-- (BOOL)_simulateDataInteractionUpdated:(id)session
+- (NSUInteger)_simulateDataInteractionUpdated:(id)session
 {
-    return [self dropInteraction:_dataOperation.get() sessionDidUpdate:session].operation != UIDropOperationCancel;
+    return [self dropInteraction:_dataOperation.get() sessionDidUpdate:session].operation;
 }
 
 - (void)_simulateDataInteractionEnded:(id)session

@@ -68,7 +68,7 @@ unsigned StyleSheetContents::estimatedSizeInBytes() const
 StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext& context)
     : m_ownerRule(ownerRule)
     , m_originalURL(originalURL)
-    , m_defaultNamespace(starAtom)
+    , m_defaultNamespace(starAtom())
     , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
     , m_parserContext(context)
 {
@@ -311,7 +311,7 @@ const AtomicString& StyleSheetContents::namespaceURIFromPrefix(const AtomicStrin
 {
     PrefixNamespaceURIMap::const_iterator it = m_namespaces.find(prefix);
     if (it == m_namespaces.end())
-        return nullAtom;
+        return nullAtom();
     return it->value;
 }
 
@@ -328,10 +328,8 @@ void StyleSheetContents::parseAuthorStyleSheet(const CachedCSSStyleSheet* cached
             if (auto* page = document->page()) {
                 if (isStrictParserMode(m_parserContext.mode))
                     page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed in strict mode."));
-#if ENABLE(NOSNIFF)
                 else if (!cachedStyleSheet->mimeTypeAllowedByNosniff())
                     page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed when 'X-Content-Type: nosniff' is given."));
-#endif
                 else
                     page->console().addMessage(MessageSource::Security, MessageLevel::Error, makeString("Did not parse stylesheet at '", cachedStyleSheet->url().stringCenterEllipsizedToLength(), "' because non CSS MIME types are not allowed for cross-origin stylesheets."));
             }
@@ -395,9 +393,7 @@ void StyleSheetContents::notifyLoadedSheet(const CachedCSSStyleSheet* sheet)
 {
     ASSERT(sheet);
     m_didLoadErrorOccur |= sheet->errorOccurred();
-#if ENABLE(NOSNIFF)
     m_didLoadErrorOccur |= !sheet->mimeTypeAllowedByNosniff();
-#endif
 }
 
 void StyleSheetContents::startLoadingDynamicSheet()

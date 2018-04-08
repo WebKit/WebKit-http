@@ -27,8 +27,8 @@
 
 #import "WebPDFViewPlaceholder.h"
 
-#import "WebPDFViewIOS.h"
 #import "WebFrameInternal.h"
+#import "WebPDFViewIOS.h"
 #import <JavaScriptCore/JSContextRef.h>
 #import <JavaScriptCore/JSStringRef.h>
 #import <JavaScriptCore/JSStringRefCF.h>
@@ -37,11 +37,10 @@
 #import <WebCore/EventNames.h>
 #import <WebCore/FormState.h>
 #import <WebCore/Frame.h>
-#import <WebCore/FrameLoader.h>
 #import <WebCore/FrameLoadRequest.h>
+#import <WebCore/FrameLoader.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/MouseEvent.h>
-#import <WebCore/SoftLinking.h>
 #import <WebKitLegacy/WebDataSourcePrivate.h>
 #import <WebKitLegacy/WebFramePrivate.h>
 #import <WebKitLegacy/WebJSPDFDoc.h>
@@ -50,6 +49,7 @@
 #import <WebKitLegacy/WebPDFDocumentExtras.h>
 #import <WebKitLegacy/WebViewPrivate.h>
 #import <wtf/CurrentTime.h>
+#import <wtf/SoftLinking.h>
 #import <wtf/Vector.h>
 
 using namespace WebCore;
@@ -487,7 +487,7 @@ static const float PAGE_HEIGHT_INSET = 4.0f * 2.0f;
 
     // Call to the frame loader because this is where our security checks are made.
     Frame* frame = core([_dataSource webFrame]);
-    FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    FrameLoadRequest frameLoadRequest { *frame->document(), frame->document()->securityOrigin(), { URL }, { }, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow,  NavigationInitiatedByMainFrame::Unknown };
     frame->loader().loadFrameRequest(WTFMove(frameLoadRequest), event.get(), nullptr);
 }
 

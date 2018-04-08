@@ -114,6 +114,10 @@ WTF_EXTERN_C_END
 
 #else
 
+#if __IPHONE_OS_VERSION_MIN_REQUIRED < 110000
+typedef uint32_t IOSurfaceID;
+#endif
+
 typedef struct __IOSurfaceAccelerator *IOSurfaceAcceleratorRef;
 
 WTF_EXTERN_C_BEGIN

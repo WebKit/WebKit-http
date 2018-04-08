@@ -26,9 +26,9 @@
 #include "config.h"
 #include "WebResourceLoadStatisticsTelemetry.h"
 
-#include "ResourceLoadStatisticsStore.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
+#include "WebResourceLoadStatisticsStore.h"
 #include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/ResourceLoadStatistics.h>
 #include <wtf/MainThread.h>
@@ -39,9 +39,49 @@
 using namespace WebCore;
 
 namespace WebKit {
-    
-static auto notifyPagesWhenTelemetryWasCaptured = false;
-    
+
+const unsigned minimumPrevalentResourcesForTelemetry = 3;
+static bool notifyPagesWhenTelemetryWasCaptured = false;
+
+struct PrevalentResourceTelemetry {
+    unsigned numberOfTimesDataRecordsRemoved;
+    bool hasHadUserInteraction;
+    unsigned daysSinceUserInteraction;
+    unsigned subframeUnderTopFrameOrigins;
+    unsigned subresourceUnderTopFrameOrigins;
+    unsigned subresourceUniqueRedirectsTo;
+};
+
+static Vector<PrevalentResourceTelemetry> sortedPrevalentResourceTelemetry(const WebResourceLoadStatisticsStore& store)
+{
+    ASSERT(!RunLoop::isMain());
+    Vector<PrevalentResourceTelemetry> sorted;
+    store.processStatistics([&sorted] (auto& statistic) {
+        if (!statistic.isPrevalentResource)
+            return;
+
+        unsigned daysSinceUserInteraction = statistic.mostRecentUserInteractionTime <= WallTime() ? 0 : std::floor((WallTime::now() - statistic.mostRecentUserInteractionTime) / 24_h);
+        sorted.append(PrevalentResourceTelemetry {
+            statistic.dataRecordsRemoved,
+            statistic.hadUserInteraction,
+            daysSinceUserInteraction,
+            statistic.subframeUnderTopFrameOrigins.size(),
+            statistic.subresourceUnderTopFrameOrigins.size(),
+            statistic.subresourceUniqueRedirectsTo.size()
+        });
+    });
+
+    if (sorted.size() < minimumPrevalentResourcesForTelemetry)
+        return { };
+
+    std::sort(sorted.begin(), sorted.end(), [](const PrevalentResourceTelemetry& a, const PrevalentResourceTelemetry& b) {
+        return a.subframeUnderTopFrameOrigins + a.subresourceUnderTopFrameOrigins + a.subresourceUniqueRedirectsTo >
+        b.subframeUnderTopFrameOrigins + b.subresourceUnderTopFrameOrigins + b.subresourceUniqueRedirectsTo;
+    });
+
+    return sorted;
+}
+
 static unsigned numberOfResourcesWithUserInteraction(const Vector<PrevalentResourceTelemetry>& resources, size_t begin, size_t end)
 {
     if (resources.isEmpty() || resources.size() < begin + 1 || resources.size() < end + 1)
@@ -184,12 +224,12 @@ void static notifyPages(const Vector<PrevalentResourceTelemetry>& sortedPrevalen
     notifyPages(sortedPrevalentResources.size(), totalNumberOfPrevalentResourcesWithUserInteraction, median(sortedPrevalentResourcesWithoutUserInteraction, 0, 2, subframeUnderTopFrameOriginsGetter));
 }
     
-void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const ResourceLoadStatisticsStore& resourceLoadStatisticsStore)
+void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const WebResourceLoadStatisticsStore& resourceLoadStatisticsStore)
 {
     ASSERT(!RunLoop::isMain());
     
-    auto sortedPrevalentResources = resourceLoadStatisticsStore.sortedPrevalentResourceTelemetry();
-    if (notifyPagesWhenTelemetryWasCaptured && sortedPrevalentResources.size() < minimumPrevalentResourcesForTelemetry) {
+    auto sortedPrevalentResources = sortedPrevalentResourceTelemetry(resourceLoadStatisticsStore);
+    if (notifyPagesWhenTelemetryWasCaptured && sortedPrevalentResources.isEmpty()) {
         notifyPages(0, 0, 0);
         return;
     }

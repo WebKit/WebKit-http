@@ -240,7 +240,6 @@ private:
     unsigned m_pathAfterLastSlash;
     unsigned m_pathEnd;
     unsigned m_queryEnd;
-    unsigned m_fragmentEnd;
 };
 
 template <class Encoder>
@@ -260,7 +259,6 @@ void URL::encode(Encoder& encoder) const
     encoder << m_pathAfterLastSlash;
     encoder << m_pathEnd;
     encoder << m_queryEnd;
-    encoder << m_fragmentEnd;
 }
 
 template <class Decoder>
@@ -295,8 +293,6 @@ bool URL::decode(Decoder& decoder, URL& url)
     if (!decoder.decode(url.m_pathEnd))
         return false;
     if (!decoder.decode(url.m_queryEnd))
-        return false;
-    if (!decoder.decode(url.m_fragmentEnd))
         return false;
     return true;
 }
@@ -421,7 +417,7 @@ inline bool URL::hasQuery() const
 
 inline bool URL::hasFragment() const
 {
-    return m_fragmentEnd > m_queryEnd;
+    return m_isValid && m_string.length() > m_queryEnd;
 }
 
 inline bool URL::protocolIsInHTTPFamily() const

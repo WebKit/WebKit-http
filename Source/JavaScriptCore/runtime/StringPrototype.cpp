@@ -1744,13 +1744,40 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncIterator(ExecState* exec)
     return JSValue::encode(JSStringIterator::create(exec, exec->jsCallee()->globalObject()->stringIteratorStructure(), string));
 }
 
-static JSValue normalize(ExecState* exec, const UChar* source, size_t sourceLength, UNormalizationMode form)
+enum class NormalizationForm {
+    CanonicalComposition,
+    CanonicalDecomposition,
+    CompatibilityComposition,
+    CompatibilityDecomposition
+};
+
+static JSValue normalize(ExecState* exec, const UChar* source, size_t sourceLength, NormalizationForm form)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
     UErrorCode status = U_ZERO_ERROR;
-    int32_t normalizedStringLength = unorm_normalize(source, sourceLength, form, 0, nullptr, 0, &status);
+    // unorm2_get*Instance() documentation says: "Returns an unmodifiable singleton instance. Do not delete it."
+    const UNormalizer2* normalizer = nullptr;
+    switch (form) {
+    case NormalizationForm::CanonicalComposition:
+        normalizer = unorm2_getNFCInstance(&status);
+        break;
+    case NormalizationForm::CanonicalDecomposition:
+        normalizer = unorm2_getNFDInstance(&status);
+        break;
+    case NormalizationForm::CompatibilityComposition:
+        normalizer = unorm2_getNFKCInstance(&status);
+        break;
+    case NormalizationForm::CompatibilityDecomposition:
+        normalizer = unorm2_getNFKDInstance(&status);
+        break;
+    }
+
+    if (!normalizer || U_FAILURE(status))
+        return throwTypeError(exec, scope);
+
+    int32_t normalizedStringLength = unorm2_normalize(normalizer, source, sourceLength, nullptr, 0, &status);
 
     if (U_FAILURE(status) && status != U_BUFFER_OVERFLOW_ERROR) {
         // The behavior is not specified when normalize fails.
@@ -1764,7 +1791,7 @@ static JSValue normalize(ExecState* exec, const UChar* source, size_t sourceLeng
         return throwOutOfMemoryError(exec, scope);
 
     status = U_ZERO_ERROR;
-    unorm_normalize(source, sourceLength, form, 0, buffer, normalizedStringLength, &status);
+    unorm2_normalize(normalizer, source, sourceLength, buffer, normalizedStringLength, &status);
     if (U_FAILURE(status))
         return throwTypeError(exec, scope);
 
@@ -1784,20 +1811,20 @@ EncodedJSValue JSC_HOST_CALL stringProtoFuncNormalize(ExecState* exec)
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     StringView view = viewWithString.view;
 
-    UNormalizationMode form = UNORM_NFC;
+    NormalizationForm form = NormalizationForm::CanonicalComposition;
     // Verify that the argument is provided and is not undefined.
     if (!exec->argument(0).isUndefined()) {
         String formString = exec->uncheckedArgument(0).toWTFString(exec);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
         if (formString == "NFC")
-            form = UNORM_NFC;
+            form = NormalizationForm::CanonicalComposition;
         else if (formString == "NFD")
-            form = UNORM_NFD;
+            form = NormalizationForm::CanonicalDecomposition;
         else if (formString == "NFKC")
-            form = UNORM_NFKC;
+            form = NormalizationForm::CompatibilityComposition;
         else if (formString == "NFKD")
-            form = UNORM_NFKD;
+            form = NormalizationForm::CompatibilityDecomposition;
         else
             return throwVMError(exec, scope, createRangeError(exec, ASCIILiteral("argument does not match any normalization form")));
     }

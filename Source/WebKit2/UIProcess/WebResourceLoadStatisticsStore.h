@@ -25,14 +25,12 @@
 
 #pragma once
 
-#include "APIObject.h"
 #include "Connection.h"
 #include "ResourceLoadStatisticsClassifier.h"
-#include "ResourceLoadStatisticsStore.h"
-#include "WebResourceLoadStatisticsTelemetry.h"
-#include "WebsiteDataRecord.h"
+#include <wtf/MonotonicTime.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Vector.h>
+#include <wtf/WallTime.h>
 #include <wtf/text/WTFString.h>
 
 #if HAVE(CORE_PREDICTION)
@@ -44,9 +42,10 @@ class WorkQueue;
 }
 
 namespace WebCore {
+class FileMonitor;
 class KeyedDecoder;
 class KeyedEncoder;
-class FileMonitor;
+class URL;
 struct ResourceLoadStatistics;
 }
 
@@ -54,30 +53,33 @@ namespace WebKit {
 
 class WebProcessProxy;
 
+enum class ShouldClearFirst;
+
+// FIXME: We should consider moving FileSystem I/O to a separate class.
 class WebResourceLoadStatisticsStore final : public IPC::Connection::WorkQueueMessageReceiver {
 public:
-    static Ref<WebResourceLoadStatisticsStore> create(const String&);
-    static void setNotifyPagesWhenDataRecordsWereScanned(bool);
-    static void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
-    static void setShouldSubmitTelemetry(bool);
-    virtual ~WebResourceLoadStatisticsStore();
-    
-    void setResourceLoadStatisticsEnabled(bool);
-    bool resourceLoadStatisticsEnabled() const;
-    void registerSharedResourceLoadObserver();
-    void registerSharedResourceLoadObserver(WTF::Function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst)>&& shouldPartitionCookiesForDomainsHandler);
-    
-    void resourceLoadStatisticsUpdated(const Vector<WebCore::ResourceLoadStatistics>& origins);
+    using UpdateCookiePartitioningForDomainsHandler = WTF::Function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst)>;
+    static Ref<WebResourceLoadStatisticsStore> create(const String& resourceLoadStatisticsDirectory, UpdateCookiePartitioningForDomainsHandler&& updateCookiePartitioningForDomainsHandler = { })
+    {
+        return adoptRef(*new WebResourceLoadStatisticsStore(resourceLoadStatisticsDirectory, WTFMove(updateCookiePartitioningForDomainsHandler)));
+    }
+
+    ~WebResourceLoadStatisticsStore();
+
+    void setNotifyPagesWhenDataRecordsWereScanned(bool value) { m_shouldNotifyPagesWhenDataRecordsWereScanned = value; }
+    void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool value) { m_shouldClassifyResourcesBeforeDataRecordsRemoval = value; }
+    void setShouldSubmitTelemetry(bool value) { m_shouldSubmitTelemetry = value; }
+
+    void resourceLoadStatisticsUpdated(Vector<WebCore::ResourceLoadStatistics>&& origins);
 
     void processWillOpenConnection(WebProcessProxy&, IPC::Connection&);
     void processDidCloseConnection(WebProcessProxy&, IPC::Connection&);
     void applicationWillTerminate();
 
-    void readDataFromDiskIfNeeded();
-
     void logUserInteraction(const WebCore::URL&);
     void clearUserInteraction(const WebCore::URL&);
     void hasHadUserInteraction(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void setLastSeen(const WebCore::URL&, Seconds);
     void setPrevalentResource(const WebCore::URL&);
     void isPrevalentResource(const WebCore::URL&, WTF::Function<void (bool)>&&);
     void clearPrevalentResource(const WebCore::URL&);
@@ -86,34 +88,36 @@ public:
     void setSubframeUnderTopFrameOrigin(const WebCore::URL& subframe, const WebCore::URL& topFrame);
     void setSubresourceUnderTopFrameOrigin(const WebCore::URL& subresource, const WebCore::URL& topFrame);
     void setSubresourceUniqueRedirectTo(const WebCore::URL& subresource, const WebCore::URL& hostNameRedirectedTo);
-    void fireDataModificationHandler();
-    void fireShouldPartitionCookiesHandler();
-    void fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
+    void scheduleCookiePartitioningUpdate();
+    void scheduleCookiePartitioningUpdateForDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst);
+    void processStatisticsAndDataRecords();
+    void submitTelemetry();
 
-    void fireTelemetryHandler();
-    void clearInMemory();
-    void clearInMemoryAndPersistent();
-    void clearInMemoryAndPersistent(std::chrono::system_clock::time_point modifiedSince);
+    void scheduleClearInMemory();
+    void scheduleClearInMemoryAndPersistent();
+    void scheduleClearInMemoryAndPersistent(std::chrono::system_clock::time_point modifiedSince);
 
-    void setTimeToLiveUserInteraction(Seconds);
+    void setTimeToLiveUserInteraction(std::optional<Seconds>);
     void setTimeToLiveCookiePartitionFree(Seconds);
     void setMinimumTimeBetweenDataRecordsRemoval(Seconds);
     void setGrandfatheringTime(Seconds);
-
+    void setMaxStatisticsEntries(size_t);
+    void setPruneEntriesDownTo(size_t);
+    
+    void processStatistics(const WTF::Function<void (const WebCore::ResourceLoadStatistics&)>&) const;
+    void pruneStatisticsIfNeeded();
+    
 private:
-    explicit WebResourceLoadStatisticsStore(const String&);
+    WebResourceLoadStatisticsStore(const String&, UpdateCookiePartitioningForDomainsHandler&&);
 
-    ResourceLoadStatisticsStore& coreStore() { return m_resourceLoadStatisticsStore.get(); }
-    const ResourceLoadStatisticsStore& coreStore() const { return m_resourceLoadStatisticsStore.get(); }
+    void readDataFromDiskIfNeeded();
 
-    void processStatisticsAndDataRecords();
-
-    void classifyResource(WebCore::ResourceLoadStatistics&);
     void removeDataRecords();
     void startMonitoringStatisticsStorage();
     void stopMonitoringStatisticsStorage();
 
-    String persistentStoragePath(const String& label) const;
+    String statisticsStoragePath() const;
+    String resourceLogFilePath() const;
 
     // IPC::MessageReceiver
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
@@ -121,32 +125,64 @@ private:
     void grandfatherExistingWebsiteData();
 
     void writeStoreToDisk();
-    void writeEncoderToDisk(WebCore::KeyedEncoder&, const String& label) const;
-    std::unique_ptr<WebCore::KeyedDecoder> createDecoderFromDisk(const String& label) const;
+    void scheduleOrWriteStoreToDisk();
+    std::unique_ptr<WebCore::KeyedDecoder> createDecoderFromDisk(const String& path) const;
+    WallTime statisticsFileModificationTime(const String& label) const;
     void platformExcludeFromBackup() const;
     void deleteStoreFromDisk();
-    void clearInMemoryData();
     void syncWithExistingStatisticsStorageIfNeeded();
     void refreshFromDisk();
-    void telemetryTimerFired();
-    void submitTelemetry();
+    bool hasStatisticsFileChangedSinceLastSync(const String& path) const;
+    void performDailyTasks();
+    bool shouldRemoveDataRecords() const;
+    void setDataRecordsBeingRemoved(bool);
+
+    bool shouldPartitionCookies(const WebCore::ResourceLoadStatistics&) const;
+    bool hasStatisticsExpired(const WebCore::ResourceLoadStatistics&) const;
+    bool hasHadUnexpiredRecentUserInteraction(WebCore::ResourceLoadStatistics&) const;
+    void includeTodayAsOperatingDateIfNecessary();
+    Vector<String> topPrivatelyControlledDomainsToRemoveWebsiteDataFor();
+    void updateCookiePartitioning();
+    void updateCookiePartitioningForDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst);
+    void mergeStatistics(Vector<WebCore::ResourceLoadStatistics>&&);
+    WebCore::ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
+    std::unique_ptr<WebCore::KeyedEncoder> createEncoderFromData() const;
+    void populateFromDecoder(WebCore::KeyedDecoder&);
+    void clearInMemory();
 
 #if PLATFORM(COCOA)
     void registerUserDefaultsIfNeeded();
 #endif
 
-    Ref<ResourceLoadStatisticsStore> m_resourceLoadStatisticsStore;
+    HashMap<String, WebCore::ResourceLoadStatistics> m_resourceStatisticsMap;
 #if HAVE(CORE_PREDICTION)
     ResourceLoadStatisticsClassifierCocoa m_resourceLoadStatisticsClassifier;
 #else
     ResourceLoadStatisticsClassifier m_resourceLoadStatisticsClassifier;
 #endif
     Ref<WTF::WorkQueue> m_statisticsQueue;
-    RefPtr<WebCore::FileMonitor> m_statisticsStorageMonitor;
-    String m_statisticsStoragePath;
-    bool m_resourceLoadStatisticsEnabled { false };
-    RunLoop::Timer<WebResourceLoadStatisticsStore> m_telemetryOneShotTimer;
-    RunLoop::Timer<WebResourceLoadStatisticsStore> m_telemetryRepeatedTimer;
+    std::unique_ptr<WebCore::FileMonitor> m_statisticsStorageMonitor;
+    Deque<WTF::WallTime> m_operatingDates;
+
+    UpdateCookiePartitioningForDomainsHandler m_updateCookiePartitioningForDomainsHandler;
+
+    WallTime m_endOfGrandfatheringTimestamp;
+    const String m_statisticsStoragePath;
+    WallTime m_lastStatisticsFileSyncTime;
+    MonotonicTime m_lastStatisticsWriteTime;
+    RunLoop::Timer<WebResourceLoadStatisticsStore> m_dailyTasksTimer;
+    MonotonicTime m_lastTimeDataRecordsWereRemoved;
+    Seconds m_minimumTimeBetweenDataRecordsRemoval { 1_h };
+    std::optional<Seconds> m_timeToLiveUserInteraction;
+    Seconds m_timeToLiveCookiePartitionFree { 24_h };
+    Seconds m_grandfatheringTime { 1_h };
+    size_t m_maxStatisticsEntries { 1000 };
+    size_t m_pruneEntriesDownTo { 800 };
+    bool m_dataRecordsBeingRemoved { false };
+    bool m_didScheduleWrite { false };
+    bool m_shouldNotifyPagesWhenDataRecordsWereScanned { false };
+    bool m_shouldClassifyResourcesBeforeDataRecordsRemoval { true };
+    bool m_shouldSubmitTelemetry { true };
 };
 
 } // namespace WebKit

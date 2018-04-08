@@ -1,3 +1,781 @@
+2017-07-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Bump GStreamer packages in jhbuild.modules to 1.10.5
+        https://bugs.webkit.org/show_bug.cgi?id=174350
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Bump the various GStreamer dependencies listed in WPE's Jhbuild modules file
+        to the 1.10.5 version. One gstreamer patch is added. The two gst-plugins-bad
+        patches are removed. The patches for gst-plugins-good are updated, removing
+        the stale ones and adding the additional changes to qtdemux, souphttpsrc and
+        rtpbin elements that will help with the EMEv3 development.
+
+        * wpe/jhbuild.modules:
+        * wpe/patches/gst-plugins-bad-0001-dtls-port-to-OpenSSL-1.1.0.patch: Removed.
+        * wpe/patches/gst-plugins-bad-0002-dtlscertificate-Fix-error-checking-in-RSA_generate_k.patch: Removed.
+        * wpe/patches/gst-plugins-good-0003-rtpbin-receive-bundle-support.patch: Added.
+        * wpe/patches/gst-plugins-good-0005-souphttpsrc-cookie-jar-and-context-query-support.patch: Added.
+        * wpe/patches/gst-plugins-good-0006-qtdemux-add-context-for-a-preferred-protection.patch: Added.
+        * wpe/patches/gst-plugins-good-0008-qtdemux-also-push-buffers-without-encryption-info-in.patch: Added.
+        * wpe/patches/gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch: Removed.
+        * wpe/patches/gst-plugins-good-use-the-tfdt-decode-time.patch: Removed.
+        * wpe/patches/gstreamer-0001-protection-added-function-to-filter-system-ids.patch: Added.
+
+2017-07-10  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Prune statistics in orders of importance
+        https://bugs.webkit.org/show_bug.cgi?id=174215
+        <rdar://problem/33164403>
+
+        Reviewed by Chris Dumez.
+
+        Nest infrastructure. Adds these functions:
+        1. testRunner.setStatisticsLastSeen()
+        2. setStatisticsMaxStatisticsEntries()
+        3. setStatisticsPruneEntriesDownTo()
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsLastSeen):
+        (WTR::TestRunner::setStatisticsMaxStatisticsEntries):
+        (WTR::TestRunner::setStatisticsPruneEntriesDownTo):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsLastSeen):
+        (WTR::TestController::setMaxStatisticsEntries):
+        (WTR::TestController::setPruneEntriesDownTo):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::setStatisticsLastSeen):
+        (WTR::TestController::setStatisticsMaxStatisticsEntries):
+        (WTR::TestController::setStatisticsPruneEntriesDownTo):
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Scripts/run-input-generator-tests: Removed.
+        * Scripts/webkitpy/replay/__init__.py: Removed.
+        * Scripts/webkitpy/replay/main.py: Removed.
+
+2017-07-10  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Fix layout test baseline and TestExpectations hierarchy
+        https://bugs.webkit.org/show_bug.cgi?id=174092
+
+        Reviewed by Michael Catanzaro.
+
+        Like for the GTK+ port, override the default_baseline_search_path() and
+        _port_specific_expectations_files() methods in the webkitpy.port.WPEPort class.
+        Both methods operate on a short list of search paths that defaults to 'wpe' and
+        'wk2', along with any other user-specified platform directory.
+
+        The test_expectations_file_position() method is overridden for testing purposes,
+        and relevant unit tests are added.
+
+        * Scripts/webkitpy/port/wpe.py:
+        (WPEPort._search_paths):
+        (WPEPort):
+        (WPEPort.default_baseline_search_path):
+        (WPEPort._port_specific_expectations_files):
+        (WPEPort.test_expectations_file_position):
+        * Scripts/webkitpy/port/wpe_unittest.py:
+        (WPEPortTest.test_default_baseline_search_path):
+        (WPEPortTest):
+        (WPEPortTest.test_port_specific_expectations_files):
+
+2017-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Further WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore clean up
+        https://bugs.webkit.org/show_bug.cgi?id=174301
+
+        Reviewed by Brent Fulgham.
+
+        Rename some of the testRunner API for clarity and to better match what it calls
+        internally.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsUpdateCookiePartitioning):
+        (WTR::TestRunner::statisticsSetShouldPartitionCookiesForHost):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsUpdateCookiePartitioning):
+        (WTR::TestController::statisticsSetShouldPartitionCookiesForHost):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::statisticsUpdateCookiePartitioning):
+        (WTR::TestController::statisticsSetShouldPartitionCookiesForHost):
+
+2017-07-10  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] Live twitch.tv videos do not play
+        https://bugs.webkit.org/show_bug.cgi?id=174222
+
+        Reviewed by Michael Catanzaro.
+
+        Upgrade GStreamer to 1.10.5. It contains a change to typefind that
+        fixes videos not playing on twitch.tv.
+
+        * gtk/jhbuild.modules:
+
+2017-07-09  Zan Dobersek  <zdobersek@igalia.com>
+
+        Add WebGL2 configuration option to build-webkit
+        https://bugs.webkit.org/show_bug.cgi?id=174251
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitperl/FeatureList.pm: Add the 'webgl2' option, making it possible
+        to enable the ENABLE_WEBGL2 flag through the build-webkit script. The feature
+        is marked as enabled for the Apple Cocoa ports.
+
+2017-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Simplify WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174290
+
+        Reviewed by Brent Fulgham.
+
+        Rename testRunner API to match the new internal API names.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::statisticsProcessStatisticsAndDataRecords):
+        (WTR::TestRunner::statisticsSubmitTelemetry):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::statisticsProcessStatisticsAndDataRecords):
+        (WTR::TestController::statisticsSubmitTelemetry):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::statisticsProcessStatisticsAndDataRecords):
+        (WTR::TestController::statisticsSubmitTelemetry):
+
+2017-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop NOSNIFF compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=174289
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-07-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] For cross-app drags, 'drop' event handlers are never invoked if dataTransfer.dropEffect is not set while dragging
+        https://bugs.webkit.org/show_bug.cgi?id=174219
+        <rdar://problem/32083177>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add plumbing and support to mock the value of -allowsMoveOperation on the simulated UIDragDropSession objects.
+        Setting the DataInteractionSimulator's shouldAllowMoveOperation property to NO simulates a drag operation coming
+        in from another app out-of-process, for which move operations won't cause a drop to be performed in the first
+        place.
+
+        Also tweaks 2 existing unit tests regarding file uploads via JavaScript to simulate items coming in from a
+        different application, and adds a new test to check that if a drop area specifically requests a MOVE operation,
+        no action is taken when dropping.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/file-uploading.html:
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[MockDragDropSession initWithItems:location:window:allowMove:]):
+        (-[MockDragDropSession allowsMoveOperation]):
+        (-[MockDataOperationSession initWithProviders:location:window:allowMove:]):
+        (-[MockDataInteractionSession initWithWindow:allowMove:]):
+        (-[DataInteractionSimulator initWithWebView:]):
+        (-[DataInteractionSimulator runFrom:to:]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[MockDragDropSession initWithItems:location:window:]): Deleted.
+        (-[MockDataOperationSession initWithProviders:location:window:]): Deleted.
+        (-[MockDataInteractionSession initWithWindow:]): Deleted.
+
+2017-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219238, r219239, and r219241.
+        https://bugs.webkit.org/show_bug.cgi?id=174265
+
+        "fast/workers/dedicated-worker-lifecycle.html is flaky"
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Implement WTF::ThreadGroup"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219238
+
+        "Unreviewed, build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219239
+
+        "Unreviewed, CLoop build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219241
+
+2017-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE] Enable X-Content-Type-Options: nosniff
+        https://bugs.webkit.org/show_bug.cgi?id=174250
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * Scripts/webkitperl/FeatureList.pm:
+
+2017-07-07  Charlie Turner  <cturner@igalia.com>
+        [GStreamer] vid.me videos do not play
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Build httpsoupsrc again for use in adaptive streaming pipelines, and
+        have the existing libsoup build against GNOME to avoid header drift
+        against GStreamer's linked Soup library.
+
+        * gtk/jhbuild.modules:
+
+2017-07-06  Lucas Forschler  <lforschler@apple.com>
+
+        Write a support script to enable buildbot to upload to S3
+        https://bugs.webkit.org/show_bug.cgi?id=174196
+        
+        Reviewed by Stephanie Lewis.
+
+        * BuildSlaveSupport/build.webkit.org-config/transfer-archive-to-s3: Added.
+        (uploadToS3):
+        (archiveExists):
+
+2017-07-06  Lucas Forschler  <lforschler@apple.com>
+
+        Enabling uploading archives to S3.
+        https://bugs.webkit.org/show_bug.cgi?id=174198
+        
+        Reviewed by Stephanie Lewis.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (ArchiveMinifiedBuiltProduct): Create a minified archive from a full archive
+        (UploadMinifiedBuiltProduct): Upload minified archive to build master
+        (TransferToS3): Transfer full and minified archives to S3
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        Add WTF::ThreadGroup tests.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp: Added.
+        (TestWebKitAPI::TEST):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/StringBuilder.cpp:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/TestsController.cpp:
+        (TestWebKitAPI::TestsController::TestsController):
+
+2017-07-06  Lucas Forschler  <lforschler@apple.com>
+
+        Enabling uploading archives to S3.
+        https://bugs.webkit.org/show_bug.cgi?id=174198
+        
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (ArchiveMinifiedBuiltProduct): Create a minified archive from a full archive
+        (UploadMinifiedBuiltProduct): Upload minified archive to build master
+        (TransferToS3): Transfer full and minified archives to S3
+
+2017-07-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK][WPE] kill-old-process should kill more webkit related process
+        https://bugs.webkit.org/show_bug.cgi?id=174220
+
+        Reviewed by Michael Catanzaro.
+
+        Generate list of possible webkit-related process names and add
+        them to the list of process to kill.
+        Also update the possible system related process for GTK+/WPE.
+
+        * BuildSlaveSupport/kill-old-processes:
+        (listAllWebKitPrograms):
+        (main):
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        FileMonitor should not be ref counted
+        https://bugs.webkit.org/show_bug.cgi?id=174166
+
+        Reviewed by Brent Fulgham.
+
+        Update the API tests to reflect the API change.
+
+        * TestWebKitAPI/Tests/WebCore/FileMonitor.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-07-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219194.
+        https://bugs.webkit.org/show_bug.cgi?id=174207
+
+        it broke some layout tests (Requested by clopez on #webkit).
+
+        Reverted changeset:
+
+        "[GStreamer] vid.me videos do not play"
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+        http://trac.webkit.org/changeset/219194
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219178.
+
+        This caused a consistent failure with the API test
+        StringBuilderTest.ToAtomicStringOnEmpty on all Debug testers.
+
+        Reverted changeset:
+
+        "[WTF] Clean up StringStatics.cpp by using
+        LazyNeverDestroyed<> for Atoms"
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+        http://trac.webkit.org/changeset/219178
+
+2017-07-06  Alicia Boya García  <aboya@igalia.com>
+
+        Add CWD to Perl library path (no longer the default since 5.26.0)
+        https://bugs.webkit.org/show_bug.cgi?id=174200
+
+        Reviewed by Michael Catanzaro.
+
+        * Scripts/webkitpy/tool/commands/setupgitclone.py:
+        (SetupGitClone._get_username_and_email):
+
+2017-07-06  Gyuyoung Kim  <gyuyoung.kim@webkit.org>
+
+        Unreviewed, update my email address.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-07-06  Charlie Turner  <cturner@igalia.com>
+        [GStreamer] vid.me videos do not play
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Build httpsoupsrc again for use in adaptive streaming pipelines, and
+        have the existing libsoup build against GNOME to avoid header drift
+        against GStreamer's linked Soup library.
+
+        * gtk/jhbuild.modules:
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move SoftLinking.h into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=174000
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (test_primary_header):
+        (ErrorCollector.__init__): Deleted.
+        (ErrorCollector.__call__): Deleted.
+        (ErrorCollector.results): Deleted.
+        (ErrorCollector.result_list): Deleted.
+        (ErrorCollector.verify_all_categories_are_seen): Deleted.
+        (MockIo.open): Deleted.
+        (CppFunctionsTest.test_convert_to_lower_with_underscores): Deleted.
+        (CppFunctionsTest.test_create_acronym): Deleted.
+        (CppFunctionsTest.test_is_c_or_objective_c): Deleted.
+        (CppFunctionsTest.test_parameter): Deleted.
+        (CppFunctionsTest.test_single_line_view): Deleted.
+        (CppFunctionsTest.test_create_skeleton_parameters): Deleted.
+        (CppFunctionsTest.test_find_parameter_name_index): Deleted.
+        (CppFunctionsTest.test_parameter_list): Deleted.
+        (CppFunctionsTest.test_check_parameter_against_text): Deleted.
+        (CppStyleTestBase.process_file_data): Deleted.
+        (CppStyleTestBase.perform_lint): Deleted.
+        (CppStyleTestBase.perform_single_line_lint): Deleted.
+        (CppStyleTestBase.perform_multi_line_lint): Deleted.
+        (CppStyleTestBase.perform_language_rules_check): Deleted.
+        (CppStyleTestBase.perform_function_lengths_check): Deleted.
+        (CppStyleTestBase.perform_pass_ptr_check): Deleted.
+        (CppStyleTestBase.perform_leaky_pattern_check): Deleted.
+        (CppStyleTestBase.perform_include_what_you_use): Deleted.
+        (CppStyleTestBase.perform_header_guard_check): Deleted.
+        (CppStyleTestBase.assert_lint): Deleted.
+        (CppStyleTestBase.assert_lint_one_of_many_errors_re): Deleted.
+        (CppStyleTestBase.assert_multi_line_lint): Deleted.
+        (CppStyleTestBase.assert_multi_line_lint_re): Deleted.
+        (CppStyleTestBase.assert_language_rules_check): Deleted.
+        (CppStyleTestBase.assert_include_what_you_use): Deleted.
+        (CppStyleTestBase.assert_header_guard): Deleted.
+        (CppStyleTestBase.assert_blank_lines_check): Deleted.
+        (CppStyleTestBase.assert_positions_equal): Deleted.
+        (FunctionDetectionTest.test_basic_function_detection): Deleted.
+        (FunctionDetectionTest.test_function_declaration_detection): Deleted.
+        (FunctionDetectionTest.test_pure_function_detection): Deleted.
+        (FunctionDetectionTest.test_override_and_final_function_detection): Deleted.
+        (FunctionDetectionTest.test_ignore_macros): Deleted.
+        (FunctionDetectionTest.test_non_functions): Deleted.
+        (FunctionDetectionTest.test_non_functions.Stuff): Deleted.
+        (FunctionDetectionTest.test_parameter_list): Deleted.
+        (Cpp11StyleTest.test_rvaule_reference_in_parameter_pack): Deleted.
+        (CppStyleTest.test_asm_lines_ignored): Deleted.
+        (CppStyleTest.test_get_line_width): Deleted.
+        (CppStyleTest.test_find_next_multi_line_comment_start): Deleted.
+        (CppStyleTest.test_find_next_multi_line_comment_end): Deleted.
+        (CppStyleTest.test_remove_multi_line_comments_from_range): Deleted.
+        (CppStyleTest.test_position): Deleted.
+        (CppStyleTest.test_rfind_in_lines): Deleted.
+        (CppStyleTest.test_close_expression): Deleted.
+        (CppStyleTest.test_spaces_at_end_of_line): Deleted.
+        (CppStyleTest.test_cstyle_cast): Deleted.
+        (CppStyleTest.test_runtime_casting): Deleted.
+        (CppStyleTest.test_runtime_selfinit): Deleted.
+        (CppStyleTest.test_runtime_rtti): Deleted.
+        (CppStyleTest.test_static_cast_readability): Deleted.
+        (CppStyleTest.test_check_for_unnamed_params): Deleted.
+        (CppStyleTest.void): Deleted.
+        (CppStyleTest.test_deprecated_cast): Deleted.
+        (CppStyleTest.test_mock_method): Deleted.
+        (CppStyleTest.test_sizeof_type): Deleted.
+        (CppStyleTest.cases): Deleted.
+        (CppStyleTest.for): Deleted.
+        (CppStyleTest.test_typedef_for_pointer_to_function): Deleted.
+        (CppStyleTest.test_typedef_for_pointer_to_function.void): Deleted.
+        (CppStyleTest.test_include_what_you_use_no_implementation_files): Deleted.
+        (CppStyleTest.test_include_what_you_use): Deleted.
+        (CppStyleTest.test_files_belong_to_same_module): Deleted.
+        (CppStyleTest.test_cleanse_line): Deleted.
+        (CppStyleTest.test_multi_line_comments): Deleted.
+        (CppStyleTest.test_multi_line_comments.Foo): Deleted.
+        (CppStyleTest.test_multiline_strings): Deleted.
+        (CppStyleTest.test_platformh_comments): Deleted.
+        (CppStyleTest.test_explicit_single_argument_constructors): Deleted.
+        (CppStyleTest.test_explicit_single_argument_constructors.Foo): Deleted.
+        (CppStyleTest.test_explicit_single_argument_constructors.Qualifier): Deleted.
+        (CppStyleTest.test_explicit_single_argument_constructors.definition): Deleted.
+        (CppStyleTest.test_slash_star_comment_on_single_line): Deleted.
+        (CppStyleTest.test_suspicious_usage_of_if): Deleted.
+        (CppStyleTest.test_suspicious_usage_of_memset): Deleted.
+        (CppStyleTest.test_check_posix_threading): Deleted.
+        (CppStyleTest.test_insecure_string_operations): Deleted.
+        (CppStyleTest.test_format_strings): Deleted.
+        (CppStyleTest.test_insecure_temp_file): Deleted.
+        (CppStyleTest.test_variable_length_array_detection): Deleted.
+        (CppStyleTest.test_braces): Deleted.
+        (CppStyleTest.test_check_check): Deleted.
+        (CppStyleTest.test_brace_at_begin_of_line): Deleted.
+        (CppStyleTest.test_mismatching_spaces_in_parens): Deleted.
+        (CppStyleTest.test_spacing_for_fncall): Deleted.
+        (CppStyleTest.test_spacing_for_fncall.foo): Deleted.
+        (CppStyleTest.test_spacing_before_braces): Deleted.
+        (CppStyleTest.test_spacing_between_braces): Deleted.
+        (CppStyleTest.test_spacing_before_brackets): Deleted.
+        (CppStyleTest.test_cpp_lambda_functions): Deleted.
+        (CppStyleTest.test_objective_c_block): Deleted.
+        (CppStyleTest.test_objective_c_block_as_argument): Deleted.
+        (CppStyleTest.test_spacing_around_else): Deleted.
+        (CppStyleTest.test_spacing_for_binary_ops): Deleted.
+        (CppStyleTest.test_spacing_for_binary_ops.hash_map): Deleted.
+        (CppStyleTest.test_operator_methods): Deleted.
+        (CppStyleTest.test_spacing_in_objective_c_properties): Deleted.
+        (CppStyleTest.test_spacing_before_last_semicolon): Deleted.
+        (CppStyleTest.test_static_or_global_stlstrings): Deleted.
+        (CppStyleTest.test_no_spaces_in_function_calls): Deleted.
+        (CppStyleTest.test_one_spaces_between_code_and_comments): Deleted.
+        (CppStyleTest.test_one_spaces_after_punctuation_in_comments): Deleted.
+        (CppStyleTest.test_space_after_comment_marker): Deleted.
+        (CppStyleTest.test_newline_at_eof): Deleted.
+        (CppStyleTest.test_newline_at_eof.do_test): Deleted.
+        (CppStyleTest.test_extra_newlines_at_eof): Deleted.
+        (CppStyleTest.test_extra_newlines_at_eof.do_test): Deleted.
+        (CppStyleTest.test_invalid_utf8): Deleted.
+        (CppStyleTest.test_invalid_utf8.do_test): Deleted.
+        (CppStyleTest.test_is_blank_line): Deleted.
+        (CppStyleTest.test_blank_lines_check): Deleted.
+        (CppStyleTest.test_allow_blank_line_before_closing_namespace): Deleted.
+        (CppStyleTest.test_allow_blank_line_before_if_else_chain): Deleted.
+        (CppStyleTest.test_else_on_same_line_as_closing_braces): Deleted.
+        (CppStyleTest.test_else_clause_not_on_same_line_as_else): Deleted.
+        (CppStyleTest.test_comma): Deleted.
+        (CppStyleTest.test_declaration): Deleted.
+        (CppStyleTest.test_pointer_reference_marker_location): Deleted.
+        (CppStyleTest.test_indent): Deleted.
+        (CppStyleTest.test_indent.Foo): Deleted.
+        (CppStyleTest.test_not_alabel): Deleted.
+        (CppStyleTest.test_tab): Deleted.
+        (CppStyleTest.test_unnamed_namespaces_in_headers): Deleted.
+        (CppStyleTest.test_build_class): Deleted.
+        (CppStyleTest.test_build_class.definitions): Deleted.
+        (CppStyleTest.test_build_class.Foo): Deleted.
+        (CppStyleTest.test_build_class.DERIVE_FROM_GOO): Deleted.
+        (CppStyleTest.test_build_end_comment): Deleted.
+        (CppStyleTest.test_build_forward_decl): Deleted.
+        (CppStyleTest.test_build_forward_decl.Foo): Deleted.
+        (CppStyleTest.test_build_header_guard): Deleted.
+        (CppStyleTest.test_build_header_guard.Foo_h): Deleted.
+        (CppStyleTest.test_build_header_guard.Foo_h.for): Deleted.
+        (CppStyleTest.test_build_printf_format): Deleted.
+        (CppStyleTest.test_runtime_printf_format): Deleted.
+        (CppStyleTest.assert_lintLogCodeOnError): Deleted.
+        (CppStyleTest.test_build_storage_class): Deleted.
+        (CppStyleTest.test_build_storage_class.unsignedLongLong): Deleted.
+        (CppStyleTest.test_build_storage_class.declaration): Deleted.
+        (CppStyleTest.test_build_storage_class.after): Deleted.
+        (CppStyleTest.test_build_storage_class.is): Deleted.
+        (CppStyleTest.test_legal_copyright): Deleted.
+        (CppStyleTest.test_invalid_increment): Deleted.
+        (CppStyleTest.test_enum_bitfields): Deleted.
+        (CppStyleTest.test_plain_integral_bitfields): Deleted.
+        (CleansedLinesTest.test_init_empty): Deleted.
+        (CleansedLinesTest.test_collapse_strings): Deleted.
+        (OrderOfIncludesTest.tearDown): Deleted.
+        (OrderOfIncludesTest.test_check_next_include_order__no_config): Deleted.
+        (OrderOfIncludesTest.test_check_next_include_order__no_self): Deleted.
+        (OrderOfIncludesTest.test_check_next_include_order__likely_then_config): Deleted.
+        (OrderOfIncludesTest.test_check_next_include_order__other_then_config): Deleted.
+        (OrderOfIncludesTest.test_check_next_include_order__config_then_other_then_likely): Deleted.
+        (OrderOfIncludesTest.test_check_alphabetical_include_order): Deleted.
+        (OrderOfIncludesTest.test_check_alphabetical_include_order_errors_reported_for_both_lines): Deleted.
+        (OrderOfIncludesTest.test_check_line_break_after_own_header): Deleted.
+        (OrderOfIncludesTest.test_check_line_break_before_own_header): Deleted.
+        (OrderOfIncludesTest.test_check_preprocessor_in_include_section): Deleted.
+        (OrderOfIncludesTest.test_check_preprocessor_in_include_section.BAZ): Deleted.
+        (OrderOfIncludesTest.test_check_preprocessor_in_include_section.FOOBAR): Deleted.
+        (OrderOfIncludesTest.test_primary_header): Deleted.
+        (OrderOfIncludesTest.test_public_primary_header): Deleted.
+        (OrderOfIncludesTest.test_check_wtf_includes): Deleted.
+        (OrderOfIncludesTest.test_classify_include): Deleted.
+        (OrderOfIncludesTest.test_try_drop_common_suffixes): Deleted.
+        (CheckForFunctionLengthsTest.tearDown): Deleted.
+        (CheckForFunctionLengthsTest.set_min_confidence): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_lengths_check): Deleted.
+        (CheckForFunctionLengthsTest.trigger_lines): Deleted.
+        (CheckForFunctionLengthsTest.trigger_test_lines): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_length_check_definition): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_length_check_definition_ok): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_length_check_at_error_level): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_length_check_below_error_level): Deleted.
+        (CheckForFunctionLengthsTest.assert_function_length_check_above_error_level): Deleted.
+        (CheckForFunctionLengthsTest.function_body): Deleted.
+        (CheckForFunctionLengthsTest.function_body_with_blank_lines): Deleted.
+        (CheckForFunctionLengthsTest.function_body_with_no_lints): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_declaration): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_declaration_with_block_following): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_class_definition): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_class_definition.Test): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_trivial): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_empty): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity0): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_at_severity0): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity0): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity1v0): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_at_severity1v0): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity1): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_at_severity1): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity1): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_plus_indented): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_plus_blanks): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_complex_definition_severity1): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_for_test): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_for_split_line_test): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_for_bad_test_doesnt_break): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_with_embedded_no_lints): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity1_with_no_lint): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity2): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity2): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity2): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity3): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity3): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity3): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity4): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_severity4): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity4): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_below_severity5): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_at_severity5): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_above_severity5): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_check_definition_huge_lines): Deleted.
+        (CheckForFunctionLengthsTest.test_function_length_not_determinable): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_error): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_error.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_error.MyClass): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_error.Qualified): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_destructor_when_virtual_needed): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_destructor_when_virtual_needed.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_casing): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_casing.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_casing.Enum123): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_trailing_semicolon): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_trailing_semicolon.CPP11EnumClass): Deleted.
+        (NoNonVirtualDestructorsTest.test_enum_trailing_semicolon.MyEnum): Deleted.
+        (NoNonVirtualDestructorsTest.test_destructor_non_virtual_when_virtual_needed): Deleted.
+        (NoNonVirtualDestructorsTest.test_destructor_non_virtual_when_virtual_needed.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_warn_when_derived): Deleted.
+        (NoNonVirtualDestructorsTest.test_no_warn_when_derived.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_internal_braces): Deleted.
+        (NoNonVirtualDestructorsTest.test_internal_braces.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_inner_class_needs_virtual_destructor): Deleted.
+        (NoNonVirtualDestructorsTest.test_inner_class_needs_virtual_destructor.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_inner_class_needs_virtual_destructor.Foo.Goo): Deleted.
+        (NoNonVirtualDestructorsTest.test_inner_class_needs_virtual_destructor.Goo): Deleted.
+        (NoNonVirtualDestructorsTest.test_outer_class_needs_virtual_destructor): Deleted.
+        (NoNonVirtualDestructorsTest.test_outer_class_needs_virtual_destructor.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_outer_class_needs_virtual_destructor.Foo.Goo): Deleted.
+        (NoNonVirtualDestructorsTest.test_qualified_class_needs_virtual_destructor): Deleted.
+        (NoNonVirtualDestructorsTest.test_qualified_class_needs_virtual_destructor.Qualified): Deleted.
+        (NoNonVirtualDestructorsTest.test_multi_line_declaration_no_error): Deleted.
+        (NoNonVirtualDestructorsTest.test_multi_line_declaration_no_error.Foo): Deleted.
+        (NoNonVirtualDestructorsTest.test_multi_line_declaration_with_error): Deleted.
+        (NoNonVirtualDestructorsTest.test_multi_line_declaration_with_error.Foo): Deleted.
+        (LeakyPatternTest.assert_leaky_pattern_check): Deleted.
+        (LeakyPatternTest.test_get_dc): Deleted.
+        (LeakyPatternTest.test_get_dc.HWndDC): Deleted.
+        (LeakyPatternTest.test_own_get_dc): Deleted.
+        (LeakyPatternTest.test_create_dc): Deleted.
+        (LeakyPatternTest.test_create_compatible_dc): Deleted.
+        (WebKitStyleTest.test_indentation): Deleted.
+        (WebKitStyleTest.test_indentation.Foo): Deleted.
+        (WebKitStyleTest.test_indentation.Document): Deleted.
+        (WebKitStyleTest.test_spacing): Deleted.
+        (WebKitStyleTest.test_line_breaking): Deleted.
+        (WebKitStyleTest.test_braces): Deleted.
+        (WebKitStyleTest.test_braces.MyClass): Deleted.
+        (WebKitStyleTest.test_braces.NS_ENUM): Deleted.
+        (WebKitStyleTest.test_braces.CPP11EnumClass): Deleted.
+        (WebKitStyleTest.test_braces.SOMETHING): Deleted.
+        (WebKitStyleTest.test_null_false_zero): Deleted.
+        (WebKitStyleTest.test_directive_indentation): Deleted.
+        (WebKitStyleTest.test_using_std): Deleted.
+        (WebKitStyleTest.test_using_namespace): Deleted.
+        (WebKitStyleTest.test_max_macro): Deleted.
+        (WebKitStyleTest.test_min_macro): Deleted.
+        (WebKitStyleTest.test_wtf_move): Deleted.
+        (WebKitStyleTest.test_ctype_fucntion): Deleted.
+        (WebKitStyleTest.test_names): Deleted.
+        (WebKitStyleTest.test_names.HTMLDocument): Deleted.
+        (WebKitStyleTest.test_names.WebWindowFadeAnimation): Deleted.
+        (WebKitStyleTest.test_names.declarations): Deleted.
+        (WebKitStyleTest.test_names.struct): Deleted.
+        (WebKitStyleTest.test_names.VectorType): Deleted.
+        (WebKitStyleTest.test_parameter_names): Deleted.
+        (WebKitStyleTest.test_comments): Deleted.
+        (WebKitStyleTest.test_webkit_export_check): Deleted.
+        (WebKitStyleTest.test_member_initialization_list): Deleted.
+        (WebKitStyleTest.test_member_initialization_list.MyClass): Deleted.
+        (WebKitStyleTest.test_other): Deleted.
+        (CppCheckerTest.mock_handle_style_error): Deleted.
+        (CppCheckerTest._checker): Deleted.
+        (CppCheckerTest.test_init): Deleted.
+        (CppCheckerTest.test_eq): Deleted.
+        (CppCheckerTest.test_eq.mock_handle_style_error2): Deleted.
+        (CppCheckerTest.test_ne): Deleted.
+        * TestWebKitAPI/Tests/WebKit/ios/AudioSessionCategoryIOS.mm:
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        * WebKitTestRunner/InjectedBundle/mac/TestRunnerMac.mm:
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+
+2017-07-05  Saam Barati  <sbarati@apple.com>
+
+        NewArray in FTLLowerDFGToB3 does not handle speculating on doubles when having a bad time
+        https://bugs.webkit.org/show_bug.cgi?id=174188
+        <rdar://problem/30581423>
+
+        Reviewed by Mark Lam.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/StringBuilder.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r218821): Bad cast to WebKit::DiagnosticLoggingClient in WKWebView's _setDiagnosticLoggingDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=174163
+        <rdar://problem/33067518>
+
+        Reviewed by Alex Christensen.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewDiagnosticLogging.mm: Added.
+        (TEST):
+
+2017-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        When dragging a selection, clearing the selection in dragstart should not crash the web process
+        https://bugs.webkit.org/show_bug.cgi?id=174142
+        <rdar://problem/33067501>
+
+        Reviewed by Tim Horton.
+
+        Adds a unit test checking that the web process does not crash when the selection is cleared while a selection
+        drag is starting up.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/dragstart-clear-selection.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-07-05  Daniel Bates  <dabates@apple.com>
+
+        Do not pass API::FrameInfo for source frame or clear out page of target frame on
+        API navigation
+        https://bugs.webkit.org/show_bug.cgi?id=174170
+        <rdar://problem/33140328>
+
+        Reviewed by Brady Eidson.
+
+        Update tests as needed for the behavior change.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DecidePolicyForNavigationAction.mm:
+        (TEST):
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Add WebKitPrivateFrameworkStubs for iOS 11

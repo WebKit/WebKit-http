@@ -39,12 +39,12 @@
 #import "GraphicsContext.h"
 #import "Image.h"
 #import "LinkPresentationSPI.h"
-#import "SoftLinking.h"
 #import "StringTruncator.h"
 #import "TextIndicator.h"
 #import "TextRun.h"
 #import "URL.h"
 #import <wtf/NeverDestroyed.h>
+#import <wtf/SoftLinking.h>
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
 SOFT_LINK_PRIVATE_FRAMEWORK(LinkPresentation)
@@ -226,7 +226,7 @@ LinkImageLayout::LinkImageLayout(URL& url, const String& titleString)
         paragraphStyleSettings[0].spec = kCTParagraphStyleSpecifierLineBreakMode;
         paragraphStyleSettings[0].valueSize = sizeof(CTLineBreakMode);
         paragraphStyleSettings[0].value = &lineBreakMode;
-        RetainPtr<CTParagraphStyleRef> paragraphStyle = CTParagraphStyleCreate(paragraphStyleSettings, 1);
+        RetainPtr<CTParagraphStyleRef> paragraphStyle = adoptCF(CTParagraphStyleCreate(paragraphStyleSettings, 1));
 
         NSDictionary *textAttributes = @{
             (id)kCTFontAttributeName: font,

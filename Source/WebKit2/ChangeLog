@@ -1,3 +1,1405 @@
+2017-07-11  Timothy Hatcher  <timothy@hatcher.name>
+
+        Fix broken build when !ENABLE(INDEXED_DATABASE)
+        https://bugs.webkit.org/show_bug.cgi?id=174370
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::pageAddedToProcess):
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Changing the web page muted state for playing audio should not disable other tabs capture
+        https://bugs.webkit.org/show_bug.cgi?id=174349
+
+        Unreviewed.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::activateMediaStreamCaptureInPage): Fixes non MEDIA_STREAM builds.
+
+2017-07-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Address post-review feedback after http://trac.webkit.org/r219310
+        https://bugs.webkit.org/show_bug.cgi?id=174300
+        <rdar://problem/33030639>
+
+        Reviewed by Simon Fraser.
+
+        Removes plumbing introduced in r219310 for telling WKContentView when the user has finished panning or zooming.
+        This was previously used to reset allowing asynchronous touch event after preventing the web touch events
+        gesture recognizer from firing.
+
+        However, a far simpler (and much less fragile) solution is to just set _canSendTouchEventsAsynchronously to NO
+        at the beginning of the gesture, before the first `touchstart` event is dispatched. This way, we always ensure
+        that _canSendTouchEventsAsynchronously is NO when beginning to process a touch event. This approach is correct
+        because the only place where we query _canSendTouchEventsAsynchronously is in -_webTouchEventsRecognized:, where
+        (when we are beginning a new gesture) we are guaranteed that -gestureRecognizer:shouldIgnoreWebTouchWithEvent:
+        has already been called and _canSendTouchEventsAsynchronously is NO.
+
+        Confirmed that the LayoutTests added in r219310 still pass.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewDidEndDragging:willDecelerate:]):
+        (-[WKWebView scrollViewDidEndZooming:withView:atScale:]):
+        * UIProcess/PageClient.h:
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/Scrolling/RemoteScrollingTree.cpp:
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeDidEndPanGesture): Deleted.
+        * UIProcess/Scrolling/RemoteScrollingTree.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (-[WKOverflowScrollViewDelegate scrollViewDidEndDragging:willDecelerate:]):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::overflowScrollViewDidEndPanGesture): Deleted.
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::overflowScrollViewDidEndPanGesture): Deleted.
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidEndPanGesture): Deleted.
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView gestureRecognizer:shouldIgnoreWebTouchWithEvent:]):
+        (-[WKContentView scrollViewDidEndPanOrPinchGesture]): Deleted.
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::overflowScrollViewDidEndPanGesture): Deleted.
+
+2017-07-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed clean-up after r219323
+
+        Simplify algorithm slightly based on a suggestion Chris Dumez made in the review.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::pruneResources): Don't create a second variable to track the pruning operation.
+
+2017-07-11  Alex Christensen  <achristensen@webkit.org>
+
+        SharedBuffer::size should return a size_t
+        https://bugs.webkit.org/show_bug.cgi?id=174328
+
+        Reviewed by Andreas Kling.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk):
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        We should do ICE candidate filtering at the Document level
+        https://bugs.webkit.org/show_bug.cgi?id=173861
+        <rdar://problem/33122058>
+
+        Reviewed by Eric Carlson.
+
+        Removing ICE candidate filtering handling at UIProcess level.
+        ICE candidate filtering is now disabled at UserMediaRequest level.
+        WebPage forwards the ICE candidate filtering option to the page so as to set
+        the default option correctly for every document of the page.
+
+        * UIProcess/UserMediaProcessManager.cpp:
+        (WebKit::UserMediaProcessManager::willCreateMediaStream):
+        (WebKit::UserMediaProcessManager::endedCaptureSession):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::disableICECandidateFiltering):
+        (WebKit::WebPage::enableICECandidateFiltering):
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        Changing the web page muted state for playing audio should not disable other tabs capture
+        https://bugs.webkit.org/show_bug.cgi?id=174349
+        rdar://problem/33223988
+
+        Reviewed by Eric Carlson.
+
+        Make sure to mute capturing streams of any other tab if the current tab will start capturing or will unmute existing capturing streams.
+        Manually tested by having a tab doing capture and another tab playing a video.
+        Muting or unmuting the tab playing video should not change the capture tab.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::activateMediaStreamCaptureInPage):
+        (WebKit::WebPageProxy::setMuted):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::activateMediaStreamCaptureInPage):
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        NetworkProcess should close listening WebRTC sockets when being suspended
+        https://bugs.webkit.org/show_bug.cgi?id=174270
+        rdar://problem/33139844
+
+        Reviewed by Chris Dumez.
+
+        To prevent potential spinning of the NetworkProcess, NetworkProcess will now close listening sockets when being notified that it will be suspended.
+        When the network process is being suspended, it will stop creating listening sockets, until it resumes.
+        Future additional efforts might be to improve select/cancel so that we can stop listening sockets at resume time,
+        or to reimplement part of the stack using CFStream.
+
+        Tested through manual testing by going to a website doing WebRTC, homing out so that the network process is suspended and reopening Safari.
+
+        * NetworkProcess/NetworkConnectionToWebProcess.cpp:
+        (WebKit::NetworkConnectionToWebProcess::cleanupForSuspension):
+        Proxying call to clean for suspension to rtc provider so that it will
+        close listening sockets.
+        (WebKit::NetworkConnectionToWebProcess::resumeFromSuspension): Authorizing back listening sockets.
+        * NetworkProcess/NetworkConnectionToWebProcess.h:
+        (WebKit::NetworkConnectionToWebProcess::cleanupForSuspension):
+        Clean-up is done asynchronously as it can happen in background threads.
+        Hence why passing a callback as parameter.
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::notifyProcessReadyToSuspend): Helper routine
+        to notify UI process that network process clean up is done.
+        (WebKit::TaskCounter::TaskCounter): Helper class to call notifyProcessReadyToSuspend when sded.
+        (WebKit::TaskCounter::~TaskCounter):
+        (WebKit::NetworkProcess::actualPrepareToSuspend): Doing the clean-up for each connection that needs it.
+        Making sure to notify UI process of clean-up being completed once all connections are cleaned.
+        (WebKit::NetworkProcess::processWillSuspendImminently):
+        (WebKit::NetworkProcess::prepareToSuspend):
+        (WebKit::NetworkProcess::processDidResume): Reenable listening sockets.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/webrtc/LibWebRTCSocketClient.cpp:
+        (WebKit::LibWebRTCSocketClient::LibWebRTCSocketClient):
+        * NetworkProcess/webrtc/LibWebRTCSocketClient.h: Adding type getter and making close public.
+        Used by NetworkRTCProvider to identifiy listening sockets and close them.
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp:
+        (WebKit::NetworkRTCProvider::closeListeningSockets): We close the webrtc socket
+        and we also notify the Web Process that the socket is closed so that it can take actions to recreate some if needed.
+        (WebKit::NetworkRTCProvider::finishClosingListeningSockets):
+        * NetworkProcess/webrtc/NetworkRTCProvider.h:
+        (WebKit::NetworkRTCProvider::authorizeListeningSockets): Authorize creation of listening sockets.
+
+2017-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Resource Load Statistics: Prune statistics in orders of importance
+        https://bugs.webkit.org/show_bug.cgi?id=174215
+        <rdar://problem/33164403>
+
+        Unreviewed test correction.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::pruneResources): The revised algorithm did not update the remaining
+        count to be pruned, causing a test failure.
+
+2017-07-10  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Prune statistics in orders of importance
+        https://bugs.webkit.org/show_bug.cgi?id=174215
+        <rdar://problem/33164403>
+
+        Reviewed by Chris Dumez.
+
+        New functionality. Prunes statistics in this order:
+        1. Non-prevalent resources without user interaction.
+        2. Prevalent resources without user interaction.
+        3. Non-prevalent resources with user interaction.
+        4. Prevalent resources with user interaction.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::encode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+            Added timestamp field lastSeen.
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetLastSeen:forHost:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetMaxStatisticsEntries:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetPruneEntriesDownTo:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]):
+            Test infrastructure.
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::setMaxStatisticsEntries):
+            Test infrastructure.
+        (WebKit::ResourceLoadStatisticsStore::setPruneEntriesDownTo):
+            Test infrastructure.
+        (WebKit::sortAndPrune):
+            Convenience function.
+        (WebKit::ResourceLoadStatisticsStore::pruneStatisticsIfNeeded):
+            The new pruning function.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+            Now calls ResourceLoadStatisticsStore::pruneStatisticsIfNeeded().
+        (WebKit::WebResourceLoadStatisticsStore::setLastSeen):
+            Test infrastructure.
+        (WebKit::WebResourceLoadStatisticsStore::setMaxStatisticsEntries):
+            Test infrastructure.
+        (WebKit::WebResourceLoadStatisticsStore::setPruneEntriesDownTo):
+            Test infrastructure.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-10  Dean Jackson  <dino@apple.com>
+
+        const() experimental feature should always be on by default
+        https://bugs.webkit.org/show_bug.cgi?id=174341
+        <rdar://problem/33228603>
+
+        Reviewed by Simon Fraser.
+
+        Even though this is experimental, it should be enabled by default, and
+        not follow the value of DEFAULT_EXPERIMENTAL_FEATURES_ENABLED.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-07-10  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] _didCommitLayerTree should avoid calling [scrollView setZoomScale] unnecessarily
+        https://bugs.webkit.org/show_bug.cgi?id=174326
+        <rdar://problem/33150490>
+
+        Reviewed by Simon Fraser.
+
+        Only call [scrollView setZoomScale] if the new zoom scale is actually different to
+        avoid doing unnecessary work in UIKit.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+
+2017-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Merge ResourceLoadStatisticsStore into WebResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174203
+
+        Reviewed by Brent Fulgham.
+
+        Merge ResourceLoadStatisticsStore into WebResourceLoadStatisticsStore. The 2 classes
+        have a similar purpose and there is no clean separation between the 2. It makes more
+        sense to have a single store class for resource load statistics.
+
+        If we want to simplify the WebResourceLoadStatisticsStore class, I think it'd make
+        more sense to split the file system I/O code out. This code adds quite a bit of
+        complexity.
+
+        * CMakeLists.txt:
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStore]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]):
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp: Removed.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h: Removed.
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData):
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+        (WebKit::WebResourceLoadStatisticsStore::refreshFromDisk):
+        (WebKit::WebResourceLoadStatisticsStore::writeStoreToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::startMonitoringStatisticsStorage):
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+        (WebKit::WebResourceLoadStatisticsStore::submitTelemetry):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::clearUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::clearPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::isGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdateForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfatheringTime):
+        (WebKit::WebResourceLoadStatisticsStore::ensureResourceStatisticsForPrimaryDomain):
+        (WebKit::WebResourceLoadStatisticsStore::createEncoderFromData):
+        (WebKit::WebResourceLoadStatisticsStore::populateFromDecoder):
+        (WebKit::WebResourceLoadStatisticsStore::clearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::mergeStatistics):
+        (WebKit::WebResourceLoadStatisticsStore::shouldPartitionCookies):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioning):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::processStatistics):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUnexpiredRecentUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::topPrivatelyControlledDomainsToRemoveWebsiteDataFor):
+        (WebKit::WebResourceLoadStatisticsStore::includeTodayAsOperatingDateIfNecessary):
+        (WebKit::WebResourceLoadStatisticsStore::hasStatisticsExpired):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::sortedPrevalentResourceTelemetry):
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+        * UIProcess/WebResourceLoadStatisticsTelemetry.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::removeData):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-07-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Ignore touch events that interrupt platform-driven momentum scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=174300
+        <rdar://problem/33030639>
+
+        Reviewed by Simon Fraser.
+
+        Adds support for immediately failing WKContentView's UIWebTouchEventsGestureRecognizer if any touch interrupts
+        scroll view deceleration. Covered by 3 new LayoutTests (see Source/WebCore/ChangeLog).
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView scrollViewDidEndDragging:willDecelerate:]):
+        (-[WKWebView scrollViewDidEndZooming:withView:atScale:]):
+        * UIProcess/PageClient.h:
+        * UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.h:
+        * UIProcess/Scrolling/RemoteScrollingTree.cpp:
+        (WebKit::RemoteScrollingTree::scrollingTreeNodeDidEndPanGesture):
+        * UIProcess/Scrolling/RemoteScrollingTree.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.h:
+        * UIProcess/Scrolling/ios/ScrollingTreeOverflowScrollingNodeIOS.mm:
+        (-[WKOverflowScrollViewDelegate scrollViewDidEndDragging:willDecelerate:]):
+        (WebKit::ScrollingTreeOverflowScrollingNodeIOS::overflowScrollViewDidEndPanGesture):
+
+        Adds plumbing in the UI process to alert the WKContentView when scroll view dragging has ended in an overflow
+        momentum scrolling region (tracked by an overflow scrolling tree node). This parallels UI process plumbing for
+        ScrollingTreeOverflowScrollingNodeIOS::overflowScrollViewWillStartPanGesture.
+
+        * UIProcess/WebPageProxy.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::overflowScrollViewDidEndPanGesture):
+        * UIProcess/ios/RemoteScrollingCoordinatorProxyIOS.mm:
+        (WebKit::RemoteScrollingCoordinatorProxy::scrollingTreeNodeDidEndPanGesture):
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView scrollViewDidEndPanOrPinchGesture]):
+
+        When the dragging phase of a scroll gesture ends, ensure that _canSendTouchEventsAsynchronously is reset to NO.
+        When touches are not being prevented, this flag is set to YES in -scrollViewWillStartPanOrPinchGesture: and
+        normally reset to NO in -_webTouchEventsRecognized: after all touch points have been released. However, in the
+        case where we've prematurely failed the web touch events gesture recognizer after -touchesBegan:,
+        -_webTouchEventsRecognized: will not be called again in a state where all touches have been released. Thus, we
+        also need to bookend the place where we begin allowing async touch event dispatch in
+        -scrollViewWillStartPanOrPinchGesture by disallowing async touch event dispatch in
+        -scrollViewDidEndPanOrPinchGesture.
+
+        This has no impact in the normal case where the user scrolls without momentum, since
+        -scrollViewDidEndPanOrPinchGesture will fire after async touch events have already been disallowed in
+        -_webTouchEventsRecognized:, and in the case where the page prevents default on touches, scrolling doesn't
+        happen anyways, so neither scrollViewWillStartPanOrPinchGesture nor scrollViewDidEndPanOrPinchGesture will be
+        invoked.
+
+        (-[WKContentView gestureRecognizer:shouldIgnoreWebTouchWithEvent:]):
+
+        Implements a new SPI hook in UIKit. This serves an identical purpose as -shouldIgnoreWebTouch, but additionally
+        passes the triggering UIEvent, as well as the gesture recognizer itself (following standard convention for
+        Objective C delegate methods). Here, we return YES in the case where one or more of the touches recognized by
+        the gesture is currently interrupting scroll deceleration.
+
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::overflowScrollViewDidEndPanGesture):
+
+2017-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2][macOS] Allow access to com.apple.cfnetwork.cfnetworkagent in the Network Process
+        https://bugs.webkit.org/show_bug.cgi?id=174320
+        <rdar://problem/33191856>
+
+        Reviewed by Geoffrey Garen.
+
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in:
+
+2017-07-10  Megan Gardner  <megan_gardner@apple.com>
+
+        Add location to NavigationActionData
+        https://bugs.webkit.org/show_bug.cgi?id=174233
+        <rdar://problem/29165518>
+
+        Reviewed by Simon Fraser.
+        
+        Add the root view location of a tap to a NavigationAction to vend to Safari.
+
+        * Shared/NavigationActionData.cpp:
+        (WebKit::NavigationActionData::encode):
+        (WebKit::NavigationActionData::decode):
+        * Shared/NavigationActionData.h:
+        * UIProcess/API/APINavigationAction.h:
+        * UIProcess/API/Cocoa/WKNavigationAction.mm:
+        (-[WKNavigationAction description]):
+        (-[WKNavigationAction _clickLocationInRootViewCoordinates]):
+        * UIProcess/API/Cocoa/WKNavigationActionPrivate.h:
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.cpp:
+        (WebKit::clickLocationInRootViewCoordinatesForMouseEvent):
+        (WebKit::InjectedBundleNavigationAction::clickLocationInRootViewCoordinatesForNavigationAction):
+        (WebKit::InjectedBundleNavigationAction::InjectedBundleNavigationAction):
+        * WebProcess/InjectedBundle/InjectedBundleNavigationAction.h:
+        (WebKit::InjectedBundleNavigationAction::clickLocationInRootViewCoordinates):
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::createWindow):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebKit::WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::tryClose):
+        (WebKit::WebPage::loadRequest):
+        (WebKit::WebPage::stopLoadingFrame):
+        (WebKit::WebPage::stopLoading):
+        (WebKit::WebPage::reload):
+        (WebKit::WebPage::contextMenuAtPointInWindow):
+        (WebKit::handleContextMenuEvent):
+        (WebKit::handleMouseEvent):
+        (WebKit::handleWheelEvent):
+        (WebKit::handleKeyEvent):
+        (WebKit::WebPage::scroll):
+        (WebKit::WebPage::logicalScroll):
+
+2017-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Further WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore clean up
+        https://bugs.webkit.org/show_bug.cgi?id=174301
+
+        Reviewed by Brent Fulgham.
+
+        General clean up and various simplifications / optimizations to WebResourceLoadStatisticsStore
+        and ResourceLoadStatisticsStore classes.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsUpdateCookiePartitioning]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSetShouldPartitionCookies:forHost:]):
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::create):
+        (WebKit::ResourceLoadStatisticsStore::ResourceLoadStatisticsStore):
+        (WebKit::ResourceLoadStatisticsStore::hasHadRecentUserInteraction):
+        (WebKit::ResourceLoadStatisticsStore::createEncoderFromData):
+        (WebKit::ResourceLoadStatisticsStore::populateFromDecoder):
+        (WebKit::ResourceLoadStatisticsStore::clearInMemory):
+        (WebKit::ResourceLoadStatisticsStore::mergeStatistics):
+        (WebKit::ResourceLoadStatisticsStore::updateCookiePartitioning):
+        (WebKit::ResourceLoadStatisticsStore::updateCookiePartitioningForDomains):
+        (WebKit::ResourceLoadStatisticsStore::processStatistics):
+        (WebKit::ResourceLoadStatisticsStore::hasHadUnexpiredRecentUserInteraction):
+        (WebKit::ResourceLoadStatisticsStore::topPrivatelyControlledDomainsToRemoveWebsiteDataFor):
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData):
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+        (WebKit::WebResourceLoadStatisticsStore::refreshFromDisk):
+        (WebKit::WebResourceLoadStatisticsStore::applicationWillTerminate):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLogFilePath):
+        (WebKit::WebResourceLoadStatisticsStore::writeStoreToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleOrWriteStoreToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::startMonitoringStatisticsStorage):
+        (WebKit::WebResourceLoadStatisticsStore::platformExcludeFromBackup):
+        (WebKit::WebResourceLoadStatisticsStore::createDecoderFromDisk):
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioning):
+        (WebKit::WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains):
+        (WebKit::WebResourceLoadStatisticsStore::clearInMemory):
+        (WebKit::WebResourceLoadStatisticsStore::clearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::shouldRemoveDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::setDataRecordsBeingRemoved):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::sortedPrevalentResourceTelemetry):
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::updateCookiePartitioningForTopPrivatelyOwnedDomains):
+        (WebKit::WebsiteDataStore::setResourceLoadStatisticsEnabled):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2017-07-10  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [SOUP] Remove WebKitSoupCookieJarSqlite
+        https://bugs.webkit.org/show_bug.cgi?id=174310
+
+        Reviewed by Carlos Garcia Campos.
+
+        It seems WebKitSoupCookieJarSqlite uses exactly the same database format as the upstream
+        SoupCookieJarDb class. WebKitSoupCookieJarSqlite is a copy of SoupCookieJarSqlite that uses
+        WebCore's SQLite wrapper and WTF stuff. WebKitSoupCookieJarSqlite exists only because
+        SoupCookieJarDb is relatively new, and the older SoupCookieJarSqlite class existed only in
+        libsoup-gnome rather than libsoup proper. The advantage of continuing to use our
+        WebKitSoupCookieJarSqlite class, besides that we already know it works, is that it utilizes
+        the same SQLiteDatabase class that is used elsewhere in WebKit. But that's not really any
+        reason to keep the class around, when SoupCookieJarDb does exactly the same thing. It was
+        introduced in libsoup 2.42 and that is already our minimum required version, so we can
+        switch now.
+
+        This passes a quick sanity-check of Epiphany's cookies dialog and also TestCookieManager.
+
+        * PlatformGTK.cmake:
+        * PlatformWPE.cmake:
+        * WebProcess/Cookies/soup/WebCookieManagerSoup.cpp:
+        (WebKit::WebCookieManager::setCookiePersistentStorage):
+        * WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.cpp: Removed.
+        * WebProcess/Cookies/soup/WebKitSoupCookieJarSqlite.h: Removed.
+
+2017-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r213590): UI process updates the visible content rects more often than it did in iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=174282
+        <rdar://problem/33144344>
+
+        Reviewed by Simon Fraser.
+
+        In r213590, we accidentally refactored -[WKWebView _didCommitLayerTree:] to call _scheduleVisibleContentRectUpdate
+        more often. Instead, this should be triggered from inside the "if" statements. 
+
+        No tests because there is no behavior change. Performance change is tested in MotionMark.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _isShowingVideoPictureInPicture]):
+        (-[WKWebView _initializeWithConfiguration:]):
+        (-[WKWebView goBack]):
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _restorePageStateToUnobscuredCenter:scale:]):
+        (-[WKWebView _zoomToRect:withOrigin:fitEntireRect:minimumScale:maximumScale:minimumScrollDistance:]):
+        (-[WKWebView scrollViewWillEndDragging:withVelocity:targetContentOffset:]):
+        (-[WKWebView scrollViewDidScroll:]):
+        (-[WKWebView _visibleContentRect]):
+        (-[WKWebView _frameOrBoundsChanged]):
+        (-[WKWebView _scheduleVisibleContentRectUpdateAfterScrollInView:]):
+        (-[WKWebView _updateVisibleContentRects]):
+        (-[WKWebView _navigationGestureDidBegin]):
+        (-[WKWebView _reloadWithoutContentBlockers]):
+        (-[WKWebView _reloadExpiredOnly]):
+        (-[WKWebView _setObscuredInsets:]):
+        (-[WKWebView _setUnobscuredSafeAreaInsets:]):
+        (-[WKWebView _endAnimatedResize]):
+        (-[WKWebView _snapshotRect:intoImageOfWidth:completionHandler:]):
+        (-[WKWebView _clearOverrideLayoutParameters]):
+        (-[WKWebView _requestActivatedElementAtPosition:completionBlock:]):
+        (-[WKWebView _propertiesOfLayerWithID:]):
+
+2017-07-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] SoupCookieJar is never released (resulting in sqlite temp files lying around)
+        https://bugs.webkit.org/show_bug.cgi?id=166029
+
+        Reviewed by Michael Catanzaro.
+
+        Clear the SoupNetworkSession and cookie storage after the main loop quits.
+
+        * NetworkProcess/soup/NetworkProcessMainSoup.cpp:
+        (WebKit::NetworkProcessMainUnix):
+
+2017-07-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Action sheets for links fail to present in WebKit2 PDF view
+        https://bugs.webkit.org/show_bug.cgi?id=174307
+        <rdar://problem/31412128>
+
+        Reviewed by Tim Horton.
+
+        Currently, presenting an action sheet for a link always uses the WKActionSheetPresentAtClosestIndicatorRect
+        codepath, which requires text indicator data for the link. However, when showing an action sheet for a link via
+        WKPDFView, a text indicator for the link is not included, so the popover rect ends up being an empty rect at the
+        origin, which causes us to bail from presenting the popover.
+
+        To address this, we tweak our heuristic for determining which action sheet presentation style to use, so that we
+        only use the closest indicator rect for a link if the text indicator data is also present (otherwise, we fall
+        back to using the element rect). All other behavior is the same.
+
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant showImageSheet]):
+        (presentationStyleForView):
+
+        Refactor _shouldPresentAtTouchLocationForElementRect into presentationStyleForView, a static function that
+        returns a WKActionSheetPresentationStyle.
+
+        (-[WKActionSheetAssistant showLinkSheet]):
+        (-[WKActionSheetAssistant _shouldPresentAtTouchLocationForElementRect:]): Deleted.
+
+2017-07-09  Brady Eidson  <beidson@apple.com>
+
+        Remove some obsolete WebKitVersionChecks.
+        https://bugs.webkit.org/show_bug.cgi?id=174294
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Simplify WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174290
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsProcessStatisticsAndDataRecords]):
+        (-[WKWebsiteDataStore _resourceLoadStatisticsSubmitTelemetry]):
+        * UIProcess/API/Cocoa/WKWebsiteDataStorePrivate.h:
+        Rename a couple of functions in the Cocoa SPI for clarity and to match the name
+        of their internal implementation.
+
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::create):
+        (WebKit::ResourceLoadStatisticsStore::ensureResourceStatisticsForPrimaryDomain):
+        Stylistic changes.
+
+        (WebKit::ResourceLoadStatisticsStore::createEncoderFromData):
+        Make const.
+
+        (WebKit::ResourceLoadStatisticsStore::readDataFromDecoder):
+        Use HashMap::add() instead of HashMap::set(). There is not supposed to have any duplicate
+        keys so add() is sufficient and more efficient.
+
+        (WebKit::ResourceLoadStatisticsStore::clearInMemoryAndPersistent): Removed.
+        clearInMemoryAndPersistent() was only called from WebResourceLoadStatisticsStore and
+        the m_deletePersistentStoreHandler / m_grandfatherExistingWebsiteDataHandler were both
+        set by the WebResourceLoadStatisticsStore as well. Therefore, we don't really need this
+        function, WebResourceLoadStatisticsStore now calls ResourceLoadStatisticsStore::clearInMemory()
+        instead and takes care of doing what the m_deletePersistentStoreHandler /
+        m_grandfatherExistingWebsiteDataHandler handlers were doing on its side.
+
+        (WebKit::ResourceLoadStatisticsStore::mergeStatistics):
+        Pass Vector as rvalue reference, as a preparation for a future optimization. Added FIXME
+        comment about the optimization.
+
+        (WebKit::ResourceLoadStatisticsStore::setNotificationCallback): Removed.
+        (WebKit::ResourceLoadStatisticsStore::setGrandfatherExistingWebsiteDataCallback): Removed.
+        (WebKit::ResourceLoadStatisticsStore::setDeletePersistentStoreCallback): Removed.
+        (WebKit::ResourceLoadStatisticsStore::setFireTelemetryCallback): Removed.
+        Drop those callback setters. WebResourceLoadStatisticsStore is the only client of
+        ResourceLoadStatisticsStore and those callbacks were always called as a result of
+        an operation requested by the WebResourceLoadStatisticsStore. Therefore, those are
+        not needed. WebResourceLoadStatisticsStore can take care of doing what those
+        callbacks were doing on its side.
+
+        (WebKit::ResourceLoadStatisticsStore::processStatistics):
+        Pass parameter by const reference since we clearly do not intend to transfer ownership of it.
+
+        (WebKit::ResourceLoadStatisticsStore::topPrivatelyControlledDomainsToRemoveWebsiteDataFor):
+        (WebKit::ResourceLoadStatisticsStore::updateStatisticsForRemovedDataRecords):
+        (WebKit::ResourceLoadStatisticsStore::handleFreshStartWithEmptyOrNoStore):
+        Stylistic changes.
+
+        (WebKit::ResourceLoadStatisticsStore::shouldRemoveDataRecords): Removed.
+        (WebKit::ResourceLoadStatisticsStore::dataRecordsBeingRemoved): Removed.
+        (WebKit::ResourceLoadStatisticsStore::dataRecordsWereRemoved): Removed.
+        Those were moved to WebResourceLoadStatisticsStore since they do not require
+        any access to the statistics, and are only used by WebResourceLoadStatisticsStore.
+
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        Store registering most callbacks on the coreStore. Instead, the logic of those
+        callbacks is now inlined in the few methods in WebResourceLoadStatisticsStore
+        that were causing these callbacks to be called.
+
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords):
+        Access some methods on WebResourceLoadStatisticsStore instead of the coreStore
+        since those were moved.
+
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        Drop unnecessary mutable for lambda.
+
+        (WebKit::WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated):
+        Pass parameter as rvalue reference as a preparation for a future optimization.
+
+        (WebKit::WebResourceLoadStatisticsStore::hasStatisticsFileChangedSinceLastSync):
+        Make const.
+
+        (WebKit::WebResourceLoadStatisticsStore::submitTelemetry):
+        Add assertion to make sure this is called on the main thread.
+
+        (WebKit::WebResourceLoadStatisticsStore::fireDataModificationHandler): Removed.
+        This was dispatching to a background queue to call fireDataModificationHandler()
+        on the ResourceLoadStatisticsStore. The coreStore would then dispatch back on the
+        main thread to call the WebResourceLoadStatisticsStore's modification handler.
+        This modification handler was merely calling processStatisticsAndDataRecords().
+        Therefore, callers of WebResourceLoadStatisticsStore::fireDataModificationHandler()
+        can call WebResourceLoadStatisticsStore::processStatisticsAndDataRecords() directly
+        instead.
+
+        (WebKit::WebResourceLoadStatisticsStore::fireTelemetryHandler): Removed.
+        This was calling ResourceLoadStatisticsStore::fireTelemetryHandler(), which was
+        calling back WebResourceLoadStatisticsStore's fireTelemetryHandler. The handler
+        in question was merely calling submitTelemetry(). Therefore, callers of
+        WebResourceLoadStatisticsStore::fireTelemetryHandler() can call
+        WebResourceLoadStatisticsStore::submitTelemetry() directly instead.
+
+        (WebKit::WebResourceLoadStatisticsStore::clearInMemoryAndPersistent):
+        Call ResourceLoadStatisticsStore::clearInMemory() instead of clearInMemoryAndPersistent(),
+        which was removed. ResourceLoadStatisticsStore::clearInMemoryAndPersistent() was calling
+        clearInMemory() and then 2 of WebResourceLoadStatisticsStore's handlers. Instead, we now
+        call the functions that those handlers were calling directly, thus eliminating the need
+        for those handlers.
+
+        (WebKit::WebResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval):
+        Set m_minimumTimeBetweenDataRecordsRemoval directly as it is now store on this class
+        instead of the coreStore.
+
+        (WebKit::WebResourceLoadStatisticsStore::shouldRemoveDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::dataRecordsBeingRemoved):
+        (WebKit::WebResourceLoadStatisticsStore::dataRecordsWereRemoved):
+        Those were merely moved from the ResourceLoadStatisticsStore.
+
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+        * UIProcess/WebResourceLoadStatisticsTelemetry.cpp:
+        (WebKit::WebResourceLoadStatisticsTelemetry::calculateAndSubmit):
+        Check for sortedPrevalentResources.isEmpty() instead of checking if the size
+        if less than minimumPrevalentResourcesForTelemetry.
+        ResourceLoadStatisticsStore::sortedPrevalentResourceTelemetry() either returns
+        an empty vector or a vector with more than minimumPrevalentResourcesForTelemetry
+        items. Therefore, there is no need to expose minimumPrevalentResourcesForTelemetry.
+
+2017-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop NOSNIFF compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=174289
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-07  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Use a rolling 30-day uptime for processing statistics
+        https://bugs.webkit.org/show_bug.cgi?id=174235
+        <rdar://problem/33164381>
+
+        Reviewed by Brent Fulgham.
+
+        Follow-up fix for r219274 because it caused this test to time out:
+        http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html
+
+        The test sets TimeToLiveUserInteraction to 0 so our implementation cannot use
+        0 as magic value to see if it was set. Instead, use std::optional.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]):
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::ResourceLoadStatisticsStore::hasStatisticsExpired):
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Use a rolling 30-day uptime for processing statistics
+        https://bugs.webkit.org/show_bug.cgi?id=174235
+        <rdar://problem/33164381>
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.cpp:
+        (WebKit::WKWebsiteDataStore::_resourceLoadStatisticsResetToConsistentState): Initialize time-to-live to zero by default.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::createEncoderFromData): Write out vector
+        of operating dates.
+        (WebKit::ResourceLoadStatisticsStore::readDataFromDecoder): Read in vector of
+        operating dates.
+        (WebKit::ResourceLoadStatisticsStore::hasHadRecentUserInteraction): Check new
+        convenience method.
+        (WebKit::ResourceLoadStatisticsStore::markTodayAsOperatingDate): Added.
+        (WebKit::ResourceLoadStatisticsStore::hasStatisticsExpired): Added.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded): When reading
+        a new data file, update the current operating date (if needed).
+        (WebKit::WebResourceLoadStatisticsStore::handleDailyTasks): Roll uptime dates as
+        needed, then handle telemetry.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-07  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] For cross-app drags, 'drop' event handlers are never invoked if dataTransfer.dropEffect is not set while dragging
+        https://bugs.webkit.org/show_bug.cgi?id=174219
+        <rdar://problem/32083177>
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweak some testing SPI to return a drop operation flag instead of whether or not the drop operation was not
+        UIDropOperationCancel.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _simulateDataInteractionUpdated:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _simulateDataInteractionUpdated:]):
+
+2017-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219238, r219239, and r219241.
+        https://bugs.webkit.org/show_bug.cgi?id=174265
+
+        "fast/workers/dedicated-worker-lifecycle.html is flaky"
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Implement WTF::ThreadGroup"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219238
+
+        "Unreviewed, build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219239
+
+        "Unreviewed, CLoop build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219241
+
+2017-07-07  Antti Koivisto  <antti@apple.com>
+
+        WKWebSiteDataStore.removeDataOfTypes should wait until disk cache files are actually removed before invoking completion handler
+        https://bugs.webkit.org/show_bug.cgi?id=174224
+        <rdar://problem/33067545>
+
+        Reviewed by Sam Weinig.
+
+        Currently we dispatch file deletion operations to a background queue and call the completion
+        handler without waiting for the I/O to complete.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::clearDiskCacheEntries):
+
+            Call a new version of NetworkCache::remove() for bulk deletion.
+            Note that it is fine to call this with an empty vector.
+
+        * NetworkProcess/cache/NetworkCache.cpp:
+        (WebKit::NetworkCache::Cache::remove):
+
+            Bulk deletion with a completion handler.
+
+        (WebKit::NetworkCache::Cache::deleteFiles): Added.
+
+            Factor to a helper function.
+
+        * NetworkProcess/cache/NetworkCache.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::remove):
+
+            Remove files for all the provided keys in a queue and invoke the completion handler in the main thread when done.
+
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Fix bad usage of static variables in ResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174237
+
+        Reviewed by Brent Fulgham.
+
+        Fix bad usage of static variables in ResourceLoadStatisticsStore. Those can be set via
+        member functions on ResourceLoadStatisticsStore so they should be data members. The
+        API to set them is associated to a particular store and there can in theory be several
+        stores.
+
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::shouldPartitionCookies):
+        (WebKit::ResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::ResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::ResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval):
+        (WebKit::ResourceLoadStatisticsStore::setGrandfatheringTime):
+        (WebKit::ResourceLoadStatisticsStore::hasHadRecentUserInteraction):
+        (WebKit::ResourceLoadStatisticsStore::handleFreshStartWithEmptyOrNoStore):
+        (WebKit::ResourceLoadStatisticsStore::shouldRemoveDataRecords):
+        (WebKit::shouldPartitionCookies): Deleted.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        * Shared/AsyncRequest.h:
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Drop unused ResourceLoadStatistics members
+        https://bugs.webkit.org/show_bug.cgi?id=174226
+
+        Reviewed by Brent Fulgham.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::encode):
+        (IPC::ArgumentCoder<ResourceLoadStatistics>::decode):
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::readDataFromDecoder):
+
+2017-07-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the internal iOS 11 build
+
+        It turns out, our internal bots are still on an older version of the iOS 11 SDK that's missing _UIDataOwner in
+        <UIKit/NSItemProvider+UIKitAdditions_Private.h>. To ensure that we can build on both current and slightly older
+        versions of the iOS 11 SDK, fall back to using NSInteger instead of _UIDataOwner.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dragInteraction:dataOwnerForSession:]):
+        (-[WKContentView _dropInteraction:dataOwnerForSession:]):
+
+2017-07-06  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] [WK2] Add delegate hooks for specifying the data owner for a drag or drop session
+        https://bugs.webkit.org/show_bug.cgi?id=174139
+        <rdar://problem/33126212>
+
+        Reviewed by Beth Dakin.
+
+        Add hooks to query the UI delegate for a _UIDataOwner on both drag and drop sides.
+
+        * Platform/spi/ios/UIKitSPI.h:
+        * UIProcess/API/Cocoa/WKUIDelegatePrivate.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dragInteraction:dataOwnerForSession:]):
+        (-[WKContentView _dropInteraction:dataOwnerForSession:]):
+
+2017-07-06  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] ResourceLoadStatistics should batch its writes
+        https://bugs.webkit.org/show_bug.cgi?id=174111
+        <rdar://problem/33115894>
+
+        Reviewed by Chris Dumez.
+
+        Revise the data writing operation to only write on a specific interval (currently
+        set to 5 minutes).
+
+        Also make 'writeStoreToDisk' simpler to use by moving the deleting (before write) and
+        creating (after write) of the FileMonitor into the method, rather than requiring this
+        knowledge in multiple places.
+
+        Make sure that we write our statistics file out before exiting so that we do not
+        lose any data if we exit before the five-minute window has elapsed.
+
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::setWritePersistentStoreCallback): Deleted.
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords): Remove the stop
+        and start monitoring into 'writeStoreToDisk'. Also check if enough time has elapsed since
+        the last write to commit to disk.
+        (WebKit::WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver): Remove the
+        stop and start monitoring into 'writeStoreToDisk'.
+        (WebKit::WebResourceLoadStatisticsStore::writeStoreToDisk): Add the stop and start monitoring
+        commands here, so callers don't have to know to do so.
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        FileMonitor should not be ref counted
+        https://bugs.webkit.org/show_bug.cgi?id=174166
+
+        Reviewed by Brent Fulgham.
+
+        Update code using FileMonitor to reflect API change.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::startMonitoringStatisticsStorage):
+        (WebKit::WebResourceLoadStatisticsStore::stopMonitoringStatisticsStorage):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-06  Matt Rajca  <mrajca@apple.com>
+
+        Fix build with VIDEO support disabled.
+        https://bugs.webkit.org/show_bug.cgi?id=174217
+
+        Unreviewed build fix.
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updateWebsitePolicies):
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Crash under WebResourceLoadStatisticsStore::persistentStoragePath(WTF::String const&)
+        https://bugs.webkit.org/show_bug.cgi?id=174205
+        <rdar://problem/33093552>
+
+        Reviewed by Brent Fulgham.
+
+        Make sure we isolateCopy() m_statisticsStoragePath before using it from the background
+        thread.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+        (WebKit::WebResourceLoadStatisticsStore::refreshFromDisk):
+        (WebKit::WebResourceLoadStatisticsStore::resourceLogFilePath):
+        (WebKit::WebResourceLoadStatisticsStore::statisticsFilePath):
+        (WebKit::WebResourceLoadStatisticsStore::writeStoreToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::writeEncoderToDisk):
+        (WebKit::WebResourceLoadStatisticsStore::deleteStoreFromDisk):
+        (WebKit::WebResourceLoadStatisticsStore::startMonitoringStatisticsStorage):
+        (WebKit::WebResourceLoadStatisticsStore::syncWithExistingStatisticsStorageIfNeeded):
+        (WebKit::WebResourceLoadStatisticsStore::persistentStoragePath): Deleted.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-06  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CFURLRequestRef serialization after r207330
+        https://bugs.webkit.org/show_bug.cgi?id=163332
+
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        (IPC::ArgumentCoder<ResourceRequest>::encodePlatformData):
+        The CFURLConnection code was not updated.
+        We did not catch this because nobody uses the WebKit2 CFURLConnection code, but I need to use it to debug something.
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        Move ResourceLoadObserver notification throttling logic from WebProcess class to ResourceLoadObserver
+        https://bugs.webkit.org/show_bug.cgi?id=174194
+
+        Reviewed by Brent Fulgham.
+
+        Move ResourceLoadObserver notification throttling logic from WebProcess class to
+        ResourceLoadObserver. This makes more sense and decreases the complexity of the
+        WebProcess class.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_webSQLiteDatabaseTracker):
+        (WebKit::WebProcess::statisticsChangedTimerFired): Deleted.
+        * WebProcess/WebProcess.h:
+
+2017-07-06  Chris Dumez  <cdumez@apple.com>
+
+        WebResourceLoadStatisticsStore should only be constructed when the feature is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=174189
+
+        Reviewed by Brent Fulgham.
+
+        Delay the construction of the WebResourceLoadStatisticsStore until the feature gets
+        enabled via WebsiteDataStore::setResourceLoadStatisticsEnabled(). Previously, we would
+        always construct a store and then have a boolean on the store to indicate if it is
+        enabled or not.
+
+        Also simplify the initialization process of the WebResourceLoadStatisticsStore, we
+        used to have:
+        1. WebResourceLoadStatisticsStore constructor
+        2. WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
+        3. WebResourceLoadStatisticsStore::setResourceLoadStatisticsEnabled(true)
+
+        All 3 steps are now taken care of by the WebResourceLoadStatisticsStore constructor.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitialize):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm:
+        (WebKit::WebsiteDataStore::platformInitialize):
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::WebsiteDataStore):
+        (WebKit::WebsiteDataStore::resourceLoadStatisticsEnabled):
+        (WebKit::WebsiteDataStore::setResourceLoadStatisticsEnabled):
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+        (WebKit::WebsiteDataStore::resourceLoadStatistics):
+        * UIProcess/wpe/WebProcessPoolWPE.cpp:
+        (WebKit::WebProcessPool::platformInitialize):
+
+2017-07-06  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] It should process MouseMoved events when the parent window is not active
+        https://bugs.webkit.org/show_bug.cgi?id=116691
+
+        Reviewed by Michael Catanzaro.
+
+        From reading the comments in the related code, only in Safari it
+        is desired that MouseMoved events are not processed when the
+        parent window is not active. In other ports, in particular those
+        targeting Linux, these events should be processed for consistency
+        with other browsers.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::setCursor):
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::setCursor):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::handleMouseEvent):
+        (WebKit::WebPage::mouseEvent):  No need to always pass a boolean
+        parameter that is only checked for one type of event. Do the check
+        internally in handleMouseEvent() only when needed and only in Cocoa.
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move SoftLinking.h into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=174000
+
+        Reviewed by Alex Christensen.
+
+        * Platform/mac/StringUtilities.mm:
+        * Platform/spi/ios/ManagedConfigurationSPI.h:
+        * Shared/Cocoa/DataDetectionResult.mm:
+        * Shared/Cocoa/WebCoreArgumentCodersCocoa.mm:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        * Shared/ios/WebIconUtilities.mm:
+        * Shared/mac/CookieStorageShim.mm:
+        * Shared/mac/WebCoreArgumentCodersMac.mm:
+        * UIProcess/API/Cocoa/_WKElementAction.mm:
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        * UIProcess/ApplePay/ios/WebPaymentCoordinatorProxyIOS.mm:
+        * UIProcess/ApplePay/mac/WebPaymentCoordinatorProxyMac.mm:
+        * UIProcess/Cocoa/UIDelegate.mm:
+        * UIProcess/Cocoa/WebViewImpl.mm:
+        * UIProcess/Launcher/mac/ProcessLauncherMac.mm:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        * UIProcess/ios/forms/WKAirPlayRoutePicker.mm:
+        * UIProcess/ios/forms/WKFileUploadPanel.mm:
+        * UIProcess/mac/WKImmediateActionController.mm:
+        * UIProcess/mac/WebInspectorProxyMac.mm:
+        * WebProcess/WebPage/mac/PlatformCALayerRemoteCustom.mm:
+        * WebProcess/WebPage/mac/WebInspectorUIMac.mm:
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+
+2017-07-05  Brady Eidson  <beidson@apple.com>
+
+        Allow navigations in subframes to get a ShouldOpenExternalURLsPolicy of "ShouldAllow".
+        <rdar://problem/22485589> and https://bugs.webkit.org/show_bug.cgi?id=174178
+
+        Reviewed by Alex Christensen.
+
+        Adopt to the new constructor for FrameLoadRequest.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::loadURL):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchCreatePage):
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openInNewTab):
+
+2017-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove unnecessary forward declartions now that we include Foundation.h
+
+        * UIProcess/API/Cocoa/WKContentRuleListStore.h:
+
+2017-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make WebKit's public headers on Mac and iOS C++ module safe
+        https://bugs.webkit.org/show_bug.cgi?id=174175
+
+        Reviewed by Alex Christensen.
+
+        Fixed the header files.
+
+        * UIProcess/API/Cocoa/WKContentRuleList.h:
+        * UIProcess/API/Cocoa/WKContentRuleListStore.h:
+        * UIProcess/API/Cocoa/WKUIDelegate.h:
+
+2017-07-05  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] WebsiteDataStore::setResourceLoadStatisticsEnabled() updates processPools the store is not associated with
+        https://bugs.webkit.org/show_bug.cgi?id=174174
+
+        Reviewed by Brent Fulgham.
+
+        WebsiteDataStore::setResourceLoadStatisticsEnabled() updates processPools the store is not associated with.
+        Fix this by iterating over WebsiteDataStore::processPools() instead of WebProcessPool::allProcessPools().
+
+        Also rename shouldPartitionCookiesForTopPrivatelyOwnedDomains methods / IPC messages to
+        updateCookiePartitioningForTopPrivatelyOwnedDomains since this is a setter, not a getter.
+
+        Finally, drop ShouldPartitionCookiesForTopPrivatelyOwnedDomains IPC message to the NetworkProcessProxy
+        as well as corresponding methods as those appear to be unused.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::updateCookiePartitioningForTopPrivatelyOwnedDomains):
+        (WebKit::NetworkProcess::shouldPartitionCookiesForTopPrivatelyOwnedDomains): Deleted.
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcess.messages.in:
+        * UIProcess/Network/NetworkProcessProxy.cpp:
+        (WebKit::NetworkProcessProxy::shouldPartitionCookiesForTopPrivatelyOwnedDomains): Deleted.
+        * UIProcess/Network/NetworkProcessProxy.h:
+        * UIProcess/Network/NetworkProcessProxy.messages.in:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::setResourceLoadStatisticsEnabled):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::updateCookiePartitioningForTopPrivatelyOwnedDomains):
+        (WebKit::WebsiteDataStore::setResourceLoadStatisticsEnabled):
+        (WebKit::WebsiteDataStore::registerSharedResourceLoadObserver):
+        (WebKit::WebsiteDataStore::shouldPartitionCookiesForTopPrivatelyOwnedDomains): Deleted.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
+2017-07-05  Tim Horton  <timothy_horton@apple.com>
+
+        Async Image Decoding: Image flashes away briefly when tapping on tab in iPad tab picker
+        https://bugs.webkit.org/show_bug.cgi?id=174173
+        <rdar://problem/32431952>
+
+        Reviewed by Geoffrey Garen.
+
+        * WebProcess/WebPage/mac/RemoteLayerTreeDrawingArea.mm:
+        (WebKit::RemoteLayerTreeDrawingArea::addTransactionCallbackID):
+        When a client uses e.g. doAfterNextPresentationUpdate (or internally,
+        dispatchAfterEnsuringDrawing), they're doing so in the hopes that the
+        callback is called after the page is well-painted -- for example, to
+        remove a snapshot (in the tab picker case, as well as for navigation
+        gestures), or to *take* a snapshot. In all of these cases, it is
+        preferable to do a synchronous decode, to ensure that the image does
+        not flash away temporarily.
+
+        Use the existing mechanism that was implemented for the synchronous
+        activity state change flush to also force synchronous image decoding
+        any time there is a post-commit transaction callback.
+
+2017-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] [WK2] 3D touch fails to recognize when UIDragInteraction is enabled on phone
+        https://bugs.webkit.org/show_bug.cgi?id=174171
+        <rdar://problem/32956929>
+
+        Reviewed by Tim Horton.
+
+        By default, UIKit defers all competing long press gesture recognizers if dragging is enabled. However, this
+        would cause 3D touch to be prevented, due to UIKit asking us whether or not we can proceed with the 3D touch
+        gesture in -_interactionShouldBeginFromPreviewItemController:forPosition:, while the highlight long press
+        gesture recognizer is being deferred. To address this, we use SPI on UIDragInteraction to allow the highlight
+        long press gesture recognizer to recognize alongside the drag lift gesture. We then (already) manually cancel
+        the highlight long press gesture in _dragInteraction:prepareForSession:completion:.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _dragInteraction:shouldDelayCompetingGestureRecognizer:]):
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/BaseTarget.xcconfig:
+
+2017-07-05  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r218821): Bad cast to WebKit::DiagnosticLoggingClient in WKWebView's _setDiagnosticLoggingDelegate
+        https://bugs.webkit.org/show_bug.cgi?id=174163
+        <rdar://problem/33067518>
+
+        Reviewed by Alex Christensen.
+
+        After r218821, WebPageProxy::setDiagnosticLoggingClient() would no longer set the client in
+        private session. This is an issue because there is code in WKWebView which expects the
+        DiagnosticLoggingClient to be set and of a specific type. This would lead to bad casts in
+        WKWebView's _diagnosticLoggingDelegate / _setDiagnosticLoggingDelegate.
+
+        To avoid the issue, we now unconditionally update the client in
+        WebPageProxy::setDiagnosticLoggingClient(). Instead, we implement the logic for disabling
+        logging in private session in the logging methods themselves, via the
+        WebPageProxy::effectiveDiagnosticLoggingClient() helper instead.
+
+        I also added null checks in WKWebView's _diagnosticLoggingDelegate /
+        _setDiagnosticLoggingDelegate. Even though the WKWebView sets itself as the diagnostic
+        logging client, WebPageProxy::diagnosticLoggingClient() can still return null after
+        calling WebPageProxy::close(). Previously, we would have done a bad cast if the WKWebView's
+        client would have used this API after calling 'close' as well.
+
+        * UIProcess/API/APIDiagnosticLoggingClient.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _diagnosticLoggingDelegate]):
+        (-[WKWebView _setDiagnosticLoggingDelegate:]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::WebPageProxy):
+        (WebKit::WebPageProxy::setDiagnosticLoggingClient):
+        (WebKit::WebPageProxy::close):
+        (WebKit::WebPageProxy::effectiveDiagnosticLoggingClient):
+        (WebKit::WebPageProxy::logDiagnosticMessage):
+        (WebKit::WebPageProxy::logDiagnosticMessageWithResult):
+        (WebKit::WebPageProxy::logDiagnosticMessageWithValue):
+        (WebKit::WebPageProxy::logDiagnosticMessageWithEnhancedPrivacy):
+        * UIProcess/WebPageProxy.h:
+        (WebKit::WebPageProxy::diagnosticLoggingClient):
+
+2017-07-05  Daniel Bates  <dabates@apple.com>
+
+        Do not pass API::FrameInfo for source frame or clear out page of target frame on
+        API navigation
+        https://bugs.webkit.org/show_bug.cgi?id=174170
+        <rdar://problem/33140328>
+
+        Reviewed by Brady Eidson.
+
+        As a step towards making it straightforward for an embedding client to determine whether
+        a WebPageProxy::decidePolicyForNavigationAction() callback was initiated from API we
+        should not pass frame info for the source frame and should not nullify the page pointer
+        in the target frame info.
+
+        Currently we always pass frame info for the source frame and nullify the page pointer
+        in both the source frame info and target frame info if the navigation was initiated from
+        API. This seems subtle and error prone. Instead we should not pass frame info for
+        the source frame and not nullify the page pointer in the target frame info as a step
+        towards making using this API less error-prone.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::decidePolicyForNavigationAction):
+
+2017-07-05  Chris Dumez  <cdumez@apple.com>
+
+        Add a few more WebKit2 owners
+        https://bugs.webkit.org/show_bug.cgi?id=174169
+
+        Reviewed by Brady Eidson.
+
+        * Owners:
+
+2017-07-05  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Prevent ResourceLoadStatistics from triggering a cascade of read/write events
+        https://bugs.webkit.org/show_bug.cgi?id=174062\
+        <rdar://problem/33086744>
+
+        Reviewed by Chris Dumez.
+
+        ResourceLoadStatistics was triggering periods of high CPU use due to a cascade of read/write
+        operations:
+        (1) The 'makeRefPtr' call in FileMonitor::startMonitoring was capturing a reference to itself, preventing
+            the FileMonitor from being destroyed. This caused the file modification handler to fire in response
+            to our own write events, creating a ridiculous read/write cycle. This problem was addressed in
+            the short term by stopping the file monitor in WebResourceLoadStatisticsStore::stopMonitoringStatisticsStorage,
+            rather than relying on the destructor to shut things down. This will be improved in a
+            subsequent patch.
+        (2) 'syncWithExistingStatisticsStorageIfNeeded' was creating a FileMonitor during the write operation,
+            which exacerbated the chain of read/writes already present due to the self-reference described above.
+        (3) Because VNODE dispatch sources are low level, they do not offer a means of filtering out operations
+            triggered by the current process. To avoid this, I added code to track the file modification time, so
+            that we don't bother reading a file that holds data that is older than the in-memory data, even though
+            we receive a file modification dispatch. Writes seem to trigger a chain of notification events in rapid
+            succession. Once we've responded to the first of these events, we don't need to to further reads until
+            the data on disk changes again.    
+
+        We also shouldn't allow the ResourceLoadStatistics worker thread to consume high CPU resources. Run it
+        as utility QoS, avoiding using the CPU when other work is going on.
+
+        Drive-by fix: The closure in setWritePersistentStoreCallback() should stop monitoring before writing
+        data, and should start monitoring after the write completes.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore): Run our worker queue
+        as a utility-level process.
+        (WebKit::WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver): Stop checking for
+        updates before writing, and begin checking again once the write is complete.
+        (WebKit::WebResourceLoadStatisticsStore::statisticsFileModificationTime): Added.
+        (WebKit::WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded): Avoid reading the file if it
+        was last modified on (or before) the time we last read the file.
+        (WebKit::WebResourceLoadStatisticsStore::refreshFromDisk): Ditto.
+        (WebKit::WebResourceLoadStatisticsStore::stopMonitoringStatisticsStorage): Explicitly stop file
+        monitoring so that the active file modification handler will terminate.
+        (WebKit::WebResourceLoadStatisticsStore::syncWithExistingStatisticsStorageIfNeeded): Do not begin
+        monitoring the file after syncing, since this is only used as part of an ongoing write operation.
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Add WebKitPrivateFrameworkStubs for iOS 11

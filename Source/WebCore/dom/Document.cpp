@@ -188,6 +188,7 @@
 #include "TransformSource.h"
 #include "TreeWalker.h"
 #include "ValidationMessageClient.h"
+#include "VisibilityChangeClient.h"
 #include "VisitedLinkState.h"
 #include "WheelEvent.h"
 #include "WindowFeatures.h"
@@ -260,12 +261,6 @@
 
 #if ENABLE(VIDEO_TRACK)
 #include "CaptionUserPreferences.h"
-#endif
-
-#if ENABLE(WEB_REPLAY)
-#include "WebReplayInputs.h"
-#include <replay/EmptyInputCursor.h>
-#include <replay/InputCursor.h>
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -505,9 +500,6 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_visualUpdatesSuppressionTimer(*this, &Document::visualUpdatesSuppressionTimerFired)
     , m_sharedObjectPoolClearTimer(*this, &Document::clearSharedObjectPool)
     , m_fontSelector(CSSFontSelector::create(*this))
-#if ENABLE(WEB_REPLAY)
-    , m_inputCursor(EmptyInputCursor::create())
-#endif
     , m_didAssociateFormControlsTimer(*this, &Document::didAssociateFormControlsTimerFired)
     , m_cookieCacheExpiryTimer(*this, &Document::invalidateDOMCookieCache)
 #if ENABLE(WEB_SOCKETS)
@@ -854,7 +846,7 @@ static ALWAYS_INLINE Ref<HTMLElement> createUpgradeCandidateElement(Document& do
 
 static ALWAYS_INLINE Ref<HTMLElement> createUpgradeCandidateElement(Document& document, const AtomicString& localName)
 {
-    return createUpgradeCandidateElement(document, QualifiedName { nullAtom, localName, xhtmlNamespaceURI });
+    return createUpgradeCandidateElement(document, QualifiedName { nullAtom(), localName, xhtmlNamespaceURI });
 }
 
 static inline bool isValidHTMLElementName(const AtomicString& localName)
@@ -899,7 +891,7 @@ ExceptionOr<Ref<Element>> Document::createElementForBindings(const AtomicString&
     if (!isValidName(name))
         return Exception { INVALID_CHARACTER_ERR };
 
-    return createElement(QualifiedName(nullAtom, name, nullAtom), false);
+    return createElement(QualifiedName(nullAtom(), name, nullAtom()), false);
 }
 
 Ref<DocumentFragment> Document::createDocumentFragment()
@@ -962,7 +954,7 @@ ExceptionOr<Ref<Node>> Document::importNode(Node& nodeToImport, bool deep)
 
     case ATTRIBUTE_NODE:
         // FIXME: This will "Attr::normalize" child nodes of Attr.
-        return Ref<Node> { Attr::create(*this, QualifiedName(nullAtom, downcast<Attr>(nodeToImport).name(), nullAtom), downcast<Attr>(nodeToImport).value()) };
+        return Ref<Node> { Attr::create(*this, QualifiedName(nullAtom(), downcast<Attr>(nodeToImport).name(), nullAtom()), downcast<Attr>(nodeToImport).value()) };
 
     case DOCUMENT_NODE: // Can't import a document into another document.
     case DOCUMENT_TYPE_NODE: // FIXME: Support cloning a DocumentType node per DOM4.
@@ -1017,13 +1009,13 @@ bool Document::hasValidNamespaceForElements(const QualifiedName& qName)
     // http://www.w3.org/TR/DOM-Level-2-Core/core.html#ID-DocCrElNS
     if (!qName.prefix().isEmpty() && qName.namespaceURI().isNull()) // createElementNS(null, "html:div")
         return false;
-    if (qName.prefix() == xmlAtom && qName.namespaceURI() != XMLNames::xmlNamespaceURI) // createElementNS("http://www.example.com", "xml:lang")
+    if (qName.prefix() == xmlAtom() && qName.namespaceURI() != XMLNames::xmlNamespaceURI) // createElementNS("http://www.example.com", "xml:lang")
         return false;
 
     // Required by DOM Level 3 Core and unspecified by DOM Level 2 Core:
     // http://www.w3.org/TR/2004/REC-DOM-Level-3-Core-20040407/core.html#ID-DocCrElNS
     // createElementNS("http://www.w3.org/2000/xmlns/", "foo:bar"), createElementNS(null, "xmlns:bar"), createElementNS(null, "xmlns")
-    if (qName.prefix() == xmlnsAtom || (qName.prefix().isEmpty() && qName.localName() == xmlnsAtom))
+    if (qName.prefix() == xmlnsAtom() || (qName.prefix().isEmpty() && qName.localName() == xmlnsAtom()))
         return qName.namespaceURI() == XMLNSNames::xmlnsNamespaceURI;
     return qName.namespaceURI() != XMLNSNames::xmlnsNamespaceURI;
 }
@@ -1838,6 +1830,8 @@ void Document::resolveStyle(ResolveStyleType type)
 
             RenderTreeUpdater updater(*this);
             updater.commit(WTFMove(styleUpdate));
+
+            frameView.styleDidChange();
         }
 
         updatedCompositingLayers = frameView.updateCompositingLayersAfterStyleChange();
@@ -2148,8 +2142,6 @@ void Document::invalidateMatchedPropertiesCacheAndForceStyleRecalc()
 void Document::didClearStyleResolver()
 {
     m_userAgentShadowTreeStyleResolver = nullptr;
-
-    m_fontSelector->buildStarted();
 }
 
 void Document::createRenderTree()
@@ -2252,11 +2244,6 @@ void Document::destroyRenderTree()
     if (m_fullScreenRenderer)
         setFullScreenRenderer(nullptr);
 #endif
-
-    m_hoveredElement = nullptr;
-    m_focusedElement = nullptr;
-    m_activeElement = nullptr;
-    m_focusNavigationStartingNode = nullptr;
 
     if (m_documentElement)
         RenderTreeUpdater::tearDownRenderers(*m_documentElement);
@@ -3052,7 +3039,7 @@ void Document::processBaseElement()
         updateBaseURL();
     }
 
-    m_baseTarget = target ? *target : nullAtom;
+    m_baseTarget = target ? *target : nullAtom();
 }
 
 String Document::userAgent(const URL& url) const
@@ -4497,18 +4484,8 @@ String Document::lastModified()
     // FIXME: If this document came from the file system, the HTML5
     // specification tells us to read the last modification date from the file
     // system.
-    if (!dateTime) {
+    if (!dateTime)
         dateTime = system_clock::now();
-#if ENABLE(WEB_REPLAY)
-        auto& cursor = inputCursor();
-        if (cursor.isCapturing())
-            cursor.appendInput<DocumentLastModifiedDate>(duration_cast<milliseconds>(dateTime.value().time_since_epoch()).count());
-        else if (cursor.isReplaying()) {
-            if (auto* input = cursor.fetchInput<DocumentLastModifiedDate>())
-                dateTime = system_clock::time_point(milliseconds(static_cast<long long>(input->fallbackValue())));
-        }
-#endif
-    }
 
     auto ctime = system_clock::to_time_t(dateTime.value());
     auto localDateTime = std::localtime(&ctime);
@@ -6884,20 +6861,6 @@ bool Document::hasFocus() const
     return false;
 }
 
-#if ENABLE(WEB_REPLAY)
-
-JSC::InputCursor& Document::inputCursor()
-{
-    return m_inputCursor;
-}
-
-void Document::setInputCursor(Ref<InputCursor>&& cursor)
-{
-    m_inputCursor = WTFMove(cursor);
-}
-
-#endif
-
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 
 static uint64_t nextPlaybackTargetClientContextId()
@@ -7085,7 +7048,7 @@ const AtomicString& Document::dir() const
 {
     auto* documentElement = this->documentElement();
     if (!is<HTMLHtmlElement>(documentElement))
-        return nullAtom;
+        return nullAtom();
     return downcast<HTMLHtmlElement>(*documentElement).dir();
 }
 
@@ -7164,7 +7127,7 @@ const AtomicString& Document::bgColor() const
 {
     auto* bodyElement = body();
     if (!bodyElement)
-        return emptyAtom;
+        return emptyAtom();
     return bodyElement->attributeWithoutSynchronization(bgcolorAttr);
 }
 
@@ -7178,7 +7141,7 @@ const AtomicString& Document::fgColor() const
 {
     auto* bodyElement = body();
     if (!bodyElement)
-        return emptyAtom;
+        return emptyAtom();
     return bodyElement->attributeWithoutSynchronization(textAttr);
 }
 
@@ -7192,7 +7155,7 @@ const AtomicString& Document::alinkColor() const
 {
     auto* bodyElement = body();
     if (!bodyElement)
-        return emptyAtom;
+        return emptyAtom();
     return bodyElement->attributeWithoutSynchronization(alinkAttr);
 }
 
@@ -7206,7 +7169,7 @@ const AtomicString& Document::linkColorForBindings() const
 {
     auto* bodyElement = body();
     if (!bodyElement)
-        return emptyAtom;
+        return emptyAtom();
     return bodyElement->attributeWithoutSynchronization(linkAttr);
 }
 
@@ -7220,7 +7183,7 @@ const AtomicString& Document::vlinkColor() const
 {
     auto* bodyElement = body();
     if (!bodyElement)
-        return emptyAtom;
+        return emptyAtom();
     return bodyElement->attributeWithoutSynchronization(vlinkAttr);
 }
 

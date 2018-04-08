@@ -25,7 +25,9 @@
 
 #pragma once
 
+#include "Timer.h"
 #include <wtf/HashMap.h>
+#include <wtf/NeverDestroyed.h>
 #include <wtf/text/WTFString.h>
 
 namespace WTF {
@@ -45,29 +47,35 @@ class URL;
 struct ResourceLoadStatistics;
 
 class ResourceLoadObserver {
-    friend class NeverDestroyed<ResourceLoadObserver>;
+    friend class WTF::NeverDestroyed<ResourceLoadObserver>;
 public:
     WEBCORE_EXPORT static ResourceLoadObserver& shared();
+
+    WEBCORE_EXPORT void setShouldThrottleObserverNotifications(bool);
     
-    void logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
+    void logFrameNavigation(const Frame&, const Frame& topFrame, const ResourceRequest& newRequest);
     void logSubresourceLoading(const Frame*, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
     void logWebSocketLoading(const Frame*, const URL&);
     void logUserInteractionWithReducedTimeResolution(const Document&);
 
     WEBCORE_EXPORT String statisticsForOrigin(const String&);
 
-    WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void()>&&);
-    WEBCORE_EXPORT Vector<ResourceLoadStatistics> takeStatistics();
+    WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&&);
 
 private:
+    ResourceLoadObserver();
+
     bool shouldLog(Page*) const;
     ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
-    ResourceLoadStatistics takeResourceStatisticsForPrimaryDomain(const String& primaryDomain);
-    bool isPrevalentResource(const String& primaryDomain) const;
+
+    void scheduleNotificationIfNeeded();
+    void notificationTimerFired();
+    Vector<ResourceLoadStatistics> takeStatistics();
 
     HashMap<String, ResourceLoadStatistics> m_resourceStatisticsMap;
-    WTF::Function<void()> m_notificationCallback;
-    HashMap<String, size_t> m_originsVisitedMap;
+    WTF::Function<void (Vector<ResourceLoadStatistics>&&)> m_notificationCallback;
+    Timer m_notificationTimer;
+    bool m_shouldThrottleNotifications { true };
 };
     
 } // namespace WebCore

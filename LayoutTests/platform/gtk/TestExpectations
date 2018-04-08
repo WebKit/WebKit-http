@@ -85,11 +85,6 @@ Bug(GTK) media/unsupported-rtsp.html [ WontFix Skip ]
 # ENABLE(DRAGGABLE_REGION) is disabled
 Bug(GTK) fast/css/draggable-region-parser.html [ Failure ]
 
-# X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
-webkit.org/b/71851 http/tests/security/contentTypeOptions [ Skip ]
-imported/w3c/web-platform-tests/fetch/nosniff [ Skip ]
-
-
 # Accelerated overflow scrolling (ENABLE_ACCELERATED_OVERFLOW_SCROLLING) is not enabled.
 Bug(GTK) fast/repaint/overflow-scroll-touch-repaint.html [ Skip ]
 
@@ -468,7 +463,6 @@ webkit.org/b/169918 compositing/regions/z-index.html [ ImageOnlyFailure ]
 webkit.org/b/169918 compositing/text-on-scaled-layer.html [ ImageOnlyFailure ]
 webkit.org/b/169918 compositing/text-on-scaled-surface.html [ ImageOnlyFailure ]
 webkit.org/b/169918 compositing/transitions/transform-on-large-layer.html [ ImageOnlyFailure ]
-webkit.org/b/169918 compositing/video/poster.html [ ImageOnlyFailure ]
 webkit.org/b/169918 compositing/video/video-clip-change-src.html [ ImageOnlyFailure ]
 webkit.org/b/169918 compositing/reflections/compositing-change-inside-reflection.html [ Missing Failure ]
 webkit.org/b/169918 compositing/reflections/deeply-nested-reflections.html [ Missing Failure ]
@@ -595,6 +589,8 @@ webkit.org/b/166536 fast/canvas/webgl/webgl2-runtime-flag.html [ Skip ]
 webkit.org/b/166536 fast/canvas/webgl/webgl2-texStorage.html [ Skip ]
 webkit.org/b/166536 fast/canvas/webgl/webgl2-texture-upload-enums.html [ Skip ]
 webkit.org/b/166536 inspector/canvas/create-context-webgl2.html [ Skip ]
+webkit.org/b/166536 inspector/canvas/requestContent-webgl2.html [ Skip ]
+webkit.org/b/166536 inspector/canvas/resolveCanvasContext-webgl2.html [ Skip ]
 
 # These tests reference specific fonts on Mac port.
 Bug(GTK) fast/text/font-weights.html [ WontFix ]
@@ -624,32 +620,36 @@ webrtc [ Pass ]
 # GTK uses OWR instead of libwebrtc
 webrtc/libwebrtc [ Skip ]
 # Some WebRTC features like datachannel are still not implemented
+webrtc/audio-replace-track.html [ Failure ]
+webrtc/captureCanvas-webrtc.html [ Failure ]
+webrtc/clone-audio-track.html [ Failure ]
+webrtc/closing-peerconnection.html [ Timeout ]
+webrtc/connection-state.html [ Failure ]
 webrtc/datachannel [ Skip ]
+webrtc/ephemeral-certificates-and-cnames.html [ Failure ]
+webrtc/multi-video.html [ Failure ]
 webrtc/no-port-zero-in-upd-candidates.html [ Timeout ]
-webrtc/video-disabled-black.html [ Failure ]
-webrtc/video.html [ Failure ]
-webrtc/peer-connection-audio-mute.html [ Failure ]
 webrtc/peer-connection-audio-mute2.html [ Crash Failure ]
-webrtc/peer-connection-remote-audio-mute.html [ Failure ]
+webrtc/peer-connection-audio-mute.html [ Failure ]
+webrtc/peer-connection-audio-unmute.html [ Failure ]
 webrtc/peer-connection-remote-audio-mute2.html [ Crash Failure ]
+webrtc/peer-connection-remote-audio-mute.html [ Failure ]
+webrtc/peer-connection-track-end.html [ Failure ]
+webrtc/video-addTrack.html [ Crash ]
+webrtc/video-disabled-black.html [ Failure ]
+webrtc/video-getParameters.html [ Failure ]
+webrtc/video.html [ Failure ]
+webrtc/video-mediastreamtrack-stats.html [ Failure ]
 webrtc/video-mute.html [ Failure Timeout ]
 webrtc/video-remote-mute.html [ Failure ]
-webrtc/video-with-receiver.html [ Failure ]
-webrtc/connection-state.html [ Failure ]
-webrtc/video-stats.html [ Failure ]
-webrtc/audio-replace-track.html [ Failure ]
-webrtc/video-mediastreamtrack-stats.html [ Failure ]
-webrtc/video-replace-track-to-null.html [ Failure ]
+webrtc/video-replace-muted-track.html [ Failure ]
 webrtc/video-replace-track.html [ Failure ]
-webrtc/video-getParameters.html [ Failure ]
-webrtc/multi-video.html [ Failure ]
-webrtc/video-with-data-channel.html [ Failure ]
-webrtc/ephemeral-certificates-and-cnames.html [ Failure ]
-webrtc/video-addTrack.html [ Crash ]
-webrtc/closing-peerconnection.html [ Timeout ]
-webrtc/peer-connection-audio-unmute.html [ Failure ]
-webrtc/video-unmute.html [ Failure ]
+webrtc/video-replace-track-to-null.html [ Failure ]
 webrtc/video-rotation.html [ Failure ]
+webrtc/video-stats.html [ Failure ]
+webrtc/video-unmute.html [ Failure Timeout ]
+webrtc/video-with-data-channel.html [ Failure ]
+webrtc/video-with-receiver.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createDataChannel.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-setRemoteDescription.html [ Failure ]
@@ -682,6 +682,7 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-remotely-assigned-transcei
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-setLocalDescription-offer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-setRemoteDescription-offer.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCRtpSender-replaceTrack.html [ Failure ]
+webkit.org/b/79203 fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure Pass ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-closed-state.html [ Crash ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Timeout ]
@@ -1253,6 +1254,7 @@ fast/animation/request-animation-frame-throttling-lowPowerMode.html [ Failure ]
 # WebGPU is not enabled on GTK+.
 fast/canvas/webgpu [ Skip ]
 inspector/canvas/create-context-webgpu.html [ Skip ]
+inspector/canvas/resolveCanvasContext-webgpu.html [ Skip ]
 
 # We don't support APPLE_PAY.
 http/tests/ssl/applepay [ Skip ]
@@ -1338,9 +1340,6 @@ webkit.org/b/153937 http/tests/misc/detach-during-notifyDone.html [ Crash Pass ]
 webkit.org/b/131546 media/track/track-in-band.html [ Crash Timeout Failure ]
 
 webkit.org/b/163782 media/video-played-ranges-1.html [ Crash Pass ]
-
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics [ Crash ]
-webkit.org/b/168171 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Timeout ]
 
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating.html [ Crash Timeout ]
 webkit.org/b/167576 imported/w3c/IndexedDB-private-browsing/idbcursor_iterating_index.html [ Crash Timeout ]
@@ -1916,6 +1915,10 @@ webkit.org/b/173412 fast/scrolling/overflow-scrollable-after-back.html [ Pass Fa
 webkit.org/b/168373 media/video-multiple-concurrent-playback.html [ Failure Crash ]
 webkit.org/b/168373 media/video-seek-past-end-paused.html [ Failure Pass ]
 
+webkit.org/b/174353 media/video-restricted-invisible-autoplay-not-allowed.html [ Crash Pass ]
+
+webkit.org/b/174354 imported/w3c/IndexedDB-private-browsing/idbfactory_open.html [ Crash Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Flaky tests
 #////////////////////////////////////////////////////////////////////////////////////////
@@ -2244,6 +2247,16 @@ webkit.org/b/169211 fast/parser/adoption-agency-unload-iframe-4.html [ Timeout ]
 webkit.org/b/172284 svg/animations/animated-svg-image-outside-viewport-paused.html [ Timeout ]
 
 webkit.org/b/172816 media/media-source/media-source-paint-to-canvas.html [ Timeout ]
+
+webkit.org/b/168171 http/tests/loading/resourceLoadStatistics [ Timeout Failure ]
+
+webkit.org/b/174240 svg/dom/SVGScriptElement/script-change-externalResourcesRequired-while-loading.svg [ Timeout ]
+
+webkit.org/b/174241 media/video-inactive-playback.html [ Timeout ]
+
+webkit.org/b/174242 media/media-fullscreen-pause-inline.html [ Timeout ]
+
+webkit.org/b/174243 fast/images/low-memory-decode.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -3385,6 +3398,7 @@ webkit.org/b/172270 fast/text/web-font-load-fallback-during-loading-2.html [ Ima
 webkit.org/b/172270 fast/text/web-font-load-fallback-during-loading.html [ ImageOnlyFailure ]
 
 webkit.org/b/172271 fast/text/softbank-emoji.html [ Failure ]
+webkit.org/b/172271 fast/text/system-font-fallback-emoji.html [ Failure ]
 webkit.org/b/172271 fast/text/tatechuyoko.html [ Failure ]
 webkit.org/b/172271 fast/text/emoji-overlap.html [ ImageOnlyFailure ]
 webkit.org/b/172271 fast/text/multiple-codeunit-vertical-upright.html [ ImageOnlyFailure ]

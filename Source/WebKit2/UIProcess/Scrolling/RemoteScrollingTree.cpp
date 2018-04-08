@@ -87,7 +87,7 @@ void RemoteScrollingTree::scrollingTreeNodeWillStartPanGesture()
 {
     m_scrollingCoordinatorProxy.scrollingTreeNodeWillStartPanGesture();
 }
-    
+
 void RemoteScrollingTree::scrollingTreeNodeWillStartScroll()
 {
     m_scrollingCoordinatorProxy.scrollingTreeNodeWillStartScroll();

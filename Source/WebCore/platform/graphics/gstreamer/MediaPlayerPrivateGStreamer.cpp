@@ -210,6 +210,26 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
     }
 }
 
+static void convertToInternalProtocol(URL& url)
+{
+    if (url.protocolIsInHTTPFamily())
+        url.setProtocol("webkit+" + url.protocol());
+}
+
+void MediaPlayerPrivateGStreamer::setPlaybinURL(const URL& url)
+{
+    // Clean out everything after file:// url path.
+    String cleanURLString(url.string());
+    if (url.isLocalFile())
+        cleanURLString = cleanURLString.substring(0, url.pathEnd());
+
+    m_url = URL(URL(), cleanURLString);
+    convertToInternalProtocol(m_url);
+
+    GST_INFO("Load %s", m_url.string().utf8().data());
+    g_object_set(m_pipeline.get(), "uri", m_url.string().utf8().data(), nullptr);
+}
+
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
 {
     if (!MediaPlayerPrivateGStreamerBase::initializeGStreamerAndRegisterWebKitElements())
@@ -219,11 +239,6 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
     if (url.isBlankURL())
         return;
 
-    // Clean out everything after file:// url path.
-    String cleanURL(urlString);
-    if (url.isLocalFile())
-        cleanURL = cleanURL.substring(0, url.pathEnd());
-
     if (!m_pipeline)
         createGSTPlayBin();
 
@@ -232,10 +247,7 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
 
     ASSERT(m_pipeline);
 
-    m_url = URL(URL(), cleanURL);
-    g_object_set(m_pipeline.get(), "uri", cleanURL.utf8().data(), nullptr);
-
-    GST_INFO("Load %s", cleanURL.utf8().data());
+    setPlaybinURL(url);
 
     if (m_preload == MediaPlayer::None) {
         GST_DEBUG("Delaying load.");
@@ -1660,6 +1672,7 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
         // append the value of new-location to it.
         URL baseUrl = gst_uri_is_valid(newLocation) ? URL() : m_url;
         URL newUrl = URL(baseUrl, newLocation);
+        convertToInternalProtocol(newUrl);
 
         RefPtr<SecurityOrigin> securityOrigin = SecurityOrigin::create(m_url);
         if (securityOrigin->canRequest(newUrl)) {
@@ -1679,8 +1692,7 @@ bool MediaPlayerPrivateGStreamer::loadNextLocation()
             gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
             if (state <= GST_STATE_READY) {
                 // Set the new uri and start playing.
-                g_object_set(m_pipeline.get(), "uri", newUrl.string().utf8().data(), nullptr);
-                m_url = newUrl;
+                setPlaybinURL(newUrl);
                 changePipelineState(GST_STATE_PLAYING);
                 return true;
             }

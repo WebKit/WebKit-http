@@ -1,3 +1,747 @@
+2017-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop unnecessary AtomicString constructor since we have constexpr hash function
+        https://bugs.webkit.org/show_bug.cgi?id=174347
+
+        Reviewed by Alex Christensen.
+
+        Previously, we calculate hash value in perl script and generate source code with that value.
+        This AtomicString constructor takes this pre-calculated hash value to efficiently construct
+        itself. But now, we have constexpr hash function, then we do not need to specify hash value
+        directly in this way. Thus we drop this functionality.
+
+        * wtf/text/AtomicString.h:
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::HashAndCharactersTranslator::hash): Deleted.
+        (WTF::HashAndCharactersTranslator::equal): Deleted.
+        (WTF::HashAndCharactersTranslator::translate): Deleted.
+        * wtf/text/AtomicStringImpl.h:
+        (WTF::AtomicStringImpl::add):
+
+2017-07-10  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Link error when building WTF from WTF.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174316
+        <rdar://problem/33178200>
+
+        Reviewed by Brent Fulgham.
+
+        WTF_CPU_X86 cmake variable needs to be set for link libraries directories to be correct.
+
+        * WTF.vcxproj/WTF.proj:
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-10  Brady Eidson  <beidson@apple.com>
+
+        Cleanup lifetime issues of UniqueIDBDatabase and IDBBackingStore.
+        <rdar://problem/32908525> and https://bugs.webkit.org/show_bug.cgi?id=174244
+
+        Reviewed by David Kilzer and Alex Christensen. 
+
+        Add proper "kill" support to CrossThreadQueue, as well as isEmpty() support.
+
+        * wtf/CrossThreadQueue.h:
+        (WTF::CrossThreadQueue<DataType>::append):
+        (WTF::CrossThreadQueue<DataType>::kill):
+        (WTF::CrossThreadQueue<DataType>::isKilled):
+        (WTF::CrossThreadQueue<DataType>::isEmpty):
+        (WTF::CrossThreadQueue::isKilled): Deleted.
+
+2017-07-09  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use fastMalloc / fastFree for STL containers
+        https://bugs.webkit.org/show_bug.cgi?id=174297
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FastMalloc.h:
+        (WTF::FastAllocator::FastAllocator):
+        (WTF::FastAllocator::allocate):
+        (WTF::FastAllocator::deallocate):
+        (WTF::FastAllocator::operator==):
+        (WTF::FastAllocator::operator!=):
+
+2017-07-07  Brent Fulgham  <bfulgham@apple.com>
+
+        [WK2] Use a rolling 30-day uptime for processing statistics
+        https://bugs.webkit.org/show_bug.cgi?id=174235
+        <rdar://problem/33164381>
+
+        Reviewed by Chris Dumez.
+
+        Modify Deque to allow it to be used in a template specialization in KeyedDecoder.
+
+        * wtf/Deque.h:
+
+2017-07-07  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219238, r219239, and r219241.
+        https://bugs.webkit.org/show_bug.cgi?id=174265
+
+        "fast/workers/dedicated-worker-lifecycle.html is flaky"
+        (Requested by yusukesuzuki on #webkit).
+
+        Reverted changesets:
+
+        "[WTF] Implement WTF::ThreadGroup"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219238
+
+        "Unreviewed, build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219239
+
+        "Unreviewed, CLoop build fix after r219238"
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+        http://trac.webkit.org/changeset/219241
+
+2017-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 4
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 3
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+        (compilerFenceForCrash):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233 part 2
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Assertions.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, Windows build fix after r219233
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        * wtf/Compiler.h:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix after r219238
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        This patch implements WTF::ThreadGroup. It implements core of JSC::MachineThreads with more reliable way.
+        JSC::MachineThreads was complicated because of managing dead threads. Each JSC::MachineThreads has its
+        own TLS with a registered destructor. And everytime a thread dies, the registered TLS destructor is called.
+        And this destructor will remove the current dying thread from JSC::MachineThreads.
+
+        However the above implementation is tricky. And each JSC::MachineThreads requires own TLS space, which is
+        not considered in WTF's Windows ThreadSpecific implementation. Current design works well since we only
+        have small number of MachineThreads right now.
+
+        Instead, we use more reliable way. After introducing WTF::Thread, WTF::Thread has WTF::Thread::didExit,
+        which is called when associated TLS (with WTF::Thread) is destroyed. We leverage this mechanism to remove
+        WTF::Thread from MachineThreads.
+
+        This patch introduces WTF::ThreadGroup. It is tightly integrated with WTF::Thread: WTF::Thread knows
+        ThreadGroups which includes this thread. And WTF::ThreadGroup of course knows WTF::Threads added to it.
+        WTF::Thread::didExit carefully remove itself from WTF::ThreadGroups.
+
+        The most important part of this patch is locking. WTF::Thread can die. And WTF::ThreadGroup can die.
+        If we take a design using two fine grain locks in WTF::Thread and WTF::ThreadGroup, we easily encounter
+        dead lock. Consider the following case.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold a lock of THG, and hold a lock of TH (locking order is THG -> TH).
+        2. When TH dies, TH need to hold a lock of TH to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is TH -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold a lock of TH to unregister THG from TH. We can hold a lock of THG before that (locking order is THG -> TH).
+
+        Then, it easily causes dead lock. We cannot swap the locking order of (2) since iterating THG requires a lock of TH.
+        To solve this problem, we introduce one global lock ThreadGroup::destructionMutex (GL).
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold GL, and hold a lock of THG. Do not hold a
+        lock of TH. TH's thread groups information is guarded by GL instead of a lock of TH (locking order is GL -> THG).
+        2. When TH dies, TH need to hold GL to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is GL -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold GL to unregister THG from TH. We can hold a lock of THG after that (locking order is GL -> THG).
+
+        We still have a lock of THG. By separating GL and THG's lock, we can hold a lock of THG while completely unrelated TH is destructed which takes a lock of GL and unrelated THG.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.h:
+        * wtf/ParkingLot.h:
+        * wtf/ThreadGroup.cpp: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::destructionMutex):
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        (WTF::ThreadGroup::removeCurrentThread):
+        * wtf/ThreadGroup.h: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::create):
+        (WTF::ThreadGroup::threads):
+        (WTF::ThreadGroup::getLock):
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        (WTF::Thread::canAddToThreadGroup):
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        This patch cleans up StringStatics.cpp and remove it from the tree.
+
+        1. Move StringImpl methods to appropriate place, "StringImpl.cpp".
+
+        StringImpl::hashSlowCase() and StringImpl::concurrentHash() are defined in
+        StringStatics.cpp. But they should be defined in StringImpl.cpp.
+        This patch just moves them to StringImpl.cpp.
+
+        2. Use LazyNeverDestroyed to initialize AtomicString atoms like emptyAtom.
+
+        Previously, we initialized AtomicString atoms like emptyAtom in a hacky way.
+        We first define them as extern global variables. However, AtomicString has
+        a non-trivial constructor. Thus, we cannot do this because it requires global
+        constructor calls. This is why we have StringStatics.cpp. In this file, we
+        include "StaticConstructors.h". After including this file, all the global
+        constructor call disabled in Windows. And in GCC environment, we allocate
+        void* storage for that variable. And we use placement new in AtomicString::init()
+        to initialize these storage.
+        However, we already have better way for that: LazyNeverDestroyed. It just allocates
+        storage like the above. And it does not have any global constructors. Thus
+        we can just declare it as a global variable. And we initialize them lazily in
+        AtomicString::init(). This way effectively avoids "StaticConstructors.h" hacky way.
+        And it makes "StringStatics.cpp" unnecessary.
+        Then, we just move these variables and AtomicString::init() to AtomicString.cpp.
+
+        And we also change emptyAtom to emptyAtom() to get the value from LazyNeverDestroyed<>.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicString::init):
+        * wtf/text/AtomicString.h:
+        (WTF::nullAtom):
+        (WTF::emptyAtom):
+        (WTF::starAtom):
+        (WTF::xmlAtom):
+        (WTF::xmlnsAtom):
+        (WTF::AtomicString::fromUTF8):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::toAtomicString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::hashSlowCase):
+        (WTF::StringImpl::concurrentHash):
+        * wtf/text/StringStatics.cpp: Removed.
+
+2017-07-06  Keith Miller  <keith_miller@apple.com>
+
+        Add extra insurance to prevent clang from making crash traces sad
+        https://bugs.webkit.org/show_bug.cgi?id=174231
+
+        Reviewed by Saam Barati.
+
+        This patch makes it slightly harder for Clang to coalesce our crash calls.
+        Additionally, it also makes Clang never tail call the WTFCrashWithInfo so
+        our stack trace should always be "reasonable".
+
+        * wtf/Assertions.h:
+        * wtf/Compiler.h:
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219178.
+
+        This caused a consistent failure with the API test
+        StringBuilderTest.ToAtomicStringOnEmpty on all Debug testers.
+
+        Reverted changeset:
+
+        "[WTF] Clean up StringStatics.cpp by using
+        LazyNeverDestroyed<> for Atoms"
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+        http://trac.webkit.org/changeset/219178
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move SoftLinking.h into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=174000
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/SoftLinking.h: Copied from Source/WebCore/platform/ios/QuickLookSoftLink.mm.
+        * wtf/cocoa/SoftLinking.h: Renamed from Source/WebCore/platform/cocoa/SoftLinking.h.
+        * wtf/win/SoftLinking.h: Renamed from Source/WebCore/platform/win/SoftLinking.h.
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Upgrade GCC baseline
+        https://bugs.webkit.org/show_bug.cgi?id=174155
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Compiler.h:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::StringImpl::copyChars segfaults when built with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=173407
+
+        Reviewed by Andreas Kling.
+
+        With GCC 7, StringImpl::copyChars() behaves as unexpected.
+        This function violates strict aliasing rule.
+
+        This optimization is originally introduced to improve performance
+        in SunSpider's string tests in 2008. When running it in my Linux
+        box, it no longer causes any observable difference. So, we just
+        remove this optimization.
+
+                                        baseline                  patched
+
+        string-base64                7.7544+-0.1761            7.6138+-0.2071          might be 1.0185x faster
+        string-fasta                10.5429+-0.2746     ?     10.7500+-0.2669        ? might be 1.0196x slower
+        string-tagcloud             14.8588+-0.2828           14.8039+-0.3039
+        string-unpack-code          36.1769+-0.4251           35.3397+-0.5398          might be 1.0237x faster
+        string-validate-input        8.5182+-0.2206            8.3514+-0.2179          might be 1.0200x faster
+
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::copyChars):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use std::lock_guard instead of std::unique_lock if move semantics and try_lock is not necessary
+        https://bugs.webkit.org/show_bug.cgi?id=174148
+
+        Reviewed by Mark Lam.
+
+        It is not necessary to use std::unique_lock if we do not use additional features compared to std::lock_guard.
+
+        (WTF::ThreadHolder::get):
+        (WTF::ThreadHolder::initialize):
+        (WTF::ThreadHolder::destruct):
+        * wtf/Threading.cpp:
+        (WTF::Thread::didExit):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::signal):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::establish):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::changePriority):
+        (WTF::Thread::waitForCompletion):
+        (WTF::Thread::detach):
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        (WTF::Thread::establish):
+        * wtf/WordLock.cpp:
+        (WTF::WordLockBase::unlockSlow):
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        This patch cleans up StringStatics.cpp and remove it from the tree.
+
+        1. Move StringImpl methods to appropriate place, "StringImpl.cpp".
+
+        StringImpl::hashSlowCase() and StringImpl::concurrentHash() are defined in
+        StringStatics.cpp. But they should be defined in StringImpl.cpp.
+        This patch just moves them to StringImpl.cpp.
+
+        2. Use LazyNeverDestroyed to initialize AtomicString atoms like emptyAtom.
+
+        Previously, we initialized AtomicString atoms like emptyAtom in a hacky way.
+        We first define them as extern global variables. However, AtomicString has
+        a non-trivial constructor. Thus, we cannot do this because it requires global
+        constructor calls. This is why we have StringStatics.cpp. In this file, we
+        include "StaticConstructors.h". After including this file, all the global
+        constructor call disabled in Windows. And in GCC environment, we allocate
+        void* storage for that variable. And we use placement new in AtomicString::init()
+        to initialize these storage.
+        However, we already have better way for that: LazyNeverDestroyed. It just allocates
+        storage like the above. And it does not have any global constructors. Thus
+        we can just declare it as a global variable. And we initialize them lazily in
+        AtomicString::init(). This way effectively avoids "StaticConstructors.h" hacky way.
+        And it makes "StringStatics.cpp" unnecessary.
+        Then, we just move these variables and AtomicString::init() to AtomicString.cpp.
+
+        And we also change emptyAtom to emptyAtom() to get the value from LazyNeverDestroyed<>.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/AtomicString.cpp:
+        (WTF::AtomicString::convertASCIICase):
+        (WTF::AtomicString::fromUTF8Internal):
+        (WTF::AtomicString::init):
+        * wtf/text/AtomicString.h:
+        (WTF::nullAtom):
+        (WTF::emptyAtom):
+        (WTF::starAtom):
+        (WTF::xmlAtom):
+        (WTF::xmlnsAtom):
+        (WTF::AtomicString::fromUTF8):
+        * wtf/text/StringBuilder.h:
+        (WTF::StringBuilder::toAtomicString):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::hashSlowCase):
+        (WTF::StringImpl::concurrentHash):
+        * wtf/text/StringStatics.cpp: Removed.
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Keith Miller.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        We also clean up WTF::initializeThreading. StringImpl::empty()
+        is now statically initialized by using constexpr constructor.
+        Thus we do not need to call StringImpl::empty() explicitly here.
+        And WTF::initializeThreading() does not have any main thread
+        affinity right now in all the platforms. So we fix the comment
+        in Threading.h. Then, now, WTF::initializeThreading() is called
+        in UI thread when using Web thread in iOS.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack): Deleted.
+
+2017-07-05  Keith Miller  <keith_miller@apple.com>
+
+        Crashing with information should have an abort reason
+        https://bugs.webkit.org/show_bug.cgi?id=174185
+
+        Reviewed by Saam Barati.
+
+        Fix an ifdef to actually work with X86_64. It turns out X64_64 is
+        not an architecture... Whoops.
+
+        * wtf/Assertions.cpp:
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Add an extra rsync command to CopyWTFHeaders which copies the ICU headers
+        to DSTROOT/usr/local/include/. These headers already live inside a
+        "unicode" folder, so an example path of a header is
+        DSTROOT/usr/local/include/unicode/uchar.h. This is already in the search
+        path of the other WebKit projects, so those other projects can remove
+        their explicit listing of the old place these headers lived.
+
+        Also add the remaining ICU 55.1 headers which the other projects (like
+        WebCore) need. Revert any local changes to these headers in favor of
+        using the GCC_PREPROCESSOR_DEFINITIONS build setting. This is so we can
+        compile the same way against unmodified headers.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CopyWTFHeaders.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * icu/unicode/alphaindex.h: Added.
+        * icu/unicode/appendable.h: Added.
+        * icu/unicode/basictz.h: Added.
+        * icu/unicode/brkiter.h: Added.
+        (BreakIterator::isBufferClone):
+        * icu/unicode/bytestrie.h: Added.
+        * icu/unicode/bytestriebuilder.h: Added.
+        * icu/unicode/calendar.h: Added.
+        (Calendar::createInstance):
+        (Calendar::roll):
+        (Calendar::internalSet):
+        (Calendar::weekNumber):
+        * icu/unicode/caniter.h: Added.
+        * icu/unicode/chariter.h: Renamed from Source/WebCore/icu/unicode/chariter.h.
+        * icu/unicode/choicfmt.h: Added.
+        * icu/unicode/coleitr.h: Added.
+        (CollationElementIterator::primaryOrder):
+        (CollationElementIterator::secondaryOrder):
+        (CollationElementIterator::tertiaryOrder):
+        (CollationElementIterator::isIgnorable):
+        * icu/unicode/coll.h: Added.
+        * icu/unicode/compactdecimalformat.h: Added.
+        * icu/unicode/curramt.h: Added.
+        (CurrencyAmount::getCurrency):
+        (CurrencyAmount::getISOCurrency):
+        * icu/unicode/currpinf.h: Added.
+        (CurrencyPluralInfo::operator!=):
+        * icu/unicode/currunit.h: Added.
+        (CurrencyUnit::getISOCurrency):
+        * icu/unicode/datefmt.h: Added.
+        * icu/unicode/dbbi.h: Added.
+        * icu/unicode/dcfmtsym.h: Added.
+        (DecimalFormatSymbols::getSymbol):
+        (DecimalFormatSymbols::getConstSymbol):
+        (DecimalFormatSymbols::setSymbol):
+        (DecimalFormatSymbols::getLocale):
+        (DecimalFormatSymbols::getCurrencyPattern):
+        * icu/unicode/decimfmt.h: Added.
+        (DecimalFormat::getConstSymbol):
+        * icu/unicode/docmain.h: Added.
+        * icu/unicode/dtfmtsym.h: Added.
+        * icu/unicode/dtintrv.h: Added.
+        (DateInterval::getFromDate):
+        (DateInterval::getToDate):
+        (DateInterval::operator!=):
+        * icu/unicode/dtitvfmt.h: Added.
+        (DateIntervalFormat::operator!=):
+        * icu/unicode/dtitvinf.h: Added.
+        (DateIntervalInfo::operator!=):
+        * icu/unicode/dtptngen.h: Added.
+        * icu/unicode/dtrule.h: Added.
+        * icu/unicode/enumset.h: Added.
+        (EnumSet::EnumSet):
+        (EnumSet::~EnumSet):
+        (EnumSet::clear):
+        (EnumSet::add):
+        (EnumSet::remove):
+        (EnumSet::contains):
+        (EnumSet::set):
+        (EnumSet::get):
+        (EnumSet::isValidEnum):
+        (EnumSet::isValidValue):
+        (EnumSet::operator=):
+        (EnumSet::getAll):
+        (EnumSet::flag):
+        * icu/unicode/errorcode.h: Added.
+        * icu/unicode/fieldpos.h: Added.
+        (FieldPosition::operator=):
+        (FieldPosition::operator==):
+        (FieldPosition::operator!=):
+        * icu/unicode/filteredbrk.h: Added.
+        * icu/unicode/fmtable.h: Added.
+        (Formattable::getDate):
+        (Formattable::getString):
+        (Formattable::getLong):
+        (Formattable::toUFormattable):
+        (Formattable::fromUFormattable):
+        * icu/unicode/format.h: Added.
+        * icu/unicode/fpositer.h: Added.
+        * icu/unicode/gender.h: Added.
+        * icu/unicode/gregocal.h: Added.
+        * icu/unicode/icudataver.h: Added.
+        * icu/unicode/icuplug.h: Added.
+        * icu/unicode/idna.h: Added.
+        * icu/unicode/listformatter.h: Added.
+        (ListFormatData::ListFormatData):
+        * icu/unicode/locdspnm.h: Added.
+        (LocaleDisplayNames::createInstance):
+        * icu/unicode/locid.h: Added.
+        (Locale::operator!=):
+        (Locale::getCountry):
+        (Locale::getLanguage):
+        (Locale::getScript):
+        (Locale::getVariant):
+        (Locale::getName):
+        (Locale::isBogus):
+        * icu/unicode/measfmt.h: Added.
+        * icu/unicode/measunit.h: Added.
+        * icu/unicode/measure.h: Added.
+        (Measure::getNumber):
+        (Measure::getUnit):
+        * icu/unicode/messagepattern.h: Added.
+        * icu/unicode/msgfmt.h: Added.
+        * icu/unicode/normalizer2.h: Added.
+        * icu/unicode/normlzr.h: Added.
+        (Normalizer::operator!= ):
+        (Normalizer::quickCheck):
+        (Normalizer::isNormalized):
+        (Normalizer::compare):
+        * icu/unicode/numfmt.h: Added.
+        (NumberFormat::isParseIntegerOnly):
+        (NumberFormat::isLenient):
+        * icu/unicode/numsys.h: Added.
+        * icu/unicode/parsepos.h: Added.
+        (ParsePosition::operator=):
+        (ParsePosition::operator==):
+        (ParsePosition::operator!=):
+        (ParsePosition::getIndex):
+        (ParsePosition::setIndex):
+        (ParsePosition::getErrorIndex):
+        (ParsePosition::setErrorIndex):
+        * icu/unicode/plurfmt.h: Added.
+        * icu/unicode/plurrule.h: Added.
+        * icu/unicode/rbbi.h: Added.
+        (RuleBasedBreakIterator::operator!=):
+        * icu/unicode/rbnf.h: Added.
+        (RuleBasedNumberFormat::isLenient):
+        (RuleBasedNumberFormat::getDefaultRuleSet):
+        * icu/unicode/rbtz.h: Added.
+        * icu/unicode/regex.h: Added.
+        * icu/unicode/region.h: Added.
+        * icu/unicode/reldatefmt.h: Added.
+        * icu/unicode/resbund.h: Added.
+        * icu/unicode/schriter.h: Added.
+        * icu/unicode/scientificnumberformatter.h: Added.
+        * icu/unicode/search.h: Added.
+        (SearchIterator::operator!=):
+        * icu/unicode/selfmt.h: Added.
+        * icu/unicode/simpletz.h: Added.
+        (SimpleTimeZone::setStartRule):
+        (SimpleTimeZone::setEndRule):
+        (SimpleTimeZone::getOffset):
+        * icu/unicode/smpdtfmt.h: Added.
+        (SimpleDateFormat::get2DigitYearStart):
+        * icu/unicode/sortkey.h: Added.
+        (CollationKey::operator!=):
+        (CollationKey::isBogus):
+        (CollationKey::getByteArray):
+        * icu/unicode/stringtriebuilder.h: Added.
+        * icu/unicode/stsearch.h: Added.
+        * icu/unicode/symtable.h: Added.
+        * icu/unicode/tblcoll.h: Added.
+        * icu/unicode/timezone.h: Added.
+        (TimeZone::getID):
+        (TimeZone::setID):
+        * icu/unicode/tmunit.h: Added.
+        * icu/unicode/tmutamt.h: Added.
+        (TimeUnitAmount::operator!=):
+        * icu/unicode/tmutfmt.h: Added.
+        (TimeUnitFormat::operator!=):
+        * icu/unicode/translit.h: Added.
+        (Transliterator::getMaximumContextLength):
+        (Transliterator::setID):
+        (Transliterator::integerToken):
+        (Transliterator::pointerToken):
+        * icu/unicode/tzfmt.h: Added.
+        * icu/unicode/tznames.h: Added.
+        * icu/unicode/tzrule.h: Added.
+        * icu/unicode/tztrans.h: Added.
+        * icu/unicode/ubidi.h: Added.
+        * icu/unicode/ucal.h: Renamed from Source/JavaScriptCore/icu/unicode/ucal.h.
+        * icu/unicode/ucasemap.h: Added.
+        * icu/unicode/ucat.h: Added.
+        * icu/unicode/ucharstrie.h: Added.
+        * icu/unicode/ucharstriebuilder.h: Added.
+        * icu/unicode/uchriter.h: Added.
+        * icu/unicode/uclean.h: Added.
+        * icu/unicode/ucnv_cb.h: Renamed from Source/WebCore/icu/unicode/ucnv_cb.h.
+        * icu/unicode/ucnvsel.h: Added.
+        * icu/unicode/ucoleitr.h: Renamed from Source/WebCore/icu/unicode/ucoleitr.h.
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucsdet.h: Renamed from Source/WebCore/icu/unicode/ucsdet.h.
+        * icu/unicode/udat.h: Renamed from Source/JavaScriptCore/icu/unicode/udat.h.
+        * icu/unicode/udata.h: Added.
+        * icu/unicode/udateintervalformat.h: Added.
+        * icu/unicode/udatpg.h: Renamed from Source/JavaScriptCore/icu/unicode/udatpg.h.
+        * icu/unicode/udisplaycontext.h: Renamed from Source/JavaScriptCore/icu/unicode/udisplaycontext.h.
+        * icu/unicode/ufieldpositer.h: Renamed from Source/JavaScriptCore/icu/unicode/ufieldpositer.h.
+        * icu/unicode/uformattable.h: Renamed from Source/JavaScriptCore/icu/unicode/uformattable.h.
+        * icu/unicode/ugender.h: Added.
+        * icu/unicode/uidna.h: Renamed from Source/WebCore/icu/unicode/uidna.h.
+        * icu/unicode/uldnames.h: Added.
+        * icu/unicode/ulistformatter.h: Added.
+        * icu/unicode/ulocdata.h: Added.
+        * icu/unicode/umisc.h: Renamed from Source/JavaScriptCore/icu/unicode/umisc.h.
+        * icu/unicode/umsg.h: Added.
+        * icu/unicode/unifilt.h: Added.
+        * icu/unicode/unifunct.h: Added.
+        * icu/unicode/unimatch.h: Added.
+        * icu/unicode/unirepl.h: Added.
+        * icu/unicode/uniset.h: Added.
+        (UnicodeSet::operator!=):
+        (UnicodeSet::isFrozen):
+        (UnicodeSet::containsSome):
+        (UnicodeSet::isBogus):
+        (UnicodeSet::fromUSet):
+        (UnicodeSet::toUSet):
+        (UnicodeSet::span):
+        (UnicodeSet::spanBack):
+        * icu/unicode/unum.h: Renamed from Source/JavaScriptCore/icu/unicode/unum.h.
+        * icu/unicode/unumsys.h: Renamed from Source/JavaScriptCore/icu/unicode/unumsys.h.
+        * icu/unicode/upluralrules.h: Added.
+        * icu/unicode/uregex.h: Added.
+        * icu/unicode/uregion.h: Added.
+        * icu/unicode/urep.h: Added.
+        * icu/unicode/ures.h: Added.
+        (ures_getUnicodeString):
+        (ures_getNextUnicodeString):
+        (ures_getUnicodeStringByIndex):
+        (ures_getUnicodeStringByKey):
+        * icu/unicode/usearch.h: Renamed from Source/WebCore/icu/unicode/usearch.h.
+        * icu/unicode/usetiter.h: Added.
+        (UnicodeSetIterator::isString):
+        (UnicodeSetIterator::getCodepoint):
+        (UnicodeSetIterator::getCodepointEnd):
+        * icu/unicode/ushape.h: Renamed from Source/WebCore/icu/unicode/ushape.h.
+        * icu/unicode/uspoof.h: Added.
+        * icu/unicode/usprep.h: Added.
+        * icu/unicode/ustdio.h: Added.
+        * icu/unicode/ustream.h: Added.
+        * icu/unicode/ustringtrie.h: Added.
+        * icu/unicode/utf32.h: Added.
+        * icu/unicode/utmscale.h: Added.
+        * icu/unicode/utrace.h: Added.
+        * icu/unicode/utrans.h: Added.
+        * icu/unicode/utypes.h:
+        * icu/unicode/vtzone.h: Added.
+
 2017-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [WTF] Make double-conversion's cache data constant and drop double_conversion::initialize()

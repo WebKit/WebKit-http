@@ -1918,6 +1918,14 @@ void FrameView::setLayoutViewportOverrideRect(std::optional<LayoutRect> rect)
         setViewportConstrainedObjectsNeedLayout();
 }
 
+void FrameView::setUnstableLayoutViewportRect(std::optional<LayoutRect> rect)
+{
+    if (rect == m_unstableLayoutViewportRect)
+        return;
+
+    m_unstableLayoutViewportRect = rect;
+}
+
 LayoutSize FrameView::baseLayoutViewportSize() const
 {
     return renderView() ? renderView()->size() : size();
@@ -4905,7 +4913,12 @@ FloatPoint FrameView::absoluteToDocumentPoint(FloatPoint p, std::optional<float>
 
 FloatSize FrameView::documentToClientOffset() const
 {
-    FloatSize clientOrigin = frame().settings().visualViewportEnabled() ? -toFloatSize(layoutViewportRect().location()) : -toFloatSize(visibleContentRect().location());
+    FloatSize clientOrigin;
+    
+    if (frame().settings().visualViewportEnabled())
+        clientOrigin = -toFloatSize(m_unstableLayoutViewportRect ? m_unstableLayoutViewportRect.value().location() : layoutViewportRect().location()); 
+    else
+        clientOrigin = -toFloatSize(visibleContentRect().location());
 
     // Layout and visual viewports are affected by page zoom, so we need to factor that out.
     return clientOrigin.scaled(1 / frame().pageZoomFactor());
@@ -4921,6 +4934,27 @@ FloatPoint FrameView::documentToClientPoint(FloatPoint p) const
 {
     p.move(documentToClientOffset());
     return p;
+}
+
+FloatRect FrameView::layoutViewportToAbsoluteRect(FloatRect rect) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    rect.moveBy(layoutViewportRect().location());
+    rect.scale(frame().frameScaleFactor());
+    return rect;
+}
+
+FloatPoint FrameView::layoutViewportToAbsolutePoint(FloatPoint p) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    p.moveBy(layoutViewportRect().location());
+    return p.scaled(frame().frameScaleFactor());
+}
+
+FloatPoint FrameView::clientToLayoutViewportPoint(FloatPoint p) const
+{
+    ASSERT(frame().settings().visualViewportEnabled());
+    return p.scaled(frame().pageZoomFactor());
 }
 
 void FrameView::setTracksRepaints(bool trackRepaints)

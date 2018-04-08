@@ -1293,7 +1293,6 @@ void MediaControlTextTrackContainerElement::updateTextTrackRepresentation()
         mediaElement->setTextTrackRepresentation(m_textTrackRepresentation.get());
     }
 
-    hide();
     m_textTrackRepresentation->update();
     updateStyleForTextTrackRepresentation();
 }

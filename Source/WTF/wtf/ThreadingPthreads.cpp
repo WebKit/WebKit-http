@@ -192,8 +192,9 @@ void Thread::initializePlatformThreading()
 #endif
 }
 
-static void initializeCurrentThreadEvenIfNonWTFCreated()
+void Thread::initializeCurrentThreadEvenIfNonWTFCreated()
 {
+    Thread::current().initialize();
 #if !OS(DARWIN)
     sigset_t mask;
     sigemptyset(&mask);
@@ -255,7 +256,7 @@ void Thread::initializeCurrentThreadInternal(const char* threadName)
 
 void Thread::changePriority(int delta)
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
 
     int policy;
     struct sched_param param;
@@ -272,7 +273,7 @@ int Thread::waitForCompletion()
 {
     pthread_t handle;
     {
-        std::unique_lock<std::mutex> locker(m_mutex);
+        std::lock_guard<std::mutex> locker(m_mutex);
         handle = m_handle;
     }
 
@@ -283,7 +284,7 @@ int Thread::waitForCompletion()
     else if (joinResult)
         LOG_ERROR("ThreadIdentifier %u was unable to be joined.\n", m_id);
 
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     ASSERT(joinableState() == Joinable);
 
     // If the thread has already exited, then do nothing. If the thread hasn't exited yet, then just signal that we've already joined on it.
@@ -296,7 +297,7 @@ int Thread::waitForCompletion()
 
 void Thread::detach()
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     int detachResult = pthread_detach(m_handle);
     if (detachResult)
         LOG_ERROR("ThreadIdentifier %u was unable to be detached\n", m_id);
@@ -305,25 +306,17 @@ void Thread::detach()
         didBecomeDetached();
 }
 
-Thread* Thread::currentMayBeNull()
-{
-    ThreadHolder* data = ThreadHolder::current();
-    if (data)
-        return &data->thread();
-    return nullptr;
-}
-
 Thread& Thread::current()
 {
     if (Thread* current = currentMayBeNull())
         return *current;
 
     // Not a WTF-created thread, ThreadIdentifier is not established yet.
-    RefPtr<Thread> thread = adoptRef(new Thread());
+    Ref<Thread> thread = adoptRef(*new Thread());
     thread->establish(pthread_self());
-    ThreadHolder::initialize(*thread);
+    ThreadHolder::initialize(thread.get());
     initializeCurrentThreadEvenIfNonWTFCreated();
-    return *thread;
+    return thread.get();
 }
 
 ThreadIdentifier Thread::currentID()
@@ -333,7 +326,7 @@ ThreadIdentifier Thread::currentID()
 
 bool Thread::signal(int signalNumber)
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     if (hasExited())
         return false;
     int errNo = pthread_kill(m_handle, signalNumber);
@@ -343,7 +336,7 @@ bool Thread::signal(int signalNumber)
 auto Thread::suspend() -> Expected<void, PlatformSuspendError>
 {
     RELEASE_ASSERT_WITH_MESSAGE(id() != currentThread(), "We do not support suspending the current thread itself.");
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
 #if OS(DARWIN)
     kern_return_t result = thread_suspend(m_platformThread);
     if (result != KERN_SUCCESS)
@@ -378,7 +371,7 @@ auto Thread::suspend() -> Expected<void, PlatformSuspendError>
 
 void Thread::resume()
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
 #if OS(DARWIN)
     thread_resume(m_platformThread);
 #else
@@ -440,7 +433,7 @@ static ThreadStateMetadata threadStateMetadata()
 
 size_t Thread::getRegisters(PlatformRegisters& registers)
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
 #if OS(DARWIN)
     auto metadata = threadStateMetadata();
     kern_return_t result = thread_get_state(m_platformThread, metadata.flavor, (thread_state_t)&registers, &metadata.userCount);
@@ -458,7 +451,7 @@ size_t Thread::getRegisters(PlatformRegisters& registers)
 
 void Thread::establish(pthread_t handle)
 {
-    std::unique_lock<std::mutex> locker(m_mutex);
+    std::lock_guard<std::mutex> locker(m_mutex);
     m_handle = handle;
     if (!m_id) {
         static std::atomic<ThreadIdentifier> provider { 0 };

@@ -52,6 +52,7 @@ namespace WebCore {
     M(Fullscreen) \
     M(Gamepad) \
     M(History) \
+    M(IOSurface) \
     M(IconDatabase) \
     M(Images) \
     M(IndexedDB) \
@@ -91,7 +92,6 @@ namespace WebCore {
     M(WebGL) \
     M(WebGPU) \
     M(WebRTC) \
-    M(WebReplay) \
     M(WheelEventTestTriggers) \
 
 #undef DECLARE_LOG_CHANNEL

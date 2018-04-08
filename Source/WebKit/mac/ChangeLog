@@ -1,3 +1,171 @@
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-09  Brady Eidson  <beidson@apple.com>
+
+        Remove some obsolete WebKitVersionChecks.
+        https://bugs.webkit.org/show_bug.cgi?id=174294
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebKitVersionChecks.h:
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView hitTest:]):
+
+        * WebView/WebView.mm:
+        (shouldRespectPriorityInCSSAttributeSetters):
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView _preferencesChanged:]):
+        (shouldTransformsAffectOverflow): Deleted.
+        (shouldDispatchJavaScriptWindowOnErrorEvents): Deleted.
+
+2017-07-08  Brady Eidson  <beidson@apple.com>
+
+        Remove some obsolete RuntimeApplicationChecks.
+        https://bugs.webkit.org/show_bug.cgi?id=174293
+
+        Reviewed by Dan Bernstein.
+
+        * Misc/WebKitVersionChecks.h:
+        * WebView/WebView.mm:
+        (+[WebView enableWebThread]):
+        (-[WebView _needsPreHTML5ParserQuirks]):
+
+2017-07-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Drop NOSNIFF compile flag
+        https://bugs.webkit.org/show_bug.cgi?id=174289
+
+        Reviewed by Michael Catanzaro.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        * DOM/DOM.mm:
+        (lookupElementClass):
+
+2017-07-06  Brady Eidson  <beidson@apple.com>
+
+        Add logging to first attempt to use the WebIconDatabase class.
+        https://bugs.webkit.org/show_bug.cgi?id=174190
+
+        Reviewed by Andy Estes.
+
+        * Misc/WebIconDatabase.mm:
+        (+[WebIconDatabase sharedIconDatabase]): On first call, log a warning of the bleak future of this non-API.
+        * Misc/WebKitVersionChecks.h:
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219178.
+
+        This caused a consistent failure with the API test
+        StringBuilderTest.ToAtomicStringOnEmpty on all Debug testers.
+
+        Reverted changeset:
+
+        "[WTF] Clean up StringStatics.cpp by using
+        LazyNeverDestroyed<> for Atoms"
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+        http://trac.webkit.org/changeset/219178
+
+2017-07-05  Don Olmstead  <don.olmstead@sony.com>
+
+        [WTF] Move SoftLinking.h into WTF
+        https://bugs.webkit.org/show_bug.cgi?id=174000
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/WebNetscapePluginView.mm:
+        * Plugins/WebPluginController.mm:
+        * WebCoreSupport/WebInspectorClient.mm:
+        * WebView/WebFullScreenController.mm:
+        * WebView/WebImmediateActionController.mm:
+        * WebView/WebView.mm:
+
+2017-07-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Clean up StringStatics.cpp by using LazyNeverDestroyed<> for Atoms
+        https://bugs.webkit.org/show_bug.cgi?id=174150
+
+        Reviewed by Mark Lam.
+
+        * DOM/DOM.mm:
+        (lookupElementClass):
+
+2017-07-05  Brady Eidson  <beidson@apple.com>
+
+        Allow navigations in subframes to get a ShouldOpenExternalURLsPolicy of "ShouldAllow".
+        <rdar://problem/22485589> and https://bugs.webkit.org/show_bug.cgi?id=174178
+
+        Reviewed by Alex Christensen.
+
+        Adopt to the new constructor for FrameLoadRequest.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2017-07-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Make WebKit's public headers on Mac and iOS C++ module safe
+        https://bugs.webkit.org/show_bug.cgi?id=174175
+
+        Reviewed by Alex Christensen.
+
+        Fixed the header files.
+
+        * Misc/WebDownload.h:
+        * Misc/WebKitErrors.h:
+        * Plugins/WebPluginContainer.h:
+        * WebView/WebResourceLoadDelegate.h:
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Use WTF's copy of ICU headers.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * icu/unicode/localpointer.h: Removed.
+        * icu/unicode/parseerr.h: Removed.
+        * icu/unicode/platform.h: Removed.
+        * icu/unicode/ptypes.h: Removed.
+        * icu/unicode/putil.h: Removed.
+        * icu/unicode/uchar.h: Removed.
+        * icu/unicode/uconfig.h: Removed.
+        * icu/unicode/ucurr.h: Removed.
+        * icu/unicode/uidna.h: Removed.
+        * icu/unicode/uiter.h: Removed.
+        * icu/unicode/umachine.h: Removed.
+        * icu/unicode/unorm.h: Removed.
+        * icu/unicode/unorm2.h: Removed.
+        * icu/unicode/urename.h: Removed.
+        * icu/unicode/uscript.h: Removed.
+        * icu/unicode/ustring.h: Removed.
+        * icu/unicode/utf.h: Removed.
+        * icu/unicode/utf16.h: Removed.
+        * icu/unicode/utf8.h: Removed.
+        * icu/unicode/utf_old.h: Removed.
+        * icu/unicode/utypes.h: Removed.
+        * icu/unicode/uvernum.h: Removed.
+        * icu/unicode/uversion.h: Removed.
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Add WebKitPrivateFrameworkStubs for iOS 11

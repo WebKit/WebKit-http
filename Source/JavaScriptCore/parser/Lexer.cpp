@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2006-2009, 2011-2013, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2006-2017 Apple Inc. All Rights Reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2010 Zoltan Herczeg (zherczeg@inf.u-szeged.hu)
  *  Copyright (C) 2012 Mathias Bynens (mathias@qiwi.be)
@@ -705,8 +705,7 @@ void Lexer<T>::shiftLineTerminator()
     T prev = m_current;
     shift();
 
-    // Allow both CRLF and LFCR.
-    if (prev + m_current == '\n' + '\r')
+    if (prev == '\r' && m_current == '\n')
         shift();
 
     ++m_lineNumber;
@@ -1376,54 +1375,6 @@ template <bool shouldBuildStrings> auto Lexer<T>::parseStringSlowCase(JSTokenDat
     return StringParsedSuccessfully;
 }
 
-// While the lexer accepts <LF><CR> (not <CR><LF>) sequence
-// as one line terminator and increments one line number,
-// TemplateLiteral considers it as two line terminators <LF> and <CR>.
-//
-// TemplateLiteral normalizes line terminators as follows.
-//
-// <LF> => <LF>
-// <CR> => <LF>
-// <CR><LF> => <LF>
-// <\u2028> => <\u2028>
-// <\u2029> => <\u2029>
-//
-// So, <LF><CR> should be normalized to <LF><LF>.
-// However, the lexer should increment the line number only once for <LF><CR>.
-//
-// To achieve this, LineNumberAdder holds the current status of line terminator sequence.
-// When TemplateLiteral lexer encounters a line terminator, it notifies to LineNumberAdder.
-// LineNumberAdder maintains the status and increments the line number when it's necessary.
-// For example, LineNumberAdder increments the line number only once for <LF><CR> and <CR><LF>.
-template<typename CharacterType>
-class LineNumberAdder {
-public:
-    LineNumberAdder(int& lineNumber)
-        : m_lineNumber(lineNumber)
-    {
-    }
-
-    void clear()
-    {
-        m_previous = 0;
-    }
-
-    void add(CharacterType character)
-    {
-        ASSERT(Lexer<CharacterType>::isLineTerminator(character));
-        if ((character + m_previous) == ('\n' + '\r'))
-            m_previous = 0;
-        else {
-            ++m_lineNumber;
-            m_previous = character;
-        }
-    }
-
-private:
-    int& m_lineNumber;
-    CharacterType m_previous { 0 };
-};
-
 template <typename T>
 typename Lexer<T>::StringParseResult Lexer<T>::parseTemplateLiteral(JSTokenData* tokenData, RawStringsBuildMode rawStringsBuildMode)
 {
@@ -1431,11 +1382,8 @@ typename Lexer<T>::StringParseResult Lexer<T>::parseTemplateLiteral(JSTokenData*
     const T* stringStart = currentSourcePtr();
     const T* rawStringStart = currentSourcePtr();
 
-    LineNumberAdder<T> lineNumberAdder(m_lineNumber);
-
     while (m_current != '`') {
         if (UNLIKELY(m_current == '\\')) {
-            lineNumberAdder.clear();
             if (stringStart != currentSourcePtr())
                 append16(stringStart, currentSourcePtr() - stringStart);
             shift();
@@ -1456,18 +1404,10 @@ typename Lexer<T>::StringParseResult Lexer<T>::parseTemplateLiteral(JSTokenData*
                         m_bufferForRawTemplateString16.append('\n');
                     }
 
-                    lineNumberAdder.add(m_current);
-                    shift();
-                    if (m_current == '\n') {
-                        lineNumberAdder.add(m_current);
-                        shift();
-                    }
-
+                    shiftLineTerminator();
                     rawStringStart = currentSourcePtr();
-                } else {
-                    lineNumberAdder.add(m_current);
-                    shift();
-                }
+                } else
+                    shiftLineTerminator();
             } else {
                 bool strictMode = true;
                 StringParseResult result = parseComplexEscape<true, LexerEscapeParseMode::Template>(strictMode, '`');
@@ -1494,7 +1434,7 @@ typename Lexer<T>::StringParseResult Lexer<T>::parseTemplateLiteral(JSTokenData*
             // Unlike String, line terminator is allowed.
             if (atEnd()) {
                 m_lexErrorMessage = ASCIILiteral("Unexpected EOF");
-                return atEnd() ? StringUnterminated : StringCannotBeParsed;
+                return StringUnterminated;
             }
 
             if (isLineTerminator(m_current)) {
@@ -1508,24 +1448,16 @@ typename Lexer<T>::StringParseResult Lexer<T>::parseTemplateLiteral(JSTokenData*
                     record16('\n');
                     if (rawStringsBuildMode == RawStringsBuildMode::BuildRawStrings)
                         m_bufferForRawTemplateString16.append('\n');
-                    lineNumberAdder.add(m_current);
-                    shift();
-                    if (m_current == '\n') {
-                        lineNumberAdder.add(m_current);
-                        shift();
-                    }
+                    shiftLineTerminator();
                     stringStart = currentSourcePtr();
                     rawStringStart = currentSourcePtr();
-                } else {
-                    lineNumberAdder.add(m_current);
-                    shift();
-                }
+                } else
+                    shiftLineTerminator();
                 continue;
             }
             // Anything else is just a normal character
         }
 
-        lineNumberAdder.clear();
         shift();
     }
 

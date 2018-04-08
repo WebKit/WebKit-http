@@ -2249,6 +2249,10 @@ void TestController::removeAllSessionCredentials()
 
 #if !PLATFORM(COCOA) || !WK_API_ENABLED
 
+void TestController::setStatisticsLastSeen(WKStringRef, double)
+{
+}
+    
 void TestController::setStatisticsPrevalentResource(WKStringRef, bool)
 {
 }
@@ -2296,19 +2300,19 @@ void TestController::setStatisticsTimeToLiveCookiePartitionFree(double)
 {
 }
 
-void TestController::statisticsFireDataModificationHandler()
+void TestController::statisticsProcessStatisticsAndDataRecords()
 {
 }
 
-void TestController::statisticsFireShouldPartitionCookiesHandler()
+void TestController::statisticsUpdateCookiePartitioning()
 {
 }
 
-void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef, bool)
+void TestController::statisticsSetShouldPartitionCookiesForHost(WKStringRef, bool)
 {
 }
 
-void TestController::statisticsFireTelemetryHandler()
+void TestController::statisticsSubmitTelemetry()
 {
 }
 
@@ -2332,6 +2336,14 @@ void TestController::setStatisticsGrandfatheringTime(double)
 {
 }
 
+void TestController::setStatisticsMaxStatisticsEntries(unsigned)
+{
+}
+    
+void TestController::setStatisticsPruneEntriesDownTo(unsigned)
+{
+}
+    
 void TestController::statisticsClearInMemoryAndPersistentStore()
 {
 }

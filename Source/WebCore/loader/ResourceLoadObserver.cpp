@@ -37,7 +37,6 @@
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "URL.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -47,6 +46,7 @@ template<typename T> static inline String primaryDomain(const T& value)
 }
 
 static Seconds timestampResolution { 1_h };
+static const Seconds minimumNotificationInterval { 5_s };
 
 ResourceLoadObserver& ResourceLoadObserver::shared()
 {
@@ -54,10 +54,28 @@ ResourceLoadObserver& ResourceLoadObserver::shared()
     return resourceLoadObserver;
 }
 
-void ResourceLoadObserver::setNotificationCallback(WTF::Function<void()>&& notificationCallback)
+void ResourceLoadObserver::setShouldThrottleObserverNotifications(bool shouldThrottle)
+{
+    m_shouldThrottleNotifications = shouldThrottle;
+
+    if (!m_notificationTimer.isActive())
+        return;
+
+    // If we change the notification state, we need to restart any notifications
+    // so they will be on the right schedule.
+    m_notificationTimer.stop();
+    scheduleNotificationIfNeeded();
+}
+
+void ResourceLoadObserver::setNotificationCallback(WTF::Function<void (Vector<ResourceLoadStatistics>&&)>&& notificationCallback)
 {
     ASSERT(!m_notificationCallback);
     m_notificationCallback = WTFMove(notificationCallback);
+}
+
+ResourceLoadObserver::ResourceLoadObserver()
+    : m_notificationTimer(*this, &ResourceLoadObserver::notificationTimerFired)
+{
 }
 
 static inline bool is3xxRedirect(const ResourceResponse& response)
@@ -74,17 +92,23 @@ bool ResourceLoadObserver::shouldLog(Page* page) const
     return Settings::resourceLoadStatisticsEnabled() && !page->usesEphemeralSession() && m_notificationCallback;
 }
 
-void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
+static WallTime reduceToHourlyTimeResolution(WallTime time)
+{
+    return WallTime::fromRawSeconds(std::floor(time.secondsSinceEpoch() / timestampResolution) * timestampResolution.seconds());
+}
+
+void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest)
 {
     ASSERT(frame.document());
     ASSERT(topFrame.document());
     ASSERT(topFrame.page());
+
+    if (frame.isMainFrame())
+        return;
     
     if (!shouldLog(topFrame.page()))
         return;
 
-    bool isRedirect = is3xxRedirect(redirectResponse);
-    bool isMainFrame = frame.isMainFrame();
     auto& sourceURL = frame.document()->url();
     auto& targetURL = newRequest.url();
     auto& mainFrameURL = topFrame.document()->url();
@@ -105,60 +129,11 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
     if (targetPrimaryDomain == mainFramePrimaryDomain || targetPrimaryDomain == sourcePrimaryDomain)
         return;
 
-    auto targetStatistics = takeResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-
-    // Always fire if we have previously removed data records for this domain
-    bool shouldCallNotificationCallback = targetStatistics.dataRecordsRemoved > 0;
-
-    if (isMainFrame)
-        targetStatistics.topFrameHasBeenNavigatedToBefore = true;
-    else {
-        targetStatistics.subframeHasBeenLoadedBefore = true;
-
-        auto subframeUnderTopFrameOriginsResult = targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain);
-        if (subframeUnderTopFrameOriginsResult.isNewEntry)
-            shouldCallNotificationCallback = true;
-    }
-
-    if (isRedirect) {
-        auto& redirectingOriginResourceStatistics = ensureResourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
-
-        if (isPrevalentResource(targetPrimaryDomain))
-            redirectingOriginResourceStatistics.redirectedToOtherPrevalentResourceOrigins.add(targetPrimaryDomain);
-
-        if (isMainFrame) {
-            ++targetStatistics.topFrameHasBeenRedirectedTo;
-            ++redirectingOriginResourceStatistics.topFrameHasBeenRedirectedFrom;
-        } else {
-            ++targetStatistics.subframeHasBeenRedirectedTo;
-            ++redirectingOriginResourceStatistics.subframeHasBeenRedirectedFrom;
-            redirectingOriginResourceStatistics.subframeUniqueRedirectsTo.add(targetPrimaryDomain);
-
-            ++targetStatistics.subframeSubResourceCount;
-        }
-    } else {
-        if (sourcePrimaryDomain.isNull() || sourcePrimaryDomain.isEmpty() || sourcePrimaryDomain == "nullOrigin") {
-            if (isMainFrame)
-                ++targetStatistics.topFrameInitialLoadCount;
-            else
-                ++targetStatistics.subframeSubResourceCount;
-        } else {
-            auto& sourceOriginResourceStatistics = ensureResourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
-
-            if (isMainFrame) {
-                ++sourceOriginResourceStatistics.topFrameHasBeenNavigatedFrom;
-                ++targetStatistics.topFrameHasBeenNavigatedTo;
-            } else {
-                ++sourceOriginResourceStatistics.subframeHasBeenNavigatedFrom;
-                ++targetStatistics.subframeHasBeenNavigatedTo;
-            }
-        }
-    }
-
-    m_resourceStatisticsMap.set(targetPrimaryDomain, WTFMove(targetStatistics));
-
-    if (shouldCallNotificationCallback)
-        m_notificationCallback();
+    auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
+    targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+    auto subframeUnderTopFrameOriginsResult = targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain);
+    if (subframeUnderTopFrameOriginsResult.isNewEntry)
+        scheduleNotificationIfNeeded();
 }
     
 void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
@@ -186,45 +161,22 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     if (targetPrimaryDomain == mainFramePrimaryDomain || (isRedirect && targetPrimaryDomain == sourcePrimaryDomain))
         return;
 
-    auto targetStatistics = takeResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-
-    // Always fire if we have previously removed data records for this domain
-    bool shouldCallNotificationCallback = targetStatistics.dataRecordsRemoved > 0;
-
-    auto subresourceUnderTopFrameOriginsResult = targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain);
-    if (subresourceUnderTopFrameOriginsResult.isNewEntry)
-        shouldCallNotificationCallback = true;
+    bool shouldCallNotificationCallback = false;
+    {
+        auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
+        targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+        if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
+            shouldCallNotificationCallback = true;
+    }
 
     if (isRedirect) {
         auto& redirectingOriginStatistics = ensureResourceStatisticsForPrimaryDomain(sourcePrimaryDomain);
-
-        if (isPrevalentResource(targetPrimaryDomain))
-            redirectingOriginStatistics.redirectedToOtherPrevalentResourceOrigins.add(targetPrimaryDomain);
-
-        ++redirectingOriginStatistics.subresourceHasBeenRedirectedFrom;
-        ++targetStatistics.subresourceHasBeenRedirectedTo;
-
-        auto subresourceUniqueRedirectsToResult = redirectingOriginStatistics.subresourceUniqueRedirectsTo.add(targetPrimaryDomain);
-        if (subresourceUniqueRedirectsToResult.isNewEntry)
+        if (redirectingOriginStatistics.subresourceUniqueRedirectsTo.add(targetPrimaryDomain).isNewEntry)
             shouldCallNotificationCallback = true;
-
-        ++targetStatistics.subresourceHasBeenSubresourceCount;
-
-        auto totalVisited = std::max(m_originsVisitedMap.size(), 1U);
-
-        targetStatistics.subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited = static_cast<double>(targetStatistics.subresourceHasBeenSubresourceCount) / totalVisited;
-    } else {
-        ++targetStatistics.subresourceHasBeenSubresourceCount;
-
-        auto totalVisited = std::max(m_originsVisitedMap.size(), 1U);
-
-        targetStatistics.subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited = static_cast<double>(targetStatistics.subresourceHasBeenSubresourceCount) / totalVisited;
     }
 
-    m_resourceStatisticsMap.set(targetPrimaryDomain, WTFMove(targetStatistics));
-
     if (shouldCallNotificationCallback)
-        m_notificationCallback();
+        scheduleNotificationIfNeeded();
 }
 
 void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& targetURL)
@@ -252,27 +204,9 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
-
-    // Always fire if we have previously removed data records for this domain
-    bool shouldCallNotificationCallback = targetStatistics.dataRecordsRemoved > 0;
-
-    auto subresourceUnderTopFrameOriginsResult = targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain);
-    if (subresourceUnderTopFrameOriginsResult.isNewEntry)
-        shouldCallNotificationCallback = true;
-
-    ++targetStatistics.subresourceHasBeenSubresourceCount;
-
-    auto totalVisited = std::max(m_originsVisitedMap.size(), 1U);
-
-    targetStatistics.subresourceHasBeenSubresourceCountDividedByTotalNumberOfOriginsVisited = static_cast<double>(targetStatistics.subresourceHasBeenSubresourceCount) / totalVisited;
-
-    if (shouldCallNotificationCallback)
-        m_notificationCallback();
-}
-
-static WallTime reduceTimeResolution(WallTime time)
-{
-    return WallTime::fromRawSeconds(std::floor(time.secondsSinceEpoch() / timestampResolution) * timestampResolution.seconds());
+    targetStatistics.lastSeen = reduceToHourlyTimeResolution(WallTime::now());
+    if (targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain).isNewEntry)
+        scheduleNotificationIfNeeded();
 }
 
 void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Document& document)
@@ -287,14 +221,15 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
         return;
 
     auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
-    auto newTime = reduceTimeResolution(WallTime::now());
+    auto newTime = reduceToHourlyTimeResolution(WallTime::now());
     if (newTime == statistics.mostRecentUserInteractionTime)
         return;
 
     statistics.hadUserInteraction = true;
+    statistics.lastSeen = newTime;
     statistics.mostRecentUserInteractionTime = newTime;
 
-    m_notificationCallback();
+    scheduleNotificationIfNeeded();
 }
 
 ResourceLoadStatistics& ResourceLoadObserver::ensureResourceStatisticsForPrimaryDomain(const String& primaryDomain)
@@ -305,21 +240,22 @@ ResourceLoadStatistics& ResourceLoadObserver::ensureResourceStatisticsForPrimary
     return addResult.iterator->value;
 }
 
-ResourceLoadStatistics ResourceLoadObserver::takeResourceStatisticsForPrimaryDomain(const String& primaryDomain)
+void ResourceLoadObserver::scheduleNotificationIfNeeded()
 {
-    auto statististics = m_resourceStatisticsMap.take(primaryDomain);
-    if (statististics.highLevelDomain.isNull())
-        statististics.highLevelDomain = primaryDomain;
-    ASSERT(statististics.highLevelDomain == primaryDomain);
-    return statististics;
+    ASSERT(m_notificationCallback);
+    if (m_resourceStatisticsMap.isEmpty()) {
+        m_notificationTimer.stop();
+        return;
+    }
+
+    if (!m_notificationTimer.isActive())
+        m_notificationTimer.startOneShot(m_shouldThrottleNotifications ? minimumNotificationInterval : 0_s);
 }
 
-bool ResourceLoadObserver::isPrevalentResource(const String& primaryDomain) const
+void ResourceLoadObserver::notificationTimerFired()
 {
-    auto mapEntry = m_resourceStatisticsMap.find(primaryDomain);
-    if (mapEntry == m_resourceStatisticsMap.end())
-        return false;
-    return mapEntry->value.isPrevalentResource;
+    ASSERT(m_notificationCallback);
+    m_notificationCallback(takeStatistics());
 }
 
 String ResourceLoadObserver::statisticsForOrigin(const String& origin)

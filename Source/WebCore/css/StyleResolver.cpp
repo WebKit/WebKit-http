@@ -222,17 +222,20 @@ StyleResolver::StyleResolver(Document& document)
     if (root) {
         m_rootDefaultStyle = styleForElement(*root, m_document.renderStyle(), nullptr, MatchOnlyUserAgentRules).renderStyle;
         // Turn off assertion against font lookups during style resolver initialization. We may need root style font for media queries.
-        m_document.fontSelector().setIsComputingRootStyleFont(true);
+        m_document.fontSelector().incrementIsComputingRootStyleFont();
         m_rootDefaultStyle->fontCascade().update(&m_document.fontSelector());
         m_rootDefaultStyle->fontCascade().primaryFont();
-        m_document.fontSelector().setIsComputingRootStyleFont(false);
+        m_document.fontSelector().decrementIsComputingRootStyleFont();
     }
 
     if (m_rootDefaultStyle && view)
         m_mediaQueryEvaluator = MediaQueryEvaluator { view->mediaType(), m_document, m_rootDefaultStyle.get() };
 
     m_ruleSets.resetAuthorStyle();
+}
 
+void StyleResolver::addCurrentSVGFontFaceRules()
+{
 #if ENABLE(SVG_FONTS)
     if (m_document.svgExtensions()) {
         const HashSet<SVGFontFaceElement*>& svgFontFaceElements = m_document.svgExtensions()->svgFontFaceElements();
@@ -245,8 +248,6 @@ StyleResolver::StyleResolver(Document& document)
 void StyleResolver::appendAuthorStyleSheets(const Vector<RefPtr<CSSStyleSheet>>& styleSheets)
 {
     m_ruleSets.appendAuthorStyleSheets(styleSheets, &m_mediaQueryEvaluator, m_inspectorCSSOMWrappers, this);
-
-    document().fontSelector().buildCompleted();
 
     if (auto renderView = document().renderView())
         renderView->style().fontCascade().update(&document().fontSelector());
@@ -1048,38 +1049,15 @@ void StyleResolver::adjustRenderStyle(RenderStyle& style, const RenderStyle& par
             style.setDisplay(BLOCK);
     }
     
-    adjustStyleForAlignment(style, *parentBoxStyle);
-}
-    
-void StyleResolver::adjustStyleForAlignment(RenderStyle& style, const RenderStyle& parentBoxStyle)
-{
-    // To avoid needing to copy the StyleRareNonInheritedData, we repurpose the 'auto'
-    // flag to not just mean 'auto' prior to running adjustRenderStyle but also
-    // mean 'normal' after running it.
-    
     // If the inherited value of justify-items includes the 'legacy' keyword,
     // 'auto' computes to the the inherited value. Otherwise, 'auto' computes to
     // 'normal'.
     if (style.justifyItems().position() == ItemPositionAuto) {
-        if (parentBoxStyle.justifyItems().positionType() == LegacyPosition)
-            style.setJustifyItems(parentBoxStyle.justifyItems());
+        if (parentBoxStyle->justifyItems().positionType() == LegacyPosition)
+            style.setJustifyItems(parentBoxStyle->justifyItems());
     }
-    
-    // The 'auto' keyword computes the computed value of justify-items on the
-    // parent (minus any legacy keywords), or 'normal' if the box has no parent.
-    if (style.justifySelf().position() == ItemPositionAuto) {
-        if (parentBoxStyle.justifyItems().positionType() == LegacyPosition)
-            style.setJustifySelfPosition(parentBoxStyle.justifyItems().position());
-        else if (parentBoxStyle.justifyItems().position() != ItemPositionAuto)
-            style.setJustifySelf(parentBoxStyle.justifyItems());
-    }
-    
-    // The 'auto' keyword computes the computed value of align-items on the parent
-    // or 'normal' if the box has no parent.
-    if (style.alignSelf().position() == ItemPositionAuto && parentBoxStyle.alignItems().position() != RenderStyle::initialDefaultAlignment().position())
-        style.setAlignSelf(parentBoxStyle.alignItems());
 }
-
+    
 bool StyleResolver::checkRegionStyle(const Element* regionElement)
 {
     unsigned rulesSize = m_ruleSets.authorStyle().regionSelectorsAndRuleSets().size();

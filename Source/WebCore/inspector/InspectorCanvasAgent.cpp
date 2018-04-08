@@ -29,25 +29,35 @@
 #include "CanvasRenderingContext.h"
 #include "CanvasRenderingContext2D.h"
 #include "Document.h"
+#include "Element.h"
 #include "Frame.h"
 #include "InspectorDOMAgent.h"
 #include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
+#include "JSCanvasRenderingContext2D.h"
+#include "JSMainThreadExecState.h"
 #include "MainFrame.h"
+#include "ScriptState.h"
 #include <inspector/IdentifiersFactory.h>
+#include <inspector/InjectedScript.h>
+#include <inspector/InjectedScriptManager.h>
 #include <inspector/InspectorProtocolObjects.h>
+#include <runtime/JSCInlines.h>
 
 #if ENABLE(WEBGL)
+#include "JSWebGLRenderingContext.h"
 #include "WebGLContextAttributes.h"
 #include "WebGLRenderingContext.h"
 #include "WebGLRenderingContextBase.h"
 #endif
 
 #if ENABLE(WEBGL2)
+#include "JSWebGL2RenderingContext.h"
 #include "WebGL2RenderingContext.h"
 #endif
 
 #if ENABLE(WEBGPU)
+#include "JSWebGPURenderingContext.h"
 #include "WebGPURenderingContext.h"
 #endif
 
@@ -59,6 +69,7 @@ InspectorCanvasAgent::InspectorCanvasAgent(WebAgentContext& context, InspectorPa
     : InspectorAgentBase(ASCIILiteral("Canvas"), context)
     , m_frontendDispatcher(std::make_unique<Inspector::CanvasFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::CanvasBackendDispatcher::create(context.backendDispatcher, this))
+    , m_injectedScriptManager(context.injectedScriptManager)
     , m_pageAgent(pageAgent)
     , m_timer(*this, &InspectorCanvasAgent::canvasDestroyedTimerFired)
 {
@@ -139,10 +150,92 @@ void InspectorCanvasAgent::requestContent(ErrorString& errorString, const String
             return;
         }
         *content = result.releaseReturnValue();
-    } else {
-        // FIXME: <https://webkit.org/b/173569> Web Inspector: Support getting the content of WebGL/WebGL2/WebGPU contexts
-        errorString = ASCIILiteral("Unsupported canvas context type");
     }
+#if ENABLE(WEBGL)
+    else if (is<WebGLRenderingContextBase>(context)) {
+        WebGLRenderingContextBase* gl = downcast<WebGLRenderingContextBase>(context);
+
+        gl->setPreventBufferClearForInspector(true);
+        ExceptionOr<String> result = canvasEntry->element->toDataURL(ASCIILiteral("image/png"));
+        gl->setPreventBufferClearForInspector(false);
+
+        if (result.hasException()) {
+            errorString = result.releaseException().releaseMessage();
+            return;
+        }
+        *content = result.releaseReturnValue();
+    }
+#endif
+    // FIXME: <https://webkit.org/b/173621> Web Inspector: Support getting the content of WebGPU contexts
+    else
+        errorString = ASCIILiteral("Unsupported canvas context type");
+}
+
+void InspectorCanvasAgent::requestCSSCanvasClientNodes(ErrorString& errorString, const String& canvasId, RefPtr<Inspector::Protocol::Array<int>>& result)
+{
+    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
+    if (!canvasEntry) {
+        errorString = ASCIILiteral("Invalid canvas identifier");
+        return;
+    }
+
+    result = Inspector::Protocol::Array<int>::create();
+    for (Element* element : canvasEntry->element->cssCanvasClients()) {
+        if (int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&element->document()))
+            result->addItem(m_instrumentingAgents.inspectorDOMAgent()->pushNodeToFrontend(errorString, documentNodeId, element));
+    }
+}
+
+static JSC::JSValue contextAsScriptValue(JSC::ExecState& state, CanvasRenderingContext* context)
+{
+    JSC::JSLockHolder lock(&state);
+
+    if (is<CanvasRenderingContext2D>(context))
+        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<CanvasRenderingContext2D>(context));
+#if ENABLE(WEBGL)
+    if (is<WebGLRenderingContext>(context))
+        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebGLRenderingContext>(context));
+#endif
+#if ENABLE(WEBGL2)
+    if (is<WebGL2RenderingContext>(context))
+        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebGL2RenderingContext>(context));
+#endif
+#if ENABLE(WEBGPU)
+    if (is<WebGPURenderingContext>(context))
+        return toJS(&state, deprecatedGlobalObjectForPrototype(&state), downcast<WebGPURenderingContext>(context));
+#endif
+
+    return { };
+}
+
+void InspectorCanvasAgent::resolveCanvasContext(ErrorString& errorString, const String& canvasId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
+{
+    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
+    if (!canvasEntry) {
+        errorString = ASCIILiteral("Invalid canvas identifier");
+        return;
+    }
+
+    Frame* frame = canvasEntry->element->document().frame();
+    if (!frame) {
+        errorString = ASCIILiteral("Canvas belongs to a document without a frame");
+        return;
+    }
+
+    auto& state = *mainWorldExecState(frame);
+    auto injectedScript = m_injectedScriptManager.injectedScriptFor(&state);
+    ASSERT(!injectedScript.hasNoValue());
+
+    CanvasRenderingContext* context = canvasEntry->element->renderingContext();
+    JSC::JSValue value = contextAsScriptValue(state, context);
+    if (!value) {
+        ASSERT_NOT_REACHED();
+        errorString = ASCIILiteral("Unknown context type");
+        return;
+    }
+
+    String objectGroupName = objectGroup ? *objectGroup : String();
+    result = injectedScript.wrapObject(value, objectGroupName);
 }
 
 void InspectorCanvasAgent::frameNavigated(Frame& frame)
@@ -171,6 +264,15 @@ void InspectorCanvasAgent::didCreateCSSCanvas(HTMLCanvasElement& canvasElement, 
     ASSERT(!m_canvasEntries.contains(&canvasElement));
 
     m_canvasToCSSCanvasId.set(&canvasElement, name);
+}
+
+void InspectorCanvasAgent::didChangeCSSCanvasClientNodes(HTMLCanvasElement& canvasElement)
+{
+    const CanvasEntry* canvasEntry = getCanvasEntry(canvasElement);
+    if (!canvasEntry)
+        return;
+
+    m_frontendDispatcher->cssCanvasClientNodesChanged(canvasEntry->identifier);
 }
 
 void InspectorCanvasAgent::didCreateCanvasRenderingContext(HTMLCanvasElement& canvasElement)

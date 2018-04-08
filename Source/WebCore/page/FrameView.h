@@ -258,6 +258,10 @@ public:
     // If set, overrides the default "m_layoutViewportOrigin, size of initial containing block" rect.
     // Used with delegated scrolling (i.e. iOS).
     WEBCORE_EXPORT void setLayoutViewportOverrideRect(std::optional<LayoutRect>);
+    // If set, overrides m_layoutViewportOverrideRect. Only used during unstable scroll updates, so that "client" coordinates are 
+    // computed with an origin that changes along with the scroll position.
+    // FIXME: This is ugly; would be better to be able to make setLayoutViewportOverrideRect() callable during unstable updates. 
+    WEBCORE_EXPORT void setUnstableLayoutViewportRect(std::optional<LayoutRect>);
 
     // These are in document coordinates, unaffected by page scale (but affected by zooming).
     WEBCORE_EXPORT LayoutRect layoutViewportRect() const;
@@ -450,7 +454,10 @@ public:
     // "Client"
     //    Relative to the visible part of the document (or, more strictly, the layout viewport rect), and with the same scaling
     //    as Document coordinates, i.e. matching CSS pixels. Affected by scroll origin.
-    //    
+    //
+    // "LayoutViewport"
+    //    Similar to client coordinates, but affected by page zoom (but not page scale).
+    //
 
     // Methods to convert points and rects between the coordinate space of the renderer, and this view.
     WEBCORE_EXPORT IntRect convertFromRendererToContainingView(const RenderElement*, const IntRect&) const;
@@ -473,6 +480,12 @@ public:
     FloatSize documentToClientOffset() const;
     FloatRect documentToClientRect(FloatRect) const;
     FloatPoint documentToClientPoint(FloatPoint) const;
+
+    FloatRect layoutViewportToAbsoluteRect(FloatRect) const;
+    FloatPoint layoutViewportToAbsolutePoint(FloatPoint) const;
+
+    // Unlike client coordinates, layout viewport coordinates are affected by page zoom.
+    FloatPoint clientToLayoutViewportPoint(FloatPoint) const;
 
     bool isFrameViewScrollCorner(const RenderScrollbarPart& scrollCorner) const { return m_scrollCorner == &scrollCorner; }
 
@@ -833,6 +846,7 @@ private:
     
     LayoutPoint m_layoutViewportOrigin;
     std::optional<LayoutRect> m_layoutViewportOverrideRect;
+    std::optional<LayoutRect> m_unstableLayoutViewportRect;
 
     unsigned m_deferSetNeedsLayoutCount;
     bool m_setNeedsLayoutWasDeferred;

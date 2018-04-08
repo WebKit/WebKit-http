@@ -28,7 +28,7 @@
     <ProgramFilesAAS64>Program Files\Common Files\Apple\Apple Application Support</ProgramFilesAAS64>
     <ConfigurationBuildDir>$(OBJROOT)\$(CONFIG)</ConfigurationBuildDir>  
     <OutputDirectory>$(DSTROOT)</OutputDirectory>
-	<CMakeCommandCommon>cmake $(SRCROOT) -DPORT=AppleWin $(DebugSuffixDefinition) -DINTERNAL_BUILD=1 -DWEBKIT_LIBRARIES_DIR=$(WebKit_Libraries.Replace('\','/')) -DCMAKE_MODULE_PATH=$(SRCROOT.Replace('\','/'))/AppleInternal/tools/cmake -DCMAKE_BINARY_DIR=$(OBJROOT.Replace('\','/'))/$(CONFIG) -DCMAKE_BUILD_TYPE=$(CONFIGURATION) -DWEBCORE_DIR=$(SRCROOT.Replace('\','/'))</CMakeCommandCommon>
+	<CMakeCommandCommon>cmake $(SRCROOT) -DPORT=AppleWin $(DebugSuffixDefinition) -DINTERNAL_BUILD=1 -DWEBKIT_LIBRARIES_DIR=$(WebKit_Libraries.Replace('\','/')) -DCMAKE_MODULE_PATH=$(SRCROOT.Replace('\','/'))/AppleInternal/tools/cmake -DCMAKE_BINARY_DIR=$(OBJROOT.Replace('\','/'))/$(CONFIG) -DCMAKE_BUILD_TYPE=$(CONFIGURATION) -DWEBCORE_DIR=$(SRCROOT.Replace('\','/')) -DPAL_DIR=$(SRCROOT.Replace('\','/'))/PAL</CMakeCommandCommon>
   </PropertyGroup>
  
   <!-- Prepare for build -->
@@ -54,9 +54,9 @@
   <Target Name="Build" AfterTargets="PreBuild">
     <Message Text="Building $(CONFIGURATION) Solution" />
     <Error Text="DSTROOT property or environment variable must be defined." Condition="'$(DSTROOT)' == ''" />
-	<Exec Command="$(CMakeCommandCommon) -G &quot;Visual Studio 14 2015&quot;" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build32"/>
+	<Exec Command="$(CMakeCommandCommon) -DWTF_CPU_X86=1 -G &quot;Visual Studio 14 2015&quot;" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build32"/>
 	<Exec Command="msbuild Project.sln /p:Configuration=$(CONFIG)" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build32"/>
-	<Exec Command="$(CMakeCommandCommon) -G &quot;Visual Studio 14 2015 Win64&quot;" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build64"/>
+	<Exec Command="$(CMakeCommandCommon) -DWTF_CPU_X86_64=1 -G &quot;Visual Studio 14 2015 Win64&quot;" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build64"/>
 	<Exec Command="msbuild Project.sln /p:Configuration=$(CONFIG)" WorkingDirectory="$(OBJROOT)/$(CONFIG)/build64"/>
   </Target>
 

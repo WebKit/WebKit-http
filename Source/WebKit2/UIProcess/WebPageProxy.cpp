@@ -332,7 +332,6 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     , m_uiClient(std::make_unique<API::UIClient>())
     , m_findClient(std::make_unique<API::FindClient>())
     , m_findMatchesClient(std::make_unique<API::FindMatchesClient>())
-    , m_diagnosticLoggingClient(std::make_unique<API::DiagnosticLoggingClient>())
 #if ENABLE(CONTEXT_MENUS)
     , m_contextMenuClient(std::make_unique<API::ContextMenuClient>())
 #endif
@@ -563,12 +562,6 @@ void WebPageProxy::setFindMatchesClient(std::unique_ptr<API::FindMatchesClient>&
 
 void WebPageProxy::setDiagnosticLoggingClient(std::unique_ptr<API::DiagnosticLoggingClient>&& diagnosticLoggingClient)
 {
-    // Diagnostic logging is disabled for ephemeral sessions for privacy reasons.
-    if (sessionID().isEphemeral() || !diagnosticLoggingClient) {
-        m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
-        return;
-    }
-
     m_diagnosticLoggingClient = WTFMove(diagnosticLoggingClient);
 }
 
@@ -766,7 +759,7 @@ void WebPageProxy::close()
     m_uiClient = std::make_unique<API::UIClient>();
     m_findClient = std::make_unique<API::FindClient>();
     m_findMatchesClient = std::make_unique<API::FindMatchesClient>();
-    m_diagnosticLoggingClient = std::make_unique<API::DiagnosticLoggingClient>();
+    m_diagnosticLoggingClient = nullptr;
 #if ENABLE(CONTEXT_MENUS)
     m_contextMenuClient = std::make_unique<API::ContextMenuClient>();
 #endif
@@ -1673,7 +1666,15 @@ void WebPageProxy::setMediaStreamCaptureMuted(bool muted)
     else
         setMuted(m_mutedState & ~WebCore::MediaProducer::CaptureDevicesAreMuted);
 }
-    
+
+void WebPageProxy::activateMediaStreamCaptureInPage()
+{
+#if ENABLE(MEDIA_STREAM)
+    UserMediaProcessManager::singleton().muteCaptureMediaStreamsExceptIn(*this);
+#endif
+    setMuted(m_mutedState & ~WebCore::MediaProducer::CaptureDevicesAreMuted);
+}
+
 #if !PLATFORM(IOS)
 void WebPageProxy::didCommitLayerTree(const RemoteLayerTreeTransaction&)
 {
@@ -3639,14 +3640,10 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     if (m_navigationClient) {
         RefPtr<API::FrameInfo> destinationFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
         RefPtr<API::FrameInfo> sourceFrameInfo;
-        if (originatingFrame == frame)
+        if (!fromAPI && originatingFrame == frame)
             sourceFrameInfo = destinationFrameInfo;
-        else
+        else if (!fromAPI)
             sourceFrameInfo = API::FrameInfo::create(originatingFrameInfoData, m_process->webPage(originatingPageID));
-        if (fromAPI) {
-            sourceFrameInfo->clearPage();
-            destinationFrameInfo->clearPage();
-        }
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
@@ -4149,7 +4146,8 @@ void WebPageProxy::setMuted(WebCore::MediaProducer::MutedStateFlags state)
         return;
 
 #if ENABLE(MEDIA_STREAM)
-    if (!(state & WebCore::MediaProducer::CaptureDevicesAreMuted))
+    bool hasMutedCaptureStreams = m_mediaState & (WebCore::MediaProducer::HasMutedAudioCaptureDevice | WebCore::MediaProducer::HasMutedVideoCaptureDevice);
+    if (hasMutedCaptureStreams && !(state & WebCore::MediaProducer::CaptureDevicesAreMuted))
         UserMediaProcessManager::singleton().muteCaptureMediaStreamsExceptIn(*this);
 #endif
 
@@ -4853,10 +4851,7 @@ void WebPageProxy::setToolTip(const String& toolTip)
 
 void WebPageProxy::setCursor(const WebCore::Cursor& cursor)
 {
-    // The Web process may have asked to change the cursor when the view was in an active window, but
-    // if it is no longer in a window or the window is not active, then the cursor should not change.
-    if (m_pageClient.isViewWindowActive())
-        m_pageClient.setCursor(cursor);
+    m_pageClient.setCursor(cursor);
 }
 
 void WebPageProxy::setCursorHiddenUntilMouseMoves(bool hiddenUntilMouseMoves)
@@ -5146,36 +5141,49 @@ void WebPageProxy::machSendRightCallback(const MachSendRight& sendRight, Callbac
 }
 #endif
 
+inline API::DiagnosticLoggingClient* WebPageProxy::effectiveDiagnosticLoggingClient(ShouldSample shouldSample)
+{
+    // Diagnostic logging is disabled for ephemeral sessions for privacy reasons.
+    if (sessionID().isEphemeral())
+        return nullptr;
+
+    return DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample) ? diagnosticLoggingClient() : nullptr;
+}
+
 void WebPageProxy::logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample shouldSample)
 {
-    if (!DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample))
+    auto* effectiveClient = effectiveDiagnosticLoggingClient(shouldSample);
+    if (!effectiveClient)
         return;
 
-    diagnosticLoggingClient().logDiagnosticMessage(this, message, description);
+    effectiveClient->logDiagnosticMessage(this, message, description);
 }
 
 void WebPageProxy::logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, WebCore::ShouldSample shouldSample)
 {
-    if (!DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample))
+    auto* effectiveClient = effectiveDiagnosticLoggingClient(shouldSample);
+    if (!effectiveClient)
         return;
 
-    diagnosticLoggingClient().logDiagnosticMessageWithResult(this, message, description, static_cast<WebCore::DiagnosticLoggingResultType>(result));
+    effectiveClient->logDiagnosticMessageWithResult(this, message, description, static_cast<WebCore::DiagnosticLoggingResultType>(result));
 }
 
 void WebPageProxy::logDiagnosticMessageWithValue(const String& message, const String& description, double value, unsigned significantFigures, ShouldSample shouldSample)
 {
-    if (!DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample))
+    auto* effectiveClient = effectiveDiagnosticLoggingClient(shouldSample);
+    if (!effectiveClient)
         return;
 
-    diagnosticLoggingClient().logDiagnosticMessageWithValue(this, message, description, String::number(value, significantFigures));
+    effectiveClient->logDiagnosticMessageWithValue(this, message, description, String::number(value, significantFigures));
 }
 
 void WebPageProxy::logDiagnosticMessageWithEnhancedPrivacy(const String& message, const String& description, ShouldSample shouldSample)
 {
-    if (!DiagnosticLoggingClient::shouldLogAfterSampling(shouldSample))
+    auto* effectiveClient = effectiveDiagnosticLoggingClient(shouldSample);
+    if (!effectiveClient)
         return;
 
-    diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(this, message, description);
+    effectiveClient->logDiagnosticMessageWithEnhancedPrivacy(this, message, description);
 }
 
 void WebPageProxy::logScrollingEvent(uint32_t eventType, MonotonicTime timestamp, uint64_t data)

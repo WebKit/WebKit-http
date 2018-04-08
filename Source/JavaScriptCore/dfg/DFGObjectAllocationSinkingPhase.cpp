@@ -50,7 +50,8 @@ namespace {
 
 NO_RETURN_DUE_TO_CRASH NEVER_INLINE void crash(const char*, int line, int)
 {
-    CRASH_WITH_SECURITY_IMPLICATION_AND_INFO(line);
+    UNUSED_PARAM(line);
+    CRASH_WITH_SECURITY_IMPLICATION_AND_INFO(ObjectAllocationSinkingAssertionFailure, line);
 }
 
 #undef RELEASE_ASSERT
@@ -217,6 +218,7 @@ public:
     {
         ASSERT(hasStructures());
         m_structures.filter(structures);
+        RELEASE_ASSERT(!m_structures.isEmpty());
         return *this;
     }
 
@@ -901,7 +903,15 @@ private:
         case CheckStructure: {
             Allocation* allocation = m_heap.onlyLocalAllocation(node->child1().node());
             if (allocation && allocation->isObjectAllocation()) {
-                allocation->filterStructures(node->structureSet());
+                RegisteredStructureSet filteredStructures = allocation->structures();
+                filteredStructures.filter(node->structureSet());
+                if (filteredStructures.isEmpty()) {
+                    // FIXME: Write a test for this:
+                    // https://bugs.webkit.org/show_bug.cgi?id=174322
+                    m_heap.escape(node->child1().node());
+                    break;
+                }
+                allocation->setStructures(filteredStructures);
                 if (Node* value = heapResolve(PromotedHeapLocation(allocation->identifier(), StructurePLoc)))
                     node->convertToCheckStructureImmediate(value);
             } else
@@ -945,7 +955,7 @@ private:
                         RELEASE_ASSERT_NOT_REACHED();
                     }
                 }
-                if (hasInvalidStructures) {
+                if (hasInvalidStructures || validStructures.isEmpty()) {
                     m_heap.escape(node->child1().node());
                     break;
                 }

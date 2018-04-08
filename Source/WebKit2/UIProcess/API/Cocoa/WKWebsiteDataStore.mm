@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -207,6 +207,15 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     _websiteDataStore->websiteDataStore().setResourceLoadStatisticsEnabled(enabled);
 }
 
+- (void)_resourceLoadStatisticsSetLastSeen:(double)seconds forHost:(NSString *)host
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+    
+    store->setLastSeen(URL(URL(), host), Seconds { seconds });
+}
+
 - (void)_resourceLoadStatisticsSetIsPrevalentResource:(BOOL)value forHost:(NSString *)host
 {
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
@@ -345,43 +354,61 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     store->setGrandfatheringTime(Seconds {seconds });
 }
 
-- (void)_resourceLoadStatisticsFireDataModificationHandler
+- (void)_resourceLoadStatisticsSetMaxStatisticsEntries:(size_t)entries
 {
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
-    store->fireDataModificationHandler();
+    store->setMaxStatisticsEntries(entries);
 }
 
-- (void)_resourceLoadStatisticsFireShouldPartitionCookiesHandler
+- (void)_resourceLoadStatisticsSetPruneEntriesDownTo:(size_t)entries
 {
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
-    store->fireShouldPartitionCookiesHandler();
+    store->setPruneEntriesDownTo(entries);
 }
 
-- (void)_resourceLoadStatisticsFireShouldPartitionCookiesHandlerForOneDomain:(BOOL)value forHost:(NSString *)host
+- (void)_resourceLoadStatisticsProcessStatisticsAndDataRecords
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+
+    store->processStatisticsAndDataRecords();
+}
+
+- (void)_resourceLoadStatisticsUpdateCookiePartitioning
+{
+    auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
+    if (!store)
+        return;
+
+    store->scheduleCookiePartitioningUpdate();
+}
+
+- (void)_resourceLoadStatisticsSetShouldPartitionCookies:(BOOL)value forHost:(NSString *)host
 {
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
     if (value)
-        store->fireShouldPartitionCookiesHandler({ }, { host }, false);
+        store->scheduleCookiePartitioningUpdateForDomains({ }, { host }, WebKit::ShouldClearFirst::No);
     else
-        store->fireShouldPartitionCookiesHandler({ host }, { }, false);
+        store->scheduleCookiePartitioningUpdateForDomains({ host }, { }, WebKit::ShouldClearFirst::No);
 }
 
-- (void)_resourceLoadStatisticsFireTelemetryHandler
+- (void)_resourceLoadStatisticsSubmitTelemetry
 {
     auto* store = _websiteDataStore->websiteDataStore().resourceLoadStatistics();
     if (!store)
         return;
 
-    store->fireTelemetryHandler();
+    store->submitTelemetry();
 }
 
 - (void)_resourceLoadStatisticsSetNotifyPagesWhenDataRecordsWereScanned:(BOOL)value
@@ -422,7 +449,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     if (!store)
         return;
 
-    store->clearInMemoryAndPersistent();
+    store->scheduleClearInMemoryAndPersistent();
 }
 
 - (void)_resourceLoadStatisticsClearInMemoryAndPersistentStoreModifiedSinceHours:(unsigned)hours
@@ -431,7 +458,7 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     if (!store)
         return;
 
-    store->clearInMemoryAndPersistent(std::chrono::system_clock::now() - std::chrono::hours(hours));
+    store->scheduleClearInMemoryAndPersistent(std::chrono::system_clock::now() - std::chrono::hours(hours));
 }
 
 - (void)_resourceLoadStatisticsResetToConsistentState
@@ -440,14 +467,17 @@ static Vector<WebKit::WebsiteDataRecord> toWebsiteDataRecords(NSArray *dataRecor
     if (!store)
         return;
 
-    store->setTimeToLiveUserInteraction(24_h * 30.);
+    // FIXME: These needs to match the default data member values in ResourceLoadStatistics, which is fragile.
+    store->setMaxStatisticsEntries(1000);
+    store->setPruneEntriesDownTo(800);
+    store->setTimeToLiveUserInteraction(std::nullopt);
     store->setTimeToLiveCookiePartitionFree(24_h);
     store->setMinimumTimeBetweenDataRecordsRemoval(1_h);
     store->setGrandfatheringTime(1_h);
     store->setNotifyPagesWhenDataRecordsWereScanned(false);
     WebKit::WebResourceLoadStatisticsTelemetry::setNotifyPagesWhenTelemetryWasCaptured(false);
     store->setShouldClassifyResourcesBeforeDataRecordsRemoval(true);
-    store->clearInMemory();
+    store->scheduleClearInMemory();
 }
 
 @end

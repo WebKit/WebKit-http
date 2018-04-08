@@ -576,12 +576,12 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(WEB_RTC)
 void WebPage::disableICECandidateFiltering()
 {
-    m_page->rtcController().disableICECandidateFiltering();
+    m_page->disableICECandidateFiltering();
 }
 
 void WebPage::enableICECandidateFiltering()
 {
-    m_page->rtcController().disableICECandidateFiltering();
+    m_page->enableICECandidateFiltering();
 }
 
 #if USE(LIBWEBRTC)
@@ -2281,7 +2281,7 @@ void WebPage::contextMenuForKeyEvent()
 }
 #endif
 
-static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, bool onlyUpdateScrollbars)
+static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page)
 {
     Frame& frame = page->corePage()->mainFrame();
     if (!frame.view())
@@ -2307,8 +2307,15 @@ static bool handleMouseEvent(const WebMouseEvent& mouseEvent, WebPage* page, boo
             return page->corePage()->userInputBridge().handleMouseReleaseEvent(platformMouseEvent);
 
         case PlatformEvent::MouseMoved:
-            if (onlyUpdateScrollbars)
+#if PLATFORM(COCOA)
+            // We need to do a full, normal hit test during this mouse event if the page is active or if a mouse
+            // button is currently pressed. It is possible that neither of those things will be true since on
+            // Lion when legacy scrollbars are enabled, WebKit receives mouse events all the time. If it is one
+            // of those cases where the page is not active and the mouse is not pressed, then we can fire a more
+            // efficient scrollbars-only version of the event.
+            if (!(page->corePage()->focusController().isActive() || (mouseEvent.button() != WebMouseEvent::NoButton)))
                 return page->corePage()->userInputBridge().handleMouseMoveOnScrollbarEvent(platformMouseEvent);
+#endif
             return page->corePage()->userInputBridge().handleMouseMoveEvent(platformMouseEvent);
 
         case PlatformEvent::MouseForceChanged:
@@ -2356,14 +2363,7 @@ void WebPage::mouseEvent(const WebMouseEvent& mouseEvent)
 
     if (!handled) {
         CurrentEvent currentEvent(mouseEvent);
-
-        // We need to do a full, normal hit test during this mouse event if the page is active or if a mouse
-        // button is currently pressed. It is possible that neither of those things will be true since on
-        // Lion when legacy scrollbars are enabled, WebKit receives mouse events all the time. If it is one
-        // of those cases where the page is not active and the mouse is not pressed, then we can fire a more
-        // efficient scrollbars-only version of the event.
-        bool onlyUpdateScrollbars = !(m_page->focusController().isActive() || (mouseEvent.button() != WebMouseEvent::NoButton));
-        handled = handleMouseEvent(mouseEvent, this, onlyUpdateScrollbars);
+        handled = handleMouseEvent(mouseEvent, this);
     }
 
     send(Messages::WebPageProxy::DidReceiveEvent(static_cast<uint32_t>(mouseEvent.type()), handled));
@@ -3270,8 +3270,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setMaxParseDuration(store.getDoubleValueForKey(WebPreferencesKey::maxParseDurationKey()));
 
     settings.setEnableInheritURIQueryComponent(store.getBoolValueForKey(WebPreferencesKey::enableInheritURIQueryComponentKey()));
-
-    settings.setShouldDispatchJavaScriptWindowOnErrorEvents(true);
 
     auto userInterfaceDirectionPolicyCandidate = static_cast<WebCore::UserInterfaceDirectionPolicy>(store.getUInt32ValueForKey(WebPreferencesKey::userInterfaceDirectionPolicyKey()));
     if (userInterfaceDirectionPolicyCandidate == WebCore::UserInterfaceDirectionPolicy::Content || userInterfaceDirectionPolicyCandidate == WebCore::UserInterfaceDirectionPolicy::System)
@@ -5634,7 +5632,10 @@ void WebPage::updateWebsitePolicies(const WebsitePolicies& websitePolicies)
         return;
 
     documentLoader->setAutoplayPolicy(autoplayPolicy);
+    
+#if ENABLE(VIDEO)
     m_page->updateMediaElementRateChangeRestrictions();
+#endif
 }
 
 unsigned WebPage::extendIncrementalRenderingSuppression()

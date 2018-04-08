@@ -706,6 +706,7 @@ http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subreso
 http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
 webkit.org/b/172452 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Pass Failure Timeout ]
 webkit.org/b/173499 http/tests/loading/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
+http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################
@@ -718,9 +719,6 @@ webkit.org/b/173499 http/tests/loading/resourceLoadStatistics/telemetry-generati
 ### (3) Unclassified failures
 ### (4) Features that are not supported in WebKit2 and likely never will be
 ### (5) Progressions, expected successes that are expected failures in WebKit1.
-
-
-webkit.org/b/172922 webrtc/datachannel/basic.html [ Pass Timeout ]
 
 webkit.org/b/168092 media/track/track-cues-sorted-before-dispatch.html [ Pass Failure ]
 

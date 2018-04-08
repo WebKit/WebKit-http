@@ -1,3 +1,744 @@
+2017-07-11  Charlie Turner  <cturner@igalia.com>
+
+        REGRESSION(r219298): [GTK] imported/w3c/IndexedDB-private-browsing/idbfactory_open.html is crashing occassionaly
+        https://bugs.webkit.org/show_bug.cgi?id=174354
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-11  Charlie Turner  <cturner@igalia.com>
+
+        [GTK][WPE] Some resource load statistics tests added in r212183 also fail.
+        https://bugs.webkit.org/show_bug.cgi?id=168171
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-11  Ali Juma  <ajuma@chromium.org>
+
+        elementFromPoint() should consider x and y to be in client (layout viewport) coordinates
+        https://bugs.webkit.org/show_bug.cgi?id=172019
+
+        Reviewed by Simon Fraser.
+
+        * fast/dom/elementFromPoint-scaled-scrolled-expected.txt: Updated.
+        * fast/dom/elementFromPoint-scaled-scrolled.html: Updated.
+        * platform/ios/TestExpectations:
+
+2017-07-11  Charlie Turner  <cturner@igalia.com>
+
+        [GTK] compositing/video/poster.html passing since r218320
+        https://bugs.webkit.org/show_bug.cgi?id=169918
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-11  Sergio Villar Senin  <svillar@igalia.com>
+
+        [SVG] Leak in SVGAnimatedListPropertyTearOff
+        https://bugs.webkit.org/show_bug.cgi?id=172545
+
+        Reviewed by Darin Adler.
+
+        * svg/animations/animation-leak-list-property-instances-expected.txt: Added.
+        * svg/animations/animation-leak-list-property-instances.html: Added.
+
+2017-07-11  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Spin buttons on input type number appear over the value itself for small widths
+        https://bugs.webkit.org/show_bug.cgi?id=173572
+
+        Reviewed by Carlos Garcia Campos.
+
+        * fast/forms/number/number-size-expected.txt:
+        * fast/forms/number/number-size.html: Obtain the size of the spinbutton by inspecting the shadow dom (is more reliable)
+          and make the test for user controlled style special for the case of GTK+.
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover-expected.png: Added.
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover-expected.txt: Added.
+        * platform/gtk/fast/forms/number/number-size-spinbutton-nocover.html: Added.
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        We should do ICE candidate filtering at the Document level
+        https://bugs.webkit.org/show_bug.cgi?id=173861
+        <rdar://problem/33122058>
+
+        Reviewed by Eric Carlson.
+
+        * http/tests/webrtc/filtering-ice-candidate-cross-origin-frame-expected.txt: Added.
+        * http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html: Added.
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame-expected.txt: Added.
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html: Added.
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame2-expected.txt: Added.
+        * http/tests/webrtc/filtering-ice-candidate-same-origin-frame2.html: Added.
+        * http/tests/webrtc/resources/check-ice-candidate-filtering.html: Added.
+        * http/tests/webrtc/resources/do-get-user-media.html: Added.
+        * platform/mac-wk1/TestExpectations: Disable http/tests/webrtc tests.
+        * resources/testharnessreport.js: Disabled ICE candidate filtering by default.
+        * webrtc/filtering-ice-candidate-after-reload-expected.txt: Added.
+        * webrtc/filtering-ice-candidate-after-reload.html: Added.
+
+2017-07-11  Sergio Villar Senin  <svillar@igalia.com>
+
+        Unreviewed, rolling out r219325.
+
+        The test is still flaky
+
+        Reverted changeset:
+
+        "[SVG] Leak in SVGAnimatedListPropertyTearOff"
+        https://bugs.webkit.org/show_bug.cgi?id=172545
+        http://trac.webkit.org/changeset/219325
+
+2017-07-11  Charlie Turner  <cturner@igalia.com>
+
+        [GTK] media/video-restricted-invisible-autoplay-not-allowed.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=174353
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations:
+
+2017-07-11  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        * platform/wpe/TestExpectations:
+        Enable EMEv3 tests under media/encrypted-media/, all of them passing.
+
+2017-07-10  Brent Fulgham  <bfulgham@apple.com>
+
+        Resource Load Statistics: Prune statistics in orders of importance
+        https://bugs.webkit.org/show_bug.cgi?id=174215
+        <rdar://problem/33164403>
+
+        Unreviewed test correction.
+
+        Drive-by fix after recent refactoring to correct the new function names in TestRunner.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+
+2017-07-10  Simon Fraser  <simon.fraser@apple.com>
+
+        [WK2 iOS] REGRESSION (r216803) During momentum scroll, getBoundingClientRect returns wrong coordinates (missing images on pinterest, elle.com and many other sites)
+        https://bugs.webkit.org/show_bug.cgi?id=174286
+        rdar://problem/32864180
+
+        Reviewed by Dean Jackson.
+
+        * fast/visual-viewport/ios/get-bounding-client-rect-unstable-expected.txt: Added.
+        * fast/visual-viewport/ios/get-bounding-client-rect-unstable.html: Added.
+
+2017-07-10  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Prune statistics in orders of importance
+        https://bugs.webkit.org/show_bug.cgi?id=174215
+        <rdar://problem/33164403>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/loading/resourceLoadStatistics/prune-statistics-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/prune-statistics.html: Added.
+        * platform/wk2/TestExpectations:
+            Added http/tests/loading/resourceLoadStatistics/prune-statistics.html as
+            [ Pass ] since Resource Load Statistics is WK2-only.
+
+2017-07-10  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Highlight matching CSS canvas clients when hovering contexts in the Resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=174279
+
+        Reviewed by Matt Baker.
+
+        * inspector/dom/highlightNodeList-expected.html: Added.
+        * inspector/dom/highlightNodeList.html: Added.
+
+2017-07-10  Javier Fernandez  <jfernandez@igalia.com>
+
+        [css-align][css-flex][css-grid] 'auto' values of align-self and justify-self must not be resolved
+        https://bugs.webkit.org/show_bug.cgi?id=172707
+
+        Reviewed by Antti Koivisto.
+
+        Updated layout tests so that resolved value is as specified, even for 'auto' values.
+
+        * TestExpectations:
+        * css3/flexbox/css-properties-expected.txt:
+        * css3/flexbox/css-properties.html:
+        * css3/flexbox/new-alignment-values-invalid-if-grid-not-enabled-expected.txt:
+        * css3/flexbox/new-alignment-values-invalid-if-grid-not-enabled.html:
+        * css3/parse-align-self.html:
+        * css3/parse-alignment-of-root-elements-expected.txt:
+        * css3/parse-alignment-of-root-elements.html:
+        * css3/parse-place-items.html:
+        * css3/parse-place-self.html:
+        * fast/css/ensure-flexbox-compatibility-with-initial-values-expected.txt:
+        * fast/css/parse-justify-self.html:
+
+2017-07-10  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        fast/text/trak-optimizeLegibility.html is failing on macOS High Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=174325
+        <rdar://problem/33190322>
+
+        Reviewed by Zalan Bujtas.
+
+        The name of the font changed.
+
+        * fast/text/trak-optimizeLegibility.html:
+
+2017-07-10  Youenn Fablet  <youenn@apple.com>
+
+        Update webrtc expectations
+        https://bugs.webkit.org/show_bug.cgi?id=174318
+
+        Unreviewed.
+
+        Updated expectation according flakiness dashboard information.
+
+        * TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-07-10  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Ignore touch events that interrupt platform-driven momentum scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=174300
+        <rdar://problem/33030639>
+
+        Reviewed by Simon Fraser.
+
+        Adds 3 new LayoutTests covering cases of touch event handling during scroll deceleration in mainframe and
+        overflow scrolling containers. See Source/WebKit2/ChangeLog for more detail.
+
+        * fast/events/ios/no-touch-events-when-stopping-momentum-scroll-in-mainframe-expected.txt: Added.
+        * fast/events/ios/no-touch-events-when-stopping-momentum-scroll-in-mainframe.html: Added.
+        * fast/events/ios/no-touch-events-when-stopping-momentum-scroll-in-overflow-expected.txt: Added.
+        * fast/events/ios/no-touch-events-when-stopping-momentum-scroll-in-overflow.html: Added.
+        * fast/events/ios/touch-events-during-scroll-deceleration-in-overflow-expected.txt: Added.
+        * fast/events/ios/touch-events-during-scroll-deceleration-in-overflow.html: Added.
+
+2017-07-10  Matt Lewis  <jlewis3@apple.com>
+
+        Marked animations/resume-after-page-cache.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=174183
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-07-10  Jeremy Jones  <jeremyj@apple.com>
+
+        media element handle adding source immediately before src.
+        https://bugs.webkit.org/show_bug.cgi?id=174284
+        rdar://problem/33115439
+
+        Reviewed by David Kilzer.
+
+        * media/video-source-before-src.html: Added.
+
+2017-07-10  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed test expectations for http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html.
+        https://bugs.webkit.org/show_bug.cgi?id=174120
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-07-03  Brian Burg  <bburg@apple.com>
+
+        Web Replay: remove some unused code
+        https://bugs.webkit.org/show_bug.cgi?id=173903
+
+        Rubber-stamped by Joseph Pecoraro.
+
+        * inspector/replay/javascript-date-now-expected.txt: Removed.
+        * inspector/replay/javascript-date-now.html: Removed.
+        * inspector/replay/javascript-random-seed-expected.txt: Removed.
+        * inspector/replay/javascript-random-seed.html: Removed.
+        * inspector/replay/window-navigator-plugins-memoized-expected.txt: Removed.
+        * inspector/replay/window-navigator-plugins-memoized.html: Removed.
+
+2017-07-10  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html.
+        https://bugs.webkit.org/show_bug.cgi?id=174120
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-07-10  Chris Dumez  <cdumez@apple.com>
+
+        Further WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore clean up
+        https://bugs.webkit.org/show_bug.cgi?id=174301
+
+        Reviewed by Brent Fulgham.
+
+        Update existing layout tests to reflect testRunner API changes.
+
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+
+2017-07-10  Andreas Kling  <akling@apple.com>
+
+        REGRESSION(r210226): Keyboard-focused element not preserved when navigating back through page cache, causing multiple elements to have focus
+        https://bugs.webkit.org/show_bug.cgi?id=174302
+        <rdar://problem/33204273>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/history/page-cache-element-state-focused-expected.html: Added.
+        * fast/history/page-cache-element-state-focused.html: Added.
+
+2017-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        Block of text is missing in iBooks sample books.
+        https://bugs.webkit.org/show_bug.cgi?id=174295
+        <rdar://problem/32955620>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/multicol/simple-line-layout-line-index-after-strut-2-expected.html: Added.
+        * fast/multicol/simple-line-layout-line-index-after-strut-2.html: Added.
+
+2017-07-08  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: User interaction should always go to top document
+        https://bugs.webkit.org/show_bug.cgi?id=174120
+        <rdar://problem/33117899>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/loading/resourceLoadStatistics/resources/dummy.html: Added.
+        * http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/user-interaction-in-cross-origin-sub-frame.html: Added.
+        * platform/mac-wk2/TestExpectations:
+            Added as [ Pass ].
+
+2017-07-08  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: "visibility:hidden" does not hide play button for video elements
+        https://bugs.webkit.org/show_bug.cgi?id=174258
+        <rdar://problem/33181452>
+
+        Reviewed by Dean Jackson.
+
+        Add a test that checks that <video controls style="visibility:hidden"> does not render anything.
+
+        * media/modern-media-controls/css/visibility-hidden-expected.html: Added.
+        * media/modern-media-controls/css/visibility-hidden.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-07-08  Chris Dumez  <cdumez@apple.com>
+
+        Simplify WebResourceLoadStatisticsStore / ResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174290
+
+        Reviewed by Brent Fulgham.
+
+        Update layout tests to reflect changes to the testRunner API naming.
+
+        * http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-mixed-statistics.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-non-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-statistics.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html:
+        * http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html:
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store-one-hour.html:
+        * http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html:
+        * http/tests/loading/resourceLoadStatistics/grandfathering.html:
+        * http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-with-partitioning-timeout.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-cookies-with-and-without-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/telemetry-generation.html:
+
+2017-07-07  Daniel Bates  <dabates@apple.com>
+
+        [AppCache] Ignore fallback entries whose namespace is not prefixed with manifest path
+        https://bugs.webkit.org/show_bug.cgi?id=174273
+        <rdar://problem/33011682>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/appcache/fallback-namespace-outside-manifest-path-expected.txt: Added.
+        * http/tests/appcache/fallback-namespace-outside-manifest-path.html: Added.
+        * http/tests/appcache/resources/fallback-namespace-outside-manifest-path.txt: Added.
+
+2017-07-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Show all elements currently using a given CSS Canvas
+        https://bugs.webkit.org/show_bug.cgi?id=173965
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/css-canvas-clients-expected.txt: Added.
+        * inspector/canvas/css-canvas-clients.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-07-07  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test expectations for webrtc/video-replace-muted-track.html.
+        https://bugs.webkit.org/show_bug.cgi?id=173608
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-07-07  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219257.
+
+        The test added in the revision was still extreamly flaky on
+        all testers.
+
+        Reverted changeset:
+
+        "[SVG] Leak in SVGAnimatedListPropertyTearOff"
+        https://bugs.webkit.org/show_bug.cgi?id=172545
+        http://trac.webkit.org/changeset/219257
+
+2017-07-07  Mark Lam  <mark.lam@apple.com>
+
+        \n\r is not the same as \r\n.
+        https://bugs.webkit.org/show_bug.cgi?id=173053
+
+        Reviewed by Keith Miller.
+
+        * js/parse-backslash-before-newline-expected.txt:
+        * js/script-tests/parse-backslash-before-newline.js:
+
+2017-07-07  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219256.
+
+        Previous change to Test Expectations broke the tests
+
+        Reverted changeset:
+
+        "[WPE] Unreviewed gardening"
+        http://trac.webkit.org/changeset/219256
+
+2017-07-07  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219258.
+
+        Previous change to Test Expectations broke the tests
+
+        Reverted changeset:
+
+        "Unreviewed gardening, fix WK2 expectations after my previous
+        commit"
+        http://trac.webkit.org/changeset/219258
+
+2017-07-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed gardening, fix WK2 expectations after my previous commit
+
+        * platform/wk2/TestExpectations:
+
+2017-07-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Unreviewed gardening
+
+        * platform/wk2/TestExpectations: Do not mark individual resourceLoadStatistics tests as
+        passing. Instead, mark the entire directory, so we don't have to override the expectations
+        for every single test individually in the WPE expectations file.
+        * platform/wpe/TestExpectations: Update resourceLoadStatistics expectations.
+
+2017-07-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [GTK][WPE] Enable X-Content-Type-Options: nosniff
+        https://bugs.webkit.org/show_bug.cgi?id=174250
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/fetch/nosniff/stylesheet-expected.txt: Removed.
+
+2017-07-07  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] New baseline after r218740
+
+        Unreviewed gardening.
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt:
+
+2017-07-07  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Unreviewed gardening
+
+        resourceLoadingStatistics tests are timing out and failing.
+        * platform/wpe/TestExpectations:
+
+2017-07-07  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] vid.me videos do not play
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add a test for single output file HLS playlists that require HTTP
+        range requests to playback. This failed using the WK http source
+        for reasons documented in the linked bug.
+
+        Generated with mp4hls --segment-duration 3 --output-single-file
+
+        * Http/tests/media/hls/range-request-expected.txt: Added.
+        * http/tests/media/hls/range-request.html: Added.
+        * http/tests/media/resources/hls/range-request-playlist.m3u8: Added.
+        * http/tests/media/resources/hls/range-request-playlists/iframes.m3u8: Added.
+        * http/tests/media/resources/hls/range-request-playlists/media.ts: Added.
+        * http/tests/media/resources/hls/range-request-playlists/stream.m3u8: Added.
+
+2017-07-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed GTK and WPE test gardening
+
+        * platform/gtk/TestExpectations:
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker-expected.txt:
+        * platform/gtk/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_hkdf.https-expected.txt:
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker-expected.txt:
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/test_hkdf.https-expected.txt:
+
+2017-07-06  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Follow-up to "REGRESSION(r209495): materiauxlaverdure.com fails to load"
+        https://bugs.webkit.org/show_bug.cgi?id=173301
+        <rdar://problem/32624850>
+
+        Unreviewed gardening. Attempt to fix this test by updating it to expect double quotes. It
+        was missed because it is marked as flaky on Mac, so no way to automatically detect the
+        failure there.
+
+        This doesn't actually fix the test for me due to some floating point issues, but it's a step
+        in the right direction, and I speculate this will fix the test on the GTK and WPE bots.
+
+        * transitions/clip-path-path-transitions.html:
+
+2017-07-06  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r216944): Font loads can cause Chinese characters to draw as .notdef
+        https://bugs.webkit.org/show_bug.cgi?id=173962
+        <rdar://problem/32925318>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-loading-system-fallback-expected.html: Added.
+        * fast/text/font-loading-system-fallback.html: Added.
+        * http/tests/webfont/font-loading-system-fallback-visibility-expected.html: Added.
+        * http/tests/webfont/font-loading-system-fallback-visibility.html: Added.
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219193.
+
+        The tests added with this revision were extreamly flaky on all
+        platforms.
+
+        Reverted changeset:
+
+        "[SVG] Leak in SVGAnimatedListPropertyTearOff"
+        https://bugs.webkit.org/show_bug.cgi?id=172545
+        http://trac.webkit.org/changeset/219193
+
+2017-07-06  Matt Lewis  <jlewis3@apple.com>
+
+        Marked js/slow-stress/Int32Array-alloc-huge.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173010
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-07-06  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Support getting the content of WebGL/WebGL2 contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173569
+        <rdar://problem/33112420>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/requestContent-2d-expected.txt: Added.
+        * inspector/canvas/requestContent-2d.html: Added.
+        * inspector/canvas/requestContent-webgl-expected.txt: Added.
+        * inspector/canvas/requestContent-webgl.html: Added.
+        * inspector/canvas/requestContent-webgl2-expected.txt: Added.
+        * inspector/canvas/requestContent-webgl2.html: Added.
+        * inspector/canvas/requestContent-expected.txt: Removed.
+        * inspector/canvas/requestContent.html: Removed.
+        * platform/gtk/TestExpectations:
+        * platform/win/TestExpectations:
+        Split the existing canvas content tests into one for each context type. This allows
+        platforms that don't support certain context types to ignore just those tests (e.g. WebGL2).
+
+2017-07-06  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Layout test gardening.
+
+        Unreviewed.
+
+        * platform/gtk/TestExpectations: Update WebRTC related expectations and mark a new emoji related test failing after r218371.
+        * platform/gtk/fast/css/css2-system-fonts-expected.txt: Rebaseline after r218446.
+        * platform/gtk/fast/css/getComputedStyle/computed-style-font-family-expected.txt: Removed. Rebaseline after r218446 (use the general expectation).
+        * platform/gtk/fast/text/font-stretch-parse-expected.txt: Removed. Rebaseline after r218446 (use the general expectation).
+        * platform/gtk/fast/text/font-style-parse-expected.txt: Removed. Rebaseline after r218446 (use the general expectation).
+        * platform/gtk/fast/text/font-weight-parse-expected.txt: Removed Rebaseline after r218446 (use the general expectation).
+
+2017-07-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219194.
+        https://bugs.webkit.org/show_bug.cgi?id=174207
+
+        it broke some layout tests (Requested by clopez on #webkit).
+
+        Reverted changeset:
+
+        "[GStreamer] vid.me videos do not play"
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+        http://trac.webkit.org/changeset/219194
+
+2017-07-06  Charlie Turner  <cturner@igalia.com>
+
+        [GStreamer] vid.me videos do not play
+        https://bugs.webkit.org/show_bug.cgi?id=172240
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Add a test for single output file HLS playlists that require HTTP
+        range requests to playback. This failed using the WK http source
+        for reasons documented in the linked bug.
+
+        Generated with mp4hls --segment-duration 3 --output-single-file
+
+        * Http/tests/media/hls/range-request-expected.txt: Added.
+        * http/tests/media/hls/range-request.html: Added.
+        * http/tests/media/resources/hls/range-request-playlist.m3u8: Added.
+        * http/tests/media/resources/hls/range-request-playlists/iframes.m3u8: Added.
+        * http/tests/media/resources/hls/range-request-playlists/media.ts: Added.
+        * http/tests/media/resources/hls/range-request-playlists/stream.m3u8: Added.
+
+2017-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION: Stack overflow in RenderBlockFlow::layoutBlock after increasing the font size to max in some RTL vertical books.
+        https://bugs.webkit.org/show_bug.cgi?id=174144
+        <rdar://problem/32781038>
+
+        Reviewed by Simon Fraser.
+
+        * fast/ruby/ruby-overhang-margin-crash-expected.txt: Added.
+        * fast/ruby/ruby-overhang-margin-crash.html: Added.
+
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Move internal iOS 11 TestExpectations to OpenSource
+        <rdar://problem/32717028>
+
+        Unreviewed test gardening.
+
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFont-expected.txt: Added.
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFontWithTextStyle-expected.txt: Added.
+        * platform/ios-11/platform/ios/ios/fast/text/opticalFontWithWeight-expected.txt: Added.
+
+2017-07-05  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        CSSFontStyleValue::isItalic seems a bit bogus.
+        https://bugs.webkit.org/show_bug.cgi?id=174149
+
+        Reviewed by Tim Horton.
+
+        * editing/execCommand/italicizeByCharacter-normal-expected.txt: Added.
+        * editing/execCommand/italicizeByCharacter-normal.html: Added.
+
+2017-07-05  Matt Lewis  <jlewis3@apple.com>
+
+        Skipped webgl/1.0.2/conformance/glsl/misc/shader-with-non-reserved-words.html.
+        https://bugs.webkit.org/show_bug.cgi?id=174100
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-07-05  Brady Eidson  <beidson@apple.com>
+
+        Allow navigations in subframes to get a ShouldOpenExternalURLsPolicy of "ShouldAllow".
+        <rdar://problem/22485589> and https://bugs.webkit.org/show_bug.cgi?id=174178
+
+        Reviewed by Alex Christensen.
+
+        Added a new explicit test and updated expectations for an old one.
+        
+        * loader/navigation-policy/should-open-external-urls/resources/main-frame-with-subframe-main-programatically-navigates-subframe.html: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-click-target-self-expected.txt:
+        * loader/navigation-policy/should-open-external-urls/subframe-navigated-programatically-by-main-frame-expected.txt: Added.
+        * loader/navigation-policy/should-open-external-urls/subframe-navigated-programatically-by-main-frame.html: Added.
+
+2017-07-05  Matt Lewis  <jlewis3@apple.com>
+
+        Marked animations/needs-layout.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172397
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-07-05  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r217522): "Show My Relationship" link in familysearch.org does not work.
+        https://bugs.webkit.org/show_bug.cgi?id=174070
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+
+2017-07-05  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Allow users to log any tracked canvas context
+        https://bugs.webkit.org/show_bug.cgi?id=173397
+        <rdar://problem/33111581>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/resolveCanvasContext-2d-expected.txt: Added.
+        * inspector/canvas/resolveCanvasContext-2d.html: Added.
+        * inspector/canvas/resolveCanvasContext-webgl-expected.txt: Added.
+        * inspector/canvas/resolveCanvasContext-webgl.html: Added.
+        * inspector/canvas/resolveCanvasContext-webgl2-expected.txt: Added.
+        * inspector/canvas/resolveCanvasContext-webgl2.html: Added.
+        * inspector/canvas/resolveCanvasContext-webgpu-expected.txt: Added.
+        * inspector/canvas/resolveCanvasContext-webgpu.html: Added.
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/win/TestExpectations:
+
+2017-07-05  Antti Koivisto  <antti@apple.com>
+
+        Low memory notification shouldn't cause style recalc
+        https://bugs.webkit.org/show_bug.cgi?id=173574
+        <rdar://problem/32616997>
+
+        Reviewed by Andreas Kling.
+
+        * platform/mac/printing/width-overflow-expected.txt:
+
+            1px width change that doesn't affect what is being tested.
+
 2017-07-05  Jonathan Bedard  <jbedard@apple.com>
 
         Move internal iOS 11 TestExpectations to OpenSource

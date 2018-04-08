@@ -110,7 +110,6 @@ my (
     $mhtmlSupport,
     $mouseCursorScaleSupport,
     $netscapePluginAPISupport,
-    $nosniffSupport,
     $notificationsSupport,
     $orientationEventsSupport,
     $performanceTimelineSupport,
@@ -140,6 +139,7 @@ my (
     $webTimingSupport,
     $writableStreamAPISupport,
     $webglSupport,
+    $webgl2Support,
     $xsltSupport,
 );
 
@@ -326,9 +326,6 @@ my @features = (
     { option => "netscape-plugin-api", desc => "Toggle Netscape Plugin API support",
       define => "ENABLE_NETSCAPE_PLUGIN_API", default => (!isIOSWebKit() && !isWPE() && !isHaiku()), value => \$netscapePluginAPISupport },
 
-    { option => "nosniff", desc => "Toggle support for 'X-Content-Type-Options: nosniff'",
-      define => "ENABLE_NOSNIFF", default => (isAppleCocoaWebKit() || isAppleWinWebKit() || isHaiku()), value => \$nosniffSupport },
-
     { option => "notifications", desc => "Toggle Notifications support",
       define => "ENABLE_NOTIFICATIONS", default => (isGtk() || isHaiku()), value => \$notificationsSupport },
 
@@ -386,9 +383,6 @@ my @features = (
     { option => "web-audio", desc => "Toggle Web Audio support",
       define => "ENABLE_WEB_AUDIO", default => (isGtk() || isWPE()), value => \$webAudioSupport },
 
-    { option => "web-replay", desc => "Toggle Web Replay support",
-      define => "ENABLE_WEB_REPLAY", default => isAppleCocoaWebKit(), value => \$webReplaySupport },
-
     { option => "web-rtc", desc => "Toggle WebRTC support",
       define => "ENABLE_WEB_RTC", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
 
@@ -403,6 +397,9 @@ my @features = (
 
     { option => "webgl", desc => "Toggle WebGL support",
       define => "ENABLE_WEBGL", default => (isAppleCocoaWebKit() || isGtk() || isWPE()), value => \$webglSupport },
+
+    { option => "webgl2", desc => "Toggle WebGL2 support",
+      define => "ENABLE_WEBGL2", default => isAppleCocoaWebKit(), value => \$webgl2Support },
 
     { option => "writableStreamAPI", desc => "Toggle WritableStream API support",
       define => "ENABLE_WRITABLE_STREAM_API", default => 1, value => \$writableStreamAPISupport },
