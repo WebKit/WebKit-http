@@ -115,17 +115,17 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     Frame* dispatchCreatePage(const NavigationAction&) override;
     void dispatchShow() override;
 
-    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction) override;
+    void dispatchDecidePolicyForResponse(const ResourceResponse&, const ResourceRequest&, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
-        const ResourceRequest&, FormState*, const String&, FramePolicyFunction) override;
+        const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                         const ResourceRequest&, FormState*, FramePolicyFunction) override;
+                                                         const ResourceRequest&, FormState*, FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const ResourceError&) override;
 
     void dispatchWillSendSubmitEvent(WTF::Ref<FormState>&&) override { }
-    void dispatchWillSubmitForm(FormState&, FramePolicyFunction) override;
+    void dispatchWillSubmitForm(FormState&, FramePolicyFunction&&) override;
 
     void revertToProvisionalState(DocumentLoader*) override;
     void setMainDocumentError(DocumentLoader*, const ResourceError&) override;

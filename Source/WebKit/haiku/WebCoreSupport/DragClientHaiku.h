@@ -38,8 +38,7 @@ namespace WebCore {
 
         virtual DragSourceAction dragSourceActionMaskForPoint(const IntPoint&) override;
 
-        virtual void startDrag(DragImage dragImage, const IntPoint& dragImageOrigin,
-                               const IntPoint& eventPos, const FloatPoint&, DataTransfer&, Frame&, DragSourceAction) override;
+        virtual void startDrag(DragItem, DataTransfer&, Frame&) override;
 
         virtual void dragControllerDestroyed() override;
     private:

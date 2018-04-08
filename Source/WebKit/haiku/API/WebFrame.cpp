@@ -141,7 +141,7 @@ void BWebFrame::LoadURL(WebCore::URL url)
     fData->requestedURL = url.string();
 
     WebCore::ResourceRequest req(url);
-    fData->frame->loader().load(WebCore::FrameLoadRequest(fData->frame, req,
+    fData->frame->loader().load(WebCore::FrameLoadRequest(*fData->frame, req,
         ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 }
 

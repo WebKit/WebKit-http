@@ -31,6 +31,8 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
+#include "PlatformScreen.h"
+
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 #include "DisplayRefreshMonitorClient.h"
 #endif

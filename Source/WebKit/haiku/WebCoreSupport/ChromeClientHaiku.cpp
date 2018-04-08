@@ -128,7 +128,7 @@ void ChromeClientHaiku::focusedFrameChanged(Frame*)
     notImplemented();
 }
 
-Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction& /*action*/)
+Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& /*request*/, const WindowFeatures& features, const NavigationAction& /*action*/)
 {
 	// FIXME: I believe the frame is important for cloning session information.
 	// From looking through the Chromium port code, it is passed to the
@@ -143,8 +143,6 @@ Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& 
 	// (WebViewClient is probably what browsers or other embedders need to
 	// implement themselves, so this method is not implemented in the Chromium
 	// WebKit code.)
-
-//printf("createWindow() - dialog: %d, resizable: %d\n", features.dialog, features.resizable);
 
     BRect windowFrame;
     // If any frame property of the features is set, the windowFrame will be valid and
@@ -161,14 +159,9 @@ Page* ChromeClientHaiku::createWindow(Frame& /*frame*/, const FrameLoadRequest& 
     if (features.height)
         windowFrame.bottom = windowFrame.top + *features.height - 1;
 
-//printf("  frame: "); windowFrame.PrintToStream();
-
 	WebCore::Page* page = m_webPage->createNewPage(windowFrame, features.dialog, features.resizable);
 	if (!page)
 	    return 0;
-
-    if (!request.resourceRequest().isEmpty())
-        page->mainFrame().loader().load(request);
 
     return page;
 }

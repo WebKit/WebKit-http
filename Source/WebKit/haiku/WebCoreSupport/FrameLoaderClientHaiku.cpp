@@ -469,7 +469,7 @@ void FrameLoaderClientHaiku::dispatchDidFinishLoad()
     dispatchMessage(message);
 }
 
-void FrameLoaderClientHaiku::dispatchWillSubmitForm(FormState&, FramePolicyFunction function)
+void FrameLoaderClientHaiku::dispatchWillSubmitForm(FormState&, FramePolicyFunction&& function)
 {
     CALLED();
     notImplemented();
@@ -493,7 +493,7 @@ void FrameLoaderClientHaiku::dispatchShow()
     notImplemented();
 }
 
-void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction function)
+void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::ResourceResponse& response, const WebCore::ResourceRequest& request, FramePolicyFunction&& function)
 {
     if (request.isNull()) {
         function(PolicyIgnore);
@@ -510,7 +510,7 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForResponse(const WebCore::Reso
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const NavigationAction& action,
-    const ResourceRequest& request, FormState* /*formState*/, const String& /*targetName*/, FramePolicyFunction function)
+    const ResourceRequest& request, FormState* /*formState*/, const String& /*targetName*/, FramePolicyFunction&& function)
 {
     ASSERT(function);
     if (!function)
@@ -556,11 +556,11 @@ void FrameLoaderClientHaiku::dispatchDecidePolicyForNewWindowAction(const Naviga
 }
 
 void FrameLoaderClientHaiku::dispatchDecidePolicyForNavigationAction(const NavigationAction& action,
-    const ResourceRequest& request, FormState* formState, FramePolicyFunction function)
+    const ResourceRequest& request, FormState* formState, FramePolicyFunction&& function)
 {
     // Potentially we want to open a new window, when the user clicked with the
     // tertiary mouse button. That's why we can reuse the other method.
-    dispatchDecidePolicyForNewWindowAction(action, request, formState, String(), function);
+    dispatchDecidePolicyForNewWindowAction(action, request, formState, String(), std::move(function));
 }
 
 void FrameLoaderClientHaiku::cancelPolicyCheck()
