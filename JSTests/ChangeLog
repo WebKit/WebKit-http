@@ -1,3 +1,75 @@
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        Skip unshiftCountSlowCase-correct-postCapacity.js on debug builds since it takes a long time to run.
+
+        * stress/unshiftCountSlowCase-correct-postCapacity.js:
+
+2017-07-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, annotate dont--reserve-huge-capacity-lexer.js with $memoryLimited
+
+        It requires too much memory.
+
+        * stress/dont-reserve-huge-capacity-lexer.js:
+
+2017-06-30  Michael Saboff  <msaboff@apple.com>
+
+        Skip a test on ARM64 platform since we run out of address space.
+
+        Rubber stamped by Saam Barati.
+
+        * stress/dont-reserve-huge-capacity-lexer.js:
+
+2017-06-30  Michael Saboff  <msaboff@apple.com>
+
+        RegExp's  anchored with .* with \g flag can return wrong match start for strings with multiple matches
+        https://bugs.webkit.org/show_bug.cgi?id=174044
+
+        Reviewed by Oliver Hunt.
+
+        New regression test.
+
+        * stress/regress-174044.js: Added.
+        (test1):
+        (test2):
+
+2017-06-30  Filip Pizlo  <fpizlo@apple.com>
+
+        RegExpCachedResult::setInput should reify left and right contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173818
+
+        Reviewed by Keith Miller.
+
+        * stress/right-left-context-invalidated-by-input.js: Added.
+        (test.validateContexts):
+        (test):
+
+2017-06-29  Saam Barati  <sbarati@apple.com>
+
+        Calculating postCapacity in unshiftCountSlowCase is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=173992
+        <rdar://problem/32283199>
+
+        Reviewed by Keith Miller.
+
+        * stress/unshiftCountSlowCase-correct-postCapacity.js: Added.
+        (temp):
+
+2017-06-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218512.
+        https://bugs.webkit.org/show_bug.cgi?id=173981
+
+        "It changes the behavior of the JS API's JSEvaluateScript
+        which breaks TurboTax" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "test262: Completion values for control flow do not match the
+        spec"
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+        http://trac.webkit.org/changeset/218512
+
 2017-06-27  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: running out of executable memory should throw OoM

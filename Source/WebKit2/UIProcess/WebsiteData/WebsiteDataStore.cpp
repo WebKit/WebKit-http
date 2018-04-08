@@ -43,7 +43,6 @@
 #include <WebCore/FileSystem.h>
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/OriginLock.h>
-#include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 #include <wtf/CrossThreadCopier.h>
@@ -329,7 +328,7 @@ void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, O
                 break;
 
             case ProcessAccessType::Launch:
-                processPool->ensureNetworkProcess();
+                processPool->ensureNetworkProcess(this);
                 break;
 
             case ProcessAccessType::None:
@@ -648,7 +647,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
                 break;
 
             case ProcessAccessType::Launch:
-                processPool->ensureNetworkProcess();
+                processPool->ensureNetworkProcess(this);
                 break;
 
             case ProcessAccessType::None:
@@ -815,8 +814,8 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, std::chr
     }
 #endif
 
-    if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics))
-        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore(modifiedSince);
+    if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics) && m_resourceLoadStatistics)
+        m_resourceLoadStatistics->clearInMemoryAndPersistent(modifiedSince);
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();
@@ -897,7 +896,7 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
                 break;
 
             case ProcessAccessType::Launch:
-                processPool->ensureNetworkProcess();
+                processPool->ensureNetworkProcess(this);
                 break;
 
             case ProcessAccessType::None:
@@ -1084,8 +1083,8 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
     }
 #endif
 
-    if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics))
-        WebCore::ResourceLoadObserver::sharedObserver().clearInMemoryAndPersistentStore();
+    if (dataTypes.contains(WebsiteDataType::ResourceLoadStatistics) && m_resourceLoadStatistics)
+        m_resourceLoadStatistics->clearInMemoryAndPersistent();
 
     // There's a chance that we don't have any pending callbacks. If so, we want to dispatch the completion handler right away.
     callbackAggregator->callIfNeeded();

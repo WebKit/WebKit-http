@@ -346,7 +346,6 @@ void RemoteLayerTreeDrawingArea::flushLayers()
     if (m_scrolledViewExposedRect)
         visibleRect.intersect(m_scrolledViewExposedRect.value());
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     RefPtr<WebPage> retainedPage = &m_webPage;
     [CATransaction addCommitHandler:[retainedPage] {
         if (Page* corePage = retainedPage->corePage()) {
@@ -354,7 +353,6 @@ void RemoteLayerTreeDrawingArea::flushLayers()
                 corePage->inspectorController().didComposite(*coreFrame);
         }
     } forPhase:kCATransactionPhasePostCommit];
-#endif
 
     m_webPage.mainFrameView()->flushCompositingStateIncludingSubframes();
 
@@ -487,7 +485,7 @@ void RemoteLayerTreeDrawingArea::BackingStoreFlusher::flush()
     m_connection->sendMessage(WTFMove(m_commitEncoder), { });
 }
 
-void RemoteLayerTreeDrawingArea::activityStateDidChange(ActivityState::Flags, bool wantsDidUpdateActivityState, const Vector<uint64_t>&)
+void RemoteLayerTreeDrawingArea::activityStateDidChange(ActivityState::Flags, bool wantsDidUpdateActivityState, const Vector<CallbackID>&)
 {
     // FIXME: Should we suspend painting while not visible, like TiledCoreAnimationDrawingArea? Probably.
 
@@ -497,7 +495,7 @@ void RemoteLayerTreeDrawingArea::activityStateDidChange(ActivityState::Flags, bo
     }
 }
 
-void RemoteLayerTreeDrawingArea::addTransactionCallbackID(uint64_t callbackID)
+void RemoteLayerTreeDrawingArea::addTransactionCallbackID(CallbackID callbackID)
 {
     m_pendingCallbackIDs.append(static_cast<RemoteLayerTreeTransaction::TransactionCallbackID>(callbackID));
     scheduleCompositingLayerFlush();

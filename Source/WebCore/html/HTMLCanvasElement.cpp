@@ -88,8 +88,6 @@ const int defaultHeight = 150;
 // in exchange for a smaller maximum canvas size. The maximum canvas size is in device pixels.
 #if PLATFORM(IOS)
 const unsigned maxCanvasArea = 4096 * 4096;
-#elif PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
-const unsigned maxCanvasArea = 8192 * 8192;
 #else
 const unsigned maxCanvasArea = 16384 * 16384;
 #endif
@@ -335,6 +333,8 @@ CanvasRenderingContext* HTMLCanvasElement::getContextWebGPU(const String& type)
         if (m_context) {
             // Need to make sure a RenderLayer and compositing layer get created for the Canvas
             invalidateStyleAndLayerComposition();
+
+            InspectorInstrumentation::didCreateCanvasRenderingContext(*this);
         }
     }
 

@@ -1,3 +1,642 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig: iphoneos and iphonesimulator
+        should use the same directory for private framework stubs.
+        * WebKitTestRunner/Configurations/Base.xcconfig: Ditto.
+
+2017-07-05  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Protect request and web view during gUM client callback
+        https://bugs.webkit.org/show_bug.cgi?id=174096
+        <rdar://problem/32833102>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/GetUserMediaNavigation.mm: New test.
+
+2017-07-05  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, guard iOS 11-dependent UIPasteboardTests to be iOS 11+ only
+
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+
+2017-07-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219128.
+
+        Spoke with engineer who originally submitted, Patch for APi
+        test to follow.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219070."
+        https://bugs.webkit.org/show_bug.cgi?id=174082
+        http://trac.webkit.org/changeset/219128
+
+2017-07-05  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219070.
+
+        This revision caused consistent failures of the API test
+        UIPasteboardTests.DoNotPastePlainTextAsURL on iOS.
+
+        Reverted changeset:
+
+        "Pasting single words copied to UIPasteboard inserts URLs in
+        editable areas"
+        https://bugs.webkit.org/show_bug.cgi?id=174082
+        http://trac.webkit.org/changeset/219070
+
+2017-07-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove unused EFL logo from bot watcher dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=174136
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/EFL.png: Removed.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/EFL@2x.png: Removed.
+
+2017-07-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Add more GTK bots to dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=174129
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        We have a bunch of GTK bots that I never look at because they're not on the dashboard. Add
+        them.
+
+        This also changes the sort order to put WPE above GTK so that it's not buried under all the
+        less-essential GTK bots.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+
+2017-07-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [WPE] Add WPE to bot watcher dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=174119
+
+        Reviewed by Alexey Proskuryakov.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/CREDIT: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WPE.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Images/WPE@2x.png: Added.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.linux-wpe img.logo):
+
+2017-07-03  Lucas Forschler  <lforschler@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=174105
+        
+        Reviewed by Stephanie Lewis.
+
+        * BuildSlaveSupport/built-product-archive:
+        (main): Add a -minify parser option
+        (createZip): Pass along the optional Minify argument if requested
+        (minifySource): This will trim down archives, logic limited to Mac platform.
+
+2017-07-03  Matt Rajca  <mrajca@apple.com>
+
+        Add/remove appropriate media element behavior restrictions when updateWebsitePolicies is called
+        https://bugs.webkit.org/show_bug.cgi?id=174103
+
+        Reviewed by Alex Christensen.
+
+        Added an API test.
+
+        * TestWebKitAPI/Tests/WebKit2/autoplay-check.html: Expose a pause method.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (TEST): Added test.
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView stringByEvaluatingJavaScript:]): Don't simulate a user gesture when invoking the script.
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219103.
+
+        Caused multiple build failures.
+
+        Reverted changeset:
+
+        "Remove copy of ICU headers from WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+        http://trac.webkit.org/changeset/219103
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Use WTF's copy of ICU headers.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-03  Brady Eidson  <beidson@apple.com>
+
+        Switch all WebKit API related to favicons from WebIconDatabase over to new WebCore::IconLoader mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=174073
+
+        Reviewed by Andy Estes.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+        (TestRunner::setIconDatabaseEnabled): Call new SPI for this setting instead of WebIconDatabase stuff.
+
+        * TestWebKitAPI/Tests/mac/WebViewIconLoading.mm:
+        (-[MainFrameIconKVO observeValueForKeyPath:ofObject:change:context:]):
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219083.
+
+        The revision caused an API failure on all testing platforms.
+
+        Reverted changeset:
+
+        "[MediaStream] Protect request and web view during gUM client
+        callback"
+        https://bugs.webkit.org/show_bug.cgi?id=174096
+        http://trac.webkit.org/changeset/219083
+
+2017-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Properly number duplicated crashlogs
+        https://bugs.webkit.org/show_bug.cgi?id=172002
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/common/system/crashlogs.py:
+        (CrashLogs._find_all_logs_darwin): Number multiple crash logs for a single process with
+        an increasing integer.
+        * Scripts/webkitpy/common/system/crashlogs_unittest.py:
+        (CrashLogsTest.create_crash_logs_darwin): Create duplicated crashlog for testing.
+        (CrashLogsTest.test_find_all_log_darwin): Now 7 Darwin logs instead of 5.
+        (CrashLogsTest.test_duplicate_log_darwin): Test that duplicated logs are correctly numbered.
+
+2017-07-03  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebContent processes crash when the network process crashes with pending connection requests
+        https://bugs.webkit.org/show_bug.cgi?id=174065
+        <rdar://problem/30359835>
+
+        Reviewed by Tim Horton.
+
+        Add a API to ensure UI process tries to relaunch a new network process when the network process
+        crashes with pending network connection requests.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/NetworkProcessCrashWithPendingConnection.mm: Added.
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.h:
+        * TestWebKitAPI/cocoa/TestNavigationDelegate.mm:
+        (-[TestNavigationDelegate webViewWebContentProcessDidTerminate:]): Added.
+
+2017-07-03  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Protect request and web view during gUM client callback
+        https://bugs.webkit.org/show_bug.cgi?id=174096
+        <rdar://problem/32833102>
+
+        Reviewed by Youenn Fablet.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2/GetUserMediaNavigation.mm: New test.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        On systems that already have ccache(1) installed, this patch adds experimental support for
+        it to Xcode builds. It can be enabled with the WK_USE_CCACHE build setting.
+
+        When ccache is enabled, CC is overridden to invoke Tools/ccache/ccache-clang. This script
+        finds the "-isysroot" argument to determine the active SDK, uses xcrun(1) and the SDK to
+        find the toolchain from which to run clang, and then invokes ccache with the required
+        arguments.
+
+        ccache is invoked with CCACHE_SLOPPINESS="pch_defines,time_macros", which is required for
+        precompiled headers to work properly [1].
+
+        LDPLUSPLUS is overridden to invoke Tools/ccache/ccache-clang++. It behaves the same as
+        ccache-clang, except it tells ccache to execute clang++ instead of clang. This is important
+        during linking.
+        
+        [1] https://ccache.samba.org/manual.html#_precompiled_headers
+
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+        * MiniBrowser/Configurations/DebugRelease.xcconfig: Ditto.
+        * MobileMiniBrowser/Configurations/DebugRelease.xcconfig: Ditto.
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig: Ditto.
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig: Ditto.
+        * ccache/README.md: Added.
+        * ccache/ccache-clang: Added.
+        * ccache/ccache-clang++: Added.
+        * ccache/ccache.xcconfig: Added. Overrides CC and LDPLUSPLUS when WK_USE_CACHE=YES.
+
+2017-07-03  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r215096) Queries of URLs with non-special schemes should not percent-encode single quotes
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219024.
+
+        This patch cause 3 didferent test to fail.
+
+        Reverted changeset:
+
+        "REGRESSION(r215096) Queries of URLs with non-special schemes
+        should not percent-encode single quotes"
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+        http://trac.webkit.org/changeset/219024
+
+2017-07-03  Chris Dumez  <cdumez@apple.com>
+
+        Drop ResourceLoadStatisticsStore's statisticsLock
+        https://bugs.webkit.org/show_bug.cgi?id=174080
+
+        Reviewed by Brent Fulgham.
+
+        Port WebKitTestRunner to new Asynchronous Cocoa SPI.
+
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::TestController::isStatisticsPrevalentResource):
+        (WTR::TestController::isStatisticsHasHadUserInteraction):
+        (WTR::TestController::isStatisticsGrandfathered):
+
+2017-07-03  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Pasting single words copied to UIPasteboard inserts URLs in editable areas
+        https://bugs.webkit.org/show_bug.cgi?id=174082
+        <rdar://problem/33046992>
+
+        Reviewed by Tim Horton.
+
+        Adds 3 new unit tests to UIPasteboardTests to test cases of pasting plain text and URLs.
+
+        * TestWebKitAPI/Tests/ios/UIPasteboardTests.mm:
+        (TestWebKitAPI::setUpWebViewForPasteboardTests):
+        (TestWebKitAPI::TEST):
+
+2017-07-02  Brady Eidson  <beidson@apple.com>
+
+        Add API test for all parts of WebKit1 API related to favicons.
+        https://bugs.webkit.org/show_bug.cgi?id=174069
+
+        Reviewed by Andy Estes.
+
+        These two API tests cover all WebKit1 API related to icons.
+        
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/mac/WebViewIconLoading.mm: Added.
+        (mainResourceData):
+        (defaultFaviconData):
+        (customFaviconData):
+        (imageFromData):
+        (+[IconLoadingProtocol canInitWithRequest:]):
+        (+[IconLoadingProtocol canonicalRequestForRequest:]):
+        (-[IconLoadingProtocol startLoading]):
+        (-[IconLoadingProtocol stopLoading]):
+        (-[IconLoadingFrameLoadDelegate webView:didReceiveIcon:forFrame:]):
+        (-[MainFrameIconKVO observeValueForKeyPath:ofObject:change:context:]):
+        (TestWebKitAPI::TEST):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+        (WTR::initializeWebViewConfiguration):
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator _createIOHIDEventType:]):
+
+2017-07-01  Brady Eidson  <beidson@apple.com>
+
+        When setting a custom cookie storage location on a WKWebsiteDataStore, cookies aren't actually removed.
+        <rdar://problem/32410662> and https://bugs.webkit.org/show_bug.cgi?id=174035
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * DumpRenderTree/mac/Configurations/DebugRelease.xcconfig:
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (setDefaultsToConsistentValuesForTesting):
+        * DumpRenderTree/mac/DumpRenderTreeDraggingInfo.mm:
+        (-[DumpRenderTreeDraggingInfo resetSpringLoading]):
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/DebugRelease.xcconfig:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/Tests/WebCore/ComplexTextController.cpp:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/WebCore/cocoa/WebCoreNSURLSession.mm:
+        * TestWebKitAPI/Tests/mac/DragAndDropPasteboardTests.mm:
+        * TestWebKitAPI/Tests/mac/FullscreenZoomInitialFrame.mm:
+        (TestWebKitAPI::TEST_F):
+        * TestWebKitAPI/Tests/mac/StringTruncator.mm:
+        (TestWebKitAPI::TEST):
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/DebugRelease.xcconfig:
+        * WebKitTestRunner/InjectedBundle/mac/InjectedBundleMac.mm:
+        (WTR::InjectedBundle::platformInitialize):
+        * WebKitTestRunner/mac/WebKitTestRunnerDraggingInfo.mm:
+        (-[WebKitTestRunnerDraggingInfo resetSpringLoading]):
+
+2017-07-01  Chris Dumez  <cdumez@apple.com>
+
+        Replace ResourceLoadStatisticsStore C API with Cocoa SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174060
+
+        Reviewed by Brent Fulgham.
+
+        Port WebKitTestRunner over to the new Cocoa SPI.
+
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsNotifyPagesWhenDataRecordsWereScanned):
+        (WTR::TestRunner::setStatisticsNotifyPagesWhenTelemetryWasCaptured):
+        Drop calls to the WKResourceLoadStatisticsStore C API here. Those were
+        no-ops since this code runs in the WebContent process, not the
+        UIProcess.
+
+        * WebKitTestRunner/TestController.cpp:
+        * WebKitTestRunner/cocoa/TestControllerCocoa.mm:
+
+2017-06-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Unreviewed mac build fix.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKRequestActivatedElementInfo.mm:
+        (TestWebKitAPI::TEST):
+
+2017-06-30  Megan Gardner  <megan_gardner@apple.com>
+
+        Add API to get WKActivatedElementInfo
+        https://bugs.webkit.org/show_bug.cgi?id=174001
+        <rdar://problem/29165518>
+        
+        Tests for now SPI to get activatedElementInfo.
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKRequestActivatedElementInfo.mm: Added.
+        (TestWebKitAPI::TEST):
+
+2017-06-30  Chris Dumez  <cdumez@apple.com>
+
+        Move store logic from WebResourceLoadStatisticsManager to WebResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174038
+
+        Reviewed by Brent Fulgham.
+
+        Fix typo in API name.
+
+        * WebKitTestRunner/InjectedBundle/Bindings/TestRunner.idl:
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setStatisticsMinimumTimeBetweenDataRecordsRemoval):
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::setStatisticsMinimumTimeBetweenDataRecordsRemoval):
+        * WebKitTestRunner/TestController.h:
+        * WebKitTestRunner/TestInvocation.cpp:
+        (WTR::TestInvocation::didReceiveSynchronousMessageFromInjectedBundle):
+
+2017-06-30  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION(r215096) Queries of URLs with non-special schemes should not percent-encode single quotes
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+        <rdar://problem/33002846>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-06-30  Daniel Bates  <dabates@apple.com>
+
+        API::FrameInfo should know the web page that contains the frame; add API property webView to WKFrameInfo
+        https://bugs.webkit.org/show_bug.cgi?id=165160
+        <rdar://problem/29451999>
+
+        Reviewed by Brady Eidson.
+
+        Add tests to ensure that -[WKFrameInfo webView] is computed correctly for the source and target frame
+        for navigations and window creation.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/DecidePolicyForNavigationAction.mm: Added. Derived from file ShouldOpenExternalURLsInNewWindowActions.mm.
+        (-[DecidePolicyForNavigationActionController webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (-[DecidePolicyForNavigationActionController webView:didFinishNavigation:]):
+        (-[DecidePolicyForNavigationActionController webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-06-30  Jonathan Bedard  <jbedard@apple.com>
+
+        Follow-up fix for r218996
+
+        Unreviewed infrastructure fix.
+
+        Repeated calls to 'ios_version' make the log noisy, memoize the function.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort): Memoize ios_version().
+
+2017-06-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Drag caret rect is incorrectly computed when dropping in editable content in iframes
+        https://bugs.webkit.org/show_bug.cgi?id=174017
+        <rdar://problem/32959782>
+
+        Reviewed by Simon Fraser.
+
+        Add a new test verifying that the drag caret is visually contained within the bounds of an iframe. Before these
+        changes, the caret would appear outside of the iframe.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/contenteditable-in-iframe.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (checkDragCaretRectIsContainedInRect):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _resetSimulatedState]):
+        (-[DataInteractionSimulator _concludeDataInteractionAndPerformOperationIfNecessary]):
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator lastKnownDragCaretRect]):
+
+2017-06-30  Jonathan Bedard  <jbedard@apple.com>
+
+        Add support for different versions of iOS when loading test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=173774
+        <rdar://problem/32951132>
+
+        Rubber-stamped by Aakash Jain.
+
+        When running layout tests, we should support multiple version of iOS the same way we do Mac.
+
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort.default_baseline_search_path): Add ios-<major version> test expectation.
+        (IOSPort.test_expectations_file_position): Added new file expectations, increment expected file position.
+        (IOSPort.ios_version): iOS ports must define a function to retrieve the iOS version.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.ios_version): Ask connected devices for implementation.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.test_additional_platform_directory): Skip test until bug 173775 is finished.
+        (IOSDeviceTest.test_baseline_searchpath): Ditto.
+        (IOSDeviceTest.test_expectations_ordering): Ditto.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.ios_version): If a runtime is specified, ask the runtime for the iOS version. Otherwise,
+        ask the platform.
+
+2017-06-30  Jacobo Aragunde Pérez  <jaragunde@igalia.com>
+
+        Fontconfig build breaks with glibc 2.15+
+        https://bugs.webkit.org/show_bug.cgi?id=174019
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Apply patch by Khem Raj adapted to fontconfig 2.11.1.
+
+        * wpe/jhbuild.modules:
+        * wpe/patches/fontconfig-avoid-conflicts-with-integer-width-macros-from-TS-18.patch: Added.
+
+2017-06-29  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Web content process crashes when the selection is moved far offscreen in dragstart
+        https://bugs.webkit.org/show_bug.cgi?id=174010
+        <rdar://problem/32597802>
+
+        Reviewed by Tim Horton.
+
+        Adds a new API test to ensure that we don't crash trying to dereference a null RefPtr when the TextIndicator
+        snapshot fails for any reason.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/dragstart-change-selection-offscreen.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-06-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Cannot call setValue() on contenteditable or ARIA text controls
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+
+        Reviewed by Ryosuke Niwa.
+
+        Add setValue() method to WKTR (already existed in DRT).
+
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::setValue):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/mac/AccessibilityUIElementMac.mm:
+        (WTR::AccessibilityUIElement::setValue):
+
+2017-06-28  Simon Fraser  <simon.fraser@apple.com>
+
+        getBoundingClientRect returns wrong value for combination of page zoom and scroll
+        https://bugs.webkit.org/show_bug.cgi?id=173841
+        rdar://problem/32983841
+
+        Reviewed by Dean Jackson.
+
+        Make "Zoom In" and "Zoom Out" work correctly in the WebKit1 window. Previously they
+        always did text zooming.
+
+        * MiniBrowser/mac/WK1BrowserWindowController.m:
+        (-[WK1BrowserWindowController zoomIn:]):
+        (-[WK1BrowserWindowController zoomOut:]):
+        (-[WK1BrowserWindowController canResetZoom]):
+        (-[WK1BrowserWindowController resetZoom:]):
+
+2017-06-29  John Wilander  <wilander@apple.com>
+
+        Fix for intermittent Layout Test fail http/tests/loading/resourceLoadStatistics/telemetry-generation.html
+        https://bugs.webkit.org/show_bug.cgi?id=173940
+        <rdar://problem/33018125>
+
+        Reviewed by Brent Fulgham.
+
+        This change allows the TestController to turn off
+        regular resource load statistics telemetry submission
+        and to manually control when telemetry is calculated
+        and submitted.
+
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::initialize):
+            Turns off automatic resource load statistics telemetry submission.
+
+2017-06-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218512.
+        https://bugs.webkit.org/show_bug.cgi?id=173981
+
+        "It changes the behavior of the JS API's JSEvaluateScript
+        which breaks TurboTax" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "test262: Completion values for control flow do not match the
+        spec"
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+        http://trac.webkit.org/changeset/218512
+
+2017-06-29  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitSystemInterface for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173936
+
+        Reviewed by Lucas Forschler.
+
+        * Scripts/copy-webkitlibraries-to-product-directory: Copy iOS 11 WebKitSystemInterface libraries. 
+
 2017-06-28  Keith Miller  <keith_miller@apple.com>
 
         VMTraps has some races

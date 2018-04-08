@@ -28,9 +28,9 @@
 #include "APIObject.h"
 #include "Connection.h"
 #include "ResourceLoadStatisticsClassifier.h"
+#include "ResourceLoadStatisticsStore.h"
 #include "WebResourceLoadStatisticsTelemetry.h"
 #include "WebsiteDataRecord.h"
-#include <WebCore/ResourceLoadStatisticsStore.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -52,15 +52,14 @@ struct ResourceLoadStatistics;
 
 namespace WebKit {
 
-class WebProcessPool;
 class WebProcessProxy;
 
-class WebResourceLoadStatisticsStore : public IPC::Connection::WorkQueueMessageReceiver {
+class WebResourceLoadStatisticsStore final : public IPC::Connection::WorkQueueMessageReceiver {
 public:
     static Ref<WebResourceLoadStatisticsStore> create(const String&);
     static void setNotifyPagesWhenDataRecordsWereScanned(bool);
     static void setShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
-    static void setMinimumTimeBetweeenDataRecordsRemoval(Seconds);
+    static void setShouldSubmitTelemetry(bool);
     virtual ~WebResourceLoadStatisticsStore();
     
     void setResourceLoadStatisticsEnabled(bool);
@@ -76,11 +75,36 @@ public:
 
     void readDataFromDiskIfNeeded();
 
-    WebCore::ResourceLoadStatisticsStore& coreStore() { return m_resourceLoadStatisticsStore.get(); }
-    const WebCore::ResourceLoadStatisticsStore& coreStore() const { return m_resourceLoadStatisticsStore.get(); }
+    void logUserInteraction(const WebCore::URL&);
+    void clearUserInteraction(const WebCore::URL&);
+    void hasHadUserInteraction(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void setPrevalentResource(const WebCore::URL&);
+    void isPrevalentResource(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void clearPrevalentResource(const WebCore::URL&);
+    void setGrandfathered(const WebCore::URL&, bool);
+    void isGrandfathered(const WebCore::URL&, WTF::Function<void (bool)>&&);
+    void setSubframeUnderTopFrameOrigin(const WebCore::URL& subframe, const WebCore::URL& topFrame);
+    void setSubresourceUnderTopFrameOrigin(const WebCore::URL& subresource, const WebCore::URL& topFrame);
+    void setSubresourceUniqueRedirectTo(const WebCore::URL& subresource, const WebCore::URL& hostNameRedirectedTo);
+    void fireDataModificationHandler();
+    void fireShouldPartitionCookiesHandler();
+    void fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
+
+    void fireTelemetryHandler();
+    void clearInMemory();
+    void clearInMemoryAndPersistent();
+    void clearInMemoryAndPersistent(std::chrono::system_clock::time_point modifiedSince);
+
+    void setTimeToLiveUserInteraction(Seconds);
+    void setTimeToLiveCookiePartitionFree(Seconds);
+    void setMinimumTimeBetweenDataRecordsRemoval(Seconds);
+    void setGrandfatheringTime(Seconds);
 
 private:
     explicit WebResourceLoadStatisticsStore(const String&);
+
+    ResourceLoadStatisticsStore& coreStore() { return m_resourceLoadStatisticsStore.get(); }
+    const ResourceLoadStatisticsStore& coreStore() const { return m_resourceLoadStatisticsStore.get(); }
 
     void processStatisticsAndDataRecords();
 
@@ -105,8 +129,13 @@ private:
     void syncWithExistingStatisticsStorageIfNeeded();
     void refreshFromDisk();
     void telemetryTimerFired();
+    void submitTelemetry();
 
-    Ref<WebCore::ResourceLoadStatisticsStore> m_resourceLoadStatisticsStore;
+#if PLATFORM(COCOA)
+    void registerUserDefaultsIfNeeded();
+#endif
+
+    Ref<ResourceLoadStatisticsStore> m_resourceLoadStatisticsStore;
 #if HAVE(CORE_PREDICTION)
     ResourceLoadStatisticsClassifierCocoa m_resourceLoadStatisticsClassifier;
 #else

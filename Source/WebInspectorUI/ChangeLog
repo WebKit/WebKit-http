@@ -1,3 +1,243 @@
+2017-07-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Support listing WebGL2 and WebGPU contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173396
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Canvas.js:
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.displayNameForContextType):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Type token background color in debugger looks poor
+        https://bugs.webkit.org/show_bug.cgi?id=174063
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/TextEditor.css:
+        CodeMirror widgets do not get range styles like our (.execution-range-highlight).
+        Make a best effort to carry over the styles to widgets. It isn't perfect, but it
+        covers all common situations unless a selection ends inside the widget. The
+        ultimate solution would be to get the expected range styles.
+
+2017-06-30  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Initial search is sometimes performed twice, produces duplicate results
+        https://bugs.webkit.org/show_bug.cgi?id=174047
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/SearchTabContentView.js:
+        (WebInspector.SearchTabContentView.prototype.performSearch):
+        The initial layout of the tab content view was setting state to force a search
+        which may happen after a delay, however the global search field was causing
+        its own search to happen. We can clear the flag when a search is being performed
+        to prevent duplicating the search.
+
+2017-06-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add small delay before showing the progress spinner when loading resources
+        https://bugs.webkit.org/show_bug.cgi?id=173437
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ResourceContentView.js:
+        (WebInspector.ResourceContentView):
+        (WebInspector.ResourceContentView.prototype.removeLoadingIndicator): Added.
+        (WebInspector.ResourceContentView.prototype._contentError):
+        (WebInspector.ResourceContentView.prototype._hasContent):
+        Delay the creation of the spinner for 100ms.  If the content is available before then, just
+        clear the timeout and the spinner will never be created/shown.
+
+        We measured an average of 35ms to load and display images with slow cases being around 55ms.
+        100ms was chosen for the timeout to give some room to allow for abnormally slow loading
+        while not being too long as to be outright noticable.
+
+        * UserInterface/Views/FontResourceContentView.js:
+        (WebInspector.FontResourceContentView.prototype.contentAvailable):
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WebInspector.ImageResourceContentView.prototype.contentAvailable):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WebInspector.TextResourceContentView.prototype._contentWillPopulate):
+        Calls the new protected function removeLoadingIndicator to ensure that the spinner (and any
+        other element) is removed.
+
+        This is necessary because TextResourceContentView effectively has two phases of loading its
+        content: getting the content and formatting it for display.  The first follows the same path
+        as the other ResourceContentView subclasses, the second waits for the ContentWillPopulate
+        event on SourceCodeTextEditor before it actually adds the content as a subview.  In this
+        case, the spinner should only be removed right before the content is actually added, not
+        once it's ready.
+
+2017-06-30  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218983.
+        https://bugs.webkit.org/show_bug.cgi?id=174042
+
+        Broke Debugger Call Stack TreeOutline (Requested by drousso on
+        #webkit).
+
+        Reverted changeset:
+
+        "Web Inspector: Remove unnecessary hasChildren from
+        TreeOutline"
+        https://bugs.webkit.org/show_bug.cgi?id=173986
+        http://trac.webkit.org/changeset/218983
+
+2017-06-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Default string comparisons to treat numeric characters as numbers
+        https://bugs.webkit.org/show_bug.cgi?id=173984
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (String.prototype.extendedLocaleCompare):
+        * UserInterface/Controllers/JavaScriptRuntimeCompletionProvider.js:
+        (WebInspector.JavaScriptRuntimeCompletionProvider.prototype.completionControllerCompletionsNeeded.receivedPropertyNames.compare):
+        * UserInterface/Controllers/ResourceQueryController.js:
+        (WebInspector.ResourceQueryController.prototype.executeQuery):
+        * UserInterface/Views/ApplicationCacheFrameContentView.js:
+        (WebInspector.ApplicationCacheFrameContentView.prototype._sortDataGrid.localeCompare):
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WebInspector.CSSStyleDeclarationTextEditor.prototype._iterateOverProperties):
+        * UserInterface/Views/CookieStorageContentView.js:
+        (WebInspector.CookieStorageContentView.prototype._sortDataGrid.localeCompare):
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshAttributes):
+        (WebInspector.DOMNodeDetailsSidebarPanel.prototype._refreshEventListeners.generateGroupsByNode):
+        * UserInterface/Views/DOMStorageContentView.js:
+        (WebInspector.DOMStorageContentView.prototype._sortDataGrid.comparator):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype._compareTopLevelTreeElements):
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WebInspector.FolderizedTreeElement.prototype._compareTreeElementsByMainTitle):
+        * UserInterface/Views/HeapSnapshotDataGridTree.js:
+        (WebInspector.HeapSnapshotDataGridTree.buildSortComparator):
+        * UserInterface/Views/NetworkTimelineView.js:
+        (WebInspector.NetworkTimelineView.prototype.dataGridSortComparator):
+        * UserInterface/Views/NewTabContentView.js:
+        (WebInspector.NewTabContentView.prototype._updateShownTabs):
+        * UserInterface/Views/OverviewTimelineView.js:
+        (WebInspector.OverviewTimelineView.prototype._compareDataGridNodesByStartTime):
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        (WebInspector.ProbeDetailsSidebarPanel.prototype.inspect):
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole.prototype._compareExecutionContextPathComponents):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._createNameValueDataGrid.sortDataGrid.comparator):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel.prototype._compareTreeElements):
+        * UserInterface/Views/ResourceTreeElement.js:
+        (WebInspector.ResourceTreeElement.compareResourceTreeElements):
+        (WebInspector.ResourceTreeElement.compareFolderAndResourceTreeElements):
+        * UserInterface/Views/ScriptDetailsTimelineView.js:
+        (WebInspector.ScriptDetailsTimelineView.prototype.dataGridSortComparator):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WebInspector.StorageSidebarPanel.prototype._compareTreeElements):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WebInspector.TimelineDataGrid.prototype._sortComparator):
+
+2017-06-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Provide a way for creating a new tab but not making it immediately selected
+        https://bugs.webkit.org/show_bug.cgi?id=173983
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TabBar.js:
+        (WebInspector.TabBar):
+        (WebInspector.TabBar.prototype.addTabBarItem):
+        (WebInspector.TabBar.prototype.insertTabBarItem):
+        (WebInspector.TabBar.prototype.removeTabBarItem):
+        (WebInspector.TabBar.prototype._handleClick):
+        (WebInspector.TabBar.prototype._handleNewTabClick):
+        * UserInterface/Views/TabBrowser.js:
+        (WebInspector.TabBrowser.prototype.addTabForContentView):
+        (WebInspector.TabBrowser.prototype.showTabForContentView):
+        (WebInspector.TabBrowser.prototype.closeTabForContentView):
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._openDefaultTab):
+        (WebInspector._tryToRestorePendingTabs):
+        (WebInspector.showNewTabTab):
+        (WebInspector.createNewTabWithType):
+        Add `options` dictionaries instead of optional parameters.
+
+        (WebInspector.tabContentViewClassForRepresentedObject):
+        Drive-by fix: remove incorrect placement of WebInspector.Collection check. This function
+        determines TabContentView classes, not ContentView.
+
+2017-06-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Remove unnecessary hasChildren from TreeOutline
+        https://bugs.webkit.org/show_bug.cgi?id=173986
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/TreeOutline.js:
+        (WebInspector.TreeOutline):
+        (WebInspector.TreeOutline.prototype.appendChild):
+        (WebInspector.TreeOutline.prototype.insertChild):
+        (WebInspector.TreeOutline.prototype.removeChildAtIndex):
+        (WebInspector.TreeOutline.prototype.removeChild):
+        (WebInspector.TreeOutline.prototype.get selectedTreeElementIndex):
+
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        (WebInspector.NavigationSidebarPanel.prototype._checkOutlinesForPendingViewStateCookie):
+        * UserInterface/Views/VisualStyleCommaSeparatedKeywordEditor.js:
+        (WebInspector.VisualStyleCommaSeparatedKeywordEditor.prototype.get value):
+
+2017-06-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Cleanup unused/invalid parameters for SidebarPanels
+        https://bugs.webkit.org/show_bug.cgi?id=173985
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/SidebarPanel.js:
+        * UserInterface/Views/NavigationSidebarPanel.js:
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .overflow-shadow.top): Deleted.
+        * UserInterface/Views/DetailsSidebarPanel.js:
+
+        * UserInterface/Views/ApplicationCacheDetailsSidebarPanel.js:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMDetailsSidebarPanel.js:
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.js:
+        * UserInterface/Views/IndexedDatabaseDetailsSidebarPanel.js:
+        * UserInterface/Views/LayerTreeDetailsSidebarPanel.js:
+        * UserInterface/Views/ProbeDetailsSidebarPanel.js:
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        * UserInterface/Views/ScopeChainDetailsSidebarPanel.js:
+        * UserInterface/Views/StorageSidebarPanel.js:
+
+2017-06-29  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Create a single -webkit-canvas for use inside popovers
+        https://bugs.webkit.org/show_bug.cgi?id=173820
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/Popover.css:
+        (.popover):
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover):
+        (WebInspector.Popover.prototype._drawBackground):
+
 2017-06-28  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: Instrument active pixel memory used by canvases

@@ -41,7 +41,6 @@
 #include "RTCSessionDescription.h"
 #include "RealtimeIncomingAudioSource.h"
 #include "RealtimeIncomingVideoSource.h"
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -110,7 +109,8 @@ static webrtc::PeerConnectionInterface::RTCConfiguration configurationFromMediaE
     }
 
     rtcConfiguration.set_cpu_adaptation(false);
-    rtcConfiguration.ice_candidate_pool_size = configuration.iceCandidatePoolSize;
+    // FIXME: Activate ice candidate pool size once it no longer bothers test bots.
+    // rtcConfiguration.ice_candidate_pool_size = configuration.iceCandidatePoolSize;
 
     return rtcConfiguration;
 }

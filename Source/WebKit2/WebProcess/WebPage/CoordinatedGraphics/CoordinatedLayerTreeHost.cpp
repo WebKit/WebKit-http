@@ -127,14 +127,14 @@ void CoordinatedLayerTreeHost::forceRepaint()
     m_coordinator.flushPendingLayerChanges();
 }
 
-bool CoordinatedLayerTreeHost::forceRepaintAsync(uint64_t callbackID)
+bool CoordinatedLayerTreeHost::forceRepaintAsync(CallbackID callbackID)
 {
     scheduleLayerFlush();
 
     // We want a clean repaint, meaning that if we're currently waiting for the renderer
     // to finish an update, we'll have to schedule another flush when it's done.
     ASSERT(!m_forceRepaintAsync.callbackID);
-    m_forceRepaintAsync.callbackID = callbackID;
+    m_forceRepaintAsync.callbackID = OptionalCallbackID(callbackID);
     m_forceRepaintAsync.needsFreshFlush = m_scheduledWhileWaitingForRenderer;
     return true;
 }
@@ -167,10 +167,10 @@ void CoordinatedLayerTreeHost::renderNextFrame()
         // aren't needed. If they are, the callback will be executed when this function
         // is called after the next update.
         if (!m_forceRepaintAsync.needsFreshFlush) {
-            m_webPage.send(Messages::WebPageProxy::VoidCallback(m_forceRepaintAsync.callbackID));
-            m_forceRepaintAsync = { };
-        } else
-            m_forceRepaintAsync.needsFreshFlush = false;
+            m_webPage.send(Messages::WebPageProxy::VoidCallback(m_forceRepaintAsync.callbackID.callbackID()));
+            m_forceRepaintAsync.callbackID = OptionalCallbackID();
+        }
+        m_forceRepaintAsync.needsFreshFlush = false;
     }
 
     if (scheduledWhileWaitingForRenderer || m_layerFlushTimer.isActive()) {

@@ -25,6 +25,6 @@
 
 [
     Conditional=USER_MESSAGE_HANDLERS,
-    CustomGetOwnPropertySlotAndDescriptor,
 ] interface UserMessageHandlersNamespace {
+    [CallWith=World] getter UserMessageHandler (DOMString name);
 };

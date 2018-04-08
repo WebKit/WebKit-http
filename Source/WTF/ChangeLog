@@ -1,3 +1,536 @@
+2017-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Make double-conversion's cache data constant and drop double_conversion::initialize()
+        https://bugs.webkit.org/show_bug.cgi?id=174124
+
+        Reviewed by Saam Barati.
+
+        We annotate double-conversion's cache data as const and constexpr. And move it out of function.
+        Since they are not involving global constructors, they are compiled as rodata and initialized
+        without calling double_conversion::initialize().
+
+        And we drop double_conversion::initialize() function since it is no longer necessary.
+
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+        * wtf/dtoa/cached-powers.cc:
+        * wtf/dtoa/cached-powers.h:
+
+2017-07-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Initialize srandom and srand with cryptographically random number
+        https://bugs.webkit.org/show_bug.cgi?id=174123
+
+        Reviewed by Mark Lam.
+
+        Use cryptographically random number instead of current time as a seed.
+
+        * wtf/RandomNumberSeed.h:
+        (WTF::initializeRandomNumberGenerator):
+
+2017-07-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Xcode duplicate UUID for DisallowCType.h and DispatchPtr.h
+        https://bugs.webkit.org/show_bug.cgi?id=174117
+
+        Reviewed by Alexey Proskuryakov.
+
+        * WTF.xcodeproj/project.pbxproj:
+        Give DisallowCType.h and DispatchPtr.h different UUIDs.
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        LayoutTest workers/bomb.html is a Crash
+        https://bugs.webkit.org/show_bug.cgi?id=167757
+        <rdar://problem/33086462>
+
+        Reviewed by Keith Miller.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::waitFor):
+        * wtf/AutomaticThread.h:
+
+2017-07-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219060.
+        https://bugs.webkit.org/show_bug.cgi?id=174108
+
+        crashing constantly when initializing UIWebView (Requested by
+        thorton on #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219060
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219103.
+
+        Caused multiple build failures.
+
+        Reverted changeset:
+
+        "Remove copy of ICU headers from WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+        http://trac.webkit.org/changeset/219103
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Add an extra rsync command to CopyWTFHeaders which copies the ICU headers
+        to DSTROOT/usr/local/include/. These headers already live inside a
+        "unicode" folder, so an example path of a header is
+        DSTROOT/usr/local/include/unicode/uchar.h. This is already in the search
+        path of the other WebKit projects, so those other projects can remove
+        their explicit listing of the old place these headers lived.
+
+        Also add the remaining ICU 55.1 headers which the other projects (like
+        WebCore) need. Revert any local changes to these headers in favor of
+        using the GCC_PREPROCESSOR_DEFINITIONS build setting. This is so we can
+        compile the same way against unmodified headers.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/CopyWTFHeaders.xcconfig:
+        * WTF.xcodeproj/project.pbxproj:
+        * icu/unicode/alphaindex.h: Added.
+        * icu/unicode/appendable.h: Added.
+        * icu/unicode/basictz.h: Added.
+        * icu/unicode/brkiter.h: Added.
+        (BreakIterator::isBufferClone):
+        * icu/unicode/bytestrie.h: Added.
+        * icu/unicode/bytestriebuilder.h: Added.
+        * icu/unicode/calendar.h: Added.
+        (Calendar::createInstance):
+        (Calendar::roll):
+        (Calendar::internalSet):
+        (Calendar::weekNumber):
+        * icu/unicode/caniter.h: Added.
+        * icu/unicode/chariter.h: Renamed from Source/WebCore/icu/unicode/chariter.h.
+        * icu/unicode/choicfmt.h: Added.
+        * icu/unicode/coleitr.h: Added.
+        (CollationElementIterator::primaryOrder):
+        (CollationElementIterator::secondaryOrder):
+        (CollationElementIterator::tertiaryOrder):
+        (CollationElementIterator::isIgnorable):
+        * icu/unicode/coll.h: Added.
+        * icu/unicode/compactdecimalformat.h: Added.
+        * icu/unicode/curramt.h: Added.
+        (CurrencyAmount::getCurrency):
+        (CurrencyAmount::getISOCurrency):
+        * icu/unicode/currpinf.h: Added.
+        (CurrencyPluralInfo::operator!=):
+        * icu/unicode/currunit.h: Added.
+        (CurrencyUnit::getISOCurrency):
+        * icu/unicode/datefmt.h: Added.
+        * icu/unicode/dbbi.h: Added.
+        * icu/unicode/dcfmtsym.h: Added.
+        (DecimalFormatSymbols::getSymbol):
+        (DecimalFormatSymbols::getConstSymbol):
+        (DecimalFormatSymbols::setSymbol):
+        (DecimalFormatSymbols::getLocale):
+        (DecimalFormatSymbols::getCurrencyPattern):
+        * icu/unicode/decimfmt.h: Added.
+        (DecimalFormat::getConstSymbol):
+        * icu/unicode/docmain.h: Added.
+        * icu/unicode/dtfmtsym.h: Added.
+        * icu/unicode/dtintrv.h: Added.
+        (DateInterval::getFromDate):
+        (DateInterval::getToDate):
+        (DateInterval::operator!=):
+        * icu/unicode/dtitvfmt.h: Added.
+        (DateIntervalFormat::operator!=):
+        * icu/unicode/dtitvinf.h: Added.
+        (DateIntervalInfo::operator!=):
+        * icu/unicode/dtptngen.h: Added.
+        * icu/unicode/dtrule.h: Added.
+        * icu/unicode/enumset.h: Added.
+        (EnumSet::EnumSet):
+        (EnumSet::~EnumSet):
+        (EnumSet::clear):
+        (EnumSet::add):
+        (EnumSet::remove):
+        (EnumSet::contains):
+        (EnumSet::set):
+        (EnumSet::get):
+        (EnumSet::isValidEnum):
+        (EnumSet::isValidValue):
+        (EnumSet::operator=):
+        (EnumSet::getAll):
+        (EnumSet::flag):
+        * icu/unicode/errorcode.h: Added.
+        * icu/unicode/fieldpos.h: Added.
+        (FieldPosition::operator=):
+        (FieldPosition::operator==):
+        (FieldPosition::operator!=):
+        * icu/unicode/filteredbrk.h: Added.
+        * icu/unicode/fmtable.h: Added.
+        (Formattable::getDate):
+        (Formattable::getString):
+        (Formattable::getLong):
+        (Formattable::toUFormattable):
+        (Formattable::fromUFormattable):
+        * icu/unicode/format.h: Added.
+        * icu/unicode/fpositer.h: Added.
+        * icu/unicode/gender.h: Added.
+        * icu/unicode/gregocal.h: Added.
+        * icu/unicode/icudataver.h: Added.
+        * icu/unicode/icuplug.h: Added.
+        * icu/unicode/idna.h: Added.
+        * icu/unicode/listformatter.h: Added.
+        (ListFormatData::ListFormatData):
+        * icu/unicode/locdspnm.h: Added.
+        (LocaleDisplayNames::createInstance):
+        * icu/unicode/locid.h: Added.
+        (Locale::operator!=):
+        (Locale::getCountry):
+        (Locale::getLanguage):
+        (Locale::getScript):
+        (Locale::getVariant):
+        (Locale::getName):
+        (Locale::isBogus):
+        * icu/unicode/measfmt.h: Added.
+        * icu/unicode/measunit.h: Added.
+        * icu/unicode/measure.h: Added.
+        (Measure::getNumber):
+        (Measure::getUnit):
+        * icu/unicode/messagepattern.h: Added.
+        * icu/unicode/msgfmt.h: Added.
+        * icu/unicode/normalizer2.h: Added.
+        * icu/unicode/normlzr.h: Added.
+        (Normalizer::operator!= ):
+        (Normalizer::quickCheck):
+        (Normalizer::isNormalized):
+        (Normalizer::compare):
+        * icu/unicode/numfmt.h: Added.
+        (NumberFormat::isParseIntegerOnly):
+        (NumberFormat::isLenient):
+        * icu/unicode/numsys.h: Added.
+        * icu/unicode/parsepos.h: Added.
+        (ParsePosition::operator=):
+        (ParsePosition::operator==):
+        (ParsePosition::operator!=):
+        (ParsePosition::getIndex):
+        (ParsePosition::setIndex):
+        (ParsePosition::getErrorIndex):
+        (ParsePosition::setErrorIndex):
+        * icu/unicode/plurfmt.h: Added.
+        * icu/unicode/plurrule.h: Added.
+        * icu/unicode/rbbi.h: Added.
+        (RuleBasedBreakIterator::operator!=):
+        * icu/unicode/rbnf.h: Added.
+        (RuleBasedNumberFormat::isLenient):
+        (RuleBasedNumberFormat::getDefaultRuleSet):
+        * icu/unicode/rbtz.h: Added.
+        * icu/unicode/regex.h: Added.
+        * icu/unicode/region.h: Added.
+        * icu/unicode/reldatefmt.h: Added.
+        * icu/unicode/resbund.h: Added.
+        * icu/unicode/schriter.h: Added.
+        * icu/unicode/scientificnumberformatter.h: Added.
+        * icu/unicode/search.h: Added.
+        (SearchIterator::operator!=):
+        * icu/unicode/selfmt.h: Added.
+        * icu/unicode/simpletz.h: Added.
+        (SimpleTimeZone::setStartRule):
+        (SimpleTimeZone::setEndRule):
+        (SimpleTimeZone::getOffset):
+        * icu/unicode/smpdtfmt.h: Added.
+        (SimpleDateFormat::get2DigitYearStart):
+        * icu/unicode/sortkey.h: Added.
+        (CollationKey::operator!=):
+        (CollationKey::isBogus):
+        (CollationKey::getByteArray):
+        * icu/unicode/stringtriebuilder.h: Added.
+        * icu/unicode/stsearch.h: Added.
+        * icu/unicode/symtable.h: Added.
+        * icu/unicode/tblcoll.h: Added.
+        * icu/unicode/timezone.h: Added.
+        (TimeZone::getID):
+        (TimeZone::setID):
+        * icu/unicode/tmunit.h: Added.
+        * icu/unicode/tmutamt.h: Added.
+        (TimeUnitAmount::operator!=):
+        * icu/unicode/tmutfmt.h: Added.
+        (TimeUnitFormat::operator!=):
+        * icu/unicode/translit.h: Added.
+        (Transliterator::getMaximumContextLength):
+        (Transliterator::setID):
+        (Transliterator::integerToken):
+        (Transliterator::pointerToken):
+        * icu/unicode/tzfmt.h: Added.
+        * icu/unicode/tznames.h: Added.
+        * icu/unicode/tzrule.h: Added.
+        * icu/unicode/tztrans.h: Added.
+        * icu/unicode/ubidi.h: Added.
+        * icu/unicode/ucal.h: Renamed from Source/JavaScriptCore/icu/unicode/ucal.h.
+        * icu/unicode/ucasemap.h: Added.
+        * icu/unicode/ucat.h: Added.
+        * icu/unicode/ucharstrie.h: Added.
+        * icu/unicode/ucharstriebuilder.h: Added.
+        * icu/unicode/uchriter.h: Added.
+        * icu/unicode/uclean.h: Added.
+        * icu/unicode/ucnv_cb.h: Renamed from Source/WebCore/icu/unicode/ucnv_cb.h.
+        * icu/unicode/ucnvsel.h: Added.
+        * icu/unicode/ucoleitr.h: Renamed from Source/WebCore/icu/unicode/ucoleitr.h.
+        * icu/unicode/uconfig.h:
+        * icu/unicode/ucsdet.h: Renamed from Source/WebCore/icu/unicode/ucsdet.h.
+        * icu/unicode/udat.h: Renamed from Source/JavaScriptCore/icu/unicode/udat.h.
+        * icu/unicode/udata.h: Added.
+        * icu/unicode/udateintervalformat.h: Added.
+        * icu/unicode/udatpg.h: Renamed from Source/JavaScriptCore/icu/unicode/udatpg.h.
+        * icu/unicode/udisplaycontext.h: Renamed from Source/JavaScriptCore/icu/unicode/udisplaycontext.h.
+        * icu/unicode/ufieldpositer.h: Renamed from Source/JavaScriptCore/icu/unicode/ufieldpositer.h.
+        * icu/unicode/uformattable.h: Renamed from Source/JavaScriptCore/icu/unicode/uformattable.h.
+        * icu/unicode/ugender.h: Added.
+        * icu/unicode/uidna.h: Renamed from Source/WebCore/icu/unicode/uidna.h.
+        * icu/unicode/uldnames.h: Added.
+        * icu/unicode/ulistformatter.h: Added.
+        * icu/unicode/ulocdata.h: Added.
+        * icu/unicode/umisc.h: Renamed from Source/JavaScriptCore/icu/unicode/umisc.h.
+        * icu/unicode/umsg.h: Added.
+        * icu/unicode/unifilt.h: Added.
+        * icu/unicode/unifunct.h: Added.
+        * icu/unicode/unimatch.h: Added.
+        * icu/unicode/unirepl.h: Added.
+        * icu/unicode/uniset.h: Added.
+        (UnicodeSet::operator!=):
+        (UnicodeSet::isFrozen):
+        (UnicodeSet::containsSome):
+        (UnicodeSet::isBogus):
+        (UnicodeSet::fromUSet):
+        (UnicodeSet::toUSet):
+        (UnicodeSet::span):
+        (UnicodeSet::spanBack):
+        * icu/unicode/unum.h: Renamed from Source/JavaScriptCore/icu/unicode/unum.h.
+        * icu/unicode/unumsys.h: Renamed from Source/JavaScriptCore/icu/unicode/unumsys.h.
+        * icu/unicode/upluralrules.h: Added.
+        * icu/unicode/uregex.h: Added.
+        * icu/unicode/uregion.h: Added.
+        * icu/unicode/urep.h: Added.
+        * icu/unicode/ures.h: Added.
+        (ures_getUnicodeString):
+        (ures_getNextUnicodeString):
+        (ures_getUnicodeStringByIndex):
+        (ures_getUnicodeStringByKey):
+        * icu/unicode/usearch.h: Renamed from Source/WebCore/icu/unicode/usearch.h.
+        * icu/unicode/usetiter.h: Added.
+        (UnicodeSetIterator::isString):
+        (UnicodeSetIterator::getCodepoint):
+        (UnicodeSetIterator::getCodepointEnd):
+        * icu/unicode/ushape.h: Renamed from Source/WebCore/icu/unicode/ushape.h.
+        * icu/unicode/usprep.h: Added.
+        * icu/unicode/ustdio.h: Added.
+        * icu/unicode/ustream.h: Added.
+        * icu/unicode/ustringtrie.h: Added.
+        * icu/unicode/utf32.h: Added.
+        * icu/unicode/utmscale.h: Added.
+        * icu/unicode/utrace.h: Added.
+        * icu/unicode/utrans.h: Added.
+        * icu/unicode/utypes.h:
+        * icu/unicode/vtzone.h: Added.
+
+2017-07-03  Keith Miller  <keith_miller@apple.com>
+
+        Fix ifndef in Assertions.h
+        https://bugs.webkit.org/show_bug.cgi?id=174104
+
+        Reviewed by Saam Barati.
+
+        The ifndef should have been checking for
+        CRASH_WITH_SECURITY_IMPLICATION_AND_INFO since that is what the
+        ifndef defines.
+
+        * wtf/Assertions.h:
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Daewoong Jang  <daewoong.jang@navercorp.com>
+
+        Remove an unused function export
+        https://bugs.webkit.org/show_bug.cgi?id=174084
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Threading.h:
+
+2017-07-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Mark Lam.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/StackStats.cpp:
+        (WTF::StackStats::PerThreadStats::PerThreadStats):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack): Deleted.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * wtf/Platform.h:
+        * wtf/mac/DeprecatedSymbolsUsedBySafari.mm:
+        * wtf/spi/darwin/dyldSPI.h:
+
+2017-07-01  Caio Lima  <ticaiolima@gmail.com>
+
+        [JSC] WTFGetBacktrace can return numberOfFrames == 0 in some architectures
+        https://bugs.webkit.org/show_bug.cgi?id=172768
+
+        Reviewed by Mark Lam.
+
+        In some architectures, like ARMv6 running on a Raspberry pi, the
+        backtrace function from "execinfo.h" is returning 0. In
+        that case, the RELEASE_ASSERT in StackTrace::captureStackTrace
+        fails causing a runtime crash.
+        This patch is adding a guard for the case described above to
+        avoid a runtime crash in such case.
+
+        * wtf/StackTrace.cpp:
+        (WTF::StackTrace::captureStackTrace):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * wtf/Platform.h:
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+        * wtf/spi/cocoa/SecuritySPI.h:
+        * wtf/text/TextBreakIterator.cpp:
+
+2017-07-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add a warning if WEBGL2 is enabled without WEBGL
+        https://bugs.webkit.org/show_bug.cgi?id=174054
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        Force crashWithInfo to be out of line.
+        https://bugs.webkit.org/show_bug.cgi?id=174028
+
+        Reviewed by Filip Pizlo.
+
+        The first pass at making crashes hold information about why they
+        were crashing had the problem that it would inline the assertion.
+        This meant that clang could coalesce DFG_ASSERTS with other
+        assertion failures in the same function. This patch moves it out
+        of line to help fix that issue.
+
+        * wtf/Assertions.cpp:
+        (WTFCrashWithInfo):
+        * wtf/Assertions.h:
+        (WTF::isIntegralType):
+
+2017-06-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop SymbolRegistry::keyForSymbol
+        https://bugs.webkit.org/show_bug.cgi?id=174052
+
+        Reviewed by Sam Weinig.
+
+        Since we can know whether a given symbol is registered by checking RegisteredSymbolImpl,
+        we do not need to query key string for a given symbol by using SymbolRegistry::keyForSymbol.
+
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::extractFoldedString): Deleted.
+        * wtf/text/SymbolRegistry.cpp:
+        (WTF::SymbolRegistry::keyForSymbol): Deleted.
+        * wtf/text/SymbolRegistry.h:
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * WTF.xcodeproj/project.pbxproj:
+
+2017-06-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218992.
+
+        The patch broke the iOS device builds.
+
+        Reverted changeset:
+
+        "DFG_ASSERT should allow stuffing registers before trapping."
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+        http://trac.webkit.org/changeset/218992
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        DFG_ASSERT should allow stuffing registers before trapping.
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+
+        Reviewed by Mark Lam.
+
+        Add new template functions that enable stuffing up to five values
+        into registers before crashing.
+
+        * wtf/Assertions.h:
+        (CRASH_WITH_INFO):
+
 2017-06-28  Brent Fulgham  <bfulgham@apple.com>
 
         Teach ResourceLoadStatistics to recognize changes in the file system

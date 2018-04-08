@@ -41,7 +41,7 @@ GradientImage::~GradientImage()
 {
 }
 
-void GradientImage::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, DecodingMode, ImageOrientationDescription)
+ImageDrawResult GradientImage::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator compositeOp, BlendMode blendMode, DecodingMode, ImageOrientationDescription)
 {
     GraphicsContextStateSaver stateSaver(destContext);
     destContext.setCompositeOperation(compositeOp, blendMode);
@@ -60,6 +60,7 @@ void GradientImage::draw(GraphicsContext& destContext, const FloatRect& destRect
 #if PLATFORM(HAIKU)
     destContext.platformContext()->PopState();
 #endif
+    return ImageDrawResult::DidDraw;
 }
 
 void GradientImage::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,

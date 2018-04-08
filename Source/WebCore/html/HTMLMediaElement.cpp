@@ -2474,6 +2474,9 @@ RefPtr<ArrayBuffer> HTMLMediaElement::mediaPlayerCachedKeyForKeyId(const String&
 
 bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().legacyEncryptedMediaAPIEnabled())
+        return false;
+
     if (!hasEventListeners("webkitneedkey")) {
         m_error = MediaError::create(MediaError::MEDIA_ERR_ENCRYPTED);
         scheduleEvent(eventNames().errorEvent);
@@ -2498,6 +2501,9 @@ String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
 
 void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().legacyEncryptedMediaAPIEnabled())
+        return;
+
     if (m_webKitMediaKeys == mediaKeys)
         return;
 
@@ -2510,6 +2516,9 @@ void HTMLMediaElement::webkitSetMediaKeys(WebKitMediaKeys* mediaKeys)
 
 void HTMLMediaElement::keyAdded()
 {
+    if (!RuntimeEnabledFeatures::sharedFeatures().legacyEncryptedMediaAPIEnabled())
+        return;
+
     if (m_player)
         m_player->keyAdded();
 }
@@ -6681,6 +6690,24 @@ void HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture(MediaEle
         | MediaElementSession::RequireUserGestureToControlControlsManager);
 
     m_mediaSession->removeBehaviorRestriction(restrictionsToRemove);
+}
+
+void HTMLMediaElement::updateRateChangeRestrictions()
+{
+    const auto& document = this->document();
+    if (!document.ownerElement() && document.isMediaDocument())
+        return;
+
+    const auto& topDocument = document.topDocument();
+    if (topDocument.videoPlaybackRequiresUserGesture())
+        m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoRateChange);
+    else
+        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoRateChange);
+
+    if (topDocument.audioPlaybackRequiresUserGesture())
+        m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForAudioRateChange);
+    else
+        m_mediaSession->removeBehaviorRestriction(MediaElementSession::RequireUserGestureForAudioRateChange);
 }
 
 #if ENABLE(MEDIA_SOURCE)

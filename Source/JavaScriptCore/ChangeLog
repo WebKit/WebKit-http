@@ -1,3 +1,631 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * Configurations/Base.xcconfig: iphoneos and iphonesimulator should use the
+        same directory for private framework stubs.
+
+2017-07-05  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: implement name section's module name, skip unknown sections
+        https://bugs.webkit.org/show_bug.cgi?id=172008
+
+        Reviewed by Keith Miller.
+
+        Parse the WebAssembly module name properly, and skip unknown
+        sections. This is useful because as toolchains support new types
+        of names we want to keep displaying the information we know about
+        and simply ignore new information. That capability was designed
+        into WebAssembly's name section.
+
+        Failure to commit this patch would mean that WebKit won't display
+        stack trace information, which would make developers sad.
+
+        Module names were added here: https://github.com/WebAssembly/design/pull/1055
+
+        Note that this patch doesn't do anything with the parsed name! Two
+        reasons for this: module names aren't supported in binaryen yet,
+        so I can't write a simple binary test; and using the name is a
+        slightly riskier change because it requires changing StackVisitor
+        + StackFrame (where they print "[wasm code]") which requires
+        figuring out the frame's Module. The latter bit isn't trivial
+        because we only know wasm frames from their tag bits, and
+        CodeBlocks are always nullptr.
+
+        Binaryen bug: https://github.com/WebAssembly/binaryen/issues/1010
+
+        I filed #174098 to use the module name.
+
+        * wasm/WasmFormat.h:
+        (JSC::Wasm::isValidNameType):
+        * wasm/WasmNameSectionParser.cpp:
+
+2017-07-04  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup some StringBuilder use
+        https://bugs.webkit.org/show_bug.cgi?id=174118
+
+        Reviewed by Andreas Kling.
+
+        * runtime/FunctionConstructor.cpp:
+        (JSC::constructFunctionSkippingEvalEnabledCheck):
+        * tools/FunctionOverrides.cpp:
+        (JSC::parseClause):
+        * wasm/WasmOMGPlan.cpp:
+        * wasm/WasmPlan.cpp:
+        * wasm/WasmValidate.cpp:
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        LayoutTest workers/bomb.html is a Crash
+        https://bugs.webkit.org/show_bug.cgi?id=167757
+        <rdar://problem/33086462>
+
+        Reviewed by Keith Miller.
+
+        VMTraps::SignalSender was accessing VM fields even after
+        the VM was destroyed. This happened when the SignalSender
+        thread was in the middle of its work() function while VMTraps
+        was notified that the VM was shutting down. The VM would proceed
+        to run its destructor even after the SignalSender thread finished
+        doing its work. This means that the SignalSender thread was accessing
+        VM field eve after VM was destructed (including itself, since it is
+        transitively owned by the VM). The VM must wait for the SignalSender
+        thread to shutdown before it can continue to destruct itself.
+
+        * runtime/VMTraps.cpp:
+        (JSC::VMTraps::willDestroyVM):
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        DFGBytecodeParser op_to_this does not access the correct instruction offset for to this status
+        https://bugs.webkit.org/show_bug.cgi?id=174110
+
+        Reviewed by Michael Saboff.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        Add a new assertion to object allocation sinking phase
+        https://bugs.webkit.org/show_bug.cgi?id=174107
+
+        Rubber stamped by Filip Pizlo.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-07-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219060.
+        https://bugs.webkit.org/show_bug.cgi?id=174108
+
+        crashing constantly when initializing UIWebView (Requested by
+        thorton on #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219060
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219103.
+
+        Caused multiple build failures.
+
+        Reverted changeset:
+
+        "Remove copy of ICU headers from WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+        http://trac.webkit.org/changeset/219103
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Use WTF's copy of ICU headers.
+
+        * Configurations/Base.xcconfig:
+        * icu/unicode/localpointer.h: Removed.
+        * icu/unicode/parseerr.h: Removed.
+        * icu/unicode/platform.h: Removed.
+        * icu/unicode/ptypes.h: Removed.
+        * icu/unicode/putil.h: Removed.
+        * icu/unicode/uchar.h: Removed.
+        * icu/unicode/ucnv.h: Removed.
+        * icu/unicode/ucnv_err.h: Removed.
+        * icu/unicode/ucol.h: Removed.
+        * icu/unicode/uconfig.h: Removed.
+        * icu/unicode/ucurr.h: Removed.
+        * icu/unicode/uenum.h: Removed.
+        * icu/unicode/uiter.h: Removed.
+        * icu/unicode/uloc.h: Removed.
+        * icu/unicode/umachine.h: Removed.
+        * icu/unicode/unorm.h: Removed.
+        * icu/unicode/unorm2.h: Removed.
+        * icu/unicode/urename.h: Removed.
+        * icu/unicode/uscript.h: Removed.
+        * icu/unicode/uset.h: Removed.
+        * icu/unicode/ustring.h: Removed.
+        * icu/unicode/utf.h: Removed.
+        * icu/unicode/utf16.h: Removed.
+        * icu/unicode/utf8.h: Removed.
+        * icu/unicode/utf_old.h: Removed.
+        * icu/unicode/utypes.h: Removed.
+        * icu/unicode/uvernum.h: Removed.
+        * icu/unicode/uversion.h: Removed.
+        * runtime/IntlCollator.cpp:
+        * runtime/IntlDateTimeFormat.cpp:
+        * runtime/JSGlobalObject.cpp:
+        * runtime/StringPrototype.cpp:
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        Add better crash logging for allocation sinking phase
+        https://bugs.webkit.org/show_bug.cgi?id=174102
+        <rdar://problem/33112092>
+
+        Rubber stamped by Filip Pizlo.
+
+        I'm trying to gather better information from crashlogs about why
+        we're crashing in the allocation sinking phase. I'm adding a allocation
+        sinking specific RELEASE_ASSERT as well as marking a few functions as
+        NEVER_INLINE to have the stack traces in the crash trace contain more
+        actionable information.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-07-03  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove more unnecessary uses of the preprocessor in idl files
+        https://bugs.webkit.org/show_bug.cgi?id=174083
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_NAVIGATOR_STANDALONE.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Support listing WebGL2 and WebGPU contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173396
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/protocol/Canvas.json:
+        * inspector/scripts/codegen/generator.py:
+        (Generator.stylized_name_for_enum_value):
+        Add cases for handling new Canvas.ContextType protocol enumerations:
+         - "webgl2" maps to `WebGL2`
+         - "webgpu" maps to `WebGPU`
+
+2017-07-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Mark Lam.
+
+        There is a site in JSC that try to walk another thread's stack.
+        Currently, stack bounds are stored in WTFThreadData which is located
+        in TLS. Thus, only the thread itself can access its own WTFThreadData.
+        We workaround this situation by holding StackBounds in MachineThread in JSC,
+        but StackBounds should be put in WTF::Thread instead.
+
+        This patch moves StackBounds from WTFThreadData to WTF::Thread. StackBounds
+        information is tightly coupled with Thread. Thus putting it in WTF::Thread
+        is natural choice.
+
+        * heap/MachineStackMarker.cpp:
+        (JSC::MachineThreads::MachineThread::MachineThread):
+        (JSC::MachineThreads::MachineThread::captureStack):
+        * heap/MachineStackMarker.h:
+        (JSC::MachineThreads::MachineThread::stackBase):
+        (JSC::MachineThreads::MachineThread::stackEnd):
+        * runtime/InitializeThreading.cpp:
+        (JSC::initializeThreading):
+        * runtime/VM.cpp:
+        (JSC::VM::VM):
+        (JSC::VM::updateStackLimits):
+        (JSC::VM::committedStackByteCount):
+        * runtime/VM.h:
+        (JSC::VM::isSafeToRecurse):
+        * runtime/VMEntryScope.cpp:
+        (JSC::VMEntryScope::VMEntryScope):
+        * runtime/VMInlines.h:
+        (JSC::VM::ensureStackCapacityFor):
+        * runtime/VMTraps.cpp:
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPatternConstructor::isSafeToRecurse):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * jit/ExecutableAllocator.cpp:
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * API/WebKitAvailability.h:
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-07-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GCC
+        https://bugs.webkit.org/show_bug.cgi?id=174034
+
+        * b3/testb3.cpp:
+        (JSC::B3::testDoubleLiteralComparison):
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        Force crashWithInfo to be out of line.
+        https://bugs.webkit.org/show_bug.cgi?id=174028
+
+        Reviewed by Filip Pizlo.
+
+        Update DFG_ASSERT macro to call CRASH_WITH_SECURITY_IMPLICATION_AND_INFO.
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::logDFGAssertionFailure):
+        (JSC::DFG::Graph::logAssertionFailure):
+        (JSC::DFG::crash): Deleted.
+        (JSC::DFG::Graph::handleAssertionFailure): Deleted.
+        * dfg/DFGGraph.h:
+
+2017-06-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use AbstractMacroAssembler::random instead of holding WeakRandom in JIT
+        https://bugs.webkit.org/show_bug.cgi?id=174053
+
+        Reviewed by Geoffrey Garen.
+
+        We already have AbstractMacroAssembler::random() function. Use it instead.
+
+        * jit/JIT.cpp:
+        (JSC::JIT::JIT):
+        (JSC::JIT::compileWithoutLinking):
+        * jit/JIT.h:
+
+2017-06-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop SymbolRegistry::keyForSymbol
+        https://bugs.webkit.org/show_bug.cgi?id=174052
+
+        Reviewed by Sam Weinig.
+
+        * runtime/SymbolConstructor.cpp:
+        (JSC::symbolConstructorKeyFor):
+
+2017-06-30  Saam Barati  <sbarati@apple.com>
+
+        B3ReduceStrength should reduce EqualOrUnordered over const float input
+        https://bugs.webkit.org/show_bug.cgi?id=174039
+
+        Reviewed by Michael Saboff.
+
+        We perform this folding for ConstDoubleValue. It is simply
+        an oversight that we didn't do it for ConstFloatValue.
+
+        * b3/B3ConstFloatValue.cpp:
+        (JSC::B3::ConstFloatValue::equalOrUnorderedConstant):
+        * b3/B3ConstFloatValue.h:
+        * b3/testb3.cpp:
+        (JSC::B3::testFloatEqualOrUnorderedFolding):
+        (JSC::B3::testFloatEqualOrUnorderedFoldingNaN):
+        (JSC::B3::testFloatEqualOrUnorderedDontFold):
+        (JSC::B3::run):
+
+2017-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: AsyncStackTrace nodes can be corrupted when truncating
+        https://bugs.webkit.org/show_bug.cgi?id=173840
+        <rdar://problem/30840820>
+
+        Reviewed by Joseph Pecoraro.
+
+        When truncating an asynchronous stack trace, the parent chain is traversed
+        until a locked node is found. The path from this node to the root is shared
+        by more than one stack trace, and cannot be safely modified. Starting at
+        the first locked node, the path is cloned and becomes a new stack trace tree.
+
+        However, the clone operation initialized each new AsyncStackTrace node with
+        the original node's parent. This would increment the child count of the original
+        node. When cloning nodes, new nodes should not have their parent set until the
+        next node up the parent chain is cloned.
+
+        * inspector/AsyncStackTrace.cpp:
+        (Inspector::AsyncStackTrace::truncate):
+
+2017-06-30  Michael Saboff  <msaboff@apple.com>
+
+        RegExp's  anchored with .* with \g flag can return wrong match start for strings with multiple matches
+        https://bugs.webkit.org/show_bug.cgi?id=174044
+
+        Reviewed by Oliver Hunt.
+
+        The .* enclosure optimization didn't respect that we can start matching from a non-zero
+        index.  This optimization treats /.*<some-terms>.*/ by first matching the <some-terms> and
+        then finding the extent of the match by going back to the beginning of the line and going
+        forward to the end of the line.  The code that went back to the beginning of the line
+        checked for an index of 0 instead of comparing the index to the start position.  This start
+        position is passed as the initial index.
+
+        Added another temporary register to the YARR JIT to contain the start position for
+        platforms that have spare registers.
+
+        * yarr/Yarr.h:
+        * yarr/YarrInterpreter.cpp:
+        (JSC::Yarr::Interpreter::matchDotStarEnclosure):
+        (JSC::Yarr::Interpreter::Interpreter):
+        * yarr/YarrJIT.cpp:
+        (JSC::Yarr::YarrGenerator::generateDotStarEnclosure):
+        (JSC::Yarr::YarrGenerator::compile):
+        * yarr/YarrPattern.cpp:
+        (JSC::Yarr::YarrPattern::YarrPattern):
+        * yarr/YarrPattern.h:
+        (JSC::Yarr::YarrPattern::reset):
+
+2017-06-30  Saam Barati  <sbarati@apple.com>
+
+        B3MoveConstants floatZero() returns the wrong ValueKey
+        https://bugs.webkit.org/show_bug.cgi?id=174040
+
+        Reviewed by Filip Pizlo.
+
+        It had a typo where the ValueKey for floatZero() produces a Double
+        instead of a Float.
+
+        * b3/B3MoveConstants.cpp:
+
+2017-06-30  Saam Barati  <sbarati@apple.com>
+
+        B3ReduceDoubleToFloat incorrectly reduces operations over two double constants
+        https://bugs.webkit.org/show_bug.cgi?id=174034
+        <rdar://problem/30793007>
+
+        Reviewed by Filip Pizlo.
+
+        B3ReduceDoubleToFloat had a bug in it where it would incorrectly
+        reduce binary operations over double constants into the same binary
+        operation over the double constants casted to floats. This is clearly
+        incorrect as these two things will produce different values. For example:
+        
+        a = DoubleConst(bitwise_cast<double>(0x8000000000000001ull))
+        b = DoubleConst(bitwise_cast<double>(0x0000000000000000ull))
+        c = EqualOrUnordered(@a, @b) // produces 0
+        
+        into:
+        
+        a = FloatConst(static_cast<float>(bitwise_cast<double>(0x8000000000000001ull)))
+        b = FloatConst(static_cast<float>(bitwise_cast<double>(0x0000000000000000ull)))
+        c = EqualOrUnordered(@a, @b) // produces 1
+        
+        Which produces a different value for @c.
+
+        * b3/B3ReduceDoubleToFloat.cpp:
+        * b3/testb3.cpp:
+        (JSC::B3::doubleEq):
+        (JSC::B3::doubleNeq):
+        (JSC::B3::doubleGt):
+        (JSC::B3::doubleGte):
+        (JSC::B3::doubleLt):
+        (JSC::B3::doubleLte):
+        (JSC::B3::testDoubleLiteralComparison):
+        (JSC::B3::run):
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * runtime/CommonIdentifiers.h:
+
+2017-06-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Ran sort-Xcode-project-file.
+
+        * JavaScriptCore.xcodeproj/project.pbxproj:
+
+2017-06-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218992.
+
+        The patch broke the iOS device builds.
+
+        Reverted changeset:
+
+        "DFG_ASSERT should allow stuffing registers before trapping."
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+        http://trac.webkit.org/changeset/218992
+
+2017-06-30  Filip Pizlo  <fpizlo@apple.com>
+
+        RegExpCachedResult::setInput should reify left and right contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173818
+
+        Reviewed by Keith Miller.
+        
+        If you don't reify them in setInput, then when you later try to reify them, you'll end up
+        using indices into an old input string to create a substring of a new input string. That
+        never goes well.
+
+        * runtime/RegExpCachedResult.cpp:
+        (JSC::RegExpCachedResult::setInput):
+
+2017-06-30  Keith Miller  <keith_miller@apple.com>
+
+        DFG_ASSERT should allow stuffing registers before trapping.
+        https://bugs.webkit.org/show_bug.cgi?id=174005
+
+        Reviewed by Mark Lam.
+
+        DFG_ASSERT currently prints error data to stderr before crashing,
+        which is nice for local development. In the wild, however, we
+        can't see this information in crash logs. This patch enables
+        stuffing some of the most useful information from DFG_ASSERTS into
+        up to five registers right before crashing. The values stuffed
+        should not impact any logging during local development.
+
+        * assembler/AbortReason.h:
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::verifyEdge):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::logForCrash):
+        (JSC::DFG::Graph::logAssertionFailure):
+        (JSC::DFG::crash): Deleted.
+        (JSC::DFG::Graph::handleAssertionFailure): Deleted.
+        * dfg/DFGGraph.h:
+
+2017-06-29  Saam Barati  <sbarati@apple.com>
+
+        Calculating postCapacity in unshiftCountSlowCase is wrong
+        https://bugs.webkit.org/show_bug.cgi?id=173992
+        <rdar://problem/32283199>
+
+        Reviewed by Keith Miller.
+
+        This patch fixes a bug inside unshiftCountSlowCase where we would use
+        more memory than we allocated. The bug was when deciding how much extra
+        space we have after the vector we've allocated. This area is called the
+        postCapacity. The largest legal postCapacity value we could use is the
+        space we allocated minus the space we need:
+        largestPossiblePostCapacity = newStorageCapacity - requiredVectorLength;
+        However, the code was calculating the postCapacity as:
+        postCapacity = max(newStorageCapacity - requiredVectorLength, count);
+        
+        where count is how many elements we're appending. Depending on the inputs,
+        count could be larger than (newStorageCapacity - requiredVectorLength). This
+        would cause us to use more memory than we actually allocated.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::unshiftCountSlowCase):
+
+2017-06-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218512.
+        https://bugs.webkit.org/show_bug.cgi?id=173981
+
+        "It changes the behavior of the JS API's JSEvaluateScript
+        which breaks TurboTax" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "test262: Completion values for control flow do not match the
+        spec"
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+        http://trac.webkit.org/changeset/218512
+
+2017-06-29  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: disable some APIs under CSP
+        https://bugs.webkit.org/show_bug.cgi?id=173892
+        <rdar://problem/32914613>
+
+        Reviewed by Daniel Bates.
+
+        We should disable parts of WebAssembly under Content Security
+        Policy as discussed here:
+
+        https://github.com/WebAssembly/design/issues/1092
+
+        Exactly what should be disabled isn't super clear, so we may as
+        well be conservative and disable many things if developers already
+        opted into CSP. It's easy to loosen what we disable later.
+
+        This patch disables:
+        - WebAssembly.Instance
+        - WebAssembly.instantiate
+        - WebAssembly.Memory
+        - WebAssembly.Table
+
+        And leaves:
+        - WebAssembly on the global object
+        - WebAssembly.Module
+        - WebAssembly.compile
+        - WebAssembly.CompileError
+        - WebAssembly.LinkError
+
+        Nothing because currently unimplmented:
+        - WebAssembly.compileStreaming
+        - WebAssembly.instantiateStreaming
+
+        That way it won't be possible to call WebAssembly-compiled code,
+        or create memories (which use fancy 4GiB allocations
+        sometimes). Table isn't really useful on its own, and eventually
+        we may make them shareable so without more details it seems benign
+        to disable them (and useless if we don't).
+
+        I haven't done anything with postMessage, so you can still
+        postMessage a WebAssembly.Module cross-CSP, but you can't
+        instantiate it so it's useless. Because of this I elected to leave
+        WebAssembly.Module and friends available.
+
+        I haven't added any new directives. It's still unsafe-eval. We can
+        add something else later, but it seems odd to add a WebAssembly as
+        a new capability and tell developers "you should have been using
+        this directive which we just implemented if you wanted to disable
+        WebAssembly which didn't exist when you adopted CSP". So IMO we
+        should keep unsafe-eval as it currently is, add WebAssembly to
+        what it disables, and later consider having two new directives
+        which do each individually or something.
+
+        In all cases I throw an EvalError *before* other WebAssembly
+        errors would be produced.
+
+        Note that, as for eval, reporting doesn't work and is tracked by
+        https://webkit.org/b/111869
+
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::webAssemblyEnabled):
+        (JSC::JSGlobalObject::webAssemblyDisabledErrorMessage):
+        (JSC::JSGlobalObject::setWebAssemblyEnabled):
+        * wasm/js/JSWebAssemblyInstance.cpp:
+        (JSC::JSWebAssemblyInstance::create):
+        * wasm/js/JSWebAssemblyMemory.cpp:
+        (JSC::JSWebAssemblyMemory::create):
+        * wasm/js/JSWebAssemblyMemory.h:
+        * wasm/js/JSWebAssemblyTable.cpp:
+        (JSC::JSWebAssemblyTable::create):
+        * wasm/js/WebAssemblyMemoryConstructor.cpp:
+        (JSC::constructJSWebAssemblyMemory):
+
 2017-06-28  Keith Miller  <keith_miller@apple.com>
 
         VMTraps has some races

@@ -27,6 +27,7 @@
 
 #if WK_API_ENABLED
 
+#import <WebKit/_WKActivatedElementInfo.h>
 #import <WebKit/_WKFindOptions.h>
 #import <WebKit/_WKLayoutMode.h>
 #import <WebKit/_WKRenderingProgressEvents.h>
@@ -139,6 +140,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_close;
 
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
+- (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (nonatomic, setter=_setLayoutMode:) _WKLayoutMode _layoutMode;
 // For use with _layoutMode = _WKLayoutModeFixedSize:
@@ -358,8 +361,12 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 
+@property (nonatomic, readonly) CGRect _dragCaretRect WK_API_AVAILABLE(ios(WK_IOS_TBA));
+
 - (_WKDraggableElementInfo *)_draggableElementAtPosition:(CGPoint)position WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 - (void)_requestDraggableElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKDraggableElementInfo *))block WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+
+- (void)_requestActivatedElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKActivatedElementInfo *))block WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 #endif // TARGET_OS_IPHONE
 

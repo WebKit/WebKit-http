@@ -27,6 +27,7 @@
 #include "ResourceLoadStatistics.h"
 
 #include "KeyedCoding.h"
+#include "PublicSuffix.h"
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
@@ -51,7 +52,7 @@ void ResourceLoadStatistics::encode(KeyedEncoder& encoder) const
     
     // User interaction
     encoder.encodeBool("hadUserInteraction", hadUserInteraction);
-    encoder.encodeDouble("mostRecentUserInteraction", mostRecentUserInteraction);
+    encoder.encodeDouble("mostRecentUserInteraction", mostRecentUserInteractionTime.secondsSinceEpoch().value());
     encoder.encodeBool("grandfathered", grandfathered);
     
     // Top frame stats
@@ -183,8 +184,10 @@ bool ResourceLoadStatistics::decode(KeyedDecoder& decoder, unsigned version)
     if (version < 3)
         return true;
 
-    if (!decoder.decodeDouble("mostRecentUserInteraction", mostRecentUserInteraction))
+    double mostRecentUserInteractionTimeAsDouble;
+    if (!decoder.decodeDouble("mostRecentUserInteraction", mostRecentUserInteractionTimeAsDouble))
         return false;
+    mostRecentUserInteractionTime = WallTime::fromRawSeconds(mostRecentUserInteractionTimeAsDouble);
 
     if (!decoder.decodeBool("grandfathered", grandfathered))
         return false;
@@ -226,7 +229,7 @@ String ResourceLoadStatistics::toString() const
     appendBoolean(builder, "hadUserInteraction", hadUserInteraction);
     builder.append('\n');
     builder.appendLiteral("    mostRecentUserInteraction: ");
-    builder.appendNumber(mostRecentUserInteraction);
+    builder.appendNumber(mostRecentUserInteractionTime.secondsSinceEpoch().value());
     builder.append('\n');
     appendBoolean(builder, "    grandfathered", grandfathered);
     builder.append('\n');
@@ -317,14 +320,14 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
     if (!other.hadUserInteraction) {
         // If user interaction has been reset do so here too.
         // Else, do nothing.
-        if (!other.mostRecentUserInteraction) {
+        if (!other.mostRecentUserInteractionTime) {
             hadUserInteraction = false;
-            mostRecentUserInteraction = 0;
+            mostRecentUserInteractionTime = { };
         }
     } else {
         hadUserInteraction = true;
-        if (mostRecentUserInteraction < other.mostRecentUserInteraction)
-            mostRecentUserInteraction = other.mostRecentUserInteraction;
+        if (mostRecentUserInteractionTime < other.mostRecentUserInteractionTime)
+            mostRecentUserInteractionTime = other.mostRecentUserInteractionTime;
     }
     grandfathered |= other.grandfathered;
     
@@ -360,6 +363,26 @@ void ResourceLoadStatistics::merge(const ResourceLoadStatistics& other)
     
     // In-memory only
     isMarkedForCookiePartitioning |= other.isMarkedForCookiePartitioning;
+}
+
+String ResourceLoadStatistics::primaryDomain(const URL& url)
+{
+    return primaryDomain(url.host());
+}
+
+String ResourceLoadStatistics::primaryDomain(const String& host)
+{
+    if (host.isNull() || host.isEmpty())
+        return ASCIILiteral("nullOrigin");
+
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    String primaryDomain = topPrivatelyControlledDomain(host);
+    // We will have an empty string here if there is no TLD. Use the host as a fallback.
+    if (!primaryDomain.isEmpty())
+        return primaryDomain;
+#endif
+
+    return host;
 }
 
 }

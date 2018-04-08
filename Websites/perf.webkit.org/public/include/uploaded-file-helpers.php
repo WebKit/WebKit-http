@@ -10,6 +10,7 @@ function format_uploaded_file($file_row)
         'createdAt' => Database::to_js_time($file_row['file_created_at']),
         'mime' => $file_row['file_mime'],
         'filename' => $file_row['file_filename'],
+        'extension' => $file_row['file_extension'],
         'author' => $file_row['file_author'],
         'sha256' => $file_row['file_sha256']);
 }
@@ -43,18 +44,26 @@ function validate_uploaded_file($field_name)
     return $input_file;
 }
 
-function query_total_file_size($db, $user)
+function query_file_usage_for_user($db, $user)
 {
     if ($user)
         $count_result = $db->query_and_fetch_all('SELECT sum(file_size) as "sum" FROM uploaded_files WHERE file_deleted_at IS NULL AND file_author = $1', array($user));
     else
         $count_result = $db->query_and_fetch_all('SELECT sum(file_size) as "sum" FROM uploaded_files WHERE file_deleted_at IS NULL AND file_author IS NULL');
     if (!$count_result)
-        return FALSE;
+        exit_with_error('FailedToQueryDiskUsagePerUser');
     return intval($count_result[0]["sum"]);
 }
 
-function create_uploaded_file_from_form_data($input_file)
+function query_total_file_usage($db)
+{
+    $count_result = $db->query_and_fetch_all('SELECT sum(file_size) as "sum" FROM uploaded_files WHERE file_deleted_at IS NULL');
+    if (!$count_result)
+        exit_with_error('FailedToQueryTotalDiskUsage');
+    return intval($count_result[0]["sum"]);
+}
+
+function create_uploaded_file_from_form_data($input_file, $remote_user)
 {
     $file_sha256 = hash_file('sha256', $input_file['tmp_name']);
     if (!$file_sha256)
@@ -68,7 +77,7 @@ function create_uploaded_file_from_form_data($input_file)
     }
 
     return array(
-        'author' => remote_user_name(),
+        'author' => $remote_user,
         'filename' => $input_file['name'],
         'extension' => $file_extension,
         'mime' => $input_file['type'], // Sanitize MIME types.
@@ -79,12 +88,16 @@ function create_uploaded_file_from_form_data($input_file)
 
 function upload_file_in_transaction($db, $input_file, $remote_user, $additional_work = NULL)
 {
-    // FIXME: Cleanup old files.
+    $new_file_size = $input_file['size'];
+    if (config('uploadUserQuotaInMB') * MEGABYTES - query_file_usage_for_user($db, $remote_user) < $new_file_size
+        || config('uploadTotalQuotaInMB') * MEGABYTES - query_total_file_usage($db) < $new_file_size) {
+        // Instead of <quota> - <used> - <new file size>, just ask for <new file size>
+        // since finding files to delete is an expensive operation.
+        if (!prune_old_files($db, $new_file_size, $remote_user))
+            exit_with_error('FileSizeQuotaExceeded');
+    }
 
-    if (config('uploadUserQuotaInMB') * MEGABYTES - query_total_file_size($db, $remote_user) < $input_file['size'])
-        exit_with_error('FileSizeQuotaExceeded');
-
-    $uploaded_file = create_uploaded_file_from_form_data($input_file);
+    $uploaded_file = create_uploaded_file_from_form_data($input_file, $remote_user);
 
     $db->begin_transaction();
     $file_row = $db->select_or_insert_row('uploaded_files', 'file',
@@ -93,7 +106,8 @@ function upload_file_in_transaction($db, $input_file, $remote_user, $additional_
         exit_with_error('FailedToInsertFileData');
 
     // A concurrent session may have inserted another file.
-    if (config('uploadUserQuotaInMB') * MEGABYTES < query_total_file_size($db, $remote_user)) {
+    if (config('uploadUserQuotaInMB') * MEGABYTES < query_file_usage_for_user($db, $remote_user)
+        || config('uploadTotalQuotaInMB') * MEGABYTES < query_total_file_usage($db)) {
         $db->rollback_transaction();
         exit_with_error('FileSizeQuotaExceeded');
     }
@@ -115,6 +129,67 @@ function upload_file_in_transaction($db, $input_file, $remote_user, $additional_
     $db->commit_transaction();
 
     return format_uploaded_file($file_row);
+}
+
+function delete_file($db, $file_row)
+{
+    $db->begin_transaction();
+
+    if (!$db->query_and_get_affected_rows("UPDATE uploaded_files SET file_deleted_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+        WHERE file_id = $1", array($file_row['file_id']))) {
+        $db->rollback_transaction();
+        return FALSE;
+    }
+
+    $file_path = uploaded_file_path_for_row($file_row);
+    // The file may have been deleted by a concurrent session by the time we get here.
+    if (file_exists($file_path) && !unlink($file_path)) {
+        $db->rollback_transaction();
+        return FALSE;
+    }
+
+    $db->commit_transaction();
+    return TRUE;
+}
+
+function prune_old_files($db, $size_needed, $remote_user)
+{
+    $user_filter = $remote_user ? 'AND file_author = $1' : 'AND file_author IS NULL';
+    $params = $remote_user ? array($remote_user) : array();
+
+    // 1. Delete old build products created for a patch not associated with any pending or in-progress builds.
+    $build_product_query = $db->query("SELECT file_id, file_extension, file_size FROM uploaded_files, commit_set_items
+        WHERE file_id = commitset_root_file AND commitset_patch_file IS NOT NULL AND file_deleted_at IS NULL
+            AND NOT EXISTS (SELECT request_id FROM build_requests WHERE request_commit_set = commitset_set AND request_status <= 'running')
+            $user_filter
+        ORDER BY file_created_at LIMIT 10", $params);
+    if (!$build_product_query)
+        return FALSE;
+    while ($row = $db->fetch_next_row($build_product_query)) {
+        if (!$row || !delete_file($db, $row))
+            return FALSE;
+        $size_needed -= $row['file_size'];
+        if ($size_needed <= 0)
+            return TRUE;
+    }
+
+    // 2. Delete any uploaded file not associated with any pending or in-progress builds.
+    $unused_file_query = $db->query("SELECT file_id, file_extension, file_size FROM uploaded_files
+        WHERE NOT EXISTS (SELECT request_id FROM build_requests, commit_set_items
+            WHERE (commitset_root_file = file_id OR commitset_patch_file = file_id)
+                AND request_commit_set = commitset_set AND request_status <= 'running')
+            $user_filter
+        ORDER BY file_created_at LIMIT 10", $params);
+    if (!$unused_file_query)
+        return FALSE;
+    while ($row = $db->fetch_next_row($unused_file_query)) {
+        if (!$row || !delete_file($db, $row))
+            return FALSE;
+        $size_needed -= $row['file_size'];
+        if ($size_needed <= 0)
+            return TRUE;
+    }
+    return FALSE;
 }
 
 ?>

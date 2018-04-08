@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "URL.h"
 #include <wtf/HashCountedSet.h>
 #include <wtf/WallTime.h>
 #include <wtf/text/StringHash.h>
@@ -36,29 +37,34 @@ class KeyedDecoder;
 class KeyedEncoder;
 
 struct ResourceLoadStatistics {
-    ResourceLoadStatistics(const String& primaryDomain)
+    explicit ResourceLoadStatistics(const String& primaryDomain)
         : highLevelDomain(primaryDomain)
     {
     }
 
     ResourceLoadStatistics() = default;
 
-    void encode(KeyedEncoder&) const;
-    bool decode(KeyedDecoder&, unsigned version);
+    ResourceLoadStatistics(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics& operator=(const ResourceLoadStatistics&) = delete;
+    ResourceLoadStatistics(ResourceLoadStatistics&&) = default;
+    ResourceLoadStatistics& operator=(ResourceLoadStatistics&&) = default;
+
+    WEBCORE_EXPORT static String primaryDomain(const URL&);
+    WEBCORE_EXPORT static String primaryDomain(const String& host);
+
+    WEBCORE_EXPORT void encode(KeyedEncoder&) const;
+    WEBCORE_EXPORT bool decode(KeyedDecoder&, unsigned version);
 
     String toString() const;
 
-    void merge(const ResourceLoadStatistics&);
-
-    WallTime mostRecentUserInteractionTime() const { return WallTime::fromRawSeconds(mostRecentUserInteraction); }
+    WEBCORE_EXPORT void merge(const ResourceLoadStatistics&);
 
     String highLevelDomain;
 
     // User interaction
     bool hadUserInteraction { false };
     // Timestamp. Default value is negative, 0 means it was reset.
-    // FIXME: Can this use WallTime?
-    double mostRecentUserInteraction { -1 };
+    WallTime mostRecentUserInteractionTime { WallTime::fromRawSeconds(-1) };
     bool grandfathered { false };
 
     // Top frame stats

@@ -320,6 +320,9 @@ typedef enum {
 
 @interface WebView (WebPrivate)
 
++ (void)_setIconLoadingEnabled:(BOOL)enabled;
++ (BOOL)_isIconLoadingEnabled;
+
 - (WebInspector *)inspector;
 
 #if ENABLE_REMOTE_INSPECTOR
@@ -916,6 +919,15 @@ Could be worth adding to the API.
 - (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock;
 - (void)forceRequestCandidatesForTesting;
 - (BOOL)shouldRequestCandidates;
+
+typedef struct WebEdgeInsets {
+    CGFloat top;
+    CGFloat left;
+    CGFloat bottom;
+    CGFloat right;
+} WebEdgeInsets;
+
+@property (nonatomic, assign, setter=_setUnobscuredSafeAreaInsets:) WebEdgeInsets _unobscuredSafeAreaInsets;
 
 @end
 

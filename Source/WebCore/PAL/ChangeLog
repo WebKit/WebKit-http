@@ -1,3 +1,113 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * Configurations/PAL.xcconfig: iphoneos and iphonesimulator should use the
+        same directory for private framework stubs.
+
+2017-07-03  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove more unnecessary uses of the preprocessor in idl files
+        https://bugs.webkit.org/show_bug.cgi?id=174083
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_NAVIGATOR_STANDALONE.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI exports
+        https://bugs.webkit.org/show_bug.cgi?id=173646
+
+        Reviewed by Jiewen Tan.
+
+        No new tests -- covered by existing Web Crypto tests.
+
+        Add three new libtasn1 utility functions.
+
+        createStructure() is a simple wrapper around asn1_create_element(), creating a new
+        ASN.1 structure for the specified definition that's listed in WebCrypto.asn. The
+        existing decodeStructure() is modified to use this new addition.
+
+        encodedData() retrieves the ASN.1-encoded data of the specified element that's
+        located in the passed-in asn1_node. This is used when retrieving SPKI or PKCS#8
+        data from filled-out ASN.1 structures.
+
+        writeElement() writes the provided data to the given asn1_node object under the
+        specified element, using the given size. True is returned if this operation was
+        successful.
+
+        * pal/crypto/tasn1/Utilities.cpp:
+        (PAL::TASN1::createStructure):
+        (PAL::TASN1::decodeStructure):
+        (PAL::TASN1::encodedData):
+        (PAL::TASN1::writeElement):
+        * pal/crypto/tasn1/Utilities.h:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-30  Ross Kirsling  <ross.kirsling@sony.com>
+
+        [PAL] Move Sound into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173999
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/PAL.xcconfig:
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformMac.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/PlatformWin.cmake:
+        * pal/system/Sound.h: Renamed from Source/WebCore/platform/ios/SoundIOS.mm.
+        * pal/system/SoundNone.cpp: Renamed from Source/WebCore/platform/wpe/SoundWPE.cpp.
+        (PAL::systemBeep):
+        * pal/system/gtk/SoundGtk.cpp: Renamed from Source/WebCore/platform/gtk/SoundGtk.cpp.
+        * pal/system/mac/SoundMac.mm: Renamed from Source/WebCore/platform/mac/SoundMac.mm.
+        * pal/system/win/SoundWin.cpp: Renamed from Source/WebCore/platform/win/SoundWin.cpp.
+
 2017-06-28  Jonathan Bedard  <jbedard@apple.com>
 
         Build fix for PAL

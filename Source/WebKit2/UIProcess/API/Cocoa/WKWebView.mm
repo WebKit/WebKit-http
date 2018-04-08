@@ -81,6 +81,7 @@
 #import "WebProcessProxy.h"
 #import "WebURLSchemeHandlerCocoa.h"
 #import "WebViewImpl.h"
+#import "_WKActivatedElementInfoInternal.h"
 #import "_WKDiagnosticLoggingDelegate.h"
 #import "_WKFindDelegate.h"
 #import "_WKFrameHandleInternal.h"
@@ -142,14 +143,12 @@
 #import <WebCore/WebBackgroundTaskController.h>
 #import <WebCore/WebSQLiteDatabaseTrackerClient.h>
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
 #if __has_include(<AccessibilitySupport.h>)
 #include <AccessibilitySupport.h>
 #else
 extern "C" {
 CFStringRef kAXSAllowForceWebScalingEnabledNotification;
 }
-#endif
 #endif
 
 #define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(_page && _page->isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
@@ -510,6 +509,10 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::needsStorageAccessFromFileURLsQuirkKey(), WebKit::WebPreferencesStore::Value(!![_configuration _needsStorageAccessFromFileURLsQuirk]));
     pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::mediaContentTypesRequiringHardwareSupportKey(), WebKit::WebPreferencesStore::Value(String([_configuration _mediaContentTypesRequiringHardwareSupport])));
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    pageConfiguration->preferenceValues().set(WebKit::WebPreferencesKey::legacyEncryptedMediaAPIEnabledKey(), WebKit::WebPreferencesStore::Value(!![_configuration _legacyEncryptedMediaAPIEnabled]));
+#endif
+
 #if PLATFORM(IOS)
     CGRect bounds = self.bounds;
     _scrollView = adoptNS([[WKScrollView alloc] initWithFrame:bounds]);
@@ -676,7 +679,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
     [_remoteObjectRegistry _invalidate];
     [[_configuration _contentProviderRegistry] removePage:*_page];
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
+#if PLATFORM(IOS)
     CFNotificationCenterRemoveObserver(CFNotificationCenterGetDarwinNotifyCenter(), (__bridge const void *)(self), nullptr, nullptr);
 #endif
     [[NSNotificationCenter defaultCenter] removeObserver:self];
@@ -896,9 +899,14 @@ static WKErrorCode callbackErrorCode(WebKit::CallbackBase::Error error)
 
 - (void)evaluateJavaScript:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
 {
+    [self _evaluateJavaScript:javaScriptString forceUserGesture:YES completionHandler:completionHandler];
+}
+
+- (void)_evaluateJavaScript:(NSString *)javaScriptString forceUserGesture:(BOOL)forceUserGesture completionHandler:(void (^)(id, NSError *))completionHandler
+{
     auto handler = adoptNS([completionHandler copy]);
 
-    _page->runJavaScriptInMainFrame(javaScriptString, [handler](API::SerializedScriptValue* serializedScriptValue, bool hadException, const WebCore::ExceptionDetails& details, WebKit::ScriptValueCallback::Error errorCode) {
+    _page->runJavaScriptInMainFrame(javaScriptString, forceUserGesture, [handler](API::SerializedScriptValue* serializedScriptValue, bool hadException, const WebCore::ExceptionDetails& details, WebKit::ScriptValueCallback::Error errorCode) {
         if (!handler)
             return;
 
@@ -3947,6 +3955,11 @@ static int32_t activeOrientation(WKWebView *webView)
     _page->close();
 }
 
+- (void)_evaluateJavaScriptWithoutUserGesture:(NSString *)javaScriptString completionHandler:(void (^)(id, NSError *))completionHandler
+{
+    [self _evaluateJavaScript:javaScriptString forceUserGesture:NO completionHandler:completionHandler];
+}
+
 - (void)_updateWebsitePolicies:(_WKWebsitePolicies *)websitePolicies
 {
     _page->updateWebsitePolicies(websitePolicies->_websitePolicies->websitePolicies());
@@ -5250,6 +5263,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     } forRequest:WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position))];
 }
 
+- (void)_requestActivatedElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKActivatedElementInfo *))block
+{
+    auto infoRequest = WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position));
+    infoRequest.includeSnapshot = true;
+    
+    [_contentView doAfterPositionInformationUpdate:[capturedBlock = makeBlockPtr(block)] (WebKit::InteractionInformationAtPosition information) {
+        capturedBlock([_WKActivatedElementInfo activatedElementInfoWithInteractionInformationAtPosition:information]);
+    } forRequest:infoRequest];
+}
+
 - (CGRect)_contentVisibleRect
 {
     return [self convertRect:[self bounds] toView:self._currentContentView];
@@ -5647,6 +5670,15 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 {
 #if ENABLE(DATA_INTERACTION)
     [_contentView _simulatePrepareForDataInteractionSession:session completion:completion];
+#endif
+}
+
+- (CGRect)_dragCaretRect
+{
+#if ENABLE(DRAG_SUPPORT)
+    return _page->currentDragCaretRect();
+#else
+    return CGRectZero;
 #endif
 }
 

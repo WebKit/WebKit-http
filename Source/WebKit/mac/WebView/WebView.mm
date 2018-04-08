@@ -274,7 +274,6 @@
 #import <WebCore/NetworkStateNotifier.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/ResourceLoadStatistics.h>
-#import <WebCore/ResourceLoadStatisticsStore.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SmartReplace.h>
 #import <WebCore/TileControllerMemoryHandlerIOS.h>
@@ -764,8 +763,6 @@ enum { WebViewVersion = 4 };
 #define timedLayoutSize 4096
 
 static NSMutableSet *schemesWithRepresentationsSet;
-static WebCore::ResourceLoadStatisticsStore* resourceLoadStatisticsStore;
-static WTF::WorkQueue* statisticsQueue;
 
 #if !PLATFORM(IOS)
 NSString *_WebCanGoBackKey =            @"canGoBack";
@@ -803,6 +800,7 @@ NSString *_WebViewRemoteInspectorHasSessionChangedNotification = @"_WebViewRemot
 @end
 
 static BOOL continuousSpellCheckingEnabled;
+static BOOL iconLoadingEnabled = YES;
 #if !PLATFORM(IOS)
 static BOOL grammarCheckingEnabled;
 static BOOL automaticQuoteSubstitutionEnabled;
@@ -1163,21 +1161,6 @@ static String webKitBundleVersionString()
     reportException(execState, toJS(execState, exception));
 }
 
-static void WebKitInitializeApplicationStatisticsStoragePathIfNecessary()
-{
-    static BOOL initialized = NO;
-    if (initialized)
-        return;
-    
-    resourceLoadStatisticsStore = &WebCore::ResourceLoadStatisticsStore::create().leakRef();
-    ResourceLoadObserver::sharedObserver().setStatisticsStore(*resourceLoadStatisticsStore);
-    
-    statisticsQueue = &WTF::WorkQueue::create("WebView ResourceLoadStatisticsStore Process Data Queue").leakRef();
-    ResourceLoadObserver::sharedObserver().setStatisticsQueue(*statisticsQueue);
-    
-    initialized = YES;
-}
-
 static bool shouldEnableLoadDeferring()
 {
 #if PLATFORM(IOS)
@@ -1426,8 +1409,6 @@ static void WebKitInitializeGamepadProviderIfNecessary()
         if ([standardPreferences storageTrackerEnabled])
 #endif
         WebKitInitializeStorageIfNecessary();
-
-        WebKitInitializeApplicationStatisticsStoragePathIfNecessary();
 
 #if ENABLE(GAMEPAD)
         WebKitInitializeGamepadProviderIfNecessary();
@@ -1849,7 +1830,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 - (CGRect)_dataInteractionCaretRect
 {
     if (auto* page = _private->page)
-        return page->dragCaretController().caretPosition().absoluteCaretBounds();
+        return page->dragCaretController().caretRectInRootViewCoordinates();
 
     return { };
 }
@@ -2431,6 +2412,16 @@ static bool fastDocumentTeardownEnabled()
     return newWindowWebView;
 }
 
++ (void)_setIconLoadingEnabled:(BOOL)enabled
+{
+    iconLoadingEnabled = enabled;
+}
+
++ (BOOL)_isIconLoadingEnabled
+{
+    return iconLoadingEnabled;
+}
+
 - (WebInspector *)inspector
 {
     if (!_private->inspector)
@@ -3006,6 +2997,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     settings.setResourceLoadStatisticsEnabled([preferences resourceLoadStatisticsEnabled]);
 
+    settings.setViewportFitEnabled([preferences viewportFitEnabled]);
+    settings.setConstantPropertiesEnabled([preferences constantPropertiesEnabled]);
+
 #if ENABLE(GAMEPAD)
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
 #endif
@@ -3056,6 +3050,10 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(preferences.mediaPreloadingEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(preferences.credentialManagementEnabled);
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(preferences.isSecureContextAttributeEnabled);
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    RuntimeEnabledFeatures::sharedFeatures().setLegacyEncryptedMediaAPIEnabled(preferences.legacyEncryptedMediaAPIEnabled);
+#endif
 
     NSTimeInterval timeout = [preferences incrementalRenderingSuppressionTimeoutInSeconds];
     if (timeout > 0)
@@ -5173,6 +5171,27 @@ static Vector<String> toStringVector(NSArray* patterns)
 }
 #endif // PLATFORM(IOS)
 
+- (void)_setUnobscuredSafeAreaInsets:(WebEdgeInsets)insets
+{
+    if (auto page = _private->page)
+        page->setUnobscuredSafeAreaInsets(WebCore::FloatBoxExtent(insets.top, insets.right, insets.bottom, insets.left));
+}
+
+- (WebEdgeInsets)_unobscuredSafeAreaInsets
+{
+    WebEdgeInsets insets({ 0, 0, 0, 0 });
+
+    if (auto page = _private->page) {
+        auto unobscuredSafeAreaInsets = page->unobscuredSafeAreaInsets();
+        insets.top = unobscuredSafeAreaInsets.top();
+        insets.left = unobscuredSafeAreaInsets.left();
+        insets.bottom = unobscuredSafeAreaInsets.bottom();
+        insets.right = unobscuredSafeAreaInsets.right();
+    }
+
+    return insets;
+}
+
 - (void)_setSourceApplicationAuditData:(NSData *)sourceApplicationAuditData
 {
     if (_private->sourceApplicationAuditData == sourceApplicationAuditData)
@@ -6979,7 +6998,26 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 {
     WebCoreThreadViolationCheckRoundThree();
 
-    return [[WebIconDatabase sharedIconDatabase] iconForURL:[[[[self mainFrame] _dataSource] _URL] _web_originalDataAsString] withSize:WebIconSmallSize];
+    if (auto *icon = _private->_mainFrameIcon.get())
+        return icon;
+    
+    return [[WebIconDatabase sharedIconDatabase] defaultIconWithSize:WebIconSmallSize];
+}
+
+- (void)_setMainFrameIcon:(NSImage *)icon
+{
+    if (_private->_mainFrameIcon.get() == icon)
+        return;
+
+    [self _willChangeValueForKey:_WebMainFrameIconKey];
+
+    _private->_mainFrameIcon = icon;
+
+    WebFrameLoadDelegateImplementationCache* cache = &_private->frameLoadDelegateImplementations;
+    if (icon && cache->didReceiveIconForFrameFunc)
+        CallFrameLoadDelegate(cache->didReceiveIconForFrameFunc, self, @selector(webView:didReceiveIcon:forFrame:), icon, [self mainFrame]);
+
+    [self _didChangeValueForKey:_WebMainFrameIconKey];
 }
 #else
 - (NSURL *)mainFrameIconURL
@@ -8961,49 +8999,6 @@ static WebFrameView *containingFrameView(NSView *view)
     return _private->becomingFirstResponderFromOutside;
 }
 
-#if ENABLE(ICONDATABASE)
-- (void)_receivedIconChangedNotification:(NSNotification *)notification
-{
-    // Get the URL for this notification
-    NSDictionary *userInfo = [notification userInfo];
-    ASSERT([userInfo isKindOfClass:[NSDictionary class]]);
-    NSString *urlString = [userInfo objectForKey:WebIconNotificationUserInfoURLKey];
-    ASSERT([urlString isKindOfClass:[NSString class]]);
-    
-    // If that URL matches the current main frame, dispatch the delegate call, which will also unregister
-    // us for this notification
-    if ([[self mainFrameURL] isEqualTo:urlString])
-        [self _dispatchDidReceiveIconFromWebFrame:[self mainFrame]];
-}
-
-- (void)_registerForIconNotification:(BOOL)listen
-{
-    if (listen)
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_receivedIconChangedNotification:) name:WebIconDatabaseDidAddIconNotification object:nil];        
-    else
-        [[NSNotificationCenter defaultCenter] removeObserver:self name:WebIconDatabaseDidAddIconNotification object:nil];
-}
-
-- (void)_dispatchDidReceiveIconFromWebFrame:(WebFrame *)webFrame
-{
-    // FIXME: This willChangeValueForKey call is too late, because the icon has already changed by now.
-    [self _willChangeValueForKey:_WebMainFrameIconKey];
-    
-    // Since we definitely have an icon and are about to send out the delegate call for that, this WebView doesn't need to listen for the general
-    // notification any longer
-    [self _registerForIconNotification:NO];
-
-    WebFrameLoadDelegateImplementationCache* cache = &_private->frameLoadDelegateImplementations;
-    if (cache->didReceiveIconForFrameFunc) {
-        Image* image = iconDatabase().synchronousIconForPageURL(core(webFrame)->document()->url().string(), IntSize(16, 16));
-        if (NSImage *icon = webGetNSImage(image, NSMakeSize(16, 16)))
-            CallFrameLoadDelegate(cache->didReceiveIconForFrameFunc, self, @selector(webView:didReceiveIcon:forFrame:), icon, webFrame);
-    }
-
-    [self _didChangeValueForKey:_WebMainFrameIconKey];
-}
-#endif // ENABLE(ICONDATABASE)
-
 - (void)_addObject:(id)object forIdentifier:(unsigned long)identifier
 {
     ASSERT(!_private->identifierMap.contains(identifier));
@@ -9398,7 +9393,6 @@ bool LayerFlushController::flushLayers()
 }
 
 #if PLATFORM(MAC)
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 - (WebImmediateActionController *)_immediateActionController
 {
     return _private->immediateActionController;
@@ -9417,7 +9411,6 @@ bool LayerFlushController::flushLayers()
         return [self _convertRectFromRootView:rectInRootViewCoordinates];
     });
 }
-#endif // __MAC_OS_X_VERSION_MIN_REQUIRED >= 101000
 
 - (NSEvent *)_pressureEvent
 {

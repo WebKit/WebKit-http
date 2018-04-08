@@ -39,6 +39,7 @@
 #import "File.h"
 #import "FontCascade.h"
 #import "Frame.h"
+#import "FrameLoader.h"
 #import "FrameLoaderClient.h"
 #import "FrameView.h"
 #import "HTMLAnchorElement.h"
@@ -59,12 +60,12 @@
 #import "RenderImage.h"
 #import "RuntimeApplicationChecks.h"
 #import "Settings.h"
-#import "Sound.h"
 #import "StyleProperties.h"
 #import "Text.h"
 #import "TypingCommand.h"
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
+#import <pal/system/Sound.h>
 
 namespace WebCore {
 
@@ -113,7 +114,7 @@ bool Editor::canCopyExcludingStandaloneImages()
 void Editor::takeFindStringFromSelection()
 {
     if (!canCopyExcludingStandaloneImages()) {
-        systemBeep();
+        PAL::systemBeep();
         return;
     }
 

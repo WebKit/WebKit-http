@@ -1163,7 +1163,6 @@ set(WebCore_SOURCES
     bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
-    bindings/js/JSCryptoCustom.cpp
     bindings/js/JSCryptoKeyCustom.cpp
     bindings/js/JSCryptoKeySerializationJWK.cpp
     bindings/js/JSCryptoOperationData.cpp
@@ -1984,7 +1983,6 @@ set(WebCore_SOURCES
     loader/ResourceLoadNotifier.cpp
     loader/ResourceLoadObserver.cpp
     loader/ResourceLoadStatistics.cpp
-    loader/ResourceLoadStatisticsStore.cpp
     loader/ResourceLoader.cpp
     loader/ResourceTiming.cpp
     loader/ResourceTimingInformation.cpp
@@ -3532,8 +3530,6 @@ if (ENABLE_USER_MESSAGE_HANDLERS)
         page/WebKitNamespace.idl
     )
     list(APPEND WebCore_SOURCES
-        bindings/js/JSUserMessageHandlersNamespaceCustom.cpp
-
         page/UserMessageHandler.cpp
         page/UserMessageHandlerDescriptor.cpp
         page/UserMessageHandlersNamespace.cpp

@@ -41,7 +41,7 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(IOS)
-#include <limits>
+#include "RuntimeApplicationChecks.h"
 #endif
 
 namespace WebCore {
@@ -69,7 +69,12 @@ BitmapImage::~BitmapImage()
 void BitmapImage::updateFromSettings(const Settings& settings)
 {
     m_allowSubsampling = settings.imageSubsamplingEnabled();
-    m_allowLargeImageAsyncDecoding = settings.largeImageAsyncDecodingEnabled();
+#if PLATFORM(IOS)
+    if (IOSApplication::isIBooks())
+        m_allowLargeImageAsyncDecoding = false;
+    else
+#endif
+        m_allowLargeImageAsyncDecoding = settings.largeImageAsyncDecodingEnabled();
     m_allowAnimatedImageAsyncDecoding = settings.animatedImageAsyncDecodingEnabled();
     m_showDebugBackground = settings.showDebugBorders();
 }
@@ -175,20 +180,22 @@ bool BitmapImage::notSolidColor()
 }
 #endif
 
-void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode mode, DecodingMode decodingMode, ImageOrientationDescription description)
+ImageDrawResult BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode mode, DecodingMode decodingMode, ImageOrientationDescription description)
 {
     if (destRect.isEmpty() || srcRect.isEmpty())
-        return;
+        return ImageDrawResult::DidNothing;
 
     FloatSize scaleFactorForDrawing = context.scaleFactorForDrawing(destRect, srcRect);
     IntSize sizeForDrawing = expandedIntSize(size() * scaleFactorForDrawing);
+    ImageDrawResult result = ImageDrawResult::DidDraw;
 
     m_currentSubsamplingLevel = m_allowSubsampling ? m_source.subsamplingLevelForScaleFactor(context, scaleFactorForDrawing) : SubsamplingLevel::Default;
     LOG(Images, "BitmapImage::%s - %p - url: %s [subsamplingLevel = %d scaleFactorForDrawing = (%.4f, %.4f)]", __FUNCTION__, this, sourceURL().string().utf8().data(), static_cast<int>(m_currentSubsamplingLevel), scaleFactorForDrawing.width(), scaleFactorForDrawing.height());
 
     NativeImagePtr image;
     if (decodingMode == DecodingMode::Asynchronous && shouldUseAsyncDecodingForLargeImages()) {
-        ASSERT(!canAnimate() && !m_currentFrame);
+        ASSERT(!canAnimate());
+        ASSERT(!m_currentFrame || m_animationFinished);
 
         bool frameIsCompatible = frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, DecodingOptions(sizeForDrawing));
         bool frameIsBeingDecoded = frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, DecodingOptions(sizeForDrawing));
@@ -197,14 +204,17 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
         // it is currently being decoded. New data may have been received since the previous request was made.
         if ((!frameIsCompatible && !frameIsBeingDecoded) || m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Invalid) {
             LOG(Images, "BitmapImage::%s - %p - url: %s [requesting large async decoding]", __FUNCTION__, this, sourceURL().string().utf8().data());
-            m_source.requestFrameAsyncDecodingAtIndex(0, m_currentSubsamplingLevel, sizeForDrawing);
+            m_source.requestFrameAsyncDecodingAtIndex(m_currentFrame, m_currentSubsamplingLevel, sizeForDrawing);
             m_currentFrameDecodingStatus = ImageFrame::DecodingStatus::Decoding;
         }
+
+        if (m_currentFrameDecodingStatus == ImageFrame::DecodingStatus::Decoding)
+            result = ImageDrawResult::DidRequestDecoding;
 
         if (!frameHasDecodedNativeImageCompatibleWithOptionsAtIndex(m_currentFrame, m_currentSubsamplingLevel, DecodingMode::Asynchronous)) {
             if (m_showDebugBackground)
                 fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
-            return;
+            return result;
         }
 
         image = frameImageAtIndex(m_currentFrame);
@@ -215,21 +225,21 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
 
         if (status == StartAnimationStatus::DecodingActive && m_showDebugBackground) {
             fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
-            return;
+            return result;
         }
 
         if (frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(m_currentFrame, DecodingMode::Asynchronous)) {
-            // FIXME: instead of showing the yellow rectangle and returning we need to wait for this the frame to finish decoding.
+            // FIXME: instead of showing the yellow rectangle and returning we need to wait for this frame to finish decoding.
             if (m_showDebugBackground) {
                 fillWithSolidColor(context, destRect, Color(Color::yellow).colorWithAlpha(0.5), op);
                 LOG(Images, "BitmapImage::%s - %p - url: %s [waiting for async decoding to finish]", __FUNCTION__, this, sourceURL().string().utf8().data());
             }
-            return;
+            return ImageDrawResult::DidRequestDecoding;
         }
 
         image = frameImageAtIndexCacheIfNeeded(m_currentFrame, m_currentSubsamplingLevel, &context);
         if (!image) // If it's too early we won't have an image yet.
-            return;
+            return ImageDrawResult::DidNothing;
 
         if (m_currentFrameDecodingStatus != ImageFrame::DecodingStatus::Complete)
             ++m_decodeCountForTesting;
@@ -239,7 +249,7 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
     Color color = singlePixelSolidColor();
     if (color.isValid()) {
         fillWithSolidColor(context, destRect, color, op);
-        return;
+        return result;
     }
 
     ImageOrientation orientation(description.imageOrientation());
@@ -251,6 +261,8 @@ void BitmapImage::draw(GraphicsContext& context, const FloatRect& destRect, cons
 
     if (imageObserver())
         imageObserver()->didDraw(*this);
+
+    return result;
 }
 
 void BitmapImage::drawPattern(GraphicsContext& ctxt, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& transform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)

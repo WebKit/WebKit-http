@@ -3884,7 +3884,7 @@ JSValue Internals::cloneArrayBuffer(JSC::ExecState& state, JSValue buffer, JSVal
 
 String Internals::resourceLoadStatisticsForOrigin(const String& origin)
 {
-    return ResourceLoadObserver::sharedObserver().statisticsForOrigin(origin);
+    return ResourceLoadObserver::shared().statisticsForOrigin(origin);
 }
 
 void Internals::setResourceLoadStatisticsEnabled(bool enable)
@@ -4022,10 +4022,9 @@ Vector<String> Internals::accessKeyModifiers() const
     return accessKeyModifierStrings;
 }
 
-#if PLATFORM(IOS)
 void Internals::setQuickLookPassword(const String& password)
 {
-#if USE(QUICK_LOOK)
+#if PLATFORM(IOS) && USE(QUICK_LOOK)
     auto& quickLookHandleClient = MockPreviewLoaderClient::singleton();
     PreviewLoader::setClientForTesting(&quickLookHandleClient);
     quickLookHandleClient.setPassword(password);
@@ -4033,7 +4032,6 @@ void Internals::setQuickLookPassword(const String& password)
     UNUSED_PARAM(password);
 #endif
 }
-#endif
 
 void Internals::setAsRunningUserScripts(Document& document)
 {

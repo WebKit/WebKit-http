@@ -26,11 +26,11 @@
 #include "config.h"
 #include "WebResourceLoadStatisticsTelemetry.h"
 
+#include "ResourceLoadStatisticsStore.h"
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/ResourceLoadStatistics.h>
-#include <WebCore/ResourceLoadStatisticsStore.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
@@ -189,7 +189,7 @@ void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const ResourceLoadSt
     ASSERT(!RunLoop::isMain());
     
     auto sortedPrevalentResources = resourceLoadStatisticsStore.sortedPrevalentResourceTelemetry();
-    if (sortedPrevalentResources.size() < minimumPrevalentResourcesForTelemetry) {
+    if (notifyPagesWhenTelemetryWasCaptured && sortedPrevalentResources.size() < minimumPrevalentResourcesForTelemetry) {
         notifyPages(0, 0, 0);
         return;
     }
@@ -211,6 +211,12 @@ void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const ResourceLoadSt
         return;
     }
     
+    if (notifyPagesWhenTelemetryWasCaptured) {
+        notifyPages(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, prevalentResourcesDaysSinceUserInteraction.size());
+        // The notify pages function is for testing so we don't need to do an actual submission.
+        return;
+    }
+    
     webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("totalNumberOfPrevalentResources"), sortedPrevalentResources.size(), 0, ShouldSample::No);
     webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("totalNumberOfPrevalentResourcesWithUserInteraction"), prevalentResourcesDaysSinceUserInteraction.size(), 0, ShouldSample::No);
     
@@ -220,9 +226,6 @@ void WebResourceLoadStatisticsTelemetry::calculateAndSubmit(const ResourceLoadSt
         webPageProxy->logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceLoadStatisticsTelemetryKey(), ASCIILiteral("medianPrevalentResourcesWithUserInteractionDaysSinceUserInteraction"), median(prevalentResourcesDaysSinceUserInteraction), 0, ShouldSample::No);
     
     submitTopLists(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, *webPageProxy);
-    
-    if (notifyPagesWhenTelemetryWasCaptured)
-        notifyPages(sortedPrevalentResources, sortedPrevalentResourcesWithoutUserInteraction, prevalentResourcesDaysSinceUserInteraction.size());
 }
     
 void WebResourceLoadStatisticsTelemetry::setNotifyPagesWhenTelemetryWasCaptured(bool always)

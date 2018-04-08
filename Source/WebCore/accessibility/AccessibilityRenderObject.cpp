@@ -1151,7 +1151,18 @@ AccessibilityObjectInclusion AccessibilityRenderObject::defaultObjectInclusion()
 
     return AccessibilityObject::defaultObjectInclusion();
 }
-
+    
+static bool webAreaIsPresentational(RenderObject* renderer)
+{
+    if (!is<RenderView>(*renderer))
+        return false;
+    
+    if (auto ownerElement = renderer->document().ownerElement())
+        return nodeHasPresentationRole(ownerElement);
+    
+    return false;
+}
+    
 bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
 {
 #ifndef NDEBUG
@@ -1180,6 +1191,10 @@ bool AccessibilityRenderObject::computeAccessibilityIsIgnored() const
     if (roleValue() == PresentationalRole || inheritsPresentationalRole())
         return true;
     
+    // WebAreas should be ignored if their iframe container is marked as presentational.
+    if (webAreaIsPresentational(m_renderer))
+        return true;
+        
     // An ARIA tree can only have tree items and static text as children.
     if (!isAllowedChildOfTree())
         return true;
@@ -1743,16 +1758,15 @@ void AccessibilityRenderObject::setValue(const String& string)
     if (!m_renderer || !is<Element>(m_renderer->node()))
         return;
     Element& element = downcast<Element>(*m_renderer->node());
-
-    if (!is<RenderBoxModelObject>(*m_renderer))
-        return;
-    RenderBoxModelObject& renderer = downcast<RenderBoxModelObject>(*m_renderer);
-
+    RenderObject& renderer = *m_renderer;
+    
     // FIXME: Do we want to do anything here for ARIA textboxes?
     if (renderer.isTextField() && is<HTMLInputElement>(element))
         downcast<HTMLInputElement>(element).setValue(string);
     else if (renderer.isTextArea() && is<HTMLTextAreaElement>(element))
         downcast<HTMLTextAreaElement>(element).setValue(string);
+    else if (is<HTMLElement>(element) && contentEditableAttributeIsEnabled(&element))
+        downcast<HTMLElement>(element).setInnerText(string);
 }
 
 bool AccessibilityRenderObject::supportsARIAOwns() const
@@ -3114,9 +3128,7 @@ void AccessibilityRenderObject::addAttachmentChildren()
     if (!widget || !widget->isFrameView())
         return;
     
-    AccessibilityObject* axWidget = axObjectCache()->getOrCreate(widget);
-    if (!axWidget->accessibilityIsIgnored())
-        m_children.append(axWidget);
+    addChild(axObjectCache()->getOrCreate(widget));
 }
 
 #if PLATFORM(COCOA)

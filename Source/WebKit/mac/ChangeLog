@@ -1,3 +1,253 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Add WebKitPrivateFrameworkStubs for iOS 11
+        https://bugs.webkit.org/show_bug.cgi?id=173988
+
+        Reviewed by David Kilzer.
+
+        * Configurations/WebKitLegacy.xcconfig: iphoneos and iphonesimulator should
+        use the same directory for private framework stubs.
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219103.
+
+        Caused multiple build failures.
+
+        Reverted changeset:
+
+        "Remove copy of ICU headers from WebKit"
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+        http://trac.webkit.org/changeset/219103
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Remove copy of ICU headers from WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=116407
+
+        Reviewed by Alex Christensen.
+
+        Use WTF's copy of ICU headers.
+
+        * Configurations/WebKitLegacy.xcconfig:
+        * icu/unicode/localpointer.h: Removed.
+        * icu/unicode/parseerr.h: Removed.
+        * icu/unicode/platform.h: Removed.
+        * icu/unicode/ptypes.h: Removed.
+        * icu/unicode/putil.h: Removed.
+        * icu/unicode/uchar.h: Removed.
+        * icu/unicode/uconfig.h: Removed.
+        * icu/unicode/ucurr.h: Removed.
+        * icu/unicode/uidna.h: Removed.
+        * icu/unicode/uiter.h: Removed.
+        * icu/unicode/umachine.h: Removed.
+        * icu/unicode/unorm.h: Removed.
+        * icu/unicode/unorm2.h: Removed.
+        * icu/unicode/urename.h: Removed.
+        * icu/unicode/uscript.h: Removed.
+        * icu/unicode/ustring.h: Removed.
+        * icu/unicode/utf.h: Removed.
+        * icu/unicode/utf16.h: Removed.
+        * icu/unicode/utf8.h: Removed.
+        * icu/unicode/utf_old.h: Removed.
+        * icu/unicode/utypes.h: Removed.
+        * icu/unicode/uvernum.h: Removed.
+        * icu/unicode/uversion.h: Removed.
+
+2017-07-03  Brady Eidson  <beidson@apple.com>
+
+        Switch all WebKit API related to favicons from WebIconDatabase over to new WebCore::IconLoader mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=174073
+
+        Reviewed by Andy Estes.
+
+        WebView now keeps a direct copy of its main frame icon as a member variable.
+        It populates that variable by finding exactly one Favicon LinkIcon from WebCore and loading it.
+        
+        This change causes a progression in KVO observation of the mainFrameIcon property as we now
+        have both the old icon and new icon at the time it changes.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::prepareForDataSourceReplacement):
+        (WebFrameLoaderClient::getLoadDecisionForIcons):
+        (WebFrameLoaderClient::finishedLoadingIcon):
+        (WebFrameLoaderClient::dispatchDidReceiveIcon): Deleted.
+        (WebFrameLoaderClient::registerForIconNotification): Deleted.
+
+        * WebView/WebView.mm:
+        (+[WebView _setIconLoadingEnabled:]):
+        (+[WebView _isIconLoadingEnabled]):
+        (-[WebView mainFrameIcon]):
+        (-[WebView _setMainFrameIcon:]):
+        (-[WebView _receivedIconChangedNotification:]): Deleted.
+        (-[WebView _registerForIconNotification:]): Deleted.
+        (-[WebView _dispatchDidReceiveIconFromWebFrame:]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2017-07-03  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove more unnecessary uses of the preprocessor in idl files
+        https://bugs.webkit.org/show_bug.cgi?id=174083
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+        Add ENABLE_NAVIGATOR_STANDALONE.
+
+2017-07-03  Tim Horton  <timothy_horton@apple.com>
+
+        Expose unobscuredSafeAreaInsets on WebView
+        https://bugs.webkit.org/show_bug.cgi?id=174075
+        <rdar://problem/33096997>
+
+        Reviewed by Beth Dakin.
+
+        * WebView/WebView.mm:
+        (-[WebView _setUnobscuredSafeAreaInsets:]):
+        (-[WebView _unobscuredSafeAreaInsets]):
+        * WebView/WebViewPrivate.h:
+        Expose unobscuredSafeAreaInsets as a new private property on WebView,
+        similar to how it is exposed in WebKit2.
+
+2017-07-03  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Add an experimental setting to build with ccache
+        https://bugs.webkit.org/show_bug.cgi?id=173875
+
+        Reviewed by Tim Horton.
+
+        * Configurations/DebugRelease.xcconfig: Included ccache.xcconfig.
+
+2017-07-03  Tim Horton  <timothy_horton@apple.com>
+
+        Expose WebPreferences for viewport-fit and constant() properties
+        https://bugs.webkit.org/show_bug.cgi?id=174072
+        <rdar://problem/33096639>
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences viewportFitEnabled]):
+        (-[WebPreferences setViewportFitEnabled:]):
+        (-[WebPreferences constantPropertiesEnabled]):
+        (-[WebPreferences setConstantPropertiesEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-07-01  Tim Horton  <timothy_horton@apple.com>
+
+        Expose viewport-fit value to UIKit via viewport arguments dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=174071
+        <rdar://problem/33096620>
+
+        Reviewed by Wenson Hsieh.
+
+        * History/WebHistoryItem.mm:
+        * History/WebHistoryItemPrivate.h:
+        Add another dictionary key and three values.
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [iOS] Remove code only needed when building for iOS 9.x
+        https://bugs.webkit.org/show_bug.cgi?id=174068
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Frame.h doesn't need to include FrameLoader.h, IntRect.h, and NavigationScheduler.h
+        https://bugs.webkit.org/show_bug.cgi?id=174004
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebPluginInfoProvider.mm:
+
+2017-07-01  Dan Bernstein  <mitz@apple.com>
+
+        [macOS] Remove code only needed when building for OS X Yosemite
+        https://bugs.webkit.org/show_bug.cgi?id=174067
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/DebugRelease.xcconfig:
+        * Configurations/FeatureDefines.xcconfig:
+        * Configurations/Version.xcconfig:
+        * Plugins/WebBasePluginPackage.mm:
+        (-[WebBasePluginPackage getPluginInfoFromPLists]):
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::startWindowDrag):
+        (-[WebInspectorWindowController window]):
+        * WebView/WebView.mm:
+        (-[WebView _animationControllerForDictionaryLookupPopupInfo:]):
+
+2017-06-30  Daniel Bates  <dabates@apple.com>
+
+        API::FrameInfo should know the web page that contains the frame; add API property webView to WKFrameInfo
+        https://bugs.webkit.org/show_bug.cgi?id=165160
+        <rdar://problem/29451999>
+
+        Reviewed by Brady Eidson.
+
+        Pass the document that is requesting the load to the loader.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2017-06-29  Jer Noble  <jer.noble@apple.com>
+
+        Make Legacy EME API controlled by RuntimeEnabled setting.
+        https://bugs.webkit.org/show_bug.cgi?id=173994
+
+        Reviewed by Sam Weinig.
+
+        Add a new preference used to control WebCore's new RuntimeEnabledFeature setting.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences legacyEncryptedMediaAPIEnabled]):
+        (-[WebPreferences setLegacyEncryptedMediaAPIEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-06-30  Chris Dumez  <cdumez@apple.com>
+
+        ResourceLoadObserver does not need a ResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174013
+
+        Reviewed by Brent Fulgham.
+
+        ResourceLoadObserver does not need a ResourceLoadStatisticsStore. ResourceLoadStatisticsStore is too complicated for its needs.
+        ResourceLoadStatisticsStore can then be moved to WebKit2/UIProcess in a follow-up.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2017-06-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Drag caret rect is incorrectly computed when dropping in editable content in iframes
+        https://bugs.webkit.org/show_bug.cgi?id=174017
+        <rdar://problem/32959782>
+
+        Reviewed by Simon Fraser.
+
+        Use root view coordinates when computing the drag caret rect.
+
+        * WebView/WebView.mm:
+        (-[WebView _dataInteractionCaretRect]):
+
 2017-06-28  Simon Fraser  <simon.fraser@apple.com>
 
         Mark the GraphicsContext as accelerated when the WebHTMLView's layer is drawing asynchronously

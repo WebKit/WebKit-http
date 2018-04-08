@@ -670,6 +670,13 @@ public:
         @NO, WebKitCredentialManagementEnabledPreferenceKey,
         @NO, WebKitMediaUserGestureInheritsFromDocument,
         @NO, WebKitIsSecureContextAttributeEnabledPreferenceKey,
+#if PLATFORM(IOS)
+        @NO, WebKitLegacyEncryptedMediaAPIEnabledKey,
+#else
+        @YES, WebKitLegacyEncryptedMediaAPIEnabledKey,
+#endif
+        @YES, WebKitViewportFitEnabledPreferenceKey,
+        @YES, WebKitConstantPropertiesEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         nil];
 
@@ -3135,6 +3142,36 @@ static NSString *classIBCreatorID = nil;
 - (void)setIsSecureContextAttributeEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitIsSecureContextAttributeEnabledPreferenceKey];
+}
+
+- (BOOL)legacyEncryptedMediaAPIEnabled
+{
+    return [self _boolValueForKey:WebKitLegacyEncryptedMediaAPIEnabledKey];
+}
+
+- (void)setLegacyEncryptedMediaAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitLegacyEncryptedMediaAPIEnabledKey];
+}
+
+- (BOOL)viewportFitEnabled
+{
+    return [self _boolValueForKey:WebKitViewportFitEnabledPreferenceKey];
+}
+
+- (void)setViewportFitEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitViewportFitEnabledPreferenceKey];
+}
+
+- (BOOL)constantPropertiesEnabled
+{
+    return [self _boolValueForKey:WebKitConstantPropertiesEnabledPreferenceKey];
+}
+
+- (void)setConstantPropertiesEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitConstantPropertiesEnabledPreferenceKey];
 }
 
 @end

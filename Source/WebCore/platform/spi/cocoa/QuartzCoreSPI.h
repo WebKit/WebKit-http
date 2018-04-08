@@ -84,9 +84,6 @@
 @property BOOL hitTestsAsOpaque;
 @property BOOL needsLayoutOnGeometryChange;
 @property BOOL shadowPathIsBounds;
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300 && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
-@property (copy) NSString *contentsFormat;
-#endif
 @end
 
 #if PLATFORM(IOS)
@@ -124,7 +121,6 @@ typedef struct CAColorMatrix CAColorMatrix;
 @property (copy) NSString *name;
 @end
 
-#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
 typedef enum {
     kCATransactionPhasePreLayout,
     kCATransactionPhasePreCommit,
@@ -134,26 +130,15 @@ typedef enum {
 @interface CATransaction ()
 + (void)addCommitHandler:(void(^)(void))block forPhase:(CATransactionPhase)phase;
 @end
-#endif
 
 @interface CALayerHost : CALayer
 @property uint32_t contextId;
 @property BOOL inheritsSecurity;
 @end
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101100
-@interface CASpringAnimation : CABasicAnimation 
-@property CGFloat mass;
-@property CGFloat stiffness;
-@property CGFloat damping;
-@property CGFloat velocity;
-@property CGFloat initialVelocity;
-@end
-#else
 @interface CASpringAnimation (Private)
 @property CGFloat velocity;
 @end
-#endif
 
 #endif // __OBJC__
 
@@ -217,7 +202,7 @@ extern NSString * const kCAContextDisplayName;
 extern NSString * const kCAContextDisplayId;
 extern NSString * const kCAContextIgnoresHitTest;
 
-#if PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 90300
+#if PLATFORM(IOS)
 extern NSString * const kCAContentsFormatRGBA10XR;
 #endif
 
@@ -225,10 +210,7 @@ extern NSString * const kCAContentsFormatRGBA10XR;
 extern NSString * const kCAContentsFormatRGBA8ColorRGBA8LinearGlyphMask;
 #endif
 
-#if (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \
-    || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED < 30000) \
-    || (PLATFORM(IOS) && TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000) \
-    || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
 @protocol CALayerDelegate <NSObject>
 @end
 

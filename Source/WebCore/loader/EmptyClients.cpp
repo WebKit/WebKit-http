@@ -325,7 +325,6 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void dispatchDidReplaceStateWithinPage() final { }
     void dispatchDidPopStateWithinPage() final { }
     void dispatchWillClose() final { }
-    void dispatchDidReceiveIcon() final { }
     void dispatchDidStartProvisionalLoad() final { }
     void dispatchDidReceiveTitle(const StringWithDirection&) final { }
     void dispatchDidCommitLoad(std::optional<HasInsecureContent>) final { }
@@ -429,8 +428,6 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
 
     void redirectDataToPlugin(Widget&) final { }
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) final { }
-
-    void registerForIconNotification(bool) final { }
 
 #if PLATFORM(COCOA)
     RemoteAXObjectRef accessibilityRemoteObject() final { return nullptr; }

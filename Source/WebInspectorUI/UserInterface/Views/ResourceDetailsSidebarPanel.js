@@ -27,7 +27,7 @@ WebInspector.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel ext
 {
     constructor()
     {
-        super("resource-details", WebInspector.UIString("Resource"), WebInspector.UIString("Resource"));
+        super("resource-details", WebInspector.UIString("Resource"));
 
         this.element.classList.add("resource");
 
@@ -480,7 +480,7 @@ WebInspector.ResourceDetailsSidebarPanel = class ResourceDetailsSidebarPanel ext
             {
                 var item1 = a.data[sortColumnIdentifier];
                 var item2 = b.data[sortColumnIdentifier];
-                return item1.localeCompare(item2);
+                return item1.extendedLocaleCompare(item2);
             }
 
             dataGrid.sortNodes(comparator);

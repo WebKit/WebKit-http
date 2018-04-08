@@ -403,11 +403,6 @@ void WebFrameLoaderClient::dispatchWillClose()
         frameLoadDelegate->willCloseFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidReceiveIcon()
-{
-    m_webFrame->webView()->dispatchDidReceiveIconFromWebFrame(m_webFrame);
-}
-
 void WebFrameLoaderClient::dispatchDidStartProvisionalLoad()
 {
     WebView* webView = m_webFrame->webView();
@@ -989,7 +984,7 @@ void WebFrameLoaderClient::transitionToCommittedForNewPage()
     Color backgroundColor = transparent ? Color::transparent : Color::white;
     FloatRect logicalFrame(pixelRect);
     logicalFrame.scale(1.0f / view->deviceScaleFactor());
-    core(m_webFrame)->createView(enclosingIntRect(logicalFrame).size(), backgroundColor, transparent);
+    core(m_webFrame)->createView(enclosingIntRect(logicalFrame).size(), backgroundColor, transparent, /* fixedLayoutSize */ { }, /* fixedVisibleContentRect */ { });
 }
 
 void WebFrameLoaderClient::didSaveToPageCache()
@@ -1247,11 +1242,6 @@ void WebFrameLoaderClient::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld& 
 
     if (FAILED(frameLoadDelegate->didClearWindowObject(webView, context, windowObject, m_webFrame)))
         frameLoadDelegate->windowScriptObjectAvailable(webView, context, windowObject);
-}
-
-void WebFrameLoaderClient::registerForIconNotification(bool listen)
-{
-    m_webFrame->webView()->registerForIconNotification(listen);
 }
 
 Ref<FrameNetworkingContext> WebFrameLoaderClient::createNetworkingContext()

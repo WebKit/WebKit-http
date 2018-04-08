@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ResourceLoadStatisticsStore.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
@@ -48,53 +47,26 @@ struct ResourceLoadStatistics;
 class ResourceLoadObserver {
     friend class NeverDestroyed<ResourceLoadObserver>;
 public:
-    WEBCORE_EXPORT static ResourceLoadObserver& sharedObserver();
+    WEBCORE_EXPORT static ResourceLoadObserver& shared();
     
     void logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
     void logSubresourceLoading(const Frame*, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse);
     void logWebSocketLoading(const Frame*, const URL&);
     void logUserInteractionWithReducedTimeResolution(const Document&);
 
-    WEBCORE_EXPORT void logUserInteraction(const URL&);
-    WEBCORE_EXPORT bool hasHadUserInteraction(const URL&);
-    WEBCORE_EXPORT void clearUserInteraction(const URL&);
-
-    WEBCORE_EXPORT void setPrevalentResource(const URL&);
-    WEBCORE_EXPORT bool isPrevalentResource(const URL&);
-    WEBCORE_EXPORT void clearPrevalentResource(const URL&);
-    WEBCORE_EXPORT void setGrandfathered(const URL&, bool value);
-    WEBCORE_EXPORT bool isGrandfathered(const URL&);
-    
-    WEBCORE_EXPORT void setSubframeUnderTopFrameOrigin(const URL& subframe, const URL& topFrame);
-    WEBCORE_EXPORT void setSubresourceUnderTopFrameOrigin(const URL& subresource, const URL& topFrame);
-    WEBCORE_EXPORT void setSubresourceUniqueRedirectTo(const URL& subresource, const URL& hostNameRedirectedTo);
-
-    WEBCORE_EXPORT void setTimeToLiveUserInteraction(Seconds);
-    WEBCORE_EXPORT void setTimeToLiveCookiePartitionFree(Seconds);
-    WEBCORE_EXPORT void setMinimumTimeBetweeenDataRecordsRemoval(Seconds);
-    WEBCORE_EXPORT void setReducedTimestampResolution(Seconds);
-    WEBCORE_EXPORT void setGrandfatheringTime(Seconds);
-    
-    WEBCORE_EXPORT void fireDataModificationHandler();
-    WEBCORE_EXPORT void fireShouldPartitionCookiesHandler();
-    WEBCORE_EXPORT void fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
-    WEBCORE_EXPORT void fireTelemetryHandler();
-
-    WEBCORE_EXPORT void setStatisticsStore(Ref<ResourceLoadStatisticsStore>&&);
-    WEBCORE_EXPORT void setStatisticsQueue(Ref<WTF::WorkQueue>&&);
-    WEBCORE_EXPORT void clearInMemoryStore();
-    WEBCORE_EXPORT void clearInMemoryAndPersistentStore();
-    WEBCORE_EXPORT void clearInMemoryAndPersistentStore(std::chrono::system_clock::time_point modifiedSince);
-
     WEBCORE_EXPORT String statisticsForOrigin(const String&);
 
-private:
-    bool shouldLog(Page*);
-    static String primaryDomain(const URL&);
-    static String primaryDomain(const String& host);
+    WEBCORE_EXPORT void setNotificationCallback(WTF::Function<void()>&&);
+    WEBCORE_EXPORT Vector<ResourceLoadStatistics> takeStatistics();
 
-    RefPtr<ResourceLoadStatisticsStore> m_store;
-    RefPtr<WTF::WorkQueue> m_queue;
+private:
+    bool shouldLog(Page*) const;
+    ResourceLoadStatistics& ensureResourceStatisticsForPrimaryDomain(const String&);
+    ResourceLoadStatistics takeResourceStatisticsForPrimaryDomain(const String& primaryDomain);
+    bool isPrevalentResource(const String& primaryDomain) const;
+
+    HashMap<String, ResourceLoadStatistics> m_resourceStatisticsMap;
+    WTF::Function<void()> m_notificationCallback;
     HashMap<String, size_t> m_originsVisitedMap;
 };
     

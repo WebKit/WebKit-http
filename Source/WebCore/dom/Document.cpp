@@ -120,6 +120,8 @@
 #include "MutationEvent.h"
 #include "NameNodeList.h"
 #include "NamedFlowCollection.h"
+#include "NavigationDisabler.h"
+#include "NavigationScheduler.h"
 #include "NestingLevelIncrementer.h"
 #include "NoEventDispatchAssertion.h"
 #include "NodeIterator.h"
@@ -2296,7 +2298,7 @@ void Document::prepareForDestruction()
 #endif
 
     {
-        NavigationDisabler navigationDisabler;
+        NavigationDisabler navigationDisabler(m_frame);
         disconnectDescendantFrames();
     }
 
@@ -3064,6 +3066,14 @@ void Document::disableEval(const String& errorMessage)
         return;
 
     frame()->script().disableEval(errorMessage);
+}
+
+void Document::disableWebAssembly(const String& errorMessage)
+{
+    if (!frame())
+        return;
+
+    frame()->script().disableWebAssembly(errorMessage);
 }
 
 #if ENABLE(INDEXED_DATABASE)

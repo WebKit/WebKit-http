@@ -1,3 +1,534 @@
+2017-07-05  Jonathan Bedard  <jbedard@apple.com>
+
+        Move internal iOS 11 TestExpectations to OpenSource
+        <rdar://problem/32717028>
+
+        Unreviewed test gardening.
+
+        * platform/ios-11: Added.
+
+2017-07-05  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test expectations for tiled-drawing/scrolling/fast-scroll-iframe-latched-mainframe.html.
+        https://bugs.webkit.org/show_bug.cgi?id=168937
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-07-05  Charlie Turner  <cturner@igalia.com>
+
+        Incorrect IfModule on Fedora with with PHP 7
+        https://bugs.webkit.org/show_bug.cgi?id=174159
+
+        Reviewed by Michael Catanzaro.
+
+        * http/conf/fedora-httpd-2.4-php7.conf:
+
+2017-07-05  Youenn Fablet  <youenn@apple.com>
+
+        Receiving tracks should be ended when peer connection is being closed
+        https://bugs.webkit.org/show_bug.cgi?id=174109
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/peer-connection-track-end-expected.txt: Added.
+        * webrtc/peer-connection-track-end.html: Added.
+
+2017-07-04  Antti Koivisto  <antti@apple.com>
+
+        FrameView should not set RenderView::logicalWidth directly for printing
+        https://bugs.webkit.org/show_bug.cgi?id=174135
+
+        Reviewed by Zalan Bujtas.
+
+        * platform/mac/printing/width-overflow-expected.txt:
+
+            This is a progression, view and root element sizes now match.
+            Printing output is not affected.
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        LayoutTest workers/bomb.html is a Crash
+        https://bugs.webkit.org/show_bug.cgi?id=167757
+        <rdar://problem/33086462>
+
+        Reviewed by Keith Miller.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Removed expectations and skipped workers/bomb.html on mac.
+        https://bugs.webkit.org/show_bug.cgi?id=167757
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-07-03  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(Variation Fonts): Specifying Skia by PostScript name does not yield the expected result
+        https://bugs.webkit.org/show_bug.cgi?id=174079
+        <rdar://problem/33040854>
+
+        Reviewed by Alex Christensen.
+
+        * fast/text/variations/skia-postscript-name-expected-mismatch.html: Added.
+        * fast/text/variations/skia-postscript-name.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2017-07-03  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-07-03  Brady Eidson  <beidson@apple.com>
+
+        Switch all WebKit API related to favicons from WebIconDatabase over to new WebCore::IconLoader mechanism.
+        https://bugs.webkit.org/show_bug.cgi?id=174073
+
+        Reviewed by Andy Estes.
+
+        * http/tests/security/contentSecurityPolicy/block-favicon-expected.txt: Updated results to actually catch
+          the load being blocked due to CSP.
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/track/track-cues-sorted-before-dispatch.html as flaky
+        https://bugs.webkit.org/show_bug.cgi?id=168092
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-07-03  Youenn Fablet  <youenn@apple.com>
+
+        WebAudioSourceProviderAVFObjC should not reconfigure for each data call
+        https://bugs.webkit.org/show_bug.cgi?id=174101
+
+        Reviewed by Eric Carlson.
+
+        * TestExpectations:
+        * webrtc/peer-connection-audio-mute2.html:
+        * webrtc/peer-connection-remote-audio-mute2.html:
+
+2017-07-03  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase test after r219024
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame-expected.txt:
+
+2017-07-03  Jonathan Bedard  <jbedard@apple.com>
+
+        Run webgl tests on iOS ports
+        https://bugs.webkit.org/show_bug.cgi?id=173000
+
+        Unreviewed test gardening.
+
+        * platform/ios-device/TestExpectations: Garden webgl tests.
+        * platform/ios-simulator/TestExpectations: Ditto.
+        * platform/ios/TestExpectations: Ditto.
+        * platform/ios/fast/canvas/webgl: Added.
+        * platform/ios/fast/canvas/webgl/css-webkit-canvas-expected.txt: Added.
+        * platform/ios/fast/canvas/webgl/css-webkit-canvas-repaint-expected.txt: Added.
+
+2017-07-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r218910): Crash inside textMarkerDataForFirstPositionInTextControl
+        https://bugs.webkit.org/show_bug.cgi?id=174077
+        <rdar://problem/33083972>
+
+        Reviewed by Chris Fleizach.
+
+        Added a regression test for changing the input element's type during editing.
+
+        * accessibility/mac/input-type-change-crash-expected.txt: Added.
+        * accessibility/mac/input-type-change-crash.html: Added.
+
+2017-07-03  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Mark workers/bomb.html as flaky.
+
+        * platform/ios-device/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-07-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Support listing WebGL2 and WebGPU contexts
+        https://bugs.webkit.org/show_bug.cgi?id=173396
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/create-canvas-contexts-expected.txt: Removed.
+        * inspector/canvas/create-canvas-contexts.html: Removed.
+        * inspector/canvas/create-context-2d-expected.txt: Added.
+        * inspector/canvas/create-context-2d.html: Added.
+        * inspector/canvas/create-context-webgl-expected.txt: Added.
+        * inspector/canvas/create-context-webgl.html: Added.
+        * inspector/canvas/create-context-webgl2-expected.txt: Added.
+        * inspector/canvas/create-context-webgl2.html: Added.
+        * inspector/canvas/create-context-webgpu-expected.txt: Added.
+        * inspector/canvas/create-context-webgpu.html: Added.
+        * inspector/canvas/resources/create-context-utilities.css: Added.
+        (.canvas):
+        * inspector/canvas/resources/create-context-utilities.js: Added.
+        (createAttachedCanvas):
+        (createDetachedCanvas):
+        (createCSSCanvas):
+        (destroyCanvases):
+        (TestPage.registerInitializer.awaitCanvasAdded):
+        (TestPage.registerInitializer.awaitCanvasRemoved):
+        (TestPage.registerInitializer.window.initializeTestSuite):
+        (TestPage.registerInitializer.window.addSimpleTestCase):
+        (TestPage.registerInitializer.window.addCSSCanvasTestCase):
+        * platform/gtk/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+        Split the existing canvas lifecycle tests into one for each context type. This allows
+        platforms that don't support certain context types to ignore just those tests (e.g. WebGPU).
+
+2017-07-03  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: role="none" (or presentation) does not work on iframes
+        https://bugs.webkit.org/show_bug.cgi?id=173930
+        <rdar://problem/33034347>
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/presentation-role-iframe-expected.txt: Added.
+        * accessibility/presentation-role-iframe.html: Added.
+
+2017-07-03  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase test after r219024
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+
+        * http/tests/security/no-popup-from-sandbox-top-expected.txt:
+
+2017-07-03  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219030.
+
+        This was a rebaseline of a test that was broken with revision
+        r219024
+
+        Reverted changeset:
+
+        "Rebase test after r219024"
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+        http://trac.webkit.org/changeset/219030
+
+2017-07-03  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI exports
+        https://bugs.webkit.org/show_bug.cgi?id=173646
+
+        Reviewed by Jiewen Tan.
+
+        * platform/gtk/TestExpectations:
+        Unskip tests that cover SPKI exports of EC keys.
+
+2017-07-02  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove special casing for RegExp which is no longer required by the spec
+        https://bugs.webkit.org/show_bug.cgi?id=174025
+
+        Reviewed by Chris Dumez.
+
+        * fast/files/blob-constructor-expected.txt:
+        * fast/files/blob-constructor.html:
+        * fast/files/file-constructor-expected.txt:
+        * fast/files/file-constructor.html:
+        Update tests/results for change in conversions of RegExp.
+
+2017-07-01  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        REGRESSION(r218371): Reeder's default font is Times instead of San Francisco
+        https://bugs.webkit.org/show_bug.cgi?id=173617
+        <rdar://problem/32969819>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-face-local-system-expected.html: Added.
+        * fast/text/font-face-local-system.html: Added.
+
+2017-06-30  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        If an image appears more than once on a page, decoding for painting one instance repaints them all
+        https://bugs.webkit.org/show_bug.cgi?id=169944
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/async-image-multiple-clients-repaint-expected.txt: Added.
+        * fast/images/async-image-multiple-clients-repaint.html: Added.
+        * platform/ios-simulator/fast/images: Added.
+        * platform/ios-simulator/fast/images/async-image-multiple-clients-repaint-expected.txt: Added.
+
+2017-06-30  Jonathan Bedard  <jbedard@apple.com>
+
+        Run webgl tests on iOS ports
+        https://bugs.webkit.org/show_bug.cgi?id=173000
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations: Enable webgl, fast/canvas/webgl and http/tests/webgl.
+
+2017-06-30  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: AsyncStackTrace nodes can be corrupted when truncating
+        https://bugs.webkit.org/show_bug.cgi?id=173840
+        <rdar://problem/30840820>
+
+        Reviewed by Joseph Pecoraro.
+
+        Add a test for truncating a branching asynchronous stack trace.
+
+        * inspector/debugger/truncate-async-stack-trace-expected.txt: Added.
+        * inspector/debugger/truncate-async-stack-trace.html: Added.
+
+2017-06-30  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase test after r219024
+        https://bugs.webkit.org/show_bug.cgi?id=174051
+
+        * fast/events/popup-blocked-from-unique-frame-via-window-open-named-sibling-frame-expected.txt:
+        This was an intentional change making URL parsing how it was before r215096 for URLs with non-special schemes.
+
+2017-06-30  Matt Lewis  <jlewis3@apple.com>
+
+        Marked test imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173068
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-06-30  Chris Dumez  <cdumez@apple.com>
+
+        Move store logic from WebResourceLoadStatisticsManager to WebResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174038
+
+        Reviewed by Brent Fulgham.
+
+        Fix typo in testRunner API.
+
+        * http/tests/loading/resourceLoadStatistics/grandfathering.html:
+        * http/tests/loading/resourceLoadStatistics/non-prevalent-resource-with-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/non-prevalent-resource-without-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/partitioned-and-unpartitioned-cookie-deletion.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction-timeout.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-with-user-interaction.html:
+        * http/tests/loading/resourceLoadStatistics/prevalent-resource-without-user-interaction.html:
+
+2017-06-30  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Default string comparisons to treat numeric characters as numbers
+        https://bugs.webkit.org/show_bug.cgi?id=173984
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/unit-tests/string-utilities.html:
+        Add tests for String.prototype.extendedLocaleCompare.
+
+2017-06-30  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r214194): Safari leaves a popup window open opened during before unload
+        https://bugs.webkit.org/show_bug.cgi?id=174016
+
+        Reviewed by Chris Dumez.
+
+        Added regression tests for navigating a new window, a sibling iframe, and another existing window.
+
+        * fast/events/before-unload-navigate-different-window-expected.txt: Added.
+        * fast/events/before-unload-navigate-different-window.html: Added.
+        * fast/events/before-unload-open-window-expected.txt: Added.
+        * fast/events/before-unload-open-window.html: Added.
+        * fast/events/before-unload-sibling-frame-expected.txt: Added.
+        * fast/events/before-unload-sibling-frame.html: Added.
+        * fast/events/resources/message-opener.html: Added.
+        * fast/events/resources/message-top.html: Added.
+
+2017-06-30  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        ASSERTION FAILED: !canAnimate() && !m_currentFrame
+        https://bugs.webkit.org/show_bug.cgi?id=173089
+
+        Reviewed by Said Abou-Hallawa.
+
+        * fast/images/animated-gif-paint-after-animation-expected.txt: Added.
+        * fast/images/animated-gif-paint-after-animation.html: Added.
+        * fast/images/resources/animated-red-green-1000x1000-repeat-1.gif: Added.
+
+2017-06-30  John Wilander  <wilander@apple.com>
+
+        Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=173940
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/wk2/TestExpectations:
+            http/tests/loading/resourceLoadStatistics/telemetry-generation.html
+            is still failing.
+
+2017-06-30  Antoine Quint  <graouts@apple.com>
+
+        Top controls bars should invert with right-to-left user interface layout direction locale
+        https://bugs.webkit.org/show_bug.cgi?id=173989
+        <rdar://problem/32863552>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test to check we correctly layout the top controls bars in RTL and rebaseline a
+        test that now requires an asynchronous assertion.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-rtl-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-rtl.html: Added.
+        * media/modern-media-controls/mute-button/mute-button-expected.txt:
+        * media/modern-media-controls/mute-button/mute-button.html:
+        * platform/mac/TestExpectations:
+
+2017-06-30  Dean Jackson  <dino@apple.com>
+
+        REGRESSION (High Sierra): Gradient LayoutTests are failing
+        https://bugs.webkit.org/show_bug.cgi?id=174015
+        <rdar://problem/32332022>
+
+        Reviewed by Tim Horton.
+
+        Add the fudge factor to more of the gradient tests.
+
+        * canvas/philip/tests.js:
+        (_assertPixelWithGradientNoise): Bump the factor up a bit.
+        * canvas/philip/tests/2d.gradient.interpolate.multiple.html:
+        * canvas/philip/tests/2d.gradient.interpolate.solid.html:
+        * canvas/philip/tests/2d.gradient.radial.transform.1.html:
+        * canvas/philip/tests/2d.gradient.radial.transform.2.html:
+        * canvas/philip/tests/2d.gradient.radial.transform.3.html:
+        * canvas/philip/tests/initial.reset.gradient.html:
+
+2017-06-29  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Cannot call setValue() on contenteditable or ARIA text controls
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/mac/set-value-editable-types-expected.txt: Added.
+        * accessibility/mac/set-value-editable-types.html: Added.
+
+2017-06-28  Simon Fraser  <simon.fraser@apple.com>
+
+        getBoundingClientRect returns wrong value for combination of page zoom and scroll
+        https://bugs.webkit.org/show_bug.cgi?id=173841
+        rdar://problem/32983841
+
+        Reviewed by Dean Jackson.
+
+        * fast/events/clientXY-in-zoom-and-scroll.html: New baseline for progressed behavior.
+        * fast/events/simulated-click-zoomed-expected.txt: Added.
+        * fast/events/simulated-click-zoomed.html: Added.
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-zoomed-expected.txt: Added.
+        * fast/visual-viewport/client-rects-relative-to-layout-viewport-zoomed.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/fast/events/clientXY-in-zoom-and-scroll-expected.txt:
+
+2017-06-29  John Wilander  <wilander@apple.com>
+
+        Fix for intermittent Layout Test fail http/tests/loading/resourceLoadStatistics/telemetry-generation.html
+        https://bugs.webkit.org/show_bug.cgi?id=173940
+        <rdar://problem/33018125>
+
+        Reviewed by Brent Fulgham.
+
+        * platform/wk2/TestExpectations:
+            http/tests/loading/resourceLoadStatistics/telemetry-generation.html
+            is now expected to pass.
+
+2017-06-29  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add a new extended attribute to model the forced return value optimization used on Node and Crypto
+        https://bugs.webkit.org/show_bug.cgi?id=173961
+
+        Reviewed by Darin Adler.
+
+        * js/dom/dot-node-base-exception-expected.txt: Removed.
+        * js/dom/dot-node-base-exception.html: Removed.
+        * js/dom/script-tests/dot-node-base-exception.js: Removed.
+        Remove now obsolete test.
+
+2017-06-29  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218512.
+        https://bugs.webkit.org/show_bug.cgi?id=173981
+
+        "It changes the behavior of the JS API's JSEvaluateScript
+        which breaks TurboTax" (Requested by saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "test262: Completion values for control flow do not match the
+        spec"
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+        http://trac.webkit.org/changeset/218512
+
+2017-06-29  Alex Christensen  <achristensen@webkit.org>
+
+        WKContentRuleLists with if-top-url or unless-top-url should run regex against entire top URL
+        https://bugs.webkit.org/show_bug.cgi?id=173980
+
+        Reviewed by Tim Horton.
+
+        * http/tests/contentextensions/top-url-expected.txt: Added.
+        * http/tests/contentextensions/top-url.html: Added.
+        * http/tests/contentextensions/top-url.html.json: Added.
+
+2017-06-29  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: disable some APIs under CSP
+        https://bugs.webkit.org/show_bug.cgi?id=173892
+        <rdar://problem/32914613>
+
+        Reviewed by Daniel Bates.
+
+        These tests are basically the same as eval-blocked, but with
+        WebAssembly APIs instead of eval.
+
+        Disable all of them on iOS simulator which doesn't support
+        WebAssembly (whereas iOS does).
+
+        * http/tests/security/contentSecurityPolicy/WebAssembly-allowed-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-allowed.html: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-about-blank-iframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-about-blank-iframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-external-script-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-external-script.html: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-subframe-expected.txt: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked-in-subframe.html: Added.
+        * http/tests/security/contentSecurityPolicy/WebAssembly-blocked.html: Added.
+        * http/tests/security/contentSecurityPolicy/resources/WebAssembly-blocked-in-external-script.js: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2017-06-29  Antoine Quint  <graouts@apple.com>
+
+        Full stop shows to the right of the picture-in-picture localised string in Hebrew
+        https://bugs.webkit.org/show_bug.cgi?id=173966
+        <rdar://problem/32847376>
+
+        Reviewed by Dean Jackson.
+
+        * media/modern-media-controls/placard/placard-ltr-expected.txt: Added.
+        * media/modern-media-controls/placard/placard-ltr.html: Added.
+
 2017-06-29  Romain Bellessort  <romain.bellessort@crf.canon.fr>
 
         [Readable Streams API] Fix ReadableStream "strategy" argument handling

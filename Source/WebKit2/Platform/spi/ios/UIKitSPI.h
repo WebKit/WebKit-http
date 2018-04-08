@@ -242,12 +242,6 @@ typedef enum {
 @property (nonatomic, readwrite, retain) UIResponder <UIKeyInput> *delegate;
 @end
 
-@interface UIGestureRecognizer ()
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90200
-@property(nonatomic, copy) NSArray<NSNumber *> *allowedTouchTypes;
-#endif
-@end
-
 @interface UILongPressGestureRecognizer ()
 @property (nonatomic) CFTimeInterval delay;
 @property (nonatomic, readonly) CGPoint startPoint;
@@ -299,23 +293,6 @@ typedef enum {
 - (CADisplay *)_display;
 @end
 
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 90100
-typedef enum {
-    UITouchTypeDirect
-} UITouchType;
-
-@interface UITouch ()
-@property(nonatomic,readonly) UITouchType type;
-@end
-#endif
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
-typedef NS_ENUM(NSInteger, UIScrollViewContentInsetAdjustmentBehavior) {
-    UIScrollViewContentInsetAdjustmentAutomatic = 0,
-    UIScrollViewContentInsetAdjustmentAlways = 3,
-};
-#endif
-
 @interface UIScrollView ()
 - (void)_stopScrollingAndZoomingAnimations;
 - (void)_zoomToCenter:(CGPoint)center scale:(CGFloat)scale duration:(CFTimeInterval)duration force:(BOOL)force;
@@ -328,7 +305,6 @@ typedef NS_ENUM(NSInteger, UIScrollViewContentInsetAdjustmentBehavior) {
 @property (nonatomic, readonly) BOOL _isInterruptingDeceleration;
 #if __IPHONE_OS_VERSION_MAX_ALLOWED >= 110000
 @property (nonatomic, readonly) UIEdgeInsets _systemContentInset;
-@property (nonatomic, setter=_setContentInsetAdjustmentBehavior:, getter=_contentInsetAdjustmentBehavior) UIScrollViewContentInsetAdjustmentBehavior contentInsetAdjustmentBehavior;
 #endif
 @end
 
@@ -393,13 +369,11 @@ typedef enum {
 - (void)willStartScrollingOverflow;
 @end
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
 @class UITextSuggestion;
 
 @protocol UITextInputSuggestionDelegate <UITextInputDelegate>
 - (void)setSuggestions:(NSArray <UITextSuggestion*> *)suggestions;
 @end
-#endif
 
 @interface UIViewController ()
 + (UIViewController *)_viewControllerForFullScreenPresentationFromView:(UIView *)view;
@@ -576,11 +550,6 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 @property (nonatomic, copy) NSString *markedText;
 @property (nonatomic, assign) NSRange rangeInMarkedText;
 @end
-
-#if __IPHONE_OS_VERSION_MAX_ALLOWED < 100000
-@protocol UIResponderStandardEditActions
-@end
-#endif
 
 @interface UIWKTextInteractionAssistant : UITextInteractionAssistant <UIResponderStandardEditActions>
 @end
@@ -934,9 +903,7 @@ extern const NSString *UIPreviewDataLink;
 extern const NSString *UIPreviewDataDDResult;
 extern const NSString *UIPreviewDataDDContext;
 
-#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
 extern const NSString *UIPreviewDataAttachmentList;
 extern const NSString *UIPreviewDataAttachmentIndex;
-#endif
 
 WTF_EXTERN_C_END

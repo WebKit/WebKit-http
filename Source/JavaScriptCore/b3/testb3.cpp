@@ -67,6 +67,7 @@
 #include "LinkBuffer.h"
 #include "PureNaN.h"
 #include <cmath>
+#include <list>
 #include <string>
 #include <wtf/FastTLS.h>
 #include <wtf/ListDump.h>
@@ -15432,6 +15433,118 @@ void testFastTLSStore()
 #endif
 }
 
+NEVER_INLINE bool doubleEq(double a, double b) { return a == b; }
+NEVER_INLINE bool doubleNeq(double a, double b) { return a != b; }
+NEVER_INLINE bool doubleGt(double a, double b) { return a > b; }
+NEVER_INLINE bool doubleGte(double a, double b) { return a >= b; }
+NEVER_INLINE bool doubleLt(double a, double b) { return a < b; }
+NEVER_INLINE bool doubleLte(double a, double b) { return a <= b; }
+
+void testDoubleLiteralComparison(double a, double b)
+{
+    using Test = std::tuple<B3::Opcode, bool (*)(double, double)>;
+    std::list<Test> tests = {
+        Test { NotEqual, doubleNeq },
+        Test { Equal, doubleEq },
+        Test { EqualOrUnordered, doubleEq },
+        Test { GreaterThan, doubleGt },
+        Test { GreaterEqual, doubleGte },
+        Test { LessThan, doubleLt },
+        Test { LessEqual, doubleLte },
+    };
+
+    for (const Test& test : tests) {
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* valueA = root->appendNew<ConstDoubleValue>(proc, Origin(), a);
+        Value* valueB = root->appendNew<ConstDoubleValue>(proc, Origin(), b);
+
+        // This is here just to make reduceDoubleToFloat do things.
+        Value* valueC = root->appendNew<ConstDoubleValue>(proc, Origin(), 0.0);
+        Value* valueAsFloat = root->appendNew<Value>(proc, DoubleToFloat, Origin(), valueC);
+
+        root->appendNewControlValue(
+            proc, Return, Origin(),
+                root->appendNew<Value>(proc, BitAnd, Origin(),
+                    root->appendNew<Value>(proc, std::get<0>(test), Origin(), valueA, valueB),
+                    root->appendNew<Value>(proc, Equal, Origin(), valueAsFloat, valueAsFloat)));
+
+        CHECK(!!compileAndRun<int32_t>(proc) == std::get<1>(test)(a, b));
+    }
+}
+
+void testFloatEqualOrUnorderedFolding()
+{
+    for (auto& first : floatingPointOperands<float>()) {
+        for (auto& second : floatingPointOperands<float>()) {
+            float a = first.value;
+            float b = second.value;
+            bool expectedResult = (a == b) || std::isunordered(a, b);
+            Procedure proc;
+            BasicBlock* root = proc.addBlock();
+            Value* constA = root->appendNew<ConstFloatValue>(proc, Origin(), a);
+            Value* constB = root->appendNew<ConstFloatValue>(proc, Origin(), b);
+
+            root->appendNewControlValue(proc, Return, Origin(),
+                root->appendNew<Value>(
+                    proc, EqualOrUnordered, Origin(),
+                    constA,
+                    constB));
+            CHECK(!!compileAndRun<int32_t>(proc) == expectedResult);
+        }
+    }
+}
+
+void testFloatEqualOrUnorderedFoldingNaN()
+{
+    std::list<float> nans = {
+        bitwise_cast<float>(0xfffffffd),
+        bitwise_cast<float>(0xfffffffe),
+        bitwise_cast<float>(0xfffffff0),
+        static_cast<float>(PNaN),
+    };
+
+    unsigned i = 0;
+    for (float nan : nans) {
+        RELEASE_ASSERT(std::isnan(nan));
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* a = root->appendNew<ConstFloatValue>(proc, Origin(), nan);
+        Value* b = root->appendNew<Value>(proc, DoubleToFloat, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0));
+
+        if (i % 2)
+            std::swap(a, b);
+        ++i;
+        root->appendNewControlValue(proc, Return, Origin(),
+            root->appendNew<Value>(proc, EqualOrUnordered, Origin(), a, b));
+        CHECK(!!compileAndRun<int32_t>(proc, static_cast<double>(1.0)));
+    }
+}
+
+void testFloatEqualOrUnorderedDontFold()
+{
+    for (auto& first : floatingPointOperands<float>()) {
+        float a = first.value;
+        Procedure proc;
+        BasicBlock* root = proc.addBlock();
+        Value* constA = root->appendNew<ConstFloatValue>(proc, Origin(), a);
+        Value* b = root->appendNew<Value>(proc, DoubleToFloat, Origin(),
+            root->appendNew<ArgumentRegValue>(proc, Origin(), FPRInfo::argumentFPR0));
+        root->appendNewControlValue(proc, Return, Origin(),
+            root->appendNew<Value>(
+                proc, EqualOrUnordered, Origin(), constA, b));
+
+        auto code = compileProc(proc);
+
+        for (auto& second : floatingPointOperands<float>()) {
+            float b = second.value;
+            bool expectedResult = (a == b) || std::isunordered(a, b);
+            CHECK(!!invoke<int32_t>(*code, static_cast<double>(b)) == expectedResult);
+        }
+    }
+}
+
 // Make sure the compiler does not try to optimize anything out.
 NEVER_INLINE double zero()
 {
@@ -16965,6 +17078,15 @@ void run(const char* filter)
     
     RUN(testFastTLSLoad());
     RUN(testFastTLSStore());
+
+    RUN(testDoubleLiteralComparison(bitwise_cast<double>(0x8000000000000001ull), bitwise_cast<double>(0x0000000000000000ull)));
+    RUN(testDoubleLiteralComparison(bitwise_cast<double>(0x0000000000000000ull), bitwise_cast<double>(0x8000000000000001ull)));
+    RUN(testDoubleLiteralComparison(125.3144446948241, 125.3144446948242));
+    RUN(testDoubleLiteralComparison(125.3144446948242, 125.3144446948241));
+
+    RUN(testFloatEqualOrUnorderedFolding());
+    RUN(testFloatEqualOrUnorderedFoldingNaN());
+    RUN(testFloatEqualOrUnorderedDontFold());
 
     if (isX86()) {
         RUN(testBranchBitAndImmFusion(Identity, Int64, 1, Air::BranchTest32, Air::Arg::Tmp));

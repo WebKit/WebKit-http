@@ -35,6 +35,7 @@
 #include <WebCore/Chrome.h>
 #include <WebCore/Document.h>
 #include <WebCore/FrameLoadRequest.h>
+#include <WebCore/FrameLoader.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/InspectorFrontendClient.h>
@@ -146,9 +147,10 @@ void WebInspector::openInNewTab(const String& urlString)
         return;
 
     Frame& inspectedMainFrame = inspectedPage->mainFrame();
-    FrameLoadRequest frameLoadRequest { inspectedMainFrame.document()->securityOrigin(), { urlString }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+    FrameLoadRequest frameLoadRequest { *inspectedMainFrame.document(), inspectedMainFrame.document()->securityOrigin(), { urlString }, ASCIILiteral("_blank"), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
 
-    Page* newPage = inspectedPage->chrome().createWindow(inspectedMainFrame, frameLoadRequest, { }, NavigationAction(frameLoadRequest.resourceRequest(), NavigationType::LinkClicked));
+    NavigationAction action { *inspectedMainFrame.document(), frameLoadRequest.resourceRequest(), NavigationType::LinkClicked };
+    Page* newPage = inspectedPage->chrome().createWindow(inspectedMainFrame, frameLoadRequest, { }, action);
     if (!newPage)
         return;
 
