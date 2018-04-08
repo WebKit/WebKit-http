@@ -35,7 +35,6 @@ list(APPEND WebCore_SOURCES
   editing/haiku/EditorHaiku.cpp
 
   platform/Cursor.cpp
-  platform/KillRingNone.cpp
 
   page/haiku/DragControllerHaiku.cpp
   page/haiku/EventHandlerHaiku.cpp

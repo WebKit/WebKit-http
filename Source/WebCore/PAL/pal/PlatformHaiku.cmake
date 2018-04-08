@@ -4,4 +4,6 @@ list(APPEND PAL_SOURCES
     crypto/tasn1/Utilities.cpp
 
 	system/haiku/SoundHaiku.cpp
+
+    text/KillRingNone.cpp
 )

@@ -113,7 +113,7 @@ Vector<FontSelectionCapabilities> FontCache::getFontSelectionCapabilitiesInFamil
 
 const AtomicString& FontCache::platformAlternateFamilyName(const AtomicString& familyName)
 {
-    return nullAtom;
+    return nullAtom();
 }
 
 
