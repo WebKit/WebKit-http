@@ -631,6 +631,12 @@ void EditorClientHaiku::setInputMethodState(bool /*enabled*/)
     notImplemented();
 }
 
+bool EditorClientHaiku::performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove)
+{
+	notImplemented();
+	return false;
+}
+
 // #pragma mark -
 
 bool EditorClientHaiku::handleEditingKeyboardEvent(KeyboardEvent* event,

@@ -57,11 +57,5 @@ String homeDirectoryPath()
     return String(path.Path());
 }
 
-bool unloadModule(PlatformModule)
-{
-    notImplemented();
-    return false;
-}
-
 } // namespace WebCore
 

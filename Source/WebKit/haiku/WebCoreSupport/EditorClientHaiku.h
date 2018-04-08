@@ -117,6 +117,7 @@ public:
     void willSetInputMethodState() override;
     void setInputMethodState(bool enabled) override;
 
+    bool performTwoStepDrop(DocumentFragment&, Range& destination, bool isMove) override;
     // TextCheckerClient
 
     bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const override;

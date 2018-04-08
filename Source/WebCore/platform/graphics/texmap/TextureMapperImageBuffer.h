@@ -33,16 +33,17 @@ public:
     TextureMapperImageBuffer();
 
     // TextureMapper implementation
-    virtual void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) override;
-    virtual void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
-    virtual void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
-    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
-    virtual void beginClip(const TransformationMatrix&, const FloatRect&) override;
-    virtual void bindSurface(BitmapTexture* surface) override { m_currentSurface = surface;}
-    virtual void endClip() override { graphicsContext()->restore(); }
-    virtual IntRect clipBounds() override { return currentContext()->clipBounds(); }
-    virtual IntSize maxTextureSize() const;
-    virtual Ref<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
+    void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) override;
+    void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
+    void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
+    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
+    void beginClip(const TransformationMatrix&, const FloatRect&) override;
+    void bindSurface(BitmapTexture* surface) override { m_currentSurface = surface;}
+    void endClip() override { graphicsContext()->restore(); }
+    IntRect clipBounds() override { return currentContext()->clipBounds(); }
+    IntSize maxTextureSize() const override;
+    Ref<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
+    Ref<BitmapTexture> createTexture(GC3Dint) override { return BitmapTextureImageBuffer::create(); }
 
     inline GraphicsContext* currentContext()
     {
