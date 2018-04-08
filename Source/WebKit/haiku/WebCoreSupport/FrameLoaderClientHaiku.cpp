@@ -857,7 +857,7 @@ void FrameLoaderClientHaiku::transitionToCommittedForNewPage()
     bool transparent = m_webFrame->IsTransparent();
     Color backgroundColor = transparent ? WebCore::Color::transparent : WebCore::Color::white;
 
-    frame->createView(size, backgroundColor, transparent);
+    frame->createView(size, backgroundColor, transparent, {}, {});
 
     frame->view()->setTopLevelPlatformWidget(m_webPage->WebView());
 }
@@ -1013,11 +1013,6 @@ void FrameLoaderClientHaiku::dispatchDidClearWindowObjectInWorld(DOMWrapperWorld
         m_webPage->fDumpRenderTree->didClearWindowObjectInWorld(world, context, windowObject);
     }
 
-}
-
-void FrameLoaderClientHaiku::registerForIconNotification(bool /*listen*/)
-{
-    notImplemented();
 }
 
 Ref<FrameNetworkingContext> FrameLoaderClientHaiku::createNetworkingContext()

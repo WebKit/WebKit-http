@@ -215,8 +215,6 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
 
     void dispatchDidClearWindowObjectInWorld(DOMWrapperWorld&) override;
 
-    void registerForIconNotification(bool listen) override;
-
     Ref<FrameNetworkingContext> createNetworkingContext() override;
     void updateCachedDocumentLoader(WebCore::DocumentLoader&) override { }
 

@@ -29,6 +29,7 @@
 #include "BackForwardController.h"
 #include "Document.h"
 #include "Frame.h"
+#include "FrameLoader.h"
 #include "NotImplemented.h"
 #include "Page.h"
 #include "ProgressTracker.h"
