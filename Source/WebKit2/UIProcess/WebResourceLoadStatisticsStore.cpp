@@ -53,9 +53,9 @@ constexpr unsigned operatingDatesWindow { 30 };
 constexpr unsigned statisticsModelVersion { 7 };
 constexpr unsigned maxImportance { 3 };
 
-template<typename T> static inline String primaryDomain(const T& value)
+template<typename T> static inline String isolatedPrimaryDomain(const T& value)
 {
-    return ResourceLoadStatistics::primaryDomain(value);
+    return ResourceLoadStatistics::primaryDomain(value).isolatedCopy();
 }
 
 static const OptionSet<WebsiteDataType>& dataTypesToRemove()
@@ -99,7 +99,7 @@ WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(const String& res
         startMonitoringStatisticsStorage();
     });
     m_statisticsQueue->dispatchAfter(5_s, [this, protectedThis = makeRef(*this)] {
-        if (m_shouldSubmitTelemetry)
+        if (m_parameters.shouldSubmitTelemetry)
             WebResourceLoadStatisticsTelemetry::calculateAndSubmit(*this);
     });
 
@@ -124,7 +124,7 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
     setDataRecordsBeingRemoved(true);
 
     RunLoop::main().dispatch([prevalentResourceDomains = CrossThreadCopier<Vector<String>>::copy(prevalentResourceDomains), this, protectedThis = makeRef(*this)] () mutable {
-        WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(dataTypesToRemove(), WTFMove(prevalentResourceDomains), m_shouldNotifyPagesWhenDataRecordsWereScanned, [this, protectedThis = WTFMove(protectedThis)](const HashSet<String>& domainsWithDeletedWebsiteData) mutable {
+        WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(dataTypesToRemove(), WTFMove(prevalentResourceDomains), m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, [this, protectedThis = WTFMove(protectedThis)](const HashSet<String>& domainsWithDeletedWebsiteData) mutable {
             m_statisticsQueue->dispatch([this, protectedThis = WTFMove(protectedThis), topDomains = CrossThreadCopier<HashSet<String>>::copy(domainsWithDeletedWebsiteData)] () mutable {
                 for (auto& prevalentResourceDomain : topDomains) {
                     auto& statistic = ensureResourceStatisticsForPrimaryDomain(prevalentResourceDomain);
@@ -139,7 +139,7 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
 void WebResourceLoadStatisticsStore::processStatisticsAndDataRecords()
 {
     m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this)] () {
-        if (m_shouldClassifyResourcesBeforeDataRecordsRemoval) {
+        if (m_parameters.shouldClassifyResourcesBeforeDataRecordsRemoval) {
             for (auto& resourceStatistic : m_resourceStatisticsMap.values()) {
                 if (!resourceStatistic.isPrevalentResource && m_resourceLoadStatisticsClassifier.hasPrevalentResourceCharacteristics(resourceStatistic))
                     resourceStatistic.isPrevalentResource = true;
@@ -149,7 +149,7 @@ void WebResourceLoadStatisticsStore::processStatisticsAndDataRecords()
         
         pruneStatisticsIfNeeded();
 
-        if (m_shouldNotifyPagesWhenDataRecordsWereScanned) {
+        if (m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned) {
             RunLoop::main().dispatch([] {
                 WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed();
             });
@@ -174,13 +174,13 @@ void WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData()
     ASSERT(!RunLoop::isMain());
 
     RunLoop::main().dispatch([this, protectedThis = makeRef(*this)] () mutable {
-        WebProcessProxy::topPrivatelyControlledDomainsWithWebsiteData(dataTypesToRemove(), m_shouldNotifyPagesWhenDataRecordsWereScanned, [this, protectedThis = WTFMove(protectedThis)] (HashSet<String>&& topPrivatelyControlledDomainsWithWebsiteData) mutable {
+        WebProcessProxy::topPrivatelyControlledDomainsWithWebsiteData(dataTypesToRemove(), m_parameters.shouldNotifyPagesWhenDataRecordsWereScanned, [this, protectedThis = WTFMove(protectedThis)] (HashSet<String>&& topPrivatelyControlledDomainsWithWebsiteData) mutable {
             m_statisticsQueue->dispatch([this, protectedThis = WTFMove(protectedThis), topDomains = CrossThreadCopier<HashSet<String>>::copy(topPrivatelyControlledDomainsWithWebsiteData)] () mutable {
                 for (auto& topPrivatelyControlledDomain : topDomains) {
                     auto& statistic = ensureResourceStatisticsForPrimaryDomain(topPrivatelyControlledDomain);
                     statistic.grandfathered = true;
                 }
-                m_endOfGrandfatheringTimestamp = WallTime::now() + m_grandfatheringTime;
+                m_endOfGrandfatheringTimestamp = WallTime::now() + m_parameters.grandfatheringTime;
             });
         });
     });
@@ -449,7 +449,7 @@ void WebResourceLoadStatisticsStore::performDailyTasks()
     ASSERT(RunLoop::isMain());
 
     includeTodayAsOperatingDateIfNecessary();
-    if (m_shouldSubmitTelemetry)
+    if (m_parameters.shouldSubmitTelemetry)
         submitTelemetry();
 }
 
@@ -466,12 +466,12 @@ void WebResourceLoadStatisticsStore::logUserInteraction(const URL& url)
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomainString = primaryDomain(url).isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomainString);
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.hadUserInteraction = true;
         statistics.mostRecentUserInteractionTime = WallTime::now();
 
-        updateCookiePartitioningForDomains({ primaryDomainString }, { }, ShouldClearFirst::No);
+        updateCookiePartitioningForDomains({ primaryDomain }, { }, ShouldClearFirst::No);
     });
 }
 
@@ -480,8 +480,8 @@ void WebResourceLoadStatisticsStore::clearUserInteraction(const URL& url)
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.hadUserInteraction = false;
         statistics.mostRecentUserInteractionTime = { };
     });
@@ -494,8 +494,8 @@ void WebResourceLoadStatisticsStore::hasHadUserInteraction(const URL& url, WTF::
         return;
     }
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy(), completionHandler = WTFMove(completionHandler)] () mutable {
-        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url), completionHandler = WTFMove(completionHandler)] () mutable {
+        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain);
         bool hadUserInteraction = mapEntry == m_resourceStatisticsMap.end() ? false: hasHadUnexpiredRecentUserInteraction(mapEntry->value);
         RunLoop::main().dispatch([hadUserInteraction, completionHandler = WTFMove(completionHandler)] {
             completionHandler(hadUserInteraction);
@@ -508,8 +508,8 @@ void WebResourceLoadStatisticsStore::setLastSeen(const URL& url, Seconds seconds
     if (url.isBlankURL() || url.isEmpty())
         return;
     
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy(), seconds] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url), seconds] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.lastSeen = WallTime::fromRawSeconds(seconds.seconds());
     });
 }
@@ -519,8 +519,8 @@ void WebResourceLoadStatisticsStore::setPrevalentResource(const URL& url)
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.isPrevalentResource = true;
     });
 }
@@ -532,8 +532,8 @@ void WebResourceLoadStatisticsStore::isPrevalentResource(const URL& url, WTF::Fu
         return;
     }
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy(), completionHandler = WTFMove(completionHandler)] () mutable {
-        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url), completionHandler = WTFMove(completionHandler)] () mutable {
+        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain);
         bool isPrevalentResource = mapEntry == m_resourceStatisticsMap.end() ? false : mapEntry->value.isPrevalentResource;
         RunLoop::main().dispatch([isPrevalentResource, completionHandler = WTFMove(completionHandler)] {
             completionHandler(isPrevalentResource);
@@ -546,8 +546,8 @@ void WebResourceLoadStatisticsStore::clearPrevalentResource(const URL& url)
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.isPrevalentResource = false;
     });
 }
@@ -557,8 +557,8 @@ void WebResourceLoadStatisticsStore::setGrandfathered(const URL& url, bool value
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), url = url.isolatedCopy(), value] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryDomain = isolatedPrimaryDomain(url), value] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primaryDomain);
         statistics.grandfathered = value;
     });
 }
@@ -570,8 +570,8 @@ void WebResourceLoadStatisticsStore::isGrandfathered(const URL& url, WTF::Functi
         return;
     }
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler), url = url.isolatedCopy()] () mutable {
-        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain(url));
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), completionHandler = WTFMove(completionHandler), primaryDomain = isolatedPrimaryDomain(url)] () mutable {
+        auto mapEntry = m_resourceStatisticsMap.find(primaryDomain);
         bool isGrandFathered = mapEntry == m_resourceStatisticsMap.end() ? false : mapEntry->value.grandfathered;
         RunLoop::main().dispatch([isGrandFathered, completionHandler = WTFMove(completionHandler)] {
             completionHandler(isGrandFathered);
@@ -584,9 +584,9 @@ void WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin(const URL& s
     if (subframe.isBlankURL() || subframe.isEmpty() || topFrame.isBlankURL() || topFrame.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryTopFrameDomainString = primaryDomain(topFrame).isolatedCopy(), primarySubFrameDomainString = primaryDomain(subframe).isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubFrameDomainString);
-        statistics.subframeUnderTopFrameOrigins.add(primaryTopFrameDomainString);
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryTopFrameDomain = isolatedPrimaryDomain(topFrame), primarySubFrameDomain = isolatedPrimaryDomain(subframe)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubFrameDomain);
+        statistics.subframeUnderTopFrameOrigins.add(primaryTopFrameDomain);
     });
 }
 
@@ -595,9 +595,9 @@ void WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin(const URL
     if (subresource.isBlankURL() || subresource.isEmpty() || topFrame.isBlankURL() || topFrame.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryTopFrameDomainString = primaryDomain(topFrame).isolatedCopy(), primarySubresourceDomainString = primaryDomain(subresource).isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomainString);
-        statistics.subresourceUnderTopFrameOrigins.add(primaryTopFrameDomainString);
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryTopFrameDomain = isolatedPrimaryDomain(topFrame), primarySubresourceDomain = isolatedPrimaryDomain(subresource)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomain);
+        statistics.subresourceUnderTopFrameOrigins.add(primaryTopFrameDomain);
     });
 }
 
@@ -606,9 +606,9 @@ void WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo(const URL& s
     if (subresource.isBlankURL() || subresource.isEmpty() || hostNameRedirectedTo.isBlankURL() || hostNameRedirectedTo.isEmpty())
         return;
 
-    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryRedirectDomainString = primaryDomain(hostNameRedirectedTo).isolatedCopy(), primarySubresourceDomainString = primaryDomain(subresource).isolatedCopy()] {
-        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomainString);
-        statistics.subresourceUniqueRedirectsTo.add(primaryRedirectDomainString);
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this), primaryRedirectDomain = isolatedPrimaryDomain(hostNameRedirectedTo), primarySubresourceDomain = isolatedPrimaryDomain(subresource)] {
+        auto& statistics = ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomain);
+        statistics.subresourceUniqueRedirectsTo.add(primaryRedirectDomain);
     });
 }
 
@@ -630,6 +630,15 @@ void WebResourceLoadStatisticsStore::scheduleCookiePartitioningUpdateForDomains(
         updateCookiePartitioningForDomains(domainsToRemove, domainsToAdd, shouldClearFirst);
     });
 }
+
+#if HAVE(CFNETWORK_STORAGE_PARTITIONING)
+void WebResourceLoadStatisticsStore::scheduleCookiePartitioningStateReset()
+{
+    m_statisticsQueue->dispatch([this, protectedThis = makeRef(*this)] {
+        resetCookiePartitioningState();
+    });
+}
+#endif
 
 void WebResourceLoadStatisticsStore::scheduleClearInMemory()
 {
@@ -656,28 +665,28 @@ void WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent(std::chr
     scheduleClearInMemoryAndPersistent();
 }
 
-void WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction(std::optional<Seconds> seconds)
+void WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction(Seconds seconds)
 {
-    ASSERT(!seconds || seconds.value() >= 0_s);
-    m_timeToLiveUserInteraction = seconds;
+    ASSERT(seconds >= 0_s);
+    m_parameters.timeToLiveUserInteraction = seconds;
 }
 
 void WebResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree(Seconds seconds)
 {
     ASSERT(seconds >= 0_s);
-    m_timeToLiveCookiePartitionFree = seconds;
+    m_parameters.timeToLiveCookiePartitionFree = seconds;
 }
 
 void WebResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval(Seconds seconds)
 {
     ASSERT(seconds >= 0_s);
-    m_minimumTimeBetweenDataRecordsRemoval = seconds;
+    m_parameters.minimumTimeBetweenDataRecordsRemoval = seconds;
 }
 
 void WebResourceLoadStatisticsStore::setGrandfatheringTime(Seconds seconds)
 {
     ASSERT(seconds >= 0_s);
-    m_grandfatheringTime = seconds;
+    m_parameters.grandfatheringTime = seconds;
 }
 
 bool WebResourceLoadStatisticsStore::shouldRemoveDataRecords() const
@@ -686,7 +695,7 @@ bool WebResourceLoadStatisticsStore::shouldRemoveDataRecords() const
     if (m_dataRecordsBeingRemoved)
         return false;
 
-    return !m_lastTimeDataRecordsWereRemoved || MonotonicTime::now() >= (m_lastTimeDataRecordsWereRemoved + m_minimumTimeBetweenDataRecordsRemoval);
+    return !m_lastTimeDataRecordsWereRemoved || MonotonicTime::now() >= (m_lastTimeDataRecordsWereRemoved + m_parameters.minimumTimeBetweenDataRecordsRemoval);
 }
 
 void WebResourceLoadStatisticsStore::setDataRecordsBeingRemoved(bool value)
@@ -798,7 +807,7 @@ void WebResourceLoadStatisticsStore::mergeStatistics(Vector<ResourceLoadStatisti
 
 inline bool WebResourceLoadStatisticsStore::shouldPartitionCookies(const ResourceLoadStatistics& statistic) const
 {
-    return statistic.isPrevalentResource && (!statistic.hadUserInteraction || WallTime::now() > statistic.mostRecentUserInteractionTime + m_timeToLiveCookiePartitionFree);
+    return statistic.isPrevalentResource && (!statistic.hadUserInteraction || WallTime::now() > statistic.mostRecentUserInteractionTime + m_parameters.timeToLiveCookiePartitionFree);
 }
 
 void WebResourceLoadStatisticsStore::updateCookiePartitioning()
@@ -836,10 +845,9 @@ void WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains(const Ve
         m_updateCookiePartitioningForDomainsHandler(domainsToRemove, domainsToAdd, shouldClearFirst);
     });
 
-    if (shouldClearFirst == ShouldClearFirst::Yes) {
-        for (auto& resourceStatistic : m_resourceStatisticsMap.values())
-            resourceStatistic.isMarkedForCookiePartitioning = false;
-    } else {
+    if (shouldClearFirst == ShouldClearFirst::Yes)
+        resetCookiePartitioningState();
+    else {
         for (auto& domain : domainsToRemove)
             ensureResourceStatisticsForPrimaryDomain(domain).isMarkedForCookiePartitioning = false;
     }
@@ -847,7 +855,14 @@ void WebResourceLoadStatisticsStore::updateCookiePartitioningForDomains(const Ve
     for (auto& domain : domainsToAdd)
         ensureResourceStatisticsForPrimaryDomain(domain).isMarkedForCookiePartitioning = true;
 }
-    
+
+void WebResourceLoadStatisticsStore::resetCookiePartitioningState()
+{
+    ASSERT(!RunLoop::isMain());
+    for (auto& resourceStatistic : m_resourceStatisticsMap.values())
+        resourceStatistic.isMarkedForCookiePartitioning = false;
+}
+
 void WebResourceLoadStatisticsStore::processStatistics(const WTF::Function<void (const ResourceLoadStatistics&)>& processFunction) const
 {
     ASSERT(!RunLoop::isMain());
@@ -908,10 +923,9 @@ bool WebResourceLoadStatisticsStore::hasStatisticsExpired(const ResourceLoadStat
             return true;
     }
 
-    // If we don't meet the real criteria for an expired statistic, check the user
-    // setting for a tighter restriction (mainly for testing).
-    if (m_timeToLiveUserInteraction) {
-        if (WallTime::now() > resourceStatistic.mostRecentUserInteractionTime + m_timeToLiveUserInteraction.value())
+    // If we don't meet the real criteria for an expired statistic, check the user setting for a tighter restriction (mainly for testing).
+    if (m_parameters.timeToLiveUserInteraction) {
+        if (WallTime::now() > resourceStatistic.mostRecentUserInteractionTime + m_parameters.timeToLiveUserInteraction.value())
             return true;
     }
 
@@ -920,12 +934,12 @@ bool WebResourceLoadStatisticsStore::hasStatisticsExpired(const ResourceLoadStat
     
 void WebResourceLoadStatisticsStore::setMaxStatisticsEntries(size_t maximumEntryCount)
 {
-    m_maxStatisticsEntries = maximumEntryCount;
+    m_parameters.maxStatisticsEntries = maximumEntryCount;
 }
     
 void WebResourceLoadStatisticsStore::setPruneEntriesDownTo(size_t pruneTargetCount)
 {
-    m_pruneEntriesDownTo = pruneTargetCount;
+    m_parameters.pruneEntriesDownTo = pruneTargetCount;
 }
     
 struct StatisticsLastSeen {
@@ -958,12 +972,12 @@ static unsigned computeImportance(const ResourceLoadStatistics& resourceStatisti
 void WebResourceLoadStatisticsStore::pruneStatisticsIfNeeded()
 {
     ASSERT(!RunLoop::isMain());
-    if (m_resourceStatisticsMap.size() <= m_maxStatisticsEntries)
+    if (m_resourceStatisticsMap.size() <= m_parameters.maxStatisticsEntries)
         return;
 
-    ASSERT(m_pruneEntriesDownTo <= m_maxStatisticsEntries);
+    ASSERT(m_parameters.pruneEntriesDownTo <= m_parameters.maxStatisticsEntries);
 
-    size_t numberOfEntriesLeftToPrune = m_resourceStatisticsMap.size() - m_pruneEntriesDownTo;
+    size_t numberOfEntriesLeftToPrune = m_resourceStatisticsMap.size() - m_parameters.pruneEntriesDownTo;
     ASSERT(numberOfEntriesLeftToPrune);
     
     Vector<StatisticsLastSeen> resourcesToPrunePerImportance[maxImportance + 1];
@@ -974,6 +988,11 @@ void WebResourceLoadStatisticsStore::pruneStatisticsIfNeeded()
         pruneResources(m_resourceStatisticsMap, resourcesToPrunePerImportance[importance], numberOfEntriesLeftToPrune);
 
     ASSERT(!numberOfEntriesLeftToPrune);
+}
+
+void WebResourceLoadStatisticsStore::resetParametersToDefaultValues()
+{
+    m_parameters = { };
 }
     
 } // namespace WebKit

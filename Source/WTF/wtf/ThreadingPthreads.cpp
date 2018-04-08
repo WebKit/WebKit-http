@@ -192,9 +192,8 @@ void Thread::initializePlatformThreading()
 #endif
 }
 
-void Thread::initializeCurrentThreadEvenIfNonWTFCreated()
+static void initializeCurrentThreadEvenIfNonWTFCreated()
 {
-    Thread::current().initialize();
 #if !OS(DARWIN)
     sigset_t mask;
     sigemptyset(&mask);
@@ -306,17 +305,25 @@ void Thread::detach()
         didBecomeDetached();
 }
 
+Thread* Thread::currentMayBeNull()
+{
+    ThreadHolder* data = ThreadHolder::current();
+    if (data)
+        return &data->thread();
+    return nullptr;
+}
+
 Thread& Thread::current()
 {
     if (Thread* current = currentMayBeNull())
         return *current;
 
     // Not a WTF-created thread, ThreadIdentifier is not established yet.
-    Ref<Thread> thread = adoptRef(*new Thread());
+    RefPtr<Thread> thread = adoptRef(new Thread());
     thread->establish(pthread_self());
-    ThreadHolder::initialize(thread.get());
+    ThreadHolder::initialize(*thread);
     initializeCurrentThreadEvenIfNonWTFCreated();
-    return thread.get();
+    return *thread;
 }
 
 ThreadIdentifier Thread::currentID()

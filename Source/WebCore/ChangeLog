@@ -1,3 +1,865 @@
+2017-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Accessing localDescription, remoteDescription, etc. after setTimeout raises EXC_BAD_ACCESS
+        https://bugs.webkit.org/show_bug.cgi?id=174323
+        <rdar://problem/33267876>
+
+        Reviewed by Eric Carlson.
+
+        Test: webrtc/calling-peerconnection-once-closed.html
+
+        In case the libwebrtc backend is null, we should not use it to get description from it.
+        Return null in that case.
+
+        Adding ASSERT to other calls where the layer above LibWebRTCMediaEndpoint should protect
+        from calling a function on a null libwebrtc backend.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::currentLocalDescription):
+        (WebCore::LibWebRTCMediaEndpoint::currentRemoteDescription):
+        (WebCore::LibWebRTCMediaEndpoint::pendingLocalDescription):
+        (WebCore::LibWebRTCMediaEndpoint::pendingRemoteDescription):
+        (WebCore::LibWebRTCMediaEndpoint::localDescription):
+        (WebCore::LibWebRTCMediaEndpoint::remoteDescription):
+        (WebCore::LibWebRTCMediaEndpoint::doSetLocalDescription):
+        (WebCore::LibWebRTCMediaEndpoint::doSetRemoteDescription):
+        (WebCore::LibWebRTCMediaEndpoint::addTrack):
+        (WebCore::LibWebRTCMediaEndpoint::removeTrack):
+        (WebCore::LibWebRTCMediaEndpoint::doCreateOffer):
+        (WebCore::LibWebRTCMediaEndpoint::doCreateAnswer):
+        (WebCore::LibWebRTCMediaEndpoint::createDataChannel):
+
+2017-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219176.
+        https://bugs.webkit.org/show_bug.cgi?id=174436
+
+        "Can cause infinite recursion on iOS" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219176
+
+2017-07-12  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Implement a way to retrieve a text marker range with desired text that is closest to a position
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        <rdar://problem/33248006>
+
+        Reviewed by Chris Fleizach.
+
+        Used the existing findClosestPlainText function to search the range on iOS.
+        Also exposed a function on the iOS wrapper to return the selection rects of
+        the result range from the searching. 
+
+        Test: accessibility/ios-simulator/text-marker-range-matches-text.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::visiblePositionForPositionWithOffset):
+        (WebCore::AXObjectCache::rangeMatchesTextNearRange):
+        * accessibility/AXObjectCache.h:
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper rangeFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper textMarkerRangeFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper textRectsFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper rectsForSelectionRects:]):
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219409.
+
+        The revision caused the Windows builds to fail.
+
+        Reverted changeset:
+
+        "AX: [iOS] Implement a way to retrieve a text marker range
+        with desired text that is closest to a position"
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        http://trac.webkit.org/changeset/219409
+
+2017-07-12  Alicia Boya García  <aboya@igalia.com>
+
+        [FreeType] Enable BCI on webfonts
+        https://bugs.webkit.org/show_bug.cgi?id=174403
+
+        Reviewed by Michael Catanzaro.
+
+        The FreeType BCI hinter used to be disabled on webfonts in favor of
+        the autohinter.
+
+        FreeType BCI hinter has improved considerably in the past and now most
+        other browsers enable it too. Given the old reasons no longer apply,
+        the BCI has now been enabled in order to get better text rendering when
+        embedded hints are available.
+
+        * platform/graphics/freetype/FontCustomPlatformDataFreeType.cpp:
+        (WebCore::FontCustomPlatformData::FontCustomPlatformData):
+
+2017-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219361.
+        https://bugs.webkit.org/show_bug.cgi?id=174434
+
+        Huge PLUM memory regression on iOS (Requested by kling on
+        #webkit).
+
+        Reverted changeset:
+
+        "[WebIDL] Convert MutationCallback to be a normal generate
+        callback"
+        https://bugs.webkit.org/show_bug.cgi?id=174140
+        http://trac.webkit.org/changeset/219361
+
+2017-07-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] a capture source failure should end the MediaStreamTrack
+        https://bugs.webkit.org/show_bug.cgi?id=174375
+
+        Reviewed by Youenn Fablet.
+
+        Test: fast/mediastream/media-stream-track-source-failure.html
+
+        * platform/mediastream/RealtimeMediaSource.cpp:
+        (WebCore::RealtimeMediaSource::captureFailed): New, signal observers that the source has ended.
+        * platform/mediastream/RealtimeMediaSource.h:
+
+        * platform/mediastream/mac/AVMediaCaptureSource.h:
+        * platform/mediastream/mac/AVMediaCaptureSource.mm:
+        (WebCore::AVMediaCaptureSource::setupSession): Call captureFailed if setupCaptureSession fails.
+
+        * platform/mediastream/mac/AVVideoCaptureSource.h:
+        * platform/mediastream/mac/AVVideoCaptureSource.mm:
+        (WebCore::AVVideoCaptureSource::setupCaptureSession): Return false on failure.
+        (WebCore::AVVideoCaptureSource::shutdownCaptureSession): Delete unused instance variable.
+        (WebCore::AVVideoCaptureSource::processNewFrame): Ditto.
+
+        * testing/Internals.cpp:
+        (WebCore::Internals::endMediaStreamTrackCaptureSource): Call track.source.captureFailed().
+        * testing/Internals.h:
+        * testing/Internals.idl:
+
+2017-07-12  Timothy Hatcher  <timothy@hatcher.name>
+
+        Improve font matching with FontConfig and FreeType
+        https://bugs.webkit.org/show_bug.cgi?id=174374
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/graphics/freetype/FontCacheFreeType.cpp:
+        (WebCore::FontCache::createFontPlatformData): Loop through all family name matches from FcFontMatch.
+
+2017-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Reactivate audio ducking when restarting the shared unit
+        https://bugs.webkit.org/show_bug.cgi?id=174428
+
+        Reviewed by Eric Carlson.
+
+        Currently, when another application ducks WebKit, there is no other way than to quit the UIProcess and restart it.
+        By again audio ducking when starting the audio unit, reloading the page will be enough.
+        Testing by launching a tab with audio capture and audio playing.
+        Then make a FaceTime call and hear the tab volume go down.
+        End the call to FaceTime and the tab volume remains low.
+        Reload the tab and the volume has a normal level.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioSharedUnit::setupAudioUnit):
+        (WebCore::CoreAudioSharedUnit::startInternal):
+
+2017-07-12  Antoine Quint  <graouts@apple.com>
+
+        Playback controls should not hide while AirPlay is active
+        https://bugs.webkit.org/show_bug.cgi?id=174422
+        <rdar://problem/33011477>
+
+        Reviewed by Eric Carlson.
+
+        We now also track changes in AirPlay playback status and account for it when identifying whether we
+        ought to let media controls automatically hide, which should only happen if the media is playing and
+        not playing back through AirPlay.
+
+        * Modules/modern-media-controls/media/controls-visibility-support.js:
+        (ControlsVisibilitySupport.prototype.get mediaEvents):
+        (ControlsVisibilitySupport.prototype._updateControls):
+        (ControlsVisibilitySupport):
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the build following <https://trac.webkit.org/changeset/219407>
+        (https://bugs.webkit.org/show_bug.cgi?id=174386)
+
+        Fix bad merge after <https://trac.webkit.org/changeset/219404>.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL):
+        (WebCore::FrameLoader::loadWithNavigationAction):
+        (WebCore::FrameLoader::loadPostRequest):
+        (WebCore::FrameLoader::continueLoadAfterNewWindowPolicy):
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+        * loader/FrameLoader.h:
+
+2017-07-12  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Implement a way to retrieve a text marker range with desired text that is closest to a position
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        <rdar://problem/33248006>
+
+        Reviewed by Chris Fleizach.
+
+        Used the existing findClosestPlainText function to search the range on iOS.
+        Also exposed a function on the iOS wrapper to return the selection rects of
+        the result range from the searching. 
+
+        Test: accessibility/ios-simulator/text-marker-range-matches-text.html
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::visiblePositionForPositionWithOffset):
+        (WebCore::AXObjectCache::rangeMatchesTextNearRange):
+        * accessibility/AXObjectCache.h:
+        * accessibility/ios/WebAccessibilityObjectWrapperIOS.mm:
+        (-[WebAccessibilityObjectWrapper rangeFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper textMarkerRangeFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper textRectsFromMarkers:withText:]):
+        (-[WebAccessibilityObjectWrapper rectsForSelectionRects:]):
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        NavigationAction should track whether the navigation was initiated by the main frame
+        https://bugs.webkit.org/show_bug.cgi?id=174386
+        <rdar://problem/33245267>
+
+        Reviewed by Brady Eidson.
+
+        Although we added state to NavigationAction to track whether the navigation was
+        initiated by the main frame in r219170 it is not possible to initialize this state
+        when instantiating a NavigationAction. Having NavigationAction track this state
+        will be useful to ensure that we can always compute the source frame information
+        when asking the embedding client whether to allow a navigation. We will make use
+        of it in the fix for <https://bugs.webkit.org/show_bug.cgi?id=174385>.
+
+        No behavior changed. So, no new tests.
+
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::loadURL): Pass whether the load was initiated by the main frame
+        when instantiating the NavigationAction.
+        (WebCore::FrameLoader::load): For now, pass InitiatedByMainFrame::Unknown when instantiating
+        the NavigationAction as we do not know if the load was initiated by the main frame.
+        (WebCore::FrameLoader::loadWithDocumentLoader): Ditto.
+        (WebCore::FrameLoader::reload): Ditto
+        (WebCore::FrameLoader::loadDifferentDocumentItem): Ditto.
+        (WebCore::createWindow): Pass whether the load was initiated by the main frame when
+        instantiating the NavigationAction.
+        * loader/NavigationAction.cpp:
+        (WebCore::NavigationAction::NavigationAction): Modified to take argument of type InitiatedByMainFrame
+        that indicates whether the navigation was initiated by the main frame.
+        * loader/NavigationAction.h:
+        * loader/PolicyChecker.cpp:
+        (WebCore::PolicyChecker::checkNavigationPolicy): For now, pass InitiatedByMainFrame::Unknown
+        when instantiating the NavigationAction as we do not know if the load was initiated by the
+        main frame.
+        * page/ContextMenuController.cpp:
+        (WebCore::openNewWindow): Pass whether the load was initiated by the main frame when
+        instantiating the NavigationAction.
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        Rename NavigationInitiatedByMainFrame to InitiatedByMainFrame
+        https://bugs.webkit.org/show_bug.cgi?id=174427
+
+        Rubber-stamped by Brady Eidson.
+
+        * inspector/InspectorFrontendClientLocal.cpp:
+        (WebCore::InspectorFrontendClientLocal::openInNewTab):
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::navigate):
+        * loader/FrameLoadRequest.cpp:
+        (WebCore::FrameLoadRequest::FrameLoadRequest):
+        * loader/FrameLoadRequest.h:
+        (WebCore::FrameLoadRequest::FrameLoadRequest):
+        (WebCore::FrameLoadRequest::initiatedByMainFrame):
+        (WebCore::FrameLoadRequest::navigationInitiatedByMainFrame): Deleted.
+        * loader/FrameLoader.cpp:
+        (WebCore::FrameLoader::urlSelected):
+        (WebCore::FrameLoader::loadURLIntoChildFrame):
+        (WebCore::shouldOpenExternalURLsPolicyToApply):
+        (WebCore::applyShouldOpenExternalURLsPolicyToNewDocumentLoader):
+        (WebCore::FrameLoader::loadURL):
+        (WebCore::FrameLoader::loadWithNavigationAction):
+        (WebCore::FrameLoader::reloadWithOverrideEncoding):
+        (WebCore::FrameLoader::reload):
+        (WebCore::FrameLoader::loadPostRequest):
+        (WebCore::FrameLoader::continueLoadAfterNewWindowPolicy):
+        (WebCore::FrameLoader::loadDifferentDocumentItem):
+        * loader/FrameLoader.h:
+        * loader/FrameLoaderTypes.h:
+        * loader/NavigationAction.h:
+        (WebCore::NavigationAction::initiatedByMainFrame):
+        (WebCore::NavigationAction::navigationInitiatedByMainFrame): Deleted.
+        * loader/NavigationScheduler.cpp:
+        (WebCore::ScheduledNavigation::ScheduledNavigation):
+        (WebCore::ScheduledNavigation::initiatedByMainFrame):
+        (WebCore::NavigationScheduler::scheduleLocationChange):
+        (WebCore::ScheduledNavigation::navigationInitiatedByMainFrame): Deleted.
+        * page/ContextMenuController.cpp:
+        (WebCore::openNewWindow):
+        (WebCore::ContextMenuController::contextMenuItemSelected):
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::createWindow):
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-12  Zalan Bujtas  <zalan@apple.com>
+
+        Paginated mode: Infinite recursion in RenderTable::layout
+        https://bugs.webkit.org/show_bug.cgi?id=174413
+
+        Reviewed by Simon Fraser.
+
+        This patch is a workaround for avoiding infinite recursion when the table layout does not stabilize.
+        Apparently we leak some context (computed padding in this case) from the current to the subsequent layout.
+        The subsequent layouts always end up producing different line heights for some of the cells in the <thead>.
+        In paginated mode, when the section moves (<thead>, <tbody> etc) we call layout again recursively.
+        This could lead to infinite recursion for unstable table layout.
+
+        Unable to come up with a reduction yet.
+
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::layout):
+        * rendering/RenderTable.h:
+
+2017-07-12  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC: Incorrect sdpMLineIndex for video breaks Firefox interop
+        https://bugs.webkit.org/show_bug.cgi?id=173530
+
+        Reviewed by Alex Christensen.
+
+        Test: webrtc/ice-candidate-sdpMLineIndex.html
+
+        Reading missing parameter from libwebrtc backend and setting it when firing the RTCIceCandidate event.
+
+        * Modules/mediastream/PeerConnectionBackend.cpp:
+        (WebCore::PeerConnectionBackend::disableICECandidateFiltering):
+        (WebCore::PeerConnectionBackend::newICECandidate):
+        * Modules/mediastream/PeerConnectionBackend.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::OnIceCandidate):
+
+2017-07-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC PKCS#8 exports
+        https://bugs.webkit.org/show_bug.cgi?id=173648
+
+        Reviewed by Jiewen Tan.
+
+        Implement the PKCS#8 export operation for EC keys for platforms that use
+        libgcrypt.
+
+        First, the `ECParameters` and the `ECPrivateKey` ASN.1 structures are created
+        and filled out accordingly. For the former, the appropriate object identifier
+        is written under the `namedCurve` element of the structure. For the latter, we
+        write out '1' under `version`, and eliminate the optional `parameters` element.
+        An libgcrypt EC context is then used to retrieve the private and public key
+        MPIs that are then written out under the `privateKey` and `publicKey` elements,
+        respectively.
+
+        After that, we can proceed to create and fill out the `PrivateKeyInfo` structure.
+        0 is written out under the `version` element, and the id-ecPublicKey object
+        identifier is written out under the `privateKeyAlgorithm.algorithm` element. This
+        doesn't strictly follow the specification, since the id-ecDH identifier should be
+        used for ECDH keys, but no test in WebKit or the web-platform-tests suite covers
+        this, so this specific detail should be revisited later.
+
+        Data of the previously-constructed `ECParameters` structure is retrieved and
+        written out under the `privateKeyAlgorithm.parameters` element. Similarly is done
+        for the `ECPrivateKey` structure, writing out its data under the `privateKey`
+        element. Finally, the optional `attributes` element of the `PrivateKeyInfo`
+        structure is eliminated, and the encoded data of this structure is retrieved and
+        returned.
+
+        No new tests -- relevant tests are now passing and are unskipped.
+
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp:
+        (WebCore::CryptoKeyEC::platformExportPkcs8):
+
+2017-07-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Use libepoxy
+        https://bugs.webkit.org/show_bug.cgi?id=172104
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests -- no changes in behavior.
+
+        Implement the proper libepoxy header inclusion for ports that enable it.
+
+        The library acts as a loading facility working on top of the system-provided
+        OpenGL and EGL libraries, with the headers providing a complete collection of
+        specification-defined OpenGL and EGL types, constants and entrypoints.
+
+        Support is added through the USE(LIBEPOXY) build guard. Note that this guard
+        isn't exclusive with USE(OPENGL), USE(OPENGL_ES_2) or USE(EGL), so the
+        USE(LIBEPOXY) condition is tested before those.
+
+        In case of OpenGL headers, the <epoxy/gl.h> header is included, and in
+        case of EGL headers, the <epoxy/egl.h> header. <epoxy/egl.h> includes
+        <epoxy/gl.h> on its own, so in some cases the inclusion of the latter is
+        omitted.
+
+        EpoxyShims.h header is added, doing a job similar to OpenGLESShims.h. The
+        EXT-suffixed GL entrypoints are redefined to the non-suffixed versions.
+        No suffixed constants are defined because those are defined by the libepoxy
+        headers to the well-known values.
+
+        * CMakeLists.txt:
+        * PlatformWPE.cmake:
+        * platform/graphics/ANGLEWebKitBridge.h:
+        * platform/graphics/EpoxyShims.h: Added.
+        * platform/graphics/GLContext.cpp:
+        (WebCore::initializeOpenGLShimsIfNeeded):
+        * platform/graphics/GraphicsContext3DPrivate.cpp:
+        * platform/graphics/PlatformDisplay.cpp:
+        * platform/graphics/cairo/CairoUtilities.cpp:
+        * platform/graphics/cairo/GraphicsContext3DCairo.cpp:
+        (WebCore::GraphicsContext3D::create):
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        * platform/graphics/egl/GLContextEGL.cpp:
+        * platform/graphics/egl/GLContextEGLWPE.cpp:
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        * platform/graphics/opengl/Extensions3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/Extensions3DOpenGLES.cpp:
+        * platform/graphics/opengl/Extensions3DOpenGLES.h:
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        * platform/graphics/opengl/TemporaryOpenGLSetting.cpp:
+        * platform/graphics/texmap/TextureMapperGC3DPlatformLayer.cpp:
+        * platform/graphics/wpe/PlatformDisplayWPE.cpp:
+
+2017-07-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        ImageDecoder: Gifs with infinite animation only play once very often
+        https://bugs.webkit.org/show_bug.cgi?id=173403
+
+        Reviewed by Michael Catanzaro.
+
+        It doesn't always happen, it's easier to reproduce when loading big files from the network, but it also depends
+        on every file. The problem is that ImageFrameCache is caching the repetition count value always when the size is
+        already available. In the case of gif files, the loop count value can be at any point of the image stream, so
+        having the size available doesn't mean we also have the loop count. So, if the value is queried before it's
+        available, the default value is cached (repeat once) and then always used. We should clear the cached value when
+        new data is added to the decoder, like we do with other cached values that can change when more data is decoded.
+
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::clearMetadata): Clear m_repetitionCount.
+
+2017-07-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [SOUP] Do not use C linkage for functions using C++ features
+        https://bugs.webkit.org/show_bug.cgi?id=174392
+
+        Reviewed by Michael Catanzaro.
+
+        No new tests because there is no behavior change.
+
+        * platform/network/soup/WebKitSoupRequestGeneric.h: Move G_END_DECLS
+        to leave functions which use C++ features outside of the block it
+        delimits.
+
+2017-07-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Crashes in WebCore::PasteboardHelper::fillSelectionData when source file of drag is unavailable
+        https://bugs.webkit.org/show_bug.cgi?id=174161
+
+        Reviewed by Michael Catanzaro.
+
+        It seems selection data could contain an empty string, in which case gtk_selection_data_get_data() returns a
+        valid pointer, but gtk_selection_data_get_length() returns 0. When this happens we end up trying to split an
+        empty string resulting in an empty vector, but we unconditionally access the first element of the vector.
+
+        * platform/gtk/PasteboardHelper.cpp:
+        (WebCore::selectionDataToUTF8String): Return a null string in case selection data length is 0.
+        (WebCore::PasteboardHelper::fillSelectionData): Return early if selection data length is 0, instead of checking
+        the selection data pointer.
+
+2017-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Enable FILE_LOCK and implement lockFile and unlockFile
+        https://bugs.webkit.org/show_bug.cgi?id=174357
+
+        Reviewed by Michael Catanzaro.
+
+        Implement lockFile and unlockFile using flock().
+
+        * PlatformWPE.cmake:
+        * platform/glib/FileSystemGlib.cpp:
+        (WebCore::lockFile):
+        (WebCore::unlockFile):
+
+2017-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Use FastAllocator in STL containers
+        https://bugs.webkit.org/show_bug.cgi?id=174366
+
+        Rubber stamped by Sam Weinig.
+
+        This patch uses FastAllocator for STL containers including std::set and std::map.
+        STL can take a template parameter to be used as allocator for containers.
+        We prepare FastAllocator, which uses fastMalloc for allocation.
+        This allows us to use bmalloc (if supported) for STL containers which offers
+        functionalities that is not supported in WTF containers.
+
+        * Modules/indexeddb/IDBKeyData.h:
+        * Modules/indexeddb/server/IndexValueEntry.cpp:
+        (WebCore::IDBServer::IndexValueEntry::IndexValueEntry):
+        (WebCore::IDBServer::IndexValueEntry::Iterator::Iterator):
+        (WebCore::IDBServer::IndexValueEntry::reverseFind):
+        * Modules/indexeddb/server/IndexValueEntry.h:
+        * Modules/indexeddb/server/IndexValueStore.cpp:
+        (WebCore::IDBServer::IndexValueStore::lowestIteratorInRange):
+        (WebCore::IDBServer::IndexValueStore::highestReverseIteratorInRange):
+        (WebCore::IDBServer::IndexValueStore::Iterator::Iterator):
+        * Modules/indexeddb/server/IndexValueStore.h:
+        * Modules/indexeddb/server/MemoryBackingStoreTransaction.cpp:
+        (WebCore::IDBServer::MemoryBackingStoreTransaction::objectStoreCleared):
+        * Modules/indexeddb/server/MemoryBackingStoreTransaction.h:
+        * Modules/indexeddb/server/MemoryObjectStore.cpp:
+        (WebCore::IDBServer::MemoryObjectStore::replaceKeyValueStore):
+        (WebCore::IDBServer::MemoryObjectStore::addRecord):
+        (WebCore::IDBServer::MemoryObjectStore::updateCursorsForPutRecord):
+        * Modules/indexeddb/server/MemoryObjectStore.h:
+        (WebCore::IDBServer::MemoryObjectStore::orderedKeys):
+        * Modules/indexeddb/server/MemoryObjectStoreCursor.cpp:
+        (WebCore::IDBServer::MemoryObjectStoreCursor::keyAdded):
+        (WebCore::IDBServer::MemoryObjectStoreCursor::setFirstInRemainingRange):
+        (WebCore::IDBServer::MemoryObjectStoreCursor::setForwardIteratorFromRemainingRange):
+        (WebCore::IDBServer::MemoryObjectStoreCursor::setReverseIteratorFromRemainingRange):
+        (WebCore::IDBServer::MemoryObjectStoreCursor::incrementForwardIterator):
+        (WebCore::IDBServer::MemoryObjectStoreCursor::incrementReverseIterator):
+        * Modules/indexeddb/server/MemoryObjectStoreCursor.h:
+        * Modules/mediasource/SampleMap.h:
+        * page/WheelEventTestTrigger.cpp:
+        (WebCore::WheelEventTestTrigger::deferTestsForReason):
+        (WebCore::dumpState):
+        * page/WheelEventTestTrigger.h:
+        * platform/graphics/cv/VideoTextureCopierCV.cpp:
+        (WebCore::enumToStringMap):
+        * rendering/OrderIterator.h:
+
+2017-07-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Build error when building WebKit.dll from WebKit.proj project file.
+        https://bugs.webkit.org/show_bug.cgi?id=174410
+
+        Reviewed by Brent Fulgham.
+
+        Copy required header files to forwarding headers folder.
+
+        * PlatformWin.cmake:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/NavigatorBase.cpp:
+        (WebCore::NavigatorBase::hardwareConcurrency): Deleted.
+        * page/NavigatorBase.h:
+        * page/NavigatorConcurrentHardware.idl: Removed.
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        RealtimeOutgoingAudioSource should not push more audio data if the WebRTC thread is not able to process it
+        https://bugs.webkit.org/show_bug.cgi?id=174383
+
+        Reviewed by Eric Carlson.
+
+        This patch adds support to check for pending-processing audio data.
+        If the amount of audio data is bigger than a high water mark of 0.5 seconds,
+        we stop pushing new audio data until buffered audio data is lower than a low water mark of 0.1 seconds.
+        Patch is tested by adding breakpoints to trigger the high water mark, verifying that low water mark is triggered
+        and receiving audio is fine on the other connection endpoint.
+
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.cpp:
+        (WebCore::RealtimeOutgoingAudioSource::isReachingBufferedAudioDataHighLimit):
+        (WebCore::RealtimeOutgoingAudioSource::isReachingBufferedAudioDataLowLimit):
+        (WebCore::RealtimeOutgoingAudioSource::audioSamplesAvailable):
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/NavigatorBase.cpp:
+        (WebCore::NavigatorBase::hardwareConcurrency):
+        * page/NavigatorBase.h:
+        * page/NavigatorConcurrentHardware.idl: Added.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCore.xcodeproj/project.pbxproj:
+        * page/NavigatorBase.cpp:
+        (WebCore::NavigatorBase::hardwareConcurrency): Deleted.
+        * page/NavigatorBase.h:
+        * page/NavigatorConcurrentHardware.idl: Removed.
+
+2017-07-11  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] CryptoKeyECMac::Custom OpenSSL tag is actually tagged type [1]
+        https://bugs.webkit.org/show_bug.cgi?id=174382
+        <rdar://problem/33244871>
+
+        Reviewed by Brent Fulgham.
+
+        No change of behaviour.
+
+        * crypto/mac/CryptoKeyECMac.cpp:
+        (WebCore::CryptoKeyEC::platformImportPkcs8):
+        (WebCore::CryptoKeyEC::platformExportPkcs8):
+        Replace CustomECParameters with TaggedType1 according to X.690(08/2015) section 8.14:
+        https://www.itu.int/rec/T-REC-X.690-201508-I/en
+        and RFC 5915 Appendix A:
+        http://www.ietf.org/rfc/rfc5915.txt.
+
+2017-07-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        REGRESSION(r219045): The <body> element does not get repainted when its background image finishes decoding
+        https://bugs.webkit.org/show_bug.cgi?id=174376
+
+        Reviewed by Simon Fraser.
+
+        When adding a CachedImageClient to CachedImage::m_pendingImageDrawingClients
+        and the CachedImageClient is not one of the CachedImage::m_clients, we
+        should cancel the repaint optimization in CachedImage::imageFrameAvailable().
+        This can be done by adding all the CachedImage::m_clients to CachedImage::
+        m_pendingImageDrawingClients.
+
+        Test: fast/images/async-image-body-background-image.html
+
+        * loader/cache/CachedImage.cpp:
+        (WebCore::CachedImage::addPendingImageDrawingClient):
+
+2017-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix Windows build after r219355.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::addCrossOriginWindowPropertyNames):
+        (WebCore::addCrossOriginWindowOwnPropertyNames):
+        (WebCore::JSDOMWindow::getOwnPropertyNames):
+        (WebCore::addCrossOriginPropertyNames): Deleted.
+        (WebCore::addCrossOriginOwnPropertyNames): Deleted.
+        * bindings/js/JSLocationCustom.cpp:
+        (WebCore::addCrossOriginLocationPropertyNames):
+        (WebCore::addCrossOriginLocationOwnPropertyNames):
+        (WebCore::JSLocation::getOwnPropertyNames):
+        (WebCore::addCrossOriginPropertyNames): Deleted.
+        (WebCore::addCrossOriginOwnPropertyNames): Deleted.
+
+2017-07-10  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Convert MutationCallback to be a normal generate callback
+        https://bugs.webkit.org/show_bug.cgi?id=174140
+
+        Reviewed by Chris Dumez.
+
+        To make this work more nicely, I:
+        - Added the ability to for non-nullable interfaces in sequences to be passed
+          via a Ref<> rather than a RefPtr<> as a parameter to a callback function.
+          (e.g. callback MyCallback = void (sequence<Foo> foos) will now have the 
+          signature, CallbackResult<void> handleEvent(const Vector<Ref<Foo>>&) rather
+          than CallbackResult<void> handleEvent(const Vector<RefPtr<Foo>>&).
+        - Added a new extended attribute for callback functions called [CallbackNeedsCanInvoke]
+          that adds a virtual function called canInvoke() to the generated callback.
+          All it does is forward to ActiveDOMCallback's canInvokeCallback, but it
+          allows the implementation to get to it. We may one day want to move the 
+          inheritance of ActiveDOMCallback from the generated source to the base class.
+        - Added a new extended attribute for callback functions called [CallbackThisObject=Type]
+          which allows you to specify that the callback needs a this object in addition
+          to its arguments. When specified, the first argument of the C++ implementation
+          function will now correspond to the this object, with the remaining arguments
+          shifted over one.
+
+        * DerivedSources.make:
+        Add MutationCallback.
+
+        * WebCore.xcodeproj/project.pbxproj:
+        Remove non-generated JSMutationCallback.cpp, and add generated JSMutationCallback.cpp.
+
+        * Modules/mediastream/MediaDevicesRequest.cpp:
+        (WebCore::MediaDevicesRequest::filterDeviceList):
+        (WebCore::MediaDevicesRequest::start):
+        * Modules/mediastream/MediaDevicesRequest.h:
+        Switch to using Ref.
+
+        * bindings/IDLTypes.h:
+        Add InnerParameterType and NullableInnerParameterType type hooks
+        and specialize wrappers to use Ref for InnerParameterType, and RefPtr
+        for NullableInnerParameterType.
+
+        * bindings/js/JSCallbackData.cpp:
+        * bindings/js/JSCallbackData.h:
+        Add support for passing a this object.
+
+        * bindings/js/JSMutationCallback.cpp: Removed.
+        * bindings/js/JSMutationCallback.h: Removed.
+        Remove custom callback code.
+
+        * bindings/js/JSMutationObserverCustom.cpp:
+        (WebCore::constructJSMutationObserver): Deleted.
+        Remove no longer needed custom constructor.
+
+        * bindings/scripts/CodeGenerator.pm:
+        (ParseType):
+        Add helper to parse a type and cache the result.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GenerateCallbackHeaderContent):
+        (GenerateCallbackImplementationContent):
+        Add support for [CallbackNeedsCanInvoke] and [CallbackThisObject]. When [CallbackThisObject]
+        is not specified, use jsUndefined() as the this object as specified by WebIDL.
+
+        * bindings/scripts/IDLAttributes.json:
+        Add [CallbackNeedsCanInvoke] and [CallbackThisObject].
+
+        * bindings/scripts/IDLParser.pm:
+        (ParseType):
+        Add entry point to parse a single type.
+
+        * css/FontFaceSet.h:
+        Switch to using Ref.
+
+        * dom/MutationCallback.h:
+        Update signatures.
+
+        * dom/MutationCallback.idl: Added.
+    
+        * dom/MutationObserver.cpp:
+        (WebCore::MutationObserver::canDeliver):
+        (WebCore::MutationObserver::deliver):
+        Switch to new signatures.
+
+        * dom/MutationObserver.idl:
+        Remove CustomConstructor.
+
+        * page/IntersectionObserverCallback.h:
+        Switch to using Ref.
+
+        * bindings/scripts/test/JS/JSTestCallbackFunction.cpp:
+        * bindings/scripts/test/JS/JSTestCallbackFunctionRethrow.cpp:
+        * bindings/scripts/test/JS/JSTestCallbackFunctionWithThisObject.cpp: Added.
+        * bindings/scripts/test/JS/JSTestCallbackFunctionWithThisObject.h: Added.
+        * bindings/scripts/test/JS/JSTestCallbackFunctionWithTypedefs.cpp:
+        * bindings/scripts/test/JS/JSTestCallbackInterface.cpp:
+        * bindings/scripts/test/JS/JSTestCallbackInterface.h:
+        * bindings/scripts/test/JS/JSTestVoidCallbackFunction.cpp:
+        Add / update bindings tests.
+
+2017-07-11  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        RenderImage should not add itself as a RelevantRepaintedObject if its image frame is being decoded
+        https://bugs.webkit.org/show_bug.cgi?id=174336
+
+        Reviewed by Simon Fraser.
+
+        Since nothing will be drawn till the image frame finishes decoding we should
+        treat returning ImageDrawResult::DidRequestDecoding from BitmapImage::draw
+        the same as we do when the image is still loading.
+
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::paintReplaced):
+        (WebCore::RenderImage::paintIntoRect):
+        * rendering/RenderImage.h:
+
+2017-07-11  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Hanging under LibWebRTCMediaEndpoint::getStats
+        https://bugs.webkit.org/show_bug.cgi?id=174377
+
+        Reviewed by Eric Carlson.
+
+        No change of behavior.
+        Moving calls to libwebrtc getStats in the signalling thread since doing it in the main thread
+        would block the main thread until the signalling thread is ready to handle getStats.
+        Reducing stat logging since this may be too much for some devices.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::getStats):
+        (WebCore::LibWebRTCMediaEndpoint::gatherStatsForLogging):
+        (WebCore::LibWebRTCMediaEndpoint::OnStatsDelivered):
+        (WebCore::LibWebRTCMediaEndpoint::startLoggingStats):
+
+2017-07-11  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Remove unused OpenGL files
+        https://bugs.webkit.org/show_bug.cgi?id=174371
+
+        Reviewed by Timothy Hatcher.
+
+        * platform/graphics/opengl/GLPlatformContext.cpp: Removed.
+        * platform/graphics/opengl/GLPlatformContext.h: Removed.
+        * platform/graphics/opengl/GLPlatformSurface.h: Removed.
+
+2017-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Window's [[OwnPropertyKeys]] is wrong for cross origin windows
+        https://bugs.webkit.org/show_bug.cgi?id=174364
+        <rdar://problem/33238056>
+
+        Reviewed by Brent Fulgham.
+
+        Window's [[OwnPropertyKeys]] should not list descendant frame names
+        when the window is cross-origin:
+        - https://github.com/whatwg/html/pull/2777
+
+        This aligns our behavior with Firefox and Chrome.
+
+        No new tests, updated existing test.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        (WebCore::addCrossOriginPropertyNames):
+        (WebCore::addCrossOriginOwnPropertyNames):
+        (WebCore::JSDOMWindow::getOwnPropertyNames):
+
 2017-07-11  Timothy Hatcher  <timothy@hatcher.name>
 
         Fix broken build when ENABLE_VIDEO is disabled.

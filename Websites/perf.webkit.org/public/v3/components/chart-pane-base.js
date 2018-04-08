@@ -57,6 +57,7 @@ class ChartPaneBase extends ComponentBase {
         this._revisionRange = new ChartRevisionRange(this._mainChart);
 
         this._mainChartStatus = new ChartPaneStatusView(result.metric, this._mainChart);
+        this._mainChartStatus.setCurrentRepository(this._openRepository);
         this._mainChartStatus.listenToAction('openRepository', this.openNewRepository.bind(this));
         this.renderReplace(this.content().querySelector('.chart-pane-details'), this._mainChartStatus);
 
@@ -132,7 +133,8 @@ class ChartPaneBase extends ComponentBase {
     setOpenRepository(repository)
     {
         this._openRepository = repository;
-        this._mainChartStatus.setCurrentRepository(repository);
+        if (this._mainChartStatus)
+            this._mainChartStatus.setCurrentRepository(repository);
         this._updateCommitLogViewer();
     }
 
@@ -162,6 +164,8 @@ class ChartPaneBase extends ComponentBase {
 
     _updateCommitLogViewer()
     {
+        if (!this._revisionRange)
+            return;
         const range = this._revisionRange.rangeForRepository(this._openRepository);
         this._commitLogViewer.view(this._openRepository, range.from, range.to);
         this.enqueueToRender();

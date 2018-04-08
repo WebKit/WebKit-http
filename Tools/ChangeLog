@@ -1,3 +1,207 @@
+2017-07-12  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Implement a way to retrieve a text marker range with desired text that is closest to a position
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        <rdar://problem/33248006>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (textMarkerRangeMatchesTextNearMarkersCallback):
+        (AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219409.
+
+        The revision caused the Windows builds to fail.
+
+        Reverted changeset:
+
+        "AX: [iOS] Implement a way to retrieve a text marker range
+        with desired text that is closest to a position"
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        http://trac.webkit.org/changeset/219409
+
+2017-07-12  Nan Wang  <n_wang@apple.com>
+
+        AX: [iOS] Implement a way to retrieve a text marker range with desired text that is closest to a position
+        https://bugs.webkit.org/show_bug.cgi?id=174393
+        <rdar://problem/33248006>
+
+        Reviewed by Chris Fleizach.
+
+        * DumpRenderTree/AccessibilityUIElement.cpp:
+        (textMarkerRangeMatchesTextNearMarkersCallback):
+        (AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        (AccessibilityUIElement::getJSClass):
+        * DumpRenderTree/AccessibilityUIElement.h:
+        * DumpRenderTree/ios/AccessibilityUIElementIOS.mm:
+        (AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.cpp:
+        (WTR::AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+        * WebKitTestRunner/InjectedBundle/AccessibilityUIElement.h:
+        * WebKitTestRunner/InjectedBundle/Bindings/AccessibilityUIElement.idl:
+        * WebKitTestRunner/InjectedBundle/ios/AccessibilityUIElementIOS.mm:
+        (WTR::AccessibilityUIElement::textMarkerRangeMatchesTextNearMarkers):
+
+2017-07-12  Emilio Cobos Álvarez  <ecobos@igalia.com>
+
+        Make prepare-ChangeLog -g <commit> generate a more standard ChangeLog entry.
+        https://bugs.webkit.org/show_bug.cgi?id=174197
+
+        Reviewed by Darin Adler.
+
+        This bit me the first time I tried to submit a patch to WebKit, and still I have
+        to manually edit the ChangeLog every time I use the script.
+
+        This generates a more convenient and standard ChangeLog entry.
+
+        * Scripts/prepare-ChangeLog:
+        (generateNewChangeLogs):
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Use libepoxy
+        https://bugs.webkit.org/show_bug.cgi?id=172104
+
+        Reviewed by Michael Catanzaro.
+
+        * WebKitTestRunner/wpe/HeadlessViewBackend.h:
+        Include the <epoxy/egl.h> header, dropping the EGL and GLES2 inclusions.
+
+2017-07-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GTK][WPE] Align Jhbuild patches for GStreamer packages
+        https://bugs.webkit.org/show_bug.cgi?id=174363
+
+        Reviewed by Michael Catanzaro.
+
+        Align the patches we apply over Jhbuild-managed GStreamer dependency packages
+        between the GTK+ and WPE port. There's no reason for the two ports to apply
+        different patches over same versions of GStreamer releases.
+
+        This aligns the two ports on this specific issue. Next we'll look into
+        creating a single GStreamer-specific Jhbuild moduleset that will allow us
+        to keep these patches in a single place, avoiding duplicate files.
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/gst-plugins-good-0005-souphttpsrc-cookie-jar-and-context-query-support.patch: Added.
+        * gtk/patches/gst-plugins-good-0006-qtdemux-add-context-for-a-preferred-protection.patch: Renamed from Tools/gtk/patches/gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch.
+        * gtk/patches/gst-plugins-good-0008-qtdemux-also-push-buffers-without-encryption-info-in.patch: Added.
+        * wpe/patches/gstreamer-typefind-Only-push-a-CAPS-event-downstream-if-the-.patch: Removed.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Ansh Shukla  <ansh_shukla@apple.com>
+
+        WKWindowFeatures needs to expose scrollbar, fullscreen, and dialog configuration properties
+        https://bugs.webkit.org/show_bug.cgi?id=174239
+
+        Reviewed by Brady Eidson.
+
+        Create windows with specific features set and make sure those are properly reflected in the
+        WKWindowFeatures object.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/OpenAndCloseWindow.mm:
+        (resetToConsistentState):
+        (-[CheckWindowFeaturesUIDelegate webView:createWebViewWithConfiguration:forNavigationAction:windowFeatures:]):
+        (TEST):
+
+2017-07-11  Jonathan Bedard  <jbedard@apple.com>
+
+        Do not duplicate files when deleting directories with svn 1.9
+        https://bugs.webkit.org/show_bug.cgi?id=174339
+        <rdar://problem/33226781>
+
+        Reviewed by David Kilzer.
+
+        * Scripts/svn-create-patch:
+        (diffOptionsForFile): No longer pass -N option, since this does not work in SVN 1.9.4.
+        (generateFileList): Determine which files are deleted because they are part of a
+        directory being deleted.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Lucas Forschler  <lforschler@apple.com>
+
+        Teach build workers to fetch archives from S3.
+        https://bugs.webkit.org/show_bug.cgi?id=174384
+
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (DownloadBuiltProduct):
+
+2017-07-11  Lucas Forschler  <lforschler@apple.com>
+
+        Configure buildbot to transfer all archives to S3.
+        Previously this was Mac only, but it's time to expand!
+        https://bugs.webkit.org/show_bug.cgi?id=174378
+        
+        Reviewed by Aakash Jain.
+
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (BuildFactory.__init__):
+
 2017-07-11  Zan Dobersek  <zdobersek@igalia.com>
 
         [WPE] Bump GStreamer packages in jhbuild.modules to 1.10.5

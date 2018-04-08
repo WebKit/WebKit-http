@@ -1,3 +1,106 @@
+2017-07-12  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219176.
+        https://bugs.webkit.org/show_bug.cgi?id=174436
+
+        "Can cause infinite recursion on iOS" (Requested by mlam on
+        #webkit).
+
+        Reverted changeset:
+
+        "WTF::Thread should have the threads stack bounds."
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+        http://trac.webkit.org/changeset/219176
+
+2017-07-12  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [WTF] Failure to build when the compiler specifically targets ARMv8-A / defines __ARM_ARCH_8A__
+        https://bugs.webkit.org/show_bug.cgi?id=174425
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Also check for __ARCH_ARM_8A__ to detect ARMv8.
+
+2017-07-12  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed build fix when both DATA_LOG_TO_FILE and DATA_LOG_FILENAME are defined.
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce): Changed declaration of logBasename from
+        char* logBasename to const char* logBasename.
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, attempt to fix Windows build
+        https://bugs.webkit.org/show_bug.cgi?id=174366
+
+        * wtf/FastMalloc.h:
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::FastAllocator::operator==): Deleted.
+        (WTF::FastAllocator::operator!=): Deleted.
+
+2017-07-11  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK][WPE] Enable FILE_LOCK and implement lockFile and unlockFile
+        https://bugs.webkit.org/show_bug.cgi?id=174357
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: Enable FILE_LOCK in GTK and WPE ports.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
 2017-07-11  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [WTF] Drop unnecessary AtomicString constructor since we have constexpr hash function

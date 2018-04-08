@@ -1,3 +1,270 @@
+2017-07-12  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] a capture source failure should end the MediaStreamTrack
+        https://bugs.webkit.org/show_bug.cgi?id=174375
+
+        Reviewed by Youenn Fablet.
+
+        * UIProcess/UserMediaPermissionRequestManagerProxy.cpp:
+        (WebKit::UserMediaPermissionRequestManagerProxy::captureStateChanged): Consolidate start/end.
+        (WebKit::UserMediaPermissionRequestManagerProxy::startedCaptureSession): Deleted.
+        (WebKit::UserMediaPermissionRequestManagerProxy::endedCaptureSession): Deleted.
+        * UIProcess/UserMediaPermissionRequestManagerProxy.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::isPlayingMediaDidChange): Call captureStateChanged if the capture 
+        state changes. Consider interrupted flags.
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        NavigationAction should track whether the navigation was initiated by the main frame
+        https://bugs.webkit.org/show_bug.cgi?id=174386
+        <rdar://problem/33245267>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openInNewTab): Pass whether the load was initiated by the main frame
+        when instantiating the NavigationAction.
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        Rename NavigationInitiatedByMainFrame to InitiatedByMainFrame
+        https://bugs.webkit.org/show_bug.cgi?id=174427
+
+        Rubber-stamped by Brady Eidson.
+
+        * WebProcess/Plugins/PluginView.cpp:
+        (WebKit::PluginView::loadURL):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::dispatchCreatePage):
+        * WebProcess/WebPage/WebInspector.cpp:
+        (WebKit::WebInspector::openInNewTab):
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219401.
+
+        This revision rolled out the previous patch, but after talking
+        with reviewer, a rebaseline is what was needed.Rolling back in
+        before rebaseline.
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r219379."
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219401
+
+2017-07-12  Daniel Bates  <dabates@apple.com>
+
+        Update description of Secure Contexts experimental flag
+        https://bugs.webkit.org/show_bug.cgi?id=174401
+
+        Reviewed by Simon Fraser.
+
+        Change the description of the Secure Contexts experimental flag from "isSecureContext attribute"
+        to "Secure Contexts API".
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-07-12  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219379.
+
+        This revision caused a consistent failure in the test
+        fast/dom/Window/property-access-on-cached-window-after-frame-
+        removed.html.
+
+        Reverted changeset:
+
+        "Remove NAVIGATOR_HWCONCURRENCY"
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+        http://trac.webkit.org/changeset/219379
+
+2017-07-12  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Use libepoxy
+        https://bugs.webkit.org/show_bug.cgi?id=172104
+
+        Reviewed by Michael Catanzaro.
+
+        * PlatformWPE.cmake: Drop the EGL_INCLUDE_DIRS compilation flags.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        Include <epoxy/gl.h> when compiling with libepoxy usage enabled.
+
+2017-07-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Automation: upstream safaridriver's JavaScript atom implementations
+        https://bugs.webkit.org/show_bug.cgi?id=172060
+        <rdar://problem/32168187>
+
+        Reviewed by Brian Burg.
+
+        * UIProcess/Automation/atoms/ElementAttribute.js: Added.
+        * UIProcess/Automation/atoms/ElementDisplayed.js: Added.
+        * UIProcess/Automation/atoms/FindNodes.js: Added.
+        * UIProcess/Automation/atoms/FormElementClear.js: Added.
+        * UIProcess/Automation/atoms/FormSubmit.js: Added.
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Ansh Shukla  <ansh_shukla@apple.com>
+
+        WKWindowFeatures needs to expose scrollbar, fullscreen, and dialog configuration properties
+        https://bugs.webkit.org/show_bug.cgi?id=174239
+
+        Reviewed by Brady Eidson.
+
+        Add a new private header to expose getters for window feature properties already available
+        in the TFB APIWindowFeatures class. These properties are necessary for Safari to adopt more
+        modern API.
+
+        * UIProcess/API/Cocoa/WKWindowFeatures.mm:
+        (-[WKWindowFeatures _locationBarVisibility]):
+        (-[WKWindowFeatures _scrollbarsVisibility]):
+        (-[WKWindowFeatures _fullscreenDisplay]):
+        (-[WKWindowFeatures _dialogDisplay]):
+        * UIProcess/API/Cocoa/WKWindowFeaturesInternal.h: Expose some window features as read-only
+        properties.
+        * UIProcess/API/Cocoa/WKWindowFeaturesPrivate.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Avoid duplicating default parameter values in [WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]
+        https://bugs.webkit.org/show_bug.cgi?id=174402
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/API/Cocoa/WKWebsiteDataStore.mm:
+        (-[WKWebsiteDataStore _resourceLoadStatisticsResetToConsistentState]):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::removeDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData):
+        (WebKit::WebResourceLoadStatisticsStore::performDailyTasks):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setTimeToLiveCookiePartitionFree):
+        (WebKit::WebResourceLoadStatisticsStore::setMinimumTimeBetweenDataRecordsRemoval):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfatheringTime):
+        (WebKit::WebResourceLoadStatisticsStore::shouldRemoveDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::shouldPartitionCookies):
+        (WebKit::WebResourceLoadStatisticsStore::hasStatisticsExpired):
+        (WebKit::WebResourceLoadStatisticsStore::setMaxStatisticsEntries):
+        (WebKit::WebResourceLoadStatisticsStore::setPruneEntriesDownTo):
+        (WebKit::WebResourceLoadStatisticsStore::pruneStatisticsIfNeeded):
+        (WebKit::WebResourceLoadStatisticsStore::resetParametersToDefaultValues):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Rolling out r219372.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Remove NAVIGATOR_HWCONCURRENCY
+        https://bugs.webkit.org/show_bug.cgi?id=174400
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-11  Dean Jackson  <dino@apple.com>
+
+        Viewport fit experimental feature should be always on by default
+        https://bugs.webkit.org/show_bug.cgi?id=174398
+        <rdar://problem/33248920>
+
+        Reviewed by Simon Fraser.
+
+        Even though this is experimental, it should be enabled by default, and
+        not follow the value of DEFAULT_EXPERIMENTAL_FEATURES_ENABLED.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-07-11  Adrian Perez de Castro  <aperez@igalia.com>
+
+        Fix typo: ContentRuleListStore::nonLegacyDdefaultStore()
+        https://bugs.webkit.org/show_bug.cgi?id=174387
+
+        Reviewed by Michael Catanzaro.
+
+        Rename nonLegacyDdefaultStore() to nonLegacyDefaultStore().
+
+        * UIProcess/API/APIContentRuleListStore.cpp:
+        (API::ContentRuleListStore::nonLegacyDefaultStore):
+        (API::ContentRuleListStore::defaultStore):
+        * UIProcess/API/APIContentRuleListStore.h:
+
+2017-07-11  Chris Dumez  <cdumez@apple.com>
+
+        Simplify primary domain lambda captures in WebResourceLoadStatisticsStore
+        https://bugs.webkit.org/show_bug.cgi?id=174381
+
+        Reviewed by Brent Fulgham.
+
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::isolatedPrimaryDomain):
+        (WebKit::WebResourceLoadStatisticsStore::logUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::clearUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::hasHadUserInteraction):
+        (WebKit::WebResourceLoadStatisticsStore::setLastSeen):
+        (WebKit::WebResourceLoadStatisticsStore::setPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::isPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::clearPrevalentResource):
+        (WebKit::WebResourceLoadStatisticsStore::setGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::isGrandfathered):
+        (WebKit::WebResourceLoadStatisticsStore::setSubframeUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUnderTopFrameOrigin):
+        (WebKit::WebResourceLoadStatisticsStore::setSubresourceUniqueRedirectTo):
+        (WebKit::primaryDomain): Deleted.
+
+2017-07-11  Timothy Hatcher  <timothy@hatcher.name>
+
+        Fix a build failure in WebDragClient when !PLATFORM(COCOA) && !PLATFORM(GTK).
+        https://bugs.webkit.org/show_bug.cgi?id=174372
+
+        Reviewed by Beth Dakin.
+
+        * WebProcess/WebCoreSupport/WebDragClient.cpp:
+        (WebKit::WebDragClient::didConcludeEditDrag): Added empty method.
+
+2017-07-11  Brent Fulgham  <bfulgham@apple.com>
+
+        Reset cookie partitioning state after network process crashes
+        https://bugs.webkit.org/show_bug.cgi?id=174306
+        <rdar://problem/33171605>
+
+        Reviewed by Chris Dumez.
+
+        * UIProcess/Storage/ResourceLoadStatisticsStore.cpp:
+        (WebKit::ResourceLoadStatisticsStore::fireShouldPartitionCookiesHandler): Move cookie
+        partioning state code to helper function.
+        (WebKit::ResourceLoadStatisticsStore::resetPartitionCookiesState): Added.
+        * UIProcess/Storage/ResourceLoadStatisticsStore.h:
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess): Inform the statistics store that
+        the network process crashed.
+        (WebKit::WebProcessPool::terminateNetworkProcess): Mark network process as crashed.
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::networkProcessDidCrash): Reset the cookie
+        partitioning state after a crash.
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * UIProcess/WebsiteData/WebsiteDataStore.cpp:
+        (WebKit::WebsiteDataStore::notifyResourceLoadStatisticsNetworkProcessDidCrash): Relay
+        information to the statistics store.
+        * UIProcess/WebsiteData/WebsiteDataStore.h:
+
 2017-07-11  Timothy Hatcher  <timothy@hatcher.name>
 
         Fix broken build when !ENABLE(INDEXED_DATABASE)

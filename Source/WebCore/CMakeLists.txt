@@ -663,7 +663,6 @@ set(WebCore_NON_SVG_IDL_FILES
     page/IntersectionObserverEntry.idl
     page/Location.idl
     page/Navigator.idl
-    page/NavigatorConcurrentHardware.idl
     page/NavigatorID.idl
     page/NavigatorLanguage.idl
     page/NavigatorOnLine.idl
@@ -3333,7 +3332,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     # For platforms that want to use system-provided OpenGL (ES) / EGL headers,
     # these include directories, libraries or definitions need to be
     # added before the ANGLE directories.
-    if (USE_OPENGL)
+    if (USE_OPENGL AND NOT USE_LIBEPOXY)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${OPENGL_INCLUDE_DIRS}
         )
@@ -3341,7 +3340,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
             ${OPENGL_LIBRARIES}
         )
         add_definitions(${OPENGL_DEFINITIONS})
-    elseif (USE_OPENGL_ES_2)
+    elseif (USE_OPENGL_ES_2 AND NOT USE_LIBEPOXY)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${OPENGLES2_INCLUDE_DIRS}
         )
@@ -3351,7 +3350,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         add_definitions(${OPENGLES2_DEFINITIONS})
     endif ()
 
-    if (USE_EGL)
+    if (USE_EGL AND NOT USE_LIBEPOXY)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${EGL_INCLUDE_DIRS}
         )
@@ -3359,6 +3358,15 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
             ${EGL_LIBRARIES}
         )
         add_definitions(${EGL_DEFINITIONS})
+    endif ()
+
+    if (USE_LIBEPOXY)
+        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+            ${LIBEPOXY_INCLUDE_DIRS}
+        )
+        list(APPEND WebCore_LIBRARIES
+            ${LIBEPOXY_LIBRARIES}
+        )
     endif ()
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES

@@ -754,13 +754,9 @@ webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-jwk-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-raw-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-import-raw-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ecdh-derive-bits-malformed-parametrs.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdh-generate-export-key-pkcs8-p256.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdh-generate-export-key-pkcs8-p384.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ecdh-import-pkcs8-key-p256.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ecdh-import-pkcs8-key-p384.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdsa-generate-export-key-pkcs8.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ecdsa-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ec-import-jwk-key-export-pkcs8-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-jwk-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p256.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p384.html [ Skip ]
@@ -798,7 +794,6 @@ webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-encrypt.html [ Skip
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-unwrap-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-wrap-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/ec-generate-export-pkcs8-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/ec-import-pkcs8-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/ec-postMessage-worker.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/hmac-postMessage-worker.html [ Skip ]
@@ -1135,7 +1130,6 @@ webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks-locale-sel
 webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-video-resize.html [ Timeout Failure ]
 webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks.html [ Timeout Failure ]
 webkit.org/b/154390 [ Release ] http/tests/media/hls/hls-audio-tracks-has-audio.html [ Timeout Failure ]
-webkit.org/b/154390 [ Release ] http/tests/media/hls/video-cookie.html [ Failure ]
 webkit.org/b/154390 http/tests/security/local-video-source-from-remote.html [ Timeout Pass ]
 
 webkit.org/b/155505 http/tests/security/contentSecurityPolicy/userAgentShadowDOM/allow-audio.html [ Skip ]
@@ -1261,6 +1255,17 @@ http/tests/ssl/applepay [ Skip ]
 
 # GTK port doesn't use the scrolling tree
 fast/scrolling/scrolling-tree-includes-frame.html [ Skip ]
+
+# Regressions on fast/forms spinbutton related tests after r219332
+webkit.org/b/174395 fast/events/touch/touch-before-pressing-spin-button.html [ Failure ]
+webkit.org/b/174395 fast/forms/input-number-click.html [ Failure ]
+webkit.org/b/174395 fast/forms/input-step-as-double.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-large-padding.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-spinbutton-capturing.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-spinbutton-change-and-input-events.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-spinbutton-gets-disabled-or-readonly.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-spinbutton-in-multi-column.html [ Failure ]
+webkit.org/b/174395 fast/forms/number/number-spinbutton-state.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -3224,11 +3229,10 @@ webkit.org/b/163512 media/media-controls-accessibility.html [ Failure ]
 webkit.org/b/163521 media/tab-focus-inside-media-elements.html [ Failure ]
 webkit.org/b/163523 media/track/track-manual-mode.html [ Failure ]
 webkit.org/b/163524 media/track/video-track-alternate-groups.html [ Failure ]
-webkit.org/b/163525 media/video-background-tab-playback.html [ Failure ]
+webkit.org/b/163525 media/video-background-tab-playback.html [ Failure Pass Crash Timeout ]
 webkit.org/b/163526 media/video-controls-drop-and-restore-timeline.html [ Failure ]
 webkit.org/b/163527 media/video-controls-show-on-kb-or-ax-event.html [ Failure ]
 webkit.org/b/163529 media/video-playback-restriction-play-before-load.html [ Failure ]
-webkit.org/b/163530 media/video-restricted-no-preload-metadata.html [ Failure ]
 webkit.org/b/163531 media/video-volume-slider-drag.html [ Failure ]
 
 webkit.org/b/163823 media/audio-playback-restriction-autoplay.html [ Failure ]
@@ -3531,9 +3535,6 @@ fast/text/emoji-gender.html [ Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/160119 accessibility/media-element.html [ Timeout Crash Pass Failure ]
-
-webkit.org/b/160119 editing/input/caret-at-the-edge-of-contenteditable.html [ Failure ]
-webkit.org/b/160119 editing/input/reveal-caret-of-multiline-contenteditable.html [ Failure ]
 
 # Note that caret-at-bidi-boundary was previously marked Slow before threaded
 # compositor introduced timeouts.
