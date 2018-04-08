@@ -327,6 +327,7 @@ webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Pass Failure ]
 
 # Video fullscreen is not implemented for mac wk2 in webkittestrunner
 media/media-fullscreen-loop-inline.html [ Skip ]
+media/media-fullscreen-pause-inline.html [ Skip ]
 
 ### END OF (1) Classified failures with bug reports
 ########################################
@@ -657,7 +658,7 @@ webkit.org/b/171605 imported/w3c/web-platform-tests/webrtc/datachannel-emptystri
 
 webkit.org/b/171553 [ Release ] http/tests/websocket/tests/hybi/inspector/binary.html [ Pass Failure ]
 
-webkit.org/b/172703 [ Sierra Debug ] webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
+webkit.org/b/172703  webrtc/libwebrtc/descriptionGetters.html [ Pass Failure ]
 
 webkit.org/b/171763 [ Debug ] compositing/tiling/non-active-window-tiles-size.html [ Pass Failure ]
 
@@ -694,3 +695,14 @@ webkit.org/b/172454 http/tests/navigation/statistics.html [ Pass Failure ]
 webkit.org/b/172666 [ Debug ] fast/images/slower-decoding-than-animation-image.html [ Pass Failure ]
 
 webkit.org/b/173188 fast/mediastream/getUserMedia-grant-persistency3.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbindex_getAll.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html [ Pass Failure ]
+
+webkit.org/b/172834 [ ElCapitan ] imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getAllKeys.html [ Pass Failure ]
+
+webkit.org/b/172201 webaudio/silent-audio-interrupted-in-background.html [ Pass Timeout ]
+
+webkit.org/b/173608 webrtc/video-replace-muted-track.html [ Pass Failure ]
+

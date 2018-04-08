@@ -32,8 +32,6 @@
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
 #include "UserData.h"
-#include "WKAPICast.h"
-#include "WKBundleAPICast.h"
 #include "WebConnectionToUIProcess.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
@@ -102,6 +100,7 @@ RefPtr<InjectedBundle> InjectedBundle::create(const WebProcessCreationParameters
 InjectedBundle::InjectedBundle(const WebProcessCreationParameters& parameters)
     : m_path(parameters.injectedBundlePath)
     , m_platformBundle(0)
+    , m_client(std::make_unique<API::InjectedBundle::Client>())
 {
 }
 
@@ -109,9 +108,12 @@ InjectedBundle::~InjectedBundle()
 {
 }
 
-void InjectedBundle::initializeClient(const WKBundleClientBase* client)
+void InjectedBundle::setClient(std::unique_ptr<API::InjectedBundle::Client>&& client)
 {
-    m_client.initialize(client);
+    if (!client)
+        m_client = std::make_unique<API::InjectedBundle::Client>();
+    else
+        m_client = WTFMove(client);
 }
 
 void InjectedBundle::postMessage(const String& messageName, API::Object* messageBody)
@@ -231,23 +233,15 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
 
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
-    macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
-    macro(WebKitCanvasUsesAcceleratedDrawing, CanvasUsesAcceleratedDrawing, canvasUsesAcceleratedDrawing) \
-    macro(WebKitFrameFlatteningEnabled, FrameFlatteningEnabled, frameFlatteningEnabled) \
     macro(WebKitJavaEnabled, JavaEnabled, javaEnabled) \
     macro(WebKitJavaScriptEnabled, ScriptEnabled, javaScriptEnabled) \
-    macro(WebKitLoadSiteIconsKey, LoadsSiteIconsIgnoringImageLoadingSetting, loadsSiteIconsIgnoringImageLoadingPreference) \
-    macro(WebKitOfflineWebApplicationCacheEnabled, OfflineWebApplicationCacheEnabled, offlineWebApplicationCacheEnabled) \
-    macro(WebKitPageCacheSupportsPluginsPreferenceKey, PageCacheSupportsPlugins, pageCacheSupportsPlugins) \
     macro(WebKitPluginsEnabled, PluginsEnabled, pluginsEnabled) \
     macro(WebKitUsesPageCachePreferenceKey, UsesPageCache, usesPageCache) \
     macro(WebKitWebAudioEnabled, WebAudioEnabled, webAudioEnabled) \
     macro(WebKitWebGLEnabled, WebGLEnabled, webGLEnabled) \
     macro(WebKitXSSAuditorEnabled, XSSAuditorEnabled, xssAuditorEnabled) \
     macro(WebKitShouldRespectImageOrientation, ShouldRespectImageOrientation, shouldRespectImageOrientation) \
-    macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
     macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
-    macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled) \
     macro(WebKitVisualViewportEnabled, VisualViewportEnabled, visualViewportEnabled) \
     macro(WebKitLargeImageAsyncDecodingEnabled, LargeImageAsyncDecodingEnabled, largeImageAsyncDecodingEnabled) \
     macro(WebKitAnimatedImageAsyncDecodingEnabled, AnimatedImageAsyncDecodingEnabled, animatedImageAsyncDecodingEnabled) \
@@ -301,7 +295,14 @@ void InjectedBundle::setFrameFlatteningEnabled(WebPageGroupProxy* pageGroup, boo
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
-        (*iter)->settings().setFrameFlatteningEnabled(enabled);
+        (*iter)->settings().setFrameFlattening(enabled ? FrameFlatteningFullyEnabled : FrameFlatteningDisabled);
+}
+
+void InjectedBundle::setAsyncFrameScrollingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
+        (*iter)->settings().setAsyncFrameScrollingEnabled(enabled);
 }
 
 void InjectedBundle::setJavaScriptCanAccessClipboard(WebPageGroupProxy* pageGroup, bool enabled)
@@ -507,27 +508,27 @@ void InjectedBundle::reportException(JSContextRef context, JSValueRef exception)
 
 void InjectedBundle::didCreatePage(WebPage* page)
 {
-    m_client.didCreatePage(this, page);
+    m_client->didCreatePage(*this, *page);
 }
 
 void InjectedBundle::willDestroyPage(WebPage* page)
 {
-    m_client.willDestroyPage(this, page);
+    m_client->willDestroyPage(*this, *page);
 }
 
 void InjectedBundle::didInitializePageGroup(WebPageGroupProxy* pageGroup)
 {
-    m_client.didInitializePageGroup(this, pageGroup);
+    m_client->didInitializePageGroup(*this, *pageGroup);
 }
 
 void InjectedBundle::didReceiveMessage(const String& messageName, API::Object* messageBody)
 {
-    m_client.didReceiveMessage(this, messageName, messageBody);
+    m_client->didReceiveMessage(*this, messageName, messageBody);
 }
 
 void InjectedBundle::didReceiveMessageToPage(WebPage* page, const String& messageName, API::Object* messageBody)
 {
-    m_client.didReceiveMessageToPage(this, page, messageName, messageBody);
+    m_client->didReceiveMessageToPage(*this, *page, messageName, messageBody);
 }
 
 void InjectedBundle::setUserStyleSheetLocation(WebPageGroupProxy* pageGroup, const String& location)

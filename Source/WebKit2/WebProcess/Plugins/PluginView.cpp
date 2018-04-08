@@ -86,9 +86,9 @@ static const Seconds pluginSnapshotTimerDelay { 1100_ms };
 
 class PluginView::URLRequest : public RefCounted<URLRequest> {
 public:
-    static Ref<PluginView::URLRequest> create(uint64_t requestID, const FrameLoadRequest& request, bool allowPopups)
+    static Ref<PluginView::URLRequest> create(uint64_t requestID, FrameLoadRequest&& request, bool allowPopups)
     {
-        return adoptRef(*new URLRequest(requestID, request, allowPopups));
+        return adoptRef(*new URLRequest(requestID, WTFMove(request), allowPopups));
     }
 
     uint64_t requestID() const { return m_requestID; }
@@ -97,10 +97,10 @@ public:
     bool allowPopups() const { return m_allowPopups; }
 
 private:
-    URLRequest(uint64_t requestID, const FrameLoadRequest& request, bool allowPopups)
-        : m_requestID(requestID)
-        , m_request(request)
-        , m_allowPopups(allowPopups)
+    URLRequest(uint64_t requestID, FrameLoadRequest&& request, bool allowPopups)
+        : m_requestID { requestID }
+        , m_request { WTFMove(request) }
+        , m_allowPopups { allowPopups }
     {
     }
 
@@ -133,7 +133,7 @@ private:
     }
 
     // NetscapePluginStreamLoaderClient
-    void willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&&, const ResourceResponse& redirectResponse, std::function<void (ResourceRequest&&)>&&) override;
+    void willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&&, const ResourceResponse& redirectResponse, WTF::Function<void (ResourceRequest&&)>&&) override;
     void didReceiveResponse(NetscapePlugInStreamLoader*, const ResourceResponse&) override;
     void didReceiveData(NetscapePlugInStreamLoader*, const char*, int) override;
     void didFail(NetscapePlugInStreamLoader*, const ResourceError&) override;
@@ -142,7 +142,7 @@ private:
     PluginView* m_pluginView;
     uint64_t m_streamID;
     ResourceRequest m_request;
-    std::function<void (ResourceRequest)> m_loadCallback;
+    WTF::Function<void (ResourceRequest)> m_loadCallback;
 
     // True if the stream was explicitly cancelled by calling cancel().
     // (As opposed to being cancelled by the user hitting the stop button for example.
@@ -221,12 +221,12 @@ static uint32_t lastModifiedDateMS(const ResourceResponse& response)
     return std::chrono::duration_cast<std::chrono::milliseconds>(lastModified.value().time_since_epoch()).count();
 }
 
-void PluginView::Stream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse& redirectResponse, std::function<void (ResourceRequest&&)>&& decisionHandler)
+void PluginView::Stream::willSendRequest(NetscapePlugInStreamLoader*, ResourceRequest&& request, const ResourceResponse& redirectResponse, WTF::Function<void (ResourceRequest&&)>&& decisionHandler)
 {
     const URL& requestURL = request.url();
     const URL& redirectResponseURL = redirectResponse.url();
 
-    m_loadCallback = decisionHandler;
+    m_loadCallback = WTFMove(decisionHandler);
     m_request = request;
     m_pluginView->m_plugin->streamWillSendRequest(m_streamID, requestURL, redirectResponseURL, redirectResponse.httpStatusCode());
 }
@@ -1199,10 +1199,10 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
     if (!targetFrame) {
         // We did not find a target frame. Ask our frame to load the page. This may or may not create a popup window.
-        FrameLoadRequest frameRequest(frame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow);
-        frameRequest.setFrameName(request->target());
-        frameRequest.setShouldCheckNewWindowPolicy(true);
-        frame->loader().load(frameRequest);
+        FrameLoadRequest frameLoadRequest { *frame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow };
+        frameLoadRequest.setFrameName(request->target());
+        frameLoadRequest.setShouldCheckNewWindowPolicy(true);
+        frame->loader().load(WTFMove(frameLoadRequest));
 
         // FIXME: We don't know whether the window was successfully created here so we just assume that it worked.
         // It's better than not telling the plug-in anything.
@@ -1211,7 +1211,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
     }
 
     // Now ask the frame to load the request.
-    targetFrame->loader().load(FrameLoadRequest(targetFrame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    targetFrame->loader().load(FrameLoadRequest(*targetFrame, request->request(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 
     auto* targetWebFrame = WebFrame::fromCoreFrame(*targetFrame);
     ASSERT(targetWebFrame);
@@ -1388,7 +1388,7 @@ String PluginView::userAgent()
 
 void PluginView::loadURL(uint64_t requestID, const String& method, const String& urlString, const String& target, const HTTPHeaderMap& headerFields, const Vector<uint8_t>& httpBody, bool allowPopups)
 {
-    FrameLoadRequest frameLoadRequest(m_pluginElement->document().securityOrigin(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    FrameLoadRequest frameLoadRequest { m_pluginElement->document().securityOrigin(), { }, target, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     frameLoadRequest.resourceRequest().setHTTPMethod(method);
     frameLoadRequest.resourceRequest().setURL(m_pluginElement->document().completeURL(urlString));
     frameLoadRequest.resourceRequest().setHTTPHeaderFields(headerFields);
@@ -1398,13 +1398,11 @@ void PluginView::loadURL(uint64_t requestID, const String& method, const String&
             frameLoadRequest.resourceRequest().setHTTPContentType("application/x-www-form-urlencoded");
     }
 
-    frameLoadRequest.setFrameName(target);
-
     String referrer = SecurityPolicy::generateReferrerHeader(frame()->document()->referrerPolicy(), frameLoadRequest.resourceRequest().url(), frame()->loader().outgoingReferrer());
     if (!referrer.isEmpty())
         frameLoadRequest.resourceRequest().setHTTPReferrer(referrer);
 
-    m_pendingURLRequests.append(URLRequest::create(requestID, frameLoadRequest, allowPopups));
+    m_pendingURLRequests.append(URLRequest::create(requestID, WTFMove(frameLoadRequest), allowPopups));
     m_pendingURLRequestsTimer.startOneShot(0_s);
 }
 

@@ -28,6 +28,7 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "URLRegistry.h"
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
 
@@ -55,7 +56,7 @@ public:
 
     MediaStream* lookUp(const URL&) const;
 
-    void forEach(std::function<void(MediaStream&)>) const;
+    void forEach(const WTF::Function<void(MediaStream&)>&) const;
 
 private:
     MediaStreamRegistry() = default;

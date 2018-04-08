@@ -22,22 +22,15 @@
 #pragma once
 
 #include "ChildNodeList.h"
-#include "ClassCollection.h"
-#include "DOMTokenList.h"
 #include "HTMLCollection.h"
 #include "HTMLNames.h"
 #include "LiveNodeList.h"
-#include "MutationObserver.h"
 #include "MutationObserverRegistration.h"
 #include "Page.h"
 #include "QualifiedName.h"
 #include "TagCollection.h"
 #include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
-
-#if ENABLE(VIDEO_TRACK)
-#include "TextTrack.h"
-#endif
 
 namespace WebCore {
 

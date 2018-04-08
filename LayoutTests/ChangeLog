@@ -1,3 +1,2000 @@
+2017-06-29  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Fix ReadableStream "strategy" argument handling
+        https://bugs.webkit.org/show_bug.cgi?id=172716
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Added new tests and updated some existing ones based on the newly
+        expected behavior.
+
+        * streams/readable-byte-stream-controller-expected.txt: Updated.
+        * streams/readable-byte-stream-controller.js: Updated.
+
+2017-06-29  Antti Koivisto  <antti@apple.com>
+
+        NAS4Free Pop-down menus take 3 seconds to appear
+        https://bugs.webkit.org/show_bug.cgi?id=173967
+        <rdar://problem/32690114>
+
+        Reviewed by Andreas Kling.
+
+        * compositing/backing/non-composited-visibility-change-expected.html: Added.
+        * compositing/backing/non-composited-visibility-change.html: Added.
+
+2017-06-28  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-27  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [iOS] Cannot italicize or bold text rendered with text styles
+        https://bugs.webkit.org/show_bug.cgi?id=173634
+
+        Reviewed by Darin Adler.
+
+        * fast/text/ipad/bold-tall-body-text-style-expected-mismatch.html: Added.
+        * fast/text/ipad/bold-tall-body-text-style.html: Added.
+
+2017-06-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Instrument active pixel memory used by canvases
+        https://bugs.webkit.org/show_bug.cgi?id=173087
+        <rdar://problem/32719261>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/memory-expected.txt: Added.
+        * inspector/canvas/memory.html: Added.
+
+2017-06-28  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip webrtc/video-replace-muted-track.html on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=173608
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-06-28  Antoine Quint  <graouts@apple.com>
+
+        Volume controls should be hidden when AirPlay is active
+        https://bugs.webkit.org/show_bug.cgi?id=173933
+        <rdar://problem/33011931>
+
+        Reviewed by Dean Jackson.
+
+        Expand the AirplaySupport testing to check that the mute button's enabled state is set to "false"
+        in AirPlay and add new tests to check that volume controls are correctly hidden when the mute button
+        is disabled.
+
+        * media/modern-media-controls/airplay-support/airplay-support-expected.txt:
+        * media/modern-media-controls/airplay-support/airplay-support.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-controls-hidden-when-mute-button-disabled-expected.txt: Added.
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-controls-hidden-when-mute-button-disabled.html: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-06-28  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/IndexedDB/idbindex_getAllKeys.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172834
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-28  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test expectations for http/tests/loading/resourceLoadStatistics/telemetry-generation.html.
+        https://bugs.webkit.org/show_bug.cgi?id=173499
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-06-28  Antoine Quint  <graouts@apple.com>
+
+        Media controls volume glyph does not have the correct material
+        https://bugs.webkit.org/show_bug.cgi?id=173918
+        <rdar://problem/33012697>
+
+        Reviewed by Eric Carlson.
+
+        Add a new test to check the mute button is correctly hosted in the top-right controls bar
+        when width becomes scarce.
+
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-mute-button-in-bottom-or-top-right-controls-bar-expected.txt: Added.
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-mute-button-in-bottom-or-top-right-controls-bar.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-06-28  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] LayoutTest webaudio/silent-audio-interrupted-in-background.html makes its subsequent test flaky crash
+        https://bugs.webkit.org/show_bug.cgi?id=173916
+
+        Unreviewed test gardening.
+
+        * platform/gtk/TestExpectations: Marked it Skip.
+
+2017-06-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Cleanup RemoteObject tests
+        https://bugs.webkit.org/show_bug.cgi?id=173885
+
+        Reviewed by Matt Baker.
+
+        * inspector/model/remote-object-dom.html: Added.
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Split out DOM results (which differ across ports and features).
+
+        * inspector/model/resources/remote-object-utilities.js:
+        (TestPage.registerInitializer.window.runSteps):
+        This should have been a continue not a return.
+
+        * platform/mac/inspector/model/remote-object-dom-expected.txt: Added.
+        * platform/mac/inspector/model/remote-object-expected.txt: Removed.
+        Platform expectations are now limited to just the DOM test.
+
+2017-06-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Saam Barati.
+
+        * js/parser-syntax-check-expected.txt:
+        * js/script-tests/parser-syntax-check.js:
+
+2017-06-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, unmark workers/bomb.html flakiness after r218856
+
+        * platform/gtk-wayland/TestExpectations:
+        * platform/ios-device/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-06-27  Matt Lewis  <jlewis3@apple.com>
+
+        Marked http/tests/loading/resourceLoadStatistics/telemetry-generation.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173499
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-06-27  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Accessibility labels should be formatted using NSDateComponentsFormatter
+        https://bugs.webkit.org/show_bug.cgi?id=173858
+        <rdar://problem/32643171>
+
+        Reviewed by Dean Jackson.
+
+        * media/modern-media-controls/scrubber/scrubber-has-correct-ax-label-expected.txt:
+        * media/modern-media-controls/scrubber/scrubber-has-correct-ax-label.html:
+
+2017-06-27  Antoine Quint  <graouts@apple.com>
+
+        Placard icons act like buttons (can get keyboard focus and shows up in VoiceOver)
+        https://bugs.webkit.org/show_bug.cgi?id=173891
+        <rdar://problem/33011855>
+
+        Reviewed by Dean Jackson.
+
+        Update the Placard test to check that its <button> is disabled.
+
+        * media/modern-media-controls/placard/placard-expected.txt:
+        * media/modern-media-controls/placard/placard.html:
+
+2017-06-27  Jeremy Jones  <jeremyj@apple.com>
+
+        Disable m_temporarilyAllowingInlinePlaybackAfterFullscreen on pause
+        https://bugs.webkit.org/show_bug.cgi?id=173843
+        rdar://problem/32982431
+
+        Reviewed by Eric Carlson.
+
+        Some pages may not have a fullscreen button, so disabled m_temporarilyAllowingInlinePlaybackAfterFullscreen on pause.
+
+        * media/media-fullscreen-pause-inline-expected.txt: Added.
+        * media/media-fullscreen-pause-inline.html: Added.
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-27  Saam Barati  <sbarati@apple.com>
+
+        Function constructor needs to follow the spec and validate parameters and body independently
+        https://bugs.webkit.org/show_bug.cgi?id=173303
+        <rdar://problem/32732526>
+
+        Reviewed by Keith Miller.
+
+        * fast/dom/attribute-event-listener-errors-expected.txt:
+        * fast/events/attribute-listener-deletion-crash-expected.txt:
+        * fast/events/window-onerror-syntax-error-in-attr-expected.txt:
+        * js/dom/invalid-syntax-for-function-expected.txt:
+
+2017-06-27  John Wilander  <wilander@apple.com>
+
+        Resource Load Statistics: Add telemetry
+        https://bugs.webkit.org/show_bug.cgi?id=173499
+        <rdar://problem/32826094>
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/loading/resourceLoadStatistics/telemetry-generation-expected.txt: Added.
+        * http/tests/loading/resourceLoadStatistics/telemetry-generation.html: Added.
+        * platform/wk2/TestExpectations:
+            Enabled here since ResourceLoadStatistics is WK2-only.
+
+2017-06-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Crash generating object preview for ArrayIterator
+        https://bugs.webkit.org/show_bug.cgi?id=173754
+        <rdar://problem/32859012>
+
+        Reviewed by Saam Barati.
+
+        * platform/mac/inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        Test generating a preview for an ArrayIterator that has had a `return` property added to it.
+
+        * inspector/model/remote-object-mutated-iterators-expected.txt: Added.
+        * inspector/model/remote-object-mutated-iterators.html: Added.
+        Test generating a preview for different iterators after the IteratorPrototypes have been mutated.
+
+        * inspector/model/resources/remote-object-utilities.js: Added.
+        (runInBrowserTest):
+        (TestPage.registerInitializer):
+        (TestPage.registerInitializer.checkComplete):
+        (TestPage.registerInitializer.window.runSteps):
+        Share code for remote-object dump tests.
+
+2017-06-27  Frederic Wang  <fwang@igalia.com>
+
+        Some tests to verify forbidden frame navigation time out
+        https://bugs.webkit.org/show_bug.cgi?id=173657
+
+        Reviewed by Chris Dumez.
+
+        * fast/frames/sandboxed-iframe-navigation-top-denied-expected.txt: Add the security error.
+        * http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child.html: Adjust
+        the test to catch and dump the exception and complete immediately.
+        * http/tests/security/frameNavigation/inactive-function-in-popup-navigate-child-expected.txt:
+        Add the dumped security error exception.
+
+2017-06-27  Youenn Fablet  <youenn@apple.com>
+
+        LayoutTest webrtc/datachannel/multiple-connections.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=173853
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/multiple-connections.html:
+
+2017-06-26  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (AsyncImageDecoding): A tab with the WWDC keynote paused is killed for using excessive power (Image thrashing)
+        https://bugs.webkit.org/show_bug.cgi?id=173804
+        <rdar://problem/32623745>
+
+        Reviewed by Simon Fraser.
+
+        * fast/images/low-memory-decode-expected.txt: Added.
+        * fast/images/low-memory-decode.html: Added.
+
+2017-06-26  Matt Lewis  <jlewis3@apple.com>
+
+        Marked media/media-source/media-source-paint-to-canvas.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173565
+
+        Unreviewed test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-06-26  Matt Lewis  <jlewis3@apple.com>
+
+        Marked animations/play-state-suspend.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173726
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-06-26  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed, rolling out r218783.
+
+        Causing accessibility/mac/setting-attributes-is-
+        asynchronous.html to crash consistently on mac-wk2 Debug
+
+        Reverted changeset:
+
+        "AX: Cannot call setValue() on contenteditable or ARIA text
+        controls"
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+        http://trac.webkit.org/changeset/218783
+
+2017-06-26  Youenn Fablet  <youenn@apple.com>
+
+        Make webrtc/video-replace-track-to-null.html more robust
+        https://bugs.webkit.org/show_bug.cgi?id=173834
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-replace-track-to-null.html:
+
+2017-06-26  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [ATK] Add support for aria-details and aria-errormessage
+        https://bugs.webkit.org/show_bug.cgi?id=172588
+
+        Reviewed by Chris Fleizach.
+
+        Add new test cases to relation-types.html.
+
+        * accessibility/gtk/relation-types-expected.txt:
+        * accessibility/gtk/relation-types.html:
+
+2017-06-26  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE][GCrypt] Unreviewed gardening
+
+        After r218744, land new expectations for AES-CFB tests.
+        * platform/wpe/crypto/subtle/aes-cbc-cfb-decrypt-malformed-parameters-expected.txt: Added.
+        * platform/wpe/crypto/subtle/aes-cbc-cfb-encrypt-malformed-parameters-expected.txt: Added.
+        * platform/wpe/crypto/subtle/aes-export-key-malformed-parameters-expected.txt: Added.
+        * platform/wpe/crypto/subtle/aes-generate-key-malformed-parameters-expected.txt: Added.
+        * platform/wpe/crypto/subtle/aes-import-key-malformed-parameters-expected.txt: Added.
+
+2017-06-26  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-25  Youenn Fablet  <youenn@apple.com>
+
+        Remove use of mock webrtc backend factory at injected bundle reset time
+        https://bugs.webkit.org/show_bug.cgi?id=173817
+
+        Reviewed by Darin Adler.
+
+        Making some tests less flaky.
+
+        * TestExpectations:
+        * fast/mediastream/RTCPeerConnection-media-setup-two-dialogs-expected.txt:
+        * platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html:
+        * webrtc/audio-peer-connection-webaudio.html:
+        * webrtc/captureCanvas-webrtc.html:
+        * webrtc/datachannel/bufferedAmountLowThreshold-default-expected.txt: Added.
+        * webrtc/datachannel/bufferedAmountLowThreshold-default.html: Added.
+        * webrtc/datachannel/bufferedAmountLowThreshold-expected.txt:
+        * webrtc/datachannel/bufferedAmountLowThreshold.html:
+        * webrtc/routines.js:
+        * webrtc/video-replace-muted-track.html:
+        * webrtc/video-unmute.html:
+
+2017-06-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Reflect.enumerate
+        https://bugs.webkit.org/show_bug.cgi?id=173806
+
+        Reviewed by Yusuke Suzuki.
+
+        * inspector/model/remote-object-expected.txt:
+        * inspector/model/remote-object.html:
+        * platform/mac/inspector/model/remote-object-expected.txt:
+
+2017-06-24  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Cannot call setValue() on contenteditable or ARIA text controls
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/mac/set-value-editable-types-expected.txt: Added.
+        * accessibility/mac/set-value-editable-types.html: Added.
+
+2017-06-23  Chris Dumez  <cdumez@apple.com>
+
+        fast/events/page-visibility-iframe-delete-test.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=173798
+
+        Reviewed by Simon Fraser.
+
+        Modernize the test and deflake it by not making it rely on a specific order
+        for the visibilitychange events. The event queues are per documents and there
+        is therefore no guarantee those events will fire in frame tree order.
+
+        * fast/events/page-visibility-iframe-delete-test-expected.txt:
+        * fast/events/page-visibility-iframe-delete-test.html:
+
+2017-06-23  Youenn Fablet  <youenn@apple.com>
+
+        Add a binary data channel webrtc test
+        https://bugs.webkit.org/show_bug.cgi?id=173787
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/datachannel/binary-expected.txt: Added.
+        * webrtc/datachannel/binary.html: Added.
+
+2017-06-23  Youenn Fablet  <youenn@apple.com>
+
+        Set getUserMedia permission to true by default on WTR
+        https://bugs.webkit.org/show_bug.cgi?id=173610
+
+        Reviewed by Alex Christensen.
+
+        * fast/mediastream/delayed-permission-allowed.html:
+        * fast/mediastream/delayed-permission-denied.html:
+
+2017-06-23  Youenn Fablet  <youenn@apple.com>
+
+        webrtc/routines.js should call createAnswer once setRemoteDescription promise is resolved
+        https://bugs.webkit.org/show_bug.cgi?id=173785
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/routines.js:
+
+2017-06-23  Youenn Fablet  <youenn@apple.com>
+
+        webrtc::WebRtcSession is not handling correctly its state when setLocalDescription fails and is called again
+        https://bugs.webkit.org/show_bug.cgi?id=173783
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/libwebrtc/setLocalDescriptionCrash-expected.txt: Added.
+        * webrtc/libwebrtc/setLocalDescriptionCrash.html: Added.
+
+2017-06-23  Matt Lewis  <jlewis3@apple.com>
+
+        Added additional test expectations for webrtc/video-replace-muted-track.html.
+        https://bugs.webkit.org/show_bug.cgi?id=173608
+
+        Unreviewed test expectations.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-23  Frederic Wang  <fwang@igalia.com>
+
+        Remove fast/regions/region-leak-js-information-when-disabled-at-runtime.html
+        https://bugs.webkit.org/show_bug.cgi?id=173784
+
+        Reviewed by Simon Fraser.
+
+        fast/regions/region-leak-js-information-when-disabled-at-runtime.html is supposed to test
+        that some JS properties are undefined when CSS regions are disabled at runtime. However, this
+        part is currently commented out and the test is no longer relevant after r200524. Hence we
+        just remove it.
+
+        * fast/regions/region-leak-js-information-when-disabled-at-runtime-expected.txt: Removed.
+        * fast/regions/region-leak-js-information-when-disabled-at-runtime.html: Removed.
+
+2017-06-23  Frederic Wang  <fwang@igalia.com>
+
+        Use window.internals instead of overridePreference to set WebCore settings in tests
+        https://bugs.webkit.org/show_bug.cgi?id=173714
+
+        Reviewed by Simon Fraser.
+
+        This commit is a first step to replace the use of testRunner.overridePreference with
+        internals.settings.set* calls in tests. Such a call will fail immediately and obviously if
+        its a function that does not exist, and these settings are restored properly between tests.
+        Some preferences that do not have a WebCore setting or an internals.settings setter are not
+        handled yet. The temporary failure added in r218480 for fast/frames/flattening/set-preference
+        is removed and so is a custom expectation caret-mode-document-begin-end for Mac WK1.
+
+        * accessibility/gtk/caret-browsing-select-focus.html: Use internals.settings.set* function.
+        * accessibility/gtk/caret-browsing-text-focus.html: Ditto.
+        * accessibility/gtk/caret-offsets-and-extraneous-white-spaces.html: Ditto.
+        * accessibility/gtk/caret-offsets.html: Ditto.
+        * accessibility/gtk/text-in-span-block-in-a-block.html: Ditto.
+        * css3/blending/blend-mode-isolation-turn-off-self-painting-layer1.html: Ditto.
+        * css3/blending/blend-mode-simple.html: Ditto.
+        * css3/blending/effect-background-blend-mode.html: Ditto.
+        * css3/filters/blur-filter-page-scroll-parents.html: Ditto.
+        * css3/filters/blur-filter-page-scroll-self.html: Ditto.
+        * css3/filters/blur-filter-page-scroll.html: Ditto.
+        * css3/filters/effect-blur.html: Ditto.
+        * css3/filters/effect-brightness-clamping.html: Ditto.
+        * css3/filters/effect-brightness.html: Ditto.
+        * css3/filters/effect-combined.html: Ditto.
+        * css3/filters/effect-contrast.html: Ditto.
+        * css3/filters/effect-drop-shadow.html: Ditto.
+        * css3/filters/effect-grayscale.html: Ditto.
+        * css3/filters/effect-hue-rotate.html: Ditto.
+        * css3/filters/effect-invert.html: Ditto.
+        * css3/filters/effect-opacity.html: Ditto.
+        * css3/filters/effect-saturate.html: Ditto.
+        * css3/filters/effect-sepia.html: Ditto.
+        * css3/filters/filter-repaint.html: Ditto.
+        * css3/filters/null-effect-check.html: Ditto.
+        * editing/selection/caret-mode-document-begin-end.html: Ditto.
+        * editing/selection/caret-mode-paragraph-keys-navigation.html: Ditto.
+        * fast/animation/request-animation-frame-disabled.html: Ditto.
+        * fast/canvas/canvas-blend-image.html: Ditto.
+        * fast/canvas/canvas-blend-solid.html: Ditto.
+        * fast/canvas/canvas-imageSmoothingQuality.html: Ditto.
+        * fast/canvas/drawImage-with-small-values.html: Ditto.
+        * fast/images/exif-orientation-composited.html: Ditto.
+        * fast/images/exif-orientation-css.html: Ditto.
+        * fast/images/exif-orientation.html: Ditto.
+        * fast/images/image-controls-basic.html: Ditto.
+        * fast/parser/pre-html5-parser-quirks.html: Ditto.
+        * fast/repaint/no-caret-repaint-in-non-content-editable-element.html: Ditto.
+        * http/tests/appcache/disabled.html: Ditto.
+        * http/tests/contentextensions/block-cookies-in-ping.html: Ditto.
+        * http/tests/contentextensions/block-ping.html: Ditto.
+        * http/tests/contentextensions/hide-on-ping-with-ping-that-redirects.html: Ditto.
+        * http/tests/contentextensions/hide-on-ping.html: Ditto.
+        * http/tests/misc/favicon-loads-with-icon-loading-override.html: Ditto.
+        * http/tests/navigation/ping-attribute/anchor-cookie.html: Ditto.
+        * http/tests/navigation/ping-attribute/anchor-cross-origin-from-https.html: Ditto.
+        * http/tests/navigation/ping-attribute/anchor-cross-origin.html: Ditto.
+        * http/tests/navigation/ping-attribute/anchor-ping-and-follow-redirect-when-sending-ping.html: Ditto.
+        * http/tests/navigation/ping-attribute/anchor-same-origin.html: Ditto.
+        * http/tests/navigation/ping-attribute/area-cookie.html: Ditto.
+        * http/tests/navigation/ping-attribute/area-cross-origin-from-https.html: Ditto.
+        * http/tests/navigation/ping-attribute/area-cross-origin.html: Ditto.
+        * http/tests/navigation/ping-attribute/area-same-origin.html: Ditto.
+        * http/tests/security/mixedContent/insecure-script-in-data-iframe-in-main-frame-blocked.html: Ditto.
+        * imported/blink/fast/css/image-orientation/image-orientation-dynamic-expected.html: Ditto.
+        * loader/meta-refresh-disabled.html: Ditto.
+        * media/crash-closing-page-with-media-as-plugin-fallback.html: Ditto.
+        * platform/mac-wk1/editing/selection/caret-mode-document-begin-end-expected.txt: Removed.
+        Mac WK1 now produces the same output as other platforms.
+        * platform/mac/TestExpectations: Remove the failure for FrameFlattening now that the test
+        uses internals.settings.set*.
+        * platform/mac/fast/frames/flattening/set-preference.html: Use internals.settings.set*.
+        * plugins/crash-restoring-plugin-page-from-page-cache.html: Ditto.
+        * plugins/frameset-with-plugin-frame.html: Ditto.
+        * plugins/netscape-plugin-page-cache-works.html: Ditto.
+
+2017-06-23  Chris Dumez  <cdumez@apple.com>
+
+        [mac-wk1] requestAnimationFrame callbacks may not get serviced
+        https://bugs.webkit.org/show_bug.cgi?id=173628
+
+        Reviewed by Simon Fraser.
+
+        Extend layout test coverage.
+
+        * fast/events/page-visibility-transition-test-expected.txt:
+        * fast/events/page-visibility-transition-test.html:
+
+2017-06-23  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Drop the AES-CFB support
+        https://bugs.webkit.org/show_bug.cgi?id=173547
+
+        Reviewed by Jiewen Tan.
+
+        Add GTK+-specific baselines for AES tests that also cover the CFB variation.
+        These tests still pass because errors are expected, it's just that errors now
+        occur because the algorithm isn't supported anymore, rather than because of
+        operation errors due to malformed parameters.
+
+        * platform/gtk/crypto/subtle/aes-cbc-cfb-decrypt-malformed-parameters-expected.txt: Added.
+        * platform/gtk/crypto/subtle/aes-cbc-cfb-encrypt-malformed-parameters-expected.txt: Added.
+        * platform/gtk/crypto/subtle/aes-export-key-malformed-parameters-expected.txt: Added.
+        * platform/gtk/crypto/subtle/aes-generate-key-malformed-parameters-expected.txt: Added.
+        * platform/gtk/crypto/subtle/aes-import-key-malformed-parameters-expected.txt: Added.
+
+2017-06-22  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION(r217695): Offscreen/overflowed items not being rendered while translating in-frame
+        https://bugs.webkit.org/show_bug.cgi?id=173732
+
+        Reviewed by Simon Fraser.
+
+        * compositing/backing/transform-transition-from-outside-view-expected.txt: Added.
+        * compositing/backing/transform-transition-from-outside-view.html: Added.
+
+2017-06-22  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        @font-face rules with invalid primary fonts never download their secondary fonts
+        https://bugs.webkit.org/show_bug.cgi?id=173138
+        <rdar://problem/32554450>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/font-fallback-invalid-load-expected.html: Added.
+        * fast/text/font-fallback-invalid-load.html: Added.
+        * fast/text/resources/bogus.svg: Added.
+
+2017-06-22  Youenn Fablet  <youenn@apple.com>
+
+        Add a test for multi data channel peer connection
+        https://bugs.webkit.org/show_bug.cgi?id=173735
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/multi-channel-expected.txt: Added.
+        * webrtc/datachannel/multi-channel.html: Added.
+
+2017-06-22  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: LayoutTest media/modern-media-controls/placard-support/placard-support-pip.html is a flaky timeout on Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=173725
+
+        Reviewed by Dean Jackson.
+
+        On WK1, this test enters fullscreen rather than PiP (which is unexpected, see webkit.org/b/173729) and thus the button
+        to exit PiP could not be clicked. But we don't need a button click to exit PiP, so instead we just call a method to
+        toggle it.
+
+        * media/modern-media-controls/placard-support/placard-support-pip.html:
+
+2017-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark perf/object-keys.html as flaky on iOS.
+        https://bugs.webkit.org/show_bug.cgi?id=171617
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-06-22  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r214712): Infinite recursion in RenderTable::layout in paginated mode
+        https://bugs.webkit.org/show_bug.cgi?id=173731
+        <rdar://problem/32237775>
+
+        Reviewed by Antti Koivisto.
+
+        * fast/table/caption-bottom-with-pagination-expected.txt: Added.
+        * fast/table/caption-bottom-with-pagination.html: Added.
+
+2017-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/forward-button/forward-button.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=168265
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-06-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pausing with a deep call stack can be very slow, avoid eagerly generating object previews
+        https://bugs.webkit.org/show_bug.cgi?id=173698
+
+        Reviewed by Matt Baker.
+
+        * inspector/runtime/getPreview-expected.txt: Added.
+        * inspector/runtime/getPreview.html: Added.
+        Test the new protocol command `Runtime.getPreview` as well as the frontend
+        model method RemoteObject.prototype.updatePreview which uses it with its
+        own slightly different semantics about when it should be used.
+
+        * inspector/debugger/tail-deleted-frames-this-value.html:
+        This test used `CallFrame.thisObject.preview` so rewrite it to first
+        load the preview and then check values with it.
+
+2017-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip fast/forms/file/input-file-write-files-using-open-panel.html on ios-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=173733
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove TestExpectations for test that were removed in r218651.
+
+        Unreviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-06-22  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark webaudio/silent-audio-interrupted-in-background.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=172201
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-22  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218633.
+
+        The test is failing frequently on Sierra Debug and Windows
+
+        Reverted changeset:
+
+        "AX: Cannot call setValue() on contenteditable or ARIA text
+        controls"
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+        http://trac.webkit.org/changeset/218633
+
+2017-06-22  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Implement ReadableStreamBYOBReader read()
+        https://bugs.webkit.org/show_bug.cgi?id=172714
+
+        Reviewed by Youenn Fablet.
+
+        Added 1 test to check that read() can only be applied to a ReadableStreamBYOBReader.
+        Other behaviors are checked by WPT (web-platform-tests/streams/readable-byte-streams/general.js).
+
+        * streams/readable-stream-byob-reader-expected.txt: Updated.
+        * streams/readable-stream-byob-reader.js: Added 1 test.
+
+
+2017-06-22  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Prevent capturing at unconventional resolutions when using the SW encoder on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        <rdar://problem/32407693>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk1/TestExpectations: Mark captureCanvas as flaky due to AVDCreateGPUAccelerator: Error loading GPU renderer" appearing on some bots.
+        * platform/mac/webrtc/captureCanvas-webrtc-software-encoder-expected.txt: Copied from LayoutTests/webrtc/captureCanvas-webrtc-expected.txt.
+        * platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html: Added.
+        * webrtc/captureCanvas-webrtc-expected.txt:
+        * webrtc/captureCanvas-webrtc.html:
+
+2017-06-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        LayoutTests/inspector/indexeddb/requestDatabaseNames.html: Sort database names to prevent flakiness
+        https://bugs.webkit.org/show_bug.cgi?id=173699
+
+        Reviewed by Alex Christensen.
+
+        * inspector/indexeddb/requestDatabaseNames.html:
+        Sort database names (when more than one) to ensure a consistent order.
+
+2017-06-22  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Skip js geolocation test.
+
+        Unreviewed gardening.
+        Geolocation was disabled since r218553.
+        * platform/wpe/TestExpectations:
+
+2017-06-22  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Unskip http cache tests.
+
+        Unreviewed gardening.
+
+        Currently failing tests are the same as in the GTK+ port.
+        * platform/wpe/TestExpectations:
+
+2017-06-21  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] TypeError when called with body === {}
+        https://bugs.webkit.org/show_bug.cgi?id=173295
+        <rdar://problem/32746733>
+
+        Reviewed by Sam Weinig.
+
+        * fetch/body-init-expected.txt: Added.
+        * fetch/body-init.html: Added.
+
+2017-06-21  Antoine Quint  <graouts@apple.com>
+
+        CSS text properties affect <video> shadow root
+        https://bugs.webkit.org/show_bug.cgi?id=173664
+        <rdar://problem/32904328>
+
+        Reviewed by Dean Jackson.
+
+        Add a test that ensures that setting an inheritable style on the <video> does not affect
+        time labels within the shadow root.
+
+        * media/modern-media-controls/time-label/time-label-inherited-text-indent-expected.txt: Added.
+        * media/modern-media-controls/time-label/time-label-inherited-text-indent.html: Added.
+
+2017-06-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Using "break on all exceptions" when throwing stack overflow hangs inspector
+        https://bugs.webkit.org/show_bug.cgi?id=172432
+        <rdar://problem/29870873>
+
+        Reviewed by Saam Barati.
+
+        * inspector/debugger/no-pause-out-of-memory-exception-expected.txt: Added.
+        * inspector/debugger/no-pause-out-of-memory-exception.html: Added.
+        * inspector/debugger/no-pause-stack-overflow-exception-expected.txt: Added.
+        * inspector/debugger/no-pause-stack-overflow-exception.html: Added.
+
+2017-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove WILL_REVEAL_EDGE_EVENTS code
+        https://bugs.webkit.org/show_bug.cgi?id=173632
+
+        Reviewed by Sam Weinig, Beth Dakin.
+
+        Remove will-reveal-edge events, which never took off.
+
+        * fast/events/will-reveal-edge-on-div-expected.txt: Removed.
+        * fast/events/will-reveal-edge-on-div.html: Removed.
+        * fast/events/will-reveal-edges-body-attributes-expected.txt: Removed.
+        * fast/events/will-reveal-edges-body-attributes.html: Removed.
+        * fast/events/will-reveal-edges-event-listeners-expected.txt: Removed.
+        * fast/events/will-reveal-edges-event-listeners.html: Removed.
+        * fast/events/will-reveal-edges-window-attributes-expected.txt: Removed.
+        * fast/events/will-reveal-edges-window-attributes.html: Removed.
+
+2017-06-21  Simon Fraser  <simon.fraser@apple.com>
+
+        svgPath.getTotalLength() freezes webkit
+        https://bugs.webkit.org/show_bug.cgi?id=173566
+        <rdar://problem/32866731>
+
+        Reviewed by Dean Jackson.
+
+        * svg/custom/path-getTotalLength-hang.html: Added.
+
+2017-06-21  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Unreviewed gardening
+
+        Update expectations to known flaky http/appcache tests and also a
+        couple of flaky crashing tests.
+        * platform/wpe/TestExpectations:
+
+2017-06-21  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: Cannot call setValue() on contenteditable or ARIA text controls
+        https://bugs.webkit.org/show_bug.cgi?id=173520
+
+        Reviewed by Ryosuke Niwa.
+
+        * accessibility/set-value-editable-types-expected.txt: Added.
+        * accessibility/set-value-editable-types.html: Added.
+
+2017-06-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI imports
+        https://bugs.webkit.org/show_bug.cgi?id=172927
+
+        Reviewed by Jiewen Tan, Michael Catanzaro and Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations:
+        Unskip or enable the EC-based SPKI import tests that are now passing.
+
+2017-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Disable font variations on macOS Sierra and iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=173618
+        <rdar://problem/32879164>
+
+        Reviewed by Jon Lee.
+
+        Update expected test results. The old test results are now High Sierra- and iOS 11-expected.
+
+        * fast/css/getComputedStyle/computed-style-expected.txt:
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * fast/css/getComputedStyle/computed-style-without-renderer-expected.txt:
+        * fast/text/font-selection-font-face-parse-expected.txt:
+        * fast/text/font-selection-font-loading-api-parse-expected.txt:
+        * fast/text/font-stretch-parse-expected.txt:
+        * fast/text/font-style-parse-expected.txt:
+        * fast/text/font-weight-parse-expected.txt:
+        * platform/ios/TestExpectations:
+        * platform/mac-elcapitan/fast/css/getComputedStyle/computed-style-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/getComputedStyle/computed-style-font-family-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/css/getComputedStyle/computed-style-without-renderer-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-selection-font-face-parse-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-selection-font-loading-api-parse-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-stretch-parse-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-style-parse-expected.txt: Removed.
+        * platform/mac-elcapitan/fast/text/font-weight-parse-expected.txt: Removed.
+        * platform/mac-elcapitan/svg/css/getComputedStyle-basic-expected.txt: Removed
+        * platform/mac/TestExpectations:
+        * platform/mac/svg/css/getComputedStyle-basic-expected.txt: Removed
+
+2017-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Send context attributes for tracked canvases
+        https://bugs.webkit.org/show_bug.cgi?id=173327
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/context-attributes-expected.txt: Added.
+        * inspector/canvas/context-attributes.html: Added.
+
+2017-06-20  Matt Lewis  <jlewis3@apple.com>
+
+        Marked webrtc/video-replace-muted-track.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173486
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+
+2017-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] The system Japanese font cannot be italicized
+        https://bugs.webkit.org/show_bug.cgi?id=173300
+        <rdar://problem/31805407>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/text/system-font-japanese-synthetic-italic-expected-mismatch.html: Added.
+        * fast/text/system-font-japanese-synthetic-italic.html: Added.
+        * platform/mac/TestExpectations: This codepath doesn't work in El Capitan.
+
+2017-06-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r218524.
+
+        This change broke internal builds.
+
+        Reverted changeset:
+
+        "[Cocoa] The system Japanese font cannot be italicized"
+        https://bugs.webkit.org/show_bug.cgi?id=173300
+        http://trac.webkit.org/changeset/218524
+
+2017-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        <rdar://problem/32862652> [REGRESSION] r218374: fast/events/ios/rotation/layout-viewport-during-safari-type-rotation.html
+        
+        Rebaseline.
+
+        * fast/events/ios/rotation/layout-viewport-during-safari-type-rotation-expected.txt:
+
+2017-06-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline fast/events/touch/document-create-touch-list tests.
+
+        Unreviewed test gardening.
+
+        * fast/events/touch/document-create-touch-list-crash-expected.txt:
+        * fast/events/touch/document-create-touch-list-ios-expected.txt:
+
+2017-06-20  Matt Baker  <mattbaker@apple.com>
+
+        LayoutTest inspector/canvas/create-canvas-contexts.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=173603
+
+        Reviewed by Joseph Pecoraro.
+
+        Removed test case `CheckCanvasesCleared`, which involved a page reload
+        and would intermittently timeout.
+
+        * inspector/canvas/create-canvas-contexts-expected.txt:
+        * inspector/canvas/create-canvas-contexts.html:
+
+2017-06-20  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: media/remote-control-command-seek.html is timing out
+        https://bugs.webkit.org/show_bug.cgi?id=173615
+        <rdar://problem/32626498>
+
+        Reviewed by Eric Carlson.
+
+        This test assumes that we load metadata and video data that can be seeked through
+        at the same time, but this is incorrect. Using the "canplaythrough" event guarantees
+        that the video is seekable, so we switch to this event to make the test more robust.
+
+        * media/remote-control-command-seek-expected.txt:
+        * media/remote-control-command-seek.html:
+
+2017-06-20  Matt Lewis  <jlewis3@apple.com>
+
+        Added additional test expectations for media/video-buffered.html.
+        https://bugs.webkit.org/show_bug.cgi?id=173611
+
+        Uneviewed test gardening.
+
+        * platform/ios/TestExpectations:
+
+2017-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add console messages for WebGL shader compile and program link errors/warnings
+        https://bugs.webkit.org/show_bug.cgi?id=143236
+        <rdar://problem/20352149>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/webgl/fragment-shader-assertion.html:
+        * fast/canvas/webgl/shader-compile-logging-expected.txt: Added.
+        * fast/canvas/webgl/shader-compile-logging.html: Added.
+
+2017-06-19  Antoine Quint  <graouts@apple.com>
+
+        Media document experience with long-loading files is poor
+        https://bugs.webkit.org/show_bug.cgi?id=173575
+        <rdar://problem/32178119>
+
+        Reviewed by Dean Jackson.
+
+        Fix a test that started failing with this patch and add two new tests that check we are adding
+        the expected CSS classes when loading video and invalid media documents.
+
+        * media/modern-media-controls/media-documents/media-document-invalid-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-invalid.html: Added.
+        * media/modern-media-controls/media-documents/media-document-video-with-initial-audio-layout-expected.txt: Added.
+        * media/modern-media-controls/media-documents/media-document-video-with-initial-audio-layout.html: Added.
+        * media/modern-media-controls/volume-up-support/volume-up-support-expected.txt:
+        * media/modern-media-controls/volume-up-support/volume-up-support.html:
+
+2017-06-20  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Enable appcache tests
+
+        Unreviewed gardening.
+
+        Most of these tests are passing, so enable them. For known GTK+
+        failures, copy the expectations. Mark as failing deferred events
+        tests that have slight differences that need to be investigated.
+        * platform/wpe/TestExpectations:
+
+2017-06-20  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Skip geolocation tests
+
+        Geolocation was disabled since r218553 and thus far tests were
+        only using the mock provider. Skip until we add geoclue
+        support.
+        * platform/wpe/TestExpectations:
+
+2017-06-20  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Revert changes in bug#160417 about extending `null` not being a derived class
+        https://bugs.webkit.org/show_bug.cgi?id=169293
+
+        Reviewed by Saam Barati.
+
+        * js/class-syntax-extends-expected.txt:
+        * js/class-syntax-super-expected.txt:
+        * js/script-tests/class-syntax-extends.js:
+        * js/script-tests/class-syntax-super.js:
+
+2017-06-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed WPE gardening.
+
+        Unskipping AES-CTR and RSA-PSS layout tests that already pass.
+
+        Adding layout test baselines for two imported W3C tests that cover AES-CBC.
+        The subtests there pass, but the generic baseline expects failures, so we
+        work around that by adding baselines that expect passing tests.
+
+        * platform/wpe/TestExpectations:
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_cbc.worker-expected.txt: Added.
+        * platform/wpe/imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.https-expected.txt: Added.
+
+2017-06-20  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] Layout Test fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html makes the subsequent test case flaky crash.
+        https://bugs.webkit.org/show_bug.cgi?id=173459
+
+        Reviewed by Carlos Garcia Campos.
+
+        Unskip fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html.
+
+        * platform/gtk/TestExpectations:
+
+2017-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create canvas content view and details sidebar panel
+        https://bugs.webkit.org/show_bug.cgi?id=138941
+        <rdar://problem/19051672>
+
+        Reviewed by Joseph Pecoraro.
+
+        * inspector/canvas/requestContent-expected.txt: Added.
+        * inspector/canvas/requestContent.html: Added.
+        * inspector/canvas/requestNode-expected.txt: Added.
+        * inspector/canvas/requestNode.html: Added.
+
+2017-06-19  Frederic Wang  <fwang@igalia.com>
+
+        [iOS] Always include frames in the scrolling tree when async frame scrolling is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=173405
+
+        Reviewed by Simon Fraser.
+
+        Add some new expectations for iOS/WK2 now that the "async frame scrolling" setting is taken
+        into account for the layer and scrolling trees.
+
+        * platform/ios-wk2/compositing/iframes/compositing-for-scrollable-iframe-expected.txt: Added.
+        A specific layer is created for the iframe.
+        * platform/ios-wk2/fast/scrolling/scrolling-tree-includes-frame-expected.txt: Added.
+        The frame appears in the scrolling tree.
+        * platform/ios/fast/scrolling/scrolling-tree-includes-frame-expected.txt: Renamed from LayoutTests/platform/ios-simulator/fast/scrolling/scrolling-tree-includes-frame-expected.txt.
+        Use this as a generic expectation for iOS.
+
+2017-06-19  Frederic Wang  <fwang@igalia.com>
+
+        [Mac] Add an experimental feature setting for async frame scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=173359
+
+        Reviewed by Simon Fraser.
+
+        * compositing/iframes/compositing-for-scrollable-iframe.html: Use "async frame scrolling" for
+        this test.
+        * fast/scrolling/scrolling-tree-includes-frame.html: Ditto.
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WebCrypto] Add test for ECDH SPKI imports using the ecDH algorithm identifier
+        https://bugs.webkit.org/show_bug.cgi?id=173543
+
+        Reviewed by Jiewen Tan.
+
+        Add the ecdh-import-spki-key-ecdh-identifier.html layout test which
+        tests for successful import of EC keys through the SPKI format when
+        using the ecDH algorithm identifier (OID 1.3.132.1.12) and following
+        the ECDH algorithm import steps.
+
+        No implementation supports this yet, so the test is skipped on all ports.
+
+        * TestExpectations:
+        * crypto/subtle/ecdh-import-spki-key-ecdh-identifier-expected.txt: Added.
+        * crypto/subtle/ecdh-import-spki-key-ecdh-identifier.html: Added.
+
+2017-06-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] The system Japanese font cannot be italicized
+        https://bugs.webkit.org/show_bug.cgi?id=173300
+        <rdar://problem/31805407>
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/text/system-font-japanese-synthetic-italic-expected-mismatch.html: Added.
+        * fast/text/system-font-japanese-synthetic-italic.html: Added.
+        * platform/mac/TestExpectations: This codepath doesn't work in El Capitan.
+
+2017-06-19  Youenn Fablet  <youenn@apple.com>
+
+        Improve debugging ability of some webrtc tests
+        https://bugs.webkit.org/show_bug.cgi?id=173549
+
+        Reviewed by Eric Carlson.
+
+        Improve debugging ability for first two tests.
+        Improve reliability for the next three tests.
+
+        * webrtc/audio-replace-track-expected.txt:
+        * webrtc/audio-replace-track.html: Checking connected state.
+        * webrtc/video-mute-expected.txt:
+        * webrtc/video-mute.html: Ditto.
+        * webrtc/video-replace-track-to-null.html: Improving reliability of test.
+        * webrtc/video-rotation.html: Adding some delay before testing black frames and increasing delay between the tests..
+        * webrtc/video-unmute.html: Using counter based testing of black frames.
+
+2017-06-19  Alex Christensen  <achristensen@webkit.org>
+
+        [Cocoa] implement URLSession:task:needNewBodyStream: delegate method
+        https://bugs.webkit.org/show_bug.cgi?id=173551
+        rdar://problem/32250512
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/misc/form-blob-challenge-expected.txt: Added.
+        * http/tests/misc/form-blob-challenge.html: Added.
+        * http/tests/misc/resources/basic-echo-post.php: Added.
+
+2017-06-19  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test ecpectaions for webrtc/libwebrtc/descriptionGetters.html.
+        https://bugs.webkit.org/show_bug.cgi?id=171703
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Completion values for control flow do not match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+
+        Reviewed by Saam Barati.
+
+        * js/eval-throw-return-expected.txt:
+        * js/kde/completion-expected.txt:
+        * js/kde/script-tests/completion.js:
+        * js/script-tests/eval-throw-return.js:
+        * sputnik/Conformance/12_Statement/12.6_Iteration_Statements/12.6.3_The_for_Statement/S12.6.3_A9-expected.txt:
+        * sputnik/Conformance/12_Statement/12.6_Iteration_Statements/12.6.3_The_for_Statement/S12.6.3_A9.1-expected.txt:
+        Rebaseline expectations. These are all outdated. In fact the sputnik
+        tests were imported into test262 and modified for ES2015.
+        
+        * js/script-tests/function-toString-vs-name.js:
+        ClassDeclarations on their own don't produce a value. So output
+        the class value so the test behaves as expected.
+
+2017-06-19  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Add support for serializers that have members that are themselves serializers (or inherit being a serializer from a parent)
+        https://bugs.webkit.org/show_bug.cgi?id=173395
+
+        Reviewed by Simon Fraser.
+
+        * fast/css/DOMQuad-serialization-expected.txt: Added.
+        * fast/css/DOMQuad-serialization.html: Added.
+        Add test for DOMQuad serialization, now that it is supported.
+
+2017-06-19  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r218505.
+        https://bugs.webkit.org/show_bug.cgi?id=173563
+
+        "It would break internal builds" (Requested by youenn on
+        #webkit).
+
+        Reverted changeset:
+
+        "[WebRTC] Prevent capturing at unconventional resolutions when
+        using the SW encoder on Mac"
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        http://trac.webkit.org/changeset/218505
+
+2017-06-19  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Prevent capturing at unconventional resolutions when using the SW encoder on Mac
+        https://bugs.webkit.org/show_bug.cgi?id=172602
+        <rdar://problem/32407693>
+
+        Reviewed by Eric Carlson.
+
+        * platform/mac-wk1/TestExpectations: Mark captureCanvas as flaky due to AVDCreateGPUAccelerator: Error loading GPU renderer" appearing on some bots.
+        * platform/mac/webrtc/captureCanvas-webrtc-software-encoder-expected.txt: Copied from LayoutTests/webrtc/captureCanvas-webrtc-expected.txt.
+        * platform/mac/webrtc/captureCanvas-webrtc-software-encoder.html: Added.
+        * webrtc/captureCanvas-webrtc-expected.txt:
+        * webrtc/captureCanvas-webrtc.html:
+
+2017-06-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline js/dom/global-constructors-attributes.html.
+
+        Unreviewed test gardening.
+
+        * platform/mac-elcapitan/js/dom/global-constructors-attributes-expected.txt:
+        * platform/mac-wk1/js/dom/global-constructors-attributes-expected.txt:
+
+2017-06-19  Youenn Fablet  <youenn@apple.com>
+
+        A cloned MediaStreamTrack should mute independently other tracks using the same source
+        https://bugs.webkit.org/show_bug.cgi?id=172831
+        <rdar://problem/32518527>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/clone-audio-track.html: Added.
+        * webrtc/video-disabled-black.html:
+        * webrtc/video-unmute-expected.txt:
+        * webrtc/video-unmute.html:
+
+2017-06-19  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Properly model buffer source / typed arrays as their own IDL types
+        https://bugs.webkit.org/show_bug.cgi?id=173513
+
+        Reviewed by Alex Christensen.
+
+        * crypto/subtle/aes-cbc-cfb-encrypt-malformed-parameters-expected.txt:
+        * crypto/subtle/hkdf-derive-bits-malformed-parametrs-expected.txt:
+        * crypto/subtle/pbkdf2-derive-bits-malformed-parametrs-expected.txt:
+        Update results for changed exception language.
+
+2017-06-19  Claudio Saavedra  <csaavedra@igalia.com>
+
+        Unreviewed GTK+ gardening
+
+        Unmarked a bunch of http multimedia tests that were failing with gst 1.6.3.
+        We're now depending on 1.10.4 and these are passing. Also marked as slow
+        a couple more.
+        * platform/gtk/TestExpectations:
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed GTK+ gardening.
+
+        Enable RSA-PSS tests on the GTK+ port. Tests covering this Web Crypto
+        algorithm are skipped on all platforms, but since the libgcrypt-based
+        implementation is operating properly, we can enable the majority of
+        these tests for GTK+. The tests that remain skipped cover SPKI and
+        PKCS#8 import and export capabilities that still have to be landed.
+
+        WPE will enable these tests in a separate patch.
+
+        * platform/gtk/TestExpectations:
+
+2017-06-19  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK] Rebaseline js/dom/dom-static-property-for-in-iteration.html
+        https://bugs.webkit.org/show_bug.cgi?id=133868
+
+        Unreviewed gardening
+
+        This test needs expectations to be updated after changes to DOM
+        static properties. Update and unskip.
+        * platform/gtk/TestExpectations: Unskip.
+        * platform/gtk/js/dom/dom-static-property-for-in-iteration-expected.txt:
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] AES_CTR support
+        https://bugs.webkit.org/show_bug.cgi?id=171420
+
+        Reviewed by Michael Catanzaro.
+
+        * platform/gtk/TestExpectations: Unskip the relevant AES_CTR tests.
+
+2017-06-19  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Layout Test imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createOffer.html crashes
+        https://bugs.webkit.org/show_bug.cgi?id=173456
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Marked
+        imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createOffer.html,
+        webrtc/createOfferAnswer.html and webrtc/video-addTransceiver.html Crash.
+
+2017-06-19  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [GTK][WPE] Rebaseline after r218458
+
+        Unreviewed gardening.
+
+        Add new DOMQuad attribute to the test expectations.
+        * platform/gtk/js/dom/global-constructors-attributes-expected.txt:
+        * platform/wpe/js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/wpe/js/dom/global-constructors-attributes-expected.txt:
+
+2017-05-14 Frederic Wang  <fwang@igalia.com>
+
+        Add heuristic to avoid flattening "fullscreen" iframes
+        https://bugs.webkit.org/show_bug.cgi?id=171914
+
+        Reviewed by Simon Fraser.
+
+        This commit adjusts tests to work when frame flattening is an enum.
+        It also adds a test to check the new heuristic when "frame flattening for non-fullscreen
+        iframes" is enabled.
+        set-preference.html is disabled for now, as the test suite does not support overridePreference()
+        for non-boolean values (bug 128594).
+
+        * fast/forms/ios/delete-in-input-in-iframe.html: Use enum value "FullyEnabled".
+        * fast/forms/ios/focus-input-in-iframe.html: Ditto.
+        * fast/forms/ios/programmatic-focus-input-in-iframe.html: Ditto.
+        * fast/forms/ios/typing-in-input-in-iframe.html: Ditto.
+        * fast/frames/flattening/crash-remove-iframe-during-object-beforeload.html: Ditto.
+        * fast/frames/flattening/crash-svg-document.html: Ditto.
+        * fast/frames/flattening/crash-when-sibling-iframe-is-destroyed-with-subtree-layoutroot.html: Ditto.
+        * fast/frames/flattening/frameset-flattening-advanced.html: Ditto.
+        * fast/frames/flattening/frameset-flattening-grid.html: Ditto.
+        * fast/frames/flattening/frameset-flattening-simple.html: Ditto.
+        * fast/frames/flattening/frameset-flattening-subframe-resize.html: Ditto.
+        * fast/frames/flattening/frameset-flattening-subframesets.html: Ditto.
+        * fast/frames/flattening/hittest-iframe-while-style-changes-crash.html: Ditto.
+        Be sure to use single quotes for the inline iframe page.
+        * fast/frames/flattening/iframe-flattening-crash.html: Use enum value "FullyEnabled".
+        * fast/frames/flattening/iframe-flattening-fixed-height.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fixed-width-and-height-no-scrolling-with-js-forced-layout.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fixed-width-and-height-no-scrolling.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fixed-width-and-height-zero-size.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fixed-width-and-height.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fixed-width.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-fullscreen.html: Added. Check the new heuristic.
+        * fast/frames/flattening/iframe-flattening-fullscreen-expected.txt: Added.
+        * fast/frames/flattening/iframe-flattening-inside-flexbox-with-delayed-scroll-update.html: Use enum value "FullyEnabled".
+        * fast/frames/flattening/iframe-flattening-nested.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-offscreen.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-out-of-view-and-scroll.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-out-of-view-scroll-and-relayout.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-out-of-view.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-resize-event-count.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-selection-crash.html: Ditto.
+        * fast/frames/flattening/iframe-flattening-simple.html: Ditto.
+        * fast/frames/flattening/iframe-tiny.html: Ditto.
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-and-needs-full-repaint-crash.html: Ditto.
+        * fast/frames/flattening/scrollable-flexbox-inside-iframe-with-zero-height-assertion-failure.html: Ditto.
+        * fast/frames/flattening/scrolling-in-object.html: Ditto.
+        * fast/spatial-navigation/snav-iframe-flattening-simple.html: Ditto.
+        * http/tests/misc/iframe-flattening-3level-nesting-with-blocking-resource.html: Ditto.
+        * platform/mac/TestExpectations: Disable this due to limitation in the test infrastructure.
+        * plugins/frameset-with-plugin-frame.html: Use enum value "FullyEnabled".
+
+2017-06-18  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Meter element doesn't respect the writing direction
+        https://bugs.webkit.org/show_bug.cgi?id=173507
+
+        Reviewed by Sam Weinig.
+
+        A regression ref test since existing tests were pixel tests and did not catch this regression.
+        Note that black border was added to workaround the anti-aliasing differences in macOS High Sierra.
+
+        * fast/dom/HTMLMeterElement/meter-rtl-expected.html: Added.
+        * fast/dom/HTMLMeterElement/meter-rtl.html: Added.
+
+2017-06-18  Chris Dumez  <cdumez@apple.com>
+
+        Crash when re-entering MediaDevicesEnumerationRequest::cancel()
+        https://bugs.webkit.org/show_bug.cgi?id=173522
+        <rdar://problem/31185739>
+
+        Reviewed by Darin Adler.
+
+        Add layout test coverage. This test would flakily crash before the fix because it
+        relies on the order in which contextDestroyed() is called for MediaDevicesRequest
+        and MediaDevicesEnumerationRequest.
+
+        * fast/mediastream/destroy-document-while-enumerating-devices-expected.txt: Added.
+        * fast/mediastream/destroy-document-while-enumerating-devices.html: Added.
+        * fast/mediastream/resources/enumerate-devices-frame.html: Added.
+
+2017-06-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement DOMQuad
+        https://bugs.webkit.org/show_bug.cgi?id=163534
+
+        Reviewed by Sam Weinig.
+        
+        Implement DOMQuad per https://drafts.fxtf.org/geometry/#DOMQuad.
+
+        * js/dom/global-constructors-attributes-dedicated-worker-expected.txt:
+        * platform/mac/js/dom/global-constructors-attributes-expected.txt:
+
+2017-06-17  Antti Koivisto  <antti@apple.com>
+
+        Crash due to infinite recursion via FrameSelection::updateAppearanceAfterLayout
+        https://bugs.webkit.org/show_bug.cgi?id=173468
+
+        Reviewed by Ryosuke Niwa.
+
+        * editing/selection/updateAppearanceAfterLayout-recursion-expected.txt: Added.
+        * editing/selection/updateAppearanceAfterLayout-recursion.html: Added.
+
+2017-06-17  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-17  Keith Miller  <keith_miller@apple.com>
+
+        ArrayPrototype methods should use JSValue::toLength for non-Arrays.
+        https://bugs.webkit.org/show_bug.cgi?id=173506
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-06-17  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening. Remove duplicate entries for tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-17  Ryosuke Niwa  <rniwa@webkit.org>
+
+        REGRESSION(r209495): materiauxlaverdure.com fails to load
+        https://bugs.webkit.org/show_bug.cgi?id=173301
+        <rdar://problem/32624850>
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the existing tests and added a new regression test for serializing CSS properties and values.
+
+        * accessibility/mac/alt-for-css-content-expected.txt:
+        * accessibility/mac/webkit-alt-for-css-content-expected.txt:
+        * editing/pasteboard/cjk-line-height-expected.txt:
+        * fast/css/alt-inherit-initial-expected.txt:
+        * fast/css/alt-inherit-initial.html:
+        * fast/css/content-language-comma-separated-list-expected.txt:
+        * fast/css/content-language-empty-expected.txt:
+        * fast/css/content-language-only-whitespace-expected.txt:
+        * fast/css/content-language-with-whitespace-expected.txt:
+        * fast/css/counters/counter-cssText-expected.txt:
+        * fast/css/counters/counter-cssText.html:
+        * fast/css/font-family-trailing-bracket-gunk-expected.txt:
+        * fast/css/font-family-trailing-bracket-gunk.html:
+        * fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * fast/css/getComputedStyle/computed-style-properties-expected.txt:
+        * fast/css/getComputedStyle/computed-style-properties.html:
+        * fast/css/getComputedStyle/font-family-fallback-reset-expected.txt:
+        * fast/css/getComputedStyle/font-family-fallback-reset.html:
+        * fast/css/lang-mapped-to-webkit-locale-expected.txt:
+        * fast/css/lang-mapped-to-webkit-locale.xhtml:
+        * fast/css/serialization-with-double-quotes-expected.txt: Added.
+        * fast/css/serialization-with-double-quotes.html: Added.
+        * fast/css/uri-token-parsing-expected.txt:
+        * fast/css/uri-token-parsing.html:
+        * fast/inspector-support/cssURLQuotes-expected.txt:
+        * fast/inspector-support/style-expected.txt:
+        * fast/text/font-stretch-parse-expected.txt:
+        * fast/text/font-stretch-parse.html:
+        * fast/text/font-style-parse-expected.txt:
+        * fast/text/font-style-parse.html:
+        * fast/text/font-weight-parse-expected.txt:
+        * fast/text/font-weight-parse.html:
+        * media/controls/track-menu.html:
+        * platform/mac-elcapitan/fast/css/getComputedStyle/computed-style-font-family-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-stretch-parse-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-style-parse-expected.txt:
+        * platform/mac-elcapitan/fast/text/font-weight-parse-expected.txt:
+
+2017-06-16  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-16  Per Arne Vollan  <pvollan@apple.com>
+
+        Unreviewed test gardening. Update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument 2D/WebGL canvas contexts in the backend
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        <rdar://problem/32415986>
+
+        Reviewed by Devin Rousso and Joseph Pecoraro.
+
+        Test that CanvasAgent dispatches events for canvas lifecycle events.
+
+        * inspector/canvas/create-canvas-contexts-expected.txt: Added.
+        * inspector/canvas/create-canvas-contexts.html: Added.
+
+2017-06-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for HTMLDocument
+        https://bugs.webkit.org/show_bug.cgi?id=173444
+
+        Reviewed by Darin Adler.
+
+        * dom/xhtml/level2/html/HTMLDocument17-expected.txt:
+        * dom/xhtml/level2/html/HTMLDocument18-expected.txt:
+        * dom/xhtml/level2/html/HTMLDocument19-expected.txt:
+        * dom/xhtml/level2/html/HTMLDocument20-expected.txt:
+        * dom/xhtml/level2/html/HTMLDocument21-expected.txt:
+        Update test results for correct exception being thrown.
+
+        * fast/dom/frame-deleted-in-document-open-expected.txt: Removed.
+        * fast/dom/frame-deleted-in-document-open.html: Removed.
+        * http/tests/security/isolatedWorld/document-open-expected.txt: Removed.
+        * http/tests/security/isolatedWorld/document-open.html: Removed.
+        Remove two tests that were testing the behavior of document.open using javascript
+        to call the window.open operation. This is not how it is specified and no
+        longer how it is implemented.
+
+2017-06-16  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC sockets should be closed at destruction time if not closed explicitly
+        https://bugs.webkit.org/show_bug.cgi?id=173479
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/datachannel/multiple-connections-expected.txt: Added.
+        * webrtc/datachannel/multiple-connections.html: Added.
+
+2017-06-16  Youenn Fablet  <youenn@apple.com>
+
+        addTransceiver should trigger mid generation in the SDP
+        https://bugs.webkit.org/show_bug.cgi?id=173452
+
+        Reviewed by Alex Christensen.
+
+        * webrtc/routines.js:
+        (createConnections):
+        * webrtc/video-addTransceiver-expected.txt: Added.
+        * webrtc/video-addTransceiver.html: Added.
+
+2017-06-16  Jonathan Bedard  <jbedard@apple.com>
+
+        Clean-up lint-test-expectation errors
+
+        Unreviewed test gardening
+
+        * platform/ios-wk1/TestExpectations:
+        * platform/ios-wk2/TestExpectations:
+        * platform/win/TestExpectations:
+
+2017-06-16  Youenn Fablet  <youenn@apple.com>
+
+        [iOS] Switching cameras in a WebRTC call makes black frames being sent
+        https://bugs.webkit.org/show_bug.cgi?id=173486
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-replace-muted-track-expected.txt: Added.
+        * webrtc/video-replace-muted-track.html: Added.
+
+2017-06-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Remove a test that was accidentally checked in with r218408.
+
+        Unreviewed test gardening.
+
+        * webrtc/datachannel/test.html: Removed.
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173487
+
+        Unreviewed test gardening.
+
+
+        * platform/mac/TestExpectations:
+
+2017-06-16  Youenn Fablet  <youenn@apple.com>
+
+        Remove replaceTrack restriction about video resolution
+        https://bugs.webkit.org/show_bug.cgi?id=173490
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/video-replace-track-expected.txt:
+        * webrtc/video-replace-track.html:
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Marked multiple imported/w3c/web-platform-tests/IndexedDB as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172834
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-06-16  Jer Noble  <jer.noble@apple.com>
+
+        [iOS] Do not pause playing video when application resigns active state.
+        https://bugs.webkit.org/show_bug.cgi?id=173474
+
+        Reviewed by Tim Horton.
+
+        * media/video-background-playback-expected.txt:
+        * media/video-background-playback.html:
+        * media/video-background-tab-playback-expected.txt:
+        * media/video-background-tab-playback.html:
+        * media/video-inactive-playback-expected.txt: Added.
+        * media/video-inactive-playback.html: Added.
+
+2017-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        REGRESSION (r213126): Sync XHR needs partition for cache and credentials
+        https://bugs.webkit.org/show_bug.cgi?id=173496
+        <rdar://problem/31943596>
+
+        Reviewed by Darin Adler.
+
+        * http/tests/security/sync-xhr-partition-expected.txt: Added.
+        * http/tests/security/sync-xhr-partition.html: Added.
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/fetch/nosniff/importscripts.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=173432
+        
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Adjusted test expectations for media/track/track-in-band-cues-added-once.html.
+        https://bugs.webkit.org/show_bug.cgi?id=142152
+
+        Unreviewed test gardening.
+
+        * platform/ios-wk2/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-06-16  Youenn Fablet  <youenn@apple.com>
+
+        Make some WebRTC tests easier to debug when failing
+        https://bugs.webkit.org/show_bug.cgi?id=173480
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/captureCanvas-webrtc-expected.txt:
+        * webrtc/captureCanvas-webrtc.html: Splitting test in smaller tests.
+        * webrtc/datachannel/basic-expected.txt:
+        * webrtc/datachannel/basic-tcp-expected.txt: Added.
+        * webrtc/datachannel/basic-tcp.html: Test from basic.html
+        * webrtc/datachannel/basic.html: Moving TCP specifict test and other creation tests to their own files.
+        * webrtc/datachannel/bufferedAmountLowThreshold.html: Removing console log message in case of unhandled promise.
+        * webrtc/datachannel/creation-expected.txt:
+        * webrtc/datachannel/creation.html: Test from basic.html
+        * webrtc/datachannel/filter-ice-candidate-expected.txt:
+        * webrtc/datachannel/filter-ice-candidate.html: Exchanging the tests.
+        * webrtc/video-stats.html: Improving test that timestamp is milliseconds and not microseconds.
+
+2017-06-16  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: AirPlay placard is not shown when in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=173447
+        <rdar://problem/32803773>
+
+        Reviewed by Jon Lee.
+
+        Add a new test to check that we display the AirPlay placard on macOS in fullscreen.
+
+        * media/modern-media-controls/placard-support/placard-support-airplay-fullscreen-expected.txt: Added.
+        * media/modern-media-controls/placard-support/placard-support-airplay-fullscreen.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2017-06-16  Antoine Quint  <graouts@apple.com>
+
+        Backdrop blur missing in media controls bar on Sierra
+        https://bugs.webkit.org/show_bug.cgi?id=173451
+
+        Reviewed by Simon Fraser.
+
+        Add a new test that checks that a ControlsBar establishes a stacking context.
+
+        * media/modern-media-controls/controls-bar/controls-bar-stacking-context-expected.txt: Added.
+        * media/modern-media-controls/controls-bar/controls-bar-stacking-context.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218376.
+
+        The patch cause multiple Layout Test Crashes.
+
+        Reverted changeset:
+
+        "Web Inspector: Instrument 2D/WebGL canvas contexts in the
+        backend"
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        http://trac.webkit.org/changeset/218376
+
+2017-06-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Layout Test fast/events/tabindex-focus-blur-all.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=145171
+
+        Unreviewed gardening.
+
+        Recently, this test case results in flaky crash, no flaky timeout.
+
+        * platform/gtk/TestExpectations: Marked it Crash Pass.
+
+2017-06-16  Adrian Perez de Castro  <aperez@igalia.com>
+
+        REGRESSION(r215188?): Test platform/gtk/fast/forms/menulist-typeahead-find.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=171492
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: The fixes needed for the test to pass
+        have landed, so the test can be unskipped.
+
+2017-06-16  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Layout Test fast/canvas/webgl/tex-image-and-sub-image-2d-with-video.html makes the subsequent test case flaky crash.
+        https://bugs.webkit.org/show_bug.cgi?id=173459
+
+        Unreviewed gardening.
+
+        * platform/gtk/TestExpectations: Marked it Skip.
+
+2017-06-16  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] fast/animation gardening
+
+        Unreviewed gardening.
+
+        fast/animation tests are flaky, report and mark.
+        fast/animation/height-auto-transition-computed-value.html is not really failing, unmark.
+        storage/domstorage/sessionstorage/set-item-synchronous-keydown.html
+        depends on event injection in WTR that is not implemented in WPE
+        yet, reported and marked as failing.
+        * platform/wpe/TestExpectations:
+
+2017-06-15  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Update expectations for layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=172437
+
+        Unreviewed test gardening, update test expectations for failing tests.
+
+        * platform/win/TestExpectations:
+
+2017-06-15  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: AirPlay button is incorrectly highlighted in inline and fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=173446
+
+        Reviewed by Dean Jackson.
+
+        Update the test to explicitly check the color on the <picture>. We also make the test check
+        the color with a value depending on the platform, so we can use a single expectation file.
+
+        * media/modern-media-controls/airplay-button/airplay-button-on-expected.txt:
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+        * platform/ios/media/modern-media-controls/airplay-button/airplay-button-on-expected.txt: Removed.
+
+2017-06-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument 2D/WebGL canvas contexts in the backend
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        <rdar://problem/32415986>
+
+        Reviewed by Devin Rousso.
+
+        Test that CanvasAgent dispatches events for canvas lifecycle events.
+
+        * inspector/canvas/create-canvas-contexts-expected.txt: Added.
+        * inspector/canvas/create-canvas-contexts.html: Added.
+
+2017-06-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Expand system-ui to include every item in the Core Text cascade list
+        https://bugs.webkit.org/show_bug.cgi?id=173043
+        <rdar://problem/21125708>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text/system-font-fallback-emoji-expected.txt: Added.
+        * fast/text/system-font-fallback-emoji.html: Added.
+        * fast/text/system-font-fallback-expected.html: Added.
+        * fast/text/system-font-fallback.html: Added.
+        * fast/text/system-font-zero-size-expected.txt: Added.
+        * fast/text/system-font-zero-size.html: Added.
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/mac/fast/text/international/system-language/system-font-punctuation-expected.png: Added.
+
+2017-06-15  Matt Lewis  <jlewis3@apple.com>
+
+        Marked webrtc/video-unmute.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172879
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator-wk2/TestExpectations:
+
+2017-06-15  Saam Barati  <sbarati@apple.com>
+
+        [iOS wk2] Layout Test perf/object-keys.html is flaky
+        https://bugs.webkit.org/show_bug.cgi?id=171617
+        <rdar://problem/31977874>
+
+        Reviewed by Mark Lam.
+
+        Increase the starting magnitude of the object-keys test to
+        remove variance from having objects with a very few number of keys.
+
+        * perf/object-keys.html:
+        * platform/ios-wk2/TestExpectations:
+
+2017-06-15  Matt Lewis  <jlewis3@apple.com>
+
+        Marked webrtc/datachannel/basic.html as flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=172922
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+        * platform/wk2/TestExpectations:
+
+2017-06-15  Matt Lewis  <jlewis3@apple.com>
+
+        REGRESSION (r218228): Layout Test editing/execCommand/strikethrough-uses-strike-tag.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=173375
+
+        Unreviewed test gardening.
+
+        Reverted an incorrect baseline and skipped a test causing test failures.
+
+        * TestExpectations:
+        * platform/mac-wk1/editing/execCommand/strikethrough-uses-strike-tag-expected.txt: Removed.
+        * platform/win/editing/execCommand/strikethrough-uses-strike-tag-expected.txt: Removed.
+
+2017-06-15  Youenn Fablet  <youenn@apple.com>
+
+        RTCPeerConnection returns RTCSessionDescription where RTCSessionDescriptionInit would be appropriate
+        https://bugs.webkit.org/show_bug.cgi?id=173118
+        <rdar://problem/32746761>
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/RTCPeerConnection-setLocalDescription-offer-expected.txt:
+        * fast/mediastream/RTCPeerConnection-setRemoteDescription-offer-expected.txt:
+        * webrtc/createOfferAnswer-expected.txt: Added.
+        * webrtc/createOfferAnswer.html: Added.
+
+2017-06-15  Matt Lewis  <jlewis3@apple.com>
+
+        Marked imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg as skip.
+        https://bugs.webkit.org/show_bug.cgi?id=173333
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-06-15  Miguel Gomez  <magomez@igalia.com>
+
+        Unreviewed GTK+ gardening. Update expectations of several tests failing after r218320.
+
+        * platform/gtk/TestExpectations:
+
+2017-06-15  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] dom storage gardening
+
+        Unreviewed gardening.
+
+        Two dom storage tests marked as failing have been passing always,
+        so remove them.
+        * platform/wpe/TestExpectations:
+
+2017-06-14  Alexey Proskuryakov  <ap@apple.com>
+
+        REGRESSION: trac.webkit.org/export returns Content-Type application/xhtml+xml for .html files
+        https://bugs.webkit.org/show_bug.cgi?id=173191
+
+        Add a MIME type to one test to check if this changes the behavior.
+
+        * http/tests/security/contentSecurityPolicy/allow-favicon.html: Added property svn:mime-type.
+
+2017-06-14  Antoine Quint  <graouts@apple.com>
+
+        Rebaseline media/modern-media-controls/media-documents
+        https://bugs.webkit.org/show_bug.cgi?id=173394
+
+        Reviewed by Dean Jackson.
+
+        * media/modern-media-controls/media-documents/click-on-video-should-not-pause-expected.txt:
+        * media/modern-media-controls/media-documents/click-on-video-should-not-pause.html:
+        * media/modern-media-controls/media-documents/media-document-audio-mac-sizing-expected.txt:
+        * media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html:
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-06-14  Dean Jackson  <dino@apple.com>
+
+        Restrict filtered painting across cross-origin boundaries with transforms
+        https://bugs.webkit.org/show_bug.cgi?id=173388
+        <rdar://problem/27362159>
+
+        Reviewed by Simon Fraser.
+
+        New test that checks painting across a origin boundary when in
+        a transformed container. Also clean up the existing test
+        to make it smfr-compliant (green is good, red is bad).
+
+        * http/tests/css/filters-on-iframes-expected.html:
+        * http/tests/css/filters-on-iframes-transform-expected.html: Added.
+        * http/tests/css/filters-on-iframes-transform.html: Added.
+        * http/tests/css/filters-on-iframes.html:
+        * http/tests/css/resources/references-external-green.html: Copied from LayoutTests/http/tests/css/resources/references-external.html.
+        * http/tests/css/resources/references-external-red.html: Renamed from LayoutTests/http/tests/css/resources/references-external.html.
+        * http/tests/css/resources/solid-green.html: Added.
+
 2017-06-14  Matt Lewis  <jlewis3@apple.com>
 
         Unreviewed, rolling out r218161.

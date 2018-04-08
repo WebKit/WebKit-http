@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -31,6 +31,7 @@
 #import "AutomationClient.h"
 #import "CacheModel.h"
 #import "DownloadClient.h"
+#import "Logging.h"
 #import "SandboxUtilities.h"
 #import "UIGamepadProvider.h"
 #import "WKObject.h"
@@ -45,6 +46,7 @@
 #import "_WKProcessPoolConfigurationInternal.h"
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CertificateInfo.h>
+#import <WebCore/PluginData.h>
 #import <wtf/RetainPtr.h>
 
 #if PLATFORM(IOS)
@@ -247,6 +249,101 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 
     _processPool->sendToAllProcesses(Messages::WebProcess::SetInjectedBundleParameters(IPC::DataReference(static_cast<const uint8_t*>([data bytes]), [data length])));
 }
+
+#if !TARGET_OS_IPHONE
+
+#if ENABLE(NETSCAPE_PLUGIN_API)
+
+static bool isPluginLoadClientPolicyAcceptable(unsigned policy)
+{
+    return policy <= WebCore::PluginLoadClientPolicyMaximum;
+}
+static HashMap<String, HashMap<String, HashMap<String, uint8_t>>> toPluginLoadClientPoliciesHashMap(NSDictionary* dictionary)
+{
+    __block HashMap<String, HashMap<String, HashMap<String, uint8_t>>> pluginLoadClientPolicies;
+    [dictionary enumerateKeysAndObjectsUsingBlock:^(id nsHost, id nsPoliciesForHost, BOOL *stop) {
+        if (![nsHost isKindOfClass:[NSString class]]) {
+            RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+            return;
+        }
+        if (![nsPoliciesForHost isKindOfClass:[NSDictionary class]]) {
+            RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+            return;
+        }
+
+        String host = (NSString *)nsHost;
+        __block HashMap<String, HashMap<String, uint8_t>> policiesForHost;
+        [nsPoliciesForHost enumerateKeysAndObjectsUsingBlock:^(id nsIdentifier, id nsVersionsToPolicies, BOOL *stop) {
+            if (![nsIdentifier isKindOfClass:[NSString class]]) {
+                RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                return;
+            }
+            if (![nsVersionsToPolicies isKindOfClass:[NSDictionary class]]) {
+                RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                return;
+            }
+
+            String bundleIdentifier = (NSString *)nsIdentifier;
+            __block HashMap<String, uint8_t> versionsToPolicies;
+            [nsVersionsToPolicies enumerateKeysAndObjectsUsingBlock:^(id nsVersion, id nsPolicy, BOOL *stop) {
+                if (![nsVersion isKindOfClass:[NSString class]]) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                if (![nsPolicy isKindOfClass:[NSNumber class]]) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                unsigned policy = ((NSNumber *)nsPolicy).unsignedIntValue;
+                if (!isPluginLoadClientPolicyAcceptable(policy)) {
+                    RELEASE_LOG_ERROR(Plugins, "_resetPluginLoadClientPolicies was called with dictionary in wrong format");
+                    return;
+                }
+                String version = (NSString *)nsVersion;
+                versionsToPolicies.add(version, static_cast<uint8_t>(policy));
+            }];
+            if (!versionsToPolicies.isEmpty())
+                policiesForHost.add(bundleIdentifier, WTFMove(versionsToPolicies));
+        }];
+        if (!policiesForHost.isEmpty())
+            pluginLoadClientPolicies.add(host, WTFMove(policiesForHost));
+    }];
+    return pluginLoadClientPolicies;
+}
+
+static NSDictionary *policiesHashMapToDictionary(const HashMap<String, HashMap<String, HashMap<String, uint8_t>>>& map)
+{
+    auto policies = adoptNS([[NSMutableDictionary alloc] initWithCapacity:map.size()]);
+    for (auto& hostPair : map) {
+        NSString *host = hostPair.key;
+        policies.get()[host] = adoptNS([[NSMutableDictionary alloc] initWithCapacity:hostPair.value.size()]).get();
+        for (auto& bundleIdentifierPair : hostPair.value) {
+            NSString *bundlerIdentifier = bundleIdentifierPair.key;
+            policies.get()[host][bundlerIdentifier] = adoptNS([[NSMutableDictionary alloc] initWithCapacity:bundleIdentifierPair.value.size()]).get();
+            for (auto& versionPair : bundleIdentifierPair.value) {
+                NSString *version = versionPair.key;
+                policies.get()[host][bundlerIdentifier][version] = adoptNS([[NSNumber alloc] initWithUnsignedInt:versionPair.value]).get();
+            }
+        }
+    }
+    return policies.autorelease();
+}
+
+#endif
+
+- (void)_resetPluginLoadClientPolicies:(NSDictionary *)policies
+{
+#if ENABLE(NETSCAPE_PLUGIN_API)
+    _processPool->resetPluginLoadClientPolicies(toPluginLoadClientPoliciesHashMap(policies));
+#endif
+}
+
+-(NSDictionary *)_pluginLoadClientPolicies
+{
+    auto& map = _processPool->pluginLoadClientPolicies();
+    return policiesHashMapToDictionary(map);
+}
+#endif
 
 
 - (id <_WKDownloadDelegate>)_downloadDelegate

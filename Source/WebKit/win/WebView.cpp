@@ -5467,7 +5467,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = prefsPrivate->isFrameFlatteningEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-    settings.setFrameFlatteningEnabled(enabled);
+    settings.setFrameFlattening(enabled ? FrameFlatteningFullyEnabled : FrameFlatteningDisabled);
 
     hr = prefsPrivate->acceleratedCompositingEnabled(&enabled);
     if (FAILED(hr))

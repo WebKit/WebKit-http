@@ -112,8 +112,10 @@ void PageClientImpl::didCommitLoadForMainFrame(const String&, bool)
 {
 }
 
-void PageClientImpl::handleDownloadRequest(DownloadProxy*)
+void PageClientImpl::handleDownloadRequest(DownloadProxy* download)
 {
+    ASSERT(download);
+    m_view.handleDownloadRequest(*download);
 }
 
 void PageClientImpl::didChangeContentSize(const WebCore::IntSize&)
@@ -316,6 +318,11 @@ void PageClientImpl::didRestoreScrollPosition()
 WebCore::UserInterfaceLayoutDirection PageClientImpl::userInterfaceLayoutDirection()
 {
     return WebCore::UserInterfaceLayoutDirection::LTR;
+}
+
+JSGlobalContextRef PageClientImpl::javascriptGlobalContext()
+{
+    return m_view.javascriptGlobalContext();
 }
 
 } // namespace WebKit

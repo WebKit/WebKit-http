@@ -29,13 +29,13 @@
 #include "APIInjectedBundleFormClient.h"
 #include "APIInjectedBundlePageContextMenuClient.h"
 #include "APIInjectedBundlePageLoaderClient.h"
+#include "APIInjectedBundlePageResourceLoadClient.h"
 #include "APIInjectedBundlePageUIClient.h"
 #include "APIObject.h"
 #include "EditingRange.h"
 #include "InjectedBundlePageContextMenuClient.h"
 #include "InjectedBundlePageFullScreenClient.h"
 #include "InjectedBundlePagePolicyClient.h"
-#include "InjectedBundlePageResourceLoadClient.h"
 #include "LayerTreeContext.h"
 #include "MessageReceiver.h"
 #include "MessageSender.h"
@@ -332,7 +332,7 @@ public:
     void setInjectedBundleFormClient(std::unique_ptr<API::InjectedBundle::FormClient>&&);
     void setInjectedBundlePageLoaderClient(std::unique_ptr<API::InjectedBundle::PageLoaderClient>&&);
     void initializeInjectedBundlePolicyClient(WKBundlePagePolicyClientBase*);
-    void initializeInjectedBundleResourceLoadClient(WKBundlePageResourceLoadClientBase*);
+    void setInjectedBundleResourceLoadClient(std::unique_ptr<API::InjectedBundle::ResourceLoadClient>&&);
     void setInjectedBundleUIClient(std::unique_ptr<API::InjectedBundle::PageUIClient>&&);
 #if ENABLE(FULLSCREEN_API)
     void initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenClientBase*);
@@ -345,7 +345,7 @@ public:
     API::InjectedBundle::FormClient& injectedBundleFormClient() { return *m_formClient.get(); }
     API::InjectedBundle::PageLoaderClient& injectedBundleLoaderClient() { return *m_loaderClient; }
     InjectedBundlePagePolicyClient& injectedBundlePolicyClient() { return m_policyClient; }
-    InjectedBundlePageResourceLoadClient& injectedBundleResourceLoadClient() { return m_resourceLoadClient; }
+    API::InjectedBundle::ResourceLoadClient& injectedBundleResourceLoadClient() { return *m_resourceLoadClient; }
     API::InjectedBundle::PageUIClient& injectedBundleUIClient() { return *m_uiClient.get(); }
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient& injectedBundleFullScreenClient() { return m_fullScreenClient; }
@@ -603,7 +603,7 @@ public:
     bool hasRichlyEditableSelection() const;
 
     void setLayerTreeStateIsFrozen(bool);
-    void markLayersVolatile(std::function<void ()> completionHandler = { });
+    void markLayersVolatile(WTF::Function<void ()>&& completionHandler = { });
     void cancelMarkLayersVolatile();
 
     NotificationPermissionRequestManager* notificationPermissionRequestManager();
@@ -1276,6 +1276,7 @@ private:
 
     void registerURLSchemeHandler(uint64_t identifier, const String& scheme);
 
+    void urlSchemeTaskDidPerformRedirection(uint64_t handlerIdentifier, uint64_t taskIdentifier, WebCore::ResourceResponse&&, WebCore::ResourceRequest&&);
     void urlSchemeTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceResponse&);
     void urlSchemeTaskDidReceiveData(uint64_t handlerIdentifier, uint64_t taskIdentifier, const IPC::DataReference&);
     void urlSchemeTaskDidComplete(uint64_t handlerIdentifier, uint64_t taskIdentifier, const WebCore::ResourceError&);
@@ -1384,7 +1385,7 @@ private:
     std::unique_ptr<API::InjectedBundle::FormClient> m_formClient;
     std::unique_ptr<API::InjectedBundle::PageLoaderClient> m_loaderClient;
     InjectedBundlePagePolicyClient m_policyClient;
-    InjectedBundlePageResourceLoadClient m_resourceLoadClient;
+    std::unique_ptr<API::InjectedBundle::ResourceLoadClient> m_resourceLoadClient;
     std::unique_ptr<API::InjectedBundle::PageUIClient> m_uiClient;
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient m_fullScreenClient;
@@ -1517,7 +1518,7 @@ private:
 #endif
 
     WebCore::Timer m_layerVolatilityTimer;
-    Vector<std::function<void ()>> m_markLayersAsVolatileCompletionHandlers;
+    Vector<WTF::Function<void ()>> m_markLayersAsVolatileCompletionHandlers;
     bool m_isSuspendedUnderLock { false };
 
     HashSet<String, ASCIICaseInsensitiveHash> m_mimeTypesWithCustomContentProviders;
@@ -1568,7 +1569,7 @@ private:
     const String m_overrideContentSecurityPolicy;
     const std::optional<double> m_cpuLimit;
 
-    HashMap<String, std::unique_ptr<WebURLSchemeHandlerProxy>> m_schemeToURLSchemeHandlerProxyMap;
+    HashMap<String, RefPtr<WebURLSchemeHandlerProxy>> m_schemeToURLSchemeHandlerProxyMap;
     HashMap<uint64_t, WebURLSchemeHandlerProxy*> m_identifierToURLSchemeHandlerProxyMap;
 };
 

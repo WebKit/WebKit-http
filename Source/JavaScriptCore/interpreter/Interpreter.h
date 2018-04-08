@@ -30,10 +30,7 @@
 #pragma once
 
 #include "ArgList.h"
-#include "CatchScope.h"
-#include "FrameTracers.h"
 #include "JSCJSValue.h"
-#include "JSCell.h"
 #include "JSObject.h"
 #include "Opcode.h"
 #include "StackAlignment.h"
@@ -59,6 +56,7 @@ namespace JSC {
     class ModuleProgramExecutable;
     class Register;
     class JSScope;
+    class SourceCode;
     class StackFrame;
     struct CallFrameClosure;
     struct HandlerInfo;
@@ -101,42 +99,14 @@ namespace JSC {
         CLoopStack& cloopStack() { return m_cloopStack; }
 #endif
         
-        Opcode getOpcode(OpcodeID id)
-        {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-            return m_opcodeTable[id];
-#else
-            return id;
-#endif
-        }
+        static inline Opcode getOpcode(OpcodeID);
 
-        OpcodeID getOpcodeID(Opcode opcode)
-        {
-#if ENABLE(COMPUTED_GOTO_OPCODES)
-            ASSERT(isOpcode(opcode));
-#if USE(LLINT_EMBEDDED_OPCODE_ID)
-            // The OpcodeID is embedded in the int32_t word preceding the location of
-            // the LLInt code for the opcode (see the EMBED_OPCODE_ID_IF_NEEDED macro
-            // in LowLevelInterpreter.cpp).
-            MacroAssemblerCodePtr codePtr(reinterpret_cast<void*>(opcode));
-            int32_t* opcodeIDAddress = reinterpret_cast<int32_t*>(codePtr.dataLocation()) - 1;
-            OpcodeID opcodeID = static_cast<OpcodeID>(*opcodeIDAddress);
-            ASSERT(opcodeID < NUMBER_OF_BYTECODE_IDS);
-            return opcodeID;
-#else
-            return m_opcodeIDTable.get(opcode);
-#endif // USE(LLINT_EMBEDDED_OPCODE_ID)
-
-#else // not ENABLE(COMPUTED_GOTO_OPCODES)
-            return opcode;
-#endif
-        }
-
-        OpcodeID getOpcodeID(const Instruction&);
-        OpcodeID getOpcodeID(const UnlinkedInstruction&);
+        static inline OpcodeID getOpcodeID(Opcode);
+        static inline OpcodeID getOpcodeID(const Instruction&);
+        static inline OpcodeID getOpcodeID(const UnlinkedInstruction&);
 
 #if !ASSERT_DISABLED
-        bool isOpcode(Opcode);
+        static bool isOpcode(Opcode);
 #endif
 
         JSValue executeProgram(const SourceCode&, CallFrame*, JSObject* thisObj);
@@ -172,20 +142,14 @@ namespace JSC {
 
         void dumpRegisters(CallFrame*);
         
-        bool isCallBytecode(Opcode opcode) { return opcode == getOpcode(op_call) || opcode == getOpcode(op_construct) || opcode == getOpcode(op_call_eval) || opcode == getOpcode(op_tail_call); }
-
         VM& m_vm;
 #if !ENABLE(JIT)
         CLoopStack m_cloopStack;
 #endif
         
 #if ENABLE(COMPUTED_GOTO_OPCODES)
-        const Opcode* m_opcodeTable; // Maps OpcodeID => Opcode for compiling
-
 #if !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
-        HashMap<Opcode, OpcodeID>& m_opcodeIDTable; // Maps Opcode => OpcodeID for decompiling
-
-        static HashMap<Opcode, OpcodeID>& opcodeIDTable();
+        static HashMap<Opcode, OpcodeID>& opcodeIDTable(); // Maps Opcode => OpcodeID.
 #endif // !USE(LLINT_EMBEDDED_OPCODE_ID) || !ASSERT_DISABLED
 #endif // ENABLE(COMPUTED_GOTO_OPCODES)
     };

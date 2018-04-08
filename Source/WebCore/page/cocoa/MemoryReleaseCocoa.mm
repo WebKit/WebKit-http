@@ -38,20 +38,15 @@
 #endif
 
 
-extern "C" void _sqlite3_purgeEligiblePagerCacheMemory(void);
-
-static bool isSQLiteMemoryPressureHandlerRegistered { false };
-
 namespace WebCore {
 
 void platformReleaseMemory(Critical)
 {
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)
+    // FIXME: Remove this call to GSFontInitialize() once <rdar://problem/32886715> is fixed.
+    GSFontInitialize();
     GSFontPurgeFontCache();
 #endif
-
-    if (isSQLiteMemoryPressureHandlerRegistered)
-        _sqlite3_purgeEligiblePagerCacheMemory();
 
     for (auto& pool : LayerPool::allLayerPools())
         pool->drain();
@@ -101,11 +96,6 @@ void registerMemoryReleaseNotifyCallbacks()
             GCController::singleton().garbageCollectNow();
         });
     });
-}
-
-void registerSQLiteMemoryPressureHandler()
-{
-    isSQLiteMemoryPressureHandlerRegistered = true;
 }
 
 } // namespace WebCore

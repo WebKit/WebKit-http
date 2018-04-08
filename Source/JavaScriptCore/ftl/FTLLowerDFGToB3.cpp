@@ -81,6 +81,7 @@
 #include "SetupVarargsFrame.h"
 #include "ShadowChicken.h"
 #include "StructureStubInfo.h"
+#include "ThunkGenerators.h"
 #include "VirtualRegister.h"
 #include "Watchdog.h"
 #include <atomic>
@@ -213,9 +214,13 @@ public:
                 GPRReg scratch = params.gpScratch(0);
 
                 unsigned ftlFrameSize = params.proc().frameSize();
+                unsigned maxFrameSize = std::max(exitFrameSize, ftlFrameSize);
 
-                jit.addPtr(MacroAssembler::TrustedImm32(-std::max(exitFrameSize, ftlFrameSize)), fp, scratch);
-                MacroAssembler::Jump stackOverflow = jit.branchPtr(MacroAssembler::Above, addressOfStackLimit, scratch);
+                jit.addPtr(MacroAssembler::TrustedImm32(-maxFrameSize), fp, scratch);
+                MacroAssembler::JumpList stackOverflow;
+                if (UNLIKELY(maxFrameSize > Options::reservedZoneSize()))
+                    stackOverflow.append(jit.branchPtr(MacroAssembler::Above, scratch, fp));
+                stackOverflow.append(jit.branchPtr(MacroAssembler::Above, addressOfStackLimit, scratch));
 
                 params.addLatePath([=] (CCallHelpers& jit) {
                     AllowMacroScratchRegisterUsage allowScratch(jit);
@@ -4072,6 +4077,8 @@ private:
         switch (searchElementEdge.useKind()) {
         case Int32Use:
         case ObjectUse:
+        case SymbolUse:
+        case OtherUse:
         case DoubleRepUse: {
             LBasicBlock loopHeader = m_out.newBlock();
             LBasicBlock loopBody = m_out.newBlock();
@@ -4080,16 +4087,32 @@ private:
             LBasicBlock continuation = m_out.newBlock();
 
             LValue searchElement;
-            if (searchElementEdge.useKind() == Int32Use) {
+            switch (searchElementEdge.useKind()) {
+            case Int32Use:
                 ASSERT(m_node->arrayMode().type() == Array::Int32);
                 speculate(searchElementEdge);
                 searchElement = lowJSValue(searchElementEdge, ManualOperandSpeculation);
-            } else if (searchElementEdge.useKind() == ObjectUse) {
+                break;
+            case ObjectUse:
                 ASSERT(m_node->arrayMode().type() == Array::Contiguous);
                 searchElement = lowObject(searchElementEdge);
-            } else {
+                break;
+            case SymbolUse:
+                ASSERT(m_node->arrayMode().type() == Array::Contiguous);
+                searchElement = lowSymbol(searchElementEdge);
+                break;
+            case OtherUse:
+                ASSERT(m_node->arrayMode().type() == Array::Contiguous);
+                speculate(searchElementEdge);
+                searchElement = lowJSValue(searchElementEdge, ManualOperandSpeculation);
+                break;
+            case DoubleRepUse:
                 ASSERT(m_node->arrayMode().type() == Array::Double);
                 searchElement = lowDouble(searchElementEdge);
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
             }
 
             startIndex = m_out.zeroExtPtr(startIndex);
@@ -4104,18 +4127,30 @@ private:
 
             m_out.appendTo(loopBody, loopNext);
             ValueFromBlock foundResult = m_out.anchor(index);
-            if (searchElementEdge.useKind() == Int32Use) {
+            switch (searchElementEdge.useKind()) {
+            case Int32Use: {
                 // Empty value is ignored because of TagTypeNumber.
                 LValue value = m_out.load64(m_out.baseIndex(m_heaps.indexedInt32Properties, storage, index));
                 m_out.branch(m_out.equal(value, searchElement), unsure(continuation), unsure(loopNext));
-            } else if (searchElementEdge.useKind() == ObjectUse) {
-                // Empty value never matches against object pointers.
+                break;
+            }
+            case ObjectUse:
+            case SymbolUse:
+            case OtherUse: {
+                // Empty value never matches against non-empty JS values.
                 LValue value = m_out.load64(m_out.baseIndex(m_heaps.indexedContiguousProperties, storage, index));
                 m_out.branch(m_out.equal(value, searchElement), unsure(continuation), unsure(loopNext));
-            } else {
+                break;
+            }
+            case DoubleRepUse: {
                 // Empty value is ignored because of NaN.
                 LValue value = m_out.loadDouble(m_out.baseIndex(m_heaps.indexedDoubleProperties, storage, index));
                 m_out.branch(m_out.doubleEqual(value, searchElement), unsure(continuation), unsure(loopNext));
+                break;
+            }
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
+                break;
             }
 
             m_out.appendTo(loopNext, notFound);

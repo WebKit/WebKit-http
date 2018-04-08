@@ -112,7 +112,8 @@ typedef const char* optionString;
     v(optionString, configFile, nullptr, Normal, "file to configure JSC options and logging location") \
     \
     v(bool, useLLInt,  true, Normal, "allows the LLINT to be used if true") \
-    v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
+    v(bool, useJIT,    true, Normal, "allows the executable pages to be allocated for JIT and thunks if true") \
+    v(bool, useBaselineJIT, true, Normal, "allows the baseline JIT to be used if true") \
     v(bool, useDFGJIT, true, Normal, "allows the DFG JIT to be used if true") \
     v(bool, useRegExpJIT, true, Normal, "allows the RegExp JIT to be used if true") \
     v(bool, useDOMJIT, true, Normal, "allows the DOMJIT to be used if true") \
@@ -462,7 +463,8 @@ typedef const char* optionString;
     v(unsigned, webAssemblyFastMemoryPreallocateCount, 0, Normal, "WebAssembly fast memories can be pre-allocated at program startup and remain cached to avoid fragmentation leading to bounds-checked memory. This number is an upper bound on initial allocation as well as total count of fast memories. Zero means no pre-allocation, no caching, and no limit to the number of runtime allocations.") \
     v(bool, useWebAssemblyFastTLS, true, Normal, "If true, we will try to use fast thread-local storage if available on the current platform.") \
     v(bool, useFastTLSForWasmContext, true, Normal, "If true (and fast TLS is enabled), we will store context in fast TLS. If false, we will pin it to a register.") \
-    v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.")
+    v(bool, useCallICsForWebAssemblyToJSCalls, true, Normal, "If true, we will use CallLinkInfo to inline cache Wasm to JS calls.") \
+    v(bool, useObjectRestSpread, true, Normal, "If true, we will enable Object Rest/Spread feature.")
 
 
 enum OptionEquivalence {

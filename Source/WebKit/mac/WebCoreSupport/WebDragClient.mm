@@ -50,6 +50,7 @@
 #import <WebCore/Editor.h>
 #import <WebCore/EditorClient.h>
 #import <WebCore/EventHandler.h>
+#import <WebCore/FloatPoint.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/Image.h>
 #import <WebCore/MainFrame.h>
@@ -58,10 +59,6 @@
 #import <WebCore/PasteboardWriter.h>
 
 using namespace WebCore;
-
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebDragClientAdditionsWebKit1.mm>)
-#import <WebKitAdditions/WebDragClientAdditionsWebKit1.mm>
-#endif
 
 WebDragClient::WebDragClient(WebView* webView)
     : m_webView(webView) 
@@ -104,13 +101,16 @@ void WebDragClient::willPerformDragSourceAction(WebCore::DragSourceAction action
     [[m_webView _UIDelegateForwarder] webView:m_webView willPerformDragSourceAction:(WebDragSourceAction)action fromPoint:mouseDownPoint withPasteboard:[NSPasteboard pasteboardWithName:dataTransfer.pasteboard().name()]];
 }
 
-void WebDragClient::startDrag(DragImage dragImage, const IntPoint& at, const IntPoint& eventPos, const FloatPoint&, DataTransfer& dataTransfer, Frame& frame, DragSourceAction dragSourceAction)
+void WebDragClient::startDrag(DragItem dragItem, DataTransfer& dataTransfer, Frame& frame)
 {
+    auto& dragImage = dragItem.image;
+    auto dragLocationInContentCoordinates = dragItem.dragLocationInContentCoordinates;
+
     RetainPtr<WebHTMLView> htmlView = (WebHTMLView*)[[kit(&frame) frameView] documentView];
     if (![htmlView.get() isKindOfClass:[WebHTMLView class]])
         return;
     
-    NSEvent *event = dragSourceAction == DragSourceActionLink ? frame.eventHandler().currentNSEvent() : [htmlView.get() _mouseDownEvent];
+    NSEvent *event = dragItem.sourceAction == DragSourceActionLink ? frame.eventHandler().currentNSEvent() : [htmlView.get() _mouseDownEvent];
     WebHTMLView* topHTMLView = getTopHTMLView(&frame);
     RetainPtr<WebHTMLView> topViewProtector = topHTMLView;
     
@@ -128,14 +128,14 @@ void WebDragClient::startDrag(DragImage dragImage, const IntPoint& at, const Int
     SEL selector = @selector(webView:dragImage:at:offset:event:pasteboard:source:slideBack:forView:);
     if ([delegate respondsToSelector:selector]) {
         @try {
-            [delegate webView:m_webView dragImage:dragNSImage at:at offset:NSZeroSize event:event pasteboard:pasteboard source:sourceHTMLView slideBack:YES forView:topHTMLView];
+            [delegate webView:m_webView dragImage:dragNSImage at:dragLocationInContentCoordinates offset:NSZeroSize event:event pasteboard:pasteboard source:sourceHTMLView slideBack:YES forView:topHTMLView];
         } @catch (id exception) {
             ReportDiscardedDelegateException(selector, exception);
         }
     } else
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        [topHTMLView dragImage:dragNSImage at:at offset:NSZeroSize event:event pasteboard:pasteboard source:sourceHTMLView slideBack:YES];
+        [topHTMLView dragImage:dragNSImage at:dragLocationInContentCoordinates offset:NSZeroSize event:event pasteboard:pasteboard source:sourceHTMLView slideBack:YES];
 #pragma clang diagnostic pop
 }
 
@@ -202,7 +202,7 @@ void WebDragClient::willPerformDragSourceAction(WebCore::DragSourceAction, const
 {
 }
 
-void WebDragClient::startDrag(WebCore::DragImage, const IntPoint&, const IntPoint&, const FloatPoint&, DataTransfer&, Frame&, WebCore::DragSourceAction)
+void WebDragClient::startDrag(WebCore::DragItem, DataTransfer&, Frame&)
 {
 }
 
@@ -221,6 +221,55 @@ void WebDragClient::declareAndWriteAttachment(const String&, Element&, const URL
 #endif
 
 #endif
+
+#if PLATFORM(IOS)
+
+bool WebDragClient::useLegacyDragClient()
+{
+    // FIXME: Move the iOS drag and drop implementation for WebKit1 off of the legacy drag client.
+    return true;
+}
+
+void WebDragClient::willPerformDragDestinationAction(DragDestinationAction, const DragData&)
+{
+}
+
+WebCore::DragSourceAction WebDragClient::dragSourceActionMaskForPoint(const IntPoint&)
+{
+    return DragSourceActionAny;
+}
+
+void WebDragClient::willPerformDragSourceAction(WebCore::DragSourceAction, const IntPoint&, DataTransfer&)
+{
+}
+
+void WebDragClient::startDrag(DragItem dragItem, DataTransfer&, Frame&)
+{
+    [m_webView _startDrag:dragItem];
+}
+
+void WebDragClient::beginDrag(DragItem, Frame&, const IntPoint&, const IntPoint&, DataTransfer&, DragSourceAction)
+{
+}
+
+void WebDragClient::declareAndWriteDragImage(const String& pasteboardName, Element& element, const URL& url, const String& label, Frame*)
+{
+    if (auto* frame = element.document().frame())
+        frame->editor().writeImageToPasteboard(*Pasteboard::createForDragAndDrop(), element, url, label);
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+void WebDragClient::declareAndWriteAttachment(const String&, Element&, const URL&, const String&, Frame*)
+{
+}
+#endif
+
+void WebDragClient::didConcludeEditDrag()
+{
+    [m_webView _didConcludeEditDataInteraction];
+}
+
+#endif // PLATFORM(IOS)
 
 void WebDragClient::dragControllerDestroyed() 
 {

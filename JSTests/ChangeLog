@@ -1,3 +1,308 @@
+2017-06-27  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: running out of executable memory should throw OoM
+        https://bugs.webkit.org/show_bug.cgi?id=171537
+        <rdar://problem/32963338>
+
+        Reviewed by Saam Barati.
+
+        * wasm.yaml:
+        * wasm/lowExecutableMemory/executable-memory-oom.js: Added.
+        (const.invoke):
+        (failCount.0.catch):
+        (failCount.0.module.undefined.catch):
+        * wasm/lowExecutableMemory/exports-oom.js: Added.
+        (const.type):
+        (const.params):
+        (const.randomProgram):
+        (failCount.0.catch):
+        (failCount.0.module.undefined.catch):
+        * wasm/lowExecutableMemory/imports-oom.js: Added.
+        (const.type):
+        (const.params):
+        (const.randomProgram):
+        (f.imports.push):
+        (failCount.0.catch):
+        (failCount.0.module.undefined.catch):
+
+2017-06-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Saam Barati.
+
+        * stress/object-rest-deconstruct.js: Added.
+        (let.assert):
+        (let.assertPropDescriptor):
+        (catch):
+        (get 3):
+        (foo):
+        (let.src.get y):
+        (let.src.set y):
+        (let.gen):
+
+2017-06-27  Saam Barati  <sbarati@apple.com>
+
+        Function constructor needs to follow the spec and validate parameters and body independently
+        https://bugs.webkit.org/show_bug.cgi?id=173303
+        <rdar://problem/32732526>
+
+        Reviewed by Keith Miller.
+
+        * ChakraCore/test/Function/FuncBodyES5.baseline-jsc:
+        * stress/function-constructor-semantics.js: Added.
+        (assert):
+        (hasSyntaxError):
+        (foo):
+        (async.foo):
+        (testError):
+        (testOK.toString):
+        (toString):
+
+2017-06-26  Saam Barati  <sbarati@apple.com>
+
+        RegExpPrototype.js builtin uses for-of iteration which is almost certainly incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=173740
+
+        Reviewed by Mark Lam.
+
+        * stress/regexp-prototype-replace-builtin-should-not-use-for-of.js: Added.
+        (Array.prototype.Symbol.iterator):
+
+2017-06-26  Saam Barati  <sbarati@apple.com>
+
+        Skip a test on 32-bit platforms since we run out of address space.
+
+        Rubber stamped by Mark Lam.
+
+        * stress/dont-reserve-huge-capacity-lexer.js:
+
+2017-06-26  Saam Barati  <sbarati@apple.com>
+
+        Crash in JSC::Lexer<unsigned char>::setCode
+        https://bugs.webkit.org/show_bug.cgi?id=172754
+
+        Reviewed by Mark Lam.
+
+        * stress/dont-reserve-huge-capacity-lexer.js: Added.
+        (catch):
+
+2017-06-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up Object.entries implementation
+        https://bugs.webkit.org/show_bug.cgi?id=173759
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/object-entries.js: Added.
+        (test):
+
+2017-06-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Reflect.enumerate
+        https://bugs.webkit.org/show_bug.cgi?id=173806
+
+        Reviewed by Yusuke Suzuki.
+
+        * ChakraCore.yaml:
+        * es6.yaml:
+        These tests now fail because they use Reflect.enumerate.
+
+        * test262.yaml:
+        This test now passes, it checked that Reflect.enumerate is undefined!
+
+        * stress/property-name-enumerator-should-not-look-into-indexed-values-when-it-is-a-dictionary.js:
+        Convert to for..in which presented the original issue. See bug <https://webkit.org/b/149811>
+
+        * stress/reflect-enumerate.js: Removed.
+        Remove a test solely for Reflect.enumerate.
+
+2017-06-22  Saam Barati  <sbarati@apple.com>
+
+        ValueRep(DoubleRep(@v)) can not simply convert to @v
+        https://bugs.webkit.org/show_bug.cgi?id=173687
+        <rdar://problem/32855563>
+
+        Reviewed by Mark Lam.
+
+        * stress/dont-strength-reduce-valuerep-of-doublerep.js: Added.
+        (i.catch):
+
+2017-06-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Object.values should be implemented in C++
+        https://bugs.webkit.org/show_bug.cgi?id=173703
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/object-keys-map-values.js: Added.
+        (test):
+        * microbenchmarks/object-values.js: Added.
+        (test):
+        * stress/object-values-changing-properties.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.source.get x):
+        (throw.new.Error):
+        (shouldBe.let.handler.get order):
+        (get let):
+        (shouldBe.let.handler.get return):
+        (let.handler.get order):
+
+2017-06-21  Saam Barati  <sbarati@apple.com>
+
+        eval virtual call is incorrect in the baseline JIT
+        https://bugs.webkit.org/show_bug.cgi?id=173587
+        <rdar://problem/32867897>
+
+        Reviewed by Michael Saboff.
+
+        * stress/do-eval-virtual-call-correctly.js: Added.
+        (assert):
+        (f):
+        (i.test):
+        (catch):
+
+2017-06-20  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Update test262 test expectations after r218581.
+
+        Unreviewed test gardening.
+
+        * test262.yaml:
+
+2017-06-20  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        Revert changes in bug#160417 about extending `null` not being a derived class
+        https://bugs.webkit.org/show_bug.cgi?id=169293
+
+        Reviewed by Saam Barati.
+
+        * stress/class-derived-from-null.js:
+        (assertThrow):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+
+2017-06-13  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] More ArrayIndexOf fixups for various types
+        https://bugs.webkit.org/show_bug.cgi?id=173176
+
+        Reviewed by Saam Barati.
+
+        * stress/array-indexof-arraystorage.js: Added.
+        (shouldBe):
+        (indexOfInt32Other):
+        (indexOfInt32Cell):
+        (indexOfInt32Boolean):
+        (indexOfDoubleOther):
+        (indexOfDoubleCell):
+        (indexOfDoubleBoolean):
+        (indexOfInt32):
+        (indexOfDouble):
+        * stress/array-indexof-constant-folding.js: Added.
+        (shouldBe):
+        (indexOfInt32Other):
+        (indexOfInt32Cell):
+        (indexOfInt32Boolean):
+        (indexOfDoubleOther):
+        (indexOfDoubleCell):
+        (indexOfDoubleBoolean):
+        * stress/array-indexof-hole-and-other.js: Added.
+        (shouldBe):
+        (indexOf):
+        * stress/array-indexof-other.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        (indexOfDouble):
+        (indexOfString):
+        (indexOfObject):
+        * stress/array-indexof-symbol.js: Added.
+        (shouldBe):
+        (indexOfInt32):
+        (indexOfDouble):
+        (indexOfString):
+        (indexOfObject):
+
+2017-06-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Completion values for control flow do not match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+
+        Reviewed by Saam Barati.
+
+        * stress/completion-value.js:
+        Condensed test for completion values in top level statements.
+
+        * stress/super-get-by-id.js:
+        ClassDeclaration when evaled no longer produce values. Convert
+        these to ClassExpressions so they produce the class value.
+        
+        * ChakraCore/test/GlobalFunctions/evalreturns3.baseline-jsc:
+        This is a progression for currect spec behavior.
+
+        * mozilla/mozilla-tests.yaml:
+        This test is now outdated, so mark it as failing for that reason.
+
+        * test262.yaml:
+        Passing all "cptn" completion value tests.
+
+2017-06-17  Keith Miller  <keith_miller@apple.com>
+
+        ArrayBuffer constructor needs to create subclass structures before its buffer
+        https://bugs.webkit.org/show_bug.cgi?id=173510
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2017-06-17  Keith Miller  <keith_miller@apple.com>
+
+        ArrayPrototype methods should use JSValue::toLength for non-Arrays.
+        https://bugs.webkit.org/show_bug.cgi?id=173506
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-baseline tests.
+
+        * ChakraCore/test/Function/apply3.baseline-jsc:
+        * test262.yaml:
+
+2017-06-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add fast path for Object.assign
+        https://bugs.webkit.org/show_bug.cgi?id=173416
+
+        Reviewed by Mark Lam.
+
+        * stress/object-assign-changing-properties.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.source.get x):
+        (throw.new.Error):
+        (shouldBe.let.source.get x):
+        (shouldBe.let.target.set x):
+        (shouldBe.let.target.get x):
+        * stress/object-assign-proxy.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.handler.get order):
+
+2017-06-15  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement Object.assign in C++
+        https://bugs.webkit.org/show_bug.cgi?id=173414
+
+        Reviewed by Saam Barati.
+
+        * stress/object-assign-string-first.js: Added.
+        (shouldBe):
+        (source.get Symbol):
+        (source.get 1):
+        (source.get cocoa):
+
 2017-06-14  JF Bastien  <jfbastien@apple.com>
 
         WebAssembly: remove empty test files

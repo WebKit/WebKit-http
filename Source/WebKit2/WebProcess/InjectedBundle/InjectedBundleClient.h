@@ -27,6 +27,7 @@
 #define InjectedBundleClient_h
 
 #include "APIClient.h"
+#include "APIInjectedBundleBundleClient.h"
 #include "WKBundle.h"
 #include <wtf/Forward.h>
 
@@ -44,16 +45,17 @@ class InjectedBundle;
 class WebPage;
 class WebPageGroupProxy;
 
-class InjectedBundleClient : public API::Client<WKBundleClientBase> {
+class InjectedBundleClient : public API::InjectedBundle::Client, public API::Client<WKBundleClientBase> {
 public:
-    void didCreatePage(InjectedBundle*, WebPage*);
-    void willDestroyPage(InjectedBundle*, WebPage*);
-    void didInitializePageGroup(InjectedBundle*, WebPageGroupProxy*);
-    void didReceiveMessage(InjectedBundle*, const String& messageName, API::Object* messageBody);
-    void didReceiveMessageToPage(InjectedBundle*, WebPage*, const String& messageName, API::Object* messageBody);
+    explicit InjectedBundleClient(const WKBundleClientBase*);
+
+    void didCreatePage(InjectedBundle&, WebPage&) override;
+    void willDestroyPage(InjectedBundle&, WebPage&) override;
+    void didInitializePageGroup(InjectedBundle&, WebPageGroupProxy&) override;
+    void didReceiveMessage(InjectedBundle&, const WTF::String&, API::Object*) override;
+    void didReceiveMessageToPage(InjectedBundle&, WebPage&, const WTF::String&, API::Object*) override;
 };
 
 } // namespace WebKit
-
 
 #endif // InjectedBundleClient_h

@@ -51,7 +51,7 @@ class AudioSampleDataSource;
 class CaptureDeviceInfo;
 class WebAudioSourceProviderAVFObjC;
 
-class CoreAudioCaptureSource final : public RealtimeMediaSource {
+class CoreAudioCaptureSource : public RealtimeMediaSource {
 public:
 
     static CaptureSourceOrError create(const String& deviceID, const MediaConstraints*);
@@ -61,21 +61,24 @@ public:
     void addEchoCancellationSource(AudioSampleDataSource&);
     void removeEchoCancellationSource(AudioSampleDataSource&);
 
-    using MicrophoneDataCallback = std::function<void(const MediaTime& sampleTime, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t sampleCount)>;
+    using MicrophoneDataCallback = WTF::Function<void(const MediaTime& sampleTime, const PlatformAudioData& audioData, const AudioStreamDescription& description, size_t sampleCount)>;
 
     uint64_t addMicrophoneDataConsumer(MicrophoneDataCallback&&);
     void removeMicrophoneDataConsumer(uint64_t);
 
     CMClockRef timebaseClock();
 
-private:
+    void beginInterruption();
+    void endInterruption();
+    void scheduleReconfiguration();
+
+protected:
     CoreAudioCaptureSource(const String& deviceID, const String& label, uint32_t persistentID);
     virtual ~CoreAudioCaptureSource();
 
+private:
     friend class CoreAudioSharedUnit;
     friend class CoreAudioCaptureSourceFactory;
-
-    void scheduleReconfiguration();
 
     bool isCaptureSource() const final { return true; }
     void startProducingData() final;
@@ -88,17 +91,23 @@ private:
     const RealtimeMediaSourceCapabilities& capabilities() const final;
     const RealtimeMediaSourceSettings& settings() const final;
     void settingsDidChange() final;
-    AudioSourceProvider* audioSourceProvider() final;
+
+    bool interrupted() const final;
 
     uint32_t m_captureDeviceID { 0 };
-
-    bool m_isSuspended { false };
 
     mutable std::optional<RealtimeMediaSourceCapabilities> m_capabilities;
     mutable std::optional<RealtimeMediaSourceSettings> m_currentSettings;
 
-    RefPtr<WebAudioSourceProviderAVFObjC> m_audioSourceProvider;
-    bool m_reconfigurationOngoing { false };
+    enum class SuspensionType { None, WhilePaused, WhilePlaying };
+    SuspensionType m_suspendType { SuspensionType::None };
+
+    enum class ReconfigurationState { None, Required, Ongoing };
+    ReconfigurationState m_reconfigurationState { ReconfigurationState::None };
+
+    bool m_reconfigurationRequired { false };
+    bool m_suspendPending { false };
+    bool m_resumePending { false };
 };
 
 } // namespace WebCore

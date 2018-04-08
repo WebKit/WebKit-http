@@ -27,6 +27,10 @@
 #include "HTMLDocument.h"
 #include "HTMLFrameOwnerElement.h"
 #include "JSDOMBindingSecurity.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertNumbers.h"
+#include "JSDOMConvertStrings.h"
+#include "JSDOMWindowProxy.h"
 #include "JSEvent.h"
 #include "JSEventListener.h"
 #include "JSHTMLAudioElement.h"
@@ -515,7 +519,7 @@ JSValue JSDOMWindow::showModalDialog(ExecState& state)
 
     DialogHandler handler(state);
 
-    wrapped().showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(&state), firstDOMWindow(&state), [&handler](DOMWindow& dialog) {
+    wrapped().showModalDialog(urlString, dialogFeaturesString, activeDOMWindow(state), firstDOMWindow(state), [&handler](DOMWindow& dialog) {
         handler.dialogCreated(dialog);
     });
 

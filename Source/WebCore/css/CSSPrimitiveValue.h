@@ -25,11 +25,11 @@
 #include "CSSValue.h"
 #include "CSSValueKeywords.h"
 #include "Color.h"
+#include "ExceptionOr.h"
 #include "LayoutUnit.h"
 #include <utility>
 #include <wtf/Forward.h>
 #include <wtf/MathExtras.h>
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 

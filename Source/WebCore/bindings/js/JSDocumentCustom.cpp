@@ -20,39 +20,12 @@
 #include "config.h"
 #include "JSDocument.h"
 
-#include "ExceptionCode.h"
 #include "Frame.h"
-#include "FrameLoader.h"
-#include "HTMLDocument.h"
-#include "JSCanvasRenderingContext2D.h"
-#include "JSDOMConvert.h"
 #include "JSDOMWindowCustom.h"
 #include "JSHTMLDocument.h"
-#include "JSLocation.h"
 #include "JSXMLDocument.h"
-#include "Location.h"
 #include "NodeTraversal.h"
 #include "SVGDocument.h"
-#include "ScriptController.h"
-#include "TouchList.h"
-#include "XMLDocument.h"
-#include <wtf/GetPtr.h>
-
-#if ENABLE(WEBGL)
-#include "JSWebGLRenderingContext.h"
-#if ENABLE(WEBGL2)
-#include "JSWebGL2RenderingContext.h"
-#endif
-#endif
-
-#if ENABLE(WEBGPU)
-#include "JSWebGPURenderingContext.h"
-#endif
-
-#if ENABLE(TOUCH_EVENTS)
-#include "JSTouch.h"
-#include "JSTouchList.h"
-#endif
 
 using namespace JSC;
 
@@ -112,61 +85,6 @@ JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, Document& docume
     if (auto* wrapper = cachedDocumentWrapper(*state, *globalObject, document))
         return wrapper;
     return toJSNewlyCreated(state, globalObject, Ref<Document>(document));
-}
-
-#if ENABLE(TOUCH_EVENTS)
-JSValue JSDocument::createTouchList(ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    auto touchList = TouchList::create();
-
-    for (size_t i = 0; i < state.argumentCount(); ++i) {
-        auto* item = JSTouch::toWrapped(vm, state.uncheckedArgument(i));
-        if (!item)
-            return JSValue::decode(throwArgumentTypeError(state, scope, i, "touches", "Document", "createTouchList", "Touch"));
-
-        touchList->append(*item);
-    }
-    return toJSNewlyCreated(&state, globalObject(), WTFMove(touchList));
-}
-#endif
-
-JSValue JSDocument::getCSSCanvasContext(JSC::ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(state.argumentCount() < 4))
-        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
-    auto contextId = state.uncheckedArgument(0).toWTFString(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    auto name = state.uncheckedArgument(1).toWTFString(&state);
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    auto width = convert<IDLLong>(state, state.uncheckedArgument(2));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-    auto height = convert<IDLLong>(state, state.uncheckedArgument(3));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    auto* context = wrapped().getCSSCanvasContext(WTFMove(contextId), WTFMove(name), WTFMove(width), WTFMove(height));
-    if (!context)
-        return jsNull();
-
-#if ENABLE(WEBGL)
-    if (is<WebGLRenderingContext>(*context))
-        return toJS(&state, globalObject(), downcast<WebGLRenderingContext>(*context));
-#if ENABLE(WEBGL2)
-    if (is<WebGL2RenderingContext>(*context))
-        return toJS(&state, globalObject(), downcast<WebGL2RenderingContext>(*context));
-#endif
-#endif
-#if ENABLE(WEBGPU)
-    if (is<WebGPURenderingContext>(*context))
-        return toJS(&state, globalObject(), downcast<WebGPURenderingContext>(*context));
-#endif
-
-    return toJS(&state, globalObject(), downcast<CanvasRenderingContext2D>(*context));
 }
 
 void JSDocument::visitAdditionalChildren(SlotVisitor& visitor)

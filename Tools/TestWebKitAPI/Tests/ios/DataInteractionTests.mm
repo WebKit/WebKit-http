@@ -52,6 +52,12 @@ static UIImage *testIconImage()
     return [UIImage imageNamed:@"TestWebKitAPI.resources/icon.png"];
 }
 
+static NSData *testZIPArchive()
+{
+    NSURL *zipFileURL = [[NSBundle mainBundle] URLForResource:@"compressed-files" withExtension:@"zip" subdirectory:@"TestWebKitAPI.resources"];
+    return [NSData dataWithContentsOfURL:zipFileURL];
+}
+
 @implementation UIItemProvider (DataInteractionTests)
 
 - (void)registerDataRepresentationForTypeIdentifier:(NSString *)typeIdentifier withData:(NSData *)data
@@ -112,6 +118,18 @@ static void checkSuggestedNameAndEstimatedSize(DataInteractionSimulator *simulat
     EXPECT_WK_STREQ(suggestedName.UTF8String, sourceItemProvider.suggestedName.UTF8String);
     EXPECT_EQ(estimatedSize.width, sourceItemProvider.estimatedDisplayedSize.width);
     EXPECT_EQ(estimatedSize.height, sourceItemProvider.estimatedDisplayedSize.height);
+}
+
+static void checkStringArraysAreEqual(NSArray<NSString *> *expected, NSArray<NSString *> *observed)
+{
+    EXPECT_EQ(expected.count, observed.count);
+    for (NSUInteger index = 0; index < expected.count; ++index) {
+        NSString *expectedString = [expected objectAtIndex:index];
+        NSString *observedString = [observed objectAtIndex:index];
+        EXPECT_WK_STREQ(expectedString, observedString);
+        if (![expectedString isEqualToString:observedString])
+            NSLog(@"Expected observed string: %@ to match expected string: %@ at index: %tu", observedString, expectedString, index);
+    }
 }
 
 namespace TestWebKitAPI {
@@ -254,6 +272,17 @@ TEST(DataInteractionTests, ContentEditableMoveParagraphs)
     EXPECT_FALSE(secondParagraphOffset == NSNotFound);
     EXPECT_GT(firstParagraphOffset, secondParagraphOffset);
     checkSelectionRectsWithLogging(@[ makeCGRectValue(190, 100, 130, 20), makeCGRectValue(0, 120, 320, 100), makeCGRectValue(0, 220, 252, 20) ], [dataInteractionSimulator finalSelectionRects]);
+}
+
+TEST(DataInteractionTests, DragImageFromContentEditable)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+
+    [webView synchronouslyLoadTestPageNamed:@"contenteditable-and-target"];
+    [dataInteractionSimulator runFrom:CGPointMake(100, 100) to:CGPointMake(100, 300)];
+
+    EXPECT_WK_STREQ("PASS", [webView stringByEvaluatingJavaScript:@"target.textContent"]);
 }
 
 TEST(DataInteractionTests, TextAreaToInput)
@@ -453,6 +482,41 @@ TEST(DataInteractionTests, ExternalSourceHTMLToUploadArea)
 
     NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
     EXPECT_WK_STREQ("text/html", outputValue.UTF8String);
+}
+
+TEST(DataInteractionTests, ExternalSourceZIPArchiveAndURLToSingleFileInput)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"file-uploading"];
+
+    auto archiveProvider = adoptNS([[UIItemProvider alloc] init]);
+    [archiveProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeZipArchive withData:testZIPArchive()];
+
+    auto urlProvider = adoptNS([[UIItemProvider alloc] init]);
+    [urlProvider registerObject:[NSURL URLWithString:@"https://webkit.org"] visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ archiveProvider.get(), urlProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(200, 100) to:CGPointMake(100, 100)];
+
+    NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
+    EXPECT_WK_STREQ("application/zip", outputValue.UTF8String);
+}
+
+TEST(DataInteractionTests, ExternalSourceZIPArchiveToUploadArea)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"file-uploading"];
+
+    auto itemProvider = adoptNS([[UIItemProvider alloc] init]);
+    [itemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeZipArchive withData:testZIPArchive()];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setExternalItemProviders:@[ itemProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(200, 300) to:CGPointMake(100, 300)];
+
+    NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
+    EXPECT_WK_STREQ("application/zip", outputValue.UTF8String);
 }
 
 TEST(DataInteractionTests, ExternalSourceImageAndHTMLToSingleFileInput)
@@ -686,6 +750,64 @@ TEST(DataInteractionTests, ExternalSourceFileURL)
     EXPECT_WK_STREQ("Hello world\nfile:///some/file/that/is/not/real", [webView stringByEvaluatingJavaScript:@"document.body.innerText"]);
 }
 
+TEST(DataInteractionTests, ExternalSourceOverrideDropFileUpload)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"file-uploading"];
+
+    auto simulatedImageItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    NSData *imageData = UIImageJPEGRepresentation(testIconImage(), 0.5);
+    [simulatedImageItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeJPEG withData:imageData];
+
+    auto simulatedHTMLItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    NSData *firstHTMLData = [@"<body contenteditable></body>" dataUsingEncoding:NSUTF8StringEncoding];
+    [simulatedHTMLItemProvider registerDataRepresentationForTypeIdentifier:(NSString *)kUTTypeHTML withData:firstHTMLData];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setOverridePerformDropBlock:^NSArray<UIDragItem *> *(id <UIDropSession> session)
+    {
+        EXPECT_EQ(2UL, session.items.count);
+        UIDragItem *firstItem = session.items[0];
+        UIDragItem *secondItem = session.items[1];
+        EXPECT_TRUE([firstItem.itemProvider.registeredTypeIdentifiers isEqual:@[ (NSString *)kUTTypeJPEG ]]);
+        EXPECT_TRUE([secondItem.itemProvider.registeredTypeIdentifiers isEqual:@[ (NSString *)kUTTypeHTML ]]);
+        return @[ secondItem ];
+    }];
+    [dataInteractionSimulator setExternalItemProviders:@[ simulatedImageItemProvider.get(), simulatedHTMLItemProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(200, 300) to:CGPointMake(100, 300)];
+
+    NSString *outputValue = [webView stringByEvaluatingJavaScript:@"output.value"];
+    EXPECT_WK_STREQ("text/html", outputValue.UTF8String);
+}
+
+TEST(DataInteractionTests, ExternalSourceOverrideDropInsertURL)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"autofocus-contenteditable"];
+    [webView stringByEvaluatingJavaScript:@"getSelection().removeAllRanges()"];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setOverridePerformDropBlock:^NSArray<UIDragItem *> *(id <UIDropSession> session)
+    {
+        NSMutableArray<UIDragItem *> *allowedItems = [NSMutableArray array];
+        for (UIDragItem *item in session.items) {
+            if ([item.itemProvider.registeredTypeIdentifiers containsObject:(NSString *)kUTTypeURL])
+                [allowedItems addObject:item];
+        }
+        EXPECT_EQ(1UL, allowedItems.count);
+        return allowedItems;
+    }];
+
+    auto firstItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    [firstItemProvider registerObject:@"This is a string." visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    auto secondItemProvider = adoptNS([[UIItemProvider alloc] init]);
+    [secondItemProvider registerObject:[NSURL URLWithString:@"https://webkit.org/"] visibility:UIItemProviderRepresentationOptionsVisibilityAll];
+    [dataInteractionSimulator setExternalItemProviders:@[ firstItemProvider.get(), secondItemProvider.get() ]];
+    [dataInteractionSimulator runFrom:CGPointMake(300, 400) to:CGPointMake(100, 300)];
+
+    EXPECT_WK_STREQ("https://webkit.org/", [webView stringByEvaluatingJavaScript:@"editor.textContent"]);
+}
+
 TEST(DataInteractionTests, OverrideDataInteractionOperation)
 {
     RetainPtr<TestWKWebView> webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
@@ -828,6 +950,33 @@ TEST(DataInteractionTests, LinkWithEmptyHREF)
 
     EXPECT_EQ(DataInteractionCancelled, [dataInteractionSimulator phase]);
     EXPECT_WK_STREQ("", [webView editorValue].UTF8String);
+}
+
+TEST(DataInteractionTests, CancelledLiftDoesNotCauseSubsequentDragsToFail)
+{
+    auto webView = adoptNS([[TestWKWebView alloc] initWithFrame:CGRectMake(0, 0, 320, 500)]);
+    [webView synchronouslyLoadTestPageNamed:@"link-and-target-div"];
+
+    auto dataInteractionSimulator = adoptNS([[DataInteractionSimulator alloc] initWithWebView:webView.get()]);
+    [dataInteractionSimulator setConvertItemProvidersBlock:^NSArray *(UIItemProvider *, NSArray *, NSDictionary *)
+    {
+        return @[ ];
+    }];
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+    EXPECT_EQ(DataInteractionCancelled, [dataInteractionSimulator phase]);
+    EXPECT_WK_STREQ("", [webView stringByEvaluatingJavaScript:@"target.textContent"]);
+    NSString *outputText = [webView stringByEvaluatingJavaScript:@"output.textContent"];
+    checkStringArraysAreEqual(@[@"dragstart", @"dragend"], [outputText componentsSeparatedByString:@" "]);
+
+    [webView stringByEvaluatingJavaScript:@"output.innerHTML = ''"];
+    [dataInteractionSimulator setConvertItemProvidersBlock:^NSArray *(UIItemProvider *itemProvider, NSArray *, NSDictionary *)
+    {
+        return @[ itemProvider ];
+    }];
+    [dataInteractionSimulator runFrom:CGPointMake(100, 50) to:CGPointMake(100, 300)];
+    EXPECT_WK_STREQ("PASS", [webView stringByEvaluatingJavaScript:@"target.textContent"]);
+    [webView stringByEvaluatingJavaScript:@"output.textContent"];
+    checkStringArraysAreEqual(@[@"dragstart", @"dragend"], [outputText componentsSeparatedByString:@" "]);
 }
 
 TEST(DataInteractionTests, CustomActionSheetPopover)

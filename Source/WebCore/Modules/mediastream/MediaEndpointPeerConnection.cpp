@@ -52,6 +52,7 @@
 #include "RTCRtpTransceiver.h"
 #include "RTCTrackEvent.h"
 #include "SDPProcessor.h"
+#include <wtf/Function.h>
 #include <wtf/MainThread.h>
 #include <wtf/text/Base64.h>
 
@@ -102,7 +103,7 @@ MediaEndpointPeerConnection::MediaEndpointPeerConnection(RTCPeerConnection& peer
     m_mediaEndpoint->generateDtlsInfo();
 }
 
-static RTCRtpTransceiver* matchTransceiver(const RtpTransceiverVector& transceivers, const std::function<bool(RTCRtpTransceiver&)>& matchFunction)
+static RTCRtpTransceiver* matchTransceiver(const RtpTransceiverVector& transceivers, const WTF::Function<bool(RTCRtpTransceiver&)>& matchFunction)
 {
     for (auto& transceiver : transceivers) {
         if (matchFunction(*transceiver))
@@ -601,9 +602,10 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingRemoteDescript
     return createRTCSessionDescription(m_pendingRemoteDescription.get());
 }
 
-void MediaEndpointPeerConnection::setConfiguration(MediaEndpointConfiguration&& configuration)
+bool MediaEndpointPeerConnection::setConfiguration(MediaEndpointConfiguration&& configuration)
 {
     m_mediaEndpoint->setConfiguration(WTFMove(configuration));
+    return true;
 }
 
 void MediaEndpointPeerConnection::doAddIceCandidate(RTCIceCandidate& rtcCandidate)

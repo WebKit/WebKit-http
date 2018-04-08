@@ -102,6 +102,7 @@ public:
     void getUserMediaInfoForOrigin(WKFrameRef, WKStringRef originKey, bool&, WKRetainPtr<WKStringRef>&);
     WKStringRef getUserMediaSaltForOrigin(WKFrameRef, WKStringRef originKey);
     void setUserMediaPermission(bool);
+    void resetUserMediaPermission();
     void setUserMediaPersistentPermissionForOrigin(bool, WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString);
     void handleUserMediaPermissionRequest(WKFrameRef, WKSecurityOriginRef, WKSecurityOriginRef, WKUserMediaPermissionRequestRef);
     void handleCheckOfUserMediaPermissionForOrigin(WKFrameRef, WKSecurityOriginRef, WKSecurityOriginRef, const WKUserMediaPermissionCheckRef&);
@@ -163,8 +164,10 @@ public:
     void statisticsFireDataModificationHandler();
     void statisticsFireShouldPartitionCookiesHandler();
     void statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKStringRef hostName, bool value);
+    void statisticsFireTelemetryHandler();
     void setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool);
     void setStatisticsShouldClassifyResourcesBeforeDataRecordsRemoval(bool);
+    void setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value);
     void setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double);
     void setStatisticsGrandfatheringTime(double seconds);
     void statisticsClearInMemoryAndPersistentStore();

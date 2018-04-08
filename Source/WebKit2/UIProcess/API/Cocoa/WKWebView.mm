@@ -296,7 +296,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     
     int _activeAnimatedResizeCount;
 
-    Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
+    Vector<WTF::Function<void ()>> _snapshotsDeferredDuringResize;
     RetainPtr<NSMutableArray> _stableStatePresentationUpdateCallbacks;
 
     RetainPtr<WKPasswordView> _passwordView;
@@ -602,7 +602,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
 
     controller.backgroundTaskStartBlock = ^NSUInteger (void (^expirationHandler)())
     {
-        return [[UIApplication sharedApplication] beginBackgroundTaskWithExpirationHandler:expirationHandler];
+        return [[UIApplication sharedApplication] beginBackgroundTaskWithName:@"com.apple.WebKit.DatabaseActivity" expirationHandler:expirationHandler];
     };
     controller.backgroundTaskEndBlock = ^(UIBackgroundTaskIdentifier taskIdentifier)
     {
@@ -1478,6 +1478,8 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
 
     LOG_WITH_STREAM(VisibleRects, stream << "-[WKWebView _didCommitLayerTree:] transactionID " <<  layerTreeTransaction.transactionID() << " _dynamicViewportUpdateMode " << (int)_dynamicViewportUpdateMode);
 
+    BOOL needUpdateVisbleContentRects = _page->updateLayoutViewportParameters(layerTreeTransaction);
+
     if (_dynamicViewportUpdateMode != DynamicViewportUpdateMode::NotResizing) {
         if (_resizeAnimationTransformTransactionID && layerTreeTransaction.transactionID() >= _resizeAnimationTransformTransactionID.value()) {
             _resizeAnimationTransformTransactionID = std::nullopt;
@@ -1513,8 +1515,6 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         [_stableStatePresentationUpdateCallbacks removeAllObjects];
         _stableStatePresentationUpdateCallbacks = nil;
     }
-
-    BOOL needUpdateVisbleContentRects = _page->updateLayoutViewportParameters(layerTreeTransaction);
 
     if (![_contentView _mayDisableDoubleTapGesturesDuringSingleTap])
         [_contentView _setDoubleTapGesturesEnabled:self._allowsDoubleTapGestures];
@@ -4511,7 +4511,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
 - (void)_muteMediaCapture
 {
-    _page->setMuted(WebCore::MediaProducer::CaptureDevicesAreMuted);
+    _page->setMediaStreamCaptureMuted(true);
 }
 
 - (void)_setMediaCaptureEnabled:(BOOL)enabled
@@ -5237,13 +5237,13 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 }
 
 #if PLATFORM(IOS)
-- (_WKDraggableElementInfo *)draggableElementAtPosition:(CGPoint)position
+- (_WKDraggableElementInfo *)_draggableElementAtPosition:(CGPoint)position
 {
     [_contentView ensurePositionInformationIsUpToDate:WebKit::InteractionInformationRequest(WebCore::roundedIntPoint(position))];
     return [_WKDraggableElementInfo infoWithInteractionInformationAtPosition:[_contentView currentPositionInformation]];
 }
 
-- (void)requestDraggableElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKDraggableElementInfo *))block
+- (void)_requestDraggableElementAtPosition:(CGPoint)position completionBlock:(void (^)(_WKDraggableElementInfo *))block
 {
     [_contentView doAfterPositionInformationUpdate:[capturedBlock = makeBlockPtr(block)] (WebKit::InteractionInformationAtPosition information) {
         capturedBlock([_WKDraggableElementInfo infoWithInteractionInformationAtPosition:information]);
@@ -5350,6 +5350,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 
 - (void)_doAfterNextStablePresentationUpdate:(dispatch_block_t)updateBlock
 {
+    if (![self usesStandardContentView]) {
+        dispatch_async(dispatch_get_main_queue(), updateBlock);
+        return;
+    }
+
     auto updateBlockCopy = makeBlockPtr(updateBlock);
 
     if (_stableStatePresentationUpdateCallbacks)
@@ -5540,20 +5545,30 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 // Execute the supplied block after the next transaction from the WebProcess.
 - (void)_doAfterNextPresentationUpdate:(void (^)(void))updateBlock
 {
-    void (^updateBlockCopy)(void) = nil;
-    if (updateBlock)
-        updateBlockCopy = Block_copy(updateBlock);
+#if PLATFORM(IOS)
+    if (![self usesStandardContentView]) {
+        dispatch_async(dispatch_get_main_queue(), updateBlock);
+        return;
+    }
+#endif
+
+    auto updateBlockCopy = makeBlockPtr(updateBlock);
 
     _page->callAfterNextPresentationUpdate([updateBlockCopy](WebKit::CallbackBase::Error error) {
-        if (updateBlockCopy) {
+        if (updateBlockCopy)
             updateBlockCopy();
-            Block_release(updateBlockCopy);
-        }
     });
 }
 
 - (void)_doAfterNextPresentationUpdateWithoutWaitingForPainting:(void (^)(void))updateBlock
 {
+#if PLATFORM(IOS)
+    if (![self usesStandardContentView]) {
+        dispatch_async(dispatch_get_main_queue(), updateBlock);
+        return;
+    }
+#endif
+
     _page->setShouldSkipWaitingForPaintAfterNextViewDidMoveToWindow(true);
     [self _doAfterNextPresentationUpdate:updateBlock];
 }
@@ -5633,6 +5648,11 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #if ENABLE(DATA_INTERACTION)
     [_contentView _simulatePrepareForDataInteractionSession:session completion:completion];
 #endif
+}
+
+- (void)_simulateLongPressActionAtLocation:(CGPoint)location
+{
+    [_contentView _simulateLongPressActionAtLocation:location];
 }
 
 #endif // PLATFORM(IOS)

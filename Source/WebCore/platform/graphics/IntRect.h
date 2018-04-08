@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IntRect_h
-#define IntRect_h
+#pragma once
 
 #include "IntPoint.h"
 #include "LayoutUnit.h"
@@ -254,4 +253,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, const IntRect&);
 
 } // namespace WebCore
 
-#endif // IntRect_h

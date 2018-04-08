@@ -45,6 +45,7 @@
 #include "SubstituteData.h"
 #include "Timer.h"
 #include <wtf/HashSet.h>
+#include <wtf/OptionSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -366,6 +367,8 @@ private:
 
     void cancelPolicyCheckIfNeeded();
     void becomeMainResourceClient();
+
+    void notifyFinishedLoadingIcon(uint64_t callbackIdentifier, SharedBuffer*);
 
     Frame* m_frame { nullptr };
     Ref<CachedResourceLoader> m_cachedResourceLoader;

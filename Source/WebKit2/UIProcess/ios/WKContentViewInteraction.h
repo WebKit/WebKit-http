@@ -39,15 +39,12 @@
 #import "WKSyntheticClickTapGestureRecognizer.h"
 #import <UIKit/UIView.h>
 #import <WebCore/Color.h>
+#import <WebCore/DragActions.h>
 #import <WebCore/FloatQuad.h>
 #import <wtf/BlockPtr.h>
 #import <wtf/Forward.h>
 #import <wtf/Vector.h>
 #import <wtf/text/WTFString.h>
-
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKContentViewInteractionAdditions.h>)
-#import <WebKitAdditions/WKContentViewInteractionAdditions.h>
-#endif
 
 namespace API {
 class OpenPanelParameters;
@@ -59,6 +56,12 @@ class FloatQuad;
 class IntSize;
 class TextStream;
 }
+
+#if ENABLE(DRAG_SUPPORT)
+namespace WebCore {
+struct DragItem;
+}
+#endif
 
 namespace WebKit {
 class InputViewUpdateDeferrer;
@@ -76,7 +79,7 @@ class WebPageProxy;
 @class _UIWebHighlightLongPressGestureRecognizer;
 
 #if ENABLE(DATA_INTERACTION)
-@class WKDataInteractionCaretView;
+@class _UITextDragCaretView;
 #endif
 
 typedef void (^UIWKAutocorrectionCompletionHandler)(UIWKAutocorrectionRects *rectsForInput);
@@ -110,6 +113,32 @@ typedef std::pair<WebKit::InteractionInformationRequest, InteractionInformationC
     M(toggleUnderline)
 
 namespace WebKit {
+
+#if ENABLE(DRAG_SUPPORT)
+
+struct WKDataInteractionState {
+    RetainPtr<UIImage> image;
+    std::optional<WebCore::TextIndicatorData> indicatorData;
+    CGPoint adjustedOrigin { CGPointZero };
+    CGPoint lastGlobalPosition { CGPointZero };
+    CGRect elementBounds { CGRectZero };
+    BOOL didBeginDragging { NO };
+    BOOL isPerformingOperation { NO };
+    BOOL isAnimatingConcludeEditDrag { NO };
+    RetainPtr<id <UIDragSession>> dragSession;
+    RetainPtr<id <UIDropSession>> dropSession;
+    BlockPtr<void()> dragStartCompletionBlock;
+    BlockPtr<void()> dragCancelSetDownBlock;
+    WebCore::DragSourceAction sourceAction { WebCore::DragSourceActionNone };
+
+    String linkTitle;
+    WebCore::URL linkURL;
+
+    RetainPtr<UIView> visibleContentViewSnapshot;
+    RetainPtr<_UITextDragCaretView> caretView;
+};
+
+#endif // ENABLE(DRAG_SUPPORT)
 
 struct WKSelectionDrawingInfo {
     enum class SelectionType { None, Plugin, Range };
@@ -223,9 +252,8 @@ struct WKAutoCorrectionData {
 
 #if ENABLE(DATA_INTERACTION)
     WebKit::WKDataInteractionState _dataInteractionState;
-    RetainPtr<WKDataInteraction> _dataInteraction;
-    RetainPtr<WKDataOperation> _dataOperation;
-    CGPoint _deferredActionSheetRequestLocation;
+    RetainPtr<UIDragInteraction> _dataInteraction;
+    RetainPtr<UIDropInteraction> _dataOperation;
 #endif
 }
 
@@ -233,7 +261,7 @@ struct WKAutoCorrectionData {
 
 @interface WKContentView (WKInteraction) <UIGestureRecognizerDelegate, UIWebTouchEventsGestureRecognizerDelegate, UITextInputPrivate, UIWebFormAccessoryDelegate, UIWKInteractionViewProtocol, WKFileUploadPanelDelegate, WKActionSheetAssistantDelegate
 #if ENABLE(DATA_INTERACTION)
-    , WKDataInteractionDelegate, WKDataOperationDelegate
+    , UIDragInteractionDelegate, UIDropInteractionDelegate
 #endif
 >
 
@@ -303,12 +331,12 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 
 @property (nonatomic, readonly) WebKit::InteractionInformationAtPosition currentPositionInformation;
 - (void)doAfterPositionInformationUpdate:(void (^)(WebKit::InteractionInformationAtPosition))action forRequest:(WebKit::InteractionInformationRequest)request;
-- (void)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request;
+- (BOOL)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request;
 
 #if ENABLE(DATA_INTERACTION)
 - (void)_didPerformDataInteractionControllerOperation:(BOOL)handled;
 - (void)_didHandleStartDataInteractionRequest:(BOOL)started;
-- (void)_startDataInteractionWithImage:(RetainPtr<CGImageRef>)image withIndicatorData:(std::optional<WebCore::TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action;
+- (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const WebCore::DragItem&)item;
 - (void)_didConcludeEditDataInteraction:(std::optional<WebCore::TextIndicatorData>)data;
 - (void)_didChangeDataInteractionCaretRect:(CGRect)previousRect currentRect:(CGRect)rect;
 
@@ -321,6 +349,8 @@ FOR_EACH_WKCONTENTVIEW_ACTION(DECLARE_WKCONTENTVIEW_ACTION_FOR_WEB_VIEW)
 - (NSArray *)_simulatedItemsForSession:(id)session;
 - (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion;
 #endif
+
+- (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 
 @end
 

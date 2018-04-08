@@ -46,6 +46,7 @@
 #include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
+#include <wtf/CrossThreadCopier.h>
 #include <wtf/RunLoop.h>
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -184,10 +185,16 @@ static ProcessAccessType computeWebProcessAccessTypeForDataFetch(OptionSet<Websi
 
 void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void(Vector<WebsiteDataRecord>)>&& completionHandler)
 {
+    fetchDataAndApply(dataTypes, fetchOptions, nullptr, WTFMove(completionHandler));
+}
+
+void WebsiteDataStore::fetchDataAndApply(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, RefPtr<WorkQueue>&& queue, Function<void(Vector<WebsiteDataRecord>)>&& apply)
+{
     struct CallbackAggregator final : ThreadSafeRefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void(Vector<WebsiteDataRecord>)>&& completionHandler)
+        explicit CallbackAggregator(OptionSet<WebsiteDataFetchOption> fetchOptions, RefPtr<WorkQueue>&& queue, Function<void(Vector<WebsiteDataRecord>)>&& apply)
             : fetchOptions(fetchOptions)
-            , completionHandler(WTFMove(completionHandler))
+            , queue(WTFMove(queue))
+            , apply(WTFMove(apply))
         {
         }
 
@@ -266,27 +273,31 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             if (pendingCallbacks)
                 return;
 
-            RunLoop::main().dispatch([callbackAggregator = makeRef(*this)]() mutable {
+            Vector<WebsiteDataRecord> records;
+            records.reserveInitialCapacity(m_websiteDataRecords.size());
+            for (auto& record : m_websiteDataRecords.values())
+                records.uncheckedAppend(WTFMove(record));
 
-                WTF::Vector<WebsiteDataRecord> records;
-                records.reserveInitialCapacity(callbackAggregator->m_websiteDataRecords.size());
+            auto processRecords = [apply = WTFMove(apply), records = WTFMove(records)] () mutable {
+                apply(WTFMove(records));
+            };
 
-                for (auto& record : callbackAggregator->m_websiteDataRecords.values())
-                    records.uncheckedAppend(WTFMove(record));
-
-                callbackAggregator->completionHandler(WTFMove(records));
-            });
+            if (queue)
+                queue->dispatch(WTFMove(processRecords));
+            else
+                RunLoop::main().dispatch(WTFMove(processRecords));
         }
 
         const OptionSet<WebsiteDataFetchOption> fetchOptions;
 
         unsigned pendingCallbacks = 0;
-        Function<void(Vector<WebsiteDataRecord>)> completionHandler;
+        RefPtr<WorkQueue> queue;
+        Function<void(Vector<WebsiteDataRecord>)> apply;
 
         HashMap<String, WebsiteDataRecord> m_websiteDataRecords;
     };
 
-    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(fetchOptions, WTFMove(completionHandler)));
+    RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(fetchOptions, WTFMove(queue), WTFMove(apply)));
 
 #if ENABLE(VIDEO)
     if (dataTypes.contains(WebsiteDataType::DiskCache)) {
@@ -507,21 +518,25 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
     callbackAggregator->callIfNeeded();
 }
 
-void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Vector<String>&& topPrivatelyControlledDomains, Function<void(Vector<WebsiteDataRecord>&&, Vector<String>&&)>&& completionHandler)
+void WebsiteDataStore::fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, const Vector<String>& topPrivatelyControlledDomains, Function<void(Vector<WebsiteDataRecord>&&, HashSet<String>&&)>&& completionHandler)
 {
-    fetchData(dataTypes, fetchOptions, [topPrivatelyControlledDomains = WTFMove(topPrivatelyControlledDomains), completionHandler = WTFMove(completionHandler)](auto&& existingDataRecords) {
+    fetchDataAndApply(dataTypes, fetchOptions, m_queue.copyRef(), [topPrivatelyControlledDomains = CrossThreadCopier<Vector<String>>::copy(topPrivatelyControlledDomains), completionHandler = WTFMove(completionHandler)] (auto&& existingDataRecords) mutable {
+        ASSERT(!RunLoop::isMain());
+
         Vector<WebsiteDataRecord> matchingDataRecords;
-        Vector<String> domainsWithMatchingDataRecords;
+        HashSet<String> domainsWithMatchingDataRecords;
         for (auto&& dataRecord : existingDataRecords) {
-            for (auto&& topPrivatelyControlledDomain : topPrivatelyControlledDomains) {
+            for (auto& topPrivatelyControlledDomain : topPrivatelyControlledDomains) {
                 if (dataRecord.matchesTopPrivatelyControlledDomain(topPrivatelyControlledDomain)) {
                     matchingDataRecords.append(WTFMove(dataRecord));
-                    domainsWithMatchingDataRecords.append(topPrivatelyControlledDomain);
+                    domainsWithMatchingDataRecords.add(topPrivatelyControlledDomain.isolatedCopy());
                     break;
                 }
             }
         }
-        completionHandler(WTFMove(matchingDataRecords), WTFMove(domainsWithMatchingDataRecords));
+        RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), matchingDataRecords = WTFMove(matchingDataRecords), domainsWithMatchingDataRecords = WTFMove(domainsWithMatchingDataRecords)] () mutable {
+            completionHandler(WTFMove(matchingDataRecords), WTFMove(domainsWithMatchingDataRecords));
+        });
     });
 }
     
@@ -1076,9 +1091,9 @@ void WebsiteDataStore::removeData(OptionSet<WebsiteDataType> dataTypes, const Ve
     callbackAggregator->callIfNeeded();
 }
 
-void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Vector<String>&& topPrivatelyControlledDomains, Function<void(Vector<String>&&)>&& completionHandler)
+void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, const Vector<String>& topPrivatelyControlledDomains, Function<void(HashSet<String>&&)>&& completionHandler)
 {
-    fetchDataForTopPrivatelyControlledDomains(dataTypes, fetchOptions, WTFMove(topPrivatelyControlledDomains), [dataTypes, completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)](Vector<WebsiteDataRecord>&& websiteDataRecords, Vector<String>&& domainsWithDataRecords) mutable {
+    fetchDataForTopPrivatelyControlledDomains(dataTypes, fetchOptions, topPrivatelyControlledDomains, [dataTypes, completionHandler = WTFMove(completionHandler), this, protectedThis = makeRef(*this)](Vector<WebsiteDataRecord>&& websiteDataRecords, HashSet<String>&& domainsWithDataRecords) mutable {
         this->removeData(dataTypes, websiteDataRecords, [domainsWithDataRecords = WTFMove(domainsWithDataRecords), completionHandler = WTFMove(completionHandler)]() mutable {
             completionHandler(WTFMove(domainsWithDataRecords));
         });

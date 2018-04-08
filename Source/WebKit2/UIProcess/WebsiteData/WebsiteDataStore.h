@@ -30,7 +30,6 @@
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
-#include <functional>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/OptionSet.h>
@@ -95,11 +94,11 @@ public:
     static void cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage);
 
     void fetchData(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Function<void(Vector<WebsiteDataRecord>)>&& completionHandler);
-    void fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<String>&& topPrivatelyControlledDomains, Function<void(Vector<WebsiteDataRecord>&&, Vector<String>&&)>&& completionHandler);
+    void fetchDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyControlledDomains, Function<void(Vector<WebsiteDataRecord>&&, HashSet<String>&&)>&& completionHandler);
     void topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, OptionSet<WebsiteDataFetchOption> fetchOptions, Function<void(HashSet<String>&&)>&& completionHandler);
     void removeData(OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, Function<void()>&& completionHandler);
     void removeData(OptionSet<WebsiteDataType>, const Vector<WebsiteDataRecord>&, Function<void()>&& completionHandler);
-    void removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, Vector<String>&& topPrivatelyControlledDomains, Function<void(Vector<String>&&)>&& completionHandler);
+    void removeDataForTopPrivatelyControlledDomains(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, const Vector<String>& topPrivatelyControlledDomains, Function<void(HashSet<String>&&)>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
     void shouldPartitionCookiesForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
@@ -128,6 +127,8 @@ public:
 private:
     explicit WebsiteDataStore(WebCore::SessionID);
     explicit WebsiteDataStore(Configuration, WebCore::SessionID);
+
+    void fetchDataAndApply(OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, RefPtr<WorkQueue>&&, Function<void(Vector<WebsiteDataRecord>)>&& apply);
 
     // WebProcessLifetimeObserver.
     void webPageWasAdded(WebPageProxy&) override;

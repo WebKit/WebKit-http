@@ -427,7 +427,7 @@ static void detachViewForPage(PDFPageInfo& page)
     [highlightView setCornerRadius:highlightBorderRadius];
     [highlightView setColor:highlightColor];
 
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     [self addSubview:highlightView.get()];
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
         [highlightView removeFromSuperview];
@@ -706,7 +706,7 @@ static NSStringCompareOptions stringCompareOptions(_WKFindOptions options)
 
 #pragma mark WKActionSheetAssistantDelegate
 
-- (const WebKit::InteractionInformationAtPosition&)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+- (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
     return _positionInformation;
 }

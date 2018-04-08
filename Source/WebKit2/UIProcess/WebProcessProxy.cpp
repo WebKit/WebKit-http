@@ -209,19 +209,19 @@ WebPageProxy* WebProcessProxy::webPage(uint64_t pageID)
     return globalPageMap().get(pageID);
 }
 
-void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, Function<void(Vector<String>)>&& completionHandler)
+void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType> dataTypes, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPage, Function<void (const HashSet<String>&)>&& completionHandler)
 {
     // We expect this to be called on the main thread so we get the default website data store.
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     
     struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
-        explicit CallbackAggregator(Function<void(Vector<String>)>&& completionHandler)
+        explicit CallbackAggregator(Function<void(HashSet<String>)>&& completionHandler)
             : completionHandler(WTFMove(completionHandler))
         {
         }
-        void addDomainsWithDeletedWebsiteData(const Vector<String>& domains)
+        void addDomainsWithDeletedWebsiteData(const HashSet<String>& domains)
         {
-            domainsWithDeletedWebsiteData.appendVector(domains);
+            domainsWithDeletedWebsiteData.add(domains.begin(), domains.end());
         }
         
         void addPendingCallback()
@@ -244,8 +244,8 @@ void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPers
         }
         
         unsigned pendingCallbacks = 0;
-        Function<void(Vector<String>)> completionHandler;
-        Vector<String> domainsWithDeletedWebsiteData;
+        Function<void(HashSet<String>)> completionHandler;
+        HashSet<String> domainsWithDeletedWebsiteData;
     };
     
     RefPtr<CallbackAggregator> callbackAggregator = adoptRef(new CallbackAggregator(WTFMove(completionHandler)));
@@ -257,9 +257,9 @@ void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPers
             continue;
         visitedSessionIDs.add(dataStore.sessionID());
         callbackAggregator->addPendingCallback();
-        dataStore.removeDataForTopPrivatelyControlledDomains(dataTypes, { }, WTFMove(topPrivatelyControlledDomains), [callbackAggregator, shouldNotifyPage, page](Vector<String>&& domainsWithDeletedWebsiteData) {
+        dataStore.removeDataForTopPrivatelyControlledDomains(dataTypes, { }, topPrivatelyControlledDomains, [callbackAggregator, shouldNotifyPage, page](HashSet<String>&& domainsWithDeletedWebsiteData) {
             // When completing the task, we should be getting called on the main thread.
-            ASSERT(isMainThread());
+            ASSERT(RunLoop::isMain());
             
             if (shouldNotifyPage)
                 page.value->postMessageToInjectedBundle("WebsiteDataDeletionForTopPrivatelyOwnedDomainsFinished", nullptr);
@@ -270,10 +270,10 @@ void WebProcessProxy::deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPers
     }
 }
 
-void WebProcessProxy::topPrivatelyControlledDomainsWithWebiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, Function<void(HashSet<String>&&)>&& completionHandler)
+void WebProcessProxy::topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, Function<void(HashSet<String>&&)>&& completionHandler)
 {
     // We expect this to be called on the main thread so we get the default website data store.
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     
     struct CallbackAggregator : ThreadSafeRefCounted<CallbackAggregator> {
         explicit CallbackAggregator(Function<void(HashSet<String>&&)>&& completionHandler)
@@ -321,7 +321,7 @@ void WebProcessProxy::topPrivatelyControlledDomainsWithWebiteData(OptionSet<Webs
         callbackAggregator->addPendingCallback();
         dataStore.topPrivatelyControlledDomainsWithWebsiteData(dataTypes, { }, [callbackAggregator, shouldNotifyPage, page](HashSet<String>&& domainsWithDataRecords) {
             // When completing the task, we should be getting called on the main thread.
-            ASSERT(isMainThread());
+            ASSERT(RunLoop::isMain());
             
             if (shouldNotifyPage)
                 page.value->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
@@ -336,6 +336,12 @@ void WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed()
 {
     for (auto& page : globalPageMap())
         page.value->postMessageToInjectedBundle("WebsiteDataScanForTopPrivatelyControlledDomainsFinished", nullptr);
+}
+    
+void WebProcessProxy::notifyPageStatisticsTelemetryFinished(API::Object* messageBody)
+{
+    for (auto& page : globalPageMap())
+        page.value->postMessageToInjectedBundle("ResourceLoadStatisticsTelemetryFinished", messageBody);
 }
     
 Ref<WebPageProxy> WebProcessProxy::createWebPage(PageClient& pageClient, Ref<API::PageConfiguration>&& pageConfiguration)
@@ -1165,7 +1171,7 @@ void WebProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
     }
 }
 
-void WebProcessProxy::isResponsive(std::function<void(bool isWebProcessResponsive)> callback)
+void WebProcessProxy::isResponsive(WTF::Function<void(bool isWebProcessResponsive)>&& callback)
 {
     if (m_isResponsive == NoOrMaybe::No) {
         if (callback) {
@@ -1178,7 +1184,7 @@ void WebProcessProxy::isResponsive(std::function<void(bool isWebProcessResponsiv
     }
 
     if (callback)
-        m_isResponsiveCallbacks.append(callback);
+        m_isResponsiveCallbacks.append(WTFMove(callback));
 
     responsivenessTimer().start();
     send(Messages::WebProcess::MainThreadPing(), 0);

@@ -27,17 +27,13 @@
 #include "config.h"
 #include "CSSFilterImageValue.h"
 
-#include "CSSImageValue.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
-#include "CachedSVGDocumentReference.h"
-#include "CrossfadeGeneratedImage.h"
 #include "FilterEffectRenderer.h"
 #include "GraphicsContext.h"
 #include "ImageBuffer.h"
 #include "RenderElement.h"
 #include "StyleCachedImage.h"
-#include "StyleGeneratedImage.h"
 #include "StyleResolver.h"
 #include <wtf/text/StringBuilder.h>
 
@@ -164,7 +160,7 @@ void CSSFilterImageValue::FilterSubimageObserverProxy::imageChanged(CachedImage*
         m_ownerValue->filterImageChanged(*rect);
 }
 
-bool CSSFilterImageValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSFilterImageValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (!m_cachedImage)
         return false;

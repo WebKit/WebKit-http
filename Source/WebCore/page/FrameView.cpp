@@ -567,7 +567,7 @@ void FrameView::setMarginHeight(LayoutUnit h)
 
 bool FrameView::frameFlatteningEnabled() const
 {
-    return frame().settings().frameFlatteningEnabled();
+    return frame().settings().frameFlattening() != FrameFlatteningDisabled;
 }
 
 bool FrameView::isFrameFlatteningValidForThisFrame() const
@@ -945,7 +945,7 @@ TiledBacking* FrameView::tiledBacking() const
     if (!backing)
         return nullptr;
 
-    return backing->graphicsLayer()->tiledBacking();
+    return backing->tiledBacking();
 }
 
 uint64_t FrameView::scrollLayerID() const
@@ -2540,6 +2540,9 @@ void FrameView::scrollOffsetChangedViaPlatformWidgetImpl(const ScrollOffset& old
 // These scroll positions are affected by zooming.
 void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const ScrollPosition& newPosition)
 {
+    UNUSED_PARAM(oldPosition);
+    UNUSED_PARAM(newPosition);
+
     Page* page = frame().page();
     Seconds throttlingDelay = page ? page->chrome().client().eventThrottlingDelay() : 0_s;
 
@@ -2548,9 +2551,6 @@ void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const S
         sendScrollEvent();
     } else if (!m_delayedScrollEventTimer.isActive())
         m_delayedScrollEventTimer.startOneShot(throttlingDelay);
-
-    if (Document* document = frame().document())
-        document->sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize());
 
     if (RenderView* renderView = this->renderView()) {
         if (renderView->usesCompositing())
@@ -2562,7 +2562,7 @@ void FrameView::scrollPositionChanged(const ScrollPosition& oldPosition, const S
     viewportContentsChanged();
 }
 
-void FrameView::applyRecursivelyWithVisibleRect(const std::function<void (FrameView& frameView, const IntRect& visibleRect)>& apply)
+void FrameView::applyRecursivelyWithVisibleRect(const WTF::Function<void (FrameView& frameView, const IntRect& visibleRect)>& apply)
 {
     IntRect windowClipRect = this->windowClipRect();
     auto visibleRect = windowToContents(windowClipRect);
@@ -3335,7 +3335,7 @@ void FrameView::updateTilesForExtendedBackgroundMode(ExtendedBackgroundMode mode
     if (!backing)
         return;
 
-    TiledBacking* tiledBacking = backing->graphicsLayer()->tiledBacking();
+    TiledBacking* tiledBacking = backing->tiledBacking();
     if (!tiledBacking)
         return;
 
@@ -3740,16 +3740,16 @@ void FrameView::autoSizeIfEnabled()
         setHorizontalScrollbarLock(false);
         setScrollbarModes(horizonalScrollbarMode, verticalScrollbarMode, true, true);
     }
+    // All the resizing above may have invalidated style (for example if viewport units are being used).
+    document->updateStyleIfNeeded();
+    // FIXME: Use the final layout's result as the content size (webkit.org/b/173561).
+    m_autoSizeContentSize = contentsSize();
     if (m_autoSizeFixedMinimumHeight) {
         auto contentsSize = this->contentsSize();
         resize(contentsSize.width(), std::max(m_autoSizeFixedMinimumHeight, contentsSize.height()));
+        document->updateLayoutIgnorePendingStylesheets();
     }
-    // All the resizing above may have invalidated style (for example if viewport units are being used).
-    document->updateLayoutIgnorePendingStylesheets();
-    m_autoSizeContentSize = contentsSize();
     m_didRunAutosize = true;
-    ASSERT(!needsLayout());
-    // FIXME: Now that autoSizeIfEnabled() actually returns clean, we don't need to call it from layout() anymore (see webkit.org/b/172890).
 }
 
 void FrameView::setAutoSizeFixedMinimumHeight(int fixedMinimumHeight)
@@ -4371,14 +4371,6 @@ void FrameView::willPaintContents(GraphicsContext& context, const IntRect&, Pain
 
     paintingState.isTopLevelPainter = !sCurrentPaintTimeStamp;
 
-    if (paintingState.isTopLevelPainter && MemoryPressureHandler::singleton().isUnderMemoryPressure()) {
-        LOG(MemoryPressure, "Under memory pressure: %s", WTF_PRETTY_FUNCTION);
-
-        // To avoid unnecessary image decoding, we don't prune recently-decoded live resources here since
-        // we might need some live bitmaps on painting.
-        MemoryCache::singleton().prune();
-    }
-
     if (paintingState.isTopLevelPainter)
         sCurrentPaintTimeStamp = monotonicallyIncreasingTime();
 
@@ -4412,11 +4404,6 @@ void FrameView::didPaintContents(GraphicsContext& context, const IntRect& dirtyR
 
     m_paintBehavior = paintingState.paintBehavior;
     m_lastPaintTime = monotonicallyIncreasingTime();
-
-    // Painting can lead to decoding of large amounts of bitmaps
-    // If we are low on memory, wipe them out after the paint.
-    if (paintingState.isTopLevelPainter && MemoryPressureHandler::singleton().isUnderMemoryPressure())
-        MemoryCache::singleton().pruneLiveResources(true);
 
     // Regions may have changed as a result of the visibility/z-index of element changing.
 #if ENABLE(DASHBOARD_SUPPORT)

@@ -37,6 +37,8 @@ class MediaController
         this.container = shadowRoot.appendChild(document.createElement("div"));
         this.container.className = "media-controls-container";
 
+        this._updateControlsIfNeeded();
+
         if (host) {
             host.controlsDependOnPageScaleFactor = this.layoutTraits & LayoutTraits.iOS;
             this.container.appendChild(host.textTrackContainer);
@@ -44,7 +46,6 @@ class MediaController
                 this.mediaDocumentController = new MediaDocumentController(this);
         }
 
-        this._updateControlsIfNeeded();
         scheduler.flushScheduledLayoutCallbacks();
 
         shadowRoot.addEventListener("resize", this);
@@ -69,6 +70,9 @@ class MediaController
             return false;
 
         if (this.media.readyState < HTMLMediaElement.HAVE_METADATA)
+            return false;
+
+        if (this.media.videoWidth || this.media.videoHeight)
             return false;
 
         return !this.media.videoTracks.length;

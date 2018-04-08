@@ -141,9 +141,10 @@ public:
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, Function<void(WebsiteData)>&& completionHandler);
     void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, Function<void()>&& completionHandler);
     void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>&, Function<void()>&& completionHandler);
-    static void deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPages, Function<void(Vector<String>)>&& completionHandler);
-    static void topPrivatelyControlledDomainsWithWebiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, Function<void(HashSet<String>&&)>&& completionHandler);
+    static void deleteWebsiteDataForTopPrivatelyControlledDomainsInAllPersistentDataStores(OptionSet<WebsiteDataType>, Vector<String>&& topPrivatelyControlledDomains, bool shouldNotifyPages, Function<void (const HashSet<String>&)>&& completionHandler);
+    static void topPrivatelyControlledDomainsWithWebsiteData(OptionSet<WebsiteDataType> dataTypes, bool shouldNotifyPage, Function<void(HashSet<String>&&)>&& completionHandler);
     static void notifyPageStatisticsAndDataRecordsProcessed();
+    static void notifyPageStatisticsTelemetryFinished(API::Object* messageBody);
 
     void enableSuddenTermination();
     void disableSuddenTermination();
@@ -172,7 +173,7 @@ public:
 
     void reinstateNetworkProcessAssertionState(NetworkProcessProxy&);
 
-    void isResponsive(std::function<void(bool isWebProcessResponsive)>);
+    void isResponsive(WTF::Function<void(bool isWebProcessResponsive)>&&);
     void didReceiveMainThreadPing();
     void didReceiveBackgroundResponsivenessPing();
 
@@ -287,7 +288,7 @@ private:
     HashMap<String, uint64_t> m_pageURLRetainCountMap;
 
     enum class NoOrMaybe { No, Maybe } m_isResponsive;
-    Vector<std::function<void(bool webProcessIsResponsive)>> m_isResponsiveCallbacks;
+    Vector<WTF::Function<void(bool webProcessIsResponsive)>> m_isResponsiveCallbacks;
 
     VisibleWebPageCounter m_visiblePageCounter;
 

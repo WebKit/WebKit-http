@@ -27,6 +27,7 @@
 
 #include "CredentialStorage.h"
 #include "SessionID.h"
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/text/WTFString.h>
 
@@ -63,7 +64,7 @@ public:
     WEBCORE_EXPORT static void ensurePrivateBrowsingSession(SessionID, const String& identifierBase = String());
     WEBCORE_EXPORT static void ensureSession(SessionID, const String& identifierBase = String());
     WEBCORE_EXPORT static void destroySession(SessionID);
-    WEBCORE_EXPORT static void forEach(std::function<void(const WebCore::NetworkStorageSession&)>);
+    WEBCORE_EXPORT static void forEach(const WTF::Function<void(const WebCore::NetworkStorageSession&)>&);
 
     WEBCORE_EXPORT static void switchToNewTestingSession();
 

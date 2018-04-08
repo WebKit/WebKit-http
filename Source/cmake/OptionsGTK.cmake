@@ -2,7 +2,7 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 17)
-set(PROJECT_VERSION_MICRO 3)
+set(PROJECT_VERSION_MICRO 4)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
@@ -14,8 +14,8 @@ endif ()
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 59 0 22)
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 24 3 6)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 60 0 23)
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 24 4 6)
 
 # These are shared variables, but we special case their definition so that we can use the
 # CMAKE_INSTALL_* variables that are populated by the GNUInstallDirs macro.
@@ -92,7 +92,7 @@ WEBKIT_OPTION_DEFINE(USE_LIBSECRET "Whether to enable the persistent credential 
 
 # Private options specific to the GTK+ port. Changing these options is
 # completely unsupported. They are intended for use only by WebKit developers.
-WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE OFF)
+WEBKIT_OPTION_DEFINE(USE_GSTREAMER_GL "Whether to enable support for GStreamer GL" PRIVATE ON)
 WEBKIT_OPTION_DEFINE(USE_GSTREAMER_MPEGTS "Whether to enable support for MPEG-TS" PRIVATE OFF)
 WEBKIT_OPTION_DEFINE(USE_REDIRECTED_XCOMPOSITE_WINDOW "Whether to use a Redirected XComposite Window for accelerated compositing in X11." PRIVATE ON)
 
@@ -271,6 +271,10 @@ if (ENABLE_MEDIA_STREAM OR ENABLE_WEB_RTC)
 endif ()
 
 if (ENABLE_SUBTLE_CRYPTO)
+    find_package(Libtasn1 REQUIRED)
+    if (NOT LIBTASN1_FOUND)
+        message(FATAL_ERROR "libtasn1 is required to enable Web Crypto API support.")
+    endif ()
     if (LIBGCRYPT_VERSION VERSION_LESS 1.7.0)
         message(FATAL_ERROR "libgcrypt 1.7.0 is required to enable Web Crypto API support.")
     endif ()
@@ -360,8 +364,13 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     endif ()
 
     if (USE_GSTREAMER_GL)
-        if (NOT PC_GSTREAMER_GL_FOUND)
-            message(FATAL_ERROR "GStreamerGL is needed for USE_GSTREAMER_GL.")
+        if (PC_GSTREAMER_VERSION VERSION_LESS "1.10")
+            set(USE_GSTREAMER_GL OFF)
+            message(STATUS "Disabling GSTREAMER_GL as the GStreamer version is older than 1.10.")
+        else ()
+            if (NOT PC_GSTREAMER_GL_FOUND)
+                message(FATAL_ERROR "GStreamerGL is needed for USE_GSTREAMER_GL.")
+            endif ()
         endif ()
     endif ()
 

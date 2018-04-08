@@ -1,3 +1,362 @@
+2017-06-28  Simon Fraser  <simon.fraser@apple.com>
+
+        Mark the GraphicsContext as accelerated when the WebHTMLView's layer is drawing asynchronously
+        https://bugs.webkit.org/show_bug.cgi?id=173899
+        rdar://problem/32994474
+
+        Reviewed by Tim Horton.
+
+        When the WebHTMLView is layer-backed, and -drawsAsynchronously on its layer is YES,
+        then mark the GraphicsContext that WebCore is using for drawing as accelerated, so
+        that ImageBuffer::createCompatibleBuffer() creates appropriately matched buffers.
+
+        Also clean up WebFrame a little, sharing code that checks whether the WebFrame's
+        documentView is a WebHTMLView.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _webHTMLDocumentView]):
+        (-[WebFrame _paintBehaviorForDestinationContext:]):
+        (-[WebFrame _drawRect:contentsOnly:]):
+        (-[WebFrame setTimeoutsPaused:]):
+        (-[WebFrame prepareForPause]):
+        (-[WebFrame resumeFromPause]):
+        (-[WebFrame resetTextAutosizingBeforeLayout]):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView drawLayer:inContext:]):
+        (-[WebHTMLView _web_isDrawingIntoAcceleratedLayer]):
+        * WebView/WebHTMLViewInternal.h:
+
+2017-06-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Support dragging out of contenteditable areas without a prior selection
+        https://bugs.webkit.org/show_bug.cgi?id=173854
+        <rdar://problem/32236827>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Vends some information from the DragItem passed into -[WebView _startDrag:] through the WebView as SPI for
+        WebKit1 clients. No behavior change with these changes alone -- see <rdar://problem/32991062> for more detail.
+
+        * WebView/WebView.mm:
+        (-[WebView _startDrag:]):
+        (-[WebView _dragSourceAction]):
+        (-[WebView _draggedLinkTitle]):
+        (-[WebView _draggedLinkURL]):
+        (-[WebView _draggedElementBounds]):
+        (-[WebView _endedDataInteraction:global:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewPrivate.h:
+
+2017-06-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor drag start codepaths to plumb a DragItem to client layers
+        https://bugs.webkit.org/show_bug.cgi?id=173832
+        Work towards <rdar://problem/32236827>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Refactor code used to start a drag in WebKit1 to plumb a single DragItem from DragController to the client layer
+        in WebDragClient that contains all the information needed to begin a drag. Also renames _setDataInteractionData:
+        to _startDrag: to match logic used to start a drag on other platforms.
+
+        No behavior change -- the same information should be propagated to AppKit and UIKit when beginning a drag, only
+        through the DragItem struct.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+        (WebDragClient::dragSourceActionMaskForPoint):
+        (WebDragClient::willPerformDragSourceAction):
+        (WebDragClient::beginDrag):
+        * WebView/WebView.mm:
+        (-[WebView _startDrag:]):
+        (-[WebView _setDataInteractionData:textIndicator:atClientPosition:anchorPoint:action:]): Deleted.
+        * WebView/WebViewInternal.h:
+
+2017-06-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive headers from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=173812
+
+        Reviewed by Darin Adler.
+
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        * WebView/WebView.mm:
+
+2017-06-23  Tim Horton  <timothy_horton@apple.com>
+
+        Remove an unused typedef from WebFrameLoaderClient
+        https://bugs.webkit.org/show_bug.cgi?id=173795
+
+        Reviewed by Simon Fraser.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        This unused typedef in the global namespace conflicts with one in a macOS system header.
+        Also... it's unused.
+        Remove it.
+
+2017-06-23  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive headers from WebCore/{bindings,css,dom}
+        https://bugs.webkit.org/show_bug.cgi?id=173766
+
+        Reviewed by Simon Fraser.
+
+        * DOM/DOMInternal.mm:
+
+2017-06-22  Daniel Bates  <dabates@apple.com>
+
+        Make FrameLoadRequest a move-only type
+        https://bugs.webkit.org/show_bug.cgi?id=173682
+
+        Reviewed by Alex Christensen and Darin Adler.
+
+        A FrameLoadRequest groups together the information to perform a load into a single object
+        that is more manageable to pass around than its constituent parts. Code that receives a
+        FrameLoadRequest is expected to extract out the information it needs to complete its task.
+        And it does not make sense to re-use the same FrameLoadRequest object for more than one
+        load. Therefore, it is sufficient to make FrameLoadRequest a move-only type.
+
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController webPlugInContainerLoadRequest:inFrame:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+
+2017-06-21  Antoine Quint  <graouts@apple.com>
+
+        Ensure DRT always logs rAF suspension debugging code
+        https://bugs.webkit.org/show_bug.cgi?id=173681
+
+        Reviewed by Tim "Mr. T" Horton.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences shouldLogScriptedAnimationControllerSuspensionChange]): Deleted.
+        (-[WebPreferences setShouldLogScriptedAnimationControllerSuspensionChange:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-06-21  Daniel Bates  <dabates@apple.com>
+
+        Cleanup FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=173564
+        <rdar://problem/32903570>
+
+        Reviewed by Brent Fulgham.
+
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]): Move FrameLoadRequest instantiation
+        into a local variable and use C++11 brace initialization syntax to make it easier to identify
+        the arguments passed to FrameLoader::loadFrameRequest().
+
+2017-06-21  Antoine Quint  <graouts@apple.com>
+
+        Add logging to identify when the Page suspends scripted animations
+        https://bugs.webkit.org/show_bug.cgi?id=173626
+
+        Reviewed by Tim Horton.
+
+        Add a new preference to control the new shouldLogScriptedAnimationControllerSuspensionChange settings
+        through WebKit. This is specific to WK1 since the issue we're trying to pinpoint only occurs on WK1 bots.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences shouldLogScriptedAnimationControllerSuspensionChange]):
+        (-[WebPreferences setShouldLogScriptedAnimationControllerSuspensionChange:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Disable font variations on macOS Sierra and iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=173618
+        <rdar://problem/32879164>
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-20  Daniel Bates  <dabates@apple.com>
+
+        Have FrameLoadRequest takes a Frame& instead of a Frame*
+        https://bugs.webkit.org/show_bug.cgi?id=173614
+        <rdar://problem/32884890>
+
+        Reviewed by Brent Fulgham.
+
+        * Plugins/WebPluginController.mm:
+        (-[WebPluginController webPlugInContainerLoadRequest:inFrame:]):
+        * WebView/WebFrame.mm:
+        (-[WebFrame loadRequest:]):
+        (-[WebFrame _loadData:MIMEType:textEncodingName:baseURL:unreachableURL:]):
+
+2017-06-19  Frederic Wang  <fwang@igalia.com>
+
+        [Mac] Add an experimental feature setting for async frame scrolling
+        https://bugs.webkit.org/show_bug.cgi?id=173359
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebPreferenceKeysPrivate.h: Declare key for async frame scrolling preference.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Initialize async frame scrolling preference to false.
+        (-[WebPreferences asyncFrameScrollingEnabled]): Define getter for async frame scrolling.
+        (-[WebPreferences setAsyncFrameScrollingEnabled:]): Define setter for async frame scrolling.
+        * WebView/WebPreferencesPrivate.h: Declare setter and getter.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Take into account preference update for async frame
+        scrolling.
+
+2017-06-19  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in more places in WebCore/
+        https://bugs.webkit.org/show_bug.cgi?id=173535
+
+        Reviewed by Antti Koivisto.
+
+        Use WTF::Function instead of std::function in more places in WebCore/ to avoid copying.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::setUpPolicyListener):
+        (-[WebFramePolicyListener initWithFrame:policyFunction:]):
+        (-[WebFramePolicyListener initWithFrame:policyFunction:appLinkURL:]):
+
+2017-05-14 Frederic Wang  <fwang@igalia.com>
+
+        Add heuristic to avoid flattening "fullscreen" iframes
+        https://bugs.webkit.org/show_bug.cgi?id=171914
+
+        Reviewed by Simon Fraser.
+
+        This commit adjusts the mac/ios preference interface to treat frame flattening as an enum.
+
+        * WebView/WebPreferenceKeysPrivate.h: Rename the key.
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Handle frame flattening as an enum.
+        (-[WebPreferences isFrameFlatteningEnabled]): Ditto.
+        (-[WebPreferences setFrameFlatteningEnabled:]): Ditto.
+        (-[WebPreferences frameFlattening]): New function to get frame flattening as an enum.
+        (-[WebPreferences setFrameFlattening:]): New function to set frame flattening as an enum.
+        * WebView/WebPreferencesPrivate.h: Ditto.
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Ditto.
+        * WebView/WebPreferencesPrivate.h: Add new enum definition.
+
+2017-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in WebKit2/
+        https://bugs.webkit.org/show_bug.cgi?id=173504
+
+        Reviewed by Darin Adler.
+
+        Use WTF::Function instead of std::function in WebKit2/ to avoid
+        unnecessary copying.
+
+        * Plugins/Hosted/HostedNetscapePluginStream.h:
+        * Plugins/Hosted/HostedNetscapePluginStream.mm:
+        (WebKit::HostedNetscapePluginStream::willSendRequest):
+        * Plugins/WebNetscapePluginStream.h:
+        * Plugins/WebNetscapePluginStream.mm:
+        (WebNetscapePluginStream::willSendRequest):
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::canMakePaymentsWithActiveCard):
+        (WebPaymentCoordinatorClient::openPaymentSetup):
+
+2017-06-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for HTMLDocument
+        https://bugs.webkit.org/show_bug.cgi?id=173444
+
+        Reviewed by Darin Adler.
+
+        * DOM/DOMHTMLDocument.mm:
+        (-[DOMHTMLDocument linkColor]):
+        (-[DOMHTMLDocument setLinkColor:]):
+        (-[DOMHTMLDocument write:]):
+        (-[DOMHTMLDocument writeln:]):
+        Update for new signature of write/writeln and rename of linkColor to linkColorForBindings.
+
+2017-06-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Upstream iOS drag and drop implementation into OpenSource WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=173366
+        <rdar://problem/32767014>
+
+        Reviewed by Tim Horton.
+
+        Move pieces of iOS WebKit1 drag and drop implementation into OpenSource. No change in behavior.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::useLegacyDragClient):
+        (WebDragClient::willPerformDragDestinationAction):
+        (WebDragClient::dragSourceActionMaskForPoint):
+        (WebDragClient::willPerformDragSourceAction):
+        (WebDragClient::startDrag):
+        (WebDragClient::beginDrag):
+        (WebDragClient::declareAndWriteDragImage):
+        (WebDragClient::declareAndWriteAttachment):
+        (WebDragClient::didConcludeEditDrag):
+        * WebView/WebView.mm:
+        (-[WebView _setDataInteractionData:textIndicator:atClientPosition:anchorPoint:action:]):
+        (-[WebView _getDataInteractionData]):
+        (-[WebView dragDataForSession:client:global:operation:]):
+        (-[WebView _enteredDataInteraction:client:global:operation:]):
+        (-[WebView _updatedDataInteraction:client:global:operation:]):
+        (-[WebView _exitedDataInteraction:client:global:operation:]):
+        (-[WebView _performDataInteraction:client:global:operation:]):
+        (-[WebView _tryToPerformDataInteraction:client:global:operation:]):
+        (-[WebView _endedDataInteraction:global:]):
+        (-[WebView _didConcludeEditDataInteraction]):
+        (floatRectsForCGRectArray): Deleted.
+        (-[WebView _createImageWithPlatterForImage:boundingRect:contentScaleFactor:clippingRects:]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate dealloc]):
+        * WebView/WebViewPrivate.h:
+
+2017-06-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] [WK1] Dropping links onto UIWebViews should not trigger navigation by default
+        https://bugs.webkit.org/show_bug.cgi?id=173454
+        <rdar://problem/31720671>
+
+        Reviewed by Tim Horton.
+
+        Adds -webView:dragDestinationActionMaskForSession: as SPI to WebUIDelegate.
+        If unimplemented, the default UI delegate allows all actions except for URL loading.
+
+        * DefaultDelegates/WebDefaultUIDelegate.mm:
+        (-[WebDefaultUIDelegate webView:dragDestinationActionMaskForSession:]):
+        * WebView/WebUIDelegatePrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView dragDestinationActionMaskForSession:]):
+
+2017-06-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Using -[WebItemProviderPasteboard setItemProviders:] to swap out item providers before a drop breaks item provider loading
+        https://bugs.webkit.org/show_bug.cgi?id=173338
+        <rdar://problem/32777720>
+
+        Reviewed by Tim Horton.
+
+        Rename updatePreferredTypeIdentifiers to updateSupportedTypeIdentifiers.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::updateSupportedTypeIdentifiers):
+        (WebPlatformStrategies::updatePreferredTypeIdentifiers): Deleted.
+
 2017-06-13  Daniel Bates  <dabates@apple.com>
 
         Implement W3C Secure Contexts Draft Specification

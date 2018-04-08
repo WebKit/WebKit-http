@@ -849,6 +849,7 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setWebAnimationsEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
+    // FIXME: AsyncFrameScrollingEnabled
     [preferences setWebRTCLegacyAPIEnabled:YES];
     [preferences setCredentialManagementEnabled:YES];
     [preferences setReadableByteStreamAPIEnabled:YES];
@@ -903,7 +904,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setJavaScriptRuntimeFlags:WebKitJavaScriptRuntimeFlagsAllEnabled];
     [preferences setLoadsImagesAutomatically:YES];
     [preferences setLoadsSiteIconsIgnoringImageLoadingPreference:NO];
-    [preferences setFrameFlatteningEnabled:NO];
+    [preferences setFrameFlattening:WebKitFrameFlatteningDisabled];
+    [preferences setAsyncFrameScrollingEnabled:NO];
     [preferences setSpatialNavigationEnabled:NO];
     [preferences setMetaRefreshEnabled:YES];
 
@@ -1050,7 +1052,7 @@ static void setDefaultsToConsistentValuesForTesting()
     [[NSUserDefaults standardUserDefaults] setVolatileDomain:processInstanceDefaults forName:NSArgumentDomain];
 }
 
-static void runThread(void* arg)
+static void runThread()
 {
     static ThreadIdentifier previousId = 0;
     ThreadIdentifier currentId = currentThread();
@@ -1059,10 +1061,10 @@ static void runThread(void* arg)
     previousId = currentId;
 }
 
-static void* runPthread(void* arg)
+static void* runPthread(void*)
 {
-    runThread(arg);
-    return 0;
+    runThread();
+    return nullptr;
 }
 
 static void testThreadIdentifierMap()
@@ -1077,7 +1079,7 @@ static void testThreadIdentifierMap()
 
     // Now create another thread using WTF. On OSX, it will have the same pthread handle
     // but should get a different RefPtr<Thread>.
-    Thread::create(runThread, 0, "DumpRenderTree: test");
+    Thread::create("DumpRenderTree: test", runThread);
 }
 
 static void allocateGlobalControllers()
@@ -1825,6 +1827,7 @@ static void resetWebViewToConsistentStateBeforeTesting(const TestOptions& option
     setlocale(LC_ALL, "");
 
     if (gTestRunner) {
+        gTestRunner->resetPageVisibility();
         WebCoreTestSupport::resetInternalsObject([mainFrame globalContext]);
         // in the case that a test using the chrome input field failed, be sure to clean up for the next test
         gTestRunner->removeChromeInputField();

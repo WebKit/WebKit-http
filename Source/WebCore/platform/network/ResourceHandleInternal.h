@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "AuthenticationChallenge.h"
 #include "NetworkingContext.h"
 #include "ResourceHandle.h"
 #include "ResourceHandleClient.h"
 #include "ResourceRequest.h"
-#include "AuthenticationChallenge.h"
 #include "Timer.h"
 
 #if USE(CFURLCONNECTION)

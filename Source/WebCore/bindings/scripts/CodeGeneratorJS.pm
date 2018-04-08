@@ -179,22 +179,41 @@ sub AddStringifierOperationIfNeeded
 {
     my $interface = shift;
 
-    foreach my $attribute (@{$interface->attributes}) {
-        next unless $attribute->isStringifier;
+    foreach my $property (@{$interface->attributes}, @{$interface->operations}, @{$interface->anonymousOperations}) {
+        next unless $property->isStringifier;
+
+        if (ref($property) eq "IDLAttribute") {
+            assert("stringifier can only be used on attributes with type DOMString or USVString") unless $property->type->name eq "DOMString" || $property->type->name eq "USVString";
+        }
+
+        if (ref($property) eq "IDLOperation") {
+            assert("stringifier can only be used on operations with a return type of DOMString") unless $property->type->name eq "DOMString";
+            assert("stringifier can only be used on operations with zero arguments") unless scalar(@{$property->arguments}) == 0;
+
+            # Don't duplicate the operation if it was declared with the name 'toString'.
+            return if $property->name eq "toString";
+        }
 
         my $stringifier = IDLOperation->new();
         $stringifier->name("toString");
+        $stringifier->type(IDLParser::cloneType($property->type));
+        $stringifier->isStringifier(1);
 
-        my $extendedAttributeList = {};
-        $extendedAttributeList->{ImplementedAs} = $attribute->name;
-        $stringifier->extendedAttributes($extendedAttributeList);
-        die "stringifier can only be used on attributes of String types" unless $codeGenerator->IsStringType($attribute->type);
-        
-        my $type = IDLParser::cloneType($attribute->type);
-        $stringifier->type($type);
+        IDLParser::copyExtendedAttributes($stringifier->extendedAttributes, $property->extendedAttributes);
+
+        if ($property->name && !$stringifier->extendedAttributes->{ImplementedAs}) {
+            $stringifier->extendedAttributes->{ImplementedAs} = $property->name;
+        }
+
+        # If the stringifier was declared as read-write attribute and had [CEReactions], we need to remove
+        # it from the operation, as the operation should act like attribute getter, which doesn't respect
+        # [CEReactions].
+        if (ref($property) eq "IDLAttribute" && !$property->isReadOnly && $stringifier->extendedAttributes->{CEReactions}) {
+             delete $stringifier->extendedAttributes->{CEReactions};
+        }
 
         push(@{$interface->operations}, $stringifier);
-        last;
+        return;
     }
 }
 
@@ -290,15 +309,128 @@ sub AddToImplIncludesForIDLType
 sub AddToIncludesForIDLType
 {
     my ($type, $includesRef, $conditional) = @_;
-    
-    return if $codeGenerator->IsPrimitiveType($type);
-    return if $codeGenerator->IsStringType($type);
-    return if $codeGenerator->IsTypedArrayType($type);
-    return if $type->name eq "any";
-    return if $type->name eq "object";
-    
+
+    if ($type->isNullable) {
+        AddToIncludes("JSDOMConvertNullable.h", $includesRef, $conditional);
+    }
+
+    if ($type->extendedAttributes->{OverrideIDLType}) {
+        my $overrideTypeName = $type->extendedAttributes->{OverrideIDLType};
+        if ($overrideTypeName eq "IDLIDBKey") {
+            AddToIncludes("JSDOMConvertIndexedDB.h", $includesRef, $conditional);
+            return;
+        }
+
+        if ($overrideTypeName eq "IDLWebGLAny") {
+            AddToIncludes("JSDOMConvertWebGL.h", $includesRef, $conditional);
+            return;
+        }
+    }
+
+    if ($type->name eq "any") {
+        AddToIncludes("JSDOMConvertAny.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "boolean") {
+        AddToIncludes("JSDOMConvertBoolean.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsBufferSourceType($type)) {
+        AddToIncludes("JSDOMConvertBufferSource.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsCallbackFunction($type) || $codeGenerator->IsCallbackInterface($type)) {
+        AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertCallbacks.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "Date") {
+        AddToIncludes("JSDOMConvertDate.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsExternalDictionaryType($type)) {
+        AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertDictionary.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsExternalEnumType($type)) {
+        AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertEnumeration.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "EventListener") {
+        AddToIncludes("JSEventListener.h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertEventListener.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsInterfaceType($type)) {
+        AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertInterface.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "JSON") {
+        AddToIncludes("JSDOMConvertJSON.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsNumericType($type)) {
+        AddToIncludes("JSDOMConvertNumbers.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "object") {
+        AddToIncludes("JSDOMConvertObject.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsPromiseType($type)) {
+        AddToIncludes("JSDOMPromise.h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertPromise.h", $includesRef, $conditional);
+
+        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsRecordType($type)) {
+        AddToIncludes("<wtf/Vector.h>", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertRecord.h", $includesRef, $conditional);
+
+        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
+        AddToIncludesForIDLType(@{$type->subtypes}[1], $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsSequenceOrFrozenArrayType($type)) {
+        AddToIncludes("<runtime/JSArray.h>", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertSequences.h", $includesRef, $conditional);
+
+        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
+        return;
+    }
+
+    if ($type->name eq "SerializedScriptValue") {
+        AddToIncludes("SerializedScriptValue.h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertSerializedScriptValue.h", $includesRef, $conditional);
+        return;
+    }
+
+    if ($codeGenerator->IsStringType($type)) {
+        AddToIncludes("JSDOMConvertStrings.h", $includesRef, $conditional);
+        return;
+    }
+
     if ($type->isUnion) {
         AddToIncludes("<wtf/Variant.h>", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertUnion.h", $includesRef, $conditional);
 
         foreach my $memberType (@{$type->subtypes}) {
             AddToIncludesForIDLType($memberType, $includesRef, $conditional);
@@ -307,32 +439,9 @@ sub AddToIncludesForIDLType
         return;
     }
 
-    if ($codeGenerator->IsSequenceOrFrozenArrayType($type)) {
-        AddToIncludes("<runtime/JSArray.h>", $includesRef, $conditional);
-        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
-        return;
-    }
-
-    if ($codeGenerator->IsRecordType($type)) {
-        AddToIncludes("<wtf/Vector.h>", $includesRef, $conditional);
-        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
-        AddToIncludesForIDLType(@{$type->subtypes}[1], $includesRef, $conditional);
-        return;
-    }
-
-    if ($codeGenerator->IsPromiseType($type)) {
-        AddToIncludes("JSDOMPromise.h", $includesRef, $conditional);
-        AddToIncludesForIDLType(@{$type->subtypes}[0], $includesRef, $conditional);
-        return;
-    }
-
-    if ($codeGenerator->IsWrapperType($type) || $codeGenerator->IsExternalDictionaryType($type) || $codeGenerator->IsExternalEnumType($type) || $type->name eq "EventListener") {
-        AddToIncludes("JS" . $type->name . ".h", $includesRef, $conditional);
-        return;
-    }
-    
-    if ($type->name eq "SerializedScriptValue") {
-        AddToIncludes($type->name . ".h", $includesRef, $conditional);
+    if ($type->name eq "XPathNSResolver") {
+        AddToIncludes("JSXPathNSResolver.h", $includesRef, $conditional);
+        AddToIncludes("JSDOMConvertXPathNSResolver.h", $includesRef, $conditional);
         return;
     }
 }
@@ -370,8 +479,7 @@ sub AddClassForwardIfNeeded
 
     # SVGAnimatedLength/Number/etc. are not classes so they can't be forward declared as classes.
     return if $codeGenerator->IsSVGAnimatedType($type);
-    return if $codeGenerator->IsTypedArrayType($type);
-    return if $type->name eq "BufferSource";
+    return if $codeGenerator->IsBufferSourceType($type);
 
     push(@headerContent, "class " . $type->name . ";\n\n");
 }
@@ -1332,20 +1440,29 @@ sub ShouldGenerateToJSImplementation
     return 0;
 }
 
+sub GetTypeNameForDisplayInException
+{
+    my ($type) = @_;
+
+    # FIXME: Add more type specializations.
+    return "(" . join(" or ", map { $_->name } GetFlattenedMemberTypes($type)) . ")" if $type->isUnion;
+    return $type->name;
+}
+
 sub GetArgumentExceptionFunction
 {
     my ($interface, $argument, $argumentIndex, $quotedFunctionName) = @_;
 
     my $name = $argument->name;
     my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
-    my $typeName = $argument->type->name;
+    my $typeName = GetTypeNameForDisplayInException($argument->type);
 
     if ($codeGenerator->IsCallbackInterface($argument->type) || $codeGenerator->IsCallbackFunction($argument->type)) {
         # FIXME: We should have specialized messages for callback interfaces vs. callback functions.
         return "throwArgumentMustBeFunctionError(state, scope, ${argumentIndex}, \"${name}\", \"${visibleInterfaceName}\", ${quotedFunctionName});";
     }
 
-    if ($codeGenerator->IsWrapperType($argument->type) || $codeGenerator->IsTypedArrayType($argument->type)) {
+    if ($codeGenerator->IsWrapperType($argument->type) || $codeGenerator->IsBufferSourceType($argument->type)) {
         return "throwArgumentTypeError(state, scope, ${argumentIndex}, \"${name}\", \"${visibleInterfaceName}\", ${quotedFunctionName}, \"${typeName}\");";
     }
 
@@ -1371,9 +1488,9 @@ sub GetAttributeExceptionFunction
     
     my $name = $attribute->name;
     my $visibleInterfaceName = $codeGenerator->GetVisibleInterfaceName($interface);
-    my $typeName = $attribute->type->name;
+    my $typeName = GetTypeNameForDisplayInException($attribute->type);
 
-    if ($codeGenerator->IsWrapperType($attribute->type) || $codeGenerator->IsTypedArrayType($attribute->type)) {
+    if ($codeGenerator->IsWrapperType($attribute->type) || $codeGenerator->IsBufferSourceType($attribute->type)) {
         return "throwAttributeTypeError(state, scope, \"${visibleInterfaceName}\", \"${name}\", \"${typeName}\");";
     }
 }
@@ -1395,7 +1512,7 @@ sub PassArgumentExpression
 
     return "WTFMove(${name})" if $type->isNullable;
     
-    if ($codeGenerator->IsTypedArrayType($type)) {
+    if ($codeGenerator->IsBufferSourceType($type)) {
         return "*${name}" if $type->name eq "ArrayBuffer";
         return "${name}.releaseNonNull()";
     }
@@ -1587,7 +1704,7 @@ sub GetJSCAttributesForAttribute
     push(@specials, "DontEnum") if ($attribute->extendedAttributes->{NotEnumerable} || $isGlobalConstructor);
     push(@specials, "ReadOnly") if IsReadonly($attribute);
     push(@specials, "CustomAccessor") unless $isGlobalConstructor or IsJSBuiltin($interface, $attribute);
-    push(@specials, "DOMJITAttribute") if $attribute->extendedAttributes->{"DOMJIT"};
+    push(@specials, "DOMJITAttribute") if $attribute->extendedAttributes->{DOMJIT};
     push(@specials, "Accessor | Builtin") if  IsJSBuiltin($interface, $attribute);
     return (@specials > 0) ? join(" | ", @specials) : "0";
 }
@@ -1829,10 +1946,9 @@ sub GenerateEnumerationHeader
  
     # - Add default header template and header protection.
     push(@headerContentHeader, GenerateHeaderContentHeader($enumeration));
- 
-    $headerIncludes{"$className.h"} = 1;
-    $headerIncludes{"JSDOMConvert.h"} = 1;
- 
+
+    $headerIncludes{"${className}.h"} = 1;
+
     push(@headerContent, "\nnamespace WebCore {\n\n");
     push(@headerContent, GenerateEnumerationHeaderContent($enumeration, $className));
     push(@headerContent, "} // namespace WebCore\n");
@@ -1847,11 +1963,7 @@ sub GenerateEnumerationImplementation
  
     # - Add default header template
     push(@implContentHeader, GenerateImplementationContentHeader($enumeration));
-    
-    # FIXME: A little ugly to have this be a side effect instead of a return value.
-    AddToImplIncludes("<runtime/JSString.h>");
-    AddToImplIncludes("JSDOMConvert.h");
- 
+
     push(@implContent, "\nusing namespace JSC;\n\n");
     push(@implContent, "namespace WebCore {\n\n");
     push(@implContent, GenerateEnumerationImplementationContent($enumeration, $className));
@@ -1864,7 +1976,12 @@ sub GenerateEnumerationImplementation
 sub GenerateEnumerationImplementationContent
 {
     my ($enumeration, $className, $interface, $conditionalString) = @_;
-    
+
+    # FIXME: A little ugly to have this be a side effect instead of a return value.
+    AddToImplIncludes("<runtime/JSString.h>");
+    AddToImplIncludes("<runtime/JSCInlines.h>");
+    AddToImplIncludes("JSDOMConvertEnumeration.h");
+
     my $result = "";
     $result .= "#if ${conditionalString}\n\n" if $conditionalString;
 
@@ -1926,10 +2043,6 @@ sub GenerateEnumerationsImplementationContent
     my ($interface, $enumerations) = @_;
 
     return "" unless @$enumerations;
-    
-    # FIXME: A little ugly to have this be a side effect instead of a return value.
-    AddToImplIncludes("<runtime/JSString.h>");
-    AddToImplIncludes("JSDOMConvert.h");
 
     my $result = "";
     foreach my $enumeration (@$enumerations) {
@@ -1943,6 +2056,8 @@ sub GenerateEnumerationsImplementationContent
 sub GenerateEnumerationHeaderContent
 {
     my ($enumeration, $className, $conditionalString) = @_;
+
+    $headerIncludes{"JSDOMConvertEnumeration.h"} = 1;
 
     my $result = "";
     $result .= "#if ${conditionalString}\n\n" if $conditionalString;
@@ -1965,8 +2080,6 @@ sub GenerateEnumerationsHeaderContent
 
     # FIXME: Could optimize this to only generate the parts of each enumeration that are actually
     # used, which would require iterating over everything in the interface.
-
-    $headerIncludes{"JSDOMConvert.h"} = 1;
 
     my $result = "";
     foreach my $enumeration (@$enumerations) {
@@ -2022,7 +2135,7 @@ sub GenerateDefaultValue
         }
 
         return "jsNull()" if $type->name eq "any";
-        return "nullptr" if $codeGenerator->IsWrapperType($type) || $codeGenerator->IsTypedArrayType($type);
+        return "nullptr" if $codeGenerator->IsWrapperType($type) || $codeGenerator->IsBufferSourceType($type);
         return "String()" if $codeGenerator->IsStringType($type);
         return "std::nullopt";
     }
@@ -2042,9 +2155,11 @@ sub GenerateDictionaryHeaderContent
 {
     my ($dictionary, $className, $conditionalString) = @_;
 
+    $headerIncludes{"JSDOMConvertDictionary.h"} = 1;
+
     my $result = "";
     $result .= "#if ${conditionalString}\n\n" if $conditionalString;
-    $result .= "template<> ${className} convertDictionary<$className>(JSC::ExecState&, JSC::JSValue);\n\n";
+    $result .= "template<> ${className} convertDictionary<${className}>(JSC::ExecState&, JSC::JSValue);\n\n";
 
     if ($dictionary->extendedAttributes->{JSGenerateToJSObject}) {
         $result .= "JSC::JSObject* convertDictionaryToJS(JSC::ExecState&, JSDOMGlobalObject&, const ${className}&);\n\n";
@@ -2060,8 +2175,6 @@ sub GenerateDictionariesHeaderContent
 
     return "" unless @$allDictionaries;
 
-    $headerIncludes{"JSDOMConvert.h"} = 1;
-
     my $result = "";
     foreach my $dictionary (@$allDictionaries) {
         $headerIncludes{$typeScope->type->name . ".h"} = 1 if $typeScope;
@@ -2074,17 +2187,22 @@ sub GenerateDictionariesHeaderContent
 
 sub GenerateDictionaryImplementationContent
 {
-    my ($dictionary, $className, $interface, $conditionalString) = @_;
+    my ($dictionary, $className, $interface) = @_;
 
     my $result = "";
 
     my $name = $dictionary->type->name;
     my $typeScope = $interface || $dictionary;
 
-    $result .= "#if ${conditionalString}\n\n" if $conditionalString;
+    my $conditional = $dictionary->extendedAttributes->{Conditional};
+    if ($conditional) {
+        my $conditionalString = $codeGenerator->GenerateConditionalStringFromAttributeValue($conditional);
+        $result .= "#if ${conditionalString}\n\n";
+    }
 
     # FIXME: A little ugly to have this be a side effect instead of a return value.
-    AddToImplIncludes("JSDOMConvert.h");
+    AddToImplIncludes("<runtime/JSCInlines.h>");
+    AddToImplIncludes("JSDOMConvertDictionary.h");
 
     # https://heycam.github.io/webidl/#es-dictionary
     $result .= "template<> $className convertDictionary<$className>(ExecState& state, JSValue value)\n";
@@ -2137,7 +2255,7 @@ sub GenerateDictionaryImplementationContent
 
             # 5.1. Let key be the identifier of member.
             my $key = $member->name;
-            my $implementedAsKey = $member->extendedAttributes->{"ImplementedAs"} ? $member->extendedAttributes->{"ImplementedAs"} : $key;
+            my $implementedAsKey = $member->extendedAttributes->{ImplementedAs} || $key;
 
             # 5.2. Let value be an ECMAScript value, depending on Type(V):
             $result .= "    JSValue ${key}Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, \"${key}\"));\n";
@@ -2159,7 +2277,7 @@ sub GenerateDictionaryImplementationContent
             } elsif ($member->isRequired) {
                 # 5.5. Otherwise, if value is undefined and the dictionary member is a required dictionary member, then throw a TypeError.
                 $result .= "    } else {\n";
-                $result .= "        throwRequiredMemberTypeError(state, throwScope, \"". $member->name ."\", \"$name\", \"". $type->name ."\");\n";
+                $result .= "        throwRequiredMemberTypeError(state, throwScope, \"". $member->name ."\", \"$name\", \"". GetTypeNameForDisplayInException($type) ."\");\n";
                 $result .= "        return { };\n";
                 $result .= "    }\n";
             } else {
@@ -2172,12 +2290,15 @@ sub GenerateDictionaryImplementationContent
     $result .= "}\n\n";
 
     if ($dictionary->extendedAttributes->{JSGenerateToJSObject}) {
+        AddToImplIncludes("JSDOMGlobalObject.h");
+        AddToImplIncludes("<runtime/ObjectConstructor.h>");
+
         $result .= "JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& globalObject, const ${className}& dictionary)\n";
         $result .= "{\n";
         $result .= "    auto& vm = state.vm();\n\n";
 
         # 1. Let O be ! ObjectCreate(%ObjectPrototype%).
-        $result .= "    auto result = constructEmptyObject(&state);\n\n";
+        $result .= "    auto result = constructEmptyObject(&state, globalObject.objectPrototype());\n\n";
 
         # 2. Let dictionaries be a list consisting of D and all of D’s inherited dictionaries,
         #    in order from least to most derived.
@@ -2189,21 +2310,27 @@ sub GenerateDictionaryImplementationContent
             my @sortedMembers = sort { $a->name cmp $b->name } @{$dictionary->members};
             foreach my $member (@sortedMembers) {
                 my $key = $member->name;
-                my $implementedAsKey = $member->extendedAttributes->{"ImplementedAs"} ? $member->extendedAttributes->{"ImplementedAs"} : $key;
+                my $implementedAsKey = $member->extendedAttributes->{ImplementedAs} || $key;
+                my $valueExpression = "dictionary.${implementedAsKey}";
 
                 # 1. Let key be the identifier of member.
                 # 2. If the dictionary member named key is present in V, then:
                     # 1. Let idlValue be the value of member on V.
                     # 2. Let value be the result of converting idlValue to an ECMAScript value.
                     # 3. Perform ! CreateDataProperty(O, key, value).
-                my $IDLType = GetIDLType($typeScope, $member->type);
+
                 if (!$member->isRequired && not defined $member->default) {
-                    $result .= "    if (!${IDLType}::isNullValue(dictionary.${implementedAsKey})) {\n";
-                    $result .= "        auto ${key}Value = toJS<$IDLType>(state, globalObject, ${IDLType}::extractValueFromNullable(dictionary.${implementedAsKey}));\n";
+                    my $IDLType = GetIDLType($typeScope, $member->type);
+                    my $conversionExpression = NativeToJSValueUsingReferences($member, $typeScope, "${IDLType}::extractValueFromNullable(${valueExpression})", "globalObject");
+
+                    $result .= "    if (!${IDLType}::isNullValue(${valueExpression})) {\n";
+                    $result .= "        auto ${key}Value = ${conversionExpression};\n";
                     $result .= "        result->putDirect(vm, JSC::Identifier::fromString(&vm, \"${key}\"), ${key}Value);\n";
                     $result .= "    }\n";
                 } else {
-                    $result .= "    auto ${key}Value = toJS<$IDLType>(state, globalObject, dictionary.${implementedAsKey});\n";
+                    my $conversionExpression = NativeToJSValueUsingReferences($member, $typeScope, $valueExpression, "globalObject");
+
+                    $result .= "    auto ${key}Value = ${conversionExpression};\n";
                     $result .= "    result->putDirect(vm, JSC::Identifier::fromString(&vm, \"${key}\"), ${key}Value);\n";
                 }
             }
@@ -2213,7 +2340,7 @@ sub GenerateDictionaryImplementationContent
         $result .= "}\n\n";
     }
 
-    $result .= "#endif\n\n" if $conditionalString;
+    $result .= "#endif\n\n" if $conditional;
 
     return $result;
 }
@@ -2225,8 +2352,7 @@ sub GenerateDictionariesImplementationContent
     my $result = "";
     foreach my $dictionary (@$allDictionaries) {
         my $className = GetDictionaryClassName($dictionary->type, $typeScope);
-        my $conditionalString = $codeGenerator->GenerateConditionalString($dictionary);
-        $result .= GenerateDictionaryImplementationContent($dictionary, $className, $typeScope, $conditionalString);
+        $result .= GenerateDictionaryImplementationContent($dictionary, $className, $typeScope);
     }
     return $result;
 }
@@ -2509,7 +2635,7 @@ sub GenerateHeader
 
     # Serializer function.
     if ($interface->serializable) {
-        push(@headerContent, "    static JSC::JSObject* serialize(JSC::ExecState*, ${className}* thisObject, JSC::ThrowScope&);\n");
+        push(@headerContent, "    static JSC::JSObject* serialize(JSC::ExecState&, ${className}& thisObject, JSDOMGlobalObject&, JSC::ThrowScope&);\n");
     }
     
     my $numCustomOperations = 0;
@@ -2532,7 +2658,7 @@ sub GenerateHeader
                 $numCachedAttributes++;
                 push(@headerContent, "#endif\n") if $conditionalString;
             }
-            $hasDOMJITAttributes = 1 if $attribute->extendedAttributes->{"DOMJIT"};
+            $hasDOMJITAttributes = 1 if $attribute->extendedAttributes->{DOMJIT};
 
             $hasForwardDeclaringAttributes = 1 if $attribute->extendedAttributes->{ForwardDeclareInHeader};
         }
@@ -2770,7 +2896,7 @@ sub GenerateHeader
         $headerIncludes{"<domjit/DOMJITGetterSetter.h>"} = 1;
         push(@headerContent,"// DOMJIT emitters for attributes\n\n");
         foreach my $attribute (@{$interface->attributes}) {
-            next unless $attribute->extendedAttributes->{"DOMJIT"};
+            next unless $attribute->extendedAttributes->{DOMJIT};
             assert("Only DOMJIT=Getter is supported for attributes") unless $codeGenerator->ExtendedAttributeContains($attribute->extendedAttributes->{DOMJIT}, "Getter");
 
             my $interfaceName = $interface->type->name;
@@ -2879,7 +3005,7 @@ sub GeneratePropertiesHashTable
         my $special = GetJSCAttributesForAttribute($interface, $attribute);
         push(@$hashSpecials, $special);
 
-        if ($attribute->extendedAttributes->{"DOMJIT"}) {
+        if ($attribute->extendedAttributes->{DOMJIT}) {
             push(@$hashValue1, "domJITGetterSetterFor" . $interface->type->name . $codeGenerator->WK_ucfirst($attribute->name));
             push(@$hashValue2, "0");
         } else {
@@ -3143,7 +3269,7 @@ sub GenerateOverloadDispatcher
         push(@implContent, "        if ($condition)\n    ") if $condition;
         push(@implContent, "        return " . $overloadFunctionPrefix . $overload->{overloadIndex} . $overloadFunctionSuffix . "(${parametersToForward});\n");
         push(@implContent, "#endif\n") if $conditionalString;
-        AddToImplIncludes($include, $overload->extendedAttributes->{"Conditional"}) if $include;
+        AddToImplIncludes($include, $overload->extendedAttributes->{Conditional}) if $include;
     };
     my $isOptionalParameter = sub {
         my ($type, $optionality) = @_;
@@ -3234,7 +3360,7 @@ sub GenerateOverloadDispatcher
 
                 my @subtypes = $type->isUnion ? GetFlattenedMemberTypes($type) : ( $type );
                 for my $subtype (@subtypes) {
-                    if ($codeGenerator->IsWrapperType($subtype) || $codeGenerator->IsTypedArrayType($subtype)) {
+                    if ($codeGenerator->IsWrapperType($subtype) || $codeGenerator->IsBufferSourceType($subtype)) {
                         if ($subtype->name eq "DOMWindow") {
                             AddToImplIncludes("JSDOMWindowProxy.h");
                             &$generateOverloadCallIfNecessary($overload, "distinguishingArg.isObject() && (asObject(distinguishingArg)->inherits(vm, JSDOMWindowProxy::info()) || asObject(distinguishingArg)->inherits(vm, JSDOMWindow::info()))");
@@ -3586,6 +3712,7 @@ sub GenerateImplementation
     # - Add default header template
     push(@implContentHeader, GenerateImplementationContentHeader($interface));
 
+    AddToImplIncludes("<runtime/JSCInlines.h>");
     AddToImplIncludes("JSDOMBinding.h");
     AddToImplIncludes("JSDOMExceptionHandling.h");
     AddToImplIncludes("JSDOMWrapperCache.h");
@@ -3783,11 +3910,11 @@ sub GenerateImplementation
             my @specials = ();
             push(@specials, "DontDelete") if IsUnforgeable($interface, $attribute);
             push(@specials, "ReadOnly") if IsReadonly($attribute);
-            push(@specials, "DOMJITAttribute") if $attribute->extendedAttributes->{"DOMJIT"};
+            push(@specials, "DOMJITAttribute") if $attribute->extendedAttributes->{DOMJIT};
             my $special = (@specials > 0) ? join(" | ", @specials) : "0";
             push(@hashSpecials, $special);
 
-            if ($attribute->extendedAttributes->{"DOMJIT"}) {
+            if ($attribute->extendedAttributes->{DOMJIT}) {
                 push(@hashValue1, "domJITGetterSetterFor" . $interface->type->name . $codeGenerator->WK_ucfirst($attribute->name));
                 push(@hashValue2, "0");
             } else {
@@ -3962,6 +4089,7 @@ sub GenerateImplementation
             if (IsKeyValueIterableInterface($interface) or $interface->mapLike) {
                 push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, getDirect(vm, vm.propertyNames->builtinNames().entriesPublicName()), DontEnum);\n");
             } else {
+                AddToImplIncludes("<runtime/ArrayPrototype.h>");
                 push(@implContent, "    putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayPrototype()->getDirect(vm, vm.propertyNames->builtinNames().valuesPrivateName()), DontEnum);\n");
             }
         }
@@ -4180,9 +4308,9 @@ sub GenerateImplementation
     if ($numAttributes > 0) {
         AddToImplIncludes("JSDOMAttribute.h");
 
-        my $castingFunction = $interface->extendedAttributes->{"CustomProxyToJSObject"} ? "to${className}" : GetCastingHelperForThisObject($interface);
+        my $castingFunction = $interface->extendedAttributes->{CustomProxyToJSObject} ? "to${className}" : GetCastingHelperForThisObject($interface);
         # FIXME: Remove ImplicitThis keyword as it is no longer defined by WebIDL spec and is only used in DOMWindow.
-        if ($interface->extendedAttributes->{"ImplicitThis"}) {
+        if ($interface->extendedAttributes->{ImplicitThis}) {
             push(@implContent, "template<> inline ${className}* IDLAttribute<${className}>::cast(ExecState& state, EncodedJSValue thisValue)\n");
             push(@implContent, "{\n");
             push(@implContent, "    auto decodedThisValue = JSValue::decode(thisValue);\n");
@@ -4202,8 +4330,8 @@ sub GenerateImplementation
         AddToImplIncludes("JSDOMOperation.h");
 
         # FIXME: Make consistent IDLAttribute<>::cast and IDLOperation<>::cast in case of CustomProxyToJSObject.
-        my $castingFunction = $interface->extendedAttributes->{"CustomProxyToJSObject"} ? "to${className}" : GetCastingHelperForThisObject($interface);
-        my $thisValue = $interface->extendedAttributes->{"CustomProxyToJSObject"} ? "state.thisValue().toThis(&state, NotStrictMode)" : "state.thisValue()";
+        my $castingFunction = $interface->extendedAttributes->{CustomProxyToJSObject} ? "to${className}" : GetCastingHelperForThisObject($interface);
+        my $thisValue = $interface->extendedAttributes->{CustomProxyToJSObject} ? "state.thisValue().toThis(&state, NotStrictMode)" : "state.thisValue()";
         push(@implContent, "template<> inline ${className}* IDLOperation<${className}>::cast(ExecState& state)\n");
         push(@implContent, "{\n");
         push(@implContent, "    return $castingFunction(state.vm(), $thisValue);\n");
@@ -4614,7 +4742,7 @@ sub GenerateAttributeGetterDefinition
     GenerateAttributeGetterBodyDefinition($outputArray, $interface, $className, $attribute, $attributeGetterBodyName, $conditional);
     GenerateAttributeGetterTrampolineDefinition($outputArray, $interface, $className, $attribute, $attributeGetterName, $attributeGetterBodyName, $conditional);
     
-    if ($attribute->extendedAttributes->{"DOMJIT"}) {
+    if ($attribute->extendedAttributes->{DOMJIT}) {
         assert("Only DOMJIT=Getter is supported for attributes") unless $codeGenerator->ExtendedAttributeContains($attribute->extendedAttributes->{DOMJIT}, "Getter");
 
         AddToImplIncludes("<wtf/NeverDestroyed.h>", $conditional);
@@ -5070,24 +5198,34 @@ sub GenerateSerializerDefinition
 
     AddToImplIncludes("<runtime/ObjectConstructor.h>");
 
-    push(@implContent, "JSC::JSObject* JS${interfaceName}::serialize(ExecState* state, JS${interfaceName}* thisObject, ThrowScope& throwScope)\n");
+    push(@implContent, "JSC::JSObject* JS${interfaceName}::serialize(ExecState& state, ${className}& thisObject, JSDOMGlobalObject& globalObject, ThrowScope& throwScope)\n");
     push(@implContent, "{\n");
-    push(@implContent, "    auto& vm = state->vm();\n");
+    push(@implContent, "    auto& vm = state.vm();\n");
 
     if ($interface->serializable->hasInherit) {
         my $parentSerializerInterfaceName = $parentSerializerInterface->type->name;
-        push(@implContent, "    auto* result = JS${parentSerializerInterfaceName}::serialize(state, thisObject, throwScope);\n");
+        push(@implContent, "    auto* result = JS${parentSerializerInterfaceName}::serialize(state, thisObject, globalObject, throwScope);\n");
     } else {
-        push(@implContent, "    auto* result = constructEmptyObject(state);\n");
+        push(@implContent, "    auto* result = constructEmptyObject(&state, globalObject.objectPrototype());\n");
     }
     push(@implContent, "\n");
 
     foreach my $attribute (@serializedAttributes) {
+        assert("Attributes that throw exceptions are not supported with serializers yet.") if $attribute->extendedAttributes->{GetterMayThrowException} || $attribute->extendedAttributes->{MayThrowException};
+
         my $name = $attribute->name;
         my $getFunctionName = GetAttributeGetterName($interface, $className, $attribute);
-        push(@implContent, "    auto ${name}Value = ${getFunctionName}Getter(*state, *thisObject, throwScope);\n");
+        push(@implContent, "    auto ${name}Value = ${getFunctionName}Getter(state, thisObject, throwScope);\n");
         push(@implContent, "    throwScope.assertNoException();\n");
-        push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}Value);\n");
+
+        if ($codeGenerator->IsInterfaceType($attribute->type)) {
+            my $attributeInterfaceName = $attribute->type->name;
+            push(@implContent, "    auto* ${name}SerializedValue = JS${attributeInterfaceName}::serialize(state, *jsCast<JS${attributeInterfaceName}*>(${name}Value), globalObject, throwScope);\n");
+            push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}SerializedValue);\n");
+        } else {
+            push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}Value);\n");
+        }
+
         push(@implContent, "\n");
     }
 
@@ -5095,14 +5233,14 @@ sub GenerateSerializerDefinition
     push(@implContent, "}\n");
     push(@implContent, "\n");
 
-    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Body(ExecState* state, JS${interfaceName}* thisObject, JSC::ThrowScope& throwScope)\n");
+    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Body(ExecState* state, ${className}* thisObject, JSC::ThrowScope& throwScope)\n");
     push(@implContent, "{\n");
-    push(@implContent, "    return JSValue::encode(JS${interfaceName}::serialize(state, thisObject, throwScope));\n");
+    push(@implContent, "    return JSValue::encode(JS${interfaceName}::serialize(*state, *thisObject, *thisObject->globalObject(), throwScope));\n");
     push(@implContent, "}\n");
     push(@implContent, "\n");
     push(@implContent, "EncodedJSValue JSC_HOST_CALL ${serializerNativeFunctionName}(ExecState* state)\n");
     push(@implContent, "{\n");
-    push(@implContent, "    return IDLOperation<JS${interfaceName}>::call<${serializerNativeFunctionName}Body>(*state, \"$serializerFunctionName\");\n");
+    push(@implContent, "    return IDLOperation<JS${interfaceName}>::call<${serializerNativeFunctionName}Body>(*state, \"${serializerFunctionName}\");\n");
     push(@implContent, "}\n");
     push(@implContent, "\n");
 }
@@ -5225,7 +5363,7 @@ sub GenerateCallWith
         push(@callWithArgs, "*context");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "Document")) {
-        $implIncludes{"Document.h"} = 1;
+        AddToImplIncludes("Document.h");
         push(@$outputArray, "    auto* context = ${scriptExecutionContextAccessor}->scriptExecutionContext();\n");
         push(@$outputArray, "    if (UNLIKELY(!context))\n");
         push(@$outputArray, "        return" . ($contextMissing ? " " . $contextMissing : "") . ";\n");
@@ -5234,30 +5372,33 @@ sub GenerateCallWith
         push(@callWithArgs, "document");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentDocument")) {
-        $implIncludes{"Document.h"} = 1;
-        $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@$outputArray, "    auto* document = incumbentDOMWindow($statePointer).document();\n");
-        push(@$outputArray, "    if (!document)\n");
+        AddToImplIncludes("JSDOMWindowBase.h");
+        push(@$outputArray, "    auto* incumbentDocument = incumbentDOMWindow($stateReference).document();\n");
+        push(@$outputArray, "    if (!incumbentDocument)\n");
         push(@$outputArray, "        return" . ($returnValue ? " " . $returnValue : "") . ";\n");
-        push(@callWithArgs, "*document");
+        push(@callWithArgs, "*incumbentDocument");
+    }
+    if ($codeGenerator->ExtendedAttributeContains($callWith, "ResponsibleDocument")) {
+        AddToImplIncludes("JSDOMWindowBase.h");
+        push(@callWithArgs, "responsibleDocument($stateReference)");
     }
     if ($operation and $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments")) {
+        AddToImplIncludes("<inspector/ScriptArguments.h>");
+        AddToImplIncludes("<inspector/ScriptCallStackFactory.h>");
         push(@$outputArray, "    Ref<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments($statePointer, " . @{$operation->arguments} . "));\n");
-        $implIncludes{"<inspector/ScriptArguments.h>"} = 1;
-        $implIncludes{"<inspector/ScriptCallStackFactory.h>"} = 1;
         push(@callWithArgs, "WTFMove(scriptArguments)");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "ActiveWindow")) {
-        $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@callWithArgs, "activeDOMWindow($statePointer)");
+        AddToImplIncludes("JSDOMWindowBase.h");
+        push(@callWithArgs, "activeDOMWindow($stateReference)");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "FirstWindow")) {
-        $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@callWithArgs, "firstDOMWindow($statePointer)");
+        AddToImplIncludes("JSDOMWindowBase.h");
+        push(@callWithArgs, "firstDOMWindow($stateReference)");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "IncumbentWindow")) {
-        $implIncludes{"JSDOMWindowBase.h"} = 1;
-        push(@callWithArgs, "incumbentDOMWindow($statePointer)");
+        AddToImplIncludes("JSDOMWindowBase.h");
+        push(@callWithArgs, "incumbentDOMWindow($stateReference)");
     }
     if ($codeGenerator->ExtendedAttributeContains($callWith, "RuntimeFlags")) {
         push(@callWithArgs, "${globalObject}->runtimeFlags()");
@@ -5463,8 +5604,7 @@ sub GenerateDictionaryHeader
     # - Add default header template and header protection.
     push(@headerContentHeader, GenerateHeaderContentHeader($dictionary));
 
-    $headerIncludes{"$className.h"} = 1;
-    $headerIncludes{"JSDOMConvert.h"} = 1;
+    $headerIncludes{"${className}.h"} = 1;
 
     push(@headerContent, "\nnamespace WebCore {\n\n");
     push(@headerContent, GenerateDictionaryHeaderContent($dictionary, $className));
@@ -6068,16 +6208,25 @@ sub GetBaseIDLType
         "ByteString" => "IDLByteString",
         "USVString" => "IDLUSVString",
         "object" => "IDLObject",
-        
+        "ArrayBuffer" => "IDLArrayBuffer",
+        "ArrayBufferView" => "IDLArrayBufferView",
+        "DataView" => "IDLDataView",
+        "Int8Array" => "IDLInt8Array",
+        "Int16Array" => "IDLInt16Array",
+        "Int32Array" => "IDLInt32Array",
+        "Uint8Array" => "IDLUint8Array",
+        "Uint16Array" => "IDLUint16Array",
+        "Uint32Array" => "IDLUint32Array",
+        "Uint8ClampedArray" => "IDLUint8ClampedArray",
+        "Float32Array" => "IDLFloat32Array",
+        "Float64Array" => "IDLFloat64Array",
+
         # Non-WebIDL extensions
         "Date" => "IDLDate",
         "EventListener" => "IDLEventListener<JSEventListener>",
         "JSON" => "IDLJSON",
         "SerializedScriptValue" => "IDLSerializedScriptValue<SerializedScriptValue>",
         "XPathNSResolver" => "IDLXPathNSResolver<XPathNSResolver>",
-
-        # Convenience type aliases
-        "BufferSource" => "IDLBufferSource",
     );
 
     return $IDLTypes{$type->name} if exists $IDLTypes{$type->name};
@@ -6091,7 +6240,7 @@ sub GetBaseIDLType
     return "IDLCallbackFunction<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackFunction($type);
     return "IDLCallbackInterface<" . GetCallbackClassName($type->name) . ">" if $codeGenerator->IsCallbackInterface($type);
 
-    assert("Unknown type '" . $type->name . "'.\n") unless $codeGenerator->IsInterfaceType($type) || $codeGenerator->IsTypedArrayType($type);
+    assert("Unknown type '" . $type->name . "'.\n") unless $codeGenerator->IsInterfaceType($type);
     return "IDLInterface<" . $type->name . ">";
 }
 
@@ -6122,7 +6271,7 @@ sub ShouldPassArgumentByReference
     return 0 if $type->isNullable;
     return 0 if $codeGenerator->IsCallbackInterface($type);
     return 0 if $codeGenerator->IsCallbackFunction($type);
-    return 0 if !$codeGenerator->IsWrapperType($type) && !$codeGenerator->IsTypedArrayType($type);
+    return 0 if !$codeGenerator->IsWrapperType($type) && !$codeGenerator->IsBufferSourceType($type);
 
     return 1;
 }
@@ -6164,8 +6313,7 @@ sub JSValueToNative
     $thisObjectReference = "*castedThis" unless $thisObjectReference;
 
     AddToImplIncludesForIDLType($type, $conditional);
-
-    AddToImplIncludes("JSDOMConvert.h");
+    AddToImplIncludes("JSDOMGlobalObject.h", $conditional) if JSValueToNativeDOMConvertNeedsGlobalObject($type);
 
     my $IDLType = GetIDLType($interface, $type);
 
@@ -6230,7 +6378,7 @@ sub NativeToJSValueDOMConvertNeedsState
     return 1 if $codeGenerator->IsEnumType($type);
     return 1 if $codeGenerator->IsDictionaryType($type);
     return 1 if $codeGenerator->IsInterfaceType($type);
-    return 1 if $codeGenerator->IsTypedArrayType($type);
+    return 1 if $codeGenerator->IsBufferSourceType($type);
     return 1 if $type->name eq "Date";
     return 1 if $type->name eq "JSON";
     return 1 if $type->name eq "SerializedScriptValue";
@@ -6260,7 +6408,7 @@ sub NativeToJSValueDOMConvertNeedsGlobalObject
     return 1 if $codeGenerator->IsRecordType($type);
     return 1 if $codeGenerator->IsDictionaryType($type);
     return 1 if $codeGenerator->IsInterfaceType($type);
-    return 1 if $codeGenerator->IsTypedArrayType($type);
+    return 1 if $codeGenerator->IsBufferSourceType($type);
     return 1 if $type->name eq "SerializedScriptValue";
     return 1 if $type->name eq "XPathNSResolver";
 
@@ -6269,29 +6417,29 @@ sub NativeToJSValueDOMConvertNeedsGlobalObject
 
 sub NativeToJSValueUsingReferences
 {
-    my ($context, $interface, $value, $globalObjectReference, $suppressExceptionCheck) = @_;
+    my ($context, $interface, $value, $globalObjectReference, $suppressExceptionCheck, $excludeNullability) = @_;
 
-    return NativeToJSValue($context, $interface, $value, "state", $globalObjectReference, $suppressExceptionCheck);
+    return NativeToJSValue($context, $interface, $value, "state", $globalObjectReference, $suppressExceptionCheck, $excludeNullability);
 }
 
 # FIXME: We should remove NativeToJSValueUsingPointers and combine NativeToJSValueUsingReferences and NativeToJSValue
 sub NativeToJSValueUsingPointers
 {
-    my ($context, $interface, $value, $globalObjectReference, $suppressExceptionCheck) = @_;
+    my ($context, $interface, $value, $globalObjectReference, $suppressExceptionCheck, $excludeNullability) = @_;
 
-    return NativeToJSValue($context, $interface, $value, "*state", $globalObjectReference, $suppressExceptionCheck);
+    return NativeToJSValue($context, $interface, $value, "*state", $globalObjectReference, $suppressExceptionCheck, $excludeNullability);
 }
 
 sub IsValidContextForNativeToJSValue
 {
     my $context = shift;
     
-    return ref($context) eq "IDLAttribute" || ref($context) eq "IDLOperation" || ref($context) eq "IDLArgument";
+    return ref($context) eq "IDLAttribute" || ref($context) eq "IDLArgument" || ref($context) eq "IDLDictionaryMember" || ref($context) eq "IDLOperation";
 }
 
 sub NativeToJSValue
 {
-    my ($context, $interface, $value, $stateReference, $globalObjectReference, $suppressExceptionCheck) = @_;
+    my ($context, $interface, $value, $stateReference, $globalObjectReference, $suppressExceptionCheck, $excludeNullability) = @_;
 
     assert("Invalid context type") if !IsValidContextForNativeToJSValue($context);
 
@@ -6307,14 +6455,14 @@ sub NativeToJSValue
     }
 
     AddToImplIncludesForIDLType($type, $conditional);
-    AddToImplIncludes("JSDOMConvert.h", $conditional);
+    AddToImplIncludes("JSDOMGlobalObject.h", $conditional) if NativeToJSValueDOMConvertNeedsGlobalObject($type);
 
     if ($context->extendedAttributes->{CheckSecurityForNode}) {
         AddToImplIncludes("JSDOMBindingSecurity.h", $conditional);
         $value = "BindingSecurity::checkSecurityForNode($stateReference, $value)";
     }
 
-    my $IDLType = GetIDLType($interface, $type);
+    my $IDLType = $excludeNullability ? GetIDLTypeExcludingNullability($interface, $type) : GetIDLType($interface, $type);
 
     my @conversionArguments = ();
     push(@conversionArguments, $stateReference) if NativeToJSValueDOMConvertNeedsState($type) || $mayThrowException;
@@ -6754,8 +6902,6 @@ sub GenerateConstructorDefinition
             push(@$outputArray, "    auto* castedThis = jsCast<${constructorClassName}*>(state->jsCallee());\n");
             push(@$outputArray, "    ASSERT(castedThis);\n");
 
-            AddToImplIncludes("<runtime/Error.h>");
-
             GenerateArgumentsCountCheck($outputArray, $operation, $interface, "    ");
 
             my $functionImplementationName = $generatingNamedConstructor ? "createForJSConstructor" : "create";
@@ -6765,6 +6911,8 @@ sub GenerateConstructorDefinition
             push(@$outputArray, "    RETURN_IF_EXCEPTION(throwScope, encodedJSValue());\n") if $codeGenerator->ExtendedAttributeContains($interface->extendedAttributes->{ConstructorCallWith}, "ScriptState");
 
             my $IDLType = GetIDLType($interface, $interface->type);
+
+            AddToImplIncludes("JSDOMConvertInterface.h");
 
             my @constructionConversionArguments = ();
             push(@constructionConversionArguments, "*state");
@@ -6940,7 +7088,7 @@ sub ComputeFunctionSpecial
     } else {
         push(@specials, "JSC::Function");
     }
-    if ($operation->extendedAttributes->{"DOMJIT"}) {
+    if ($operation->extendedAttributes->{DOMJIT}) {
         push(@specials, "DOMJITFunction") if $operation->extendedAttributes->{DOMJIT};
     }
     return (@specials > 0) ? join(" | ", @specials) : "0";

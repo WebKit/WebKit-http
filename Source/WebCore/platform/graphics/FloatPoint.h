@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FloatPoint_h
-#define FloatPoint_h
+#pragma once
 
 #include "FloatSize.h"
 #include "IntPoint.h"
@@ -298,4 +297,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, const FloatPoint&);
 
 }
 
-#endif

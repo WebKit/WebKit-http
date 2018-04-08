@@ -29,7 +29,6 @@
 #include "JSArrayBufferPrototype.h"
 #include "JSClassRef.h"
 #include "JSGlobalLexicalEnvironment.h"
-#include "JSProxy.h"
 #include "JSSegmentedVariableObject.h"
 #include "JSWeakObjectMapRefInternal.h"
 #include "LazyProperty.h"
@@ -104,6 +103,7 @@ class RegExpConstructor;
 class RegExpPrototype;
 class SetPrototype;
 class SourceCode;
+class SourceOrigin;
 class UnlinkedModuleProgramCodeBlock;
 class VariableEnvironment;
 struct ActivationStackNode;
@@ -408,6 +408,7 @@ public:
     InlineWatchpointSet& arrayIteratorProtocolWatchpoint() { return m_arrayIteratorProtocolWatchpoint; }
     InlineWatchpointSet& mapIteratorProtocolWatchpoint() { return m_mapIteratorProtocolWatchpoint; }
     InlineWatchpointSet& setIteratorProtocolWatchpoint() { return m_setIteratorProtocolWatchpoint; }
+    InlineWatchpointSet& stringIteratorProtocolWatchpoint() { return m_stringIteratorProtocolWatchpoint; }
     InlineWatchpointSet& mapSetWatchpoint() { return m_mapSetWatchpoint; }
     InlineWatchpointSet& setAddWatchpoint() { return m_setAddWatchpoint; }
     InlineWatchpointSet& arraySpeciesWatchpoint() { return m_arraySpeciesWatchpoint; }
@@ -416,6 +417,7 @@ public:
     InlineWatchpointSet m_arrayIteratorProtocolWatchpoint;
     InlineWatchpointSet m_mapIteratorProtocolWatchpoint;
     InlineWatchpointSet m_setIteratorProtocolWatchpoint;
+    InlineWatchpointSet m_stringIteratorProtocolWatchpoint;
     InlineWatchpointSet m_mapSetWatchpoint;
     InlineWatchpointSet m_setAddWatchpoint;
     InlineWatchpointSet m_arraySpeciesWatchpoint;
@@ -425,12 +427,15 @@ public:
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapIteratorPrototypeNextWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeSymbolIteratorWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setIteratorPrototypeNextWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringPrototypeSymbolIteratorWatchpoint;
+    std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_stringIteratorPrototypeNextWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_mapPrototypeSetWatchpoint;
     std::unique_ptr<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>> m_setPrototypeAddWatchpoint;
 
     bool isArrayPrototypeIteratorProtocolFastAndNonObservable();
     bool isMapPrototypeIteratorProtocolFastAndNonObservable();
     bool isSetPrototypeIteratorProtocolFastAndNonObservable();
+    bool isStringPrototypeIteratorProtocolFastAndNonObservable();
     bool isMapPrototypeSetFastAndNonObservable();
     bool isSetPrototypeAddFastAndNonObservable();
 
@@ -624,7 +629,6 @@ public:
     Structure* regExpStructure() const { return m_regExpStructure.get(); }
     Structure* generatorFunctionStructure() const { return m_generatorFunctionStructure.get(); }
     Structure* asyncFunctionStructure() const { return m_asyncFunctionStructure.get(); }
-    Structure* setStructure() const { return m_setStructure.get(); }
     Structure* stringObjectStructure() const { return m_stringObjectStructure.get(); }
     Structure* symbolObjectStructure() const { return m_symbolObjectStructure.get(); }
     Structure* iteratorResultObjectStructure() const { return m_iteratorResultObjectStructure.get(); }

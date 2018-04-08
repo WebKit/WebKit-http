@@ -35,6 +35,7 @@
 
 #include "JSDOMPromiseDeferred.h"
 #include "RTCRtpParameters.h"
+#include "RTCSessionDescription.h"
 #include "RTCSignalingState.h"
 
 namespace WebCore {
@@ -56,7 +57,7 @@ struct RTCDataChannelInit;
 struct RTCOfferOptions;
 
 namespace PeerConnection {
-using SessionDescriptionPromise = DOMPromiseDeferred<IDLInterface<RTCSessionDescription>>;
+using SessionDescriptionPromise = DOMPromiseDeferred<IDLDictionary<RTCSessionDescription::Init>>;
 using StatsPromise = DOMPromiseDeferred<IDLInterface<RTCStatsReport>>;
 }
 
@@ -87,7 +88,7 @@ public:
     virtual RefPtr<RTCSessionDescription> currentRemoteDescription() const = 0;
     virtual RefPtr<RTCSessionDescription> pendingRemoteDescription() const = 0;
 
-    virtual void setConfiguration(MediaEndpointConfiguration&&) = 0;
+    virtual bool setConfiguration(MediaEndpointConfiguration&&) = 0;
 
     virtual void getStats(MediaStreamTrack*, Ref<DeferredPromise>&&) = 0;
 

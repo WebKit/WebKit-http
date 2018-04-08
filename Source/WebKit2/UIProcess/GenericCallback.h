@@ -30,11 +30,12 @@
 #include "ProcessThrottler.h"
 #include "ShareableBitmap.h"
 #include "WKAPICast.h"
-#include <functional>
 #include <wtf/Function.h>
 #include <wtf/HashMap.h>
+#include <wtf/MainThread.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RunLoop.h>
+#include <wtf/Threading.h>
 
 namespace WebKit {
 
@@ -100,11 +101,14 @@ public:
 
     virtual ~GenericCallback()
     {
+        ASSERT(currentThread() == m_originThreadID);
         ASSERT(!m_callback);
     }
 
     void performCallbackWithReturnValue(T... returnValue)
     {
+        ASSERT(currentThread() == m_originThreadID);
+
         if (!m_callback)
             return;
 
@@ -120,6 +124,8 @@ public:
 
     void invalidate(Error error = Error::Unknown) final
     {
+        ASSERT(currentThread() == m_originThreadID);
+
         if (!m_callback)
             return;
 
@@ -143,6 +149,10 @@ private:
     }
 
     std::optional<CallbackFunction> m_callback;
+
+#ifndef NDEBUG
+    ThreadIdentifier m_originThreadID { currentThread() };
+#endif
 };
 
 template<typename APIReturnValueType, typename InternalReturnValueType = typename APITypeInfo<APIReturnValueType>::ImplType*>
@@ -172,9 +182,10 @@ class CallbackMap {
 public:
     uint64_t put(Ref<CallbackBase>&& callback)
     {
-        ASSERT(!m_map.contains(callback->callbackID()));
-
+        RELEASE_ASSERT(RunLoop::isMain());
         uint64_t callbackID = callback->callbackID();
+        RELEASE_ASSERT(callbackID);
+        RELEASE_ASSERT(!m_map.contains(callbackID));
         m_map.set(callbackID, WTFMove(callback));
         return callbackID;
     }
@@ -190,13 +201,6 @@ public:
     };
 
     template<typename... T>
-    uint64_t put(std::function<void(T...)>&& function, const ProcessThrottler::BackgroundActivityToken& activityToken)
-    {
-        auto callback = GenericCallbackType<sizeof...(T), T...>::type::create(WTFMove(function), activityToken);
-        return put(WTFMove(callback));
-    }
-
-    template<typename... T>
     uint64_t put(Function<void(T...)>&& function, const ProcessThrottler::BackgroundActivityToken& activityToken)
     {
         auto callback = GenericCallbackType<sizeof...(T), T...>::type::create(WTFMove(function), activityToken);
@@ -206,6 +210,8 @@ public:
     template<class T>
     RefPtr<T> take(uint64_t callbackID)
     {
+        RELEASE_ASSERT(callbackID);
+        RELEASE_ASSERT(RunLoop::isMain());
         auto base = m_map.take(callbackID);
         if (!base)
             return nullptr;
@@ -215,6 +221,7 @@ public:
 
     void invalidate(CallbackBase::Error error)
     {
+        RELEASE_ASSERT(RunLoop::isMain());
         invalidateCallbackMap(m_map, error);
     }
 

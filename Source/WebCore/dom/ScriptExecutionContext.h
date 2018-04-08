@@ -30,12 +30,12 @@
 #include "ActiveDOMObject.h"
 #include "DOMTimer.h"
 #include "SecurityContext.h"
-#include "Supplementable.h"
 #include <heap/HandleTypes.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/CrossThreadTask.h>
 #include <wtf/Function.h>
 #include <wtf/HashSet.h>
+#include <wtf/text/WTFString.h>
 
 namespace JSC {
 class Exception;
@@ -46,6 +46,7 @@ template<typename> class Strong;
 }
 
 namespace Inspector {
+class ConsoleMessage;
 class ScriptCallStack;
 }
 
@@ -98,6 +99,10 @@ public:
     void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, JSC::Exception*, RefPtr<Inspector::ScriptCallStack>&&, CachedScript* = nullptr);
     void reportUnhandledPromiseRejection(JSC::ExecState&, JSC::JSPromise&, RefPtr<Inspector::ScriptCallStack>&&);
 
+    virtual void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) = 0;
+
+    // The following addConsoleMessage functions are deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0);
     virtual void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) = 0;
 
@@ -224,6 +229,13 @@ public:
 protected:
     class AddConsoleMessageTask : public Task {
     public:
+        AddConsoleMessageTask(std::unique_ptr<Inspector::ConsoleMessage>&& consoleMessage)
+            : Task([&consoleMessage](ScriptExecutionContext& context) {
+                context.addConsoleMessage(WTFMove(consoleMessage));
+            })
+        {
+        }
+
         AddConsoleMessageTask(MessageSource source, MessageLevel level, const String& message)
             : Task([source, level, message = message.isolatedCopy()](ScriptExecutionContext& context) {
                 context.addConsoleMessage(source, level, message);
@@ -237,6 +249,8 @@ protected:
     bool hasPendingActivity() const;
 
 private:
+    // The following addMessage function is deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     virtual void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) = 0;
     virtual void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) = 0;
     bool dispatchErrorEvent(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, JSC::Exception*, CachedScript*);

@@ -28,74 +28,25 @@
 
 #if PLATFORM(WAYLAND)
 
-#include "WebKit2WaylandClientProtocol.h"
+#include "WaylandCompositorDisplay.h"
 #include "WebProcess.h"
-#include <WebCore/PlatformDisplayWayland.h>
-#include <cstring>
 #include <wayland-egl.h>
-#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-class WaylandCompositorDisplay final : public PlatformDisplayWayland {
-    WTF_MAKE_NONCOPYABLE(WaylandCompositorDisplay);
-public:
-    static std::unique_ptr<WaylandCompositorDisplay> create()
-    {
-        struct wl_display* display = wl_display_connect(WebProcess::singleton().waylandCompositorDisplayName().utf8().data());
-        if (!display) {
-            WTFLogAlways("PlatformDisplayWayland initialization: failed to connect to the Wayland display: %s", WebProcess::singleton().waylandCompositorDisplayName().utf8().data());
-            return nullptr;
-        }
-
-        return std::unique_ptr<WaylandCompositorDisplay>(new WaylandCompositorDisplay(display));
-    }
-
-    void bindSurfaceToPage(struct wl_surface* surface, WebPage& page)
-    {
-        if (!m_webkitgtk)
-            return;
-
-        wl_webkitgtk_bind_surface_to_page(reinterpret_cast<struct wl_webkitgtk*>(m_webkitgtk.get()), surface, page.pageID());
-        wl_display_roundtrip(m_display);
-    }
-
-private:
-    WaylandCompositorDisplay(struct wl_display* display)
-    {
-        initialize(display);
-        PlatformDisplay::setSharedDisplayForCompositing(*this);
-    }
-
-    void registryGlobal(const char* interface, uint32_t name) override
-    {
-        PlatformDisplayWayland::registryGlobal(interface, name);
-        if (!std::strcmp(interface, "wl_webkitgtk"))
-            m_webkitgtk.reset(static_cast<struct wl_proxy*>(wl_registry_bind(m_registry.get(), name, &wl_webkitgtk_interface, 1)));
-    }
-
-    WlUniquePtr<struct wl_proxy> m_webkitgtk;
-};
-
-static std::unique_ptr<WaylandCompositorDisplay>& waylandCompositorDisplay()
-{
-    static NeverDestroyed<std::unique_ptr<WaylandCompositorDisplay>> waylandDisplay(WaylandCompositorDisplay::create());
-    return waylandDisplay;
-}
-
 std::unique_ptr<AcceleratedSurfaceWayland> AcceleratedSurfaceWayland::create(WebPage& webPage, Client& client)
 {
-    return waylandCompositorDisplay() ? std::unique_ptr<AcceleratedSurfaceWayland>(new AcceleratedSurfaceWayland(webPage, client)) : nullptr;
+    return WebProcess::singleton().waylandCompositorDisplay() ? std::unique_ptr<AcceleratedSurfaceWayland>(new AcceleratedSurfaceWayland(webPage, client)) : nullptr;
 }
 
 AcceleratedSurfaceWayland::AcceleratedSurfaceWayland(WebPage& webPage, Client& client)
     : AcceleratedSurface(webPage, client)
-    , m_surface(waylandCompositorDisplay()->createSurface())
+    , m_surface(WebProcess::singleton().waylandCompositorDisplay()->createSurface())
     , m_window(wl_egl_window_create(m_surface.get(), std::max(1, m_size.width()), std::max(1, m_size.height())))
 {
-    waylandCompositorDisplay()->bindSurfaceToPage(m_surface.get(), m_webPage);
+    WebProcess::singleton().waylandCompositorDisplay()->bindSurfaceToPage(m_surface.get(), m_webPage);
 }
 
 AcceleratedSurfaceWayland::~AcceleratedSurfaceWayland()

@@ -33,6 +33,7 @@
 #include "FrameDestructionObserver.h"
 #include "ScrollToOptions.h"
 #include "Supplementable.h"
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/WeakPtr.h>
 
@@ -142,7 +143,7 @@ public:
     Element* frameElement() const;
 
     WEBCORE_EXPORT void focus(bool allowFocus = false);
-    void focus(DOMWindow& callerWindow);
+    void focus(DOMWindow& incumbentWindow);
     void blur();
     WEBCORE_EXPORT void close();
     void close(Document&);
@@ -151,7 +152,7 @@ public:
 
     WEBCORE_EXPORT RefPtr<DOMWindow> open(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& urlString, const AtomicString& frameName, const String& windowFeaturesString);
 
-    void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, std::function<void(DOMWindow&)> prepareDialogFunction);
+    void showModalDialog(const String& urlString, const String& dialogFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction);
 
     void alert(const String& message = emptyString());
     bool confirm(const String& message);
@@ -221,7 +222,7 @@ public:
     void printErrorMessage(const String&);
     String crossDomainAccessErrorMessage(const DOMWindow& activeWindow);
 
-    ExceptionOr<void> postMessage(JSC::ExecState&, DOMWindow& callerWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
+    ExceptionOr<void> postMessage(JSC::ExecState&, DOMWindow& incumbentWindow, JSC::JSValue message, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&&);
     void postMessageTimerFired(PostMessageTimer&);
 
     void languagesChanged();
@@ -345,7 +346,7 @@ private:
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
 
-    static RefPtr<Frame> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&, DOMWindow& activeWindow, Frame& firstFrame, Frame& openerFrame, std::function<void(DOMWindow&)> prepareDialogFunction = nullptr);
+    static RefPtr<Frame> createWindow(const String& urlString, const AtomicString& frameName, const WindowFeatures&, DOMWindow& activeWindow, Frame& firstFrame, Frame& openerFrame, const WTF::Function<void(DOMWindow&)>& prepareDialogFunction = nullptr);
     bool isInsecureScriptAccess(DOMWindow& activeWindow, const String& urlString);
 
     void resetDOMWindowProperties();

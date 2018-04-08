@@ -34,7 +34,6 @@
 #include "InlineCallFrameSet.h"
 #include "JSCell.h"
 #include "ProfilerCompilation.h"
-#include "SymbolTable.h"
 #include <wtf/Bag.h>
 #include <wtf/Noncopyable.h>
 
@@ -76,6 +75,7 @@ public:
         , frameRegisterCount(std::numeric_limits<unsigned>::max())
         , requiredRegisterCountForExit(std::numeric_limits<unsigned>::max())
     { }
+    ~CommonData();
     
     void notifyCompilingStructureTransition(Plan&, CodeBlock*, Node*);
     CallSiteIndex addCodeOrigin(CodeOrigin);
@@ -87,7 +87,7 @@ public:
     
     bool invalidate(); // Returns true if we did invalidate, or false if the code block was already invalidated.
     bool hasInstalledVMTrapsBreakpoints() const { return isStillValid && hasVMTrapsBreakpointsInstalled; }
-    void installVMTrapBreakpoints();
+    void installVMTrapBreakpoints(CodeBlock* owner);
     bool isVMTrapBreakpoint(void* address);
 
     unsigned requiredRegisterCountForExecutionAndExit() const
@@ -128,6 +128,8 @@ private:
     HashSet<unsigned, WTF::IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> callSiteIndexFreeList;
 
 };
+
+CodeBlock* codeBlockForVMTrapPC(void* pc);
 
 } } // namespace JSC::DFG
 

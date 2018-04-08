@@ -50,6 +50,7 @@
 #import "WKPreviewElementInfoInternal.h"
 #import "WKUIDelegatePrivate.h"
 #import "WKWebViewConfiguration.h"
+#import "WKWebViewConfigurationPrivate.h"
 #import "WKWebViewInternal.h"
 #import "WKWebViewPrivate.h"
 #import "WebEvent.h"
@@ -83,13 +84,27 @@
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
+#import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
 
-#if ENABLE(DATA_INTERACTION)
+#if ENABLE(DRAG_SUPPORT)
+// FIXME: Move private headers to UIKitSPI.h and add declarations as needed for building on OpenSource against the iOS 11 SDK.
+#import <UIKit/UIDragInteraction.h>
+#import <UIKit/UIDragInteraction_Private.h>
+#import <UIKit/UIDragPreviewParameters.h>
+#import <UIKit/UIDragPreview_Private.h>
+#import <UIKit/UIDragSession.h>
+#import <UIKit/UIDragging.h>
+#import <UIKit/UIDropInteraction.h>
+#import <UIKit/UIPreviewInteraction.h>
+#import <UIKit/UIURLDragPreviewView.h>
+#import <UIKit/_UITextDragCaretView.h>
+#import <WebCore/DragData.h>
+#import <WebCore/DragItem.h>
 #import <WebCore/PlatformPasteboard.h>
 #import <WebCore/WebItemProviderPasteboard.h>
-#endif
+#endif // ENABLE(DRAG_SUPPORT)
 
 @interface UIEvent(UIEventInternal)
 @property (nonatomic, assign) UIKeyboardInputFlags _inputFlags;
@@ -492,10 +507,6 @@ const CGFloat minimumTapHighlightRadius = 2.0;
 @end
 
 @implementation WKContentView (WKInteraction)
-
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WKContentViewInteractionAdditions.mm>)
-#import <WebKitAdditions/WKContentViewInteractionAdditions.mm>
-#endif
 
 - (void)_createAndConfigureDoubleTapGestureRecognizer
 {
@@ -1308,21 +1319,25 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         [self requestAsynchronousPositionInformationUpdate:request];
 }
 
-- (void)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request
+- (BOOL)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request
 {
     if ([self _currentPositionInformationIsValidForRequest:request])
-        return;
+        return YES;
+
+    auto* connection = _page->process().connection();
+    if (!connection)
+        return NO;
 
     if ([self _hasValidOutstandingPositionInformationRequest:request]) {
-        if (auto* connection = _page->process().connection()) {
-            connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), Seconds::infinity());
-            return;
-        }
+        return connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), Seconds::infinity(), IPC::WaitForOption::InterruptWaitingIfSyncMessageArrives);
     }
 
-    _page->getPositionInformation(request, _positionInformation);
+    _page->process().sendSync(Messages::WebPage::GetPositionInformation(request), Messages::WebPage::GetPositionInformation::Reply(_positionInformation), _page->pageID());
+
     _hasValidPositionInformation = YES;
     [self _invokeAndRemovePendingHandlersValidForCurrentPositionInformation];
+
+    return YES;
 }
 
 - (void)requestAsynchronousPositionInformationUpdate:(WebKit::InteractionInformationRequest)request
@@ -1410,7 +1425,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         if (_textSelectionAssistant) {
             // Request information about the position with sync message.
             // If the assisted node is the same, prevent the gesture.
-            [self ensurePositionInformationIsUpToDate:InteractionInformationRequest(roundedIntPoint(point))];
+            if (![self ensurePositionInformationIsUpToDate:InteractionInformationRequest(roundedIntPoint(point))])
+                return NO;
             if (_positionInformation.nodeAtPositionIsAssistedNode)
                 return NO;
         }
@@ -1448,7 +1464,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         // to gestureRecognizerShouldBegin.
         // Force a sync call if not ready yet.
         InteractionInformationRequest request(roundedIntPoint(point));
-        [self ensurePositionInformationIsUpToDate:request];
+        if (![self ensurePositionInformationIsUpToDate:request])
+            return NO;
 
         if (_textSelectionAssistant) {
             // Prevent the gesture if it is the same node.
@@ -1489,7 +1506,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return NO;
 
     InteractionInformationRequest request(roundedIntPoint(point));
-    [self ensurePositionInformationIsUpToDate:request];
+    if (![self ensurePositionInformationIsUpToDate:request])
+        return NO;
 
 #if ENABLE(DATA_INTERACTION)
     if (_positionInformation.hasSelectionAtPosition) {
@@ -1505,7 +1523,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)pointIsNearMarkedText:(CGPoint)point
 {
     InteractionInformationRequest request(roundedIntPoint(point));
-    [self ensurePositionInformationIsUpToDate:request];
+    if (![self ensurePositionInformationIsUpToDate:request])
+        return NO;
     return _positionInformation.isNearMarkedText;
 }
 
@@ -1518,7 +1537,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
 - (BOOL)textInteractionGesture:(UIWKGestureType)gesture shouldBeginAtPoint:(CGPoint)point
 {
     InteractionInformationRequest request(roundedIntPoint(point));
-    [self ensurePositionInformationIsUpToDate:request];
+    if (![self ensurePositionInformationIsUpToDate:request])
+        return NO;
 
 #if ENABLE(DATA_INTERACTION)
     if (_positionInformation.hasSelectionAtPosition && gesture == UIWKGestureLoupe) {
@@ -4049,13 +4069,13 @@ static bool isAssistableInputType(InputType type)
 
 #pragma mark - Implementation of WKActionSheetAssistantDelegate.
 
-- (const WebKit::InteractionInformationAtPosition&)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
+- (std::optional<WebKit::InteractionInformationAtPosition>)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
-    // FIXME: This should be more asynchronous, since we control the presentation of the action sheet.
     InteractionInformationRequest request(_positionInformation.request.point);
     request.includeSnapshot = true;
     request.includeLinkIndicator = assistant.needsLinkIndicator;
-    [self ensurePositionInformationIsUpToDate:request];
+    if (![self ensurePositionInformationIsUpToDate:request])
+        return std::nullopt;
 
     return _positionInformation;
 }
@@ -4157,6 +4177,690 @@ static bool isAssistableInputType(InputType type)
         completion(nil, nil);
 }
 
+#if ENABLE(DRAG_SUPPORT)
+
+- (NSTimeInterval)dragLiftDelay
+{
+    static const NSTimeInterval mediumDragLiftDelay = 0.5;
+    static const NSTimeInterval longDragLiftDelay = 0.65;
+    auto dragLiftDelay = _webView.configuration._dragLiftDelay;
+    if (dragLiftDelay == _WKDragLiftDelayMedium)
+        return mediumDragLiftDelay;
+    if (dragLiftDelay == _WKDragLiftDelayLong)
+        return longDragLiftDelay;
+    return _UIDragInteractionDefaultLiftDelay();
+}
+
+- (id <WKUIDelegatePrivate>)webViewUIDelegate
+{
+    return (id <WKUIDelegatePrivate>)[_webView UIDelegate];
+}
+
+- (void)setupDataInteractionDelegates
+{
+    _dataInteraction = adoptNS([[UIDragInteraction alloc] initWithDelegate:self]);
+    _dataOperation = adoptNS([[UIDropInteraction alloc] initWithDelegate:self]);
+    [_dataInteraction _setLiftDelay:self.dragLiftDelay];
+    [_dataInteraction setEnabled:YES];
+
+    [self addInteraction:_dataInteraction.get()];
+    [self addInteraction:_dataOperation.get()];
+}
+
+- (void)teardownDataInteractionDelegates
+{
+    if (_dataInteraction)
+        [self removeInteraction:_dataInteraction.get()];
+
+    if (_dataOperation)
+        [self removeInteraction:_dataOperation.get()];
+
+    _dataInteraction = nil;
+    _dataOperation = nil;
+
+    [self cleanUpDragSourceSessionState];
+}
+
+- (void)_startDrag:(RetainPtr<CGImageRef>)image item:(const DragItem&)item
+{
+    ASSERT(item.sourceAction != DragSourceActionNone);
+
+    _dataInteractionState.image = adoptNS([[UIImage alloc] initWithCGImage:image.get() scale:_page->deviceScaleFactor() orientation:UIImageOrientationUp]);
+    _dataInteractionState.indicatorData = item.image.indicatorData();
+    _dataInteractionState.sourceAction = static_cast<DragSourceAction>(item.sourceAction);
+    _dataInteractionState.adjustedOrigin = item.eventPositionInContentCoordinates;
+    _dataInteractionState.elementBounds = item.elementBounds;
+    _dataInteractionState.linkTitle = item.title.isEmpty() ? nil : (NSString *)item.title;
+    _dataInteractionState.linkURL = item.url.isEmpty() ? nil : (NSURL *)item.url;
+}
+
+- (void)_didHandleStartDataInteractionRequest:(BOOL)started
+{
+    BlockPtr<void()> savedCompletionBlock = _dataInteractionState.dragStartCompletionBlock;
+    _dataInteractionState.dragStartCompletionBlock = nil;
+    ASSERT(savedCompletionBlock);
+
+    RELEASE_LOG(DragAndDrop, "Handling drag start request (started: %d, completion block: %p)", started, savedCompletionBlock.get());
+    if (savedCompletionBlock)
+        savedCompletionBlock();
+
+    if (![_dataInteractionState.dragSession items].count) {
+        CGPoint adjustedOrigin = _dataInteractionState.adjustedOrigin;
+        [self cleanUpDragSourceSessionState];
+        if (started) {
+            // A client of the Objective C SPI or UIKit might have prevented the drag from beginning entirely in the UI process, in which case
+            // we need to balance the `dragstart` event with a `dragend`.
+            _page->dragEnded(roundedIntPoint(adjustedOrigin), roundedIntPoint([self convertPoint:adjustedOrigin toView:self.window]), DragOperationNone);
+        }
+    }
+}
+
+static RetainPtr<UIImage> uiImageForImage(RefPtr<Image> image)
+{
+    if (!image)
+        return nullptr;
+
+    auto cgImage = image->nativeImage();
+    if (!cgImage)
+        return nullptr;
+
+    return adoptNS([[UIImage alloc] initWithCGImage:cgImage.get()]);
+}
+
+static BOOL shouldUseTextIndicatorToCreatePreviewForDragAction(DragSourceAction action)
+{
+    if (action & (DragSourceActionLink | DragSourceActionSelection))
+        return YES;
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+    if (action & DragSourceActionAttachment)
+        return YES;
+#endif
+
+    return NO;
+}
+
+- (RetainPtr<UITargetedDragPreview>)dragPreviewForImage:(UIImage *)image frameInRootViewCoordinates:(const FloatRect&)frame clippingRectsInFrameCoordinates:(const Vector<FloatRect>&)clippingRects backgroundColor:(UIColor *)backgroundColor
+{
+    if (frame.isEmpty() || !image)
+        return nullptr;
+
+    UIView *container = [self unscaledView];
+    FloatRect frameInContainerCoordinates;
+    NSMutableArray *clippingRectValuesInFrameCoordinates = [NSMutableArray arrayWithCapacity:clippingRects.size()];
+
+    frameInContainerCoordinates = [self convertRect:frame toView:container];
+    if (frameInContainerCoordinates.isEmpty())
+        return nullptr;
+
+    float widthScalingRatio = frameInContainerCoordinates.width() / frame.width();
+    float heightScalingRatio = frameInContainerCoordinates.height() / frame.height();
+    for (auto rect : clippingRects) {
+        rect.scale(widthScalingRatio, heightScalingRatio);
+        [clippingRectValuesInFrameCoordinates addObject:[NSValue valueWithCGRect:rect]];
+    }
+
+    auto imageView = adoptNS([[UIImageView alloc] initWithImage:image]);
+    [imageView setFrame:frameInContainerCoordinates];
+
+    RetainPtr<UIDragPreviewParameters> parameters;
+    if (clippingRectValuesInFrameCoordinates.count)
+        parameters = adoptNS([[UIDragPreviewParameters alloc] initWithTextLineRects:clippingRectValuesInFrameCoordinates]);
+    else
+        parameters = adoptNS([[UIDragPreviewParameters alloc] init]);
+
+    if (backgroundColor)
+        [parameters setBackgroundColor:backgroundColor];
+
+    CGPoint centerInContainerCoordinates = { CGRectGetMidX(frameInContainerCoordinates), CGRectGetMidY(frameInContainerCoordinates) };
+    auto target = adoptNS([[UIDragPreviewTarget alloc] initWithContainer:container center:centerInContainerCoordinates]);
+    auto dragPreview = adoptNS([[UITargetedDragPreview alloc] initWithView:imageView.get() parameters:parameters.get() target:target.get()]);
+    return dragPreview;
+}
+
+- (RetainPtr<UITargetedDragPreview>)dragPreviewForCurrentDataInteractionState
+{
+    auto action = _dataInteractionState.sourceAction;
+    if (action & DragSourceActionImage && _dataInteractionState.image) {
+        Vector<FloatRect> emptyClippingRects;
+        return [self dragPreviewForImage:_dataInteractionState.image.get() frameInRootViewCoordinates:_dataInteractionState.elementBounds clippingRectsInFrameCoordinates:emptyClippingRects backgroundColor:nil];
+    }
+
+    if (shouldUseTextIndicatorToCreatePreviewForDragAction(action) && _dataInteractionState.indicatorData) {
+        auto indicator = _dataInteractionState.indicatorData.value();
+        return [self dragPreviewForImage:uiImageForImage(indicator.contentImage).get() frameInRootViewCoordinates:indicator.textBoundingRectInRootViewCoordinates clippingRectsInFrameCoordinates:indicator.textRectsInBoundingRectCoordinates backgroundColor:[UIColor colorWithCGColor:cachedCGColor(indicator.estimatedBackgroundColor)]];
+    }
+
+    return nil;
+}
+
+- (void)computeClientAndGlobalPointsForDropSession:(id <UIDropSession>)session outClientPoint:(CGPoint *)outClientPoint outGlobalPoint:(CGPoint *)outGlobalPoint
+{
+    if (outClientPoint)
+        *outClientPoint = [session locationInView:self];
+
+    if (outGlobalPoint) {
+        UIWindow *window = self.window;
+        *outGlobalPoint = window ? [session locationInView:window] : _dataInteractionState.lastGlobalPosition;
+    }
+}
+
+static UIDropOperation dropOperationForWebCoreDragOperation(DragOperation operation)
+{
+    if (operation & DragOperationMove)
+        return UIDropOperationMove;
+
+    if (operation & DragOperationCopy)
+        return UIDropOperationCopy;
+
+    return UIDropOperationCancel;
+}
+
+- (DragData)dragDataForDropSession:(id <UIDropSession>)session dragDestinationAction:(WKDragDestinationAction)dragDestinationAction
+{
+    CGPoint global;
+    CGPoint client;
+    [self computeClientAndGlobalPointsForDropSession:session outClientPoint:&client outGlobalPoint:&global];
+
+    DragOperation dragOperationMask = static_cast<DragOperation>(session.allowsMoveOperation ? DragOperationEvery : (DragOperationEvery & ~DragOperationMove));
+    return { session, roundedIntPoint(client), roundedIntPoint(global), dragOperationMask, DragApplicationNone, static_cast<DragDestinationAction>(dragDestinationAction) };
+}
+
+- (void)cleanUpDragSourceSessionState
+{
+    RELEASE_LOG(DragAndDrop, "Cleaning up dragging state (has pending operation: %d)", [[WebItemProviderPasteboard sharedInstance] hasPendingOperation]);
+    if (![[WebItemProviderPasteboard sharedInstance] hasPendingOperation]) {
+        // If we're performing a drag operation, don't clear out the pasteboard yet, since another web view may still require access to it.
+        // The pasteboard will be cleared after the last client is finished performing a drag operation using the item providers.
+        [[WebItemProviderPasteboard sharedInstance] setItemProviders:nil];
+    }
+
+    if (auto completionBlock = _dataInteractionState.dragCancelSetDownBlock) {
+        _dataInteractionState.dragCancelSetDownBlock = nil;
+        completionBlock();
+    }
+
+    if (auto completionBlock = _dataInteractionState.dragStartCompletionBlock) {
+        // If the previous drag session is still initializing, we need to ensure that its completion block is called to prevent UIKit from getting out of state.
+        _dataInteractionState.dragStartCompletionBlock = nil;
+        completionBlock();
+    }
+
+    [_dataInteractionState.caretView remove];
+    [_dataInteractionState.visibleContentViewSnapshot removeFromSuperview];
+
+    _dataInteractionState = { };
+}
+
+static NSArray<UIItemProvider *> *extractItemProvidersFromDragItems(NSArray<UIDragItem *> *dragItems)
+{
+    __block NSMutableArray<UIItemProvider *> *providers = [NSMutableArray array];
+    for (UIDragItem *item in dragItems) {
+        RetainPtr<UIItemProvider> provider = item.itemProvider;
+        if (provider)
+            [providers addObject:provider.get()];
+    }
+    return providers;
+}
+
+static NSArray<UIItemProvider *> *extractItemProvidersFromDropSession(id <UIDropSession> session)
+{
+    return extractItemProvidersFromDragItems(session.items);
+}
+
+- (void)_didConcludeEditDataInteraction:(std::optional<TextIndicatorData>)data
+{
+    if (!data)
+        return;
+
+    auto snapshotWithoutSelection = data->contentImageWithoutSelection;
+    if (!snapshotWithoutSelection)
+        return;
+
+    auto unselectedSnapshotImage = snapshotWithoutSelection->nativeImage();
+    if (!unselectedSnapshotImage)
+        return;
+
+    auto dataInteractionUnselectedContentImage = adoptNS([[UIImage alloc] initWithCGImage:unselectedSnapshotImage.get() scale:_page->deviceScaleFactor() orientation:UIImageOrientationUp]);
+    RetainPtr<UIImageView> unselectedContentSnapshot = adoptNS([[UIImageView alloc] initWithImage:dataInteractionUnselectedContentImage.get()]);
+    [unselectedContentSnapshot setFrame:data->contentImageWithoutSelectionRectInRootViewCoordinates];
+
+    RetainPtr<WKContentView> protectedSelf = self;
+    RetainPtr<UIView> visibleContentViewSnapshot = adoptNS(_dataInteractionState.visibleContentViewSnapshot.leakRef());
+
+    _dataInteractionState.isAnimatingConcludeEditDrag = YES;
+    [self insertSubview:unselectedContentSnapshot.get() belowSubview:visibleContentViewSnapshot.get()];
+    [UIView animateWithDuration:0.25 animations:^() {
+        [visibleContentViewSnapshot setAlpha:0];
+    } completion:^(BOOL completed) {
+        [visibleContentViewSnapshot removeFromSuperview];
+        [UIView animateWithDuration:0.25 animations:^() {
+            [protectedSelf setSuppressAssistantSelectionView:NO];
+            [unselectedContentSnapshot setAlpha:0];
+        } completion:^(BOOL completed) {
+            [unselectedContentSnapshot removeFromSuperview];
+        }];
+    }];
+}
+
+- (void)_didPerformDataInteractionControllerOperation:(BOOL)handled
+{
+    RELEASE_LOG(DragAndDrop, "Finished performing drag controller operation (handled: %d)", handled);
+    [[WebItemProviderPasteboard sharedInstance] decrementPendingOperationCount];
+    RetainPtr<id <UIDropSession>> dropSession = _dataInteractionState.dropSession;
+    if ([self.webViewUIDelegate respondsToSelector:@selector(_webView:dataInteractionOperationWasHandled:forSession:itemProviders:)])
+        [self.webViewUIDelegate _webView:_webView dataInteractionOperationWasHandled:handled forSession:dropSession.get() itemProviders:[WebItemProviderPasteboard sharedInstance].itemProviders];
+
+    if (!_dataInteractionState.isAnimatingConcludeEditDrag)
+        self.suppressAssistantSelectionView = NO;
+
+    CGPoint global;
+    CGPoint client;
+    [self computeClientAndGlobalPointsForDropSession:dropSession.get() outClientPoint:&client outGlobalPoint:&global];
+    [self cleanUpDragSourceSessionState];
+    _page->dragEnded(roundedIntPoint(client), roundedIntPoint(global), _page->currentDragOperation());
+}
+
+- (void)_transitionDragPreviewToImageIfNecessary:(id <UIDragSession>)session
+{
+    if (_dataInteractionState.sourceAction & DragSourceActionImage || !(_dataInteractionState.sourceAction & DragSourceActionLink))
+        return;
+
+    auto linkDraggingCenter = _dataInteractionState.adjustedOrigin;
+    RetainPtr<NSString> title = (NSString *)_dataInteractionState.linkTitle;
+    RetainPtr<NSURL> url = (NSURL *)_dataInteractionState.linkURL;
+    session.items.firstObject.previewProvider = [title, url, linkDraggingCenter] () -> UIDragPreview * {
+        UIURLDragPreviewView *previewView = [UIURLDragPreviewView viewWithTitle:title.get() URL:url.get()];
+        previewView.center = linkDraggingCenter;
+
+        UIDragPreviewParameters *parameters = [[[UIDragPreviewParameters alloc] initWithTextLineRects:@[ [NSValue valueWithCGRect:previewView.bounds] ]] autorelease];
+        return [[[UIDragPreview alloc] initWithView:previewView parameters:parameters] autorelease];
+    };
+}
+
+- (void)_didChangeDataInteractionCaretRect:(CGRect)previousRect currentRect:(CGRect)rect
+{
+    BOOL previousRectIsEmpty = CGRectIsEmpty(previousRect);
+    BOOL currentRectIsEmpty = CGRectIsEmpty(rect);
+    if (previousRectIsEmpty && currentRectIsEmpty)
+        return;
+
+    if (previousRectIsEmpty) {
+        _dataInteractionState.caretView = adoptNS([[_UITextDragCaretView alloc] initWithTextInputView:self]);
+        [_dataInteractionState.caretView insertAtPosition:[WKTextPosition textPositionWithRect:rect]];
+        return;
+    }
+
+    if (currentRectIsEmpty) {
+        [_dataInteractionState.caretView remove];
+        _dataInteractionState.caretView = nil;
+        return;
+    }
+
+    [_dataInteractionState.caretView updateToPosition:[WKTextPosition textPositionWithRect:rect]];
+}
+
+- (WKDragDestinationAction)_dragDestinationActionForDropSession:(id <UIDropSession>)session
+{
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:dragDestinationActionMaskForDraggingInfo:)])
+        return [uiDelegate _webView:_webView dragDestinationActionMaskForDraggingInfo:session];
+
+    return WKDragDestinationActionAny & ~WKDragDestinationActionLoad;
+}
+
+- (id <UIDragDropSession>)currentDragOrDropSession
+{
+    if (_dataInteractionState.dropSession)
+        return _dataInteractionState.dropSession.get();
+    return _dataInteractionState.dragSession.get();
+}
+
+#pragma mark - UIDragInteractionDelegate
+
+- (void)_dragInteraction:(UIDragInteraction *)interaction prepareForSession:(id <UIDragSession>)session completion:(dispatch_block_t)completion
+{
+    [self _cancelLongPressGestureRecognizer];
+
+    RELEASE_LOG(DragAndDrop, "Preparing for drag session: %p", session);
+    if (self.currentDragOrDropSession) {
+        // FIXME: Support multiple simultaneous drag sessions in the future.
+        RELEASE_LOG(DragAndDrop, "Drag session failed: %p (a current drag session already exists)", session);
+        completion();
+        return;
+    }
+
+    [self cleanUpDragSourceSessionState];
+
+    auto dragOrigin = roundedIntPoint([session locationInView:self]);
+    _dataInteractionState.dragStartCompletionBlock = completion;
+    _dataInteractionState.dragSession = session;
+    _page->requestStartDataInteraction(dragOrigin, roundedIntPoint([self convertPoint:dragOrigin toView:self.window]));
+
+    RELEASE_LOG(DragAndDrop, "Drag session requested: %p at origin: {%d, %d}", session, dragOrigin.x(), dragOrigin.y());
+}
+
+- (NSArray<UIDragItem *> *)dragInteraction:(UIDragInteraction *)interaction itemsForBeginningSession:(id <UIDragSession>)session
+{
+    RELEASE_LOG(DragAndDrop, "Drag items requested for session: %p", session);
+    if (_dataInteractionState.dragSession != session) {
+        RELEASE_LOG(DragAndDrop, "Drag session failed: %p (delegate session does not match %p)", session, _dataInteractionState.dragSession.get());
+        return @[ ];
+    }
+
+    if (_dataInteractionState.sourceAction == DragSourceActionNone) {
+        RELEASE_LOG(DragAndDrop, "Drag session failed: %p (no drag source action)", session);
+        return @[ ];
+    }
+
+    WebItemProviderPasteboard *draggingPasteboard = [WebItemProviderPasteboard sharedInstance];
+    ASSERT(interaction == _dataInteraction);
+    NSUInteger numberOfItems = draggingPasteboard.numberOfItems;
+    if (!numberOfItems) {
+        RELEASE_LOG(DragAndDrop, "Drag session failed: %p (no item providers generated before adjustment)", session);
+        _page->dragCancelled();
+        return @[ ];
+    }
+
+    [UICalloutBar fadeSharedCalloutBar];
+
+    // Give internal clients such as Mail one final chance to augment the contents of each UIItemProvider before sending the drag items off to UIKit.
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:adjustedDataInteractionItemProvidersForItemProvider:representingObjects:additionalData:)]) {
+        NSMutableArray *adjustedItemProviders = [NSMutableArray array];
+        for (NSUInteger itemIndex = 0; itemIndex < numberOfItems; ++itemIndex) {
+            WebItemProviderRegistrationInfoList *infoList = [draggingPasteboard registrationInfoAtIndex:itemIndex];
+            auto representingObjects = adoptNS([[NSMutableArray alloc] init]);
+            auto additionalData = adoptNS([[NSMutableDictionary alloc] init]);
+            [infoList enumerateItems:[representingObjects, additionalData] (WebItemProviderRegistrationInfo *item, NSUInteger) {
+                if (item.representingObject)
+                    [representingObjects addObject:item.representingObject];
+                if (item.typeIdentifier && item.data)
+                    [additionalData setObject:item.data forKey:item.typeIdentifier];
+            }];
+            if (NSArray *replacementItemProviders = [uiDelegate _webView:_webView adjustedDataInteractionItemProvidersForItemProvider:[draggingPasteboard itemProviderAtIndex:itemIndex] representingObjects:representingObjects.get() additionalData:additionalData.get()])
+                [adjustedItemProviders addObjectsFromArray:replacementItemProviders];
+        }
+        draggingPasteboard.itemProviders = adjustedItemProviders;
+    } else if ([uiDelegate respondsToSelector:@selector(_webView:adjustedDataInteractionItemProviders:)])
+        draggingPasteboard.itemProviders = [uiDelegate _webView:_webView adjustedDataInteractionItemProviders:draggingPasteboard.itemProviders];
+
+    __block RetainPtr<NSMutableArray> itemsForDragInteraction = [NSMutableArray array];
+    [draggingPasteboard enumerateItemProvidersWithBlock:^(UIItemProvider *itemProvider, NSUInteger index, BOOL *stop) {
+        [itemsForDragInteraction addObject:[[[UIDragItem alloc] initWithItemProvider:itemProvider] autorelease]];
+    }];
+
+    if (![itemsForDragInteraction count])
+        _page->dragCancelled();
+
+    RELEASE_LOG(DragAndDrop, "Drag session: %p starting with %tu items", session, [itemsForDragInteraction count]);
+    return itemsForDragInteraction.get();
+}
+
+- (UITargetedDragPreview *)dragInteraction:(UIDragInteraction *)interaction previewForLiftingItem:(UIDragItem *)item session:(id <UIDragSession>)session
+{
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:previewForLiftingItem:session:)]) {
+        UITargetedDragPreview *overridenPreview = [uiDelegate _webView:_webView previewForLiftingItem:item session:session];
+        if (overridenPreview)
+            return overridenPreview;
+    }
+    return self.dragPreviewForCurrentDataInteractionState.autorelease();
+}
+
+- (void)dragInteraction:(UIDragInteraction *)interaction willAnimateLiftWithAnimator:(id <UIDragAnimating>)animator session:(id <UIDragSession>)session
+{
+    auto adjustedOrigin = _dataInteractionState.adjustedOrigin;
+    RetainPtr<WKContentView> protectedSelf(self);
+    [animator addCompletion:[session, adjustedOrigin, protectedSelf, page = _page] (UIViewAnimatingPosition finalPosition) {
+        if (finalPosition == UIViewAnimatingPositionStart) {
+            RELEASE_LOG(DragAndDrop, "Drag session ended at start: %p", session);
+            // The lift was canceled, so -dropInteraction:sessionDidEnd: will never be invoked. This is the last chance to clean up.
+            [protectedSelf cleanUpDragSourceSessionState];
+            auto originInWindowCoordinates = [protectedSelf convertPoint:adjustedOrigin toView:[protectedSelf window]];
+            page->dragEnded(roundedIntPoint(adjustedOrigin), roundedIntPoint(originInWindowCoordinates), DragOperationNone);
+        }
+    }];
+}
+
+- (void)dragInteraction:(UIDragInteraction *)interaction sessionWillBegin:(id <UIDragSession>)session
+{
+    RELEASE_LOG(DragAndDrop, "Drag session beginning: %p", session);
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:dataInteraction:sessionWillBegin:)])
+        [uiDelegate _webView:_webView dataInteraction:interaction sessionWillBegin:session];
+
+    [_actionSheetAssistant cleanupSheet];
+
+    _dataInteractionState.didBeginDragging = YES;
+    [self _transitionDragPreviewToImageIfNecessary:session];
+
+    _page->didStartDrag();
+}
+
+- (void)dragInteraction:(UIDragInteraction *)interaction session:(id <UIDragSession>)session didEndWithOperation:(UIDropOperation)operation
+{
+    RELEASE_LOG(DragAndDrop, "Drag session ended: %p (with operation: %tu, performing operation: %d, began dragging: %d)", session, operation, _dataInteractionState.isPerformingOperation, _dataInteractionState.didBeginDragging);
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:dataInteraction:session:didEndWithOperation:)])
+        [uiDelegate _webView:_webView dataInteraction:interaction session:session didEndWithOperation:operation];
+
+    if (_dataInteractionState.isPerformingOperation)
+        return;
+
+    [self cleanUpDragSourceSessionState];
+    _page->dragEnded(roundedIntPoint(_dataInteractionState.adjustedOrigin), roundedIntPoint([self convertPoint:_dataInteractionState.adjustedOrigin toView:self.window]), operation);
+}
+
+- (UITargetedDragPreview *)dragInteraction:(UIDragInteraction *)interaction previewForCancellingItem:(UIDragItem *)item withDefault:(UITargetedDragPreview *)defaultPreview
+{
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:previewForCancellingItem:withDefault:)]) {
+        UITargetedDragPreview *overridenPreview = [uiDelegate _webView:_webView previewForCancellingItem:item withDefault:defaultPreview];
+        if (overridenPreview)
+            return overridenPreview;
+    }
+    return self.dragPreviewForCurrentDataInteractionState.autorelease();
+}
+
+- (BOOL)_dragInteraction:(UIDragInteraction *)interaction item:(UIDragItem *)item shouldDelaySetDownAnimationWithCompletion:(void(^)(void))completion
+{
+    _dataInteractionState.dragCancelSetDownBlock = completion;
+    return YES;
+}
+
+- (void)dragInteraction:(UIDragInteraction *)interaction item:(UIDragItem *)item willAnimateCancelWithAnimator:(id <UIDragAnimating>)animator
+{
+    [animator addCompletion:[protectedSelf = retainPtr(self), page = _page] (UIViewAnimatingPosition finalPosition) {
+        page->dragCancelled();
+        if (auto completion = protectedSelf->_dataInteractionState.dragCancelSetDownBlock) {
+            protectedSelf->_dataInteractionState.dragCancelSetDownBlock = nil;
+            page->callAfterNextPresentationUpdate([completion] (CallbackBase::Error) {
+                completion();
+            });
+        }
+    }];
+}
+
+#pragma mark - UIDropInteractionDelegate
+
+- (BOOL)dropInteraction:(UIDropInteraction *)interaction canHandleSession:(id<UIDropSession>)session
+{
+    // FIXME: Support multiple simultaneous drop sessions in the future.
+    id <UIDragDropSession> dragOrDropSession = self.currentDragOrDropSession;
+    RELEASE_LOG(DragAndDrop, "Can handle drag session: %p with local session: %p existing session: %p?", session, session.localDragSession, dragOrDropSession);
+
+    return !dragOrDropSession || session.localDragSession == dragOrDropSession;
+}
+
+- (void)dropInteraction:(UIDropInteraction *)interaction sessionDidEnter:(id <UIDropSession>)session
+{
+    RELEASE_LOG(DragAndDrop, "Drop session entered: %p with %tu items", session, session.items.count);
+    _dataInteractionState.dropSession = session;
+
+    [[WebItemProviderPasteboard sharedInstance] setItemProviders:extractItemProvidersFromDropSession(session)];
+
+    auto dragData = [self dragDataForDropSession:session dragDestinationAction:[self _dragDestinationActionForDropSession:session]];
+
+    _page->dragEntered(dragData, "data interaction pasteboard");
+    _dataInteractionState.lastGlobalPosition = dragData.globalPosition();
+}
+
+- (UIDropProposal *)dropInteraction:(UIDropInteraction *)interaction sessionDidUpdate:(id <UIDropSession>)session
+{
+    [[WebItemProviderPasteboard sharedInstance] setItemProviders:extractItemProvidersFromDropSession(session)];
+
+    auto dragData = [self dragDataForDropSession:session dragDestinationAction:[self _dragDestinationActionForDropSession:session]];
+    _page->dragUpdated(dragData, "data interaction pasteboard");
+    _dataInteractionState.lastGlobalPosition = dragData.globalPosition();
+
+    NSUInteger operation = dropOperationForWebCoreDragOperation(_page->currentDragOperation());
+    if ([self.webViewUIDelegate respondsToSelector:@selector(_webView:willUpdateDataInteractionOperationToOperation:forSession:)])
+        operation = [self.webViewUIDelegate _webView:_webView willUpdateDataInteractionOperationToOperation:operation forSession:session];
+
+    return [[[UIDropProposal alloc] initWithDropOperation:static_cast<UIDropOperation>(operation)] autorelease];
+}
+
+- (void)dropInteraction:(UIDropInteraction *)interaction sessionDidExit:(id <UIDropSession>)session
+{
+    RELEASE_LOG(DragAndDrop, "Drop session exited: %p with %tu items", session, session.items.count);
+    [[WebItemProviderPasteboard sharedInstance] setItemProviders:extractItemProvidersFromDropSession(session)];
+
+    auto dragData = [self dragDataForDropSession:session dragDestinationAction:WKDragDestinationActionAny];
+    _page->dragExited(dragData, "data interaction pasteboard");
+    _page->resetCurrentDragInformation();
+
+    _dataInteractionState.dropSession = nil;
+}
+
+- (void)dropInteraction:(UIDropInteraction *)interaction performDrop:(id <UIDropSession>)session
+{
+    NSArray <UIItemProvider *> *itemProviders = extractItemProvidersFromDropSession(session);
+    id <WKUIDelegatePrivate> uiDelegate = self.webViewUIDelegate;
+    if ([uiDelegate respondsToSelector:@selector(_webView:performDataInteractionOperationWithItemProviders:)]) {
+        if ([uiDelegate _webView:_webView performDataInteractionOperationWithItemProviders:itemProviders])
+            return;
+    }
+
+    if ([uiDelegate respondsToSelector:@selector(_webView:willPerformDropWithSession:)]) {
+        itemProviders = extractItemProvidersFromDragItems([uiDelegate _webView:_webView willPerformDropWithSession:session]);
+        if (!itemProviders.count)
+            return;
+    }
+
+    [[WebItemProviderPasteboard sharedInstance] setItemProviders:itemProviders];
+    [[WebItemProviderPasteboard sharedInstance] incrementPendingOperationCount];
+    _dataInteractionState.isPerformingOperation = YES;
+    auto dragData = [self dragDataForDropSession:session dragDestinationAction:WKDragDestinationActionAny];
+
+    RELEASE_LOG(DragAndDrop, "Loading data from %tu item providers for session: %p", itemProviders.count, session);
+    // Always loading content from the item provider ensures that the web process will be allowed to call back in to the UI
+    // process to access pasteboard contents at a later time. Ideally, we only need to do this work if we're over a file input
+    // or the page prevented default on `dragover`, but without this, dropping into a normal editable areas will fail due to
+    // item providers not loading any data.
+    RetainPtr<WKContentView> retainedSelf(self);
+    [[WebItemProviderPasteboard sharedInstance] doAfterLoadingProvidedContentIntoFileURLs:[retainedSelf, capturedDragData = WTFMove(dragData)] (NSArray *fileURLs) mutable {
+        RELEASE_LOG(DragAndDrop, "Loaded data into %tu files", fileURLs.count);
+        Vector<String> filenames;
+        for (NSURL *fileURL in fileURLs)
+            filenames.append([fileURL path]);
+        capturedDragData.setFileNames(filenames);
+
+        SandboxExtension::Handle sandboxExtensionHandle;
+        SandboxExtension::HandleArray sandboxExtensionForUpload;
+        retainedSelf->_page->createSandboxExtensionsIfNeeded(filenames, sandboxExtensionHandle, sandboxExtensionForUpload);
+        retainedSelf->_page->performDragOperation(capturedDragData, "data interaction pasteboard", sandboxExtensionHandle, sandboxExtensionForUpload);
+
+        retainedSelf->_dataInteractionState.visibleContentViewSnapshot = [retainedSelf snapshotViewAfterScreenUpdates:NO];
+        [retainedSelf setSuppressAssistantSelectionView:YES];
+        [UIView performWithoutAnimation:[retainedSelf] {
+            [retainedSelf->_dataInteractionState.visibleContentViewSnapshot setFrame:[retainedSelf bounds]];
+            [retainedSelf addSubview:retainedSelf->_dataInteractionState.visibleContentViewSnapshot.get()];
+        }];
+    }];
+}
+
+- (UITargetedDragPreview *)dropInteraction:(UIDropInteraction *)interaction previewForDroppingItem:(UIDragItem *)item withDefault:(UITargetedDragPreview *)defaultPreview
+{
+    CGRect caretRect = _page->currentDragCaretRect();
+    if (CGRectIsEmpty(caretRect))
+        return nil;
+
+    // FIXME: <rdar://problem/31074376> [WK2] Performing an edit drag should transition from the initial drag preview to the final drop preview
+    // This is blocked on UIKit support, since we aren't able to update the text clipping rects of a UITargetedDragPreview mid-flight. For now,
+    // just zoom to the center of the caret rect while shrinking the drop preview.
+    auto caretRectInWindowCoordinates = [self convertRect:caretRect toView:[UITextEffectsWindow sharedTextEffectsWindow]];
+    auto caretCenterInWindowCoordinates = CGPointMake(CGRectGetMidX(caretRectInWindowCoordinates), CGRectGetMidY(caretRectInWindowCoordinates));
+    auto target = adoptNS([[UIDragPreviewTarget alloc] initWithContainer:[UITextEffectsWindow sharedTextEffectsWindow] center:caretCenterInWindowCoordinates transform:CGAffineTransformMakeScale(0, 0)]);
+    return [defaultPreview retargetedPreviewWithTarget:target.get()];
+}
+
+- (void)dropInteraction:(UIDropInteraction *)interaction sessionDidEnd:(id <UIDropSession>)session
+{
+    RELEASE_LOG(DragAndDrop, "Drop session ended: %p (performing operation: %d, began dragging: %d)", session, _dataInteractionState.isPerformingOperation, _dataInteractionState.didBeginDragging);
+    if (_dataInteractionState.isPerformingOperation || _dataInteractionState.didBeginDragging)
+        return;
+
+    CGPoint global;
+    CGPoint client;
+    [self computeClientAndGlobalPointsForDropSession:session outClientPoint:&client outGlobalPoint:&global];
+    [self cleanUpDragSourceSessionState];
+    _page->dragEnded(roundedIntPoint(client), roundedIntPoint(global), DragOperationNone);
+}
+
+#pragma mark - Unit testing support
+
+- (void)_simulateDataInteractionEntered:(id)session
+{
+    [self dropInteraction:_dataOperation.get() sessionDidEnter:session];
+}
+
+- (BOOL)_simulateDataInteractionUpdated:(id)session
+{
+    return [self dropInteraction:_dataOperation.get() sessionDidUpdate:session].operation != UIDropOperationCancel;
+}
+
+- (void)_simulateDataInteractionEnded:(id)session
+{
+    [self dropInteraction:_dataOperation.get() sessionDidEnd:session];
+}
+
+- (void)_simulateDataInteractionPerformOperation:(id)session
+{
+    [self dropInteraction:_dataOperation.get() performDrop:session];
+}
+
+- (void)_simulateDataInteractionSessionDidEnd:(id)session
+{
+    [self dragInteraction:_dataInteraction.get() session:session didEndWithOperation:UIDropOperationCopy];
+}
+
+- (void)_simulateWillBeginDataInteractionWithSession:(id)session
+{
+    [self dragInteraction:_dataInteraction.get() sessionWillBegin:session];
+}
+
+- (NSArray *)_simulatedItemsForSession:(id)session
+{
+    return [self dragInteraction:_dataInteraction.get() itemsForBeginningSession:session];
+}
+
+- (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion
+{
+    [self _dragInteraction:_dataInteraction.get() prepareForSession:session completion:completion];
+}
+
+#endif
+
+- (void)_simulateLongPressActionAtLocation:(CGPoint)location
+{
+    RetainPtr<WKContentView> protectedSelf = self;
+    [self doAfterPositionInformationUpdate:[location, protectedSelf] (InteractionInformationAtPosition) {
+        if (SEL action = [protectedSelf _actionForLongPress])
+            [protectedSelf performSelector:action];
+    } forRequest:InteractionInformationRequest(roundedIntPoint(location))];
+}
+
 @end
 
 @implementation WKContentView (WKTesting)
@@ -4216,7 +4920,8 @@ static bool isAssistableInputType(InputType type)
     InteractionInformationRequest request(roundedIntPoint(position));
     request.includeSnapshot = true;
     request.includeLinkIndicator = true;
-    [self ensurePositionInformationIsUpToDate:request];
+    if (![self ensurePositionInformationIsUpToDate:request])
+        return NO;
     if (!_positionInformation.isLink && !_positionInformation.isImage && !_positionInformation.isAttachment)
         return NO;
 

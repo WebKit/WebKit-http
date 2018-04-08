@@ -26,6 +26,8 @@
 #include "config.h"
 #include "ScriptedAnimationController.h"
 
+#include "Chrome.h"
+#include "ChromeClient.h"
 #include "DOMWindow.h"
 #include "DisplayRefreshMonitor.h"
 #include "DisplayRefreshMonitorManager.h"
@@ -73,7 +75,6 @@ bool ScriptedAnimationController::requestAnimationFrameEnabled() const
 void ScriptedAnimationController::suspend()
 {
     ++m_suspendCount;
-    logSuspendCount();
 }
 
 void ScriptedAnimationController::resume()
@@ -83,21 +84,8 @@ void ScriptedAnimationController::resume()
     if (m_suspendCount > 0)
         --m_suspendCount;
 
-    logSuspendCount();
-
     if (!m_suspendCount && m_callbacks.size())
         scheduleAnimation();
-}
-
-void ScriptedAnimationController::logSuspendCount()
-{
-#if defined NDEBUG
-    if (!m_document || !m_document->frame() || !m_document->frame()->settings().shouldLogScritedAnimationControllerSuspensionChange())
-        return;
-
-    WTFLogAlways("ScriptedAnimationController::m_suspendCount = %d", m_suspendCount);
-    WTFReportBacktrace();
-#endif
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR) && !RELEASE_LOG_DISABLED

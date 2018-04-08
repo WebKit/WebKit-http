@@ -1,3 +1,351 @@
+2017-06-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Teach ResourceLoadStatistics to recognize changes in the file system
+        https://bugs.webkit.org/show_bug.cgi?id=173800
+        <rdar://problem/32937842>
+
+        Reviewed by Chris Dumez.
+
+        * wtf/DispatchPtr.h: Added (moved from WebKit2)
+        * wtf/Platform.h: Make sure USE_FILE_LOCK is enabled.
+
+2017-06-28  David Kilzer  <ddkilzer@apple.com>
+
+        Fix typo in comment: WordResult => WorkResult
+
+        * wtf/AutomaticThread.h:
+
+2017-06-27  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Rest - Implementing Object Rest Destructuring
+        https://bugs.webkit.org/show_bug.cgi?id=167962
+
+        Reviewed by Saam Barati.
+
+        * wtf/HashSet.h:
+        (WTF::=):
+
+2017-06-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop Thread::create(obsolete things) API since we can use lambda
+        https://bugs.webkit.org/show_bug.cgi?id=173825
+
+        Reviewed by Saam Barati.
+
+        Thread::create(ThreadFunction, void* data, const char* name) is a bit old API.
+        Since we have C++ lambda, the above API is simply unnecessary. And C++ lambda
+        based one is better since the above API needs casting data to and from void*.
+
+        * wtf/Function.h:
+        Avoid ambiguity.
+        * wtf/ParallelJobsGeneric.cpp:
+        (WTF::ParallelEnvironment::ThreadPrivate::tryLockFor):
+        (WTF::ParallelEnvironment::ThreadPrivate::workerThread): Deleted.
+        * wtf/ParallelJobsGeneric.h:
+        * wtf/Threading.cpp:
+        * wtf/ThreadingWin.cpp:
+        (WTF::createThread):
+
+2017-06-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        initializeThreading() [first] causes WTFCrash due to maxSingleAllocationSize not being initialized
+        https://bugs.webkit.org/show_bug.cgi?id=173720
+
+        Reviewed by Mark Lam.
+
+        When using std::numeric_limits<size_t>::max() for global variable's initialization,
+        it seems that it invokes static constructor to initialize this in VC++.
+        We avoid this edge case by introducing a workaround using SIZE_MAX here.
+
+        When I perform git-grep, there is only one site (this) using std::numeric_limits<>::xxx()
+        to initialize global variable.
+
+        * wtf/FastMalloc.cpp:
+
+2017-06-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive headers from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=173812
+
+        Reviewed by Darin Adler.
+
+        * wtf/Bag.h:
+
+2017-06-23  Keith Miller  <keith_miller@apple.com>
+
+        Switch VMTraps to use halt instructions rather than breakpoint instructions
+        https://bugs.webkit.org/show_bug.cgi?id=173677
+        <rdar://problem/32178892>
+
+        Reviewed by JF Bastien.
+
+        Remove the Trap signal handler code since it plays badly with lldb and combine
+        SIGBUS with SIGSEGV since distiguishing them is generally non-portable.
+
+        Also, update the platform code to only use signaling VMTraps
+        on where we have an appropriate instruction (x86 and ARM64).
+
+        * wtf/Platform.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::fromMachException):
+        (WTF::toMachMask):
+        (WTF::installSignalHandler):
+        (WTF::jscSignalHandler):
+        * wtf/threads/Signals.h:
+        (WTF::toSystemSignal):
+        (WTF::fromSystemSignal):
+
+2017-06-23  Antti Koivisto  <antti@apple.com>
+
+        Add notifyutil registrations for going in and out of simulated low memory state
+        https://bugs.webkit.org/show_bug.cgi?id=173797
+
+        Reviewed by Andreas Kling.
+
+        Add
+
+        notifyutil -p org.WebKit.lowMemory.begin
+        notifyutil -p org.WebKit.lowMemory.end
+
+        for debugging.
+
+        * wtf/cocoa/MemoryPressureHandlerCocoa.mm:
+        (WTF::MemoryPressureHandler::install):
+
+2017-06-23  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove more unused headers from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173761
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Liveness.h:
+        * wtf/PageAllocation.h:
+        * wtf/ParallelJobs.h:
+
+2017-06-22  Andreas Kling  <akling@apple.com>
+
+        Rename MemoryPressureHandler::setTabCount to setPageCount
+        https://bugs.webkit.org/show_bug.cgi?id=173750
+
+        Reviewed by Daniel Bates.
+
+        This function is counting WebCore::Page objects (excluding utility Pages used
+        by SVG-as-image and the web inspector) so let's name it appropriately.
+        Not all WebKit clients have tabs.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::MemoryPressureHandler::setPageCount):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        (WTF::MemoryPressureHandler::setTabCount): Deleted.
+        * wtf/MemoryPressureHandler.h:
+
+2017-06-21  Andreas Kling  <akling@apple.com>
+
+        Increase memory kill limits for WebContent processes that manage multiple tabs.
+        https://bugs.webkit.org/show_bug.cgi?id=173674
+
+        Reviewed by Geoffrey Garen.
+
+        When opening <a target=_blank> links, we currently have to use the same WebContent
+        process for the new tab, to support scripting the window.opener object.
+        This means that some WebContent processes end up hosting multiple tabs, making it
+        more likely that those processes will hit the memory limits.
+
+        Address this by adding some additional allowance for multi-tab processes:
+
+            For each additional tab, up to 4 tabs, add 1GB to the memory kill limit.
+
+        * wtf/MemoryPressureHandler.cpp:
+        (WTF::thresholdForMemoryKillWithProcessState):
+        (WTF::MemoryPressureHandler::setTabCount):
+        (WTF::MemoryPressureHandler::thresholdForMemoryKill):
+        (WTF::MemoryPressureHandler::measurementTimerFired):
+        * wtf/MemoryPressureHandler.h:
+
+2017-06-21  Chris Dumez  <cdumez@apple.com>
+
+        Allow constructing a WTF:Function from a function pointer
+        https://bugs.webkit.org/show_bug.cgi?id=173660
+
+        Reviewed by Alex Christensen.
+
+        Allow constructing a WTF:Function from a function pointer and
+        assigning a function pointer to a WTF:Function.
+
+        * wtf/Function.h:
+
+2017-06-20  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove WILL_REVEAL_EDGE_EVENTS code
+        https://bugs.webkit.org/show_bug.cgi?id=173632
+
+        Reviewed by Sam Weinig, Beth Dakin.
+
+        Remove will-reveal-edge events, which never took off.
+
+        * wtf/FeatureDefines.h:
+
+2017-06-20  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive include directives from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=173553
+
+        Reviewed by Saam Barati.
+
+        * wtf/AutomaticThread.h:
+        * wtf/BagToHashMap.h:
+        * wtf/CrossThreadCopier.h:
+        * wtf/CrossThreadQueue.h:
+        * wtf/DateMath.h:
+        * wtf/Expected.h:
+        * wtf/HashMap.h:
+        * wtf/Indenter.h:
+        * wtf/MessageQueue.h:
+        * wtf/MetaAllocator.h:
+        * wtf/MetaAllocatorHandle.h:
+        * wtf/RandomNumberSeed.h:
+        * wtf/Ref.h:
+        * wtf/RefPtr.h:
+        * wtf/RunLoop.h:
+        * wtf/SchedulePair.h:
+        * wtf/StackStats.h:
+        * wtf/SynchronizedFixedQueue.h:
+        * wtf/ThreadMessage.h:
+        * wtf/Threading.cpp:
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        * wtf/ThreadingWin.cpp:
+        * wtf/WTFThreadData.h:
+        * wtf/WorkQueue.h:
+        * wtf/glib/GRefPtr.h:
+        * wtf/text/AtomicStringTable.h:
+        * wtf/text/LineBreakIteratorPoolICU.h:
+
+2017-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Enable WTF::Signals only when HAVE(MACHINE_CONTEXT) is true
+        https://bugs.webkit.org/show_bug.cgi?id=173590
+
+        Reviewed by Carlos Garcia Campos.
+
+        WTF::Signals require a feature rewriting a value of a machine context.
+        This is only available under HAVE(MACHINE_CONTEXT).
+        This patch disables WTF::Signals on !HAVE(MACHINE_CONTEXT) environments.
+
+        * wtf/threads/Signals.cpp:
+        * wtf/threads/Signals.h:
+
+2017-06-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Rebaseline std::optional
+        https://bugs.webkit.org/show_bug.cgi?id=173582
+
+        Reviewed by JF Bastien.
+
+        Update the copy of our std::optional to the latest version.
+        It adds std::optional::has_value() and std::optional::reset().
+
+        * wtf/Optional.h:
+
+2017-06-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Include execinfo.h and dlfcn.h based on platform defines
+        https://bugs.webkit.org/show_bug.cgi?id=173531
+
+        Reviewed by Alex Christensen.
+
+        execinfo.h and dlfcn.h can be missing in some libc libraries.
+        When including it, we should honor platform defines like HAVE(DLADDR).
+
+        * wtf/StackTrace.cpp:
+
+2017-06-18  Darin Adler  <darin@apple.com>
+
+        Fix Ref to deref before assignment, add tests for this to RefPtr, Ref, Function
+        https://bugs.webkit.org/show_bug.cgi?id=173526
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Ref.h: Changed operator= to not be defined inside the class definition.
+        Added swap functions. Changed operator= implementations to use swap in the
+        conventional manner, the same way that RefPtr does.
+
+2017-06-18  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in WTF/
+        https://bugs.webkit.org/show_bug.cgi?id=173519
+
+        Reviewed by Sam Weinig.
+
+        Use WTF::Function instead of std::function in WTF/ to avoid
+        copying.
+
+        * wtf/Brigand.h:
+        * wtf/Condition.h:
+        * wtf/Expected.h:
+        * wtf/FunctionDispatcher.h:
+        * wtf/MainThread.h:
+        * wtf/MemoryPressureHandler.h:
+        (WTF::MemoryPressureHandler::setMemoryKillCallback):
+        (WTF::MemoryPressureHandler::setMemoryPressureStatusChangedCallback):
+        (WTF::MemoryPressureHandler::setDidExceedInactiveLimitWhileActiveCallback):
+        * wtf/Optional.h:
+        * wtf/ParkingLot.h:
+        * wtf/RefCounter.h:
+        (WTF::RefCounter<T>::RefCounter):
+        * wtf/WorkQueue.h:
+        * wtf/linux/MemoryPressureHandlerLinux.cpp:
+        (WTF::MemoryPressureHandler::EventFDPoller::EventFDPoller):
+        * wtf/text/WTFString.cpp:
+        (WTF::String::split):
+        * wtf/text/WTFString.h:
+
+2017-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * wtf/PlatformMac.cmake:
+        Generate MachExceptionsServer.h
+
+2017-06-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Upstream iOS drag and drop implementation into OpenSource WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=173366
+        <rdar://problem/32767014>
+
+        Reviewed by Tim Horton.
+
+        Define ENABLE_DRAG_SUPPORT as 1 by default and 0 for iOS, and define ENABLE_DATA_INTERACTION as 0 by default.
+        These are overridden to both be 1 for iOS 11+ in the FeatureDefines.xcconfig within each individual project.
+
+        * wtf/Platform.h:
+
+2017-06-15  Chris Dumez  <cdumez@apple.com>
+
+        Fix typo in XPCSPI.h
+        https://bugs.webkit.org/show_bug.cgi?id=173426
+
+        Reviewed by Alex Christensen.
+
+        We should check if xpc_release is defined before defining it,
+        not xpc_retain.
+
+        * wtf/spi/darwin/XPCSPI.h:
+
+2017-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Implement FALLTHROUGH macro for compilers other than Clang
+        https://bugs.webkit.org/show_bug.cgi?id=173385
+
+        Reviewed by Alex Christensen.
+
+        FALLTHROUGH should be able to use [[gnu::fallthrough]] attribute of
+        GCC, and [[fallthrough]] from C++17, whichever is available.
+
+        * wtf/Compiler.h:
+
 2017-06-14  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
 
         MediaSource duration attribute should not be equal to Infinity when set to a value greater than 2^64

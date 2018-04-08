@@ -1499,11 +1499,6 @@ public:
         return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())));
     }
 
-    static void replaceWithBreakpoint(CodeLocationLabel instructionStart)
-    {
-        ARMAssembler::replaceWithBkpt(instructionStart.executableAddress());
-    }
-
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
     {
         ARMAssembler::replaceWithJump(instructionStart.dataLocation(), destination.dataLocation());
@@ -1600,7 +1595,7 @@ private:
 
     void internalCompare32(RegisterID left, TrustedImm32 right)
     {
-        ARMWord tmp = (static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
+        ARMWord tmp = (!right.m_value || static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
         if (tmp != ARMAssembler::InvalidImmediate)
             m_assembler.cmn(left, tmp);
         else
@@ -1609,7 +1604,7 @@ private:
 
     void internalCompare32(Address left, TrustedImm32 right)
     {
-        ARMWord tmp = (static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
+        ARMWord tmp = (!right.m_value || static_cast<unsigned>(right.m_value) == 0x80000000) ? ARMAssembler::InvalidImmediate : m_assembler.getOp2(-right.m_value);
         load32(left, ARMRegisters::S1);
         if (tmp != ARMAssembler::InvalidImmediate)
             m_assembler.cmn(ARMRegisters::S1, tmp);

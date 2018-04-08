@@ -69,15 +69,16 @@ public:
     WEBCORE_EXPORT void setSubresourceUnderTopFrameOrigin(const URL& subresource, const URL& topFrame);
     WEBCORE_EXPORT void setSubresourceUniqueRedirectTo(const URL& subresource, const URL& hostNameRedirectedTo);
 
-    WEBCORE_EXPORT void setTimeToLiveUserInteraction(double seconds);
-    WEBCORE_EXPORT void setTimeToLiveCookiePartitionFree(double seconds);
-    WEBCORE_EXPORT void setMinimumTimeBetweeenDataRecordsRemoval(double seconds);
-    WEBCORE_EXPORT void setReducedTimestampResolution(double seconds);
-    WEBCORE_EXPORT void setGrandfatheringTime(double seconds);
+    WEBCORE_EXPORT void setTimeToLiveUserInteraction(Seconds);
+    WEBCORE_EXPORT void setTimeToLiveCookiePartitionFree(Seconds);
+    WEBCORE_EXPORT void setMinimumTimeBetweeenDataRecordsRemoval(Seconds);
+    WEBCORE_EXPORT void setReducedTimestampResolution(Seconds);
+    WEBCORE_EXPORT void setGrandfatheringTime(Seconds);
     
     WEBCORE_EXPORT void fireDataModificationHandler();
     WEBCORE_EXPORT void fireShouldPartitionCookiesHandler();
     WEBCORE_EXPORT void fireShouldPartitionCookiesHandler(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool clearFirst);
+    WEBCORE_EXPORT void fireTelemetryHandler();
 
     WEBCORE_EXPORT void setStatisticsStore(Ref<ResourceLoadStatisticsStore>&&);
     WEBCORE_EXPORT void setStatisticsQueue(Ref<WTF::WorkQueue>&&);

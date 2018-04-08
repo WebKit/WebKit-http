@@ -41,6 +41,7 @@
 #include "CSSSupportsRule.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "Chrome.h"
 #include "ComposedTreeIterator.h"
 #include "Cursor.h"
 #include "DOMPath.h"
@@ -207,6 +208,10 @@
 
 #if ENABLE(MEDIA_SOURCE)
 #include "MockMediaPlayerMediaSource.h"
+#endif
+
+#if USE(LIBWEBRTC) && PLATFORM(COCOA)
+#include "H264VideoToolboxEncoder.h"
 #endif
 
 #if PLATFORM(MAC)
@@ -460,6 +465,10 @@ void Internals::resetToConsistentState(Page& page)
 #endif
 
     printContextForTesting() = nullptr;
+
+#if USE(LIBWEBRTC)
+    WebCore::useRealRTCPeerConnectionFactory();
+#endif
 }
 
 Internals::Internals(Document& document)
@@ -801,7 +810,7 @@ bool Internals::isImageAnimating(HTMLImageElement& element)
     if (!image)
         return false;
 
-    return image->isAnimating();
+    return image->isAnimating() || image->animationPending();
 }
 
 void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement& element, bool value)
@@ -815,6 +824,19 @@ void Internals::setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement
         return;
 
     downcast<BitmapImage>(*image).setClearDecoderAfterAsyncFrameRequestForTesting(value);
+}
+
+unsigned Internals::imageDecodeCount(HTMLImageElement& element)
+{
+    auto* cachedImage = element.cachedImage();
+    if (!cachedImage)
+        return 0;
+
+    auto* image = cachedImage->image();
+    if (!is<BitmapImage>(image))
+        return 0;
+
+    return downcast<BitmapImage>(*image).decodeCountForTesting();
 }
 
 void Internals::setGridMaxTracksLimit(unsigned maxTrackLimit)
@@ -1156,6 +1178,15 @@ double Internals::requestAnimationFrameInterval() const
     if (!scriptedAnimationController)
         return INFINITY;
     return scriptedAnimationController->interval().value();
+}
+
+bool Internals::scriptedAnimationsAreSuspended() const
+{
+    Document* document = contextDocument();
+    if (!document || !document->page())
+        return true;
+
+    return document->page()->scriptedAnimationsSuspended();
 }
 
 bool Internals::areTimersThrottled() const
@@ -3165,10 +3196,10 @@ ExceptionOr<Ref<DOMRect>> Internals::selectionBounds()
 ExceptionOr<bool> Internals::isPluginUnavailabilityIndicatorObscured(Element& element)
 {
     auto* renderer = element.renderer();
-    if (!is<RenderEmbeddedObject>(renderer))
+    if (!is<HTMLPlugInElement>(element) || !is<RenderEmbeddedObject>(renderer))
         return Exception { INVALID_ACCESS_ERR };
 
-    return downcast<RenderEmbeddedObject>(*renderer).isReplacementObscured();
+    return downcast<HTMLPlugInElement>(element).isReplacementObscured();
 }
 
 bool Internals::isPluginSnapshotted(Element& element)
@@ -3237,14 +3268,24 @@ void Internals::endMediaSessionInterruption(const String& flagsString)
     PlatformMediaSessionManager::sharedManager().endInterruption(flags);
 }
 
-void Internals::applicationDidEnterForeground() const
+void Internals::applicationWillBecomeInactive()
 {
-    PlatformMediaSessionManager::sharedManager().applicationDidEnterForeground();
+    PlatformMediaSessionManager::sharedManager().applicationWillBecomeInactive();
 }
 
-void Internals::applicationWillEnterBackground() const
+void Internals::applicationDidBecomeActive()
 {
-    PlatformMediaSessionManager::sharedManager().applicationWillEnterBackground();
+    PlatformMediaSessionManager::sharedManager().applicationDidBecomeActive();
+}
+
+void Internals::applicationWillEnterForeground(bool suspendedUnderLock) const
+{
+    PlatformMediaSessionManager::sharedManager().applicationWillEnterForeground(suspendedUnderLock);
+}
+
+void Internals::applicationDidEnterBackground(bool suspendedUnderLock) const
+{
+    PlatformMediaSessionManager::sharedManager().applicationDidEnterBackground(suspendedUnderLock);
 }
 
 static PlatformMediaSession::MediaType mediaTypeFromString(const String& mediaTypeString)
@@ -3283,6 +3324,10 @@ ExceptionOr<void> Internals::setMediaSessionRestrictions(const String& mediaType
             restrictions |= PlatformMediaSessionManager::BackgroundTabPlaybackRestricted;
         if (equalLettersIgnoringASCIICase(restrictionString, "interruptedplaybacknotpermitted"))
             restrictions |= PlatformMediaSessionManager::InterruptedPlaybackNotPermitted;
+        if (equalLettersIgnoringASCIICase(restrictionString, "inactiveprocessplaybackrestricted"))
+            restrictions |= PlatformMediaSessionManager::InactiveProcessPlaybackRestricted;
+        if (equalLettersIgnoringASCIICase(restrictionString, "suspendedunderlockplaybackrestricted"))
+            restrictions |= PlatformMediaSessionManager::SuspendedUnderLockPlaybackRestricted;
     }
     PlatformMediaSessionManager::sharedManager().addRestriction(mediaType, restrictions);
     return { };
@@ -4023,6 +4068,17 @@ void Internals::setPageVisibility(bool isVisible)
 
     page.setActivityState(state);
 }
+
+#if ENABLE(WEB_RTC)
+void Internals::setH264HardwareEncoderAllowed(bool allowed)
+{
+#if PLATFORM(MAC)
+    H264VideoToolboxEncoder::setHardwareEncoderForWebRTCAllowed(allowed);
+#else
+    UNUSED_PARAM(allowed);
+#endif
+}
+#endif
 
 #if ENABLE(MEDIA_STREAM)
 

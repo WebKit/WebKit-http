@@ -30,7 +30,6 @@
 #include "Instruction.h"
 #include "JITStubRoutine.h"
 #include "MacroAssembler.h"
-#include "ObjectPropertyConditionSet.h"
 #include "Options.h"
 #include "RegisterSet.h"
 #include "Structure.h"
@@ -71,9 +70,8 @@ public:
     void initGetByIdSelf(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
     void initArrayLength();
     void initPutByIdReplace(CodeBlock*, Structure* baseObjectStructure, PropertyOffset);
-    void initStub(CodeBlock*, std::unique_ptr<PolymorphicAccess>);
 
-    AccessGenerationResult addAccessCase(CodeBlock*, const Identifier&, std::unique_ptr<AccessCase>);
+    AccessGenerationResult addAccessCase(const GCSafeConcurrentJSLocker&, CodeBlock*, const Identifier&, std::unique_ptr<AccessCase>);
 
     void reset(CodeBlock*);
 

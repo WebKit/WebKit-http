@@ -138,20 +138,28 @@ bool FontCascadeFonts::isLoadingCustomFonts() const
 
 static FontRanges realizeNextFallback(const FontCascadeDescription& description, unsigned& index, FontSelector* fontSelector)
 {
-    ASSERT(index < description.familyCount());
+    ASSERT(index < description.effectiveFamilyCount());
 
     auto& fontCache = FontCache::singleton();
-    while (index < description.familyCount()) {
-        const AtomicString& family = description.familyAt(index++);
-        if (family.isEmpty())
-            continue;
-        if (fontSelector) {
-            auto ranges = fontSelector->fontRangesForFamily(description, family);
-            if (!ranges.isNull())
-                return ranges;
-        }
-        if (auto font = fontCache.fontForFamily(description, family))
-            return FontRanges(WTFMove(font));
+    while (index < description.effectiveFamilyCount()) {
+        auto visitor = WTF::makeVisitor([&](const AtomicString& family) -> FontRanges {
+            if (family.isEmpty())
+                return FontRanges();
+            if (fontSelector) {
+                auto ranges = fontSelector->fontRangesForFamily(description, family);
+                if (!ranges.isNull())
+                    return ranges;
+            }
+            if (auto font = fontCache.fontForFamily(description, family))
+                return FontRanges(WTFMove(font));
+            return FontRanges();
+        }, [&](const FontFamilyPlatformSpecification& fontFamilySpecification) -> FontRanges {
+            return fontFamilySpecification.fontRanges(description);
+        });
+        const auto& currentFamily = description.effectiveFamilyAt(index++);
+        auto ranges = WTF::visit(visitor, currentFamily);
+        if (!ranges.isNull())
+            return ranges;
     }
     // We didn't find a font. Try to find a similar font using our own specific knowledge about our platform.
     // For example on OS X, we know to map any families containing the words Arabic, Pashto, or Urdu to the
@@ -183,13 +191,13 @@ const FontRanges& FontCascadeFonts::realizeFallbackRangesAt(const FontCascadeDes
         return fontRanges;
     }
 
-    if (m_lastRealizedFallbackIndex < description.familyCount())
+    if (m_lastRealizedFallbackIndex < description.effectiveFamilyCount())
         fontRanges = realizeNextFallback(description, m_lastRealizedFallbackIndex, m_fontSelector.get());
 
     if (fontRanges.isNull() && m_fontSelector) {
-        ASSERT(m_lastRealizedFallbackIndex >= description.familyCount());
+        ASSERT(m_lastRealizedFallbackIndex >= description.effectiveFamilyCount());
 
-        unsigned fontSelectorFallbackIndex = m_lastRealizedFallbackIndex - description.familyCount();
+        unsigned fontSelectorFallbackIndex = m_lastRealizedFallbackIndex - description.effectiveFamilyCount();
         if (fontSelectorFallbackIndex == m_fontSelector->fallbackFontCount())
             return fontRanges;
         ++m_lastRealizedFallbackIndex;
@@ -214,7 +222,7 @@ static bool shouldIgnoreRotation(UChar32 character)
 
     if (isInRange(character, 0x002E5, 0x002EB))
         return true;
-    
+
     if (isInRange(character, 0x01100, 0x011FF) || isInRange(character, 0x01401, 0x0167F) || isInRange(character, 0x01800, 0x018FF))
         return true;
 
@@ -275,13 +283,13 @@ static bool shouldIgnoreRotation(UChar32 character)
         || isInRange(character, 0x1D000, 0x1D1FF) || isInRange(character, 0x1D300, 0x1D37F)
         || isInRange(character, 0x1F000, 0x1F64F) || isInRange(character, 0x1F680, 0x1F77F))
         return true;
-    
+
     if (isInRange(character, 0x20000, 0x2FFFD) || isInRange(character, 0x30000, 0x3FFFD))
         return true;
 
     return false;
 }
-    
+
 static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 character, NonCJKGlyphOrientation orientation, const GlyphData& data)
 {
     bool syntheticOblique = data.font->platformData().syntheticOblique();
@@ -300,7 +308,7 @@ static GlyphData glyphDataForNonCJKCharacterWithGlyphOrientation(UChar32 charact
             return uprightData;
     } else if (orientation == NonCJKGlyphOrientation::Mixed) {
         GlyphData verticalRightData = data.font->verticalRightOrientationFont().glyphDataForCharacter(character);
-        
+
         // If there is a baked-in rotated glyph, we will use it unless syntheticOblique is set. If
         // synthetic oblique is set, we fall back to the horizontal glyph. This guarantees that vertical
         // fonts without isTextOrientationFallback() set contain CJK characters only and thus we can get

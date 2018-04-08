@@ -31,7 +31,6 @@
 #include "APIArray.h"
 #include "APIGeometry.h"
 #include "APIWebsitePolicies.h"
-#include "AddUserScriptImmediately.h"
 #include "AssistedNodeInformation.h"
 #include "DataReference.h"
 #include "DragControllerAction.h"
@@ -256,7 +255,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static const double pageScrollHysteresisSeconds = 0.3;
+static const Seconds pageScrollHysteresisDuration { 300_ms };
 static const Seconds initialLayerVolatilityTimerInterval { 20_ms };
 static const Seconds maximumLayerVolatilityTimerInterval { 2_s };
 
@@ -333,6 +332,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
     , m_editorClient { std::make_unique<API::InjectedBundle::EditorClient>() }
     , m_formClient(std::make_unique<API::InjectedBundle::FormClient>())
     , m_loaderClient(std::make_unique<API::InjectedBundle::PageLoaderClient>())
+    , m_resourceLoadClient(std::make_unique<API::InjectedBundle::ResourceLoadClient>())
     , m_uiClient(std::make_unique<API::InjectedBundle::PageUIClient>())
     , m_findController(makeUniqueRef<FindController>(this))
     , m_userContentController(WebUserContentController::getOrCreate(parameters.userContentControllerID))
@@ -342,7 +342,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
 #if ENABLE(MEDIA_STREAM)
     , m_userMediaPermissionRequestManager { std::make_unique<UserMediaPermissionRequestManager>(*this) }
 #endif
-    , m_pageScrolledHysteresis([this](HysteresisState state) { if (state == HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisSeconds)
+    , m_pageScrolledHysteresis([this](HysteresisState state) { if (state == HysteresisState::Stopped) pageStoppedScrolling(); }, pageScrollHysteresisDuration)
     , m_canRunBeforeUnloadConfirmPanel(parameters.canRunBeforeUnloadConfirmPanel)
     , m_canRunModal(parameters.canRunModal)
 #if PLATFORM(IOS)
@@ -565,7 +565,7 @@ WebPage::WebPage(uint64_t pageID, WebPageCreationParameters&& parameters)
         registerURLSchemeHandler(iterator.value, iterator.key);
 
     m_userContentController->addUserContentWorlds(parameters.userContentWorlds);
-    m_userContentController->addUserScripts(WTFMove(parameters.userScripts), AddUserScriptImmediately::No);
+    m_userContentController->addUserScripts(parameters.userScripts);
     m_userContentController->addUserStyleSheets(parameters.userStyleSheets);
     m_userContentController->addUserScriptMessageHandlers(parameters.messageHandlers);
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -671,6 +671,11 @@ WebPage::~WebPage()
 #ifndef NDEBUG
     webPageCounter.decrement();
 #endif
+    
+#if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
+    if (m_videoFullscreenManager)
+        m_videoFullscreenManager->invalidate();
+#endif
 }
 
 void WebPage::dummy(bool&)
@@ -740,9 +745,12 @@ void WebPage::initializeInjectedBundlePolicyClient(WKBundlePagePolicyClientBase*
     m_policyClient.initialize(client);
 }
 
-void WebPage::initializeInjectedBundleResourceLoadClient(WKBundlePageResourceLoadClientBase* client)
+void WebPage::setInjectedBundleResourceLoadClient(std::unique_ptr<API::InjectedBundle::ResourceLoadClient>&& client)
 {
-    m_resourceLoadClient.initialize(client);
+    if (!m_resourceLoadClient)
+        m_resourceLoadClient = std::make_unique<API::InjectedBundle::ResourceLoadClient>();
+    else
+        m_resourceLoadClient = WTFMove(client);
 }
 
 void WebPage::setInjectedBundleUIClient(std::unique_ptr<API::InjectedBundle::PageUIClient>&& uiClient)
@@ -763,7 +771,6 @@ void WebPage::initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenCli
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-
 RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginElement, const Plugin::Parameters& parameters, String& newMIMEType)
 {
     String frameURLString = frame->coreFrame()->loader().documentLoader()->responseURL().string();
@@ -801,16 +808,7 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
     }
 
     if (isBlockedPlugin) {
-        bool replacementObscured = false;
-        auto* renderer = pluginElement->renderer();
-        if (is<RenderEmbeddedObject>(renderer)) {
-            auto& renderObject = downcast<RenderEmbeddedObject>(*renderer);
-            renderObject.setPluginUnavailabilityReasonWithDescription(RenderEmbeddedObject::InsecurePluginVersion, unavailabilityDescription);
-            replacementObscured = renderObject.isReplacementObscured();
-            renderObject.setUnavailablePluginIndicatorIsHidden(replacementObscured);
-        }
-
-        send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString, replacementObscured));
+        send(Messages::WebPageProxy::DidBlockInsecurePluginVersion(parameters.mimeType, parameters.url.string(), frameURLString, pageURLString, pluginElement->isReplacementObscured(unavailabilityDescription)));
         return nullptr;
     }
 
@@ -820,7 +818,6 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
     bool isRestartedProcess = (pluginElement->displayState() == HTMLPlugInElement::Restarting || pluginElement->displayState() == HTMLPlugInElement::RestartingWithPendingMouseClick);
     return PluginProxy::create(pluginProcessToken, isRestartedProcess);
 }
-
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL) && !PLATFORM(COCOA)
@@ -1143,7 +1140,7 @@ void WebPage::close()
     m_formClient = std::make_unique<API::InjectedBundle::FormClient>();
     m_loaderClient = std::make_unique<API::InjectedBundle::PageLoaderClient>();
     m_policyClient.initialize(0);
-    m_resourceLoadClient.initialize(0);
+    m_resourceLoadClient = std::make_unique<API::InjectedBundle::ResourceLoadClient>();
     m_uiClient = std::make_unique<API::InjectedBundle::PageUIClient>();
 #if ENABLE(FULLSCREEN_API)
     m_fullScreenClient.initialize(0);
@@ -1171,10 +1168,8 @@ void WebPage::tryClose()
 {
     SendStopResponsivenessTimer stopper;
 
-    if (!corePage()->userInputBridge().tryClosePage()) {
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebProcessProxy::StopResponsivenessTimer(), 0);
+    if (!corePage()->userInputBridge().tryClosePage())
         return;
-    }
 
     send(Messages::WebPageProxy::ClosePage(true));
 }
@@ -1190,7 +1185,7 @@ void WebPage::loadURLInFrame(const String& url, uint64_t frameID)
     if (!frame)
         return;
 
-    frame->coreFrame()->loader().load(FrameLoadRequest(frame->coreFrame(), ResourceRequest(URL(URL(), url)), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    frame->coreFrame()->loader().load(FrameLoadRequest(*frame->coreFrame(), ResourceRequest(URL(URL(), url)), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 }
 
 #if !PLATFORM(COCOA)
@@ -1214,11 +1209,11 @@ void WebPage::loadRequest(const LoadParameters& loadParameters)
     platformDidReceiveLoadParameters(loadParameters);
 
     // Initate the load in WebCore.
-    FrameLoadRequest frameLoadRequest(m_mainFrame->coreFrame(), loadParameters.request, ShouldOpenExternalURLsPolicy::ShouldNotAllow);
+    FrameLoadRequest frameLoadRequest { *m_mainFrame->coreFrame(), loadParameters.request, ShouldOpenExternalURLsPolicy::ShouldNotAllow };
     ShouldOpenExternalURLsPolicy externalURLsPolicy = static_cast<ShouldOpenExternalURLsPolicy>(loadParameters.shouldOpenExternalURLsPolicy);
     frameLoadRequest.setShouldOpenExternalURLsPolicy(externalURLsPolicy);
 
-    corePage()->userInputBridge().loadRequest(frameLoadRequest);
+    corePage()->userInputBridge().loadRequest(WTFMove(frameLoadRequest));
 
     ASSERT(!m_pendingNavigationID);
 }
@@ -1238,7 +1233,7 @@ void WebPage::loadDataImpl(uint64_t navigationID, Ref<SharedBuffer>&& sharedBuff
     m_loaderClient->willLoadDataRequest(*this, request, const_cast<SharedBuffer*>(substituteData.content()), substituteData.mimeType(), substituteData.textEncoding(), substituteData.failingURL(), WebProcess::singleton().transformHandlesToObjects(userData.object()).get());
 
     // Initate the load in WebCore.
-    m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(m_mainFrame->coreFrame(), request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+    m_mainFrame->coreFrame()->loader().load(FrameLoadRequest(*m_mainFrame->coreFrame(), request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }
 
 void WebPage::loadStringImpl(uint64_t navigationID, const String& htmlString, const String& MIMEType, const URL& baseURL, const URL& unreachableURL, const UserData& userData)
@@ -2199,7 +2194,7 @@ bool WebPage::markLayersVolatileImmediatelyIfPossible()
     return !drawingArea() || drawingArea()->markLayersVolatileImmediatelyIfPossible();
 }
 
-void WebPage::markLayersVolatile(std::function<void ()> completionHandler)
+void WebPage::markLayersVolatile(WTF::Function<void ()>&& completionHandler)
 {
     RELEASE_LOG_IF_ALLOWED("%p - WebPage::markLayersVolatile()", this);
 
@@ -3053,7 +3048,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setOfflineWebApplicationCacheEnabled(store.getBoolValueForKey(WebPreferencesKey::offlineWebApplicationCacheEnabledKey()));
     settings.setLocalStorageEnabled(store.getBoolValueForKey(WebPreferencesKey::localStorageEnabledKey()));
     settings.setXSSAuditorEnabled(store.getBoolValueForKey(WebPreferencesKey::xssAuditorEnabledKey()));
-    settings.setFrameFlatteningEnabled(store.getBoolValueForKey(WebPreferencesKey::frameFlatteningEnabledKey()));
+    settings.setFrameFlattening(static_cast<WebCore::FrameFlattening>(store.getUInt32ValueForKey(WebPreferencesKey::frameFlatteningKey())));
+    settings.setAsyncFrameScrollingEnabled(store.getBoolValueForKey(WebPreferencesKey::asyncFrameScrollingEnabledKey()));
     if (store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && !usesEphemeralSession())
         setSessionID(SessionID::legacyPrivateSessionID());
     else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
@@ -3381,6 +3377,8 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setAnimatedImageAsyncDecodingEnabled(store.getBoolValueForKey(WebPreferencesKey::animatedImageAsyncDecodingEnabledKey()));
     settings.setShouldSuppressKeyboardInputDuringProvisionalNavigation(store.getBoolValueForKey(WebPreferencesKey::shouldSuppressKeyboardInputDuringProvisionalNavigationKey()));
     settings.setMediaContentTypesRequiringHardwareSupport(store.getStringValueForKey(WebPreferencesKey::mediaContentTypesRequiringHardwareSupportKey()));
+
+    settings.setMediaDocumentEntersFullscreenAutomatically(store.getBoolValueForKey(WebPreferencesKey::mediaDocumentEntersFullscreenAutomaticallyKey()));
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -5901,13 +5899,21 @@ WebURLSchemeHandlerProxy* WebPage::urlSchemeHandlerForScheme(const String& schem
 
 void WebPage::registerURLSchemeHandler(uint64_t handlerIdentifier, const String& scheme)
 {
-    auto schemeResult = m_schemeToURLSchemeHandlerProxyMap.add(scheme, std::make_unique<WebURLSchemeHandlerProxy>(*this, handlerIdentifier));
+    auto schemeResult = m_schemeToURLSchemeHandlerProxyMap.add(scheme, WebURLSchemeHandlerProxy::create(*this, handlerIdentifier));
     ASSERT(schemeResult.isNewEntry);
 
     auto identifierResult = m_identifierToURLSchemeHandlerProxyMap.add(handlerIdentifier, schemeResult.iterator->value.get());
     ASSERT_UNUSED(identifierResult, identifierResult.isNewEntry);
 }
 
+void WebPage::urlSchemeTaskDidPerformRedirection(uint64_t handlerIdentifier, uint64_t taskIdentifier, ResourceResponse&& response, ResourceRequest&& request)
+{
+    auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);
+    ASSERT(handler);
+    
+    handler->taskDidPerformRedirection(taskIdentifier, WTFMove(response), WTFMove(request));
+}
+    
 void WebPage::urlSchemeTaskDidReceiveResponse(uint64_t handlerIdentifier, uint64_t taskIdentifier, const ResourceResponse& response)
 {
     auto* handler = m_identifierToURLSchemeHandlerProxyMap.get(handlerIdentifier);

@@ -50,8 +50,7 @@
 
 namespace WebCore {
 
-// One hour in seconds.
-static auto timestampResolution = 3600;
+static Seconds timestampResolution { 1_h };
 
 ResourceLoadObserver& ResourceLoadObserver::sharedObserver()
 {
@@ -78,7 +77,7 @@ void ResourceLoadObserver::clearInMemoryStore()
         return;
     
     ASSERT(m_queue);
-    m_queue->dispatch([this] () {
+    m_queue->dispatch([this] {
         m_store->clearInMemory();
     });
 }
@@ -89,7 +88,7 @@ void ResourceLoadObserver::clearInMemoryAndPersistentStore()
         return;
     
     ASSERT(m_queue);
-    m_queue->dispatch([this] () {
+    m_queue->dispatch([this] {
         m_store->clearInMemoryAndPersistent();
     });
 }
@@ -111,9 +110,8 @@ bool ResourceLoadObserver::shouldLog(Page* page)
     // FIXME: Err on the safe side until we have sorted out what to do in worker contexts
     if (!page)
         return false;
-    return Settings::resourceLoadStatisticsEnabled()
-        && !page->usesEphemeralSession()
-        && m_store;
+
+    return Settings::resourceLoadStatisticsEnabled() && !page->usesEphemeralSession() && m_store;
 }
 
 void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& topFrame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
@@ -127,9 +125,9 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
 
     bool isRedirect = is3xxRedirect(redirectResponse);
     bool isMainFrame = frame.isMainFrame();
-    const URL& sourceURL = frame.document()->url();
-    const URL& targetURL = newRequest.url();
-    const URL& mainFrameURL = topFrame.document()->url();
+    auto& sourceURL = frame.document()->url();
+    auto& targetURL = newRequest.url();
+    auto& mainFrameURL = topFrame.document()->url();
     
     if (!targetURL.isValid() || !mainFrameURL.isValid())
         return;
@@ -148,9 +146,7 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
         return;
     
     ASSERT(m_queue);
-    m_queue->dispatch([this, isMainFrame, isRedirect, sourcePrimaryDomain = sourcePrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy(), targetURL = CrossThreadCopier<URL>::copy(targetURL), mainFrameURL = CrossThreadCopier<URL>::copy(mainFrameURL), targetPrimaryDomain = targetPrimaryDomain.isolatedCopy()] () {
-        
-        auto targetOrigin = SecurityOrigin::create(targetURL);
+    m_queue->dispatch([this, isMainFrame, isRedirect, sourcePrimaryDomain = sourcePrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy(), targetPrimaryDomain = targetPrimaryDomain.isolatedCopy()] {
         bool shouldFireDataModificationHandler = false;
         
         {
@@ -166,7 +162,6 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
         else {
             targetStatistics.subframeHasBeenLoadedBefore = true;
 
-            auto mainFrameOrigin = SecurityOrigin::create(mainFrameURL);
             auto subframeUnderTopFrameOriginsResult = targetStatistics.subframeUnderTopFrameOrigins.add(mainFramePrimaryDomain);
             if (subframeUnderTopFrameOriginsResult.isNewEntry)
                 shouldFireDataModificationHandler = true;
@@ -230,10 +225,7 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
 
-    if (targetHost.isEmpty()
-        || mainFrameHost.isEmpty()
-        || targetHost == mainFrameHost
-        || (isRedirect && targetHost == sourceURL.host()))
+    if (targetHost.isEmpty() || mainFrameHost.isEmpty() || targetHost == mainFrameHost || (isRedirect && targetHost == sourceURL.host()))
         return;
 
     auto targetPrimaryDomain = primaryDomain(targetURL);
@@ -244,8 +236,7 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
         return;
     
     ASSERT(m_queue);
-    m_queue->dispatch([this, isRedirect, sourcePrimaryDomain = sourcePrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy(), targetPrimaryDomain = targetPrimaryDomain.isolatedCopy(), mainFrameURL = mainFrameURL.isolatedCopy()] () {
-        
+    m_queue->dispatch([this, isRedirect, sourcePrimaryDomain = sourcePrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy(), targetPrimaryDomain = targetPrimaryDomain.isolatedCopy()] {
         bool shouldFireDataModificationHandler = false;
         
         {
@@ -255,7 +246,6 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
         // Always fire if we have previously removed data records for this domain
         shouldFireDataModificationHandler = targetStatistics.dataRecordsRemoved > 0;
 
-        auto mainFrameOrigin = SecurityOrigin::create(mainFrameURL);
         auto subresourceUnderTopFrameOriginsResult = targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain);
         if (subresourceUnderTopFrameOriginsResult.isNewEntry)
             shouldFireDataModificationHandler = true;
@@ -305,14 +295,12 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     if (!shouldLog(frame->page()))
         return;
 
-    const URL& mainFrameURL = frame->mainFrame().document()->url();
+    auto& mainFrameURL = frame->mainFrame().document()->url();
 
     auto targetHost = targetURL.host();
     auto mainFrameHost = mainFrameURL.host();
     
-    if (targetHost.isEmpty()
-        || mainFrameHost.isEmpty()
-        || targetHost == mainFrameHost)
+    if (targetHost.isEmpty() || mainFrameHost.isEmpty() || targetHost == mainFrameHost)
         return;
     
     auto targetPrimaryDomain = primaryDomain(targetURL);
@@ -322,8 +310,7 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
         return;
 
     ASSERT(m_queue);
-    m_queue->dispatch([this, targetPrimaryDomain = targetPrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy(), mainFrameURL = mainFrameURL.isolatedCopy()] () {
-        
+    m_queue->dispatch([this, targetPrimaryDomain = targetPrimaryDomain.isolatedCopy(), mainFramePrimaryDomain = mainFramePrimaryDomain.isolatedCopy()] {
         bool shouldFireDataModificationHandler = false;
         
         {
@@ -333,7 +320,6 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
         // Always fire if we have previously removed data records for this domain
         shouldFireDataModificationHandler = targetStatistics.dataRecordsRemoved > 0;
         
-        auto mainFrameOrigin = SecurityOrigin::create(mainFrameURL);
         auto subresourceUnderTopFrameOriginsResult = targetStatistics.subresourceUnderTopFrameOrigins.add(mainFramePrimaryDomain);
         if (subresourceUnderTopFrameOriginsResult.isNewEntry)
             shouldFireDataModificationHandler = true;
@@ -350,9 +336,9 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     });
 }
 
-static double reduceTimeResolution(double seconds)
+static WallTime reduceTimeResolution(WallTime time)
 {
-    return std::floor(seconds / timestampResolution) * timestampResolution;
+    return WallTime::fromRawSeconds(std::floor(time.secondsSinceEpoch() / timestampResolution) * timestampResolution.seconds());
 }
 
 void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Document& document)
@@ -366,19 +352,17 @@ void ResourceLoadObserver::logUserInteractionWithReducedTimeResolution(const Doc
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    auto primaryDomainString = primaryDomain(url);
-    
     ASSERT(m_queue);
-    m_queue->dispatch([this, primaryDomainString = primaryDomainString.isolatedCopy()] () {
+    m_queue->dispatch([this, primaryDomainString = primaryDomain(url).isolatedCopy()] {
         {
         auto locker = holdLock(m_store->statisticsLock());
         auto& statistics = m_store->ensureResourceStatisticsForPrimaryDomain(primaryDomainString);
-        double newTimestamp = reduceTimeResolution(WTF::currentTime());
-        if (newTimestamp == statistics.mostRecentUserInteraction)
+        WallTime newTime = reduceTimeResolution(WallTime::now());
+        if (newTime == statistics.mostRecentUserInteractionTime())
             return;
 
         statistics.hadUserInteraction = true;
-        statistics.mostRecentUserInteraction = newTimestamp;
+        statistics.mostRecentUserInteraction = newTime.secondsSinceEpoch().value();
         }
         
         m_store->fireDataModificationHandler();
@@ -390,10 +374,8 @@ void ResourceLoadObserver::logUserInteraction(const URL& url)
     if (url.isBlankURL() || url.isEmpty())
         return;
 
-    auto primaryDomainString = primaryDomain(url);
-
     ASSERT(m_queue);
-    m_queue->dispatch([this, primaryDomainString = primaryDomainString.isolatedCopy()] () {
+    m_queue->dispatch([this, primaryDomainString = primaryDomain(url).isolatedCopy()] {
         {
         auto locker = holdLock(m_store->statisticsLock());
         auto& statistics = m_store->ensureResourceStatisticsForPrimaryDomain(primaryDomainString);
@@ -488,11 +470,8 @@ void ResourceLoadObserver::setSubframeUnderTopFrameOrigin(const URL& subframe, c
     if (subframe.isBlankURL() || subframe.isEmpty() || topFrame.isBlankURL() || topFrame.isEmpty())
         return;
     
-    auto primaryTopFrameDomainString = primaryDomain(topFrame);
-    auto primarySubFrameDomainString = primaryDomain(subframe);
-    
     ASSERT(m_queue);
-    m_queue->dispatch([this, primaryTopFrameDomainString = primaryTopFrameDomainString.isolatedCopy(), primarySubFrameDomainString = primarySubFrameDomainString.isolatedCopy()] () {
+    m_queue->dispatch([this, primaryTopFrameDomainString = primaryDomain(topFrame).isolatedCopy(), primarySubFrameDomainString = primaryDomain(subframe).isolatedCopy()] {
         auto locker = holdLock(m_store->statisticsLock());
         auto& statistics = m_store->ensureResourceStatisticsForPrimaryDomain(primarySubFrameDomainString);
         statistics.subframeUnderTopFrameOrigins.add(primaryTopFrameDomainString);
@@ -504,11 +483,8 @@ void ResourceLoadObserver::setSubresourceUnderTopFrameOrigin(const URL& subresou
     if (subresource.isBlankURL() || subresource.isEmpty() || topFrame.isBlankURL() || topFrame.isEmpty())
         return;
     
-    auto primaryTopFrameDomainString = primaryDomain(topFrame);
-    auto primarySubresourceDomainString = primaryDomain(subresource);
-    
     ASSERT(m_queue);
-    m_queue->dispatch([this, primaryTopFrameDomainString = primaryTopFrameDomainString.isolatedCopy(), primarySubresourceDomainString = primarySubresourceDomainString.isolatedCopy()] () {
+    m_queue->dispatch([this, primaryTopFrameDomainString = primaryDomain(topFrame).isolatedCopy(), primarySubresourceDomainString = primaryDomain(subresource).isolatedCopy()] {
         auto locker = holdLock(m_store->statisticsLock());
         auto& statistics = m_store->ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomainString);
         statistics.subresourceUnderTopFrameOrigins.add(primaryTopFrameDomainString);
@@ -520,39 +496,36 @@ void ResourceLoadObserver::setSubresourceUniqueRedirectTo(const URL& subresource
     if (subresource.isBlankURL() || subresource.isEmpty() || hostNameRedirectedTo.isBlankURL() || hostNameRedirectedTo.isEmpty())
         return;
     
-    auto primarySubresourceDomainString = primaryDomain(subresource);
-    auto primaryRedirectDomainString = primaryDomain(hostNameRedirectedTo);
-    
     ASSERT(m_queue);
-    m_queue->dispatch([this, primaryRedirectDomainString = primaryRedirectDomainString.isolatedCopy(), primarySubresourceDomainString = primarySubresourceDomainString.isolatedCopy()] () {
+    m_queue->dispatch([this, primaryRedirectDomainString = primaryDomain(hostNameRedirectedTo).isolatedCopy(), primarySubresourceDomainString = primaryDomain(subresource).isolatedCopy()] {
         auto locker = holdLock(m_store->statisticsLock());
         auto& statistics = m_store->ensureResourceStatisticsForPrimaryDomain(primarySubresourceDomainString);
         statistics.subresourceUniqueRedirectsTo.add(primaryRedirectDomainString);
     });
 }
 
-void ResourceLoadObserver::setTimeToLiveUserInteraction(double seconds)
+void ResourceLoadObserver::setTimeToLiveUserInteraction(Seconds seconds)
 {
     m_store->setTimeToLiveUserInteraction(seconds);
 }
 
-void ResourceLoadObserver::setTimeToLiveCookiePartitionFree(double seconds)
+void ResourceLoadObserver::setTimeToLiveCookiePartitionFree(Seconds seconds)
 {
     m_store->setTimeToLiveCookiePartitionFree(seconds);
 }
 
-void ResourceLoadObserver::setMinimumTimeBetweeenDataRecordsRemoval(double seconds)
+void ResourceLoadObserver::setMinimumTimeBetweeenDataRecordsRemoval(Seconds seconds)
 {
     m_store->setMinimumTimeBetweeenDataRecordsRemoval(seconds);
 }
     
-void ResourceLoadObserver::setReducedTimestampResolution(double seconds)
+void ResourceLoadObserver::setReducedTimestampResolution(Seconds seconds)
 {
-    if (seconds > 0)
+    if (seconds > 0_s)
         timestampResolution = seconds;
 }
 
-void ResourceLoadObserver::setGrandfatheringTime(double seconds)
+void ResourceLoadObserver::setGrandfatheringTime(Seconds seconds)
 {
     m_store->setMinimumTimeBetweeenDataRecordsRemoval(seconds);
 }
@@ -561,7 +534,7 @@ void ResourceLoadObserver::fireDataModificationHandler()
 {
     // Helper function used by testing system. Should only be called from the main thread.
     ASSERT(isMainThread());
-    m_queue->dispatch([this] () {
+    m_queue->dispatch([this] {
         m_store->fireDataModificationHandler();
     });
 }
@@ -570,7 +543,7 @@ void ResourceLoadObserver::fireShouldPartitionCookiesHandler()
 {
     // Helper function used by testing system. Should only be called from the main thread.
     ASSERT(isMainThread());
-    m_queue->dispatch([this] () {
+    m_queue->dispatch([this] {
         m_store->fireShouldPartitionCookiesHandler();
     });
 }
@@ -579,11 +552,18 @@ void ResourceLoadObserver::fireShouldPartitionCookiesHandler(const Vector<String
 {
     // Helper function used by testing system. Should only be called from the main thread.
     ASSERT(isMainThread());
-    m_queue->dispatch([this, domainsToRemove = CrossThreadCopier<Vector<String>>::copy(domainsToRemove), domainsToAdd = CrossThreadCopier<Vector<String>>::copy(domainsToAdd), clearFirst] () {
+    m_queue->dispatch([this, domainsToRemove = CrossThreadCopier<Vector<String>>::copy(domainsToRemove), domainsToAdd = CrossThreadCopier<Vector<String>>::copy(domainsToAdd), clearFirst] {
         m_store->fireShouldPartitionCookiesHandler(domainsToRemove, domainsToAdd, clearFirst);
     });
 }
 
+void ResourceLoadObserver::fireTelemetryHandler()
+{
+    // Helper function used by testing system. Should only be called from the main thread.
+    ASSERT(isMainThread());
+    m_store->fireTelemetryHandler();
+}
+    
 String ResourceLoadObserver::primaryDomain(const URL& url)
 {
     return primaryDomain(url.host());
@@ -591,31 +571,22 @@ String ResourceLoadObserver::primaryDomain(const URL& url)
 
 String ResourceLoadObserver::primaryDomain(const String& host)
 {
-    String primaryDomain;
     if (host.isNull() || host.isEmpty())
-        primaryDomain = "nullOrigin";
+        return ASCIILiteral("nullOrigin");
+
 #if ENABLE(PUBLIC_SUFFIX_LIST)
-    else {
-        primaryDomain = topPrivatelyControlledDomain(host);
-        // We will have an empty string here if there is no TLD.
-        // Use the host in such case.
-        if (primaryDomain.isEmpty())
-            primaryDomain = host;
-    }
-#else
-    else
-        primaryDomain = host;
+    String primaryDomain = topPrivatelyControlledDomain(host);
+    // We will have an empty string here if there is no TLD. Use the host as a fallback.
+    if (!primaryDomain.isEmpty())
+        return primaryDomain;
 #endif
 
-    return primaryDomain;
+    return host;
 }
 
 String ResourceLoadObserver::statisticsForOrigin(const String& origin)
 {
-    if (!m_store)
-        return emptyString();
-    
-    return m_store->statisticsForOrigin(origin);
+    return m_store ? m_store->statisticsForOrigin(origin) : emptyString();
 }
 
 }

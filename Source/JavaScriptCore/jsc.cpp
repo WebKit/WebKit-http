@@ -27,6 +27,7 @@
 #include "BuiltinExecutableCreator.h"
 #include "BuiltinNames.h"
 #include "ButterflyInlines.h"
+#include "CatchScope.h"
 #include "CodeBlock.h"
 #include "Completion.h"
 #include "ConfigFile.h"
@@ -34,6 +35,7 @@
 #include "Disassembler.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
+#include "FrameTracers.h"
 #include "GetterSetter.h"
 #include "HeapProfiler.h"
 #include "HeapSnapshotBuilder.h"
@@ -73,6 +75,7 @@
 #include "StructureRareDataInlines.h"
 #include "SuperSampler.h"
 #include "TestRunnerUtils.h"
+#include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "WasmContext.h"
 #include "WasmFaultSignalHandler.h"
@@ -983,7 +986,7 @@ class Workers;
 
 template<typename Func>
 int runJSC(CommandLine, bool isWorker, const Func&);
-static void checkException(GlobalObject*, bool isLastFile, bool hasException, JSValue, const String& uncaughtExceptionName, bool alwaysDumpUncaughtException, bool dump, bool& success);
+static void checkException(GlobalObject*, bool isLastFile, bool hasException, JSValue, CommandLine&, bool& success);
 
 class Message : public ThreadSafeRefCounted<Message> {
 public:
@@ -1207,6 +1210,7 @@ public:
     bool m_profile { false };
     String m_profilerOutput;
     String m_uncaughtExceptionName;
+    bool m_treatWatchdogExceptionAsSuccess { false };
     bool m_alwaysDumpUncaughtException { false };
     bool m_dumpSamplingProfilerData { false };
     bool m_enableRemoteDebugging { false };
@@ -2614,7 +2618,7 @@ EncodedJSValue JSC_HOST_CALL functionDollarAgentStart(ExecState* exec)
                     result = evaluate(globalObject->globalExec(), makeSource(sourceCode, SourceOrigin(ASCIILiteral("worker"))), JSValue(), evaluationException);
                     if (evaluationException)
                         result = evaluationException->value();
-                    checkException(globalObject, true, evaluationException, result, String(), false, false, success);
+                    checkException(globalObject, true, evaluationException, result, commandLine, success);
                     if (!success)
                         exit(1);
                     return success;
@@ -3170,22 +3174,20 @@ int jscmain(int argc, char** argv);
 static double s_desiredTimeout;
 static double s_timeoutMultiplier = 1.0;
 
-static NO_RETURN_DUE_TO_CRASH void timeoutThreadMain(void*)
-{
-    Seconds timeoutDuration(s_desiredTimeout * s_timeoutMultiplier);
-    sleep(timeoutDuration);
-    dataLog("Timed out after ", timeoutDuration, " seconds!\n");
-    CRASH();
-}
-
 static void startTimeoutThreadIfNeeded()
 {
     if (char* timeoutString = getenv("JSCTEST_timeout")) {
         if (sscanf(timeoutString, "%lf", &s_desiredTimeout) != 1) {
             dataLog("WARNING: timeout string is malformed, got ", timeoutString,
                 " but expected a number. Not using a timeout.\n");
-        } else
-            Thread::create(timeoutThreadMain, 0, "jsc Timeout Thread");
+        } else {
+            Thread::create("jsc Timeout Thread", [] () {
+                Seconds timeoutDuration(s_desiredTimeout * s_timeoutMultiplier);
+                sleep(timeoutDuration);
+                dataLog("Timed out after ", timeoutDuration, " seconds!\n");
+                CRASH();
+            });
+        }
     }
 }
 
@@ -3291,8 +3293,9 @@ static void dumpException(GlobalObject* globalObject, JSValue exception)
 #undef CHECK_EXCEPTION
 }
 
-static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, JSValue exception, const String& expectedExceptionName, bool alwaysDumpException)
+static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, JSValue exception, CommandLine& options)
 {
+    const String& expectedExceptionName = options.m_uncaughtExceptionName;
     auto scope = DECLARE_CATCH_SCOPE(vm);
     scope.clearException();
     if (!exception) {
@@ -3313,7 +3316,7 @@ static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, JSValue e
         return false;
     }
     if (isInstanceOfExpectedException) {
-        if (alwaysDumpException)
+        if (options.m_alwaysDumpUncaughtException)
             dumpException(globalObject, exception);
         return true;
     }
@@ -3323,25 +3326,32 @@ static bool checkUncaughtException(VM& vm, GlobalObject* globalObject, JSValue e
     return false;
 }
 
-static void checkException(GlobalObject* globalObject, bool isLastFile, bool hasException, JSValue value, const String& uncaughtExceptionName, bool alwaysDumpUncaughtException, bool dump, bool& success)
+static void checkException(GlobalObject* globalObject, bool isLastFile, bool hasException, JSValue value, CommandLine& options, bool& success)
 {
     VM& vm = globalObject->vm();
-    if (!uncaughtExceptionName || !isLastFile) {
+
+    if (options.m_treatWatchdogExceptionAsSuccess && value.inherits(vm, TerminatedExecutionError::info())) {
+        ASSERT(hasException);
+        return;
+    }
+
+    if (!options.m_uncaughtExceptionName || !isLastFile) {
         success = success && !hasException;
-        if (dump && !hasException)
+        if (options.m_dump && !hasException)
             printf("End: %s\n", value.toWTFString(globalObject->globalExec()).utf8().data());
         if (hasException)
             dumpException(globalObject, value);
     } else
-        success = success && checkUncaughtException(vm, globalObject, (hasException) ? value : JSValue(), uncaughtExceptionName, alwaysDumpUncaughtException);
+        success = success && checkUncaughtException(vm, globalObject, (hasException) ? value : JSValue(), options);
 }
 
-static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scripts, const String& uncaughtExceptionName, bool alwaysDumpUncaughtException, bool dump, bool module)
+static bool runWithOptions(GlobalObject* globalObject, CommandLine& options)
 {
+    Vector<Script>& scripts = options.m_scripts;
     String fileName;
     Vector<char> scriptBuffer;
 
-    if (dump)
+    if (options.m_dump)
         JSC::Options::dumpGeneratedBytecodes() = true;
 
     VM& vm = globalObject->vm();
@@ -3354,7 +3364,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
 
     for (size_t i = 0; i < scripts.size(); i++) {
         JSInternalPromise* promise = nullptr;
-        bool isModule = module || scripts[i].scriptType == Script::ScriptType::Module;
+        bool isModule = options.m_module || scripts[i].scriptType == Script::ScriptType::Module;
         if (scripts[i].codeSource == Script::CodeSource::File) {
             fileName = scripts[i].argument;
             if (scripts[i].strictMode == Script::StrictMode::Strict)
@@ -3381,12 +3391,12 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
             scope.clearException();
 
             JSFunction* fulfillHandler = JSNativeStdFunction::create(vm, globalObject, 1, String(), [&, isLastFile](ExecState* exec) {
-                checkException(globalObject, isLastFile, false, exec->argument(0), uncaughtExceptionName, alwaysDumpUncaughtException, dump, success);
+                checkException(globalObject, isLastFile, false, exec->argument(0), options, success);
                 return JSValue::encode(jsUndefined());
             });
 
             JSFunction* rejectHandler = JSNativeStdFunction::create(vm, globalObject, 1, String(), [&, isLastFile](ExecState* exec) {
-                checkException(globalObject, isLastFile, true, exec->argument(0), uncaughtExceptionName, alwaysDumpUncaughtException, dump, success);
+                checkException(globalObject, isLastFile, true, exec->argument(0), options, success);
                 return JSValue::encode(jsUndefined());
             });
 
@@ -3399,7 +3409,7 @@ static bool runWithScripts(GlobalObject* globalObject, const Vector<Script>& scr
             scope.assertNoException();
             if (evaluationException)
                 returnValue = evaluationException->value();
-            checkException(globalObject, isLastFile, evaluationException, returnValue, uncaughtExceptionName, alwaysDumpUncaughtException, dump, success);
+            checkException(globalObject, isLastFile, evaluationException, returnValue, options, success);
         }
 
         scriptBuffer.clear();
@@ -3501,6 +3511,7 @@ static NO_RETURN void printUsageStatement(bool help = false)
     fprintf(stderr, "  --strict-file=<file>       Parse the given file as if it were in strict mode (this option may be passed more than once)\n");
     fprintf(stderr, "  --module-file=<file>       Parse and evaluate the given file as module (this option may be passed more than once)\n");
     fprintf(stderr, "  --exception=<name>         Check the last script exits with an uncaught exception with the specified name\n");
+    fprintf(stderr, "  --watchdog-exception-ok    Uncaught watchdog exceptions exit with success\n");
     fprintf(stderr, "  --dumpException            Dump uncaught exception text\n");
     fprintf(stderr, "  --options                  Dumps all JSC VM options and exits\n");
     fprintf(stderr, "  --dumpOptions              Dumps all non-default JSC VM options before continuing\n");
@@ -3627,6 +3638,11 @@ void CommandLine::parseArguments(int argc, char** argv)
         static const unsigned exceptionStrLength = strlen("--exception=");
         if (!strncmp(arg, "--exception=", exceptionStrLength)) {
             m_uncaughtExceptionName = String(arg + exceptionStrLength);
+            continue;
+        }
+
+        if (!strcmp(arg, "--watchdog-exception-ok")) {
+            m_treatWatchdogExceptionAsSuccess = true;
             continue;
         }
 
@@ -3777,7 +3793,7 @@ int jscmain(int argc, char** argv)
     result = runJSC(
         options, false,
         [&] (VM&, GlobalObject* globalObject) {
-            return runWithScripts(globalObject, options.m_scripts, options.m_uncaughtExceptionName, options.m_alwaysDumpUncaughtException, options.m_dump, options.m_module);
+            return runWithOptions(globalObject, options);
         });
 
     printSuperSamplerState();

@@ -56,6 +56,12 @@ typedef enum {
     WebKitJavaScriptRuntimeFlagsAllEnabled = 0
 } WebKitJavaScriptRuntimeFlags;
 
+typedef enum {
+    WebKitFrameFlatteningDisabled,
+    WebKitFrameFlatteningEnabledForNonFullScreenIFrames,
+    WebKitFrameFlatteningFullyEnabled
+} WebKitFrameFlattening;
+
 extern NSString *WebPreferencesChangedNotification;
 extern NSString *WebPreferencesRemovedNotification;
 extern NSString *WebPreferencesChangedInternalNotification;
@@ -155,6 +161,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (BOOL)isFrameFlatteningEnabled;
 - (void)setFrameFlatteningEnabled:(BOOL)flag;
+
+- (WebKitFrameFlattening)frameFlattening;
+- (void)setFrameFlattening:(WebKitFrameFlattening)flag;
+
+- (BOOL)asyncFrameScrollingEnabled;
+- (void)setAsyncFrameScrollingEnabled:(BOOL)enabled;
 
 - (BOOL)isSpatialNavigationEnabled;
 - (void)setSpatialNavigationEnabled:(BOOL)flag;

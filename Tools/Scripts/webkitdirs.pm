@@ -1547,12 +1547,10 @@ sub relativeScriptsDir()
 sub launcherPath()
 {
     my $relativeScriptsPath = relativeScriptsDir();
-    if (isGtk() || isHaiku()) {
+    if (isGtk() || isHaiku() || isWPE()) {
         return "$relativeScriptsPath/run-minibrowser";
     } elsif (isAppleWebKit()) {
         return "$relativeScriptsPath/run-safari";
-    } elsif (isWPE()) {
-        return "$relativeScriptsPath/run-wpe";
     }
 }
 
@@ -1567,7 +1565,7 @@ sub launcherName()
     } elsif (isHaiku()) {
         return "HaikuLauncher";
     } elsif (isWPE()) {
-        return "WPELauncher";
+        return "dyz";
     }
 }
 

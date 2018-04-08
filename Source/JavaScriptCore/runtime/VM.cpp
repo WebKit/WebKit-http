@@ -78,6 +78,7 @@
 #include "LLIntData.h"
 #include "Lexer.h"
 #include "Lookup.h"
+#include "MinimumReservedZoneSize.h"
 #include "ModuleProgramCodeBlock.h"
 #include "NativeStdFunctionCell.h"
 #include "Nodes.h"
@@ -98,6 +99,7 @@
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
 #include "StructureInlines.h"
+#include "ThunkGenerators.h"
 #include "TypeProfiler.h"
 #include "TypeProfilerLog.h"
 #include "UnlinkedCodeBlock.h"
@@ -156,6 +158,9 @@ static bool enableAssembler(ExecutableAllocator& executableAllocator)
 
 VM::VM(VMType vmType, HeapType heapType)
     : m_apiLock(adoptRef(new JSLock(this)))
+#if USE(CF)
+    , m_runLoop(CFRunLoopGetCurrent())
+#endif // USE(CF)
     , heap(this, heapType)
     , auxiliarySpace("Auxiliary", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::Auxiliary))
     , cellSpace("JSCell", heap, AllocatorAttributes(DoesNotNeedDestruction, HeapCell::JSCell))
@@ -666,15 +671,22 @@ inline void VM::updateStackLimits()
     void* lastSoftStackLimit = m_softStackLimit;
 #endif
 
+    const StackBounds& stack = wtfThreadData().stack();
     size_t reservedZoneSize = Options::reservedZoneSize();
+    // We should have already ensured that Options::reservedZoneSize() >= minimumReserveZoneSize at
+    // options initialization time, and the option value should not have been changed thereafter.
+    // We don't have the ability to assert here that it hasn't changed, but we can at least assert
+    // that the value is sane.
+    RELEASE_ASSERT(reservedZoneSize >= minimumReservedZoneSize);
+
     if (m_stackPointerAtVMEntry) {
-        ASSERT(wtfThreadData().stack().isGrowingDownward());
+        ASSERT(stack.isGrowingDownward());
         char* startOfStack = reinterpret_cast<char*>(m_stackPointerAtVMEntry);
-        m_softStackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_currentSoftReservedZoneSize);
-        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), reservedZoneSize);
+        m_softStackLimit = stack.recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_currentSoftReservedZoneSize);
+        m_stackLimit = stack.recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), reservedZoneSize);
     } else {
-        m_softStackLimit = wtfThreadData().stack().recursionLimit(m_currentSoftReservedZoneSize);
-        m_stackLimit = wtfThreadData().stack().recursionLimit(reservedZoneSize);
+        m_softStackLimit = stack.recursionLimit(m_currentSoftReservedZoneSize);
+        m_stackLimit = stack.recursionLimit(reservedZoneSize);
     }
 
 #if OS(WINDOWS)
@@ -930,5 +942,30 @@ RegisterAtOffsetList* VM::getAllCalleeSaveRegisterOffsets()
     return result;
 }
 #endif // ENABLE(JIT)
+
+#if USE(CF)
+void VM::registerRunLoopTimer(JSRunLoopTimer* timer)
+{
+    ASSERT(runLoop());
+    ASSERT(!m_runLoopTimers.contains(timer));
+    m_runLoopTimers.add(timer);
+    timer->setRunLoop(runLoop());
+}
+
+void VM::unregisterRunLoopTimer(JSRunLoopTimer* timer)
+{
+    ASSERT(m_runLoopTimers.contains(timer));
+    m_runLoopTimers.remove(timer);
+    timer->setRunLoop(nullptr);
+}
+
+void VM::setRunLoop(CFRunLoopRef runLoop)
+{
+    ASSERT(runLoop);
+    m_runLoop = runLoop;
+    for (auto timer : m_runLoopTimers)
+        timer->setRunLoop(runLoop);
+}
+#endif // USE(CF)
 
 } // namespace JSC

@@ -28,12 +28,16 @@
 #include "EventNames.h"
 #include "FrameLoaderClient.h"
 #include "HTMLImageLoader.h"
+#include "JSDOMConvertBoolean.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertStrings.h"
 #include "JSShadowRoot.h"
 #include "LocalizedStrings.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MouseEvent.h"
 #include "Page.h"
+#include "PlatformMouseEvent.h"
 #include "PlugInClient.h"
 #include "PluginViewBase.h"
 #include "RenderImage.h"
@@ -47,6 +51,7 @@
 #include "StyleTreeResolver.h"
 #include "SubframeLoader.h"
 #include "TypedElementDescendantIterator.h"
+#include <runtime/CatchScope.h>
 
 namespace WebCore {
 

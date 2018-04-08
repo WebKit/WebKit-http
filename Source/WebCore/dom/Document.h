@@ -38,7 +38,7 @@
 #include "FrameDestructionObserver.h"
 #include "MediaProducer.h"
 #include "MutationObserver.h"
-#include "OrientationNotifer.h"
+#include "OrientationNotifier.h"
 #include "PageVisibilityState.h"
 #include "PlatformEvent.h"
 #include "ReferrerPolicy.h"
@@ -56,11 +56,17 @@
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
+#include <wtf/Optional.h>
+#include <wtf/Variant.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
 
 #if PLATFORM(IOS)
 #include "EventTrackingRegions.h"
+#endif
+
+#if ENABLE(IOS_TOUCH_EVENTS)
+#include <wtf/ThreadingPrimitives.h>
 #endif
 
 namespace JSC {
@@ -81,7 +87,7 @@ class CachedCSSStyleSheet;
 class CachedFrameBase;
 class CachedResourceLoader;
 class CachedScript;
-class CanvasRenderingContext;
+class CanvasRenderingContext2D;
 class CharacterData;
 class Comment;
 class ConstantPropertyMap;
@@ -167,6 +173,9 @@ class TextResourceDecoder;
 class TreeWalker;
 class VisibilityChangeClient;
 class VisitedLinkState;
+class WebGL2RenderingContext;
+class WebGLRenderingContext;
+class WebGPURenderingContext;
 class XPathEvaluator;
 class XPathExpression;
 class XPathNSResolver;
@@ -182,10 +191,6 @@ class TransformSource;
 
 #if ENABLE(DASHBOARD_SUPPORT)
 struct AnnotatedRegionValue;
-#endif
-
-#if ENABLE(IOS_TOUCH_EVENTS)
-#include <WebKitAdditions/DocumentIOSForward.h>
 #endif
 
 #if ENABLE(TOUCH_EVENTS) || ENABLE(IOS_TOUCH_EVENTS)
@@ -283,6 +288,18 @@ enum class CustomElementNameValidationStatus {
     ContainsDisallowedCharacter,
     ConflictsWithStandardElementName
 };
+
+using RenderingContext = Variant<
+#if ENABLE(WEBGL)
+    RefPtr<WebGLRenderingContext>,
+#endif
+#if ENABLE(WEBGL2)
+    RefPtr<WebGL2RenderingContext>,
+#endif
+#if ENABLE(WEBGPU)
+    RefPtr<WebGPURenderingContext>,
+#endif
+    RefPtr<CanvasRenderingContext2D>>;
 
 class Document
     : public ContainerNode
@@ -596,10 +613,16 @@ public:
     
     WEBCORE_EXPORT DocumentLoader* loader() const;
 
-    WEBCORE_EXPORT void open(Document* ownerDocument = nullptr);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<DOMWindow>> openForBindings(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& url, const AtomicString& name, const String& features);
+    WEBCORE_EXPORT ExceptionOr<Document&> openForBindings(Document* responsibleDocument, const String& type, const String& replace);
+
+    // FIXME: We should rename this at some point and give back the name 'open' to the HTML specified ones.
+    WEBCORE_EXPORT void open(Document* responsibleDocument = nullptr);
     void implicitOpen();
 
-    // close() is the DOM API document.close()
+    WEBCORE_EXPORT ExceptionOr<void> closeForBindings();
+
+    // FIXME: We should rename this at some point and give back the name 'close' to the HTML specified one.
     WEBCORE_EXPORT void close();
     // In some situations (see the code), we ignore document.close().
     // explicitClose() bypass these checks and actually tries to close the
@@ -610,9 +633,9 @@ public:
 
     void cancelParsing();
 
-    void write(SegmentedString&& text, Document* ownerDocument = nullptr);
-    WEBCORE_EXPORT void write(const String& text, Document* ownerDocument = nullptr);
-    WEBCORE_EXPORT void writeln(const String& text, Document* ownerDocument = nullptr);
+    void write(Document* responsibleDocument, SegmentedString&&);
+    WEBCORE_EXPORT ExceptionOr<void> write(Document* responsibleDocument, Vector<String>&&);
+    WEBCORE_EXPORT ExceptionOr<void> writeln(Document* responsibleDocument, Vector<String>&&);
 
     bool wellFormed() const { return m_wellFormed; }
 
@@ -959,7 +982,7 @@ public:
     void cancelFocusAppearanceUpdate();
 
     // Extension for manipulating canvas drawing contexts for use in CSS
-    CanvasRenderingContext* getCSSCanvasContext(const String& type, const String& name, int width, int height);
+    std::optional<RenderingContext> getCSSCanvasContext(const String& type, const String& name, int width, int height);
     HTMLCanvasElement* getCSSCanvasElement(const String& name);
 
     bool isDNSPrefetchEnabled() const { return m_isDNSPrefetchEnabled; }
@@ -1124,8 +1147,6 @@ public:
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/DocumentIOS.h>
-#elif ENABLE(TOUCH_EVENTS)
-    Ref<Touch> createTouch(DOMWindow*, EventTarget*, int identifier, int pageX, int pageY, int screenX, int screenY, int radiusX, int radiusY, float rotationAngle, float force) const;
 #endif
 
 #if ENABLE(DEVICE_ORIENTATION) && PLATFORM(IOS)
@@ -1142,8 +1163,6 @@ public:
     int requestAnimationFrame(Ref<RequestAnimationFrameCallback>&&);
     void cancelAnimationFrame(int id);
     void serviceScriptedAnimations(double timestamp);
-
-    void sendWillRevealEdgeEventsIfNeeded(const IntPoint& oldPosition, const IntPoint& newPosition, const IntRect& visibleRect, const IntSize& contentsSize, Element* target = nullptr);
 
     EventTarget* errorEventTarget() final;
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) final;
@@ -1238,6 +1257,10 @@ public:
     void addDisabledFieldsetElement() { m_disabledFieldsetElementsCount++; }
     void removeDisabledFieldsetElement() { ASSERT(m_disabledFieldsetElementsCount); m_disabledFieldsetElementsCount--; }
 
+    WEBCORE_EXPORT void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
+
+    // The following addConsoleMessage function is deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     WEBCORE_EXPORT void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier = 0) final;
 
     SecurityOrigin& securityOrigin() const { return *SecurityContext::securityOrigin(); }
@@ -1323,6 +1346,24 @@ public:
     void orientationChanged(int orientation);
     OrientationNotifier& orientationNotifier() { return m_orientationNotifier; }
 
+    WEBCORE_EXPORT const AtomicString& bgColor() const;
+    WEBCORE_EXPORT void setBgColor(const String&);
+    WEBCORE_EXPORT const AtomicString& fgColor() const;
+    WEBCORE_EXPORT void setFgColor(const String&);
+    WEBCORE_EXPORT const AtomicString& alinkColor() const;
+    WEBCORE_EXPORT void setAlinkColor(const String&);
+    WEBCORE_EXPORT const AtomicString& linkColorForBindings() const;
+    WEBCORE_EXPORT void setLinkColorForBindings(const String&);
+    WEBCORE_EXPORT const AtomicString& vlinkColor() const;
+    WEBCORE_EXPORT void setVlinkColor(const String&);
+
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-clear, this method does nothing.
+    void clear() { }
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-captureevents, this method does nothing.
+    void captureEvents() { }
+    // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-releaseevents, this method does nothing.
+    void releaseEvents() { }
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1367,6 +1408,8 @@ private:
     void refScriptExecutionContext() final { ref(); }
     void derefScriptExecutionContext() final { deref(); }
 
+    // The following addMessage function is deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState* = nullptr, unsigned long requestIdentifier = 0) final;
 
     Seconds minimumDOMTimerInterval() const final;

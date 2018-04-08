@@ -33,7 +33,6 @@
 #include "PaintInfo.h"
 #include "PopupMenuStyle.h"
 #include "ScrollTypes.h"
-#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -95,6 +94,7 @@ public:
     virtual String extraMediaControlsStyleSheet() { return String(); }
     virtual String mediaControlsScript() { return String(); }
     virtual String mediaControlsBase64StringForIconNameAndType(const String&, const String&) { return String(); }
+    virtual String mediaControlsFormattedStringForDuration(double) { return String(); }
 #endif
 #if ENABLE(FULLSCREEN_API)
     virtual String extraFullScreenStyleSheet() { return String(); }

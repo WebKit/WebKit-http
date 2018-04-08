@@ -33,6 +33,7 @@
 
 #include "ArithProfile.h"
 #include "BuiltinExecutables.h"
+#include "BuiltinNames.h"
 #include "BytecodeGeneratorification.h"
 #include "BytecodeLivenessAnalysis.h"
 #include "DefinePropertyAttributes.h"
@@ -192,6 +193,7 @@ ParserError BytecodeGenerator::generate()
     if (isGeneratorOrAsyncFunctionBodyParseMode(m_codeBlock->parseMode()))
         performGeneratorification(m_codeBlock.get(), m_instructions, m_generatorFrameSymbolTable.get(), m_generatorFrameSymbolTableIndex);
 
+    RELEASE_ASSERT(static_cast<unsigned>(m_codeBlock->numCalleeLocals()) < static_cast<unsigned>(FirstConstantRegisterIndex));
     m_codeBlock->setInstructions(std::make_unique<UnlinkedInstructionStream>(m_instructions));
 
     m_codeBlock->shrinkToFit();
@@ -631,16 +633,7 @@ BytecodeGenerator::BytecodeGenerator(VM& vm, FunctionNode* functionNode, Unlinke
             if (isConstructor()) {
                 emitMove(m_newTargetRegister, &m_thisRegister);
                 if (constructorKind() == ConstructorKind::Extends) {
-                    Ref<Label> isDerived = newLabel();
-                    Ref<Label> done = newLabel();
-                    m_isDerivedConstuctor = addVar();
-                    emitGetById(m_isDerivedConstuctor, &m_calleeRegister, propertyNames().builtinNames().isDerivedConstructorPrivateName());
-                    emitJumpIfTrue(m_isDerivedConstuctor, isDerived.get());
-                    emitCreateThis(&m_thisRegister);
-                    emitJump(done.get());
-                    emitLabel(isDerived.get());
                     emitMoveEmptyValue(&m_thisRegister);
-                    emitLabel(done.get());
                 } else
                     emitCreateThis(&m_thisRegister);
             } else if (constructorKind() != ConstructorKind::None)
@@ -1627,9 +1620,7 @@ unsigned BytecodeGenerator::addConstant(const Identifier& ident)
 RegisterID* BytecodeGenerator::addConstantEmptyValue()
 {
     if (!m_emptyValueRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_emptyValueRegister = &m_constantPoolRegisters[index];
     }
@@ -1649,8 +1640,7 @@ RegisterID* BytecodeGenerator::addConstantValue(JSValue v, SourceCodeRepresentat
     EncodedJSValueWithRepresentation valueMapKey { JSValue::encode(v), sourceCodeRepresentation };
     JSValueMap::AddResult result = m_jsValueMap.add(valueMapKey, m_nextConstantOffset);
     if (result.isNewEntry) {
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        addConstantIndex();
         m_codeBlock->addConstant(v, sourceCodeRepresentation);
     } else
         index = result.iterator->value;
@@ -1661,9 +1651,7 @@ RegisterID* BytecodeGenerator::emitMoveLinkTimeConstant(RegisterID* dst, LinkTim
 {
     unsigned constantIndex = static_cast<unsigned>(type);
     if (!m_linkTimeConstantRegisters[constantIndex]) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(type);
         m_linkTimeConstantRegisters[constantIndex] = &m_constantPoolRegisters[index];
     }
@@ -1935,6 +1923,14 @@ void BytecodeGenerator::emitProfileControlFlow(int textOffset)
     }
 }
 
+unsigned BytecodeGenerator::addConstantIndex()
+{
+    unsigned index = m_nextConstantOffset;
+    m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
+    ++m_nextConstantOffset;
+    return index;
+}
+
 RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, bool b)
 {
     return emitLoad(dst, jsBoolean(b));
@@ -1958,12 +1954,29 @@ RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, JSValue v, SourceCodeRe
     return constantID;
 }
 
+RegisterID* BytecodeGenerator::emitLoad(RegisterID* dst, IdentifierSet& set)
+{
+    for (ConstantIndentifierSetEntry entry : m_codeBlock->constantIdentifierSets()) {
+        if (entry.first != set)
+            continue;
+        
+        return &m_constantPoolRegisters[entry.second];
+    }
+    
+    unsigned index = addConstantIndex();
+    m_codeBlock->addSetConstant(set);
+    RegisterID* m_setRegister = &m_constantPoolRegisters[index];
+    
+    if (dst)
+        return emitMove(dst, m_setRegister);
+    
+    return m_setRegister;
+}
+
 RegisterID* BytecodeGenerator::emitLoadGlobalObject(RegisterID* dst)
 {
     if (!m_globalObjectRegister) {
-        int index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        int index = addConstantIndex();
         m_codeBlock->addConstant(JSValue());
         m_globalObjectRegister = &m_constantPoolRegisters[index];
         m_codeBlock->setGlobalObjectRegister(VirtualRegister(index));
@@ -3111,9 +3124,7 @@ RegisterID* BytecodeGenerator::addTemplateRegistryKeyConstant(Ref<TemplateRegist
 {
     return m_templateRegistryKeyMap.ensure(templateRegistryKey.copyRef(), [&] {
         auto* result = JSTemplateRegistryKey::create(*vm(), WTFMove(templateRegistryKey));
-        unsigned index = m_nextConstantOffset;
-        m_constantPoolRegisters.append(FirstConstantRegisterIndex + m_nextConstantOffset);
-        ++m_nextConstantOffset;
+        unsigned index = addConstantIndex();
         m_codeBlock->addConstant(result);
         return &m_constantPoolRegisters[index];
     }).iterator->value;
@@ -3618,27 +3629,22 @@ void BytecodeGenerator::emitCallDefineProperty(RegisterID* newObj, RegisterID* p
 RegisterID* BytecodeGenerator::emitReturn(RegisterID* src, ReturnFrom from)
 {
     if (isConstructor()) {
-        bool mightBeDerived = constructorKind() == ConstructorKind::Extends;
+        bool isDerived = constructorKind() == ConstructorKind::Extends;
         bool srcIsThis = src->index() == m_thisRegister.index();
 
-        if (mightBeDerived && (srcIsThis || from == ReturnFrom::Finally))
+        if (isDerived && (srcIsThis || from == ReturnFrom::Finally))
             emitTDZCheck(src);
 
         if (!srcIsThis || from == ReturnFrom::Finally) {
             Ref<Label> isObjectLabel = newLabel();
             emitJumpIfTrue(emitIsObject(newTemporary(), src), isObjectLabel.get());
 
-            if (mightBeDerived) {
-                ASSERT(m_isDerivedConstuctor);
-                Ref<Label> returnThis = newLabel();
-                emitJumpIfFalse(m_isDerivedConstuctor, returnThis.get());
-                // Else, we're a derived constructor here.
+            if (isDerived) {
                 Ref<Label> isUndefinedLabel = newLabel();
                 emitJumpIfTrue(emitIsUndefined(newTemporary(), src), isUndefinedLabel.get());
                 emitThrowTypeError("Cannot return a non-object type in the constructor of a derived class.");
                 emitLabel(isUndefinedLabel.get());
                 emitTDZCheck(&m_thisRegister);
-                emitLabel(returnThis.get());
             }
             emitUnaryNoDstOp(op_ret, &m_thisRegister);
             emitLabel(isObjectLabel.get());

@@ -33,8 +33,8 @@
 #include "DFGJITCompiler.h"
 #include "DFGOSRExit.h"
 #include "DFGOSRExitJumpPlaceholder.h"
+#include "DFGRegisterBank.h"
 #include "DFGSilentRegisterSavePlan.h"
-#include "DFGValueSource.h"
 #include "JITMathIC.h"
 #include "JITOperations.h"
 #include "MarkedAllocator.h"
@@ -3008,6 +3008,8 @@ public:
     void speculateSymbol(Edge);
     void speculateNotCell(Edge, JSValueRegs);
     void speculateNotCell(Edge);
+    void speculateOther(Edge, JSValueRegs, GPRReg temp);
+    void speculateOther(Edge, JSValueRegs);
     void speculateOther(Edge);
     void speculateMisc(Edge, JSValueRegs);
     void speculateMisc(Edge);

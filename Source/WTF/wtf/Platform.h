@@ -554,6 +554,7 @@
 #define ENABLE_USER_MESSAGE_HANDLERS 1
 #define HAVE_OUT_OF_PROCESS_LAYER_HOSTING 1
 #define HAVE_DTRACE 0
+#define USE_FILE_LOCK 1
 
 #if !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
 #define ENABLE_DATA_DETECTION 1
@@ -745,10 +746,6 @@
 
 /* Include feature macros */
 #include <wtf/FeatureDefines.h>
-
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/AdditionalFeatureDefines.h>)
-#include <WebKitAdditions/AdditionalFeatureDefines.h>
-#endif
 
 #if OS(WINDOWS)
 #define USE_SYSTEM_MALLOC 1
@@ -1013,7 +1010,7 @@
 #endif
 #endif
 
-#if ENABLE(JIT) && HAVE(MACHINE_CONTEXT)
+#if ENABLE(JIT) && HAVE(MACHINE_CONTEXT) && (CPU(X86) || CPU(X86_64) || CPU(ARM64))
 #define ENABLE_SIGNAL_BASED_VM_TRAPS 1
 #endif
 

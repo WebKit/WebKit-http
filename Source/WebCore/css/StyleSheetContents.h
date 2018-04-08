@@ -23,14 +23,12 @@
 #include "CSSParserMode.h"
 #include "CachePolicy.h"
 #include "URL.h"
-#include <functional>
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
-#include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 #include <wtf/text/AtomicStringHash.h>
-#include <wtf/text/TextPosition.h>
 
 namespace WebCore {
 
@@ -88,7 +86,7 @@ public:
     bool loadCompleted() const { return m_loadCompleted; }
 
     URL completeURL(const String& url) const;
-    bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
+    bool traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const;
 
     void setIsUserStyleSheet(bool b) { m_isUserStyleSheet = b; }
     bool isUserStyleSheet() const { return m_isUserStyleSheet; }

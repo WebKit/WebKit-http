@@ -37,17 +37,14 @@ class InlineMediaControls extends MediaControls
 
         this.element.classList.add("inline");
 
-        this._placard = null;
-
-        this.airplayPlacard = new AirplayPlacard(this);
-        this.invalidPlacard = new InvalidPlacard(this);
-        this.pipPlacard = new PiPPlacard(this);
-
         this.skipBackButton = new SkipBackButton(this);
         this.skipForwardButton = new SkipForwardButton(this);
 
         this.topLeftControlsBar = new ControlsBar("top-left");
         this._topLeftControlsBarContainer = this.topLeftControlsBar.addChild(new ButtonsContainer);
+
+        this.topRightControlsBar = new ControlsBar("top-right");
+        this._topRightControlsBarContainer = this.topRightControlsBar.addChild(new ButtonsContainer);
 
         this.leftContainer = new ButtonsContainer({ cssClassName: "left" });
         this.rightContainer = new ButtonsContainer({ cssClassName: "right" });
@@ -94,20 +91,6 @@ class InlineMediaControls extends MediaControls
         this.layout();
     }
 
-    get placard()
-    {
-        return this._placard;
-    }
-
-    set placard(placard)
-    {
-        if (this._placard === placard)
-            return;
-
-        this._placard = placard;
-        this.layout();
-    }
-
     // Protected
 
     layout()
@@ -116,12 +99,9 @@ class InlineMediaControls extends MediaControls
 
         const children = [];
 
-        if (this._placard) {
-            this._placard.width = this.width;
-            this._placard.height = this.height;
-            children.push(this._placard);
-            // The AirPlay placard is the only one allowing controls to show as well.
-            if (this._placard !== this.airplayPlacard) {
+        if (this.placard) {
+            children.push(this.placard);
+            if (this.placardPreventsControlsBarDisplay()) {
                 this.children = children;
                 return;
             }
@@ -167,8 +147,8 @@ class InlineMediaControls extends MediaControls
         if (this.bottomControlsBar.width < minimumControlsBarWidthForCenterControl) {
             this.playPauseButton.style = Button.Styles.Corner;
             if (!this._shouldUseSingleBarLayout && this.height >= 82) {
-                this.muteButton.style = Button.Styles.Corner;
-                children.push(this.topLeftControlsBar, this.muteButton);
+                children.push(this.topLeftControlsBar);
+                this._addTopRightBarWithMuteButtonToChildren(children);
             }
             this.children = children.concat(this.playPauseButton);
             return;
@@ -230,10 +210,8 @@ class InlineMediaControls extends MediaControls
         if (!this._shouldUseAudioLayout && !this._shouldUseSingleBarLayout)
             children.push(this.topLeftControlsBar);
         children.push(this.bottomControlsBar);
-        if (this.muteButton.style === Button.Styles.Corner || (this.muteButton.dropped && !this._shouldUseAudioLayout && !this._shouldUseSingleBarLayout)) {
-            children.push(this.muteButton);
-            this.muteButton.style = Button.Styles.Corner;
-        }
+        if (this.muteButton.style === Button.Styles.Corner || (this.muteButton.dropped && !this._shouldUseAudioLayout && !this._shouldUseSingleBarLayout))
+            this._addTopRightBarWithMuteButtonToChildren(children);
         this.children = children;
     }
 
@@ -293,6 +271,19 @@ class InlineMediaControls extends MediaControls
         if (this.preferredMuteButtonStyle === Button.Styles.Bar)
             buttons.push(this.muteButton);
         return buttons;
+    }
+
+    _addTopRightBarWithMuteButtonToChildren(children)
+    {
+        if (!this.muteButton.enabled)
+            return;
+
+        delete this.muteButton.dropped;
+        this.muteButton.style = Button.Styles.Bar;
+        this._topRightControlsBarContainer.buttons = [this.muteButton];
+        this._topRightControlsBarContainer.layout();
+        this.topRightControlsBar.width = this._topRightControlsBarContainer.width;
+        children.push(this.topRightControlsBar);
     }
 
 }

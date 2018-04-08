@@ -115,6 +115,10 @@
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 
+#if PLATFORM(WAYLAND)
+#include "WaylandCompositorDisplay.h"
+#endif
+
 #if PLATFORM(COCOA)
 #include "CookieStorageShim.h"
 #include "ObjCObjectGraph.h"
@@ -313,10 +317,6 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     m_applicationCacheStorage->setDefaultOriginQuota(25ULL * 1024 * 1024);
 #endif
 
-#if PLATFORM(WAYLAND)
-    m_waylandCompositorDisplayName = parameters.waylandCompositorDisplayName;
-#endif
-
 #if ENABLE(VIDEO)
     if (!parameters.mediaCacheDirectory.isEmpty())
         WebCore::HTMLMediaElement::setMediaCacheDirectory(parameters.mediaCacheDirectory);
@@ -400,12 +400,7 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 #endif
 
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
-    for (auto hostIter = parameters.pluginLoadClientPolicies.begin(); hostIter != parameters.pluginLoadClientPolicies.end(); ++hostIter) {
-        for (auto bundleIdentifierIter = hostIter->value.begin(); bundleIdentifierIter != hostIter->value.end(); ++bundleIdentifierIter) {
-            for (auto versionIter = bundleIdentifierIter->value.begin(); versionIter != bundleIdentifierIter->value.end(); ++versionIter)
-                WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(versionIter->value), hostIter->key, bundleIdentifierIter->key, versionIter->key);
-        }
-    }
+    resetPluginLoadClientPolicies(parameters.pluginLoadClientPolicies);
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -926,6 +921,20 @@ void WebProcess::setPluginLoadClientPolicy(uint8_t policy, const String& host, c
 #endif
 }
 
+void WebProcess::resetPluginLoadClientPolicies(const HashMap<WTF::String, HashMap<WTF::String, HashMap<WTF::String, uint8_t>>>& pluginLoadClientPolicies)
+{
+#if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
+    clearPluginClientPolicies();
+
+    for (auto& hostPair : pluginLoadClientPolicies) {
+        for (auto& bundleIdentifierPair : hostPair.value) {
+            for (auto& versionPair : bundleIdentifierPair.value)
+                WebPluginInfoProvider::singleton().setPluginLoadClientPolicy(static_cast<PluginLoadClientPolicy>(versionPair.value), hostPair.key, bundleIdentifierPair.key, versionPair.key);
+        }
+    }
+#endif
+}
+
 void WebProcess::clearPluginClientPolicies()
 {
 #if ENABLE(NETSCAPE_PLUGIN_API) && PLATFORM(MAC)
@@ -1387,7 +1396,7 @@ void WebProcess::cancelPrepareToSuspend()
     parentProcessConnection()->send(Messages::WebProcessProxy::DidCancelProcessSuspension(), 0);
 }
 
-void WebProcess::markAllLayersVolatile(std::function<void()> completionHandler)
+void WebProcess::markAllLayersVolatile(WTF::Function<void()>&& completionHandler)
 {
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::markAllLayersVolatile()", this);
     m_pagesMarkingLayersAsVolatile = m_pageMap.size();
@@ -1396,7 +1405,7 @@ void WebProcess::markAllLayersVolatile(std::function<void()> completionHandler)
         return;
     }
     for (auto& page : m_pageMap.values()) {
-        page->markLayersVolatile([this, completionHandler] {
+        page->markLayersVolatile([this, completionHandler = WTFMove(completionHandler)] {
             ASSERT(m_pagesMarkingLayersAsVolatile);
             if (!--m_pagesMarkingLayersAsVolatile)
                 completionHandler();

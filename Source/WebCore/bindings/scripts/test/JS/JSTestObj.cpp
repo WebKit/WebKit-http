@@ -30,8 +30,24 @@
 #include "JSDOMBinding.h"
 #include "JSDOMBindingSecurity.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvertAny.h"
+#include "JSDOMConvertBoolean.h"
+#include "JSDOMConvertBufferSource.h"
+#include "JSDOMConvertCallbacks.h"
+#include "JSDOMConvertEventListener.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertNumbers.h"
+#include "JSDOMConvertObject.h"
+#include "JSDOMConvertRecord.h"
+#include "JSDOMConvertSequences.h"
+#include "JSDOMConvertSerializedScriptValue.h"
+#include "JSDOMConvertStrings.h"
+#include "JSDOMConvertUnion.h"
 #include "JSDOMConvertVariadic.h"
+#include "JSDOMConvertXPathNSResolver.h"
 #include "JSDOMExceptionHandling.h"
+#include "JSDOMGlobalObject.h"
 #include "JSDOMIterator.h"
 #include "JSDOMOperation.h"
 #include "JSDOMOperationReturningPromise.h"
@@ -65,10 +81,11 @@
 #include <builtins/BuiltinNames.h>
 #include <inspector/ScriptArguments.h>
 #include <inspector/ScriptCallStackFactory.h>
-#include <runtime/Error.h>
+#include <runtime/ArrayPrototype.h>
 #include <runtime/FunctionPrototype.h>
 #include <runtime/IteratorOperations.h>
 #include <runtime/JSArray.h>
+#include <runtime/JSCInlines.h>
 #include <runtime/JSString.h>
 #include <runtime/ObjectConstructor.h>
 #include <runtime/PropertyNameArray.h>
@@ -411,7 +428,7 @@ template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState&
     }
     JSValue bufferSourceValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "bufferSourceValue"));
     if (!bufferSourceValueValue.isUndefined()) {
-        result.bufferSourceValue = convert<IDLBufferSource>(state, bufferSourceValueValue);
+        result.bufferSourceValue = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, bufferSourceValueValue);
         RETURN_IF_EXCEPTION(throwScope, { });
     }
     JSValue dictionaryMemberValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "dictionaryMember"));
@@ -494,6 +511,14 @@ template<> TestObj::Dictionary convertDictionary<TestObj::Dictionary>(ExecState&
         RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.nullableUnionMember = std::nullopt;
+    JSValue requiredBufferSourceValueValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "requiredBufferSourceValue"));
+    if (!requiredBufferSourceValueValue.isUndefined()) {
+        result.requiredBufferSourceValue = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, requiredBufferSourceValueValue);
+        RETURN_IF_EXCEPTION(throwScope, { });
+    } else {
+        throwRequiredMemberTypeError(state, throwScope, "requiredBufferSourceValue", "TestDictionary", "(ArrayBufferView or ArrayBuffer)");
+        return { };
+    }
     JSValue restrictedDoubleValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "restrictedDouble"));
     if (!restrictedDoubleValue.isUndefined()) {
         result.restrictedDouble = convert<IDLDouble>(state, restrictedDoubleValue);
@@ -614,7 +639,7 @@ JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& g
 {
     auto& vm = state.vm();
 
-    auto result = constructEmptyObject(&state);
+    auto result = constructEmptyObject(&state, globalObject.objectPrototype());
 
     if (!IDLSequence<IDLClampAdaptor<IDLLong>>::isNullValue(dictionary.annotatedTypeInSequenceMember)) {
         auto annotatedTypeInSequenceMemberValue = toJS<IDLSequence<IDLClampAdaptor<IDLLong>>>(state, globalObject, IDLSequence<IDLClampAdaptor<IDLLong>>::extractValueFromNullable(dictionary.annotatedTypeInSequenceMember));
@@ -624,96 +649,98 @@ JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& g
         auto annotatedTypeInUnionMemberValue = toJS<IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>>(state, globalObject, IDLUnion<IDLDOMString, IDLClampAdaptor<IDLLong>>::extractValueFromNullable(dictionary.annotatedTypeInUnionMember));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "annotatedTypeInUnionMember"), annotatedTypeInUnionMemberValue);
     }
-    auto anyTypedefValueValue = toJS<IDLAny>(state, globalObject, dictionary.anyTypedefValue);
+    auto anyTypedefValueValue = toJS<IDLAny>(dictionary.anyTypedefValue);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyTypedefValue"), anyTypedefValueValue);
-    auto anyValueValue = toJS<IDLAny>(state, globalObject, dictionary.anyValue);
+    auto anyValueValue = toJS<IDLAny>(dictionary.anyValue);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValue"), anyValueValue);
-    auto anyValueWithNullDefaultValue = toJS<IDLAny>(state, globalObject, dictionary.anyValueWithNullDefault);
+    auto anyValueWithNullDefaultValue = toJS<IDLAny>(dictionary.anyValueWithNullDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "anyValueWithNullDefault"), anyValueWithNullDefaultValue);
-    auto booleanWithDefaultValue = toJS<IDLBoolean>(state, globalObject, dictionary.booleanWithDefault);
+    auto booleanWithDefaultValue = toJS<IDLBoolean>(dictionary.booleanWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithDefault"), booleanWithDefaultValue);
     if (!IDLBoolean::isNullValue(dictionary.booleanWithoutDefault)) {
-        auto booleanWithoutDefaultValue = toJS<IDLBoolean>(state, globalObject, IDLBoolean::extractValueFromNullable(dictionary.booleanWithoutDefault));
+        auto booleanWithoutDefaultValue = toJS<IDLBoolean>(IDLBoolean::extractValueFromNullable(dictionary.booleanWithoutDefault));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "booleanWithoutDefault"), booleanWithoutDefaultValue);
     }
-    if (!IDLBufferSource::isNullValue(dictionary.bufferSourceValue)) {
-        auto bufferSourceValueValue = toJS<IDLBufferSource>(state, globalObject, IDLBufferSource::extractValueFromNullable(dictionary.bufferSourceValue));
+    if (!IDLUnion<IDLArrayBufferView, IDLArrayBuffer>::isNullValue(dictionary.bufferSourceValue)) {
+        auto bufferSourceValueValue = toJS<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, globalObject, IDLUnion<IDLArrayBufferView, IDLArrayBuffer>::extractValueFromNullable(dictionary.bufferSourceValue));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "bufferSourceValue"), bufferSourceValueValue);
     }
     if (!IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>::isNullValue(dictionary.dictionaryMember)) {
         auto dictionaryMemberValue = toJS<IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>>(state, globalObject, IDLDictionary<TestObj::DictionaryThatShouldTolerateNull>::extractValueFromNullable(dictionary.dictionaryMember));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "dictionaryMember"), dictionaryMemberValue);
     }
-    auto enumerationValueWithDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, dictionary.enumerationValueWithDefault);
+    auto enumerationValueWithDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, dictionary.enumerationValueWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithDefault"), enumerationValueWithDefaultValue);
-    auto enumerationValueWithEmptyStringDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, dictionary.enumerationValueWithEmptyStringDefault);
+    auto enumerationValueWithEmptyStringDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, dictionary.enumerationValueWithEmptyStringDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithEmptyStringDefault"), enumerationValueWithEmptyStringDefaultValue);
     if (!IDLEnumeration<TestObj::EnumType>::isNullValue(dictionary.enumerationValueWithoutDefault)) {
-        auto enumerationValueWithoutDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, globalObject, IDLEnumeration<TestObj::EnumType>::extractValueFromNullable(dictionary.enumerationValueWithoutDefault));
+        auto enumerationValueWithoutDefaultValue = toJS<IDLEnumeration<TestObj::EnumType>>(state, IDLEnumeration<TestObj::EnumType>::extractValueFromNullable(dictionary.enumerationValueWithoutDefault));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "enumerationValueWithoutDefault"), enumerationValueWithoutDefaultValue);
     }
-    auto fooAliasValue = toJS<IDLAny>(state, globalObject, dictionary.foo);
+    auto fooAliasValue = toJS<IDLAny>(dictionary.foo);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "fooAlias"), fooAliasValue);
-    auto fooWithDefaultAliasValue = toJS<IDLAny>(state, globalObject, dictionary.fooWithDefault);
+    auto fooWithDefaultAliasValue = toJS<IDLAny>(dictionary.fooWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "fooWithDefaultAlias"), fooWithDefaultAliasValue);
     if (!IDLLong::isNullValue(dictionary.integer)) {
-        auto integerValue = toJS<IDLLong>(state, globalObject, IDLLong::extractValueFromNullable(dictionary.integer));
+        auto integerValue = toJS<IDLLong>(IDLLong::extractValueFromNullable(dictionary.integer));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "integer"), integerValue);
     }
-    auto integerWithDefaultValue = toJS<IDLLong>(state, globalObject, dictionary.integerWithDefault);
+    auto integerWithDefaultValue = toJS<IDLLong>(dictionary.integerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "integerWithDefault"), integerWithDefaultValue);
     if (!IDLLongLong::isNullValue(dictionary.largeInteger)) {
-        auto largeIntegerValue = toJS<IDLLongLong>(state, globalObject, IDLLongLong::extractValueFromNullable(dictionary.largeInteger));
+        auto largeIntegerValue = toJS<IDLLongLong>(IDLLongLong::extractValueFromNullable(dictionary.largeInteger));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeInteger"), largeIntegerValue);
     }
-    auto largeIntegerWithDefaultValue = toJS<IDLLongLong>(state, globalObject, dictionary.largeIntegerWithDefault);
+    auto largeIntegerWithDefaultValue = toJS<IDLLongLong>(dictionary.largeIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "largeIntegerWithDefault"), largeIntegerWithDefaultValue);
-    auto nullableIntegerWithDefaultValue = toJS<IDLNullable<IDLLong>>(state, globalObject, dictionary.nullableIntegerWithDefault);
+    auto nullableIntegerWithDefaultValue = toJS<IDLNullable<IDLLong>>(dictionary.nullableIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableIntegerWithDefault"), nullableIntegerWithDefaultValue);
     auto nullableNodeValue = toJS<IDLNullable<IDLInterface<Node>>>(state, globalObject, dictionary.nullableNode);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableNode"), nullableNodeValue);
-    auto nullableStringWithDefaultValue = toJS<IDLNullable<IDLDOMString>>(state, globalObject, dictionary.nullableStringWithDefault);
+    auto nullableStringWithDefaultValue = toJS<IDLNullable<IDLDOMString>>(state, dictionary.nullableStringWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableStringWithDefault"), nullableStringWithDefaultValue);
     auto nullableUnionMemberValue = toJS<IDLNullable<IDLUnion<IDLLong, IDLInterface<Node>>>>(state, globalObject, dictionary.nullableUnionMember);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "nullableUnionMember"), nullableUnionMemberValue);
+    auto requiredBufferSourceValueValue = toJS<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(state, globalObject, dictionary.requiredBufferSourceValue);
+    result->putDirect(vm, JSC::Identifier::fromString(&vm, "requiredBufferSourceValue"), requiredBufferSourceValueValue);
     if (!IDLDouble::isNullValue(dictionary.restrictedDouble)) {
-        auto restrictedDoubleValue = toJS<IDLDouble>(state, globalObject, IDLDouble::extractValueFromNullable(dictionary.restrictedDouble));
+        auto restrictedDoubleValue = toJS<IDLDouble>(IDLDouble::extractValueFromNullable(dictionary.restrictedDouble));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDouble"), restrictedDoubleValue);
     }
-    auto restrictedDoubleWithDefaultValue = toJS<IDLDouble>(state, globalObject, dictionary.restrictedDoubleWithDefault);
+    auto restrictedDoubleWithDefaultValue = toJS<IDLDouble>(dictionary.restrictedDoubleWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedDoubleWithDefault"), restrictedDoubleWithDefaultValue);
     if (!IDLFloat::isNullValue(dictionary.restrictedFloat)) {
-        auto restrictedFloatValue = toJS<IDLFloat>(state, globalObject, IDLFloat::extractValueFromNullable(dictionary.restrictedFloat));
+        auto restrictedFloatValue = toJS<IDLFloat>(IDLFloat::extractValueFromNullable(dictionary.restrictedFloat));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloat"), restrictedFloatValue);
     }
-    auto restrictedFloatWithDefaultValue = toJS<IDLFloat>(state, globalObject, dictionary.restrictedFloatWithDefault);
+    auto restrictedFloatWithDefaultValue = toJS<IDLFloat>(dictionary.restrictedFloatWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "restrictedFloatWithDefault"), restrictedFloatWithDefaultValue);
     if (!IDLSequence<IDLDOMString>::isNullValue(dictionary.sequenceOfStrings)) {
         auto sequenceOfStringsValue = toJS<IDLSequence<IDLDOMString>>(state, globalObject, IDLSequence<IDLDOMString>::extractValueFromNullable(dictionary.sequenceOfStrings));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "sequenceOfStrings"), sequenceOfStringsValue);
     }
     if (!IDLClampAdaptor<IDLByte>::isNullValue(dictionary.smallIntegerClamped)) {
-        auto smallIntegerClampedValue = toJS<IDLClampAdaptor<IDLByte>>(state, globalObject, IDLClampAdaptor<IDLByte>::extractValueFromNullable(dictionary.smallIntegerClamped));
+        auto smallIntegerClampedValue = toJS<IDLClampAdaptor<IDLByte>>(IDLClampAdaptor<IDLByte>::extractValueFromNullable(dictionary.smallIntegerClamped));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerClamped"), smallIntegerClampedValue);
     }
     if (!IDLByte::isNullValue(dictionary.smallIntegerWithDefault)) {
-        auto smallIntegerWithDefaultValue = toJS<IDLByte>(state, globalObject, IDLByte::extractValueFromNullable(dictionary.smallIntegerWithDefault));
+        auto smallIntegerWithDefaultValue = toJS<IDLByte>(IDLByte::extractValueFromNullable(dictionary.smallIntegerWithDefault));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallIntegerWithDefault"), smallIntegerWithDefaultValue);
     }
     if (!IDLEnforceRangeAdaptor<IDLOctet>::isNullValue(dictionary.smallUnsignedIntegerEnforcedRange)) {
-        auto smallUnsignedIntegerEnforcedRangeValue = toJS<IDLEnforceRangeAdaptor<IDLOctet>>(state, globalObject, IDLEnforceRangeAdaptor<IDLOctet>::extractValueFromNullable(dictionary.smallUnsignedIntegerEnforcedRange));
+        auto smallUnsignedIntegerEnforcedRangeValue = toJS<IDLEnforceRangeAdaptor<IDLOctet>>(IDLEnforceRangeAdaptor<IDLOctet>::extractValueFromNullable(dictionary.smallUnsignedIntegerEnforcedRange));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerEnforcedRange"), smallUnsignedIntegerEnforcedRangeValue);
     }
-    auto smallUnsignedIntegerWithDefaultValue = toJS<IDLOctet>(state, globalObject, dictionary.smallUnsignedIntegerWithDefault);
+    auto smallUnsignedIntegerWithDefaultValue = toJS<IDLOctet>(dictionary.smallUnsignedIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "smallUnsignedIntegerWithDefault"), smallUnsignedIntegerWithDefaultValue);
     if (!IDLTreatNullAsEmptyAdaptor<IDLDOMString>::isNullValue(dictionary.stringTreatNullAsEmptyString)) {
-        auto stringTreatNullAsEmptyStringValue = toJS<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, globalObject, IDLTreatNullAsEmptyAdaptor<IDLDOMString>::extractValueFromNullable(dictionary.stringTreatNullAsEmptyString));
+        auto stringTreatNullAsEmptyStringValue = toJS<IDLTreatNullAsEmptyAdaptor<IDLDOMString>>(state, IDLTreatNullAsEmptyAdaptor<IDLDOMString>::extractValueFromNullable(dictionary.stringTreatNullAsEmptyString));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringTreatNullAsEmptyString"), stringTreatNullAsEmptyStringValue);
     }
-    auto stringWithDefaultValue = toJS<IDLDOMString>(state, globalObject, dictionary.stringWithDefault);
+    auto stringWithDefaultValue = toJS<IDLDOMString>(state, dictionary.stringWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithDefault"), stringWithDefaultValue);
     if (!IDLDOMString::isNullValue(dictionary.stringWithoutDefault)) {
-        auto stringWithoutDefaultValue = toJS<IDLDOMString>(state, globalObject, IDLDOMString::extractValueFromNullable(dictionary.stringWithoutDefault));
+        auto stringWithoutDefaultValue = toJS<IDLDOMString>(state, IDLDOMString::extractValueFromNullable(dictionary.stringWithoutDefault));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "stringWithoutDefault"), stringWithoutDefaultValue);
     }
     if (!IDLUnion<IDLLong, IDLInterface<Node>>::isNullValue(dictionary.unionMember)) {
@@ -721,28 +748,28 @@ JSC::JSObject* convertDictionaryToJS(JSC::ExecState& state, JSDOMGlobalObject& g
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "unionMember"), unionMemberValue);
     }
     if (!IDLUnrestrictedDouble::isNullValue(dictionary.unrestrictedDouble)) {
-        auto unrestrictedDoubleValue = toJS<IDLUnrestrictedDouble>(state, globalObject, IDLUnrestrictedDouble::extractValueFromNullable(dictionary.unrestrictedDouble));
+        auto unrestrictedDoubleValue = toJS<IDLUnrestrictedDouble>(IDLUnrestrictedDouble::extractValueFromNullable(dictionary.unrestrictedDouble));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDouble"), unrestrictedDoubleValue);
     }
-    auto unrestrictedDoubleWithDefaultValue = toJS<IDLUnrestrictedDouble>(state, globalObject, dictionary.unrestrictedDoubleWithDefault);
+    auto unrestrictedDoubleWithDefaultValue = toJS<IDLUnrestrictedDouble>(dictionary.unrestrictedDoubleWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedDoubleWithDefault"), unrestrictedDoubleWithDefaultValue);
     if (!IDLUnrestrictedFloat::isNullValue(dictionary.unrestrictedFloat)) {
-        auto unrestrictedFloatValue = toJS<IDLUnrestrictedFloat>(state, globalObject, IDLUnrestrictedFloat::extractValueFromNullable(dictionary.unrestrictedFloat));
+        auto unrestrictedFloatValue = toJS<IDLUnrestrictedFloat>(IDLUnrestrictedFloat::extractValueFromNullable(dictionary.unrestrictedFloat));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloat"), unrestrictedFloatValue);
     }
-    auto unrestrictedFloatWithDefaultValue = toJS<IDLUnrestrictedFloat>(state, globalObject, dictionary.unrestrictedFloatWithDefault);
+    auto unrestrictedFloatWithDefaultValue = toJS<IDLUnrestrictedFloat>(dictionary.unrestrictedFloatWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "unrestrictedFloatWithDefault"), unrestrictedFloatWithDefaultValue);
     if (!IDLUnsignedLong::isNullValue(dictionary.unsignedInteger)) {
-        auto unsignedIntegerValue = toJS<IDLUnsignedLong>(state, globalObject, IDLUnsignedLong::extractValueFromNullable(dictionary.unsignedInteger));
+        auto unsignedIntegerValue = toJS<IDLUnsignedLong>(IDLUnsignedLong::extractValueFromNullable(dictionary.unsignedInteger));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedInteger"), unsignedIntegerValue);
     }
-    auto unsignedIntegerWithDefaultValue = toJS<IDLUnsignedLong>(state, globalObject, dictionary.unsignedIntegerWithDefault);
+    auto unsignedIntegerWithDefaultValue = toJS<IDLUnsignedLong>(dictionary.unsignedIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedIntegerWithDefault"), unsignedIntegerWithDefaultValue);
     if (!IDLUnsignedLongLong::isNullValue(dictionary.unsignedLargeInteger)) {
-        auto unsignedLargeIntegerValue = toJS<IDLUnsignedLongLong>(state, globalObject, IDLUnsignedLongLong::extractValueFromNullable(dictionary.unsignedLargeInteger));
+        auto unsignedLargeIntegerValue = toJS<IDLUnsignedLongLong>(IDLUnsignedLongLong::extractValueFromNullable(dictionary.unsignedLargeInteger));
         result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeInteger"), unsignedLargeIntegerValue);
     }
-    auto unsignedLargeIntegerWithDefaultValue = toJS<IDLUnsignedLongLong>(state, globalObject, dictionary.unsignedLargeIntegerWithDefault);
+    auto unsignedLargeIntegerWithDefaultValue = toJS<IDLUnsignedLongLong>(dictionary.unsignedLargeIntegerWithDefault);
     result->putDirect(vm, JSC::Identifier::fromString(&vm, "unsignedLargeIntegerWithDefault"), unsignedLargeIntegerWithDefaultValue);
     return result;
 }
@@ -3552,7 +3579,7 @@ static inline JSValue jsTestObjTypedArrayAttrGetter(ExecState& state, JSTestObj&
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = toJS<IDLInterface<Float32Array>>(state, *thisObject.globalObject(), impl.typedArrayAttr());
+    JSValue result = toJS<IDLFloat32Array>(state, *thisObject.globalObject(), impl.typedArrayAttr());
     return result;
 }
 
@@ -3566,7 +3593,7 @@ static inline bool setJSTestObjTypedArrayAttrSetter(ExecState& state, JSTestObj&
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = thisObject.wrapped();
-    auto nativeValue = convert<IDLInterface<Float32Array>>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "typedArrayAttr", "Float32Array"); });
+    auto nativeValue = convert<IDLFloat32Array>(state, value, [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwAttributeTypeError(state, scope, "TestObject", "typedArrayAttr", "Float32Array"); });
     RETURN_IF_EXCEPTION(throwScope, false);
     impl.setTypedArrayAttr(nativeValue.releaseNonNull());
     return true;
@@ -3823,7 +3850,7 @@ static inline bool setJSTestObjWithCallWithAndSetterCallWithAttributeSetter(Exec
     auto& impl = thisObject.wrapped();
     auto nativeValue = convert<IDLLong>(state, value);
     RETURN_IF_EXCEPTION(throwScope, false);
-    impl.setWithCallWithAndSetterCallWithAttribute(state, activeDOMWindow(&state), firstDOMWindow(&state), WTFMove(nativeValue));
+    impl.setWithCallWithAndSetterCallWithAttribute(state, activeDOMWindow(state), firstDOMWindow(state), WTFMove(nativeValue));
     return true;
 }
 
@@ -5835,10 +5862,10 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithCallerDocumentAr
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    auto* document = incumbentDOMWindow(state).document();
-    if (!document)
+    auto* incumbentDocument = incumbentDOMWindow(*state).document();
+    if (!incumbentDocument)
         return JSValue::encode(jsUndefined());
-    impl.withCallerDocumentArgument(*document);
+    impl.withCallerDocumentArgument(*incumbentDocument);
     return JSValue::encode(jsUndefined());
 }
 
@@ -5852,7 +5879,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionWithCallerWindowArgu
     UNUSED_PARAM(state);
     UNUSED_PARAM(throwScope);
     auto& impl = castedThis->wrapped();
-    impl.withCallerWindowArgument(incumbentDOMWindow(state));
+    impl.withCallerWindowArgument(incumbentDOMWindow(*state));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7905,7 +7932,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionBufferSourceParamete
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto data = convert<IDLBufferSource>(*state, state->uncheckedArgument(0));
+    auto data = convert<IDLUnion<IDLArrayBufferView, IDLArrayBuffer>>(*state, state->uncheckedArgument(0));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     impl.bufferSourceParameter(WTFMove(data));
     return JSValue::encode(jsUndefined());
@@ -7947,24 +7974,24 @@ EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToString(ExecState* state
     return IDLOperation<JSTestObj>::call<jsTestObjPrototypeFunctionToStringBody>(*state, "toString");
 }
 
-JSC::JSObject* JSTestObj::serialize(ExecState* state, JSTestObj* thisObject, ThrowScope& throwScope)
+JSC::JSObject* JSTestObj::serialize(ExecState& state, JSTestObj& thisObject, JSDOMGlobalObject& globalObject, ThrowScope& throwScope)
 {
-    auto& vm = state->vm();
-    auto* result = constructEmptyObject(state);
+    auto& vm = state.vm();
+    auto* result = constructEmptyObject(&state, globalObject.objectPrototype());
 
-    auto createValue = jsTestObjCreateGetter(*state, *thisObject, throwScope);
+    auto createValue = jsTestObjCreateGetter(state, thisObject, throwScope);
     throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "create"), createValue);
 
-    auto readOnlyStringAttrValue = jsTestObjReadOnlyStringAttrGetter(*state, *thisObject, throwScope);
+    auto readOnlyStringAttrValue = jsTestObjReadOnlyStringAttrGetter(state, thisObject, throwScope);
     throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "readOnlyStringAttr"), readOnlyStringAttrValue);
 
-    auto enumAttrValue = jsTestObjEnumAttrGetter(*state, *thisObject, throwScope);
+    auto enumAttrValue = jsTestObjEnumAttrGetter(state, thisObject, throwScope);
     throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "enumAttr"), enumAttrValue);
 
-    auto longAttrValue = jsTestObjLongAttrGetter(*state, *thisObject, throwScope);
+    auto longAttrValue = jsTestObjLongAttrGetter(state, thisObject, throwScope);
     throwScope.assertNoException();
     result->putDirect(vm, Identifier::fromString(&vm, "longAttr"), longAttrValue);
 
@@ -7973,7 +8000,7 @@ JSC::JSObject* JSTestObj::serialize(ExecState* state, JSTestObj* thisObject, Thr
 
 static inline EncodedJSValue jsTestObjPrototypeFunctionToJSONBody(ExecState* state, JSTestObj* thisObject, JSC::ThrowScope& throwScope)
 {
-    return JSValue::encode(JSTestObj::serialize(state, thisObject, throwScope));
+    return JSValue::encode(JSTestObj::serialize(*state, *thisObject, *thisObject->globalObject(), throwScope));
 }
 
 EncodedJSValue JSC_HOST_CALL jsTestObjPrototypeFunctionToJSON(ExecState* state)

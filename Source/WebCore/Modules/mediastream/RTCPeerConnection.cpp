@@ -97,7 +97,7 @@ ExceptionOr<void> RTCPeerConnection::initializeWith(Document& document, RTCConfi
     if (!m_backend)
         return Exception { NOT_SUPPORTED_ERR };
 
-    return setConfiguration(WTFMove(configuration));
+    return initializeConfiguration(WTFMove(configuration));
 }
 
 ExceptionOr<Ref<RTCRtpSender>> RTCPeerConnection::addTrack(Ref<MediaStreamTrack>&& track, const Vector<std::reference_wrapper<MediaStream>>& streams)
@@ -236,7 +236,7 @@ void RTCPeerConnection::queuedCreateAnswer(RTCAnswerOptions&& options, SessionDe
 
 void RTCPeerConnection::queuedSetLocalDescription(RTCSessionDescription& description, DOMPromiseDeferred<void>&& promise)
 {
-    RELEASE_LOG(WebRTC, "Setting local description:\n%s\n", description.sdp().utf8().data());
+    RELEASE_LOG(WebRTC, "Setting local description:\n%{public}s\n", description.sdp().utf8().data());
     if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
         return;
@@ -262,7 +262,7 @@ RefPtr<RTCSessionDescription> RTCPeerConnection::pendingLocalDescription() const
 
 void RTCPeerConnection::queuedSetRemoteDescription(RTCSessionDescription& description, DOMPromiseDeferred<void>&& promise)
 {
-    RELEASE_LOG(WebRTC, "Setting remote description:\n%s\n", description.sdp().utf8().data());
+    RELEASE_LOG(WebRTC, "Setting remote description:\n%{public}s\n", description.sdp().utf8().data());
 
     if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
@@ -288,7 +288,7 @@ RefPtr<RTCSessionDescription> RTCPeerConnection::pendingRemoteDescription() cons
 
 void RTCPeerConnection::queuedAddIceCandidate(RTCIceCandidate* rtcCandidate, DOMPromiseDeferred<void>&& promise)
 {
-    RELEASE_LOG(WebRTC, "Received ice candidate:\n%s\n", rtcCandidate ? rtcCandidate->candidate().utf8().data() : "null");
+    RELEASE_LOG(WebRTC, "Received ice candidate:\n%{public}s\n", rtcCandidate ? rtcCandidate->candidate().utf8().data() : "null");
 
     if (isClosed()) {
         promise.reject(INVALID_STATE_ERR);
@@ -298,36 +298,57 @@ void RTCPeerConnection::queuedAddIceCandidate(RTCIceCandidate* rtcCandidate, DOM
     m_backend->addIceCandidate(rtcCandidate, WTFMove(promise));
 }
 
-ExceptionOr<void> RTCPeerConnection::setConfiguration(RTCConfiguration&& configuration)
+static inline std::optional<Vector<MediaEndpointConfiguration::IceServerInfo>> iceServersFromConfiguration(RTCConfiguration& configuration)
 {
-    if (isClosed())
-        return Exception { INVALID_STATE_ERR };
-
     Vector<MediaEndpointConfiguration::IceServerInfo> servers;
     if (configuration.iceServers) {
         servers.reserveInitialCapacity(configuration.iceServers->size());
         for (auto& server : configuration.iceServers.value()) {
             Vector<URL> serverURLs;
-            WTF::switchOn(server.urls,
-                [&serverURLs] (const String& string) {
-                    serverURLs.reserveInitialCapacity(1);
+            WTF::switchOn(server.urls, [&serverURLs] (const String& string) {
+                serverURLs.reserveInitialCapacity(1);
+                serverURLs.uncheckedAppend(URL { URL { }, string });
+            }, [&serverURLs] (const Vector<String>& vector) {
+                serverURLs.reserveInitialCapacity(vector.size());
+                for (auto& string : vector)
                     serverURLs.uncheckedAppend(URL { URL { }, string });
-                },
-                [&serverURLs] (const Vector<String>& vector) {
-                    serverURLs.reserveInitialCapacity(vector.size());
-                    for (auto& string : vector)
-                        serverURLs.uncheckedAppend(URL { URL { }, string });
-                }
-            );
+            });
             for (auto& serverURL : serverURLs) {
                 if (!(serverURL.protocolIs("turn") || serverURL.protocolIs("turns") || serverURL.protocolIs("stun")))
-                    return Exception { INVALID_ACCESS_ERR };
+                    return std::nullopt;
             }
             servers.uncheckedAppend({ WTFMove(serverURLs), server.credential, server.username });
         }
     }
+    return servers;
+}
 
-    m_backend->setConfiguration({ WTFMove(servers), configuration.iceTransportPolicy, configuration.bundlePolicy, configuration.iceCandidatePoolSize });
+ExceptionOr<void> RTCPeerConnection::initializeConfiguration(RTCConfiguration&& configuration)
+{
+    auto servers = iceServersFromConfiguration(configuration);
+    if (!servers)
+        return Exception { INVALID_ACCESS_ERR };
+
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=173938
+    // Also decide whether to report an exception or output a message in the console log if setting configuration fails.
+    m_backend->setConfiguration({ WTFMove(servers.value()), configuration.iceTransportPolicy, configuration.bundlePolicy, configuration.iceCandidatePoolSize });
+
+    m_configuration = WTFMove(configuration);
+    return { };
+}
+
+ExceptionOr<void> RTCPeerConnection::setConfiguration(RTCConfiguration&& configuration)
+{
+    if (isClosed())
+        return Exception { INVALID_STATE_ERR };
+
+    auto servers = iceServersFromConfiguration(configuration);
+    if (!servers)
+        return Exception { INVALID_ACCESS_ERR };
+
+    // FIXME: https://bugs.webkit.org/show_bug.cgi?id=173938
+    // Also decide whether to report an exception or output a message in the console log if setting configuration fails.
+    m_backend->setConfiguration({ WTFMove(servers.value()), configuration.iceTransportPolicy, configuration.bundlePolicy, configuration.iceCandidatePoolSize });
     m_configuration = WTFMove(configuration);
     return { };
 }
@@ -464,7 +485,7 @@ static inline const char* rtcIceGatheringStateToString(RTCIceGatheringState newS
 
 void RTCPeerConnection::updateIceGatheringState(RTCIceGatheringState newState)
 {
-    RELEASE_LOG(WebRTC, "New ICE gathering state: %s\n", rtcIceGatheringStateToString(newState));
+    RELEASE_LOG(WebRTC, "New ICE gathering state: %{public}s\n", rtcIceGatheringStateToString(newState));
 
     scriptExecutionContext()->postTask([protectedThis = makeRef(*this), newState](ScriptExecutionContext&) {
         if (protectedThis->isClosed() || protectedThis->m_iceGatheringState == newState)
@@ -500,7 +521,7 @@ static inline const char* rtcIceConnectionStateToString(RTCIceConnectionState ne
 
 void RTCPeerConnection::updateIceConnectionState(RTCIceConnectionState newState)
 {
-    RELEASE_LOG(WebRTC, "New ICE connection state: %s\n", rtcIceConnectionStateToString(newState));
+    RELEASE_LOG(WebRTC, "New ICE connection state: %{public}s\n", rtcIceConnectionStateToString(newState));
 
     scriptExecutionContext()->postTask([protectedThis = makeRef(*this), newState](ScriptExecutionContext&) {
         if (protectedThis->isClosed() || protectedThis->m_iceConnectionState == newState)
@@ -558,8 +579,11 @@ void RTCPeerConnection::fireEvent(Event& event)
 
 void RTCPeerConnection::enqueueReplaceTrackTask(RTCRtpSender& sender, Ref<MediaStreamTrack>&& withTrack, DOMPromiseDeferred<void>&& promise)
 {
-    scriptExecutionContext()->postTask([protectedSender = makeRef(sender), promise = WTFMove(promise), withTrack = WTFMove(withTrack)](ScriptExecutionContext&) mutable {
+    scriptExecutionContext()->postTask([protectedThis = makeRef(*this), protectedSender = makeRef(sender), promise = WTFMove(promise), withTrack = WTFMove(withTrack)](ScriptExecutionContext&) mutable {
+        if (protectedThis->isClosed())
+            return;
         protectedSender->setTrack(WTFMove(withTrack));
+        protectedThis->m_backend->notifyAddedTrack(protectedSender.get());
         promise.resolve();
     });
 }

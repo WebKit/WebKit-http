@@ -36,7 +36,6 @@
 #include <wtf/RunLoop.h>
 
 #if USE(TEXTURE_MAPPER)
-#include "TextureMapperPlatformLayer.h"
 #include "TextureMapperPlatformLayerProxy.h"
 #endif
 
@@ -184,7 +183,7 @@ protected:
         SizeChanged = 1 << 6
     };
 
-    MainThreadNotifier<MainThreadNotification> m_notifier;
+    Ref<MainThreadNotifier<MainThreadNotification>> m_notifier;
     MediaPlayer* m_player;
     GRefPtr<GstElement> m_pipeline;
     GRefPtr<GstStreamVolume> m_volumeElement;

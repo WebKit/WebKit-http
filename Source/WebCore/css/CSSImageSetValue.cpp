@@ -32,7 +32,6 @@
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedResourceRequestInitiators.h"
-#include "CrossOriginAccessControl.h"
 #include "Document.h"
 #include "Page.h"
 #include <wtf/text/StringBuilder.h>
@@ -152,7 +151,7 @@ String CSSImageSetValue::customCSSText() const
     return result.toString();
 }
 
-bool CSSImageSetValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
+bool CSSImageSetValue::traverseSubresources(const WTF::Function<bool (const CachedResource&)>& handler) const
 {
     if (!m_cachedImage)
         return false;

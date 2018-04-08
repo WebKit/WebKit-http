@@ -33,11 +33,13 @@
 #include "RenderCombineText.h"
 #include "RenderCounter.h"
 #include "RenderInline.h"
+#include "RenderLayer.h"
 #include "RenderLineBreak.h"
 #include "RenderListMarker.h"
 #include "RenderRubyRun.h"
 #include "RenderSVGInlineText.h"
 #include "TrailingObjects.h"
+#include <wtf/Function.h>
 #include <wtf/Optional.h>
 #include <wtf/text/StringView.h>
 #include <wtf/unicode/CharacterNames.h>
@@ -191,7 +193,7 @@ private:
             this->append(initial);
         }
 
-        void push(std::function<void(InlineIterator& modifyMe)> updater)
+        void push(const WTF::Function<void(InlineIterator& modifyMe)>& updater)
         {
             ASSERT(!this->isEmpty());
             if (m_capacity != 1)
@@ -201,7 +203,7 @@ private:
                 this->resize(m_capacity);
         }
 
-        void update(std::function<void(InlineIterator& modifyMe)> updater)
+        void update(const WTF::Function<void(InlineIterator& modifyMe)>& updater)
         {
             ASSERT(!this->isEmpty());
             updater(this->at(0));

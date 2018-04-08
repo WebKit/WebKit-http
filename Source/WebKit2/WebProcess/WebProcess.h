@@ -79,6 +79,7 @@ class LibWebRTCNetwork;
 class NetworkProcessConnection;
 class ObjCObjectGraph;
 class UserData;
+class WaylandCompositorDisplay;
 class WebAutomationSessionProxy;
 class WebConnectionToUIProcess;
 class WebFrame;
@@ -132,6 +133,7 @@ public:
     void plugInDidStartFromOrigin(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
     void plugInDidReceiveUserInteraction(const String& pageOrigin, const String& pluginOrigin, const String& mimeType, WebCore::SessionID);
     void setPluginLoadClientPolicy(uint8_t policy, const String& host, const String& bundleIdentifier, const String& versionString);
+    void resetPluginLoadClientPolicies(const HashMap<String, HashMap<String, HashMap<String, uint8_t>>>&);
     void clearPluginClientPolicies();
     void refreshPlugins();
 
@@ -205,7 +207,7 @@ public:
 #endif
 
 #if PLATFORM(WAYLAND)
-    String waylandCompositorDisplayName() const { return m_waylandCompositorDisplayName; }
+    WaylandCompositorDisplay* waylandCompositorDisplay() const { return m_waylandCompositorDisplay.get(); }
 #endif
 
     RefPtr<API::Object> transformHandlesToObjects(API::Object*);
@@ -239,7 +241,7 @@ private:
     void registerWithStateDumper();
 #endif
 
-    void markAllLayersVolatile(std::function<void()> completionHandler);
+    void markAllLayersVolatile(WTF::Function<void()>&& completionHandler);
     void cancelMarkAllLayersVolatile();
     void setAllLayerTreeStatesFrozen(bool);
     void processSuspensionCleanupTimerFired();
@@ -429,7 +431,7 @@ private:
     HashMap<WebCore::UserGestureToken *, uint64_t> m_userGestureTokens;
 
 #if PLATFORM(WAYLAND)
-    String m_waylandCompositorDisplayName;
+    std::unique_ptr<WaylandCompositorDisplay> m_waylandCompositorDisplay;
 #endif
 };
 

@@ -164,7 +164,7 @@ struct _WebKitWebSrcPrivate {
     guint64 requestedOffset;
 
     bool createdInMainThread;
-    MainThreadNotifier<MainThreadSourceNotification> notifier;
+    RefPtr<MainThreadNotifier<MainThreadSourceNotification>> notifier;
     GRefPtr<GstBuffer> buffer;
 };
 
@@ -277,6 +277,7 @@ static void webkit_web_src_init(WebKitWebSrc* src)
     new (priv) WebKitWebSrcPrivate();
 
     priv->createdInMainThread = isMainThread();
+    priv->notifier = MainThreadNotifier<MainThreadSourceNotification>::create();
 
     priv->appsrc = GST_APP_SRC(gst_element_factory_make("appsrc", nullptr));
     if (!priv->appsrc) {
@@ -326,8 +327,11 @@ static void webkit_web_src_init(WebKitWebSrc* src)
 
 static void webKitWebSrcDispose(GObject* object)
 {
-    WebKitWebSrc* src = WEBKIT_WEB_SRC(object);
-    WebKitWebSrcPrivate* priv = src->priv;
+    WebKitWebSrcPrivate* priv = WEBKIT_WEB_SRC(object)->priv;
+    if (priv->notifier) {
+        priv->notifier->invalidate();
+        priv->notifier = nullptr;
+    }
 
     priv->player = nullptr;
 
@@ -408,8 +412,8 @@ static void webKitWebSrcStop(WebKitWebSrc* src)
 
     if (priv->resource || (priv->loader && !priv->keepAlive)) {
         GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
-        priv->notifier.cancelPendingNotifications(MainThreadSourceNotification::NeedData | MainThreadSourceNotification::EnoughData | MainThreadSourceNotification::Seek);
-        priv->notifier.notify(MainThreadSourceNotification::Stop, [protector, keepAlive = priv->keepAlive] {
+        priv->notifier->cancelPendingNotifications(MainThreadSourceNotification::NeedData | MainThreadSourceNotification::EnoughData | MainThreadSourceNotification::Seek);
+        priv->notifier->notify(MainThreadSourceNotification::Stop, [protector, keepAlive = priv->keepAlive] {
             WebKitWebSrcPrivate* priv = protector->priv;
 
             WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(protector.get()));
@@ -592,7 +596,7 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
 
     locker.unlock();
     GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
-    priv->notifier.notify(MainThreadSourceNotification::Start, [protector, request = WTFMove(request)] {
+    priv->notifier->notify(MainThreadSourceNotification::Start, [protector, request = WTFMove(request)] {
         WebKitWebSrcPrivate* priv = protector->priv;
 
         WTF::GMutexLocker<GMutex> locker(*GST_OBJECT_GET_LOCK(protector.get()));
@@ -792,7 +796,7 @@ static void webKitWebSrcNeedData(WebKitWebSrc* src)
     }
 
     GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
-    priv->notifier.notify(MainThreadSourceNotification::NeedData, [protector] {
+    priv->notifier->notify(MainThreadSourceNotification::NeedData, [protector] {
         WebKitWebSrcPrivate* priv = protector->priv;
         if (priv->resource)
             priv->resource->setDefersLoading(false);
@@ -817,7 +821,7 @@ static void webKitWebSrcEnoughData(WebKitWebSrc* src)
     }
 
     GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
-    priv->notifier.notify(MainThreadSourceNotification::EnoughData, [protector] {
+    priv->notifier->notify(MainThreadSourceNotification::EnoughData, [protector] {
         WebKitWebSrcPrivate* priv = protector->priv;
         if (priv->resource)
             priv->resource->setDefersLoading(true);
@@ -848,7 +852,7 @@ static gboolean webKitWebSrcSeek(WebKitWebSrc* src, guint64 offset)
     }
 
     GRefPtr<WebKitWebSrc> protector = WTF::ensureGRef(src);
-    priv->notifier.notify(MainThreadSourceNotification::Seek, [protector] {
+    priv->notifier->notify(MainThreadSourceNotification::Seek, [protector] {
         webKitWebSrcStop(protector.get());
         webKitWebSrcStart(protector.get());
     });
@@ -952,7 +956,16 @@ void StreamingClient::handleResponseReceived(const ResourceResponse& response)
     } else
         gst_app_src_set_size(priv->appsrc, -1);
 
-    gst_app_src_set_caps(priv->appsrc, nullptr);
+    // Signal to downstream if this is an Icecast stream.
+    GRefPtr<GstCaps> caps;
+    String metadataIntervalAsString = response.httpHeaderField(HTTPHeaderName::IcyMetaInt);
+    if (!metadataIntervalAsString.isEmpty()) {
+        bool isMetadataIntervalParsed;
+        int metadataInterval = metadataIntervalAsString.toInt(&isMetadataIntervalParsed);
+        if (isMetadataIntervalParsed && metadataInterval > 0)
+            caps = adoptGRef(gst_caps_new_simple("application/x-icy", "metadata-interval", G_TYPE_INT, metadataInterval, nullptr));
+    }
+    gst_app_src_set_caps(priv->appsrc, caps.get());
 
     // Emit a GST_EVENT_CUSTOM_DOWNSTREAM_STICKY event to let GStreamer know about the HTTP headers sent and received.
     GstStructure* httpHeaders = gst_structure_new_empty("http-headers");

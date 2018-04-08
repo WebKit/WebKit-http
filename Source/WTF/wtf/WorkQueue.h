@@ -27,10 +27,8 @@
 #ifndef WorkQueue_h
 #define WorkQueue_h
 
-#include <functional>
 #include <wtf/Forward.h>
 #include <wtf/FunctionDispatcher.h>
-#include <wtf/RefCounted.h>
 #include <wtf/Seconds.h>
 #include <wtf/Threading.h>
 
@@ -39,6 +37,7 @@
 #endif
 
 #if USE(WINDOWS_EVENT_LOOP)
+#include <wtf/ThreadingPrimitives.h>
 #include <wtf/Vector.h>
 #endif
 

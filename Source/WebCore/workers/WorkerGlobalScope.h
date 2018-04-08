@@ -29,6 +29,7 @@
 #include "Base64Utilities.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
+#include "Supplementable.h"
 #include "URL.h"
 #include "WorkerEventQueue.h"
 #include "WorkerScriptController.h"
@@ -98,7 +99,7 @@ public:
 
     bool isClosing() { return m_closing; }
 
-    void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&);
+    void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
     Crypto& crypto();
 
@@ -121,6 +122,9 @@ private:
     void derefEventTarget() final { deref(); }
 
     void logExceptionToConsole(const String& errorMessage, const String& sourceURL, int lineNumber, int columnNumber, RefPtr<Inspector::ScriptCallStack>&&) final;
+
+    // The following addMessage and addConsoleMessage functions are deprecated.
+    // Callers should try to create the ConsoleMessage themselves.
     void addMessage(MessageSource, MessageLevel, const String& message, const String& sourceURL, unsigned lineNumber, unsigned columnNumber, RefPtr<Inspector::ScriptCallStack>&&, JSC::ExecState*, unsigned long requestIdentifier) final;
     void addConsoleMessage(MessageSource, MessageLevel, const String& message, unsigned long requestIdentifier) final;
 

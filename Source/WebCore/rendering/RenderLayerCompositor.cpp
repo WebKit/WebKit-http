@@ -814,6 +814,9 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
         absoluteBounds.x().toFloat(), absoluteBounds.y().toFloat(), absoluteBounds.maxX().toFloat(), absoluteBounds.maxY().toFloat(),
         backing->backingStoreMemoryEstimate() / 1024));
     
+    if (!layer.renderer().style().hasAutoZIndex())
+        logString.append(String::format(" z-index: %d", layer.renderer().style().zIndex())); 
+
     logString.appendLiteral(" (");
     logString.append(logReasonsForCompositing(layer));
     logString.appendLiteral(") ");
@@ -836,12 +839,16 @@ void RenderLayerCompositor::logLayerInfo(const RenderLayer& layer, int depth)
         if (backing->foregroundLayer() || backing->backgroundLayer()) {
             if (prependSpace)
                 logString.appendLiteral(", ");
-            if (backing->foregroundLayer() && backing->backgroundLayer())
-                logString.appendLiteral("foreground+background");
-            else if (backing->foregroundLayer())
-                logString.appendLiteral("foreground");
-            else
-                logString.appendLiteral("background");
+            if (backing->foregroundLayer() && backing->backgroundLayer()) {
+                logString.appendLiteral("+foreground+background");
+                prependSpace = true;
+            } else if (backing->foregroundLayer()) {
+                logString.appendLiteral("+foreground");
+                prependSpace = true;
+            } else {
+                logString.appendLiteral("+background");
+                prependSpace = true;
+            }
         }
         
         if (backing->paintsSubpixelAntialiasedText()) {
@@ -941,16 +948,29 @@ void RenderLayerCompositor::layerStyleChanged(StyleDifference diff, RenderLayer&
         return;
     }
 
-    // We don't have any direct reasons for this style change to affect layer composition. Test if it might affect things indirectly.
-    if (oldStyle && styleChangeMayAffectIndirectCompositingReasons(layer.renderer(), *oldStyle)) {
+    if (needsCompositingUpdateForStyleChangeOnNonCompositedLayer(layer, oldStyle))
         m_layerNeedsCompositingUpdate = true;
-        return;
-    }
+}
 
-    if (layer.isRootLayer()) {
-        // Needed for scroll bars.
-        m_layerNeedsCompositingUpdate = true;
-    }
+bool RenderLayerCompositor::needsCompositingUpdateForStyleChangeOnNonCompositedLayer(RenderLayer& layer, const RenderStyle* oldStyle) const
+{
+    // Needed for scroll bars.
+    if (layer.isRootLayer())
+        return true;
+
+    if (!oldStyle)
+        return false;
+
+    const RenderStyle& newStyle = layer.renderer().style();
+    // Visibility change may affect geometry of the enclosing composited layer.
+    if (oldStyle->visibility() != newStyle.visibility())
+        return true;
+
+    // We don't have any direct reasons for this style change to affect layer composition. Test if it might affect things indirectly.
+    if (styleChangeMayAffectIndirectCompositingReasons(layer.renderer(), *oldStyle))
+        return true;
+
+    return false;
 }
 
 bool RenderLayerCompositor::canCompositeClipPath(const RenderLayer& layer)
@@ -2468,8 +2488,8 @@ bool RenderLayerCompositor::requiresCompositingForScrollableFrame() const
     if (isMainFrameCompositor())
         return false;
 
-#if PLATFORM(MAC)
-    if (!m_renderView.settings().scrollingTreeIncludesFrames())
+#if PLATFORM(MAC) || PLATFORM(IOS)
+    if (!m_renderView.settings().asyncFrameScrollingEnabled())
         return false;
 #endif
 

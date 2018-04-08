@@ -26,7 +26,7 @@
 #ifndef ProcessAssertion_h
 #define ProcessAssertion_h
 
-#include <functional>
+#include <unistd.h>
 #include <wtf/Function.h>
 
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR)

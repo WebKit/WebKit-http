@@ -42,6 +42,8 @@
 #import "MainFrame.h"
 #import "Page.h"
 #import "Pasteboard.h"
+#import "PasteboardStrategy.h"
+#import "PlatformStrategies.h"
 #import "Range.h"
 
 #if ENABLE(DATA_INTERACTION)
@@ -104,7 +106,7 @@ void DragController::cleanupAfterSystemDrag()
 
 #if ENABLE(DATA_INTERACTION)
 
-void DragController::updatePreferredTypeIdentifiersForDragHandlingMethod(DragHandlingMethod dragHandlingMethod, const DragData& dragData) const
+void DragController::updateSupportedTypeIdentifiersForDragHandlingMethod(DragHandlingMethod dragHandlingMethod, const DragData& dragData) const
 {
     Vector<String> supportedTypes;
     switch (dragHandlingMethod) {
@@ -116,14 +118,15 @@ void DragController::updatePreferredTypeIdentifiersForDragHandlingMethod(DragHan
         supportedTypes.append(kUTTypePlainText);
         break;
     case DragHandlingMethod::EditRichText:
-        for (NSString *type in Pasteboard::supportedPasteboardTypes())
+        for (NSString *type in Pasteboard::supportedWebContentPasteboardTypes())
             supportedTypes.append(type);
         break;
     default:
-        supportedTypes.append(kUTTypeContent);
+        for (NSString *type in Pasteboard::supportedFileUploadPasteboardTypes())
+            supportedTypes.append(type);
         break;
     }
-    dragData.updatePreferredTypeIdentifiers(supportedTypes);
+    platformStrategies()->pasteboardStrategy()->updateSupportedTypeIdentifiers(supportedTypes, dragData.pasteboardName());
 }
 
 #endif

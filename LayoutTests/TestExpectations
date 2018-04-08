@@ -38,7 +38,7 @@ fast/css/variables/constants/ios [ Skip ]
 http/tests/preload/viewport [ Skip ]
 
 # window.showModalDialog is only tested in DumpRenderTree on Mac.
-[ Debug ] editing/execCommand/show-modal-dialog-during-execCommand.html [ Skip ]
+editing/execCommand/show-modal-dialog-during-execCommand.html [ Skip ]
 
 fast/shadow-dom/touch-event-on-text-assigned-to-slot.html [ Skip ]
 
@@ -725,6 +725,30 @@ webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-1.html [ Failure ]
 webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-2.html [ Failure ]
 webkit.org/b/142937 ietestcenter/Javascript/15.2.3.14-1-3.html [ Failure ]
 
+# In ES6, Array.prototype methods use toLength rather than toUint32 when computing the length.
+ietestcenter/Javascript/15.4.4.14-3-12.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.14-3-14.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.14-3-25.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.14-3-7.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.14-3-8.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-12.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-25.html [ Failure ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-7.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.10_Array_prototype_slice/S15.4.4.10_A3_T3.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.12_Array_prototype_splice/S15.4.4.12_A3_T3.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.13_Array_prototype_unshift/S15.4.4.13_A2_T2.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.13_Array_prototype_unshift/S15.4.4.13_A3_T2.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.6_Array_prototype_pop/S15.4.4.6_A2_T2.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.6_Array_prototype_pop/S15.4.4.6_A3_T3.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.7_Array_prototype_push/S15.4.4.7_A2_T2.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.7_Array_prototype_push/S15.4.4.7_A4_T3.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.8_Array_prototype_reverse/S15.4.4.8_A3_T3.html [ Failure ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.9_Array_prototype_shift/S15.4.4.9_A3_T3.html [ Failure ]
+
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-14.html [ Skip ]
+webkit.org/b/173506  ietestcenter/Javascript/15.4.4.15-3-8.html [ Skip ]
+webkit.org/b/173506  sputnik/Conformance/15_Native_Objects/15.4_Array/15.4.4/15.4.4.9_Array_prototype_shift/S15.4.4.9_A2_T2.html [ Skip ]
+
 [ Debug ] js/regress-141098.html [ Slow ]
 
 # IDBVersionChangeEvent tests need to be rewritten to use event constructors instead of createEvent,
@@ -746,6 +770,7 @@ webkit.org/b/146182 editing/selection/leak-document-with-selection-inside.html [
 # Media Sessions is not yet enabled by default: ENABLE(MEDIA_SESSION)
 media/session [ Skip ]
 
+webrtc/datachannel/multiple-connections.html [ Slow ]
 webrtc/negotiatedneeded-event-addStream.html [ Pass Crash ]
 webrtc/video-replace-track.html [ Pass Failure ]
 webrtc/video-getParameters.html [ Failure ]
@@ -1021,6 +1046,7 @@ imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.ht
 
 # WebCryptoAPI features that haven't been enabled for current OS
 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Skip ]
+crypto/subtle/ecdh-import-spki-key-ecdh-identifier.html [ Skip ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha1.html [ Skip ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha224.html [ Skip ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha256.html [ Skip ]
@@ -1378,4 +1404,4 @@ webkit.org/b/172514 [ Debug ] imported/w3c/web-platform-tests/innerText/getter.h
 webkit.org/b/172827 webrtc/audio-peer-connection-webaudio.html [ Pass Failure ]
 webkit.org/b/172649 webrtc/peer-connection-audio-mute.html [ Pass Failure ]
 
-webkit.org/b/173333 imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Timeout ]
+webkit.org/b/173333 imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Skip ]

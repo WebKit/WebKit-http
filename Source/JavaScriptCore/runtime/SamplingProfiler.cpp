@@ -29,6 +29,7 @@
 #if ENABLE(SAMPLING_PROFILER)
 
 #include "CallFrame.h"
+#include "CatchScope.h"
 #include "CodeBlock.h"
 #include "CodeBlockSet.h"
 #include "HeapIterationScope.h"
@@ -46,6 +47,7 @@
 #include "SlotVisitor.h"
 #include "StrongInlines.h"
 #include "VM.h"
+#include <wtf/FilePrintStream.h>
 #include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/StackTrace.h>

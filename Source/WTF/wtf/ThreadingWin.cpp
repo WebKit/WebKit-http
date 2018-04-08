@@ -96,6 +96,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/ThreadFunctionInvocation.h>
 #include <wtf/ThreadHolder.h>
+#include <wtf/ThreadingPrimitives.h>
 
 #if HAVE(ERRNO_H)
 #include <errno.h>
@@ -515,7 +516,9 @@ DWORD absoluteTimeToWaitTimeoutInterval(double absoluteTime)
 // Remove this workaround code when <rdar://problem/31793213> is fixed.
 ThreadIdentifier createThread(ThreadFunction function, void* data, const char* threadName)
 {
-    return Thread::create(function, data, threadName)->id();
+    return Thread::create(threadName, [function, data] {
+        function(data);
+    })->id();
 }
 
 int waitForThreadCompletion(ThreadIdentifier threadID)

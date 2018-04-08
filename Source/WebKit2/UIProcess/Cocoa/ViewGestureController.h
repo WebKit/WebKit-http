@@ -83,6 +83,8 @@ public:
         Forward
     };
 
+    typedef uint64_t GestureID;
+
 #if PLATFORM(MAC)
     double magnification() const;
 
@@ -137,7 +139,11 @@ private:
     // IPC::MessageReceiver.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    static ViewGestureController* gestureControllerForPage(uint64_t);
+    static ViewGestureController* controllerForGesture(uint64_t pageID, GestureID);
+
+    static GestureID takeNextGestureID();
+    void willBeginGesture(ViewGestureType);
+    void didEndGesture();
 
     class SnapshotRemovalTracker {
     public:
@@ -153,7 +159,7 @@ private:
 
         SnapshotRemovalTracker();
 
-        void start(Events, std::function<void()>);
+        void start(Events, WTF::Function<void()>&&);
         void reset();
 
         bool eventOccurred(Events);
@@ -172,7 +178,7 @@ private:
         bool stopWaitingForEvent(Events, const String& logReason);
 
         Events m_outstandingEvents { 0 };
-        std::function<void()> m_removalCallback;
+        WTF::Function<void()> m_removalCallback;
         std::chrono::steady_clock::time_point m_startTime;
 
         RunLoop::Timer<SnapshotRemovalTracker> m_watchdogTimer;
@@ -243,6 +249,8 @@ private:
     WeakPtr<WebPageProxy> m_alternateBackForwardListSourcePage;
     RefPtr<WebPageProxy> m_webPageProxyForBackForwardListForCurrentSwipe;
 
+    GestureID m_currentGestureID;
+
 #if PLATFORM(MAC)
     RefPtr<ViewSnapshot> m_currentSwipeSnapshot;
 
@@ -281,7 +289,6 @@ private:
     RetainPtr<WKSwipeTransitionController> m_swipeInteractiveTransitionDelegate;
     RetainPtr<_UIViewControllerOneToOneTransitionContext> m_swipeTransitionContext;
     uint64_t m_snapshotRemovalTargetRenderTreeSize { 0 };
-    uint64_t m_gesturePendingSnapshotRemoval { 0 };
 #endif
 
     SnapshotRemovalTracker m_snapshotRemovalTracker;

@@ -32,9 +32,11 @@
 #include <cmath>
 #include <cstring>
 #include <wtf/DateMath.h>
+#include <wtf/PrintStream.h>
 #include <wtf/RandomNumberSeed.h>
 #include <wtf/ThreadHolder.h>
 #include <wtf/ThreadMessage.h>
+#include <wtf/ThreadingPrimitives.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/text/StringView.h>
 
@@ -107,13 +109,6 @@ RefPtr<Thread> Thread::create(const char* name, Function<void()>&& entryPoint)
     MutexLocker locker(context->creationMutex);
 
     return Thread::createInternal(threadEntryPoint, context, name);
-}
-
-RefPtr<Thread> Thread::create(ThreadFunction entryPoint, void* data, const char* name)
-{
-    return Thread::create(name, [entryPoint, data] {
-        entryPoint(data);
-    });
 }
 
 void Thread::didExit()

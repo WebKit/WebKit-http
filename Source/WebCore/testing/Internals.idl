@@ -252,6 +252,7 @@ enum EventThrottlingBehavior {
     void resetImageAnimation(HTMLImageElement element);
     boolean isImageAnimating(HTMLImageElement element);
     void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement element, boolean value);
+    unsigned long imageDecodeCount(HTMLImageElement element);
 
     void setGridMaxTracksLimit(unsigned long maxTracksLimit);
 
@@ -370,6 +371,7 @@ enum EventThrottlingBehavior {
 
     [MayThrowException] void setLowPowerModeEnabled(boolean enabled);
     readonly attribute double requestAnimationFrameInterval;
+    readonly attribute boolean scriptedAnimationsAreSuspended;
 
     // Override the behavior of WebPage::eventThrottlingDelay(), which only affects iOS.
     attribute EventThrottlingBehavior? eventThrottlingBehaviorOverride;
@@ -446,8 +448,10 @@ enum EventThrottlingBehavior {
     [Conditional=MEDIA_SESSION] DOMString mediaSessionCurrentState(MediaSession session);
     [Conditional=MEDIA_SESSION] double mediaElementPlayerVolume(HTMLMediaElement element);
     [Conditional=MEDIA_SESSION] void sendMediaControlEvent(MediaControlEvent event);
-    [Conditional=VIDEO] void applicationDidEnterForeground();
-    [Conditional=VIDEO] void applicationWillEnterBackground();
+    [Conditional=VIDEO] void applicationWillBecomeInactive();
+    [Conditional=VIDEO] void applicationDidBecomeActive();
+    [Conditional=VIDEO] void applicationWillEnterForeground(optional boolean suspendedUnderLock = false);
+    [Conditional=VIDEO] void applicationDidEnterBackground(optional boolean suspendedUnderLock = false);
     [Conditional=VIDEO, MayThrowException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
     [Conditional=VIDEO, MayThrowException] DOMString mediaSessionRestrictions(DOMString mediaType);
     [Conditional=VIDEO] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);
@@ -535,6 +539,7 @@ enum EventThrottlingBehavior {
 
     void setPageVisibility(boolean isVisible);
 
+    [Conditional=WEB_RTC] void setH264HardwareEncoderAllowed(boolean allowed);
     [Conditional=WEB_RTC] void applyRotationForOutgoingVideoSources(RTCPeerConnection connection);
 
     [Conditional=MEDIA_STREAM] void setCameraMediaStreamTrackOrientation(MediaStreamTrack track, short orientation);

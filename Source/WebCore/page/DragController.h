@@ -99,7 +99,7 @@ struct DragState;
         static const float DragImageAlpha;
 
     private:
-        void updatePreferredTypeIdentifiersForDragHandlingMethod(DragHandlingMethod, const DragData&) const;
+        void updateSupportedTypeIdentifiersForDragHandlingMethod(DragHandlingMethod, const DragData&) const;
         bool dispatchTextInputEventFor(Frame*, const DragData&);
         bool canProcessDrag(const DragData&);
         bool concludeEditDrag(const DragData&);
@@ -115,8 +115,8 @@ struct DragState;
         void mouseMovedIntoDocument(Document*);
         bool shouldUseCachedImageForDragImage(const Image&) const;
 
-        void doImageDrag(Element&, const IntPoint&, const IntRect&, DataTransfer&, Frame&, IntPoint&);
-        void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, const IntRect& dragImageBounds, DataTransfer&, Frame&, DragSourceAction);
+        void doImageDrag(Element&, const IntPoint&, const IntRect&, Frame&, IntPoint&, const DragState&);
+        void doSystemDrag(DragImage, const IntPoint&, const IntPoint&, Frame&, const DragState&);
 
         void beginDrag(DragItem, Frame&, const IntPoint& mouseDownPoint, const IntPoint& mouseDraggedPoint, DataTransfer&, DragSourceAction);
 
@@ -145,7 +145,6 @@ struct DragState;
 
         DragDestinationAction m_dragDestinationAction;
         DragSourceAction m_dragSourceAction;
-        Vector<String> m_preferredTypeIdentifiersToLoad;
         bool m_didInitiateDrag;
         DragOperation m_sourceDragOperation; // Set in startDrag when a drag starts from a mouse down within WebKit
         IntPoint m_dragOffset;

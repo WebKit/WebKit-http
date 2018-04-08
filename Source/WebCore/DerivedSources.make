@@ -364,6 +364,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DOMPoint.idl \
     $(WebCore)/dom/DOMPointInit.idl \
     $(WebCore)/dom/DOMPointReadOnly.idl \
+    $(WebCore)/dom/DOMQuad.idl \
+    $(WebCore)/dom/DOMQuadInit.idl \
     $(WebCore)/dom/DOMRect.idl \
     $(WebCore)/dom/DOMRectInit.idl \
     $(WebCore)/dom/DOMRectList.idl \
@@ -896,6 +898,7 @@ endif
 ifeq ($(WTF_PLATFORM_IOS), 1)
 ifeq ($(findstring ENABLE_IOS_TOUCH_EVENTS,$(FEATURE_DEFINES)), ENABLE_IOS_TOUCH_EVENTS)
 ADDITIONAL_BINDING_IDLS += \
+    DocumentTouch.idl \
     Touch.idl \
     TouchEvent.idl \
     TouchList.idl
@@ -920,6 +923,7 @@ endif # MACOS
 
 ifneq ($(WTF_PLATFORM_IOS), 1)
 JS_BINDING_IDLS += \
+    $(WebCore)/dom/DocumentTouch.idl \
     $(WebCore)/dom/Touch.idl \
     $(WebCore)/dom/TouchEvent.idl \
     $(WebCore)/dom/TouchList.idl

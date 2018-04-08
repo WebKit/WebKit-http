@@ -24,12 +24,15 @@
 #include "JSBlob.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertBufferSource.h"
+#include "JSDOMConvertInterface.h"
+#include "JSDOMConvertNumbers.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMConvertVariadic.h"
 #include "JSDOMExceptionHandling.h"
 #include "JSDOMWrapperCache.h"
-#include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
+#include <runtime/JSCInlines.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
@@ -75,7 +78,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors1(ExecState* s
     UNUSED_PARAM(throwScope);
     auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
-    auto arrayBuffer = convert<IDLInterface<ArrayBuffer>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBuffer", "TestOverloadedConstructors", nullptr, "ArrayBuffer"); });
+    auto arrayBuffer = convert<IDLArrayBuffer>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBuffer", "TestOverloadedConstructors", nullptr, "ArrayBuffer"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(*arrayBuffer);
     return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
@@ -88,7 +91,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors2(ExecState* s
     UNUSED_PARAM(throwScope);
     auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
-    auto arrayBufferView = convert<IDLInterface<ArrayBufferView>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBufferView", "TestOverloadedConstructors", nullptr, "ArrayBufferView"); });
+    auto arrayBufferView = convert<IDLArrayBufferView>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBufferView", "TestOverloadedConstructors", nullptr, "ArrayBufferView"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(arrayBufferView.releaseNonNull());
     return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));

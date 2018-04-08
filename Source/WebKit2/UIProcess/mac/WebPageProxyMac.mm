@@ -48,6 +48,7 @@
 #import "WebProcessProxy.h"
 #import <WebCore/DictationAlternative.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/DragItem.h>
 #import <WebCore/GraphicsLayer.h>
 #import <WebCore/NSApplicationSPI.h>
 #import <WebCore/RuntimeApplicationChecks.h>
@@ -174,7 +175,7 @@ void WebPageProxy::insertDictatedTextAsync(const String& text, const EditingRang
 #endif
 }
 
-void WebPageProxy::attributedSubstringForCharacterRangeAsync(const EditingRange& range, std::function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)> callbackFunction)
+void WebPageProxy::attributedSubstringForCharacterRangeAsync(const EditingRange& range, WTF::Function<void (const AttributedString&, const EditingRange&, CallbackBase::Error)>&& callbackFunction)
 {
     if (!isValid()) {
         callbackFunction(AttributedString(), EditingRange(), CallbackBase::Error::Unknown);
@@ -200,7 +201,7 @@ void WebPageProxy::attributedStringForCharacterRangeCallback(const AttributedStr
     callback->performCallbackWithReturnValue(string, actualRange);
 }
 
-void WebPageProxy::fontAtSelection(std::function<void (const String&, double, bool, CallbackBase::Error)>callbackFunction)
+void WebPageProxy::fontAtSelection(WTF::Function<void (const String&, double, bool, CallbackBase::Error)>&& callbackFunction)
 {
     if (!isValid()) {
         callbackFunction(String(), 0, false, CallbackBase::Error::Unknown);
@@ -269,10 +270,10 @@ void WebPageProxy::replaceSelectionWithPasteboardData(const Vector<String>& type
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
-void WebPageProxy::setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, std::optional<TextIndicatorData>, const FloatPoint&, uint64_t action)
+void WebPageProxy::startDrag(const DragItem& dragItem, const ShareableBitmap::Handle& dragImageHandle)
 {
     if (auto dragImage = ShareableBitmap::create(dragImageHandle))
-        m_pageClient.setDragImage(clientPosition, dragImage.releaseNonNull(), static_cast<DragSourceAction>(action));
+        m_pageClient.setDragImage(dragItem.dragLocationInWindowCoordinates, dragImage.releaseNonNull(), static_cast<DragSourceAction>(dragItem.sourceAction));
 
     didStartDrag();
 }

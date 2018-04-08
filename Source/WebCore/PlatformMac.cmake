@@ -195,6 +195,7 @@ list(APPEND WebCore_SOURCES
     crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
     crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
     crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+    crypto/algorithms/CryptoAlgorithmRSA_PSS.cpp
     crypto/algorithms/CryptoAlgorithmSHA1.cpp
     crypto/algorithms/CryptoAlgorithmSHA224.cpp
     crypto/algorithms/CryptoAlgorithmSHA256.cpp
@@ -224,6 +225,7 @@ list(APPEND WebCore_SOURCES
     crypto/mac/CryptoAlgorithmRSAES_PKCS1_v1_5Mac.cpp
     crypto/mac/CryptoAlgorithmRSASSA_PKCS1_v1_5Mac.cpp
     crypto/mac/CryptoAlgorithmRSA_OAEPMac.cpp
+    crypto/mac/CryptoAlgorithmRSA_PSSMac.cpp
     crypto/mac/CryptoAlgorithmRegistryMac.cpp
     crypto/mac/CryptoKeyECMac.cpp
     crypto/mac/CryptoKeyMac.cpp
@@ -338,6 +340,7 @@ list(APPEND WebCore_SOURCES
 
     platform/cocoa/ContentFilterUnblockHandlerCocoa.mm
     platform/cocoa/CoreVideoSoftLink.cpp
+    platform/cocoa/FileMonitorCocoa.mm
     platform/cocoa/FileSystemCocoa.mm
     platform/cocoa/KeyEventCocoa.mm
     platform/cocoa/LocalizedStringsCocoa.mm
@@ -354,6 +357,7 @@ list(APPEND WebCore_SOURCES
     platform/cocoa/SystemVersion.mm
     platform/cocoa/TelephoneNumberDetectorCocoa.cpp
     platform/cocoa/ThemeCocoa.mm
+    platform/cocoa/VideoToolboxSoftLink.cpp
     platform/cocoa/WebCoreNSErrorExtras.mm
 
     platform/gamepad/mac/HIDGamepad.cpp
@@ -361,6 +365,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/DisplayRefreshMonitor.cpp
     platform/graphics/DisplayRefreshMonitorManager.cpp
+    platform/graphics/FourCC.cpp
 
     platform/graphics/avfoundation/AVTrackPrivateAVFObjCImpl.mm
     platform/graphics/avfoundation/AudioSourceProviderAVFObjC.mm
@@ -372,6 +377,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/avfoundation/MediaSelectionGroupAVFObjC.mm
     platform/graphics/avfoundation/MediaTimeAVFoundation.cpp
 
+    platform/graphics/avfoundation/objc/AVAssetTrackUtilities.mm
     platform/graphics/avfoundation/objc/AVFoundationMIMETypeCache.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateAVFObjC.mm
     platform/graphics/avfoundation/objc/AudioTrackPrivateMediaSourceAVFObjC.cpp
@@ -455,11 +461,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/FontCacheCoreText.cpp
     platform/graphics/cocoa/FontCascadeCocoa.mm
     platform/graphics/cocoa/FontCocoa.mm
+    platform/graphics/cocoa/FontDescriptionCocoa.cpp
+    platform/graphics/cocoa/FontFamilySpecificationCoreText.cpp
     platform/graphics/cocoa/FontPlatformDataCocoa.mm
     platform/graphics/cocoa/IOSurface.mm
     platform/graphics/cocoa/IOSurfacePoolCocoa.mm
     platform/graphics/cocoa/WebActionDisablingCALayerDelegate.mm
     platform/graphics/cocoa/WebCoreCALayerExtras.mm
+    platform/graphics/cocoa/WebCoreDecompressionSession.mm
     platform/graphics/cocoa/WebGPULayer.mm
 
     platform/graphics/cv/PixelBufferConformerCV.cpp
@@ -604,6 +613,7 @@ list(APPEND WebCore_SOURCES
     platform/text/mac/TextBoundaries.mm
     platform/text/mac/TextCodecMac.cpp
 
+    rendering/RenderThemeCocoa.mm
     rendering/RenderThemeMac.mm
     rendering/TextAutoSizing.cpp
 )

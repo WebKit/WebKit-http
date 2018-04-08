@@ -1,3 +1,592 @@
+2017-06-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Instrument active pixel memory used by canvases
+        https://bugs.webkit.org/show_bug.cgi?id=173087
+        <rdar://problem/32719261>
+
+        Reviewed by Joseph Pecoraro.
+
+        * .eslintrc:
+        * UserInterface/Controllers/CanvasManager.js:
+        (WebInspector.CanvasManager.prototype.canvasMemoryChanged):
+        * UserInterface/Models/Canvas.js:
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.prototype.get memoryCost):
+        (WebInspector.Canvas.prototype.set memoryCost):
+        * UserInterface/Protocol/CanvasObserver.js:
+        (WebInspector.CanvasObserver.prototype.canvasMemoryChanged):
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.initialLayout):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshIdentitySection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._formatMemoryRow):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._canvasMemoryChanged):
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Utilities.js:
+        (Number.bytesToString.value):
+        Add support for gigabyte numbers.
+
+2017-06-27  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused Inspector domain events
+        https://bugs.webkit.org/show_bug.cgi?id=173905
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.detached): Deleted.
+
+        * UserInterface/Protocol/Legacy/10.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/10.3/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/7.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/8.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.0/InspectorBackendCommands.js:
+        * UserInterface/Protocol/Legacy/9.3/InspectorBackendCommands.js:
+        * Versions/Inspector-iOS-10.0.json:
+        * Versions/Inspector-iOS-10.3.json:
+        * Versions/Inspector-iOS-7.0.json:
+        * Versions/Inspector-iOS-8.0.json:
+        * Versions/Inspector-iOS-9.0.json:
+        * Versions/Inspector-iOS-9.3.json:
+        Remove from legacy backends as well since they did not send it.
+
+2017-06-27  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: no discoverable way to dismiss the split console
+        https://bugs.webkit.org/show_bug.cgi?id=167034
+        <rdar://problem/30023436>
+
+        Reviewed by Devin Rousso.
+
+        This patch adds an Xcode-style toggle button to the left of the
+        split console navigation bar. Additionally, the split console code
+        has been broken out into it's own class to reduce the clutter in
+        Main.js/css, and simplify future console maintenance.
+
+        * Localizations/en.lproj/localizedStrings.js:
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+        Replace the "split" ContentBrowser with a new ConsoleDrawer class,
+        which encapsulates the drawer height setting and resize behavior.
+        (WebInspector.contentLoaded):
+        The console drawer manages its own height.
+
+        * UserInterface/Images/HideConsoleDrawer.svg: Added.
+        * UserInterface/Images/ShowConsoleDrawer.svg: Added.
+        Console drawer toggle button images. Styled after corresponding Xcode button.
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Views/ConsoleDrawer.css: Added.
+        Moved old #split-content-browser styles over from Main.css.
+        (.console-drawer):
+        (.console-drawer > .navigation-bar):
+        (.console-drawer > .navigation-bar > .item.button:not(.clear-log)):
+        Make button spacing less cramped.
+        (.console-drawer > .navigation-bar > .item:not(.flexible-space)):
+        (.console-drawer > .navigation-bar > :matches(.item.button, .log-scope-bar)):
+        (.console-drawer > .navigation-bar > .item > .glyph,):
+
+        * UserInterface/Views/ConsoleDrawer.js: Added.
+        New class responsible for console drawer expand / collapse and resizer
+        dragging, which was previously part of Main.js. The console drawer toolbar
+        now has a toggle button, debugging controls, and a call frames path item.
+        The "Show Console Tab" button has been removed.
+
+        (WebInspector.ConsoleDrawer):
+        (WebInspector.ConsoleDrawer.prototype.get collapsed):
+        (WebInspector.ConsoleDrawer.prototype.set collapsed):
+        (WebInspector.ConsoleDrawer.prototype.get height):
+        (WebInspector.ConsoleDrawer.prototype.shown):
+        (WebInspector.ConsoleDrawer.prototype.layout):
+        (WebInspector.ConsoleDrawer.prototype._consoleResizerMouseDown.dockedResizerDrag):
+        (WebInspector.ConsoleDrawer.prototype._consoleResizerMouseDown.dockedResizerDragEnd):
+        (WebInspector.ConsoleDrawer.prototype._consoleResizerMouseDown):
+        (WebInspector.ConsoleDrawer.prototype._restoreDrawerHeight):
+        (WebInspector.ConsoleDrawer.prototype._updateDrawerHeight):
+        (WebInspector.ConsoleDrawer.prototype._selectedTabContentViewDidChange):
+        When switching to a tab that doesn't support showing the console drawer,
+        hide it without altering the collapsed state.
+
+        * UserInterface/Views/LogContentView.js:
+        (WebInspector.LogContentView.prototype.get navigationItems):
+
+        * UserInterface/Views/Main.css:
+        Renamed #split-content-browser to #console-drawer, and moved related
+        styles to ConsoleDrawer.css.
+
+        (#split-content-browser): Deleted.
+        (#split-content-browser > .navigation-bar): Deleted.
+        (#split-content-browser > .navigation-bar :matches(.find-banner, .find-banner + .divider)): Deleted.
+        (#split-content-browser > .navigation-bar .item): Deleted.
+        (#split-content-browser > .navigation-bar .item:not(.flexible-space)): Deleted.
+        (#split-content-browser .hierarchical-path-component.log-icon .icon): Deleted.
+        (#split-content-browser .hierarchical-path-component.log-icon .title): Deleted.
+        (#split-content-browser .hierarchical-path-component.log-icon select): Deleted.
+        (#split-content-browser > .navigation-bar > :matches(.hierarchical-path, .log-scope-bar)): Deleted.
+        (#split-content-browser > .navigation-bar > .log-scope-bar > li): Deleted.
+
+        * UserInterface/Views/QuickConsole.js:
+        (WebInspector.QuickConsole):
+        (WebInspector.QuickConsole.prototype._toggleOrFocus):
+        (WebInspector.QuickConsole.prototype._updateStyles):
+        Update top border style in response to change in selected TabBrowser
+        tab or the console drawer collapsed state.
+
+        (WebInspector.QuickConsole.prototype.consoleLogVisibilityChanged): Deleted.
+        (WebInspector.QuickConsole.prototype.set keyboardShortcutDisabled): Deleted.
+
+2017-06-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove Reflect.enumerate
+        https://bugs.webkit.org/show_bug.cgi?id=173806
+
+        Reviewed by Yusuke Suzuki.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
+2017-06-23  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Script Timeline bubbles sometimes appear to miss large events
+        https://bugs.webkit.org/show_bug.cgi?id=173746
+        <rdar://problem/32950808>
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/Timeline.js:
+        (WebInspector.Timeline.prototype.addRecord):
+        (WebInspector.Timeline.prototype._tryInsertInSortedOrder):
+        The list of records is assumed to be sorted by the code that draws bubbles
+        however the order in which we receive them may not be sorted. Make a quick
+        effort to sort recent records so that as we are drawing the timeline it is
+        more accurate.
+
+2017-06-23  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: flip all go-to-arrow instances
+        https://bugs.webkit.org/show_bug.cgi?id=173794
+        <rdar://problem/32221912>
+
+        Reviewed by Joseph Pecoraro.
+
+        Move the flipping transform so it applies to all go-to arrows.
+
+        * UserInterface/Views/DataGrid.css:
+        (body[dir=rtl] .data-grid td .go-to-arrow):
+        * UserInterface/Views/Main.css:
+        (body[dir=rtl] .go-to-arrow):
+
+2017-06-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Pausing with a deep call stack can be very slow, avoid eagerly generating object previews
+        https://bugs.webkit.org/show_bug.cgi?id=173698
+
+        Reviewed by Matt Baker.
+
+        Introduce RemoteObject.prototype.updatePreview which can be used to update
+        the preview of a RemoteObject with a current view for the object. Currently
+        we only use this to fetch the preview that we did not have for the `thisObject`
+        in the scope chain sidebar. However this could be used generically to update
+        a RemoteObject's preview (ObjectPreview) at any time.
+
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.prototype.canLoadPreview):
+        (WebInspector.RemoteObject.prototype.updatePreview):
+        Allow a RemoteObject to update its preview property. Since this only makes
+        sense on certain Object values include a helper to know when it is appropriate
+        to fetch a preview.
+
+        * UserInterface/Views/ObjectTreePropertyTreeElement.js:
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._createTitlePropertyStyle):
+        (WebInspector.ObjectTreePropertyTreeElement.prototype._loadPreviewLazilyIfNeeded):
+        If the object being shown in the sidebar does not have a preview but can load a
+        preview then attempt to load it lazily. This is the case for the `thisObject`
+        which is injected into an ObjectTree in the scope chain sidebar.
+
+2017-06-22  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add icon for Canvas.svg
+        https://bugs.webkit.org/show_bug.cgi?id=173580
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/Canvas.svg: Added.
+
+2017-06-21  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Web Inspector: Add NavigationItemCheckers.svg
+        https://bugs.webkit.org/show_bug.cgi?id=173692
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UserInterface/Images/gtk/NavigationItemCheckers.svg: Added.
+
+2017-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: change the selected ScopeBarItem on mousedown instead of click
+        https://bugs.webkit.org/show_bug.cgi?id=173586
+
+        Reviewed by Matt Baker.
+
+        Both the Tab bar and Sidebar navigation bar switch the active item on "mousedown" instead of
+        on "click". ScopeBarItem should follow this pattern, as it is faster and keeps consistency.
+
+        * UserInterface/Views/MultipleScopeBarItem.js:
+        (WebInspector.MultipleScopeBarItem):
+        (WebInspector.MultipleScopeBarItem.prototype._handleMouseDown):
+        (WebInspector.MultipleScopeBarItem.prototype._clicked): Deleted.
+        * UserInterface/Views/ScopeBarItem.js:
+        (WebInspector.ScopeBarItem):
+        (WebInspector.ScopeBarItem.prototype._handleMouseDown):
+        (WebInspector.ScopeBarItem.prototype._clicked): Deleted.
+
+2017-06-20  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Send context attributes for tracked canvases
+        https://bugs.webkit.org/show_bug.cgi?id=173327
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Canvas.js:
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.prototype.get contextAttributes):
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.initialLayout):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.layout):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.sizeDidChange):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshAttributesSection):
+
+        * UserInterface/Views/DataGridNode.js:
+        (WebInspector.DataGridNode.prototype.createCellContent):
+        Instead of checking if the value of the cell is falsy, check that the key exists in the data.
+        This allows values like `false` to be displayed.
+
+2017-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create canvas content view and details sidebar panel
+        https://bugs.webkit.org/show_bug.cgi?id=138941
+        <rdar://problem/19051672>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Models/Canvas.js:
+        (WebInspector.Canvas):
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.prototype.get displayName):
+        (WebInspector.Canvas.requestNode): Added.
+        (WebInspector.Canvas.prototype.requestContent): Added.
+        (WebInspector.Canvas.prototype.saveIdentityToCookie):
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WebInspector.CanvasManager.prototype.canvasAdded):
+        (WebInspector.CanvasManager.prototype.canvasRemoved):
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/Frame.js:
+        (WebInspector.Frame):
+        (WebInspector.Frame.prototype.get canvasCollection):
+        (WebInspector.Frame.prototype.commitProvisionalLoad):
+        Create a Collection for Canvas in each Frame, and modify it when canvas events are fired.
+
+        * UserInterface/Views/CanvasContentView.css: Added.
+        (.content-view.canvas > .preview):
+        (.content-view.canvas > .preview > img):
+        * UserInterface/Views/CanvasContentView.js: Added.
+        (WebInspector.CanvasContentView):
+        (WebInspector.CanvasContentView.prototype.get navigationItems):
+        (WebInspector.CanvasContentView.prototype.shown):
+        (WebInspector.CanvasContentView.prototype.hidden):
+        (WebInspector.CanvasContentView.prototype._showPreview):
+        (WebInspector.CanvasContentView.prototype._updateImageGrid):
+        (WebInspector.CanvasContentView.prototype._showGridButtonClicked):
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js: Added.
+        (WebInspector.CanvasDetailsSidebarPanel):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.inspect):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.get canvas):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.set canvas):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.initialLayout):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype.layout):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshIdentitySection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshSourceSection.this._canvas.requestNode.):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshSourceSection):
+        * UserInterface/Views/CanvasTreeElement.js: Added.
+        (WebInspector.CanvasTreeElement):
+
+        * UserInterface/Views/FrameTreeElement.js:
+        (WebInspector.FrameTreeElement.prototype.onattach):
+        (WebInspector.FrameTreeElement.prototype.ondetach):
+        (WebInspector.FrameTreeElement.prototype.onpopulate):
+        (WebInspector.FrameTreeElement.prototype._canvasWasAdded):
+        (WebInspector.FrameTreeElement.prototype._canvasWasRemoved):
+        (WebInspector.FrameTreeElement):
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/ContentView.js:
+        (WebInspector.ContentView.createFromRepresentedObject):
+        (WebInspector.ContentView.isViewable):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+        (WebInspector.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WebInspector.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView):
+        (WebInspector.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        Show Canvas objects and tie them to the correct ContentView and TreeElement subclasses.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+        * UserInterface/Images/Canvas.svg: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.canvas .icon):
+        Added new files/rules/strings related to Canvas UI.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings .navigation-bar):
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.initialLayout):
+        (WebInspector.SettingsTabContentView.prototype._createGeneralSettingsView):
+        (WebInspector.SettingsTabContentView.prototype._createDebugSettingsView):
+        Add an experimental settings toggle in the Debug view for showing canvas contexts.
+
+        * UserInterface/Views/FolderizedTreeElement.js:
+        (WebInspector.FolderizedTreeElement.prototype._compareTreeElementsByMainTitle):
+        Drive-by fix: ensure that sorting also includes numbers, so that 1 < 2 < 10.
+
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WebInspector.ImageResourceContentView.prototype.shown):
+        (WebInspector.ImageResourceContentView.prototype.hidden):
+        (WebInspector.ImageResourceContentView.prototype._updateImageGrid):
+        (WebInspector.ImageResourceContentView.prototype._showGridButtonClicked):
+        (WebInspector.ImageResourceContentView):
+        Drive-by fix: change the activated state of the Show Grid navigation item if it changes
+        in another view.
+
+2017-06-19  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Unify contextmenu items for all node links/previews
+        https://bugs.webkit.org/show_bug.cgi?id=173187
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForDOMNode.didGetFunctionDetails): Added.
+        (WebInspector.appendContextMenuItemsForDOMNode.didGetProperty): Added.
+        (WebInspector.appendContextMenuItemsForDOMNode.didResolveNode): Added.
+        (WebInspector.appendContextMenuItemsForDOMNode): Added.
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateTagContextMenu):
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        (WebInspector.DOMTreeElement.prototype._showCustomElementDefinition): Deleted.
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.populateContextMenu):
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.revealElement): Deleted.
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu.logElement): Deleted.
+        (WebInspector.DOMTreeOutline.prototype._populateContextMenu): Deleted.
+        * UserInterface/Views/RulesStyleDetailsPanel.js:
+        (WebInspector.RulesStyleDetailsPanel.prototype.refresh.insertMediaOrInheritanceLabel):
+        Unify common DOM node context menu actions into a single helper function.
+
+        * UserInterface/Base/DOMUtilities.js:
+        (WebInspector.linkifyNodeReference):
+        (WebInspector.linkifyNodeReferenceElement):
+        Rework parameters to use options dictionary.
+
+2017-06-16  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument 2D/WebGL canvas contexts in the backend
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        <rdar://problem/32415986>
+
+        Reviewed by Devin Rousso and Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+
+        * UserInterface/Controllers/CanvasManager.js: Added.
+        New frontend manager for the Canvas domain.
+        (WebInspector.CanvasManager):
+        (WebInspector.CanvasManager.prototype.get canvases):
+        (WebInspector.CanvasManager.prototype.canvasAdded):
+        (WebInspector.CanvasManager.prototype.canvasRemoved):
+        (WebInspector.CanvasManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Main.html:
+        New files.
+
+        * UserInterface/Models/Canvas.js: Added.
+        (WebInspector.Canvas):
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.displayNameForContextType):
+        Get displayable text "2D" or "WebGL" based on context type.
+        (WebInspector.Canvas.resetUniqueDisplayNameNumbers):
+        Called by CanvasManager when canvases are cleared.
+        (WebInspector.Canvas.prototype.get identifier):
+        (WebInspector.Canvas.prototype.get contextType):
+        (WebInspector.Canvas.prototype.get frame):
+        (WebInspector.Canvas.prototype.get cssCanvasName):
+        For CSS canvases, the identifier passed to getCSSCanvasContext.
+        (WebInspector.Canvas.prototype.get displayName):
+        Get displayable canvas name. The name depends on how the canvas was
+        created, and the information available:
+          - getCSSCanvasContext: "CSS Canvas <identifier>"
+          - getContext: "Canvas #<DOM id attribute value>"
+          - Otherwise: "Canvas 1", "Canvas 2", ...
+
+        (WebInspector.Canvas.saveIdentityToCookie):
+
+        * UserInterface/Protocol/CanvasObserver.js: Added.
+        (WebInspector.CanvasObserver.prototype.canvasAdded):
+        (WebInspector.CanvasObserver.prototype.canvasRemoved):
+        (WebInspector.CanvasObserver):
+
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+
+2017-06-16  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r218376.
+
+        The patch cause multiple Layout Test Crashes.
+
+        Reverted changeset:
+
+        "Web Inspector: Instrument 2D/WebGL canvas contexts in the
+        backend"
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        http://trac.webkit.org/changeset/218376
+
+2017-06-15  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument 2D/WebGL canvas contexts in the backend
+        https://bugs.webkit.org/show_bug.cgi?id=172623
+        <rdar://problem/32415986>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.loaded):
+
+        * UserInterface/Controllers/CanvasManager.js: Added.
+        New frontend manager for the Canvas domain.
+        (WebInspector.CanvasManager):
+        (WebInspector.CanvasManager.prototype.get canvases):
+        (WebInspector.CanvasManager.prototype.canvasAdded):
+        (WebInspector.CanvasManager.prototype.canvasRemoved):
+        (WebInspector.CanvasManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Main.html:
+        New files.
+
+        * UserInterface/Models/Canvas.js: Added.
+        (WebInspector.Canvas):
+        (WebInspector.Canvas.fromPayload):
+        (WebInspector.Canvas.displayNameForContextType):
+        Get displayable text "2D" or "WebGL" based on context type.
+        (WebInspector.Canvas.resetUniqueDisplayNameNumbers):
+        Called by CanvasManager when canvases are cleared.
+        (WebInspector.Canvas.prototype.get identifier):
+        (WebInspector.Canvas.prototype.get contextType):
+        (WebInspector.Canvas.prototype.get frame):
+        (WebInspector.Canvas.prototype.get cssCanvasName):
+        For CSS canvases, the identifier passed to getCSSCanvasContext.
+        (WebInspector.Canvas.prototype.get displayName):
+        Get displayable canvas name. The name depends on how the canvas was
+        created, and the information available:
+          - getCSSCanvasContext: "CSS Canvas <identifier>"
+          - getContext: "Canvas #<DOM id attribute value>"
+          - Otherwise: "Canvas 1", "Canvas 2", ...
+
+        (WebInspector.Canvas.saveIdentityToCookie):
+
+        * UserInterface/Protocol/CanvasObserver.js: Added.
+        (WebInspector.CanvasObserver.prototype.canvasAdded):
+        (WebInspector.CanvasObserver.prototype.canvasRemoved):
+        (WebInspector.CanvasObserver):
+
+        * UserInterface/Test.html:
+        * UserInterface/Test/Test.js:
+        (WebInspector.loaded):
+
+2017-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Search highlight doesn't show up in resources when paused
+        https://bugs.webkit.org/show_bug.cgi?id=173438
+        <rdar://problem/32800114>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor.prototype.revealPosition.revealAndHighlightLine):
+        Previously we were bailing if executionLineNumber was NaN, which means that when
+        we were paused we were incorrectly disabling highlights in any resource that does
+        not have the active callframe. Relax this and make it match the intended behavior
+        of only disabling highlights if the highlight line matches the execution line.
+
+2017-06-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Uncaught Exception: TypeError: null is not an object (evaluating 'this.contentBrowser.contentViewForRepresentedObject')
+        https://bugs.webkit.org/show_bug.cgi?id=173425
+        <rdar://problem/32744172>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WebInspector.ContentBrowserTabContentView.prototype.shown):
+        Reorder slightly so the NavigationSidebar has its ContentBrowser set
+        before anyone tries to restore views in the sidebar.
+
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        (WebInspector.DebuggerSidebarPanel.prototype.showDefaultContentView):
+        Try to select a script/resource content view instead of nothing.
+
+        (WebInspector.DebuggerSidebarPanel.prototype.saveStateToCookie):
+        When a resource is selected, save it using the normal path.
+
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WebInspector.NetworkSidebarPanel.prototype.canShowDifferentContentView):
+        Remove a reference to an unused / stale member variable.
+
+2017-06-14  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Pretty print / type info / code coverage buttons disappear after switching tabs
+        https://bugs.webkit.org/show_bug.cgi?id=162515
+        <rdar://problem/28455322>
+
+        Reviewed by Joseph Pecoraro.
+
+        Each ContentView owns a list of NavigationItems. When the ContentView moves across
+        Tabs (ContentBrowsers) it removes its NavigationItems from the old Tab's NavigationBar
+        and adds them to the new Tab's NavigationBar. When switching back to the original tab
+        the ContentView is restored, but its NavigationItems are not carried back.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WebInspector.ContentBrowser.prototype._updateContentViewNavigationItems):
+        Add a forceUpdate parameter that is needed when navigationItems are unchanged but navigationBar is
+        different.
+
+        (WebInspector.ContentBrowser.prototype._removeAllNavigationItems):
+        Remove navigation items even when their navigationBar is no longer a current navigationBar,
+        e.g. a navigationBar of the previous tab.
+
+        (WebInspector.ContentBrowser.prototype._contentViewNavigationItemsDidChange):
+        * UserInterface/Views/ContentViewContainer.js:
+        (WebInspector.ContentViewContainer.prototype._takeOwnershipOfContentView):
+
+2017-06-14  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: REGRESSION: SVG files and favicon don't display properly
+        https://bugs.webkit.org/show_bug.cgi?id=173389
+        <rdar://problem/32774281>
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/ImageResourceContentView.css:
+        (.content-view.resource.image img):
+        Don't set a `min-width` as it has odd interactions with flexbox.
+
 2017-06-13  Nikita Vasilyev  <nvasilyev@apple.com>
 
         Web Inspector: Console: Message icons overlay source location

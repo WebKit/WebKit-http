@@ -1,3 +1,164 @@
+2017-06-28  Stephan Szabo  <stephan.szabo@am.sony.com>
+
+        [Win] Build JSCOnly on Windows with clang-cl
+        https://bugs.webkit.org/show_bug.cgi?id=173889
+
+        Reviewed by Konstantin Tokarev.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsMSVC.cmake:
+
+2017-06-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] User script messages don't work
+        https://bugs.webkit.org/show_bug.cgi?id=173712
+
+        Reviewed by Žan Doberšek.
+
+        Enable user script messages.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-23  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Enable PUBLIC_SUFFIX_LIST
+        https://bugs.webkit.org/show_bug.cgi?id=173758
+
+        Reviewed by Žan Doberšek.
+
+        WebsiteDataStore needs it when fetching data.
+
+        Fixes: /wpe/WebKitCookieManager/accept-policy
+               /wpe/WebKitCookieManager/delete-cookies
+               /wpe/WebKitCookieManager/cookies-changed
+               /wpe/WebKitCookieManager/persistent-storage
+               /wpe/WebKitCookieManager/ephemeral
+               /wpe/WebKitWebsiteData/ephemeral
+               /wpe/WebKitWebsiteData/cache
+               /wpe/WebKitWebsiteData/storage
+               /wpe/WebKitWebsiteData/databases
+               /wpe/WebKitWebsiteData/appcache
+               /wpe/WebKitWebsiteData/cookies
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-22  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add initial web extensions API
+        https://bugs.webkit.org/show_bug.cgi?id=173640
+
+        Reviewed by Žan Doberšek.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-21  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [MSVC] Fix compilation in CP932 (Shift_JIS) environment
+        https://bugs.webkit.org/show_bug.cgi?id=173638
+
+        Reviewed by Alex Christensen.
+
+        Give "/utf-8 /validate-charset" options to the MSVC compiler
+        to specify the source code encoding.
+
+        * Source/cmake/OptionsMSVC.cmake:
+
+2017-06-21  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] Fix the condition to enable/disable GSTREAMER_GL
+        https://bugs.webkit.org/show_bug.cgi?id=173650
+
+        Reviewed by Carlos Garcia Campos.
+
+        If GSTREAMER_GL is enabled, check for the GStreamer version. If the version is < 1.10, disable
+        GSTREAMER_GL and continue. If the version is >= 1.10 but there's no gstreamer-gl package available
+        then fail.
+
+        * Source/cmake/FindGStreamer.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-06-21  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK] Enable GStreamer GL by default on production builds
+        https://bugs.webkit.org/show_bug.cgi?id=173406
+
+        Reviewed by Carlos Garcia Campos.
+
+        Enable GStreamer GL by default when the GStreamer version >= 1.10.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-06-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Move WebGtkExtensionManager and WebGtkInjectedBundleMain to glib API dir
+        https://bugs.webkit.org/show_bug.cgi?id=173606
+
+        Reviewed by Žan Doberšek.
+
+        Update public symbols that were renamed.
+
+        * Source/cmake/gtksymbols.filter:
+
+2017-06-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI imports
+        https://bugs.webkit.org/show_bug.cgi?id=172927
+
+        Reviewed by Jiewen Tan, Michael Catanzaro and Carlos Garcia Campos.
+
+        * Source/cmake/FindLibtasn1.cmake: Added.
+        * Source/cmake/OptionsGTK.cmake: Require libtasn1 when SUBTLE_CRYPTO is enabled.
+        * Source/cmake/OptionsWPE.cmake: Ditto.
+
+2017-06-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [WPE] Add initial implementation of glib API
+        https://bugs.webkit.org/show_bug.cgi?id=173546
+
+        Reviewed by Žan Doberšek.
+
+        Add some definitions required to build WPE glib API.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-06-18  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.17.4 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-06-16  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * Source/cmake/WebKitFS.cmake:
+        Add new DerivedSources/WTF directory.
+
+2017-06-15  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] ADD_PRECOMPILED_HEADER should append OBJECT_DEPENDS, not overwrite it
+        https://bugs.webkit.org/show_bug.cgi?id=173428
+
+        Reviewed by Michael Catanzaro.
+
+        Right now, if any of source files that are passed to
+        ADD_PRECOMPILED_HEADER have non-empty OBJECT_DEPENDS property (e.g.
+        changed with ADD_SOURCE_DEPENDENCIES call), its value is lost.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-06-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Do not use the C API in WebGtkExtensionManager
+        https://bugs.webkit.org/show_bug.cgi?id=173408
+
+        Reviewed by Michael Catanzaro.
+
+        Update exported symbol signature.
+
+        * Source/cmake/gtksymbols.filter:
+
 2017-06-09  Zan Dobersek  <zdobersek@igalia.com>
 
         [WPE] Enable ENCRYPTED_MEDIA for build-webkit builds

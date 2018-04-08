@@ -29,7 +29,6 @@
 #include "MediaProducer.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
-#include "PlatformScreen.h"
 #include "RTCController.h"
 #include "Region.h"
 #include "ScrollTypes.h"
@@ -41,11 +40,10 @@
 #include "WheelEventTestTrigger.h"
 #include <memory>
 #include <wtf/Forward.h>
-#include <wtf/HashMap.h>
+#include <wtf/Function.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
 #include <wtf/UniqueRef.h>
 #include <wtf/text/WTFString.h>
 
@@ -193,7 +191,7 @@ public:
 
     PageGroup& group();
 
-    WEBCORE_EXPORT static void forEachPage(WTF::Function<void(Page&)>&&);
+    static void forEachPage(const WTF::Function<void(Page&)>&);
 
     void incrementSubframeCount() { ++m_subframeCount; }
     void decrementSubframeCount() { ASSERT(m_subframeCount); --m_subframeCount; }
@@ -202,7 +200,7 @@ public:
     void incrementNestedRunLoopCount();
     void decrementNestedRunLoopCount();
     bool insideNestedRunLoop() const { return m_nestedRunLoopCount > 0; }
-    WEBCORE_EXPORT void whenUnnested(std::function<void()>);
+    WEBCORE_EXPORT void whenUnnested(WTF::Function<void()>&&);
 
 #if ENABLE(REMOTE_INSPECTOR)
     WEBCORE_EXPORT bool remoteInspectionAllowed() const;
@@ -515,7 +513,7 @@ public:
 
     PluginInfoProvider& pluginInfoProvider();
 
-    WEBCORE_EXPORT UserContentProvider& userContentProvider();
+    UserContentProvider& userContentProvider();
     WEBCORE_EXPORT void setUserContentProvider(Ref<UserContentProvider>&&);
 
     VisitedLinkStore& visitedLinkStore();
@@ -680,7 +678,7 @@ private:
     RTCController m_rtcController;
 
     int m_nestedRunLoopCount { 0 };
-    std::function<void()> m_unnestCallback;
+    WTF::Function<void()> m_unnestCallback;
 
     int m_subframeCount { 0 };
     String m_groupName;

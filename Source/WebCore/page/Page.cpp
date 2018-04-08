@@ -150,7 +150,7 @@ static inline bool isUtilityPageChromeClient(ChromeClient& chromeClient)
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
-void Page::forEachPage(Function<void(Page&)>&& function)
+void Page::forEachPage(const WTF::Function<void(Page&)>& function)
 {
     if (!allPages)
         return;
@@ -281,13 +281,15 @@ Page::Page(PageConfiguration&& pageConfiguration)
     if (!allPages) {
         allPages = new HashSet<Page*>;
         
-        networkStateNotifier().addNetworkStateChangeListener(networkStateChanged);
+        networkStateNotifier().addNetworkStateChangeListener(WTF::Function<void (bool)> { networkStateChanged });
     }
 
     ASSERT(!allPages->contains(this));
     allPages->add(this);
-    if (!isUtilityPage())
+    if (!isUtilityPage()) {
         ++nonUtilityPageCount;
+        MemoryPressureHandler::setPageCount(nonUtilityPageCount);
+    }
 
 #ifndef NDEBUG
     pageCounter.increment();
@@ -313,8 +315,10 @@ Page::~Page()
     m_mainFrame->setView(nullptr);
     setGroupName(String());
     allPages->remove(this);
-    if (!isUtilityPage())
+    if (!isUtilityPage()) {
         --nonUtilityPageCount;
+        MemoryPressureHandler::setPageCount(nonUtilityPageCount);
+    }
     
     m_settings->pageDestroyed();
 
@@ -1691,13 +1695,6 @@ void Page::setIsVisibleInternal(bool isVisible)
         }
     }
 
-    Vector<Ref<Document>> documents;
-    for (Frame* frame = &m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
-        documents.append(*frame->document());
-
-    for (auto& document : documents)
-        document->visibilityStateChanged();
-
     if (!isVisible) {
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().suspendAnimations();
@@ -1707,11 +1704,19 @@ void Page::setIsVisibleInternal(bool isVisible)
 #if PLATFORM(IOS)
         suspendDeviceMotionAndOrientationUpdates();
 #endif
+
         suspendScriptedAnimations();
 
         if (FrameView* view = mainFrame().view())
             view->hide();
     }
+
+    Vector<Ref<Document>> documents;
+    for (Frame* frame = &m_mainFrame.get(); frame; frame = frame->tree().traverseNext())
+        documents.append(*frame->document());
+
+    for (auto& document : documents)
+        document->visibilityStateChanged();
 }
 
 void Page::setIsPrerender()
@@ -1783,19 +1788,18 @@ void Page::decrementNestedRunLoopCount()
 
             // This callback may destruct the Page.
             if (m_unnestCallback) {
-                auto callback = m_unnestCallback;
-                m_unnestCallback = nullptr;
+                auto callback = WTFMove(m_unnestCallback);
                 callback();
             }
         });
     }
 }
 
-void Page::whenUnnested(std::function<void()> callback)
+void Page::whenUnnested(WTF::Function<void()>&& callback)
 {
     ASSERT(!m_unnestCallback);
 
-    m_unnestCallback = callback;
+    m_unnestCallback = WTFMove(callback);
 }
 
 #if ENABLE(REMOTE_INSPECTOR)

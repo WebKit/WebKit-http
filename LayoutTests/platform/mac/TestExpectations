@@ -865,7 +865,7 @@ webkit.org/b/139789 media/media-controls-timeline-updates.html [ Pass Failure ]
 webkit.org/b/139825 media/video-seek-past-end-paused.html [ Pass Timeout ]
 webkit.org/b/141084 http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
-webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Timeout ]
 webkit.org/b/147944 media/video-seek-to-current-time.html [ Pass Failure ]
 webkit.org/b/114177 media/event-queue-crash.html [ Pass Failure ]
 webkit.org/b/150408 http/tests/media/video-load-suspend.html [ Pass Timeout ]
@@ -1232,7 +1232,6 @@ webkit.org/b/159724 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/sen
 
 # WOFF2 is only supported on certain Operating Systems.
 webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/woff2.html [ ImageOnlyFailure ]
-webkit.org/b/150830 [ Yosemite ElCapitan ] fast/text/variations/font-face-format-woff2.html [ ImageOnlyFailure ]
 
 webkit.org/b/162668 fast/text/woff2-totalsfntsize.html [ ImageOnlyFailure ]
 
@@ -1415,14 +1414,9 @@ webkit.org/b/162830 [ Debug ] fast/events/tabindex-focus-blur-all.html [ Pass Ti
 
 webkit.org/b/127116 [ Debug ] svg/custom/animate-initial-pause-unpause.html [ Pass Failure ]
 
-# Variation fonts are not implemented earlier than Sierra.
-[ ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
-[ ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
-
-# This test makes sure that variation fonts are disabled on OSes which don't support them. So,
-# the test should be skipped on OSes which do support them. As soon as all OSes support them,
-# we should delete the test.
-[ Sierra+ ] fast/text/font-variations-feature-detection.html [ ImageOnlyFailure ]
+# Variation fonts are not implemented earlier than High Sierra.
+[ Sierra ElCapitan Yosemite ] fast/text/variations [ Pass Failure ImageOnlyFailure ]
+[ Sierra ElCapitan Yosemite ] animations/font-variations [ Pass Failure ImageOnlyFailure Timeout ]
 
 [ Debug ] fast/selectors/slow-style-sharing-with-long-cousin-list.html [ Skip ]
 
@@ -1464,8 +1458,6 @@ webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-opti
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/167642 imported/w3c/web-platform-tests/shadow-dom/slotchange.html [ Pass Failure ]
-
-webkit.org/b/167757 [ Sierra Release ] workers/bomb.html [ Pass Timeout ]
 
 webkit.org/b/167749 http/tests/media/track-in-band-hls-metadata-crash.html [ Pass Timeout ]
 
@@ -1552,6 +1544,7 @@ media/modern-media-controls/audio [ Pass ]
 media/modern-media-controls/background-tint [ Pass ]
 media/modern-media-controls/button [ Pass ]
 media/modern-media-controls/buttons-container [ Pass ]
+media/modern-media-controls/controls-bar [ Pass ]
 media/modern-media-controls/controls-visibility-support [ Pass ]
 media/modern-media-controls/forward-button [ Pass ]
 media/modern-media-controls/fullscreen-button [ Pass ]
@@ -1562,6 +1555,10 @@ media/modern-media-controls/layout-item [ Pass ]
 media/modern-media-controls/layout-node [ Pass ]
 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag-is-prevented-over-button.html [ Pass ]
 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-drag.html [ Pass ]
+media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-controls-hidden-when-mute-button-disabled.html [ Pass ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-mute-button-in-bottom-or-top-right-controls-bar.html [ Pass ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled.html [ Pass ]
+media/modern-media-controls/media-documents [ Pass ]
 media/modern-media-controls/mute-button [ Pass ]
 media/modern-media-controls/mute-support [ Pass ]
 media/modern-media-controls/pip-button [ Pass ]
@@ -1584,6 +1581,9 @@ media/modern-media-controls/volume-up-support [ Pass ]
 # These tests are iOS-specific
 media/modern-media-controls/audio/audio-controls-styles.html [ Skip ]
 media/modern-media-controls/placard-support/ipad [ Skip ]
+media/modern-media-controls/media-documents/ipad [ Skip ]
+media/modern-media-controls/media-documents/media-document-audio-ios-sizing.html [ Skip ]
+media/modern-media-controls/media-documents/media-document-video-ios-sizing.html [ Skip ]
 
 # These tests use Picture-in-Picture which isn't supported on El Capitan.
 [ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
@@ -1591,3 +1591,13 @@ media/modern-media-controls/placard-support/ipad [ Skip ]
 webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
 
 webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html [ Pass Failure ]
+
+webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback-emoji.html [ Failure ]
+webkit.org/b/173328 [ ElCapitan Sierra ] fast/text/system-font-fallback.html [ ImageOnlyFailure ]
+
+webkit.org/b/173487 imported/w3c/web-platform-tests/IndexedDB/large-nested-cloning.html [ Pass Failure ]
+
+webkit.org/b/313156 [ ElCapitan ] fast/text/system-font-japanese-synthetic-italic.html [ ImageOnlyFailure ]
+
+webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-to-canvas.html [ Pass Failure ]
+

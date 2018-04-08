@@ -49,7 +49,6 @@
 #include "Path.h"
 #include "PlatformMouseEvent.h"
 #include "PluginViewBase.h"
-#include "RenderLayer.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -301,8 +300,7 @@ void RenderEmbeddedObject::paintReplaced(PaintInfo& paintInfo, const LayoutPoint
     FontCascade font;
     TextRun run(emptyString());
     float textWidth;
-    if (!getReplacementTextGeometry(paintOffset, contentRect, indicatorRect, replacementTextRect, arrowRect, font, run, textWidth))
-        return;
+    getReplacementTextGeometry(paintOffset, contentRect, indicatorRect, replacementTextRect, arrowRect, font, run, textWidth);
 
     Path background;
     background.addRoundedRect(indicatorRect, FloatSize(replacementTextRoundedRectRadius, replacementTextRoundedRectRadius));
@@ -349,7 +347,20 @@ void RenderEmbeddedObject::setUnavailablePluginIndicatorIsHidden(bool hidden)
     repaint();
 }
 
-bool RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, FontCascade& font, TextRun& run, float& textWidth) const
+LayoutRect RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumulatedOffset) const
+{
+    FloatRect contentRect;
+    FloatRect indicatorRect;
+    FloatRect replacementTextRect;
+    FloatRect arrowRect;
+    FontCascade font;
+    TextRun run(emptyString());
+    float textWidth;
+    getReplacementTextGeometry(accumulatedOffset, contentRect, indicatorRect, replacementTextRect, arrowRect, font, run, textWidth);
+    return LayoutRect(indicatorRect);
+}
+
+void RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumulatedOffset, FloatRect& contentRect, FloatRect& indicatorRect, FloatRect& replacementTextRect, FloatRect& arrowRect, FontCascade& font, TextRun& run, float& textWidth) const
 {
     bool includesArrow = shouldUnavailablePluginMessageBeButton(page(), m_pluginUnavailabilityReason);
 
@@ -381,91 +392,11 @@ bool RenderEmbeddedObject::getReplacementTextGeometry(const LayoutPoint& accumul
         arrowRect.setWidth(arrowRect.height());
         indicatorRect.unite(arrowRect);
     }
-
-    return true;
 }
 
 LayoutRect RenderEmbeddedObject::unavailablePluginIndicatorBounds(const LayoutPoint& accumulatedOffset) const
 {
-    FloatRect contentRect;
-    FloatRect indicatorRect;
-    FloatRect replacementTextRect;
-    FloatRect arrowRect;
-    FontCascade font;
-    TextRun run(emptyString());
-    float textWidth;
-    if (getReplacementTextGeometry(accumulatedOffset, contentRect, indicatorRect, replacementTextRect, arrowRect, font, run, textWidth))
-        return LayoutRect(indicatorRect);
-
-    return LayoutRect();
-}
-
-bool RenderEmbeddedObject::isReplacementObscured() const
-{
-    // Return whether or not the replacement content for blocked plugins is accessible to the user.
-
-    // Check the opacity of each layer containing the element or its ancestors.
-    float opacity = 1.0;
-    for (RenderLayer* layer = enclosingLayer(); layer; layer = layer->parent()) {
-        opacity *= layer->renderer().style().opacity();
-        if (opacity < 0.1)
-            return true;
-    }
-
-    // Calculate the absolute rect for the blocked plugin replacement text.
-    IntRect absoluteBoundingBox = absoluteBoundingBoxRect();
-    LayoutPoint absoluteLocation(absoluteBoundingBox.location());
-    LayoutRect rect = unavailablePluginIndicatorBounds(absoluteLocation);
-    if (rect.isEmpty())
-        return true;
-
-    RenderView* rootRenderView = document().topDocument().renderView();
-    ASSERT(rootRenderView);
-    if (!rootRenderView)
-        return true;
-
-    // We should always start hit testing a clean tree.
-    view().frameView().updateLayoutAndStyleIfNeededRecursive();
-
-    HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::Active | HitTestRequest::IgnoreClipping | HitTestRequest::DisallowUserAgentShadowContent | HitTestRequest::AllowChildFrameContent);
-    HitTestResult result;
-    HitTestLocation location;
-    
-    IntRect rootViewRect = view().frameView().convertToRootView(snappedIntRect(rect));
-    LayoutUnit x = rootViewRect.x();
-    LayoutUnit y = rootViewRect.y();
-    LayoutUnit width = rootViewRect.width();
-    LayoutUnit height = rootViewRect.height();
-    
-    // Hit test the center and near the corners of the replacement text to ensure
-    // it is visible and is not masked by other elements.
-    bool hit = false;
-    location = LayoutPoint(x + width / 2, y + height / 2);
-    hit = rootRenderView->hitTest(request, location, result);
-    if (!hit || result.innerNode() != &frameOwnerElement())
-        return true;
-    
-    location = LayoutPoint(x, y);
-    hit = rootRenderView->hitTest(request, location, result);
-    if (!hit || result.innerNode() != &frameOwnerElement())
-        return true;
-    
-    location = LayoutPoint(x + width, y);
-    hit = rootRenderView->hitTest(request, location, result);
-    if (!hit || result.innerNode() != &frameOwnerElement())
-        return true;
-    
-    location = LayoutPoint(x + width, y + height);
-    hit = rootRenderView->hitTest(request, location, result);
-    if (!hit || result.innerNode() != &frameOwnerElement())
-        return true;
-    
-    location = LayoutPoint(x, y + height);
-    hit = rootRenderView->hitTest(request, location, result);
-    if (!hit || result.innerNode() != &frameOwnerElement())
-        return true;
-
-    return false;
+    return getReplacementTextGeometry(accumulatedOffset);
 }
 
 void RenderEmbeddedObject::layout()
@@ -580,15 +511,7 @@ bool RenderEmbeddedObject::logicalScroll(ScrollLogicalDirection direction, Scrol
 
 bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const FloatPoint& point) const
 {
-    FloatRect contentRect;
-    FloatRect indicatorRect;
-    FloatRect replacementTextRect;
-    FloatRect arrowRect;
-    FontCascade font;
-    TextRun run(emptyString());
-    float textWidth;
-    return getReplacementTextGeometry(IntPoint(), contentRect, indicatorRect, replacementTextRect, arrowRect, font, run, textWidth)
-        && indicatorRect.contains(point);
+    return getReplacementTextGeometry(LayoutPoint()).contains(LayoutPoint(point));
 }
 
 bool RenderEmbeddedObject::isInUnavailablePluginIndicator(const MouseEvent& event) const

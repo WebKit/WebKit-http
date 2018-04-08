@@ -1,3 +1,111 @@
+2017-06-28  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173896
+
+        Reviewed by Dan Bernstein.
+
+        Remove the workaround build fix in r218863.
+
+        * PAL.xcodeproj/project.pbxproj: We should be using PROJECT_DIR instead of SRCROOT
+        when in a nested Xcode project.
+
+2017-06-27  Jonathan Bedard  <jbedard@apple.com>
+
+        Build fix for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=173896
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj: Ensure that the SRCROOT is WebCore/PAL and not
+        just WebCore.
+
+2017-06-27  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Add symbol export macros for PAL
+        https://bugs.webkit.org/show_bug.cgi?id=171519
+
+        Reviewed by Konstantin Tokarev.
+
+        No new tests. No change in behavior.
+
+        * Configurations/CopyPALHeaders.xcconfig: Added.
+        * PAL.xcodeproj/project.pbxproj:
+        * config.h:
+        * pal/ExportMacros.h: Copied from Source/WebCore/platform/PlatformExportMacros.h.
+        * pal/PlatformWin.cmake:
+        * pal/crypto/CryptoDigest.h:
+
+2017-06-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyEC SPKI imports
+        https://bugs.webkit.org/show_bug.cgi?id=172927
+
+        Reviewed by Jiewen Tan, Michael Catanzaro and Carlos Garcia Campos.
+
+        Add a file that provides utility functions for operating with libtasn1 APIs.
+
+        The precomputed ASN.1 declarations, generated from the WebCrypto.asn file with
+        the asn1Parser tool, are used to enable construction of ASN.1 structures that
+        are then used to decode the SPKI or PKCS#8 data through the decodeStructure()
+        function. Raw data of each element in that structure can be retrieved throug the
+        elementData() function.
+
+        The Structure class is added as a wrapper for asn1_node objects that are used
+        as decoding targets, simplifying lifetime management of these objects.
+
+        * pal/PlatformGTK.cmake:
+        * pal/PlatformWPE.cmake:
+        * pal/crypto/tasn1/Utilities.cpp: Added.
+        (PAL::TASN1::asn1Definitions):
+        (PAL::TASN1::decodeStructure):
+        (PAL::TASN1::elementData):
+        * pal/crypto/tasn1/Utilities.h: Added.
+        (PAL::TASN1::Structure::~Structure):
+        (PAL::TASN1::Structure::operator&):
+        (PAL::TASN1::Structure::operator asn1_node):
+        * pal/crypto/tasn1/WebCrypto.asn: Added.
+
+2017-06-20  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Disable font variations on macOS Sierra and iOS 10
+        https://bugs.webkit.org/show_bug.cgi?id=173618
+        <rdar://problem/32879164>
+
+        Reviewed by Jon Lee.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed build fix after r218484.
+
+        * pal/crypto/gcrypt/Utilities.h: Drop the GCrypt prefix from the
+        GCryptCipherOperation type definition, since it's already nested
+        in the PAL::GCrypt namespace.
+
+2017-06-19  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] AES_CTR support
+        https://bugs.webkit.org/show_bug.cgi?id=171420
+
+        Reviewed by Michael Catanzaro.
+
+        * pal/crypto/gcrypt/Utilities.h: Add a GCryptCipherOperation type alias that can be used
+        for the gcry_cipher_decrypt or gcry_cipher_encrypt function pointers.
+
+2017-06-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Upstream iOS drag and drop implementation into OpenSource WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=173366
+        <rdar://problem/32767014>
+
+        Reviewed by Tim Horton.
+
+        Introduce ENABLE_DATA_INTERACTION and ENABLE_DRAG_SUPPORT to FeatureDefines.xcconfig.
+
+        * Configurations/FeatureDefines.xcconfig:
+
 2017-06-10  Dan Bernstein  <mitz@apple.com>
 
         Reverted r218056 because it made the IDE reindex constantly.

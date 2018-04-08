@@ -31,7 +31,6 @@
 #include "HTMLNames.h"
 #include "SelectorPseudoTypeMap.h"
 #include <wtf/Assertions.h>
-#include <wtf/HashMap.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -697,7 +696,7 @@ String CSSSelector::selectorText(const String& rightSide) const
                     break;
             }
             if (cs->match() != CSSSelector::Set) {
-                serializeString(cs->serializingValue(), str, true);
+                serializeString(cs->serializingValue(), str);
                 if (cs->attributeValueMatchingIsCaseInsensitive())
                     str.appendLiteral(" i]");
                 else

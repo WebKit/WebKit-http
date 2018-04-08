@@ -30,7 +30,7 @@
 #include "ContextDestructionObserver.h"
 #include "ExceptionOr.h"
 #include "JSDOMPromiseDeferred.h"
-#include "OrientationNotifer.h"
+#include "OrientationNotifier.h"
 #include "PageConsoleClient.h"
 #include "RealtimeMediaSource.h"
 #include <runtime/Float32Array.h>
@@ -125,6 +125,7 @@ public:
     void resetImageAnimation(HTMLImageElement&);
     bool isImageAnimating(HTMLImageElement&);
     void setClearDecoderAfterAsyncFrameRequestForTesting(HTMLImageElement&, bool);
+    unsigned imageDecodeCount(HTMLImageElement&);
 
     void setGridMaxTracksLimit(unsigned);
 
@@ -152,6 +153,7 @@ public:
     ExceptionOr<bool> isTimerThrottled(int timeoutId);
     bool isRequestAnimationFrameThrottled() const;
     double requestAnimationFrameInterval() const;
+    bool scriptedAnimationsAreSuspended() const;
     bool areTimersThrottled() const;
 
     enum EventThrottlingBehavior { Responsive, Unresponsive };
@@ -473,8 +475,10 @@ public:
 #if ENABLE(VIDEO)
     ExceptionOr<void> beginMediaSessionInterruption(const String&);
     void endMediaSessionInterruption(const String&);
-    void applicationDidEnterForeground() const;
-    void applicationWillEnterBackground() const;
+    void applicationWillBecomeInactive();
+    void applicationDidBecomeActive();
+    void applicationWillEnterForeground(bool suspendedUnderLock) const;
+    void applicationDidEnterBackground(bool suspendedUnderLock) const;
     ExceptionOr<void> setMediaSessionRestrictions(const String& mediaType, StringView restrictionsString);
     ExceptionOr<String> mediaSessionRestrictions(const String& mediaType) const;
     void setMediaElementRestrictions(HTMLMediaElement&, StringView restrictionsString);
@@ -576,6 +580,10 @@ public:
 #endif
 
     void setPageVisibility(bool isVisible);
+
+#if ENABLE(WEB_RTC)
+    void setH264HardwareEncoderAllowed(bool allowed);
+#endif
 
 #if ENABLE(MEDIA_STREAM)
     void setCameraMediaStreamTrackOrientation(MediaStreamTrack&, int orientation);

@@ -28,12 +28,10 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBBackingStore.h"
-#include "IDBBindingUtilities.h"
 #include "IDBDatabaseIdentifier.h"
 #include "IDBDatabaseInfo.h"
 #include "IDBGetResult.h"
 #include "ServerOpenDBRequest.h"
-#include "ThreadSafeDataBuffer.h"
 #include "Timer.h"
 #include "UniqueIDBDatabaseConnection.h"
 #include "UniqueIDBDatabaseTransaction.h"
@@ -48,6 +46,7 @@
 #include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC {
+class ExecState;
 class VM;
 }
 
@@ -266,8 +265,8 @@ private:
 
     bool m_deleteBackingStoreInProgress { false };
 
-    CrossThreadQueue<CrossThreadTask> m_databaseQueue;
-    CrossThreadQueue<CrossThreadTask> m_databaseReplyQueue;
+    CrossThreadQueue<Function<void ()>> m_databaseQueue;
+    CrossThreadQueue<Function<void ()>> m_databaseReplyQueue;
     std::atomic<uint64_t> m_queuedTaskCount { 0 };
 
     bool m_hardClosedForUserDelete { false };

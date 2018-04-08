@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef IntPoint_h
-#define IntPoint_h
+#pragma once
 
 #include "IntSize.h"
 #include <cmath>
@@ -220,4 +219,3 @@ WEBCORE_EXPORT TextStream& operator<<(TextStream&, const IntPoint&);
 
 } // namespace WebCore
 
-#endif // IntPoint_h

@@ -133,8 +133,10 @@
 #import <WebCore/DocumentLoader.h>
 #import <WebCore/DragController.h>
 #import <WebCore/DragData.h>
+#import <WebCore/DragItem.h>
 #import <WebCore/Editing.h>
 #import <WebCore/Editor.h>
+#import <WebCore/Event.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FontCache.h>
@@ -212,6 +214,7 @@
 #import <mach-o/dyld.h>
 #import <objc/runtime.h>
 #import <runtime/ArrayPrototype.h>
+#import <runtime/CatchScope.h>
 #import <runtime/DateInstance.h>
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSCJSValue.h>
@@ -1820,18 +1823,27 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 }
 #endif
 
-#if ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
+
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
     return _private->page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
 }
 
-- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(std::optional<TextIndicatorData>)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
+- (void)_startDrag:(const DragItem&)dragItem
 {
+    auto& dragImage = dragItem.image;
+    auto image = dragImage.get().get();
+    auto indicatorData = dragImage.indicatorData();
+
     if (indicatorData)
-        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()] retain];
+        _private->textIndicatorData = adoptNS([[WebUITextIndicatorData alloc] initWithImage:image textIndicatorData:indicatorData.value() scale:_private->page->deviceScaleFactor()]);
     else
-        _private->textIndicatorData = [[[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()] retain];
+        _private->textIndicatorData = adoptNS([[WebUITextIndicatorData alloc] initWithImage:image scale:_private->page->deviceScaleFactor()]);
+    _private->draggedLinkURL = dragItem.url.isEmpty() ? nil : (NSURL *)dragItem.url;
+    _private->draggedLinkTitle = dragItem.title.isEmpty() ? nil : (NSString *)dragItem.title;
+    _private->draggedElementBounds = dragItem.elementBounds;
+    _private->dragSourceAction = static_cast<WebDragSourceAction>(dragItem.sourceAction);
 }
 
 - (CGRect)_dataInteractionCaretRect
@@ -1847,116 +1859,101 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     return _private->dataOperationTextIndicator.get();
 }
 
+- (WebDragSourceAction)_dragSourceAction
+{
+    return _private->dragSourceAction;
+}
+
+- (NSString *)_draggedLinkTitle
+{
+    return _private->draggedLinkTitle.get();
+}
+
+- (NSURL *)_draggedLinkURL
+{
+    return _private->draggedLinkURL.get();
+}
+
+- (CGRect)_draggedElementBounds
+{
+    return _private->draggedElementBounds;
+}
+
 - (WebUITextIndicatorData *)_getDataInteractionData
 {
-    return _private->textIndicatorData;
+    return _private->textIndicatorData.get();
 }
 
-static Vector<FloatRect> floatRectsForCGRectArray(NSArray<NSValue *> *rectValues)
+- (WebDragDestinationAction)dragDestinationActionMaskForSession:(id <UIDropSession>)session
 {
-    Vector<FloatRect> rects;
-    for (NSValue *rectValue in rectValues)
-        rects.append(rectValue.CGRectValue);
-    return rects;
+    return [self._UIDelegateForwarder webView:self dragDestinationActionMaskForSession:session];
 }
 
-- (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
+- (DragData)dragDataForSession:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
-    if (!_private->page)
-        return nil;
-
-    if (!image)
-        return nil;
-
-    CGFloat imageScaleFactor = contentScaleFactor / _private->page->deviceScaleFactor();
-    CGRect imagePaintBounds = CGRectMake(0, 0, CGRectGetWidth(boundingRect) * imageScaleFactor, CGRectGetHeight(boundingRect) * imageScaleFactor);
-    UIGraphicsBeginImageContextWithOptions(imagePaintBounds.size, NO, _private->page->deviceScaleFactor());
-    CGContextRef newContext = UIGraphicsGetCurrentContext();
-
-    auto scaledClippingRects = floatRectsForCGRectArray(clippingRects);
-    for (auto& textBoundingRect : scaledClippingRects)
-        textBoundingRect.scale(imageScaleFactor);
-
-    if (!scaledClippingRects.isEmpty()) {
-        auto webcorePath = PathUtilities::pathWithShrinkWrappedRects(scaledClippingRects, 6 * imageScaleFactor);
-        [[getUIBezierPathClass() bezierPathWithCGPath:webcorePath.ensurePlatformPath()] addClip];
-    }
-
-    // FIXME: This should match the background color of the text, or if the background cannot be captured as a single color, we should fall back
-    // to a default representation, e.g. black text on a white background.
-    CGContextSetFillColorWithColor(newContext, [(UIColor *)[getUIColorClass() whiteColor] CGColor]);
-    for (auto textBoundingRect : scaledClippingRects)
-        CGContextFillRect(newContext, textBoundingRect);
-
-    CGContextTranslateCTM(newContext, 0, CGRectGetHeight(imagePaintBounds));
-    CGContextScaleCTM(newContext, 1, -1);
-    CGContextDrawImage(newContext, imagePaintBounds, image.CGImage);
-
-    UIImage *previewImage = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
-
-    return [previewImage retain];
+    auto dragOperationMask = static_cast<DragOperation>(operation);
+    auto dragDestinationMask = static_cast<DragDestinationAction>([self dragDestinationActionMaskForSession:session]);
+    return { session, roundedIntPoint(clientPosition), roundedIntPoint(globalPosition), dragOperationMask, DragApplicationNone, dragDestinationMask };
 }
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebViewAdditions.mm>)
-#include <WebKitAdditions/WebViewAdditions.mm>
-#endif
-
-#else
-- (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
+- (uint64_t)_enteredDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
-    return NO;
-}
-- (void)_setDataInteractionData:(CGImageRef)image textIndicator:(TextIndicatorData&)indicatorData atClientPosition:(CGPoint)clientPosition anchorPoint:(CGPoint)anchorPoint action:(uint64_t)action
-{
-}
-- (WebUITextIndicatorData *)_getDataInteractionData
-{
-    return nil;
-}
-- (uint64_t)_enteredDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
-{
-    return 0;
+    WebThreadLock();
+    auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
+    return _private->page->dragController().dragEntered(dragData);
 }
 
-- (uint64_t)_updatedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+- (uint64_t)_updatedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
-    return 0;
+    WebThreadLock();
+    auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
+    return _private->page->dragController().dragUpdated(dragData);
 }
-- (void)_exitedDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+- (void)_exitedDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
+    WebThreadLock();
+    auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
+    _private->page->dragController().dragExited(dragData);
 }
-- (void)_performDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+- (void)_performDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
+    [self _tryToPerformDataInteraction:session client:clientPosition global:globalPosition operation:operation];
 }
 
-- (BOOL)_tryToPerformDataInteraction:(id)dataInteraction client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
+- (BOOL)_tryToPerformDataInteraction:(id <UIDropSession>)session client:(CGPoint)clientPosition global:(CGPoint)globalPosition operation:(uint64_t)operation
 {
-    return NO;
+    WebThreadLock();
+    auto dragData = [self dragDataForSession:session client:clientPosition global:globalPosition operation:operation];
+    return _private->page->dragController().performDragOperation(dragData);
 }
 
 - (void)_endedDataInteraction:(CGPoint)clientPosition global:(CGPoint)globalPosition
 {
+    WebThreadLock();
+    _private->page->dragController().dragEnded();
+    _private->dataOperationTextIndicator = nullptr;
+    _private->draggedElementBounds = CGRectNull;
+    _private->dragSourceAction = WebDragSourceActionNone;
+    _private->draggedLinkTitle = nil;
+    _private->draggedLinkURL = nil;
 }
 
-- (WebUITextIndicatorData *)_dataOperationTextIndicator
+- (void)_didConcludeEditDataInteraction
 {
-    return nil;
+    _private->dataOperationTextIndicator = nullptr;
+    auto* page = _private->page;
+    if (!page)
+        return;
+
+    static auto defaultEditDragTextIndicatorOptions = TextIndicatorOptionIncludeSnapshotOfAllVisibleContentWithoutSelection | TextIndicatorOptionExpandClipBeyondVisibleRect | TextIndicatorOptionPaintAllContent | TextIndicatorOptionIncludeMarginIfRangeMatchesSelection | TextIndicatorOptionPaintBackgrounds | TextIndicatorOptionUseSelectionRectForSizing | TextIndicatorOptionIncludeSnapshotWithSelectionHighlight | TextIndicatorOptionRespectTextColor;
+    auto& frame = page->focusController().focusedOrMainFrame();
+    if (auto range = frame.selection().selection().toNormalizedRange()) {
+        if (auto textIndicator = TextIndicator::createWithRange(*range, defaultEditDragTextIndicatorOptions, TextIndicatorPresentationTransition::None, FloatSize()))
+            _private->dataOperationTextIndicator = adoptNS([[WebUITextIndicatorData alloc] initWithImage:nil textIndicatorData:textIndicator->data() scale:page->deviceScaleFactor()]);
+    }
 }
 
-#if PLATFORM(IOS)
-- (UIImage *)_createImageWithPlatterForImage:(UIImage *)image boundingRect:(CGRect)boundingRect contentScaleFactor:(CGFloat)contentScaleFactor clippingRects:(NSArray<NSValue *> *)clippingRects
-{
-    return nil;
-}
-
-- (CGRect)_dataInteractionCaretRect
-{
-    return CGRectNull;
-}
-#endif
-
-#endif // ENABLE(DATA_INTERACTION) && defined(__cplusplus)
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(IOS)
 
 static NSMutableSet *knownPluginMIMETypes()
 {
@@ -2839,7 +2836,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
     settings.setAccelerated2dCanvasEnabled([preferences accelerated2dCanvasEnabled]);
     settings.setLoadDeferringEnabled(shouldEnableLoadDeferring());
     settings.setWindowFocusRestricted(shouldRestrictWindowFocus());
-    settings.setFrameFlatteningEnabled([preferences isFrameFlatteningEnabled]);
+    settings.setFrameFlattening((const WebCore::FrameFlattening)[preferences frameFlattening]);
+    settings.setAsyncFrameScrollingEnabled([preferences asyncFrameScrollingEnabled]);
     settings.setSpatialNavigationEnabled([preferences isSpatialNavigationEnabled]);
     settings.setPaginateDuringLayoutEnabled([preferences paginateDuringLayoutEnabled]);
 

@@ -30,10 +30,8 @@
 #include "CachedResourceHandle.h"
 #include "CachedResourceRequest.h"
 #include "ContentSecurityPolicy.h"
-#include "ResourceLoadPriority.h"
 #include "ResourceTimingInformation.h"
 #include "Timer.h"
-#include <wtf/Deque.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/ListHashSet.h>
@@ -79,7 +77,7 @@ public:
     CachedResourceHandle<CachedScript> requestScript(CachedResourceRequest&&);
     CachedResourceHandle<CachedFont> requestFont(CachedResourceRequest&&, bool isSVG);
     CachedResourceHandle<CachedRawResource> requestMedia(CachedResourceRequest&&);
-    CachedResourceHandle<CachedRawResource> requestFavicon(CachedResourceRequest&&);
+    CachedResourceHandle<CachedRawResource> requestIcon(CachedResourceRequest&&);
     CachedResourceHandle<CachedRawResource> requestRawResource(CachedResourceRequest&&);
     CachedResourceHandle<CachedRawResource> requestMainResource(CachedResourceRequest&&);
     CachedResourceHandle<CachedSVGDocument> requestSVGDocument(CachedResourceRequest&&);

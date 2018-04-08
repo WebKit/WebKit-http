@@ -50,6 +50,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/EnumTraits.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Expected.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Function.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
@@ -99,6 +100,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     ${JAVASCRIPTCORE_DIR}
+    ${PAL_DIR}
     ${THIRDPARTY_DIR}/gtest/include
     ${WEBKIT2_DIR}/Platform/IPC
     ${WEBKIT2_DIR}/Shared

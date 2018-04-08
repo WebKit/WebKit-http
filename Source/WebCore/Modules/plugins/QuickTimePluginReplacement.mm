@@ -34,6 +34,9 @@
 #import "HTMLPlugInElement.h"
 #import "HTMLVideoElement.h"
 #import "JSDOMBinding.h"
+#import "JSDOMConvertNullable.h"
+#import "JSDOMConvertSequences.h"
+#import "JSDOMConvertStrings.h"
 #import "JSDOMGlobalObject.h"
 #import "JSHTMLVideoElement.h"
 #import "JSQuickTimePluginReplacement.h"
@@ -43,12 +46,14 @@
 #import "ScriptController.h"
 #import "ScriptSourceCode.h"
 #import "Settings.h"
+#import "ShadowRoot.h"
 #import "UserAgentScripts.h"
 #import <AVFoundation/AVMetadataItem.h>
 #import <Foundation/NSString.h>
 #import <JavaScriptCore/APICast.h>
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <objc/runtime.h>
+#import <runtime/CatchScope.h>
 #import <wtf/text/Base64.h>
 
 #import "CoreMediaSoftLink.h"

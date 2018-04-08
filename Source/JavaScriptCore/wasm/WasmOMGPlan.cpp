@@ -88,7 +88,12 @@ void OMGPlan::work(CompilationEffort)
     }
 
     Entrypoint omgEntrypoint;
-    LinkBuffer linkBuffer(*context.wasmEntrypointJIT, nullptr);
+    LinkBuffer linkBuffer(*context.wasmEntrypointJIT, nullptr, JITCompilationCanFail);
+    if (UNLIKELY(linkBuffer.didFailToAllocate())) {
+        Base::fail(holdLock(m_lock), makeString("Out of executable memory while tiering up function at index ", String::number(m_functionIndex)));
+        return;
+    }
+
     omgEntrypoint.compilation = std::make_unique<B3::Compilation>(
         FINALIZE_CODE(linkBuffer, ("WebAssembly OMG function[%i] %s", m_functionIndex, SignatureInformation::get(signatureIndex).toString().ascii().data())),
         WTFMove(context.wasmEntrypointByproducts));
@@ -161,7 +166,6 @@ void runOMGPlanForIndex(Context* context, uint32_t functionIndex)
     JSWebAssemblyCodeBlock* codeBlock = context->codeBlock();
     ASSERT(context->memoryMode() == codeBlock->m_codeBlock->mode());
 
-    // We use the least significant bit of the tierUpCount to represent whether or not someone has already started the tier up.
     if (codeBlock->m_codeBlock->tierUpCount(functionIndex).shouldStartTierUp()) {
         Ref<Plan> plan = adoptRef(*new OMGPlan(context->module()->module(), functionIndex, codeBlock->m_codeBlock->mode(), Plan::dontFinalize()));
         ensureWorklist().enqueue(plan.copyRef());

@@ -740,7 +740,6 @@ fast/events/popup-blocking-click-in-iframe.html
 fast/events/popup-blocking-timers1.html
 fast/events/popup-blocking-timers2.html
 fast/events/popup-blocking-timers3.html
-fast/events/popup-blocking-timers4.html
 fast/events/popup-blocking-timers5.html
 fast/events/popup-blocking-timers6.html
 fast/events/popup-when-select-change.html
@@ -1858,7 +1857,7 @@ webkit.org/b/160368 http/tests/xmlhttprequest/workers/methods-async.html [ Pass 
 webkit.org/b/161323 media/track/media-element-enqueue-event-crash.html [ Skip ]
 webkit.org/b/161323 media/track/track-remove-crash.html [ Skip ]
 
-webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Pass Failure ]
+webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Timeout ]
 webkit.org/b/161491 media/video-main-content-allow-then-scroll.html [ Pass Failure ]
 
 webkit.org/b/160591 http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure Timeout ]
@@ -1872,7 +1871,6 @@ webkit.org/b/165814 imported/w3c/web-platform-tests/html/browsers/browsing-the-w
 webkit.org/b/161359 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-top.html [ Pass Failure ]
 webkit.org/b/161631 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/scroll-to-fragid/scroll-to-id-top.html [ Pass Failure ]
 
-webkit.org/b/169523 imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/NavigatorID.worker.html [ Failure ]
 webkit.org/b/169523 imported/w3c/web-platform-tests/IndexedDB/fire-error-event-exception.html [ Failure ]
 webkit.org/b/169760 imported/w3c/web-platform-tests/IndexedDB/fire-success-event-exception.html [ Pass Failure ]
 
@@ -1929,8 +1927,6 @@ webkit.org/b/171564 http/tests/local/blob/send-sliced-data-blob.html [ Pass Fail
 
 webkit.org/b/171613 http/tests/xmlhttprequest/supported-xml-content-types.html [ Pass Timeout ]
 
-webkit.org/b/171617 [ Release ] perf/object-keys.html [ Pass Failure ]
-
 webkit.org/b/171331 http/tests/preload/single_download_preload.html [ Pass Failure ]
 
 webkit.org/b/170699 [ Release ] imported/w3c/web-platform-tests/html/webappapis/timers/negative-settimeout.html [ Pass Failure ]
@@ -1970,4 +1966,9 @@ webkit.org/b/171895 webrtc/audio-replace-track.html [ Pass Failure ]
 
 webkit.org/b/170870 webrtc/captureCanvas-webrtc.html [ Pass Timeout ]
 
-webkit.org/b/167757 [ Release ] workers/bomb.html [ Pass Timeout ]
+webkit.org/b/173486 webrtc/video-replace-muted-track.html [ Skip ]
+
+webkit.org/b/17373 fast/forms/file/input-file-write-files-using-open-panel.html [ Skip ]
+
+webkit.org/b/173726 animations/play-state-suspend.html [ Pass Failure ]
+

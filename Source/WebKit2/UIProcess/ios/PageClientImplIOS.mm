@@ -55,6 +55,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextIndicator.h>
 #import <WebCore/ValidationBubble.h>
+#import <wtf/BlockPtr.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, m_webView->_page->process().connection())
 
@@ -785,9 +786,9 @@ void PageClientImpl::didHandleStartDataInteractionRequest(bool started)
     [m_contentView _didHandleStartDataInteractionRequest:started];
 }
 
-void PageClientImpl::startDataInteractionWithImage(const IntPoint& clientPosition, const ShareableBitmap::Handle& image, std::optional<WebCore::TextIndicatorData> indicatorData, const FloatPoint& anchorPoint, uint64_t action)
+void PageClientImpl::startDrag(const DragItem& item, const ShareableBitmap::Handle& image)
 {
-    [m_contentView _startDataInteractionWithImage:ShareableBitmap::create(image)->makeCGImageCopy() withIndicatorData:indicatorData atClientPosition:CGPointMake(clientPosition.x(), clientPosition.y()) anchorPoint:anchorPoint action:action];
+    [m_contentView _startDrag:ShareableBitmap::create(image)->makeCGImageCopy() item:item];
 }
 
 void PageClientImpl::didConcludeEditDataInteraction(std::optional<TextIndicatorData> data)
@@ -807,20 +808,20 @@ void PageClientImpl::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSes
 }
 
 #if USE(QUICK_LOOK)
-void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName, std::function<void(const String&)>&& completionHandler)
+void PageClientImpl::requestPasswordForQuickLookDocument(const String& fileName, WTF::Function<void(const String&)>&& completionHandler)
 {
-    auto passwordHandler = [completionHandler = WTFMove(completionHandler)](NSString *password) {
+    auto passwordHandler = BlockPtr<void (NSString *)>::fromCallable([completionHandler = WTFMove(completionHandler)](NSString *password) {
         completionHandler(password);
-    };
+    });
 
     if (WKPasswordView *passwordView = m_webView._passwordView) {
         ASSERT(fileName == String { passwordView.documentName });
         [passwordView showPasswordFailureAlert];
-        passwordView.userDidEnterPassword = passwordHandler;
+        passwordView.userDidEnterPassword = passwordHandler.get();
         return;
     }
 
-    [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler];
+    [m_webView _showPasswordViewWithDocumentName:fileName passwordHandler:passwordHandler.get()];
     NavigationState::fromWebPage(*m_webView->_page).didRequestPasswordForQuickLookDocument();
 }
 #endif

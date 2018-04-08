@@ -103,27 +103,11 @@ InjectedScript.prototype = {
         return InjectedScript.RemoteObject.createObjectPreviewForValue(value, true);
     },
 
-    functionDetails: function(func, previewOnly)
+    functionDetails: function(func)
     {
         var details = InjectedScriptHost.functionDetails(func);
         if (!details)
             return "Cannot resolve function details.";
-
-        // FIXME: provide function scope data in "scopesRaw" property when JSC supports it.
-        // <https://webkit.org/b/87192> [JSC] expose function (closure) inner context to debugger
-        if ("rawScopes" in details) {
-            if (previewOnly)
-                delete details.rawScopes;
-            else {
-                var objectGroupName = this._idToObjectGroupName[parsedFunctionId.id];
-                var rawScopes = details.rawScopes;
-                var scopes = [];
-                delete details.rawScopes;
-                for (var i = 0; i < rawScopes.length; i++)
-                    scopes.push(InjectedScript.CallFrameProxy._createScopeJson(rawScopes[i].type, rawScopes[i].object, objectGroupName));
-                details.scopeChain = scopes;
-            }
-        }
 
         return details;
     },
@@ -248,6 +232,14 @@ InjectedScript.prototype = {
             result = null;
         }
         return result;
+    },
+
+    getPreview: function(objectId)
+    {
+        let parsedObjectId = this._parseObjectId(objectId);
+        let object = this._objectForId(parsedObjectId);
+
+        return InjectedScript.RemoteObject.createObjectPreviewForValue(object, true);
     },
 
     _getProperties: function(objectId, collectionMode, generatePreview, nativeGettersAsValues)
@@ -480,7 +472,7 @@ InjectedScript.prototype = {
                 commandLineAPI = new BasicCommandLineAPI(isEvalOnCallFrame ? object : null);
         }
 
-        var result = evalFunction.call(object, expression, commandLineAPI);        
+        var result = evalFunction.call(object, expression, commandLineAPI);
         if (saveResult)
             this._saveResult(result);
         return result;
@@ -1314,7 +1306,7 @@ InjectedScript.CallFrameProxy = function(ordinal, callFrame)
     this.functionName = callFrame.functionName;
     this.location = {scriptId: String(callFrame.sourceID), lineNumber: callFrame.line, columnNumber: callFrame.column};
     this.scopeChain = this._wrapScopeChain(callFrame);
-    this.this = injectedScript._wrapObject(callFrame.thisObject, "backtrace", false, true);
+    this.this = injectedScript._wrapObject(callFrame.thisObject, "backtrace");
     this.isTailDeleted = callFrame.isTailDeleted;
 }
 

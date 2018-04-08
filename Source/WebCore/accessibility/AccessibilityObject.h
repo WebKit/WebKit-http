@@ -38,6 +38,7 @@
 #include "VisiblePosition.h"
 #include "VisibleSelection.h"
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
@@ -666,6 +667,10 @@ public:
     void ariaControlsReferencingElements(AccessibilityChildrenVector&) const;
     void ariaDescribedByElements(AccessibilityChildrenVector&) const;
     void ariaDescribedByReferencingElements(AccessibilityChildrenVector&) const;
+    void ariaDetailsElements(AccessibilityChildrenVector&) const;
+    void ariaDetailsReferencingElements(AccessibilityChildrenVector&) const;
+    void ariaErrorMessageElements(AccessibilityChildrenVector&) const;
+    void ariaErrorMessageReferencingElements(AccessibilityChildrenVector&) const;
     void ariaFlowToElements(AccessibilityChildrenVector&) const;
     void ariaFlowToReferencingElements(AccessibilityChildrenVector&) const;
     void ariaLabelledByElements(AccessibilityChildrenVector&) const;
@@ -1113,7 +1118,7 @@ public:
     AccessibilityObject* editableAncestor();
     AccessibilityObject* highestEditableAncestor();
     
-    static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const std::function<bool(const AccessibilityObject&)>&);
+    static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const WTF::Function<bool(const AccessibilityObject&)>&);
     
     void clearIsIgnoredFromParentData() { m_isIgnoredFromParentData = AccessibilityIsIgnoredFromParentData(); }
     void setIsIgnoredFromParentDataForChild(AccessibilityObject*);

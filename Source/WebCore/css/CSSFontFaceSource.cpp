@@ -29,14 +29,13 @@
 #include "CSSFontFace.h"
 #include "CSSFontSelector.h"
 #include "CachedFont.h"
-#include "CachedResourceLoader.h"
 #include "Document.h"
-#include "ElementIterator.h"
 #include "Font.h"
 #include "FontCache.h"
 #include "FontCustomPlatformData.h"
 #include "FontDescription.h"
 #include "SVGToOTFFontConversion.h"
+#include "SharedBuffer.h"
 
 #if ENABLE(SVG_FONTS)
 #include "CachedSVGFont.h"
@@ -108,6 +107,8 @@ void CSSFontFaceSource::fontLoaded(CachedFont& loadedFont)
 {
     ASSERT_UNUSED(loadedFont, &loadedFont == m_font.get());
 
+    Ref<CSSFontFace> protectedFace(m_face);
+
     // If the font is in the cache, this will be synchronously called from CachedFont::addClient().
     if (m_status == Status::Pending)
         setStatus(Status::Loading);
@@ -120,7 +121,7 @@ void CSSFontFaceSource::fontLoaded(CachedFont& loadedFont)
     if (m_face.webFontsShouldAlwaysFallBack())
         return;
 
-    if (m_font->errorOccurred())
+    if (m_font->errorOccurred() || !m_font->ensureCustomFontData(m_familyNameOrURI))
         setStatus(Status::Failure);
     else
         setStatus(Status::Success);
@@ -193,10 +194,13 @@ RefPtr<Font> CSSFontFaceSource::font(const FontDescription& fontDescription, boo
     }
 
     if (m_font) {
-        if (!m_font->ensureCustomFontData(m_familyNameOrURI))
-            return nullptr;
+        auto success = m_font->ensureCustomFontData(m_familyNameOrURI);
+        ASSERT_UNUSED(success, success);
 
-        return m_font->createFont(fontDescription, m_familyNameOrURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
+        ASSERT(status() == Status::Success);
+        auto result = m_font->createFont(fontDescription, m_familyNameOrURI, syntheticBold, syntheticItalic, fontFaceFeatures, fontFaceVariantSettings, fontFaceCapabilities);
+        ASSERT(result);
+        return result;
     }
 
     // In-Document SVG Fonts

@@ -39,6 +39,7 @@
 #include "BooleanConstructor.h"
 #include "BooleanPrototype.h"
 #include "BuiltinNames.h"
+#include "CatchScope.h"
 #include "ClonedArguments.h"
 #include "CodeBlock.h"
 #include "CodeCache.h"
@@ -102,7 +103,6 @@
 #include "JSPromise.h"
 #include "JSPromiseConstructor.h"
 #include "JSPromisePrototype.h"
-#include "JSPropertyNameIterator.h"
 #include "JSSet.h"
 #include "JSSetIterator.h"
 #include "JSStringIterator.h"
@@ -156,6 +156,7 @@
 #include "StringPrototype.h"
 #include "Symbol.h"
 #include "SymbolConstructor.h"
+#include "SymbolObject.h"
 #include "SymbolPrototype.h"
 #include "VariableWriteFireDetail.h"
 #include "WeakGCMapInlines.h"
@@ -289,7 +290,6 @@ const GlobalObjectMethodTable JSGlobalObject::s_globalObjectMethodTable = {
   Float32Array          JSGlobalObject::m_typedArrayFloat32          DontEnum|ClassStructure
   Float64Array          JSGlobalObject::m_typedArrayFloat64          DontEnum|ClassStructure
   DataView              JSGlobalObject::m_typedArrayDataView         DontEnum|ClassStructure
-  Set                   JSGlobalObject::m_setStructure               DontEnum|ClassStructure
   Date                  JSGlobalObject::m_dateStructure              DontEnum|ClassStructure
   Boolean               JSGlobalObject::m_booleanObjectStructure     DontEnum|ClassStructure
   Number                JSGlobalObject::m_numberObjectStructure      DontEnum|ClassStructure
@@ -325,6 +325,7 @@ JSGlobalObject::JSGlobalObject(VM& vm, Structure* structure, const GlobalObjectM
     , m_arrayIteratorProtocolWatchpoint(IsWatched)
     , m_mapIteratorProtocolWatchpoint(IsWatched)
     , m_setIteratorProtocolWatchpoint(IsWatched)
+    , m_stringIteratorProtocolWatchpoint(IsWatched)
     , m_mapSetWatchpoint(IsWatched)
     , m_setAddWatchpoint(IsWatched)
     , m_arraySpeciesWatchpoint(ClearWatchpoint)
@@ -587,8 +588,6 @@ void JSGlobalObject::init(VM& vm)
     m_sharedArrayBufferStructure.set(vm, this, JSArrayBuffer::createStructure(vm, this, m_sharedArrayBufferPrototype.get()));
 
     m_iteratorPrototype.set(vm, this, IteratorPrototype::create(vm, this, IteratorPrototype::createStructure(vm, this, m_objectPrototype.get())));
-
-    m_propertyNameIteratorStructure.set(vm, this, JSPropertyNameIterator::createStructure(vm, this, m_iteratorPrototype.get()));
     m_generatorPrototype.set(vm, this, GeneratorPrototype::create(vm, this, GeneratorPrototype::createStructure(vm, this, m_iteratorPrototype.get())));
 
 #define CREATE_PROTOTYPE_FOR_SIMPLE_TYPE(capitalName, lowerName, properName, instanceType, jsName, prototypeBase) \
@@ -728,6 +727,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
     JSFunction* privateFuncFloor = JSFunction::create(vm, this, 0, String(), mathProtoFuncFloor, FloorIntrinsic);
     JSFunction* privateFuncTrunc = JSFunction::create(vm, this, 0, String(), mathProtoFuncTrunc, TruncIntrinsic);
 
+    JSFunction* privateFuncGetOwnPropertyNames = JSFunction::create(vm, this, 0, String(), objectConstructorGetOwnPropertyNames);
     JSFunction* privateFuncPropertyIsEnumerable = JSFunction::create(vm, this, 0, String(), globalFuncPropertyIsEnumerable);
     JSFunction* privateFuncImportModule = JSFunction::create(vm, this, 0, String(), globalFuncImportModule);
     JSFunction* privateFuncTypedArrayLength = JSFunction::create(vm, this, 0, String(), typedArrayViewPrivateFuncLength);
@@ -780,7 +780,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->NaN, jsNaN(), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->Infinity, jsNumber(std::numeric_limits<double>::infinity()), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->undefinedKeyword, jsUndefined(), DontEnum | DontDelete | ReadOnly),
-        GlobalPropertyInfo(vm.propertyNames->builtinNames().ownEnumerablePropertyKeysPrivateName(), JSFunction::create(vm, this, 0, String(), ownEnumerablePropertyKeys), DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().getOwnPropertyNamesPrivateName(), privateFuncGetOwnPropertyNames, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().propertyIsEnumerablePrivateName(), privateFuncPropertyIsEnumerable, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().importModulePrivateName(), privateFuncImportModule, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().enqueueJobPrivateName(), JSFunction::create(vm, this, 0, String(), enqueueJob), DontEnum | DontDelete | ReadOnly),
@@ -820,6 +820,7 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
         GlobalPropertyInfo(vm.propertyNames->builtinNames().hostPromiseRejectionTrackerPrivateName(), JSFunction::create(vm, this, 2, String(), globalFuncHostPromiseRejectionTracker), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().InspectorInstrumentationPrivateName(), InspectorInstrumentationObject::create(vm, this, InspectorInstrumentationObject::createStructure(vm, this, m_objectPrototype.get())), DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().MapPrivateName(), mapConstructor, DontEnum | DontDelete | ReadOnly),
+        GlobalPropertyInfo(vm.propertyNames->builtinNames().SetPrivateName(), setConstructor, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().thisTimeValuePrivateName(), privateFuncThisTimeValue, DontEnum | DontDelete | ReadOnly),
         GlobalPropertyInfo(vm.propertyNames->builtinNames().thisNumberValuePrivateName(), privateFuncThisNumberValue, DontEnum | DontDelete | ReadOnly),
 #if ENABLE(INTL)
@@ -937,7 +938,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
             m_arrayIteratorPrototypeNext = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_arrayIteratorProtocolWatchpoint);
             m_arrayIteratorPrototypeNext->install();
         }
-
         {
             ObjectPropertyCondition condition = setupAdaptiveWatchpoint(this->arrayPrototype(), m_vm.propertyNames->iteratorSymbol);
             m_arrayPrototypeSymbolIteratorWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_arrayIteratorProtocolWatchpoint);
@@ -949,7 +949,6 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
             m_mapIteratorPrototypeNextWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_mapIteratorProtocolWatchpoint);
             m_mapIteratorPrototypeNextWatchpoint->install();
         }
-
         {
             ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_mapPrototype.get(), m_vm.propertyNames->iteratorSymbol);
             m_mapPrototypeSymbolIteratorWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_mapIteratorProtocolWatchpoint);
@@ -961,11 +960,21 @@ putDirectWithoutTransition(vm, vm.propertyNames-> jsName, lowerName ## Construct
             m_setIteratorPrototypeNextWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_setIteratorProtocolWatchpoint);
             m_setIteratorPrototypeNextWatchpoint->install();
         }
-
         {
             ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_setPrototype.get(), m_vm.propertyNames->iteratorSymbol);
             m_setPrototypeSymbolIteratorWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_setIteratorProtocolWatchpoint);
             m_setPrototypeSymbolIteratorWatchpoint->install();
+        }
+
+        {
+            ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringIteratorPrototype.get(), m_vm.propertyNames->next);
+            m_stringIteratorPrototypeNextWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_stringIteratorProtocolWatchpoint);
+            m_stringIteratorPrototypeNextWatchpoint->install();
+        }
+        {
+            ObjectPropertyCondition condition = setupAdaptiveWatchpoint(m_stringPrototype.get(), m_vm.propertyNames->iteratorSymbol);
+            m_stringPrototypeSymbolIteratorWatchpoint = std::make_unique<ObjectPropertyChangeAdaptiveWatchpoint<InlineWatchpointSet>>(vm, condition, m_stringIteratorProtocolWatchpoint);
+            m_stringPrototypeSymbolIteratorWatchpoint->install();
         }
 
         {
@@ -1260,7 +1269,6 @@ void JSGlobalObject::visitChildren(JSCell* cell, SlotVisitor& visitor)
     thisObject->m_callbackConstructorStructure.visit(visitor);
     thisObject->m_callbackFunctionStructure.visit(visitor);
     thisObject->m_callbackObjectStructure.visit(visitor);
-    visitor.append(thisObject->m_propertyNameIteratorStructure);
 #if JSC_OBJC_API_ENABLED
     thisObject->m_objcCallbackFunctionStructure.visit(visitor);
     thisObject->m_objcWrapperObjectStructure.visit(visitor);

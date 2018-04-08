@@ -1,3 +1,182 @@
+2017-06-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Refactor drag start codepaths to plumb a DragItem to client layers
+        https://bugs.webkit.org/show_bug.cgi?id=173832
+        Work towards <rdar://problem/32236827>
+
+        Reviewed by Ryosuke Niwa and Tim Horton.
+
+        Adjust for changes to WebDragClient::startDrag by pulling information out of DragItem.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (WebDragClient::startDrag):
+        * WebCoreSupport/WebDragClient.h:
+
+2017-06-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Remove excessive headers from JavaScriptCore
+        https://bugs.webkit.org/show_bug.cgi?id=173812
+
+        Reviewed by Darin Adler.
+
+        * Plugins/PluginPackage.cpp:
+
+2017-06-22  Daniel Bates  <dabates@apple.com>
+
+        Make FrameLoadRequest a move-only type
+        https://bugs.webkit.org/show_bug.cgi?id=173682
+
+        Reviewed by Alex Christensen and Darin Adler.
+
+        A FrameLoadRequest groups together the information to perform a load into a single object
+        that is more manageable to pass around than its constituent parts. Code that receives a
+        FrameLoadRequest is expected to extract out the information it needs to complete its task.
+        And it does not make sense to re-use the same FrameLoadRequest object for more than one
+        load. Therefore, it is sufficient to make FrameLoadRequest a move-only type.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::start):
+        (WebCore::PluginView::performRequest):
+        (WebCore::PluginView::load):
+        (WebCore::PluginView::getURLNotify):
+        (WebCore::PluginView::getURL):
+        (WebCore::PluginView::handlePost):
+        * Plugins/PluginView.h:
+        (WebCore::PluginRequest::PluginRequest):
+
+2017-06-22  Daniel Bates  <dabates@apple.com>
+
+        [Win] Cleanup: Remove unnecessary include of header FrameLoadRequest.h
+        https://bugs.webkit.org/show_bug.cgi?id=173683
+
+        Reviewed by Alex Christensen.
+
+        Neither file PluginViewWin.cpp nor WebContextMenuClient.cpp need to include
+        header FrameLoadRequest.h. The former includes FrameLoadRequest.h indirectly
+        by including PluginView.h. The latter does not make use of the functionality
+        provided by FrameLoadRequest.h.
+
+        * Plugins/PluginViewWin.cpp:
+        * WebCoreSupport/WebContextMenuClient.cpp:
+
+2017-06-21  Daniel Bates  <dabates@apple.com>
+
+        Cleanup FrameLoadRequest
+        https://bugs.webkit.org/show_bug.cgi?id=173564
+        <rdar://problem/32903570>
+
+        Reviewed by Brent Fulgham.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::start): Explicitly pass an empty ResourceRequest (we populate it after
+        we instantiate the FrameLoadRequest) and pass the null-string for the target frame name as
+        we do not have one. Use C++11 brace initialization syntax.
+        (WebCore::PluginView::getURLNotify): Explicitly pass the null-string for the target frame
+        name as we do not have one. Use C++11 brace initialization syntax.
+        (WebCore::PluginView::getURL): Ditto.
+        (WebCore::PluginView::handlePost): Move instantiation of FrameLoadRequest from the top of the
+        function to closer to where it is actually used. Explicitly pass the null-string for the target
+        frame name as we do not have one. Use C++11 brace initialization syntax.
+
+2017-06-20  Daniel Bates  <dabates@apple.com>
+
+        Have FrameLoadRequest takes a Frame& instead of a Frame*
+        https://bugs.webkit.org/show_bug.cgi?id=173614
+        <rdar://problem/32884890>
+
+        Reviewed by Brent Fulgham.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+        * WebFrame.cpp:
+        (WebFrame::loadRequest):
+
+2017-06-19  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in more places in WebCore/
+        https://bugs.webkit.org/show_bug.cgi?id=173535
+
+        Reviewed by Antti Koivisto.
+
+        Use WTF::Function instead of std::function in more places in WebCore/ to avoid copying.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDecidePolicyForResponse):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction):
+        (WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction):
+        (WebFrameLoaderClient::dispatchWillSubmitForm):
+        (WebFrameLoaderClient::setUpPolicyListener):
+        (WebFrameLoaderClient::receivedPolicyDecision):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2017-05-14 Frederic Wang  <fwang@igalia.com>
+
+        Add heuristic to avoid flattening "fullscreen" iframes
+        https://bugs.webkit.org/show_bug.cgi?id=171914
+
+        Reviewed by Simon Fraser.
+
+        This commit ajusts the window port to internally use the new preference type for frame flattening.
+        However, the "partial frame flattening" value is not exposed yet.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged): Use the new type for frame flattening.
+
+2017-06-17  Chris Dumez  <cdumez@apple.com>
+
+        Use WTF::Function instead of std::function in WebKit2/
+        https://bugs.webkit.org/show_bug.cgi?id=173504
+
+        Reviewed by Darin Adler.
+
+        Use WTF::Function instead of std::function in WebKit2/ to avoid
+        unnecessary copying.
+
+        * Plugins/PluginStream.cpp:
+        (WebCore::PluginStream::willSendRequest):
+        * Plugins/PluginStream.h:
+
+2017-06-16  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for HTMLDocument
+        https://bugs.webkit.org/show_bug.cgi?id=173444
+
+        Reviewed by Darin Adler.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLDocument::write):
+        (DOMHTMLDocument::writeln):
+        Update for new signature of write/writeln.
+
+2017-06-16  Daniel Bates  <dabates@apple.com>
+
+        Cleanup: WebContextMenuClient::searchWithGoogle() should parse URL using URL { URL { }, ... }
+        instead of URL { ParsedURLString, ... }
+        https://bugs.webkit.org/show_bug.cgi?id=173495
+        <rdar://problem/32827445>
+
+        Reviewed by Alex Christensen.
+
+        URL(ParsedURLString, ...) should only be used with a string that was the result of URL::string().
+        Otherwise, it will cause an assertion failure if the canonicalized URL differs from the string.
+        Although it is unlikely that the hardcoded string in WebContextMenuClient::searchWithGoogle()
+        would differ from the canonicalized URL it is best practice to use URL(URL(), ...) to
+        parse an arbitrary string that looks like a URL.
+
+        Also modernize the code using C++14 idioms.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+
+2017-06-15  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Win] WebKit shouldn't include the forwarding header of WebKit itself
+        https://bugs.webkit.org/show_bug.cgi?id=173352
+
+        Reviewed by Alex Christensen.
+
+        * WebKitPrefix.h: Include WebKit.h of DerivedSources/WebKit instead of DerivedSources/ForwardingHeaders.
+
 2017-06-14  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] WebKit fails to paint the bottom lines of the window at 125% scale.

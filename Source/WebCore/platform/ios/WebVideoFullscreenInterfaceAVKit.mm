@@ -501,7 +501,7 @@ Ref<WebVideoFullscreenInterfaceAVKit> WebVideoFullscreenInterfaceAVKit::create(W
 WebVideoFullscreenInterfaceAVKit::WebVideoFullscreenInterfaceAVKit(WebPlaybackSessionInterfaceAVKit& playbackSessionInterface)
     : m_playbackSessionInterface(playbackSessionInterface)
     , m_playerViewControllerDelegate(adoptNS([[WebAVPlayerViewControllerDelegate alloc] init]))
-    , m_watchdogTimer(*this, &WebVideoFullscreenInterfaceAVKit::watchdogTimerFired)
+    , m_watchdogTimer(RunLoop::main(), this, &WebVideoFullscreenInterfaceAVKit::watchdogTimerFired)
 {
 }
 
@@ -844,7 +844,7 @@ void WebVideoFullscreenInterfaceAVKit::preparedToReturnToInline(bool visible, co
         
         [m_playerViewController view].frame = [m_parentView convertRect:inlineRect toView:[m_playerViewController view].superview];
 
-        std::function<void(bool)> callback = WTFMove(m_prepareToInlineCallback);
+        WTF::Function<void(bool)> callback = WTFMove(m_prepareToInlineCallback);
         callback(visible);
     }
 }
@@ -854,9 +854,9 @@ bool WebVideoFullscreenInterfaceAVKit::mayAutomaticallyShowVideoPictureInPicture
     return [playerController() isPlaying] && m_mode == HTMLMediaElementEnums::VideoFullscreenModeStandard && supportsPictureInPicture();
 }
 
-void WebVideoFullscreenInterfaceAVKit::fullscreenMayReturnToInline(std::function<void(bool)> callback)
+void WebVideoFullscreenInterfaceAVKit::fullscreenMayReturnToInline(WTF::Function<void(bool)>&& callback)
 {
-    m_prepareToInlineCallback = callback;
+    m_prepareToInlineCallback = WTFMove(callback);
     if (m_fullscreenChangeObserver)
         m_fullscreenChangeObserver->fullscreenMayReturnToInline();
 }
@@ -909,8 +909,11 @@ void WebVideoFullscreenInterfaceAVKit::failedToStartPictureInPicture()
 
 void WebVideoFullscreenInterfaceAVKit::willStopPictureInPicture()
 {
+    m_shouldReturnToFullscreenWhenStoppingPiP = false;
+    m_shouldReturnToFullscreenAfterEnteringForeground = false;
+
     LOG(Fullscreen, "WebVideoFullscreenInterfaceAVKit::willStopPictureInPicture(%p)", this);
-    if (hasMode(HTMLMediaElementEnums::VideoFullscreenModeStandard))
+    if (hasMode(HTMLMediaElementEnums::VideoFullscreenModeStandard) || m_restoringFullscreenForPictureInPictureStop)
         return;
 
     [m_window setHidden:NO];
@@ -923,13 +926,10 @@ void WebVideoFullscreenInterfaceAVKit::willStopPictureInPicture()
 void WebVideoFullscreenInterfaceAVKit::didStopPictureInPicture()
 {
     LOG(Fullscreen, "WebVideoFullscreenInterfaceAVKit::didStopPictureInPicture(%p)", this);
-    if (hasMode(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
+    if (hasMode(HTMLMediaElementEnums::VideoFullscreenModeStandard) || m_restoringFullscreenForPictureInPictureStop) {
         // ASSUMPTION: we are exiting pip because we are entering fullscreen
         clearMode(HTMLMediaElementEnums::VideoFullscreenModePictureInPicture);
         [m_playerViewController setShowsPlaybackControls:YES];
-
-        if (m_fullscreenChangeObserver)
-            m_fullscreenChangeObserver->didEnterFullscreen();
         return;
     }
 
@@ -950,14 +950,17 @@ void WebVideoFullscreenInterfaceAVKit::prepareForPictureInPictureStopWithComplet
     if (m_shouldReturnToFullscreenWhenStoppingPiP || m_shouldReturnToFullscreenAfterEnteringForeground) {
         m_shouldReturnToFullscreenWhenStoppingPiP = false;
         m_shouldReturnToFullscreenAfterEnteringForeground = false;
+        m_restoringFullscreenForPictureInPictureStop = true;
 
-        // ASSUMPTION: we are exiting pip because we are entering fullscreen
         [m_window setHidden:NO];
         [[m_playerViewController view] setHidden:NO];
 
         [m_playerViewController enterFullScreenAnimated:YES completionHandler:^(BOOL success, NSError*) {
+            m_restoringFullscreenForPictureInPictureStop = false;
             setMode(HTMLMediaElementEnums::VideoFullscreenModeStandard);
             completionHandler(success);
+            if (m_fullscreenChangeObserver)
+                m_fullscreenChangeObserver->didEnterFullscreen();
         }];
         return;
     }
@@ -998,7 +1001,7 @@ bool WebVideoFullscreenInterfaceAVKit::shouldExitFullscreenWithReason(WebVideoFu
 
 NO_RETURN_DUE_TO_ASSERT void WebVideoFullscreenInterfaceAVKit::watchdogTimerFired()
 {
-    LOG(Fullscreen, "WebVideoFullscreenInterfaceAVKit::watchdogTimerFired(%p) - no exit fullscreen response in %gs; forcing fullscreen hidden.", this, defaultWatchdogTimerInterval);
+    LOG(Fullscreen, "WebVideoFullscreenInterfaceAVKit::watchdogTimerFired(%p) - no exit fullscreen response in %gs; forcing fullscreen hidden.", this, defaultWatchdogTimerInterval.value());
     ASSERT_NOT_REACHED();
     [m_window setHidden:YES];
     [[m_playerViewController view] setHidden:YES];

@@ -165,7 +165,7 @@ void WebFrameLoaderClient::assignIdentifierToInitialRequest(unsigned long identi
     if (FrameLoader* frameLoader = loader->frameLoader())
         pageIsProvisionallyLoading = frameLoader->provisionalDocumentLoader() == loader;
 
-    webPage->injectedBundleResourceLoadClient().didInitiateLoadForResource(webPage, m_frame, identifier, request, pageIsProvisionallyLoading);
+    webPage->injectedBundleResourceLoadClient().didInitiateLoadForResource(*webPage, *m_frame, identifier, request, pageIsProvisionallyLoading);
     webPage->addResourceRequest(identifier, request);
 }
 
@@ -175,7 +175,7 @@ void WebFrameLoaderClient::dispatchWillSendRequest(DocumentLoader*, unsigned lon
     if (!webPage)
         return;
 
-    webPage->injectedBundleResourceLoadClient().willSendRequestForFrame(webPage, m_frame, identifier, request, redirectResponse);
+    webPage->injectedBundleResourceLoadClient().willSendRequestForFrame(*webPage, *m_frame, identifier, request, redirectResponse);
 }
 
 bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader*, unsigned long identifier)
@@ -184,7 +184,7 @@ bool WebFrameLoaderClient::shouldUseCredentialStorage(DocumentLoader*, unsigned 
     if (!webPage)
         return true;
 
-    return webPage->injectedBundleResourceLoadClient().shouldUseCredentialStorage(webPage, m_frame, identifier);
+    return webPage->injectedBundleResourceLoadClient().shouldUseCredentialStorage(*webPage, *m_frame, identifier);
 }
 
 void WebFrameLoaderClient::dispatchDidReceiveAuthenticationChallenge(DocumentLoader*, unsigned long, const AuthenticationChallenge& challenge)
@@ -214,7 +214,7 @@ void WebFrameLoaderClient::dispatchDidReceiveResponse(DocumentLoader*, unsigned 
     if (!webPage)
         return;
 
-    webPage->injectedBundleResourceLoadClient().didReceiveResponseForResource(webPage, m_frame, identifier, response);
+    webPage->injectedBundleResourceLoadClient().didReceiveResponseForResource(*webPage, *m_frame, identifier, response);
 }
 
 void WebFrameLoaderClient::dispatchDidReceiveContentLength(DocumentLoader*, unsigned long identifier, int dataLength)
@@ -223,7 +223,7 @@ void WebFrameLoaderClient::dispatchDidReceiveContentLength(DocumentLoader*, unsi
     if (!webPage)
         return;
 
-    webPage->injectedBundleResourceLoadClient().didReceiveContentLengthForResource(webPage, m_frame, identifier, dataLength);
+    webPage->injectedBundleResourceLoadClient().didReceiveContentLengthForResource(*webPage, *m_frame, identifier, dataLength);
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -242,7 +242,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoading(DocumentLoader*, unsigned lo
     if (!webPage)
         return;
 
-    webPage->injectedBundleResourceLoadClient().didFinishLoadForResource(webPage, m_frame, identifier);
+    webPage->injectedBundleResourceLoadClient().didFinishLoadForResource(*webPage, *m_frame, identifier);
     webPage->removeResourceRequest(identifier);
 }
 
@@ -252,7 +252,7 @@ void WebFrameLoaderClient::dispatchDidFailLoading(DocumentLoader*, unsigned long
     if (!webPage)
         return;
 
-    webPage->injectedBundleResourceLoadClient().didFailLoadForResource(webPage, m_frame, identifier, error);
+    webPage->injectedBundleResourceLoadClient().didFailLoadForResource(*webPage, *m_frame, identifier, error);
     webPage->removeResourceRequest(identifier);
 }
 
@@ -657,8 +657,8 @@ Frame* WebFrameLoaderClient::dispatchCreatePage(const NavigationAction& navigati
         return nullptr;
 
     // Just call through to the chrome client.
-    FrameLoadRequest request(m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest(), LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, navigationAction.shouldOpenExternalURLsPolicy());
-    Page* newPage = webPage->corePage()->chrome().createWindow(*m_frame->coreFrame(), request, WindowFeatures(), navigationAction);
+    FrameLoadRequest frameLoadRequest { m_frame->coreFrame()->document()->securityOrigin(), navigationAction.resourceRequest(), { }, LockHistory::No, LockBackForwardList::No, MaybeSendReferrer, AllowNavigationToInvalidURL::Yes, NewFrameOpenerPolicy::Allow, navigationAction.shouldOpenExternalURLsPolicy() };
+    Page* newPage = webPage->corePage()->chrome().createWindow(*m_frame->coreFrame(), frameLoadRequest, { }, navigationAction);
     if (!newPage)
         return nullptr;
     
@@ -674,7 +674,7 @@ void WebFrameLoaderClient::dispatchShow()
     webPage->show();
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction function)
+void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceResponse& response, const ResourceRequest& request, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage) {
@@ -713,7 +713,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForResponse(const ResourceRespons
     m_frame->didReceivePolicyDecision(listenerID, static_cast<PolicyAction>(policyAction), 0, downloadID);
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request, FormState* formState, const String& frameName, FramePolicyFunction function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const NavigationAction& navigationAction, const ResourceRequest& request, FormState* formState, const String& frameName, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage) {
@@ -749,7 +749,7 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNewWindowAction(const Navigati
     webPage->send(Messages::WebPageProxy::DecidePolicyForNewWindowAction(m_frame->frameID(), SecurityOriginData::fromFrame(coreFrame), navigationActionData, request, frameName, listenerID, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, FormState* formState, FramePolicyFunction function)
+void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const NavigationAction& navigationAction, const ResourceRequest& request, FormState* formState, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage) {
@@ -812,6 +812,11 @@ void WebFrameLoaderClient::dispatchDecidePolicyForNavigationAction(const Navigat
 
     WebCore::Frame* coreFrame = m_frame->coreFrame();
     WebDocumentLoader* documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().policyDocumentLoader());
+    if (!documentLoader) {
+        // FIXME: When we receive a redirect after the navigation policy has been decided for the initial request,
+        // the provisional load's DocumentLoader needs to receive navigation policy decisions. We need a better model for this state.
+        documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().provisionalDocumentLoader());
+    }
     if (!documentLoader)
         documentLoader = static_cast<WebDocumentLoader*>(coreFrame->loader().documentLoader());
 
@@ -893,7 +898,7 @@ void WebFrameLoaderClient::dispatchWillSendSubmitEvent(Ref<FormState>&& formStat
     webPage->injectedBundleFormClient().willSendSubmitEvent(webPage, &form, m_frame, sourceFrame, formState->textFieldValues());
 }
 
-void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, FramePolicyFunction function)
+void WebFrameLoaderClient::dispatchWillSubmitForm(FormState& formState, FramePolicyFunction&& function)
 {
     WebPage* webPage = m_frame->page();
     if (!webPage)
@@ -1701,7 +1706,7 @@ NSCachedURLResponse *WebFrameLoaderClient::willCacheResponse(DocumentLoader*, un
     if (!webPage)
         return response;
 
-    return webPage->injectedBundleResourceLoadClient().shouldCacheResponse(webPage, m_frame, identifier) ? response : nil;
+    return webPage->injectedBundleResourceLoadClient().shouldCacheResponse(*webPage, *m_frame, identifier) ? response : nil;
 }
 
 NSDictionary *WebFrameLoaderClient::dataDetectionContext()
@@ -1813,13 +1818,13 @@ void WebFrameLoaderClient::getLoadDecisionForIcon(const LinkIcon& icon, uint64_t
         webPage->send(Messages::WebPageProxy::GetLoadDecisionForIcon(icon, callbackID));
 }
 
-void WebFrameLoaderClient::finishedLoadingIcon(uint64_t loadIdentifier, SharedBuffer* data)
+void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackIdentifier, SharedBuffer* data)
 {
     if (WebPage* webPage { m_frame->page() }) {
         if (data)
-            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(loadIdentifier, { reinterpret_cast<const uint8_t*>(data->data()), data->size() }));
+            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(callbackIdentifier, { reinterpret_cast<const uint8_t*>(data->data()), data->size() }));
         else
-            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(loadIdentifier, { nullptr, 0 }));
+            webPage->send(Messages::WebPageProxy::FinishedLoadingIcon(callbackIdentifier, { nullptr, 0 }));
     }
 }
 

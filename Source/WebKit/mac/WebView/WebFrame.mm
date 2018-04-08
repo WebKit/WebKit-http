@@ -416,6 +416,12 @@ static NSURL *createUniqueWebDataURL();
     _private->coreFrame = 0;
 }
 
+- (WebHTMLView *)_webHTMLDocumentView
+{
+    id documentView = [_private->webFrameView documentView];    
+    return [documentView isKindOfClass:[WebHTMLView class]] ? (WebHTMLView *)documentView : nil;
+}
+
 - (void)_updateBackgroundAndUpdatesWhileOffscreen
 {
     WebView *webView = getWebView(self);
@@ -583,7 +589,6 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     return plainText(core(range), TextIteratorDefaultBehavior, true);
 }
 
-
 - (PaintBehavior)_paintBehaviorForDestinationContext:(CGContextRef)context
 {
 #if !PLATFORM(IOS)
@@ -597,13 +602,12 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
         return 0;
 
     // If we're drawing into a bitmap, we might be snapshotting, or drawing into a layer-backed view.
-    id documentView = [_private->webFrameView documentView];
-    if ([documentView isKindOfClass:[WebHTMLView class]]) {
+    if (WebHTMLView *htmlDocumentView = [self _webHTMLDocumentView]) {
 #if PLATFORM(IOS)
-        if ([[documentView window] isInSnapshottingPaint])
+        if ([[htmlDocumentView window] isInSnapshottingPaint])
             return PaintBehaviorSnapshotting;
 #endif
-        if ([(WebHTMLView *)documentView _web_isDrawingIntoLayer])
+        if ([htmlDocumentView _web_isDrawingIntoLayer])
             return 0;
     }
     
@@ -622,10 +626,12 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     GraphicsContext context(ctx);
 
 #if PLATFORM(IOS)
-    // FIXME: when <rdar://problem/9034977> is fixed there will be no need to do this here.
     WebCore::Frame *frame = core(self);
     if (WebCore::Page* page = frame->page())
         context.setIsAcceleratedContext(page->settings().acceleratedDrawingEnabled());
+#elif PLATFORM(MAC)
+    if (WebHTMLView *htmlDocumentView = [self _webHTMLDocumentView])
+        context.setIsAcceleratedContext([htmlDocumentView _web_isDrawingIntoAcceleratedLayer]);
 #endif
 
     FrameView* view = _private->coreFrame->view();
@@ -1188,8 +1194,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (void)setTimeoutsPaused:(BOOL)flag
 {
-    id documentView = [_private->webFrameView documentView];    
-    if ([documentView isKindOfClass:[WebHTMLView class]]) {
+    if ([self _webHTMLDocumentView]) {
         if (Frame* coreFrame = _private->coreFrame)
             coreFrame->setTimersPaused(flag);
     }
@@ -1209,8 +1214,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (void)prepareForPause
 {
-    id documentView = [_private->webFrameView documentView];    
-    if ([documentView isKindOfClass:[WebHTMLView class]]) {
+    if ([self _webHTMLDocumentView]) {
         if (Frame* coreFrame = _private->coreFrame)
             coreFrame->dispatchPageHideEventBeforePause();
     }
@@ -1218,8 +1222,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
 - (void)resumeFromPause
 {
-    id documentView = [_private->webFrameView documentView];    
-    if ([documentView isKindOfClass:[WebHTMLView class]]) {
+    if ([self _webHTMLDocumentView]) {
         if (Frame* coreFrame = _private->coreFrame)
             coreFrame->dispatchPageShowEventBeforeResume();
     }
@@ -1897,8 +1900,7 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 #if ENABLE(TEXT_AUTOSIZING)
 - (void)resetTextAutosizingBeforeLayout
 {
-    id documentView = [_private->webFrameView documentView];    
-    if (![documentView isKindOfClass:[WebHTMLView class]])
+    if (![self _webHTMLDocumentView])
         return;
     
     Frame* coreFrame = core(self);
@@ -2472,7 +2474,7 @@ static bool needsMicrosoftMessengerDOMDocumentWorkaround()
     if (!resourceRequest.url().isValid() && !resourceRequest.url().isEmpty())
         resourceRequest.setURL([NSURL URLWithString:[@"file:" stringByAppendingString:[[request URL] absoluteString]]]);
 
-    coreFrame->loader().load(FrameLoadRequest(coreFrame, resourceRequest, ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+    coreFrame->loader().load(FrameLoadRequest(*coreFrame, resourceRequest, ShouldOpenExternalURLsPolicy::ShouldNotAllow));
 }
 
 static NSURL *createUniqueWebDataURL()
@@ -2504,7 +2506,7 @@ static NSURL *createUniqueWebDataURL()
     if (shouldUseQuickLookForMIMEType(MIMEType)) {
         NSURL *quickLookURL = responseURL ? responseURL : baseURL;
         if (auto request = registerQLPreviewConverterIfNeeded(quickLookURL, MIMEType, data)) {
-            _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request.get(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
+            _private->coreFrame->loader().load(FrameLoadRequest(*_private->coreFrame, request.get(), ShouldOpenExternalURLsPolicy::ShouldNotAllow));
             return;
         }
     }
@@ -2515,7 +2517,7 @@ static NSURL *createUniqueWebDataURL()
     ResourceResponse response(responseURL, MIMEType, [data length], encodingName);
     SubstituteData substituteData(WebCore::SharedBuffer::create(data), [unreachableURL absoluteURL], response, SubstituteData::SessionHistoryVisibility::Hidden);
 
-    _private->coreFrame->loader().load(FrameLoadRequest(_private->coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
+    _private->coreFrame->loader().load(FrameLoadRequest(*_private->coreFrame, request, ShouldOpenExternalURLsPolicy::ShouldNotAllow, substituteData));
 }
 
 - (void)loadData:(NSData *)data MIMEType:(NSString *)MIMEType textEncodingName:(NSString *)encodingName baseURL:(NSURL *)baseURL

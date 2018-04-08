@@ -28,15 +28,20 @@
 #include "APIObject.h"
 #include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
-#include "WPEViewClient.h"
 #include "WebPageProxy.h"
 #include <WebCore/ActivityState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
 
+typedef struct OpaqueJSContext* JSGlobalContextRef;
 struct wpe_view_backend;
 
+namespace API {
+class ViewClient;
+}
+
 namespace WebKit {
+class DownloadProxy;
 class WebPageGroup;
 class WebProcessPool;
 }
@@ -49,10 +54,13 @@ public:
     {
         return new View(backend, configuration);
     }
+    virtual ~View();
 
     // Client methods
-    void initializeClient(const WKViewClientBase*);
+    void setClient(std::unique_ptr<API::ViewClient>&&);
     void frameDisplayed();
+    void handleDownloadRequest(WebKit::DownloadProxy&);
+    JSGlobalContextRef javascriptGlobalContext();
 
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
@@ -63,13 +71,14 @@ public:
     WebCore::ActivityState::Flags viewState() const { return m_viewStateFlags; }
     void setViewState(WebCore::ActivityState::Flags);
 
+    void close();
+
 private:
     View(struct wpe_view_backend*, const API::PageConfiguration&);
-    virtual ~View();
 
     void setSize(const WebCore::IntSize&);
 
-    ViewClient m_client;
+    std::unique_ptr<API::ViewClient> m_client;
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;

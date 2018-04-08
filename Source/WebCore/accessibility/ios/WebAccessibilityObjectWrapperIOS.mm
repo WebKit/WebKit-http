@@ -180,10 +180,10 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
 
 + (WebAccessibilityTextMarker *)textMarkerWithVisiblePosition:(VisiblePosition&)visiblePos cache:(AXObjectCache*)cache
 {
-    TextMarkerData textMarkerData;
-    cache->textMarkerDataForVisiblePosition(textMarkerData, visiblePos);
-    
-    return [[[WebAccessibilityTextMarker alloc] initWithTextMarker:&textMarkerData cache:cache] autorelease];
+    auto textMarkerData = cache->textMarkerDataForVisiblePosition(visiblePos);
+    if (!textMarkerData)
+        return nil;
+    return [[[WebAccessibilityTextMarker alloc] initWithTextMarker:&textMarkerData.value() cache:cache] autorelease];
 }
 
 + (WebAccessibilityTextMarker *)textMarkerWithCharacterOffset:(CharacterOffset&)characterOffset cache:(AXObjectCache*)cache
@@ -539,7 +539,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return role == TreeRole;
     };
     
-    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, matchFunc))
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, WTFMove(matchFunc)))
         return parent->wrapper();
     return nil;
 }
@@ -551,7 +551,7 @@ static AccessibilityObjectWrapper* AccessibilityUnignoredAncestor(AccessibilityO
         return role == ListRole || role == ListBoxRole;
     };
     
-    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, matchFunc))
+    if (const AccessibilityObject* parent = AccessibilityObject::matchedParent(*m_object, false, WTFMove(matchFunc)))
         return parent->wrapper();
     return nil;
 }

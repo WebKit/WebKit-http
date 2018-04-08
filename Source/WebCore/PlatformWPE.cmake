@@ -113,6 +113,7 @@ list(APPEND WebCore_SOURCES
     platform/network/soup/SynchronousLoaderClientSoup.cpp
     platform/network/soup/WebKitSoupRequestGeneric.cpp
 
+    platform/soup/PublicSuffixSoup.cpp
     platform/soup/SharedBufferSoup.cpp
     platform/soup/URLSoup.cpp
 
@@ -171,6 +172,7 @@ list(APPEND WebCore_LIBRARIES
     ${ICU_LIBRARIES}
     ${LIBGCRYPT_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
+    ${LIBTASN1_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
     ${SQLITE_LIBRARIES}
@@ -185,6 +187,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
     ${LIBGCRYPT_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
+    ${LIBTASN1_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}

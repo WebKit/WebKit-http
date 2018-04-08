@@ -26,11 +26,13 @@
 #include "config.h"
 #include "ProfilerDatabase.h"
 
+#include "CatchScope.h"
 #include "CodeBlock.h"
 #include "JSONObject.h"
 #include "ObjectConstructor.h"
 #include "JSCInlines.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/FilePrintStream.h>
 
 namespace JSC { namespace Profiler {
 

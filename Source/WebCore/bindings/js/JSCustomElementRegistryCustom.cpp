@@ -31,8 +31,10 @@
 #include "HTMLNames.h"
 #include "JSCustomElementInterface.h"
 #include "JSDOMBinding.h"
-#include "JSDOMConvert.h"
+#include "JSDOMConvertSequences.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDOMPromiseDeferred.h"
+#include <wtf/SetForScope.h>
 
 using namespace JSC;
 

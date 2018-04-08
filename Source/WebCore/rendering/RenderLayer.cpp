@@ -2180,7 +2180,7 @@ bool RenderLayer::hasTouchScrollableOverflow() const
 bool RenderLayer::handleTouchEvent(const PlatformTouchEvent& touchEvent)
 {
     // If we have accelerated scrolling, let the scrolling be handled outside of WebKit.
-    if (hasTouchScrollableOverflow())
+    if (usesAcceleratedScrolling())
         return false;
 
     return ScrollableArea::handleTouchEvent(touchEvent);
@@ -2219,7 +2219,7 @@ void RenderLayer::unregisterAsTouchEventListenerForScrolling()
 
 bool RenderLayer::usesCompositedScrolling() const
 {
-    return isComposited() && backing()->scrollingLayer();
+    return isComposited() && backing()->hasScrollingLayer();
 }
 
 bool RenderLayer::usesAsyncScrolling() const
@@ -2406,7 +2406,6 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
         return;
     }
     
-    ScrollPosition oldPosition = IntPoint(m_scrollPosition);
     m_scrollPosition = newPosition;
 
     RenderView& view = renderer().view();
@@ -2457,10 +2456,8 @@ void RenderLayer::scrollTo(const ScrollPosition& position)
         renderer().repaintUsingContainer(repaintContainer, rectForRepaint);
 
     // Schedule the scroll and scroll-related DOM events.
-    if (Element* element = renderer().element()) {
+    if (Element* element = renderer().element())
         element->document().eventQueue().enqueueOrDispatchScrollEvent(*element);
-        element->document().sendWillRevealEdgeEventsIfNeeded(oldPosition, newPosition, visibleContentRect(), contentsSize(), element);
-    }
 
     if (scrollsOverflow())
         view.frameView().didChangeScrollOffset();
@@ -4465,19 +4462,26 @@ void RenderLayer::paintLayerContents(GraphicsContext& context, const LayerPainti
     }
     
     if (shouldPaintContent && !(selectionOnly || selectionAndBackgroundsOnly)) {
+        PaintBehavior paintBehavior = PaintBehaviorNormal;
+        if (paintingInfo.paintBehavior & PaintBehaviorFlattenCompositingLayers)
+            paintBehavior |= PaintBehaviorFlattenCompositingLayers;
+
+        if (paintingInfo.paintBehavior & PaintBehaviorSnapshotting)
+            paintBehavior |= PaintBehaviorSnapshotting;
+
         if (shouldPaintMask(paintingInfo.paintBehavior, localPaintFlags)) {
             // Paint the mask for the fragments.
-            paintMaskForFragments(layerFragments, context, paintingInfo, subtreePaintRootForRenderer);
+            paintMaskForFragments(layerFragments, context, paintingInfo, paintBehavior, subtreePaintRootForRenderer);
         }
 
         if (!(paintFlags & PaintLayerPaintingCompositingMaskPhase) && (paintFlags & PaintLayerPaintingCompositingClipPathPhase)) {
             // Re-use paintChildClippingMaskForFragments to paint black for the compositing clipping mask.
-            paintChildClippingMaskForFragments(layerFragments, context, paintingInfo, subtreePaintRootForRenderer);
+            paintChildClippingMaskForFragments(layerFragments, context, paintingInfo, paintBehavior, subtreePaintRootForRenderer);
         }
         
         if ((localPaintFlags & PaintLayerPaintingChildClippingMaskPhase)) {
             // Paint the border radius mask for the fragments.
-            paintChildClippingMaskForFragments(layerFragments, context, paintingInfo, subtreePaintRootForRenderer);
+            paintChildClippingMaskForFragments(layerFragments, context, paintingInfo, paintBehavior, subtreePaintRootForRenderer);
         }
     }
 
@@ -4517,8 +4521,10 @@ void RenderLayer::paintLayerByApplyingTransform(GraphicsContext& context, const 
 
     // Now do a paint with the root layer shifted to be us.
     LayoutSize adjustedSubpixelOffset = offsetForThisLayer - LayoutSize(devicePixelSnappedOffsetForThisLayer);
-    LayerPaintingInfo transformedPaintingInfo(this, LayoutRect(encloseRectToDevicePixels(transform.inverse().value_or(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor)),
-        paintingInfo.paintBehavior, adjustedSubpixelOffset, paintingInfo.subtreePaintRoot, paintingInfo.overlapTestRequests);
+    LayerPaintingInfo transformedPaintingInfo(paintingInfo);
+    transformedPaintingInfo.rootLayer = this;
+    transformedPaintingInfo.paintDirtyRect = LayoutRect(encloseRectToDevicePixels(transform.inverse().value_or(AffineTransform()).mapRect(paintingInfo.paintDirtyRect), deviceScaleFactor));
+    transformedPaintingInfo.subpixelOffset = adjustedSubpixelOffset;
     paintLayerContentsAndReflection(context, transformedPaintingInfo, paintFlags);
     context.setCTM(oldTransfrom);
 }
@@ -4857,7 +4863,7 @@ void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments,
 }
 
 void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, GraphicsContext& context, const LayerPaintingInfo& localPaintingInfo,
-    RenderObject* subtreePaintRootForRenderer)
+    PaintBehavior paintBehavior, RenderObject* subtreePaintRootForRenderer)
 {
     for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent)
@@ -4868,7 +4874,7 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
         
         // Paint the mask.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
-        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseMask, PaintBehaviorNormal, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseMask, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer());
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
         
         if (localPaintingInfo.clipToDirtyRect)
@@ -4876,8 +4882,7 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
     }
 }
 
-void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layerFragments, GraphicsContext& context, const LayerPaintingInfo& localPaintingInfo,
-    RenderObject* subtreePaintRootForRenderer)
+void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layerFragments, GraphicsContext& context, const LayerPaintingInfo& localPaintingInfo, PaintBehavior paintBehavior, RenderObject* subtreePaintRootForRenderer)
 {
     for (const auto& fragment : layerFragments) {
         if (!fragment.shouldPaintContent)
@@ -4887,7 +4892,7 @@ void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layer
             clipToRect(context, localPaintingInfo, fragment.foregroundRect, IncludeSelfForBorderRadius); // Child clipping mask painting will handle clipping to self.
 
         // Paint the clipped mask.
-        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseClippingMask, PaintBehaviorNormal, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer());
+        PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhaseClippingMask, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer());
         renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
 
         if (localPaintingInfo.clipToDirtyRect)

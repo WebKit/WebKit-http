@@ -803,8 +803,7 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     // Reset UserMedia permissions.
     m_userMediaPermissionRequests.clear();
     m_cachedUserMediaPermissions.clear();
-    m_isUserMediaPermissionSet = false;
-    m_isUserMediaPermissionAllowed = false;
+    setUserMediaPermission(true);
 
     // Reset Custom Policy Delegate.
     setCustomPolicyDelegate(false, false);
@@ -837,6 +836,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     m_openPanelFileURLs = nullptr;
+    
+    statisticsResetToConsistentState();
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
     runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
@@ -1890,6 +1891,11 @@ void TestController::setUserMediaPermission(bool enabled)
     decidePolicyForUserMediaPermissionRequestIfPossible();
 }
 
+void TestController::resetUserMediaPermission()
+{
+    m_isUserMediaPermissionSet = false;
+}
+
 class OriginSettings : public RefCounted<OriginSettings> {
 public:
     explicit OriginSettings()
@@ -2270,6 +2276,11 @@ void TestController::statisticsFireShouldPartitionCookiesHandlerForOneDomain(WKS
     WKResourceLoadStatisticsManagerFireShouldPartitionCookiesHandlerForOneDomain(hostName, value);
 }
 
+void TestController::statisticsFireTelemetryHandler()
+{
+    WKResourceLoadStatisticsManagerFireTelemetryHandler();
+}
+    
 void TestController::setStatisticsNotifyPagesWhenDataRecordsWereScanned(bool value)
 {
     WKResourceLoadStatisticsManagerSetNotifyPagesWhenDataRecordsWereScanned(value);
@@ -2280,6 +2291,11 @@ void TestController::setStatisticsShouldClassifyResourcesBeforeDataRecordsRemova
     WKResourceLoadStatisticsManagerSetShouldClassifyResourcesBeforeDataRecordsRemoval(value);
 }
 
+void TestController::setStatisticsNotifyPagesWhenTelemetryWasCaptured(bool value)
+{
+    WKResourceLoadStatisticsManagerSetNotifyPagesWhenTelemetryWasCaptured(value);
+}
+    
 void TestController::setStatisticsMinimumTimeBetweeenDataRecordsRemoval(double seconds)
 {
     WKResourceLoadStatisticsManagerSetMinimumTimeBetweeenDataRecordsRemoval(seconds);

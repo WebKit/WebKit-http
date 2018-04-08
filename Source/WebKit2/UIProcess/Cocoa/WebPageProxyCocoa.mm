@@ -29,14 +29,15 @@
 #import "APIUIClient.h"
 #import "DataDetectionResult.h"
 #import "LoadParameters.h"
+#import "PageClient.h"
 #import "WebProcessProxy.h"
+#import <WebCore/DragItem.h>
+#import <WebCore/NotImplemented.h>
 #import <WebCore/SearchPopupMenuCocoa.h>
 #import <WebCore/ValidationBubble.h>
 #import <wtf/cf/TypeCastsCF.h>
 
-#if USE(APPLE_INTERNAL_SDK) && __has_include(<WebKitAdditions/WebPageProxyAdditions.mm>)
-#import <WebKitAdditions/WebPageProxyAdditions.mm>
-#endif
+using namespace WebCore;
 
 namespace WebKit {
 
@@ -101,5 +102,38 @@ void WebPageProxy::createSandboxExtensionsIfNeeded(const Vector<String>& files, 
         SandboxExtension::createHandle(file, SandboxExtension::ReadOnly, fileUploadHandles[i]);
     }
 }
+
+#if PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
+
+void WebPageProxy::startDrag(const DragItem& dragItem, const ShareableBitmap::Handle& dragImageHandle)
+{
+    m_pageClient.startDrag(dragItem, dragImageHandle);
+}
+
+void WebPageProxy::setPromisedDataForImage(const String&, const SharedMemory::Handle&, uint64_t, const String&, const String&, const String&, const String&, const String&, const SharedMemory::Handle&, uint64_t)
+{
+    notImplemented();
+}
+
+#if ENABLE(ATTACHMENT_ELEMENT)
+
+void WebPageProxy::setPromisedDataForAttachment(const String&, const String&, const String&, const String&, const String&, const String&)
+{
+    notImplemented();
+}
+
+#endif
+
+void WebPageProxy::setDragCaretRect(const IntRect& dragCaretRect)
+{
+    if (m_currentDragCaretRect == dragCaretRect)
+        return;
+
+    auto previousRect = m_currentDragCaretRect;
+    m_currentDragCaretRect = dragCaretRect;
+    m_pageClient.didChangeDataInteractionCaretRect(previousRect, dragCaretRect);
+}
+
+#endif // PLATFORM(IOS) && ENABLE(DRAG_SUPPORT)
 
 }

@@ -3,6 +3,10 @@ include(WebKitCommon)
 set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
 add_subdirectory(PAL/pal)
 
+if (PAL_LIBRARY_TYPE MATCHES STATIC)
+    add_definitions(-DSTATICALLY_LINKED_WITH_PAL=1)
+endif ()
+
 set(WebCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WEBCORE_DIR}"
@@ -108,6 +112,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
+    "${PAL_DIR}"
     "${CMAKE_SOURCE_DIR}/Source"
 )
 
@@ -431,6 +436,8 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DOMPoint.idl
     dom/DOMPointInit.idl
     dom/DOMPointReadOnly.idl
+    dom/DOMQuad.idl
+    dom/DOMQuadInit.idl
     dom/DOMRect.idl
     dom/DOMRectInit.idl
     dom/DOMRectList.idl
@@ -446,6 +453,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/DocumentAndElementEventHandlers.idl
     dom/DocumentFragment.idl
     dom/DocumentOrShadowRoot.idl
+    dom/DocumentTouch.idl
     dom/DocumentType.idl
     dom/Element.idl
     dom/ErrorEvent.idl
@@ -1167,6 +1175,7 @@ set(WebCore_SOURCES
     bindings/js/JSDOMBuiltinConstructorBase.cpp
     bindings/js/JSDOMConstructorBase.cpp
     bindings/js/JSDOMConstructorWithDocument.cpp
+    bindings/js/JSDOMQuadCustom.cpp
     bindings/js/JSDOMExceptionHandling.cpp
     bindings/js/JSDOMGlobalObject.cpp
     bindings/js/JSDOMGlobalObjectTask.cpp
@@ -1462,6 +1471,7 @@ set(WebCore_SOURCES
     dom/DOMImplementation.cpp
     dom/DOMNamedFlowCollection.cpp
     dom/DOMPointReadOnly.cpp
+    dom/DOMQuad.cpp
     dom/DOMRectList.cpp
     dom/DOMStringList.cpp
     dom/DataTransfer.cpp
@@ -1481,6 +1491,7 @@ set(WebCore_SOURCES
     dom/DocumentOrderedMap.cpp
     dom/DocumentParser.cpp
     dom/DocumentSharedObjectPool.cpp
+    dom/DocumentTouch.cpp
     dom/DocumentType.cpp
     dom/Element.cpp
     dom/ElementData.cpp
@@ -1896,6 +1907,7 @@ set(WebCore_SOURCES
     inspector/DOMPatchSupport.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorCSSAgent.cpp
+    inspector/InspectorCanvasAgent.cpp
     inspector/InspectorClient.cpp
     inspector/InspectorController.cpp
     inspector/InspectorDOMAgent.cpp
@@ -2172,6 +2184,7 @@ set(WebCore_SOURCES
     platform/EventTrackingRegions.cpp
     platform/FileChooser.cpp
     platform/FileHandle.cpp
+    platform/FileMonitor.cpp
     platform/FileStream.cpp
     platform/FileSystem.cpp
     platform/GenericTaskQueue.cpp
@@ -2279,6 +2292,7 @@ set(WebCore_SOURCES
     platform/graphics/FontCascade.cpp
     platform/graphics/FontCascadeFonts.cpp
     platform/graphics/FontDescription.cpp
+    platform/graphics/FontFamilySpecificationNull.cpp
     platform/graphics/FontSelectionAlgorithm.cpp
     platform/graphics/FontTaggedSettings.cpp
     platform/graphics/FontGenericFamilies.cpp
@@ -2509,6 +2523,7 @@ set(WebCore_SOURCES
     rendering/InlineFlowBox.cpp
     rendering/InlineIterator.cpp
     rendering/InlineTextBox.cpp
+    rendering/LayoutDisallowedScope.cpp
     rendering/LayoutRepainter.cpp
     rendering/LayoutState.cpp
     rendering/OrderIterator.cpp

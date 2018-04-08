@@ -25,6 +25,7 @@
 #include "JSObject.h"
 
 #include "ButterflyInlines.h"
+#include "CatchScope.h"
 #include "CustomGetterSetter.h"
 #include "DatePrototype.h"
 #include "ErrorConstructor.h"
@@ -748,7 +749,7 @@ bool ordinarySetSlow(ExecState* exec, JSObject* object, PropertyName propertyNam
 // ECMA 8.6.2.2
 bool JSObject::put(JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
-    return putInline(cell, exec, propertyName, value, slot);
+    return putInlineForJSObject(cell, exec, propertyName, value, slot);
 }
 
 bool JSObject::putInlineSlow(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
@@ -2361,9 +2362,7 @@ ALWAYS_INLINE static bool canDoFastPutDirectIndex(JSObject* object)
 {
     return isJSArray(object)
         || isJSFinalObject(object)
-        || object->type() == DirectArgumentsType
-        || object->type() == ScopedArgumentsType
-        || object->type() == ClonedArgumentsType;
+        || TypeInfo::isArgumentsType(object->type());
 }
 
 // Defined in ES5.1 8.12.9

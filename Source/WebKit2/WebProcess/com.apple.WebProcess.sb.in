@@ -55,10 +55,13 @@
     (iokit-property "AllowDisplaySleep")
     (iokit-property "AlwaysNeedsVelocityCalculated")
     (iokit-property "AppleIntelMEVABundleName")
-    (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display)")
+    (iokit-property-regex #"^AAPL,(DisplayPipe|OpenCLdisabled|alias-policy|boot-display|display-alias|mux-switch-state|ndrv-dev|primary-display|slot-name)")
     (iokit-property-regex #"^ATY,fb_(linebytes|offset|size)")
     (iokit-property "BacklightHandle")
     (iokit-property "CFBundleIdentifier")
+    (iokit-property "CapsLockDelay")
+    (iokit-property "ConfigState")
+    (iokit-property "Device Characteristics")
     (iokit-property "DeviceEqID")
     (iokit-property "DisplayRouting")
     (iokit-property "Driver is Ready")
@@ -66,6 +69,7 @@
     (iokit-property "Endianness")
     (iokit-property "Family ID")
     (iokit-property "ForceSupported")
+    (iokit-property "HIDPointerAccelerationType")
     (iokit-property-regex #"^IOAccel(DisplayPipeCapabilities|Index|Types|Revision)")
     (iokit-property-regex #"^IO(Class|MatchCategory|NameMatch)")
     (iokit-property-regex #"^IOAudioControl(ChannelID|ID|SubType|Usage|Value)")
@@ -109,7 +113,7 @@
     (iokit-property "IOParentMatch")
     (iokit-property-regex #"^IOPCI(Express(Capabilities|Link(Status|Capabilities))|MSIMode|Resourced)")
     (iokit-property "IOPMIsPowerManaged")
-    (iokit-property "IOPlatformUUID")
+    (iokit-property-regex #"^IOPlatform(SerialNumber|UUID)")
     (iokit-property "IOPowerManagement")
     (iokit-property "IOProbeScore")
     (iokit-property "IOPropertyMatch")
@@ -126,22 +130,27 @@
     (iokit-property "MaintainPowerInUILock")
     (iokit-property "Max Packet Size")
     (iokit-property "MinDigitizerPressureValue")
+    (iokit-property "Multitouch Serial Number")
     (iokit-property-regex #"^Multitouch (Subdevice |)ID")
     (iokit-property "NVArch")
     (iokit-property-regex #"^NVC(AP|LASS)")
     (iokit-property-regex #"^NVDA,(Features|NVPresentment-version|accel-loaded|invalid-config|mm-version)")
     (iokit-property-regex #"^NVDA(Type|initgl_created)")
     (iokit-property "NVRAMProperty")
+    (iokit-property "NXSystemInfo")
     (iokit-property-regex #"^VRAM,(memvendorID|total(MB|size))")
     (iokit-property "NoAutoRoute")
     (iokit-property-regex #"^PerformanceStatistics(|Accum)")
     (iokit-property "Protocol Characteristics")
+    (iokit-property "Serial Number")
     (iokit-property "StartupDisplay")
     (iokit-property-regex #"^Support(AudioAUUC|sSilentClick|TapToWake)")
-    (iokit-property "Sensor Columns")
+    (iokit-property-regex #"^Sensor (Columns|Rows)")
     (iokit-property-regex #"^Sensor Region (Descriptor|Param|Rows)")
     (iokit-property-regex #"^Sensor Surface (Descriptor|Height|Width)")
     (iokit-property "SurfaceList")
+    (iokit-property "TimeStampFiltering")
+    (iokit-property "Transport")
     (iokit-property "WANTS_FRAMES_IGNORED")
     (iokit-property-regex #"^acpi-(device|path)")
     (iokit-property "assigned-addresses")
@@ -162,6 +171,7 @@
     (iokit-property-regex #"^id(Product|Vendor)")
     (iokit-property "iofb_version")
     (iokit-property "model")
+    (iokit-property "mt-device-id")
     (iokit-property "name")
     (iokit-property "nv-stats")
     (iokit-property-regex #"^parser-(options|type)")
@@ -172,6 +182,7 @@
     (iokit-property-regex #"^(rom|vbios)-revision")
     (iokit-property "saved-config")
     (iokit-property "startup-timing")
+    (iokit-property "touch-size-id")
 )
 #endif
 
@@ -275,6 +286,7 @@
         "com.apple.ServicesMenu.Services" ;; Needed for NSAttributedString <rdar://problem/10844321>
         "com.apple.WebFoundation"
         "com.apple.avfoundation"
+        "com.apple.avfoundation.videoperformancehud" ;; <rdar://problem/31594568>
         "com.apple.coremedia"
         "com.apple.crypto"
         "com.apple.driver.AppleBluetoothMultitouch.mouse"
@@ -539,6 +551,7 @@
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101300
     (global-name "com.apple.coremedia.routediscoverer.xpc")
     (global-name "com.apple.coremedia.routingcontext.xpc")
+    (global-name "com.apple.coremedia.volumecontroller.xpc")
 #endif
 )
 

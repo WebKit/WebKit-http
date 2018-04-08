@@ -49,6 +49,8 @@
 #include "ScriptState.h"
 #include "SerializedScriptValue.h"
 #include <heap/HeapInlines.h>
+#include <runtime/CatchScope.h>
+#include <runtime/JSCJSValueInlines.h>
 #include <wtf/Locker.h>
 
 using namespace JSC;

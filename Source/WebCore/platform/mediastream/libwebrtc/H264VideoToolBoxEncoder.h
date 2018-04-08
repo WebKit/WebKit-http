@@ -28,16 +28,18 @@
 #if USE(LIBWEBRTC) && PLATFORM(COCOA)
 
 #include "LibWebRTCMacros.h"
-#include <webrtc/sdk/objc/Framework/Classes/h264_video_toolbox_encoder.h>
+#include <webrtc/sdk/objc/Framework/Classes/VideoToolbox/encoder.h>
 
 namespace WebCore {
 
 class H264VideoToolboxEncoder final : public webrtc::H264VideoToolboxEncoder {
 public:
     explicit H264VideoToolboxEncoder(const cricket::VideoCodec& codec) : webrtc::H264VideoToolboxEncoder(codec) { }
+    WEBCORE_EXPORT static void setHardwareEncoderForWebRTCAllowed(bool);
+    static bool hardwareEncoderForWebRTCAllowed();
 
 private:
-    int CreateCompressionSession(VTCompressionSessionRef&, VTCompressionOutputCallback, int32_t width, int32_t height) final;
+    int CreateCompressionSession(VTCompressionSessionRef&, VTCompressionOutputCallback, int32_t width, int32_t height, bool useHardwareAcceleratedVideoEncoder) final;
 };
 
 }

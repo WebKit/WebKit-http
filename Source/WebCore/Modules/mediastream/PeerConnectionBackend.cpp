@@ -56,20 +56,20 @@ void PeerConnectionBackend::createOffer(RTCOfferOptions&& options, PeerConnectio
 void PeerConnectionBackend::createOfferSucceeded(String&& sdp)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Creating offer succeeded:\n%s\n", sdp.utf8().data());
+    RELEASE_LOG(WebRTC, "Creating offer succeeded:\n%{public}s\n", sdp.utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
-    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSdpType::Offer, filterSDP(WTFMove(sdp))));
+    m_offerAnswerPromise->resolve(RTCSessionDescription::Init { RTCSdpType::Offer, filterSDP(WTFMove(sdp)) });
     m_offerAnswerPromise = std::nullopt;
 }
 
 void PeerConnectionBackend::createOfferFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Creating offer failed:\n%s\n", exception.message().utf8().data());
+    RELEASE_LOG(WebRTC, "Creating offer failed:\n%{public}s\n", exception.message().utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
@@ -91,20 +91,20 @@ void PeerConnectionBackend::createAnswer(RTCAnswerOptions&& options, PeerConnect
 void PeerConnectionBackend::createAnswerSucceeded(String&& sdp)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Creating answer succeeded:\n%s\n", sdp.utf8().data());
+    RELEASE_LOG(WebRTC, "Creating answer succeeded:\n%{public}s\n", sdp.utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
 
     ASSERT(m_offerAnswerPromise);
-    m_offerAnswerPromise->resolve(RTCSessionDescription::create(RTCSdpType::Answer, WTFMove(sdp)));
+    m_offerAnswerPromise->resolve(RTCSessionDescription::Init { RTCSdpType::Answer, WTFMove(sdp) });
     m_offerAnswerPromise = std::nullopt;
 }
 
 void PeerConnectionBackend::createAnswerFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Creating answer failed:\n%s\n", exception.message().utf8().data());
+    RELEASE_LOG(WebRTC, "Creating answer failed:\n%{public}s\n", exception.message().utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
@@ -163,7 +163,7 @@ void PeerConnectionBackend::setLocalDescriptionSucceeded()
 void PeerConnectionBackend::setLocalDescriptionFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Setting local description failed:\n%s\n", exception.message().utf8().data());
+    RELEASE_LOG(WebRTC, "Setting local description failed:\n%{public}s\n", exception.message().utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
@@ -223,7 +223,7 @@ void PeerConnectionBackend::setRemoteDescriptionSucceeded()
 void PeerConnectionBackend::setRemoteDescriptionFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Setting remote description failed:\n%s\n", exception.message().utf8().data());
+    RELEASE_LOG(WebRTC, "Setting remote description failed:\n%{public}s\n", exception.message().utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
@@ -270,7 +270,7 @@ void PeerConnectionBackend::addIceCandidateSucceeded()
 void PeerConnectionBackend::addIceCandidateFailed(Exception&& exception)
 {
     ASSERT(isMainThread());
-    RELEASE_LOG(WebRTC, "Adding ice candidate failed:\n%s\n", exception.message().utf8().data());
+    RELEASE_LOG(WebRTC, "Adding ice candidate failed:\n%{public}s\n", exception.message().utf8().data());
 
     if (m_peerConnection.isClosed())
         return;
@@ -349,7 +349,7 @@ String PeerConnectionBackend::filterSDP(String&& sdp) const
 
 void PeerConnectionBackend::newICECandidate(String&& sdp, String&& mid)
 {
-    RELEASE_LOG(WebRTC, "Gathered ice candidate:\n%s\n", sdp.utf8().data());
+    RELEASE_LOG(WebRTC, "Gathered ice candidate:\n%{public}s\n", sdp.utf8().data());
 
     if (!m_shouldFilterICECandidates) {
         fireICECandidateEvent(RTCIceCandidate::create(WTFMove(sdp), WTFMove(mid), 0));

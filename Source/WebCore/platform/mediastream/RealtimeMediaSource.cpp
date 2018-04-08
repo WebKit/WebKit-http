@@ -116,17 +116,6 @@ void RealtimeMediaSource::notifyMutedObservers() const
         observer.sourceMutedChanged();
 }
 
-void RealtimeMediaSource::setEnabled(bool enabled)
-{
-    if (m_enabled == enabled)
-        return;
-
-    m_enabled = enabled;
-
-    for (Observer& observer : m_observers)
-        observer.sourceEnabledChanged();
-}
-
 void RealtimeMediaSource::settingsDidChange()
 {
     ASSERT(isMainThread());
@@ -162,6 +151,9 @@ void RealtimeMediaSource::start()
 
     m_isProducingData = true;
     startProducingData();
+
+    for (Observer& observer : m_observers)
+        observer.sourceStarted();
 }
 
 void RealtimeMediaSource::stop()
@@ -499,7 +491,7 @@ void RealtimeMediaSource::applyConstraint(const MediaConstraint& constraint)
             return false;
         };
 
-        auto modeString = downcast<StringConstraint>(constraint).find(filter);
+        auto modeString = downcast<StringConstraint>(constraint).find(WTFMove(filter));
         if (!modeString.isEmpty())
             setFacingMode(RealtimeMediaSourceSettings::videoFacingModeEnum(modeString));
         break;
@@ -890,7 +882,7 @@ void RealtimeMediaSource::setEchoCancellation(bool echoCancellation)
     settingsDidChange();
 }
 
-void RealtimeMediaSource::scheduleDeferredTask(std::function<void()>&& function)
+void RealtimeMediaSource::scheduleDeferredTask(WTF::Function<void()>&& function)
 {
     ASSERT(function);
     callOnMainThread([weakThis = createWeakPtr(), function = WTFMove(function)] {

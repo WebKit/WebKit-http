@@ -21,6 +21,7 @@
 #include "WebKitSoupRequestInputStream.h"
 
 #include <wtf/MainThread.h>
+#include <wtf/RunLoop.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 
@@ -79,7 +80,7 @@ static bool webkitSoupRequestInputStreamIsWaitingForData(WebKitSoupRequestInputS
 
 static void webkitSoupRequestInputStreamReadAsync(GInputStream* inputStream, void* buffer, gsize count, int /*priority*/, GCancellable* cancellable, GAsyncReadyCallback callback, gpointer userData)
 {
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
     WebKitSoupRequestInputStream* stream = WEBKIT_SOUP_REQUEST_INPUT_STREAM(inputStream);
     GRefPtr<GTask> task = adoptGRef(g_task_new(stream, cancellable, callback, userData));
 
@@ -142,7 +143,7 @@ GInputStream* webkitSoupRequestInputStreamNew(uint64_t contentLength)
 
 void webkitSoupRequestInputStreamAddData(WebKitSoupRequestInputStream* stream, const void* data, size_t dataLength)
 {
-    ASSERT(isMainThread());
+    ASSERT(RunLoop::isMain());
 
     if (webkitSoupRequestInputStreamFinished(stream))
         return;

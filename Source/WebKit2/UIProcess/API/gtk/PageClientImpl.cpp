@@ -37,10 +37,10 @@
 #include "WebContextMenuProxyGtk.h"
 #include "WebEventFactory.h"
 #include "WebKitColorChooser.h"
+#include "WebKitPopupMenu.h"
 #include "WebKitWebViewBasePrivate.h"
 #include "WebKitWebViewPrivate.h"
 #include "WebPageProxy.h"
-#include "WebPopupMenuProxyGtk.h"
 #include "WebProcessPool.h"
 #include <WebCore/CairoUtilities.h>
 #include <WebCore/Cursor.h>
@@ -206,6 +206,8 @@ void PageClientImpl::doneWithKeyEvent(const NativeWebKeyboardEvent& event, bool 
 
 RefPtr<WebPopupMenuProxy> PageClientImpl::createPopupMenuProxy(WebPageProxy& page)
 {
+    if (WEBKIT_IS_WEB_VIEW(m_viewWidget))
+        return WebKitPopupMenu::create(m_viewWidget, page);
     return WebPopupMenuProxyGtk::create(m_viewWidget, page);
 }
 
@@ -465,5 +467,13 @@ bool PageClientImpl::decidePolicyForInstallMissingMediaPluginsPermissionRequest(
     return true;
 }
 #endif
+
+JSGlobalContextRef PageClientImpl::javascriptGlobalContext()
+{
+    if (!WEBKIT_IS_WEB_VIEW(m_viewWidget))
+        return nullptr;
+
+    return webkit_web_view_get_javascript_global_context(WEBKIT_WEB_VIEW(m_viewWidget));
+}
 
 } // namespace WebKit

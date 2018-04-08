@@ -26,7 +26,6 @@
 #ifndef PlatformMediaSession_h
 #define PlatformMediaSession_h
 
-#include "MediaProducer.h"
 #include "Timer.h"
 #include <wtf/Noncopyable.h>
 #include <wtf/text/WTFString.h>
@@ -80,6 +79,7 @@ public:
         SystemInterruption,
         SuspendedUnderLock,
         InvisibleAutoplay,
+        ProcessInactive,
     };
     InterruptionType interruptionType() const { return m_interruptionType; }
 

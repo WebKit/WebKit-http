@@ -4,14 +4,16 @@ var remoteConnection;
 
 function createConnections(setupLocalConnection, setupRemoteConnection, options = { }) {
     localConnection = new RTCPeerConnection();
-    localConnection.onicecandidate = (event) => { iceCallback1(event, options.filterOutICECandidate) };
-    setupLocalConnection(localConnection);
-
     remoteConnection = new RTCPeerConnection();
     remoteConnection.onicecandidate = (event) => { iceCallback2(event, options.filterOutICECandidate) };
-    setupRemoteConnection(remoteConnection);
 
-    localConnection.createOffer().then((desc) => gotDescription1(desc, options), onCreateSessionDescriptionError);
+    localConnection.onicecandidate = (event) => { iceCallback1(event, options.filterOutICECandidate) };
+
+    Promise.resolve(setupLocalConnection(localConnection)).then(() => {
+        return Promise.resolve(setupRemoteConnection(remoteConnection));
+    }).then(() => {
+        localConnection.createOffer().then((desc) => gotDescription1(desc, options), onCreateSessionDescriptionError);
+    });
 
     return [localConnection, remoteConnection]
 }
@@ -33,8 +35,9 @@ function gotDescription1(desc, options)
         options.observeOffer(desc);
 
     localConnection.setLocalDescription(desc);
-    remoteConnection.setRemoteDescription(desc);
-    remoteConnection.createAnswer().then((desc) => gotDescription2(desc, options), onCreateSessionDescriptionError);
+    remoteConnection.setRemoteDescription(desc).then(() => {
+        remoteConnection.createAnswer().then((desc) => gotDescription2(desc, options), onCreateSessionDescriptionError);
+    });
 }
 
 function gotDescription2(desc, options)
@@ -139,9 +142,9 @@ function waitForVideoSize(video, width, height, count)
     if (count === undefined)
         count = 0;
     if (++count > 20)
-        return Promise.reject("waitForVideoSize timed out");
+        return Promise.reject("waitForVideoSize timed out, expected " + width + "x"+ height + " but got " + video.videoWidth + "x" + video.videoHeight);
 
-    return waitFor(50).then(() => {
+    return waitFor(100).then(() => {
         return waitForVideoSize(video, width, height, count);
     });
 }
@@ -149,10 +152,11 @@ function waitForVideoSize(video, width, height, count)
 async function doHumAnalysis(stream, expected)
 {
     var context = new webkitAudioContext();
-    for (var cptr = 0; cptr < 10; cptr++) {
+    for (var cptr = 0; cptr < 20; cptr++) {
         var results = await analyseAudio(stream, 200, context);
         if (results.heardHum === expected)
             return true;
+        await waitFor(50);
     }
     await context.close();
     return false;

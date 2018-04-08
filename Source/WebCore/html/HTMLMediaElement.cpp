@@ -74,6 +74,7 @@
 #include "PlatformMediaSessionManager.h"
 #include "ProgressTracker.h"
 #include "RenderLayerCompositor.h"
+#include "RenderTheme.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "ResourceLoadInfo.h"
@@ -3240,7 +3241,9 @@ bool HTMLMediaElement::playInternal()
 void HTMLMediaElement::pause()
 {
     LOG(Media, "HTMLMediaElement::pause(%p)", this);
-
+    
+    m_temporarilyAllowingInlinePlaybackAfterFullscreen = false;
+    
     if (!m_mediaSession->playbackPermitted(*this))
         return;
 
@@ -5338,7 +5341,7 @@ void HTMLMediaElement::mediaVolumeDidChange()
 
 void HTMLMediaElement::visibilityStateChanged()
 {
-    m_elementIsHidden = document().hidden() && m_videoFullscreenMode == VideoFullscreenModeNone;
+    m_elementIsHidden = document().hidden() && m_videoFullscreenMode != VideoFullscreenModePictureInPicture;
     LOG(Media, "HTMLMediaElement::visibilityStateChanged(%p) - visible = %s", this, boolString(!m_elementIsHidden));
     updateSleepDisabling();
     m_mediaSession->visibilityChanged();
@@ -5697,7 +5700,7 @@ void HTMLMediaElement::setPreparedToReturnVideoLayerToInline(bool value)
     }
 }
 
-void HTMLMediaElement::waitForPreparedForInlineThen(std::function<void()> completionHandler)
+void HTMLMediaElement::waitForPreparedForInlineThen(WTF::Function<void()>&& completionHandler)
 {
     ASSERT(!m_preparedForInlineCompletionHandler);
     if (m_preparedForInline)  {
@@ -5705,7 +5708,7 @@ void HTMLMediaElement::waitForPreparedForInlineThen(std::function<void()> comple
         return;
     }
     
-    m_preparedForInlineCompletionHandler = completionHandler;
+    m_preparedForInlineCompletionHandler = WTFMove(completionHandler);
 }
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
@@ -5715,7 +5718,7 @@ bool HTMLMediaElement::isVideoLayerInline()
     return !m_videoFullscreenLayer;
 };
     
-void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer, std::function<void()> completionHandler)
+void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer, WTF::Function<void()>&& completionHandler)
 {
     m_videoFullscreenLayer = platformLayer;
     if (!m_player) {
@@ -5723,7 +5726,7 @@ void HTMLMediaElement::setVideoFullscreenLayer(PlatformLayer* platformLayer, std
         return;
     }
     
-    m_player->setVideoFullscreenLayer(platformLayer, completionHandler);
+    m_player->setVideoFullscreenLayer(platformLayer, WTFMove(completionHandler));
     invalidateStyleAndLayerComposition();
 #if ENABLE(VIDEO_TRACK)
     updateTextTrackDisplay();

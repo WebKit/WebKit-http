@@ -62,6 +62,8 @@ public:
     static Ref<LibWebRTCMediaEndpoint> create(LibWebRTCPeerConnectionBackend& peerConnection, LibWebRTCProvider& client) { return adoptRef(*new LibWebRTCMediaEndpoint(peerConnection, client)); }
     virtual ~LibWebRTCMediaEndpoint() { }
 
+    bool setConfiguration(LibWebRTCProvider&, webrtc::PeerConnectionInterface::RTCConfiguration&&);
+
     webrtc::PeerConnectionInterface& backend() const { ASSERT(m_backend); return *m_backend.get(); }
     void doSetLocalDescription(RTCSessionDescription&);
     void doSetRemoteDescription(RTCSessionDescription&);
@@ -100,7 +102,7 @@ private:
     void OnIceCandidate(const webrtc::IceCandidateInterface*) final;
     void OnIceCandidatesRemoved(const std::vector<cricket::Candidate>&) final;
 
-    void createSessionDescriptionSucceeded(webrtc::SessionDescriptionInterface*);
+    void createSessionDescriptionSucceeded(std::unique_ptr<webrtc::SessionDescriptionInterface>&&);
     void createSessionDescriptionFailed(const std::string&);
     void setLocalSessionDescriptionSucceeded();
     void setLocalSessionDescriptionFailed(const std::string&);
@@ -121,11 +123,14 @@ private:
     int AddRef() const { ref(); return static_cast<int>(refCount()); }
     int Release() const { deref(); return static_cast<int>(refCount()); }
 
+    bool shouldOfferAllowToReceiveAudio() const;
+    bool shouldOfferAllowToReceiveVideo() const;
+
     class CreateSessionDescriptionObserver final : public webrtc::CreateSessionDescriptionObserver {
     public:
         explicit CreateSessionDescriptionObserver(LibWebRTCMediaEndpoint &endpoint) : m_endpoint(endpoint) { }
 
-        void OnSuccess(webrtc::SessionDescriptionInterface* sessionDescription) final { m_endpoint.createSessionDescriptionSucceeded(sessionDescription); }
+        void OnSuccess(webrtc::SessionDescriptionInterface* sessionDescription) final { m_endpoint.createSessionDescriptionSucceeded(std::unique_ptr<webrtc::SessionDescriptionInterface>(sessionDescription)); }
         void OnFailure(const std::string& error) final { m_endpoint.createSessionDescriptionFailed(error); }
 
         int AddRef() const { return m_endpoint.AddRef(); }
