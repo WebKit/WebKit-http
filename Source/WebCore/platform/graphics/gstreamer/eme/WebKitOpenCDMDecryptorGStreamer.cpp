@@ -22,6 +22,7 @@
 
 #include "config.h"
 #include "WebKitOpenCDMDecryptorGStreamer.h"
+#include "CDMOpenCDM.h"
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
@@ -44,6 +45,28 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
 static void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt*, unsigned);
 
+static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(
+    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID ";"));
+
+static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(
+    "video/webm; "
+    "audio/webm; "
+    "video/mp4; "
+    "audio/mp4; "
+    "audio/mpeg; "
+    "video/x-h264"));
+
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
 
@@ -56,12 +79,14 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     gobjectClass->finalize = webKitMediaOpenCDMDecryptorFinalize;
 
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
+    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
+    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
 
     gst_element_class_set_static_metadata(elementClass,
         "Decrypt content with OpenCDM support",
         GST_ELEMENT_FACTORY_KLASS_DECRYPTOR,
         "Decrypts media with OpenCDM support",
-        "TataElxsi");
+        "Metrological");
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_decrypt_debug_category,
         "webkitopencdm", 0, "OpenCDM decryptor");
@@ -70,6 +95,7 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
     cencClass->receivedProtectionEvent = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorReceivedProtectionEvent);
+    cencClass->protectionSystemId = WEBCORE_CDMFACTORY_SYSTEM_UUID;
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }
@@ -93,8 +119,9 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 {
     bool returnValue = false;
     const GstStructure* structure = gst_event_get_structure(event);
-    if (!gst_structure_has_name(structure, "drm-session"))
+    if (!gst_structure_has_name(structure, "drm-session")) {
         return returnValue;
+    }
 
     GUniqueOutPtr<char> session;
     unsigned protectionEvent;
@@ -105,11 +132,13 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 
     GST_DEBUG_OBJECT(self, "handling session %s for event %u (ours %u)", session.get(), protectionEvent, priv->m_protectionEvent);
     if (priv->m_protectionEvent == protectionEvent) {
-        if (priv->m_session != session.get()) {
+        if (priv->m_openCdm == nullptr) {
             priv->m_session = session.get();
             priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
-            GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
             returnValue = true;
+        }
+        else if (priv->m_session != session.get()) {
+            GST_DEBUG_OBJECT(self, "Different session send to:  %s - %s", priv->m_session.utf8().data(), session.get());
         } else
             GST_DEBUG_OBJECT(self, "session already selected!");
     } else
