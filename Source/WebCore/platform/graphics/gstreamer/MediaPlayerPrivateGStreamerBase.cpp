@@ -164,9 +164,9 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  extractEventsAndSys
     Vector<String> streamEncryptionAllowedSystemsVector;
     unsigned i;
     if (streamEncryptionAllowedSystems != NULL) {
-    for (i = 0; streamEncryptionAllowedSystems[i]; ++i) {
-        streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
-    }
+        for (i = 0; streamEncryptionAllowedSystems[i]; ++i) {
+            streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
+        }
     }
 
     const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");

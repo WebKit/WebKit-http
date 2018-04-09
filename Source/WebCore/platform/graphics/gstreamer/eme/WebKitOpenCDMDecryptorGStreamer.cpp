@@ -119,9 +119,8 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 {
     bool returnValue = false;
     const GstStructure* structure = gst_event_get_structure(event);
-    if (!gst_structure_has_name(structure, "drm-session")) {
+    if (!gst_structure_has_name(structure, "drm-session"))
         return returnValue;
-    }
 
     GUniqueOutPtr<char> session;
     unsigned protectionEvent;
