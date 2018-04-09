@@ -45,6 +45,28 @@ static bool webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecryp
 static bool webKitMediaOpenCDMDecryptorHandleInitData(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData& initData);
 static bool webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance(WebKitMediaCommonEncryptionDecrypt* self, const WebCore::InitData&);
 
+static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
+    GST_PAD_SINK,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(
+    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID ";"));
+
+static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
+    GST_PAD_SRC,
+    GST_PAD_ALWAYS,
+    GST_STATIC_CAPS(
+    "video/webm; "
+    "audio/webm; "
+    "video/mp4; "
+    "audio/mp4; "
+    "audio/mpeg; "
+    "video/x-h264"));
+
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
 
@@ -63,12 +85,14 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     gobjectClass->finalize = webKitMediaOpenCDMDecryptorFinalize;
 
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
+    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
+    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
 
     gst_element_class_set_static_metadata(elementClass,
         "Decrypt content with OpenCDM support",
         GST_ELEMENT_FACTORY_KLASS_DECRYPTOR,
         "Decrypts media with OpenCDM support",
-        "TataElxsi");
+        "Metrological");
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_decrypt_debug_category,
         "webkitopencdm", 0, "OpenCDM decryptor");
@@ -77,6 +101,7 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     cencClass->handleInitData = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleInitData);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
     cencClass->attemptToDecryptWithLocalInstance = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorAttemptToDecryptWithLocalInstance);
+    cencClass->protectionSystemId = WEBCORE_CDMFACTORY_SYSTEM_UUID;
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }

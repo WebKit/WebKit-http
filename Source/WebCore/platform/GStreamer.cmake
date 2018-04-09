@@ -42,7 +42,6 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
 
         platform/graphics/gstreamer/eme/GStreamerEMEUtilities.cpp
-        platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
         platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.cpp
 
         platform/graphics/gstreamer/mse/AppendPipeline.cpp
@@ -143,7 +142,6 @@ if (ENABLE_ENCRYPTED_MEDIA)
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
     list(APPEND WebCore_SOURCES
-        platform/encryptedmedia/clearkey/CDMClearKey.cpp
 
         platform/graphics/gstreamer/eme/CDMFactoryGStreamer.cpp
     )
@@ -155,8 +153,11 @@ if (ENABLE_ENCRYPTED_MEDIA)
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/eme/CDMOpenCDM.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
-            platform/graphics/gstreamer/eme/WebKitOpenCDMPlayReadyDecryptorGStreamer.cpp
-            platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp
+        )
+    else()
+        list(APPEND WebCore_SOURCES
+            platform/encryptedmedia/clearkey/CDMClearKey.cpp
+            platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
         )
     endif ()
 endif ()
