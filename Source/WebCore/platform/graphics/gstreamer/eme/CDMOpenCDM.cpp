@@ -218,9 +218,6 @@ CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& key
     , m_keySystem(keySystem)
 {
     m_openCDM.SelectKeySystem(keySystem.utf8().data());
-
-    /* if (GStreamerEMEUtilities::isWidevineKeySystem(keySystem))
-        m_mimeType = "video/mp4"; */
 }
 
 CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&& certificate)
