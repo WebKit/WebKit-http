@@ -34,7 +34,7 @@
 
 namespace JSC {
 
-class MacroAssemblerARM : public AbstractMacroAssembler<ARMAssembler, MacroAssemblerARM> {
+class MacroAssemblerARM : public AbstractMacroAssembler<ARMAssembler> {
     static const int DoubleConditionMask = 0x0f;
     static const int DoubleConditionBitSpecial = 0x10;
     COMPILE_ASSERT(!(DoubleConditionBitSpecial & DoubleConditionMask), DoubleConditionBitSpecial_should_not_interfere_with_ARMAssembler_Condition_codes);
@@ -1559,10 +1559,6 @@ public:
         ARMAssembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-#if ENABLE(MASM_PROBE)
-    void probe(ProbeFunction, void* arg);
-#endif // ENABLE(MASM_PROBE)
-
 protected:
     ARMAssembler::Condition ARMCondition(RelationalCondition cond)
     {
@@ -1589,6 +1585,23 @@ protected:
         load32(Address(base, offset), ARMRegisters::S1);
         m_assembler.blx(ARMRegisters::S1);
     }
+
+#if ENABLE(MASM_PROBE)
+    inline TrustedImm32 trustedImm32FromPtr(void* ptr)
+    {
+        return TrustedImm32(TrustedImmPtr(ptr));
+    }
+
+    inline TrustedImm32 trustedImm32FromPtr(ProbeFunction function)
+    {
+        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
+    }
+
+    inline TrustedImm32 trustedImm32FromPtr(void (*function)())
+    {
+        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
+    }
+#endif
 
 private:
     friend class LinkBuffer;
@@ -1619,24 +1632,6 @@ private:
         else
             ARMAssembler::linkCall(code, call.m_label, function.value());
     }
-
-
-#if ENABLE(MASM_PROBE)
-    inline TrustedImm32 trustedImm32FromPtr(void* ptr)
-    {
-        return TrustedImm32(TrustedImmPtr(ptr));
-    }
-
-    inline TrustedImm32 trustedImm32FromPtr(ProbeFunction function)
-    {
-        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
-    }
-
-    inline TrustedImm32 trustedImm32FromPtr(void (*function)())
-    {
-        return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
-    }
-#endif
 
     static const bool s_isVFPPresent;
 };

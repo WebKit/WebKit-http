@@ -1,3 +1,435 @@
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix compiler warnings when building with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=174463
+
+        Reviewed by Darin Adler.
+
+        * testing/InternalSettings.cpp:
+        (WebCore::InternalSettings::setShouldManageAudioSessionCategory):
+
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Incorrect call to StyledElement::setInlineStyleProperty in ImageDocument::createDocumentStructure
+        https://bugs.webkit.org/show_bug.cgi?id=174470
+
+        Reviewed by Darin Adler.
+
+        * html/ImageDocument.cpp:
+        (WebCore::ImageDocument::createDocumentStructure):
+
+2017-07-13  Dean Jackson  <dino@apple.com>
+
+        Fix iOS build.
+
+        * platform/graphics/GraphicsContext3D.h:
+
+2017-07-12  Dean Jackson  <dino@apple.com>
+
+        Rename GraphicsContext[3D]Mac to Cocoa and move things into graphics/cocoa
+        https://bugs.webkit.org/show_bug.cgi?id=174453
+        <rdar://problem/33281481>
+
+        Reviewed by Simon Fraser.
+
+        Two renames, two moves:
+        graphics/mac/GraphicsContext3DMac.mm -> graphics/cocoa/GraphicsContext3DCocoa.mm
+        graphics/mac/GraphicsContext.mm -> graphics/cocoa/GraphicsContextCocoa.mm
+        graphics/mac/WebGLLayer.h -> graphics/cocoa/WebGLLayer.h
+        graphics/mac/WebGLLayer.mm -> graphics/cocoa/WebGLLayer.mm
+
+        * PlatformMac.cmake:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/graphics/cocoa/GraphicsContext3DCocoa.mm: Renamed from Source/WebCore/platform/graphics/mac/GraphicsContext3DMac.mm.
+        * platform/graphics/cocoa/GraphicsContextCocoa.mm: Renamed from Source/WebCore/platform/graphics/mac/GraphicsContextMac.mm.
+        * platform/graphics/cocoa/WebGLLayer.h: Renamed from Source/WebCore/platform/graphics/mac/WebGLLayer.h.
+        * platform/graphics/cocoa/WebGLLayer.mm: Renamed from Source/WebCore/platform/graphics/mac/WebGLLayer.mm.
+
+2017-07-12  Dean Jackson  <dino@apple.com>
+
+        Clean-up some things in GraphicsContext3D
+        https://bugs.webkit.org/show_bug.cgi?id=174452
+        <rdar://problem/33281257>
+
+        Reviewed by Simon Fraser.
+
+        General clean-up in GC3D.
+
+        Covered by existing tests.
+
+        * platform/graphics/GraphicsContext3D.h: Use initial values where possible.
+        (WebCore::GraphicsContext3D::GraphicsContext3DState::GraphicsContext3DState): Deleted.
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D): Nearly everything can come from the
+        initial values now.
+        (WebCore::GraphicsContext3D::~GraphicsContext3D): Remove code that won't be enabled
+        on this platform.
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::paintRenderingResultsToCanvas): While unlikely to happen,
+        and possibly harmless in this case, add some checked arithmetic to make sure we don't overflow
+        when working out how big a buffer to create.
+        (WebCore::GraphicsContext3D::paintRenderingResultsToImageData): Ditto.
+        (WebCore::GraphicsContext3D::reshape): Do nothing if we are ever given negative
+        width or height. Again unlikely.
+
+2017-07-13  Dean Jackson  <dino@apple.com>
+
+        Avoid unnecessary copy of framebuffer into WebGL Layer
+        https://bugs.webkit.org/show_bug.cgi?id=174345
+        <rdar://problem/33228950>
+
+        Reviewed by Sam Weinig.
+
+        On macOS, we're unnecessarily copying the framebuffer into another
+        texture before pushing it into the compositing layer. Instead we
+        should simply render the FBO into the CALayer we use to draw on
+        the screen.
+
+        Covered by the existing WebGL tests.
+
+        * platform/graphics/GraphicsContext3D.h:
+        (WebCore::GraphicsContext3D::platformTexture): Return the FBO texture instead.
+        * platform/graphics/mac/GraphicsContext3DMac.mm:
+        (WebCore::GraphicsContext3D::GraphicsContext3D): No need to have a compositing
+        texture.
+        (WebCore::GraphicsContext3D::~GraphicsContext3D):
+        * platform/graphics/opengl/GraphicsContext3DOpenGL.cpp:
+        (WebCore::GraphicsContext3D::reshapeFBOs):
+        * platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp:
+        (WebCore::GraphicsContext3D::prepareTexture): Don't copy the pixels from
+        the FBO into the compositing texture
+
+2017-07-13  Mark Lam  <mark.lam@apple.com>
+
+        Implementors of memoryCost() need to be thread-safe.
+        https://bugs.webkit.org/show_bug.cgi?id=172738
+        <rdar://problem/32474881>
+
+        Reviewed by Keith Miller.
+
+        No new tests. This patch fixes a race condition bug that can result in random
+        crashes (and other unpredictable behavior), and is very difficult to test for.
+
+        * Modules/webaudio/AudioBuffer.cpp:
+        (WebCore::AudioBuffer::releaseMemory):
+        (WebCore::AudioBuffer::memoryCost):
+        * Modules/webaudio/AudioBuffer.h:
+        * dom/ChildNodeList.h:
+        * dom/CollectionIndexCache.h:
+        (WebCore::CollectionIndexCache::memoryCost):
+        * dom/LiveNodeList.h:
+        * html/CachedHTMLCollection.h:
+        * html/HTMLCanvasElement.cpp:
+        (WebCore::HTMLCanvasElement::memoryCost):
+        (WebCore::HTMLCanvasElement::externalMemoryCost):
+        (WebCore::HTMLCanvasElement::setImageBuffer):
+        * html/HTMLCanvasElement.h:
+        * html/HTMLCollection.cpp:
+        (WebCore::HTMLCollection::invalidateNamedElementCache):
+        * html/HTMLCollection.h:
+        (WebCore::CollectionNamedElementCache::memoryCost):
+        (WebCore::HTMLCollection::memoryCost):
+        (WebCore::HTMLCollection::setNamedItemCache):
+        * platform/graphics/ImageBuffer.cpp:
+        (WebCore::ImageBuffer::memoryCost):
+        * platform/graphics/cg/ImageBufferCG.cpp:
+        (WebCore::ImageBuffer::memoryCost):
+        (WebCore::ImageBuffer::externalMemoryCost):
+
+2017-07-13  Jeremy Jones  <jeremyj@apple.com>
+
+        Fix style. Use #pragma once in VideoFullscreen and PlaybackSession headers.
+        https://bugs.webkit.org/show_bug.cgi?id=174448
+
+        Reviewed by Eric Carlson.
+
+        No behavior change.
+
+        * platform/cocoa/WebPlaybackSessionInterface.h:
+        * platform/cocoa/WebVideoFullscreenChangeObserver.h:
+        * platform/cocoa/WebVideoFullscreenModel.h:
+        * platform/cocoa/WebVideoFullscreenModelVideoElement.h:
+        * platform/ios/WebPlaybackSessionInterfaceAVKit.h:
+        * platform/ios/WebVideoFullscreenControllerAVKit.h:
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.h:
+        * platform/mac/WebVideoFullscreenInterfaceMac.h:
+
+2017-07-13  Alex Christensen  <achristensen@webkit.org>
+
+        Deleting last URLSearchParams key should remove trailing ? in associated URL
+        https://bugs.webkit.org/show_bug.cgi?id=174465
+
+        Reviewed by Chris Dumez.
+
+        This makes us match the behavior of Chrome and Firefox, and the spec after https://github.com/whatwg/url/issues/332 is approved.
+        This will be covered by an upcoming web platform test, and I updated fast/dom/DOMURL/searchparams.html to cover it now.
+
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::serialize):
+        If there are no tuples, serialize to the null string instead of a non-null empty string.
+        This makes it so URL::setQuery removes the ?
+
+2017-07-13  Jeremy Jones  <jeremyj@apple.com>
+
+        Style fix. Replace strongThis with protectedThis.
+        https://bugs.webkit.org/show_bug.cgi?id=174444
+
+        Reviewed by Eric Carlson.
+
+        Rename, no behavior change.
+
+        * Modules/webaudio/AudioScheduledSourceNode.cpp:
+        (WebCore::AudioScheduledSourceNode::finish):
+        * platform/graphics/cocoa/WebCoreDecompressionSession.mm:
+        (WebCore::WebCoreDecompressionSession::maybeBecomeReadyForMoreMediaData):
+        (WebCore::WebCoreDecompressionSession::enqueueSample):
+        (WebCore::WebCoreDecompressionSession::handleDecompressionOutput):
+        (WebCore::WebCoreDecompressionSession::enqueueDecodedSample):
+        (WebCore::WebCoreDecompressionSession::requestMediaDataWhenReady):
+        (WebCore::WebCoreDecompressionSession::flush):
+
+2017-07-13  Jeremy Jones  <jeremyj@apple.com>
+
+        Fix block style in WebVideoFullscreen classes.
+        https://bugs.webkit.org/show_bug.cgi?id=174446
+
+        Reviewed by Eric Carlson.
+
+        No behavior change.
+
+        * platform/ios/WebVideoFullscreenControllerAVKit.mm:
+        (WebVideoFullscreenControllerContext::setVideoLayerFrame):
+        * platform/ios/WebVideoFullscreenInterfaceAVKit.mm:
+        (-[WebAVPlayerLayer layoutSublayers]):
+        (getWebAVPictureInPicturePlayerLayerViewClass):
+        (getWebAVPlayerLayerViewClass):
+
+2017-07-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and untested Page domain commands
+        https://bugs.webkit.org/show_bug.cgi?id=174429
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/InspectorPageAgent.cpp:
+        (WebCore::InspectorPageAgent::disable):
+        (WebCore::InspectorPageAgent::didClearWindowObjectInWorld):
+        (WebCore::InspectorPageAgent::addScriptToEvaluateOnLoad): Deleted.
+        (WebCore::InspectorPageAgent::removeScriptToEvaluateOnLoad): Deleted.
+        * inspector/InspectorPageAgent.h:
+
+2017-07-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyRSA SPKI exports
+        https://bugs.webkit.org/show_bug.cgi?id=173695
+
+        Reviewed by Jiewen Tan.
+
+        Implement the SPKI export operation for RSA keys for platforms that use
+        libgcrypt.
+
+        In CryptoKeyRSA::exportSpki(), we bail early with an invalid access exception if
+        this export is not being done for a public key. Otherwise, we start with creating
+        the `RSAPublicKey` ASN.1 structure, filling in the modulus and public exponent
+        data that's retrieved from the `public-key` s-expression in the signed MPI format.
+
+        We then create the `SubjectPublicKeyInfo` ASN.1 structure and fill it out with
+        the necessary data. The id-rsaEncryption object identifier is written out under
+        the `algorithm.algorithm` element, and a null value is written out under the
+        `algorithm.parameters` element. This doesn't follow the specification at the
+        moment, since id-RSASSA-PSS would have to be written for the RSA-PSS algorithm,
+        and id-RSAES-OAEP for the RSA-OAEP algorithm, along with specific parameter
+        structures. But no test in WebKit or the web-platform-tests suite covers this,
+        so this deviation should be addressed later.
+
+        Data of the previously-constructed `RSAPublicKey` structure is retrieved and
+        written out under the `subjectPublicKey` element, before finally retrieving
+        data of the `SubjectPublicKeyInfo` structure and returning that to the caller.
+
+        A helper mpiSignedData() function is added, providing overloads for gcry_mpi_t
+        and gcry_sexp_t parameters. MPI data for that parameter is retrieved and the
+        first byte of that data is tested, inserting an additional 0x00 byte at the
+        beginning of the Vector if that first byte has the first bit set, avoiding this
+        data accidentally being interpreted as a signed integer.
+
+        No new tests -- related tests are now passing and are unskipped.
+
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::CryptoKeyRSA::exportSpki):
+        * crypto/gcrypt/GCryptUtilities.h:
+        (WebCore::mpiSignedData):
+
+2017-07-13  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyRSA SPKI imports
+        https://bugs.webkit.org/show_bug.cgi?id=173694
+
+        Reviewed by Jiewen Tan.
+
+        Implement the SPKI import operation for RSA keys for platforms that use
+        libgcrypt.
+
+        The passed-in key data is decoded against the `SubjectPublicKeyInfo` ASN.1
+        structure. We then validate the `algorithm.algorithm` element, ensuring that
+        the value under that represents a supported object identifier. This check is
+        for now mostly superficial, only ensuring that the object identifier is either
+        id-rsaEncryption, id-RSAES-OAEP or id-RSASSA-PSS. This has to be further extended
+        to also check the id-sha{1,256,384,512}WithRSAEncryption identifiers as well as
+        decoding the `algorithm.parameters` element against a specific ASN.1 structure,
+        if necessary (RSASSA-PSS-params or RSAES-OAEP-params), and cross-checking the
+        specified digest algorithm with the algorithm that's specified through the main
+        object identifier or the structure contained in `algorithm.parameters`. This is
+        avoided for now because no test in WebKit or the web-platform-tests suite covers
+        this detail of the specification.
+
+        After the algorithm is identified as supported, we proceed with decoding the
+        `subjectPublicKey` data against the `RSAPublicKey` ASN.1 structure. From there,
+        we retrieve the `modulus` and `publicExponent` data from which we can construct
+        an RSA `public-key` s-expression that can be used through libgcrypt. A new
+        CryptoKeyRSA object is then created, taking over ownership of the `public-key`
+        s-expression, and returned.
+
+        No new tests -- related tests are now passing and are unskipped.
+
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::supportedAlgorithmIdentifier):
+        (WebCore::CryptoKeyRSA::importSpki):
+
+2017-07-12  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        REGRESSION(r219332): [GTK] 9 new failures on fast/forms spinbutton related tests
+        https://bugs.webkit.org/show_bug.cgi?id=174395
+
+        Reviewed by Carlos Garcia Campos.
+
+        Covered by existing tests.
+
+        Before r219332 the height of the spin button widget was
+        calculated as the maximum value between the individual button
+        ( the [+] or [-] ) width (33 pixels) and height (16 pixels).
+        And r219332 caused the height of the widget to be calculated as
+        the height of the button (16 pixels), which was incorrect as
+        each button should be first expanded vertically to fit the
+        preferred size of the widget.
+
+        Fix this by making the calculations about the spin button widget
+        on a new function spinButtonSize() that takes this into account,
+        and use this values both for adjusting the style of the input
+        field and the spin button widget itself.
+
+        * rendering/RenderThemeGtk.cpp:
+        (WebCore::spinButtonSize):
+        (WebCore::RenderThemeGtk::adjustTextFieldStyle):
+        (WebCore::RenderThemeGtk::adjustInnerSpinButtonStyle):
+
+2017-07-13  Miguel Gomez  <magomez@igalia.com>
+
+        [GTK][WPE] border-radius with non visible border doesn't work on images that have their own RenderLayer
+        https://bugs.webkit.org/show_bug.cgi?id=174157
+
+        Reviewed by Carlos Garcia Campos.
+
+        Do not allow direct compositing of images when they have a border-radius property on WebKitGTK+ and WPE.
+        These platforms don't support clipping using rounded rectangles during composition, which is required
+        when using border-radius and the border is not visible. Due to this, they need to perform the clippping
+        with cairo.
+
+        This is a temporal fix, until appropriate clipping is implemented in the TextureMapper.
+
+        No new tests.
+
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::isDirectlyCompositedImage):
+
+2017-07-13  Chris Fleizach  <cfleizach@apple.com>
+
+        AX: WebView crashes app after opening VoiceOver context box menu from modal dialog
+        https://bugs.webkit.org/show_bug.cgi?id=163999
+        <rdar://problem/28949013>
+
+        Reviewed by Joanmarie Diggs.
+
+        Protect when m_object goes away.
+
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityShowContextMenu]):
+
+2017-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding for large images should be disabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=174432
+
+        Reviewed by Simon Fraser.
+
+        -- Rename GraphicsLayerPaintFlags::Snapshotting to AllowAsyncImageDecoding.
+        -- Replace every reference to GraphicsLayerPaintFlags::Snapshotting by
+           GraphicsLayerPaintFlags::None and every GraphicsLayerPaintFlags::None
+           by AllowAsyncImageDecoding.
+        -- Rename PaintBehaviorSnapshotting to PaintBehaviorAllowAsyncImageDecoding.
+        -- Propagate PaintBehaviorAllowAsyncImageDecoding from a parent view to 
+           a child view instead of propagating PaintBehaviorSnapshotting.
+        -- Remove setting the bit PaintBehaviorSnapshotting in any new PaintBehavoir.
+        -- Replace setting the bit PaintBehaviorSnapshotting in an existing PaintBehavoir
+           by resetting the bit PaintBehaviorAllowAsyncImageDecoding.
+
+        * html/shadow/MediaControlElements.cpp:
+        (WebCore::MediaControlTextTrackContainerElement::createTextTrackRepresentationImage):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::willPaintContents):
+        (WebCore::FrameView::paintContentsForSnapshot):
+        * platform/graphics/GraphicsLayer.h:
+        * platform/graphics/GraphicsLayerClient.h:
+        * platform/graphics/mac/WebLayer.mm:
+        (-[WebLayer drawInContext:]):
+        (-[WebSimpleLayer drawInContext:]):
+        * rendering/PaintPhase.h:
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::decodingModeForImageDraw):
+        (WebCore::RenderBoxModelObject::paintFillLayerExtended):
+        * rendering/RenderBoxModelObject.h:
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::paintIntoRect):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::paintLayerContents):
+        (WebCore::RenderLayer::paintForegroundForFragments):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::paintContents):
+        * rendering/RenderWidget.cpp:
+        (WebCore::RenderWidget::paintContents): We need to propagate the 
+        PaintBehaviorAllowAsyncImageDecoding from RenderWidget to the FrameView.
+        We did not need to do that for PaintBehaviorSnapshotting because 
+        FrameView was setting it in its m_paintBehavior if (document->printing())
+        in FrameView::willPaintContents().
+
+2017-07-12  Timothy Hatcher  <timothy@hatcher.name>
+
+        REGRESSION(r219391): Broke the USE(OPENGL_ES_2) build
+        https://bugs.webkit.org/show_bug.cgi?id=174442
+
+        Unreviewed build fix.
+
+        * platform/graphics/egl/GLContextEGL.cpp: Fix typo of OPENGL_ES2.
+
+2017-07-12  Youenn Fablet  <youenn@apple.com>
+
+        Recreate the AudioUnit when restarting capture
+        https://bugs.webkit.org/show_bug.cgi?id=174439
+
+        Reviewed by Jer Noble.
+
+        Sometimes other applications in the system like FaceTime may make the audio unit not functional.
+        Reloading the tab capturing audio will trigger a call to stop the audio shared unit.
+        When the tab requests again audio, the shared unit will restart.
+        At that time, the AudioUnit shared unit will be fully recreated.
+
+        Manually tested by doing a webrtc call and then doing a FaceTime call.
+        Remote WebRTC endpoints may not receive any audio.
+        With the patch, reloading the web page will get back the audio.
+        Previously, restarting the UIProcess was the only way.
+
+        * platform/mediastream/mac/CoreAudioCaptureSource.cpp:
+        (WebCore::CoreAudioSharedUnit::startProducingData): Cleaning the audio unit when starting to produce data if there is a preexisting audio unit.
+
 2017-07-12  Youenn Fablet  <youenn@apple.com>
 
         Accessing localDescription, remoteDescription, etc. after setTimeout raises EXC_BAD_ACCESS

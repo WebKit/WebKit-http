@@ -33,7 +33,7 @@
 
 namespace JSC {
 
-class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler, MacroAssemblerARMv7> {
+class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler> {
     static const RegisterID dataTempRegister = ARMRegisters::ip;
     static const RegisterID addressTempRegister = ARMRegisters::r6;
 
@@ -2016,10 +2016,6 @@ public:
         ARMv7Assembler::relinkCall(call.dataLocation(), destination.executableAddress());
     }
 
-#if ENABLE(MASM_PROBE)
-    void probe(ProbeFunction, void* arg);
-#endif // ENABLE(MASM_PROBE)
-
 protected:
     ALWAYS_INLINE Jump jump()
     {
@@ -2111,17 +2107,6 @@ protected:
         return static_cast<ARMv7Assembler::Condition>(cond);
     }
     
-private:
-    friend class LinkBuffer;
-
-    static void linkCall(void* code, Call call, FunctionPtr function)
-    {
-        if (call.isFlagSet(Call::Tail))
-            ARMv7Assembler::linkJump(code, call.m_label, function.value());
-        else
-            ARMv7Assembler::linkCall(code, call.m_label, function.value());
-    }
-
 #if ENABLE(MASM_PROBE)
     inline TrustedImm32 trustedImm32FromPtr(void* ptr)
     {
@@ -2138,6 +2123,17 @@ private:
         return TrustedImm32(TrustedImmPtr(reinterpret_cast<void*>(function)));
     }
 #endif
+
+private:
+    friend class LinkBuffer;
+
+    static void linkCall(void* code, Call call, FunctionPtr function)
+    {
+        if (call.isFlagSet(Call::Tail))
+            ARMv7Assembler::linkJump(code, call.m_label, function.value());
+        else
+            ARMv7Assembler::linkCall(code, call.m_label, function.value());
+    }
 
     bool m_makeJumpPatchable;
 };

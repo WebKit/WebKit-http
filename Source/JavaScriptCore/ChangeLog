@@ -1,3 +1,152 @@
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix compiler warnings when building with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=174463
+
+        Reviewed by Darin Adler.
+
+        * disassembler/udis86/udis86_decode.c:
+        (decode_operand):
+
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Incorrect assertion in JSC::CallLinkInfo::callTypeFor
+        https://bugs.webkit.org/show_bug.cgi?id=174467
+
+        Reviewed by Saam Barati.
+
+        * bytecode/CallLinkInfo.cpp:
+        (JSC::CallLinkInfo::callTypeFor):
+
+2017-07-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove unused and untested Page domain commands
+        https://bugs.webkit.org/show_bug.cgi?id=174429
+
+        Reviewed by Timothy Hatcher.
+
+        * inspector/protocol/Page.json:
+
+2017-07-13  Saam Barati  <sbarati@apple.com>
+
+        Missing exception check in JSObject::hasInstance
+        https://bugs.webkit.org/show_bug.cgi?id=174455
+        <rdar://problem/31384608>
+
+        Reviewed by Mark Lam.
+
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::hasInstance):
+
+2017-07-13  Caio Lima  <ticaiolima@gmail.com>
+
+        [ESnext] Implement Object Spread
+        https://bugs.webkit.org/show_bug.cgi?id=167963
+
+        Reviewed by Saam Barati.
+
+        This patch implements ECMA262 stage 3 Object Spread proposal [1].
+        It's implemented using CopyDataPropertiesNoExclusions to copy
+        all enumerable keys from object being spreaded. The implementation of
+        CopyDataPropertiesNoExclusions follows the CopyDataProperties
+        implementation, however we don't receive excludedNames as parameter.
+
+        [1] - https://github.com/tc39/proposal-object-rest-spread
+
+        * builtins/GlobalOperations.js:
+        (globalPrivate.copyDataPropertiesNoExclusions):
+        * bytecompiler/BytecodeGenerator.cpp:
+        (JSC::BytecodeGenerator::emitLoad):
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::PropertyListNode::emitBytecode):
+        (JSC::ObjectSpreadExpressionNode::emitBytecode):
+        * parser/ASTBuilder.h:
+        (JSC::ASTBuilder::createObjectSpreadExpression):
+        (JSC::ASTBuilder::createProperty):
+        * parser/NodeConstructors.h:
+        (JSC::PropertyNode::PropertyNode):
+        (JSC::ObjectSpreadExpressionNode::ObjectSpreadExpressionNode):
+        * parser/Nodes.h:
+        (JSC::ObjectSpreadExpressionNode::expression):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseProperty):
+        * parser/SyntaxChecker.h:
+        (JSC::SyntaxChecker::createObjectSpreadExpression):
+        (JSC::SyntaxChecker::createProperty):
+
+2017-07-12  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: build fix after r219434.
+        https://bugs.webkit.org/show_bug.cgi?id=174441
+
+        Not reviewed.
+
+        Make public some MacroAssembler functions that are needed by the probe implementationq.
+
+        * assembler/MacroAssemblerARM.h:
+        (JSC::MacroAssemblerARM::trustedImm32FromPtr):
+        * assembler/MacroAssemblerARMv7.h:
+        (JSC::MacroAssemblerARMv7::linkCall):
+
+2017-07-12  Mark Lam  <mark.lam@apple.com>
+
+        Move Probe code from AbstractMacroAssembler to MacroAssembler.
+        https://bugs.webkit.org/show_bug.cgi?id=174441
+
+        Reviewed by Saam Barati.
+
+        This is a pure refactoring patch for moving probe code from the AbstractMacroAssembler
+        to MacroAssembler.  There is no code behavior change.
+
+        * assembler/AbstractMacroAssembler.h:
+        (JSC::AbstractMacroAssembler<AssemblerType>::Address::indexedBy):
+        (JSC::AbstractMacroAssembler::CPUState::gprName): Deleted.
+        (JSC::AbstractMacroAssembler::CPUState::fprName): Deleted.
+        (JSC::AbstractMacroAssembler::CPUState::gpr): Deleted.
+        (JSC::AbstractMacroAssembler::CPUState::fpr): Deleted.
+        (JSC::MacroAssemblerType>::Address::indexedBy): Deleted.
+        * assembler/MacroAssembler.h:
+        (JSC::MacroAssembler::CPUState::gprName):
+        (JSC::MacroAssembler::CPUState::fprName):
+        (JSC::MacroAssembler::CPUState::gpr):
+        (JSC::MacroAssembler::CPUState::fpr):
+        * assembler/MacroAssemblerARM.cpp:
+        (JSC::MacroAssembler::probe):
+        (JSC::MacroAssemblerARM::probe): Deleted.
+        * assembler/MacroAssemblerARM.h:
+        * assembler/MacroAssemblerARM64.cpp:
+        (JSC::MacroAssembler::probe):
+        (JSC::MacroAssemblerARM64::probe): Deleted.
+        * assembler/MacroAssemblerARM64.h:
+        * assembler/MacroAssemblerARMv7.cpp:
+        (JSC::MacroAssembler::probe):
+        (JSC::MacroAssemblerARMv7::probe): Deleted.
+        * assembler/MacroAssemblerARMv7.h:
+        * assembler/MacroAssemblerMIPS.h:
+        * assembler/MacroAssemblerX86Common.cpp:
+        (JSC::MacroAssembler::probe):
+        (JSC::MacroAssemblerX86Common::probe): Deleted.
+        * assembler/MacroAssemblerX86Common.h:
+
+2017-07-12  Saam Barati  <sbarati@apple.com>
+
+        GenericArguments consults the wrong state when tracking modified argument descriptors and mapped arguments
+        https://bugs.webkit.org/show_bug.cgi?id=174411
+        <rdar://problem/31696186>
+
+        Reviewed by Mark Lam.
+
+        The code for deleting an argument was incorrectly referencing state
+        when it decided if it should unmap or mark a property as having its
+        descriptor modified. This patch fixes the bug where if we delete a
+        property, we would sometimes not unmap an argument when deleting it.
+
+        * runtime/GenericArgumentsInlines.h:
+        (JSC::GenericArguments<Type>::getOwnPropertySlot):
+        (JSC::GenericArguments<Type>::getOwnPropertySlotByIndex):
+        (JSC::GenericArguments<Type>::deleteProperty):
+        (JSC::GenericArguments<Type>::deletePropertyByIndex):
+
 2017-07-12  Commit Queue  <commit-queue@webkit.org>
 
         Unreviewed, rolling out r219176.

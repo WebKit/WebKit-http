@@ -441,6 +441,7 @@ set(WebKit2_SOURCES
 
     UIProcess/Storage/LocalStorageDatabase.cpp
     UIProcess/Storage/LocalStorageDatabaseTracker.cpp
+    UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.cpp
 
     UIProcess/UserContent/WebScriptMessageHandler.cpp
     UIProcess/UserContent/WebUserContentControllerProxy.cpp

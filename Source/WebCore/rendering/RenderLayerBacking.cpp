@@ -2228,6 +2228,14 @@ bool RenderLayerBacking::isDirectlyCompositedImage() const
         if (image->orientationForCurrentFrame() != DefaultImageOrientation)
             return false;
 
+#if (PLATFORM(GTK) || PLATFORM(WPE))
+        // GTK and WPE ports don't support rounded rect clipping at TextureMapper level, so they cannot
+        // directly composite images that have border-radius propery. Draw them as non directly composited
+        // content instead. See https://bugs.webkit.org/show_bug.cgi?id=174157.
+        if (imageRenderer.style().hasBorderRadius())
+            return false;
+#endif
+
         return m_graphicsLayer->shouldDirectlyCompositeImage(image);
     }
 
@@ -2585,8 +2593,8 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
 
         // We have to use the same root as for hit testing, because both methods can compute and cache clipRects.
         PaintBehavior behavior = PaintBehaviorNormal;
-        if (flags == GraphicsLayerPaintFlags::Snapshotting)
-            behavior |= PaintBehaviorSnapshotting;
+        if (flags == GraphicsLayerPaintFlags::AllowAsyncImageDecoding)
+            behavior |= PaintBehaviorAllowAsyncImageDecoding;
 
         paintIntoLayer(graphicsLayer, context, dirtyRect, behavior, paintingPhase);
 

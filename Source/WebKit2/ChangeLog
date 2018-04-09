@@ -1,3 +1,204 @@
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix compiler warnings when building with GCC 7
+        https://bugs.webkit.org/show_bug.cgi?id=174463
+
+        Reviewed by Darin Adler.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::sendOutputMessage):
+
+2017-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Moved filesystem code out of WebResourceLoadStatisticsStore class
+        https://bugs.webkit.org/show_bug.cgi?id=174435
+
+        Reviewed by Brent Fulgham.
+
+        Moved filesystem code out of WebResourceLoadStatisticsStore class and into
+        a new ResourceLoadStatisticsPersistentStorage class to decrease complexity.
+
+        * CMakeLists.txt:
+        * UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm:
+        * UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.cpp: Added.
+        (WebKit::hasFileChangedSince):
+        (WebKit::createDecoderForFile):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::~ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::storageDirectoryPath):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::resourceLogFilePath):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::startMonitoringDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::stopMonitoringDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::refreshMemoryStoreFromDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::populateMemoryStoreFromDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::writeMemoryStoreToDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::scheduleOrWriteMemoryStore):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::clear):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::finishAllPendingWorkSynchronously):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::excludeFromBackup):
+        * UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.h: Added.
+        * UIProcess/Storage/ios/ResourceLoadStatisticsPersistentStorageIOS.mm: Added.
+        (WebKit::ResourceLoadStatisticsPersistentStorage::excludeFromBackup):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData):
+        (WebKit::WebResourceLoadStatisticsStore::applicationWillTerminate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::resetDataFromDecoder):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r219453.
+
+        Seems to cause some crashes on the bots
+
+        Reverted changeset:
+
+        "Moved filesystem code out of WebResourceLoadStatisticsStore
+        class"
+        https://bugs.webkit.org/show_bug.cgi?id=174435
+        http://trac.webkit.org/changeset/219453
+
+2017-07-13  Jeremy Jones  <jeremyj@apple.com>
+
+        Fix style. Use #pragma once in VideoFullscreen and PlaybackSession headers.
+        https://bugs.webkit.org/show_bug.cgi?id=174448
+
+        Reviewed by Eric Carlson.
+
+        No behavior change.
+
+        * UIProcess/Cocoa/WebVideoFullscreenManagerProxy.h:
+        * WebProcess/cocoa/WebVideoFullscreenManager.h:
+
+2017-07-13  Jeremy Jones  <jeremyj@apple.com>
+
+        Style fix. Replace strongThis with protectedThis.
+        https://bugs.webkit.org/show_bug.cgi?id=174444
+
+        Reviewed by Eric Carlson.
+
+        Rename, no behavior change.
+
+        * WebProcess/cocoa/WebVideoFullscreenManager.mm:
+        (WebKit::WebVideoFullscreenManager::didSetupFullscreen):
+        (WebKit::WebVideoFullscreenManager::didEnterFullscreen):
+        (WebKit::WebVideoFullscreenManager::didExitFullscreen):
+        (WebKit::WebVideoFullscreenManager::didCleanupFullscreen):
+
+2017-07-13  Chris Dumez  <cdumez@apple.com>
+
+        Moved filesystem code out of WebResourceLoadStatisticsStore class
+        https://bugs.webkit.org/show_bug.cgi?id=174435
+
+        Reviewed by Brent Fulgham.
+
+        Moved filesystem code out of WebResourceLoadStatisticsStore class and into
+        a new ResourceLoadStatisticsPersistentStorage class to decrease complexity.
+
+        * CMakeLists.txt:
+        * UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm:
+        * UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.cpp: Added.
+        (WebKit::hasFileChangedSince):
+        (WebKit::createDecoderForFile):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::~ResourceLoadStatisticsPersistentStorage):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::storageDirectoryPath):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::resourceLogFilePath):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::startMonitoringDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::stopMonitoringDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::refreshMemoryStoreFromDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::populateMemoryStoreFromDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::writeMemoryStoreToDisk):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::scheduleOrWriteMemoryStore):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::clear):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::finishAllPendingWorkSynchronously):
+        (WebKit::ResourceLoadStatisticsPersistentStorage::excludeFromBackup):
+        * UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.h: Added.
+        * UIProcess/Storage/ios/ResourceLoadStatisticsPersistentStorageIOS.mm: Added.
+        (WebKit::ResourceLoadStatisticsPersistentStorage::excludeFromBackup):
+        * UIProcess/WebResourceLoadStatisticsStore.cpp:
+        (WebKit::WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore):
+        (WebKit::WebResourceLoadStatisticsStore::processStatisticsAndDataRecords):
+        (WebKit::WebResourceLoadStatisticsStore::grandfatherExistingWebsiteData):
+        (WebKit::WebResourceLoadStatisticsStore::applicationWillTerminate):
+        (WebKit::WebResourceLoadStatisticsStore::scheduleClearInMemoryAndPersistent):
+        (WebKit::WebResourceLoadStatisticsStore::resetDataFromDecoder):
+        * UIProcess/WebResourceLoadStatisticsStore.h:
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-07-12  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Web Automation: evaluateJavaScriptFunction should start the callback timeout after the function is applied
+        https://bugs.webkit.org/show_bug.cgi?id=174421
+
+        Reviewed by Brian Burg.
+
+        This is causing selenium test testShouldNotTimeoutIfScriptCallsbackInsideAZeroTimeout to fail, because
+        JavaScriptTimeout error is generated unexpectedly. When no script timeout is specified, 0 is used by default,
+        which means we do a setTimeout with 0 and then the script does another setTimeout with 0, but ours is dispatched
+        before and reportTimeoutError is called. We should start our timeout after applying the function, and only if
+        the result hasn't been reported yet.
+
+        * WebProcess/Automation/WebAutomationSessionProxy.js:
+        (let.AutomationSessionProxy.prototype.evaluateJavaScriptFunction):
+
+2017-07-12  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] [WK2] Add SPI to enable, disable, or follow default behavior for DnD on a WKWebView
+        https://bugs.webkit.org/show_bug.cgi?id=174440
+        <rdar://problem/33272627>
+
+        Reviewed by Beth Dakin.
+
+        Adds a new _dragInteractionPolicy property to WKWebView, which an internal client may use to always allow
+        dragging out of the web view (_WKDragInteractionPolicyAlwaysEnable), never allow
+        (_WKDragInteractionPolicyAlwaysDisable) or just use the default device-dependent behavior
+        (_WKDragInteractionPolicyDefault).
+
+        Also removes an extraneous class from WKContentViewInteraction.mm that is no longer used anywhere.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _initializeWithConfiguration:]):
+
+        Set _dragInteractionPolicy to _WKDragInteractionPolicyDefault upon initialization.
+
+        (-[WKWebView _dragInteractionPolicy]):
+        (-[WKWebView _setDragInteractionPolicy:]):
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (shouldEnableDragInteractionForPolicy):
+        (-[WKContentView _didChangeDragInteractionPolicy]):
+
+        Called by the WKWebView when its _dragInteractionPolicy changes. The content view updates its
+        UIDragInteraction's -enabled property here in response.
+
+        (-[WKContentView setupDataInteractionDelegates]):
+
+2017-07-12  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding for large images should be disabled by default
+        https://bugs.webkit.org/show_bug.cgi?id=174432
+
+        Reviewed by Simon Fraser.
+
+        -- Replace every reference to GraphicsLayerPaintFlags::Snapshotting by
+           GraphicsLayerPaintFlags::None and every GraphicsLayerPaintFlags::None
+           by AllowAsyncImageDecoding.
+        -- Replace setting the bit PaintBehaviorSnapshotting in an existing PaintBehavoir 
+           by resetting the bit PaintBehaviorAllowAsyncImageDecoding.
+
+        * Shared/mac/RemoteLayerBackingStore.mm:
+        (WebKit::RemoteLayerBackingStore::drawInContext):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleNodeHandle.cpp:
+        (WebKit::imageForRect):
+        * WebProcess/InjectedBundle/DOM/InjectedBundleRangeHandle.cpp:
+        (WebKit::InjectedBundleRangeHandle::renderedImage):
+
 2017-07-12  Eric Carlson  <eric.carlson@apple.com>
 
         [MediaStream] a capture source failure should end the MediaStreamTrack

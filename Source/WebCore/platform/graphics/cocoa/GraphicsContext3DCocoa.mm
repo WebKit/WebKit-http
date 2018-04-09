@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,38 +26,37 @@
 #include "config.h"
 
 #if ENABLE(GRAPHICS_CONTEXT_3D)
+#import "GraphicsContext3D.h"
 
-#include "GraphicsContext3D.h"
 #if PLATFORM(IOS)
-#include "GraphicsContext3DIOS.h"
+#import "GraphicsContext3DIOS.h"
 #endif
 
+#import "CanvasRenderingContext.h"
+#import "Extensions3DOpenGL.h"
+#import "GraphicsContext.h"
+#import "HTMLCanvasElement.h"
+#import "ImageBuffer.h"
+#import "Logging.h"
+#import "WebGLLayer.h"
+#import "WebGLObject.h"
+#import "WebGLRenderingContextBase.h"
+#import <CoreGraphics/CGBitmapContext.h>
+#import <sys/sysctl.h>
+#import <sysexits.h>
 #import <wtf/BlockObjCExceptions.h>
-
-#include "CanvasRenderingContext.h"
-#include <CoreGraphics/CGBitmapContext.h>
-#include "Extensions3DOpenGL.h"
-#include "GraphicsContext.h"
-#include "HTMLCanvasElement.h"
-#include "ImageBuffer.h"
-#include "Logging.h"
-#include "WebGLLayer.h"
-#include "WebGLObject.h"
-#include "WebGLRenderingContextBase.h"
-#include <sys/sysctl.h>
-#include <sysexits.h>
-#include <wtf/text/CString.h>
+#import <wtf/text/CString.h>
 
 #if PLATFORM(IOS)
 #import "OpenGLESSPI.h"
-#import <OpenGLES/ES2/glext.h>
 #import <OpenGLES/EAGL.h>
 #import <OpenGLES/EAGLDrawable.h>
+#import <OpenGLES/ES2/glext.h>
 #import <QuartzCore/QuartzCore.h>
 #else
-#include <IOKit/IOKitLib.h>
-#include <OpenGL/CGLRenderers.h>
-#include <OpenGL/gl.h>
+#import <IOKit/IOKitLib.h>
+#import <OpenGL/CGLRenderers.h>
+#import <OpenGL/gl.h>
 #endif
 
 namespace WebCore {
@@ -342,7 +341,7 @@ static void setPixelFormat(Vector<CGLPixelFormatAttribute>& attribs, int colorBi
         
     if (supersample && !antialias)
         attribs.append(kCGLPFASupersample);
-        
+
     if (closest)
         attribs.append(kCGLPFAClosestPolicy);
 
@@ -386,29 +385,13 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
     return context;
 }
 
-GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
-    : m_currentWidth(0)
-    , m_currentHeight(0)
-    , m_contextObj(0)
+GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWindow*, GraphicsContext3D::RenderStyle)
+    : m_attrs(attrs)
 #if PLATFORM(IOS)
     , m_compiler(SH_ESSL_OUTPUT)
 #endif
-    , m_attrs(attrs)
-    , m_texture(0)
-    , m_compositorTexture(0)
-    , m_fbo(0)
-    , m_depthStencilBuffer(0)
-    , m_layerComposited(false)
-    , m_internalColorFormat(0)
-    , m_multisampleFBO(0)
-    , m_multisampleDepthStencilBuffer(0)
-    , m_multisampleColorBuffer(0)
     , m_private(std::make_unique<GraphicsContext3DPrivate>(this))
-    , m_webglContext(0)
 {
-    UNUSED_PARAM(hostWindow);
-    UNUSED_PARAM(renderStyle);
-
 #if PLATFORM(IOS)
     EAGLRenderingAPI api = m_attrs.useGLES3 ? kEAGLRenderingAPIOpenGLES3 : kEAGLRenderingAPIOpenGLES2;
     m_contextObj = [[EAGLContext alloc] initWithAPI:api];
@@ -455,7 +438,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
         }
     }
 
-    if (numPixelFormats == 0)
+    if (!numPixelFormats)
         return;
 
     CGLError err = CGLCreateContext(pixelFormatObj, 0, &m_contextObj);
@@ -502,12 +485,6 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attrs, HostWind
     // create a texture to render into
     ::glGenTextures(1, &m_texture);
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
-    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    ::glGenTextures(1, &m_compositorTexture);
-    ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
     ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -578,7 +555,6 @@ GraphicsContext3D::~GraphicsContext3D()
 #else
         CGLSetCurrentContext(m_contextObj);
         ::glDeleteTextures(1, &m_texture);
-        ::glDeleteTextures(1, &m_compositorTexture);
 #endif
         if (m_attrs.antialias) {
             ::glDeleteRenderbuffersEXT(1, &m_multisampleColorBuffer);

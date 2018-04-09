@@ -37,6 +37,7 @@
 #include "ScriptExecutionContext.h"
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
+#include <pal/crypto/tasn1/Utilities.h>
 
 namespace WebCore {
 
@@ -240,11 +241,84 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgor
         });
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier, std::optional<CryptoAlgorithmIdentifier>, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
+static bool supportedAlgorithmIdentifier(const uint8_t* data, size_t size)
 {
-    notImplemented();
+    // FIXME: This is far from sufficient. Per the spec, when importing for key algorithm
+    // - RSASSA-PKCS1-v1_5:
+    //     - rsaEncryption, sha{1,256,384,512}WithRSAEncryption OIDs must be supported
+    //     - in case of sha{1,256,384,512}WithRSAEncryption OIDs the specified hash algorithm
+    //       has to match the algorithm in the OID
+    // - RSA-PSS:
+    //     - rsaEncryption, id-RSASSA-PSS OIDs must be supported
+    //     - in case of id-RSASSA-PSS OID the parameters field of AlgorithmIdentifier has
+    //       to be decoded as RSASSA-PSS-params ASN.1 structure, and the hashAlgorithm field
+    //       of that structure has to contain one of id-sha{1,256,384,512} OIDs that match
+    //       the specified hash algorithm
+    // - RSA-OAEP:
+    //     - rsaEncryption, id-RSAES-OAEP OIDS must be supported
+    //     - in case of id-RSAES-OAEP OID the parameters field of AlgorithmIdentifier has
+    //       to be decoded as RSAES-OAEP-params ASN.1 structure, and the hashAlgorithm field
+    //       of that structure has to contain one of id-sha{1,256,384,512} OIDs that match
+    //       the specified hash algorithm
 
-    return nullptr;
+    static const std::array<uint8_t, 21> s_id_rsaEncryption { { "1.2.840.113549.1.1.1" } };
+    static const std::array<uint8_t, 21> s_id_RSAES_OAEP { { "1.2.840.113549.1.1.7" } };
+    static const std::array<uint8_t, 22> s_id_RSASSA_PSS { { "1.2.840.113549.1.1.10" } };
+
+    if (size == s_id_rsaEncryption.size() && !std::memcmp(data, s_id_rsaEncryption.data(), size))
+        return true;
+    if (size == s_id_RSAES_OAEP.size() && !std::memcmp(data, s_id_RSAES_OAEP.data(), size))
+        return false; // Not yet supported.
+    if (size == s_id_RSASSA_PSS.size() && !std::memcmp(data, s_id_RSASSA_PSS.data(), size))
+        return false; // Not yet supported.
+    return false;
+}
+
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::importSpki(CryptoAlgorithmIdentifier identifier, std::optional<CryptoAlgorithmIdentifier> hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+{
+    // Decode the `SubjectPublicKeyInfo` structure using the provided key data.
+    PAL::TASN1::Structure spki;
+    if (!PAL::TASN1::decodeStructure(&spki, "WebCrypto.SubjectPublicKeyInfo", keyData))
+        return nullptr;
+
+    // Validate `algorithm.algorithm`.
+    {
+        auto algorithm = PAL::TASN1::elementData(spki, "algorithm.algorithm");
+        if (!algorithm)
+            return nullptr;
+
+        if (!supportedAlgorithmIdentifier(algorithm->data(), algorithm->size()))
+            return nullptr;
+    }
+
+    // Decode the `RSAPublicKey` structure using the `subjectPublicKey` data.
+    PAL::TASN1::Structure rsaPublicKey;
+    {
+        auto subjectPublicKey = PAL::TASN1::elementData(spki, "subjectPublicKey");
+        if (!subjectPublicKey)
+            return nullptr;
+
+        if (!PAL::TASN1::decodeStructure(&rsaPublicKey, "WebCrypto.RSAPublicKey", *subjectPublicKey))
+            return nullptr;
+    }
+
+    // Retrieve the `modulus` and `publicExponent` data and embed it into the `public-key` s-expression.
+    PAL::GCrypt::Handle<gcry_sexp_t> platformKey;
+    {
+        auto modulus = PAL::TASN1::elementData(rsaPublicKey, "modulus");
+        auto publicExponent = PAL::TASN1::elementData(rsaPublicKey, "publicExponent");
+        if (!modulus || !publicExponent)
+            return nullptr;
+
+        gcry_error_t error = gcry_sexp_build(&platformKey, nullptr, "(public-key(rsa(n %b)(e %b)))",
+            modulus->size(), modulus->data(), publicExponent->size(), publicExponent->data());
+        if (error != GPG_ERR_NO_ERROR) {
+            PAL::GCrypt::logError(error);
+            return nullptr;
+        }
+    }
+
+    return adoptRef(new CryptoKeyRSA(identifier, hash.value_or(CryptoAlgorithmIdentifier::SHA_1), !!hash, CryptoKeyType::Public, platformKey.release(), extractable, usages));
 }
 
 RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier, std::optional<CryptoAlgorithmIdentifier>, Vector<uint8_t>&&, bool, CryptoKeyUsageBitmap)
@@ -256,9 +330,72 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::importPkcs8(CryptoAlgorithmIdentifier, std::o
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportSpki() const
 {
-    notImplemented();
+    if (type() != CryptoKeyType::Public)
+        return Exception { INVALID_ACCESS_ERR };
 
-    return Exception { NOT_SUPPORTED_ERR };
+    PAL::TASN1::Structure rsaPublicKey;
+    {
+        // Create the `RSAPublicKey` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.RSAPublicKey", &rsaPublicKey))
+            return Exception { OperationError };
+
+        // Retrieve the modulus and public exponent s-expressions.
+        PAL::GCrypt::Handle<gcry_sexp_t> modulusSexp(gcry_sexp_find_token(m_platformKey, "n", 0));
+        PAL::GCrypt::Handle<gcry_sexp_t> publicExponentSexp(gcry_sexp_find_token(m_platformKey, "e", 0));
+        if (!modulusSexp || !publicExponentSexp)
+            return Exception { OperationError };
+
+        // Retrieve MPI data for the modulus and public exponent components.
+        auto modulus = mpiSignedData(modulusSexp);
+        auto publicExponent = mpiSignedData(publicExponentSexp);
+        if (!modulus || !publicExponent)
+            return Exception { OperationError };
+
+        // Write out the modulus data under `modulus`.
+        if (!PAL::TASN1::writeElement(rsaPublicKey, "modulus", modulus->data(), modulus->size()))
+            return Exception { OperationError };
+
+        // Write out the public exponent data under `publicExponent`.
+        if (!PAL::TASN1::writeElement(rsaPublicKey, "publicExponent", publicExponent->data(), publicExponent->size()))
+            return Exception { OperationError };
+    }
+
+    PAL::TASN1::Structure spki;
+    {
+        // Create the `SubjectPublicKeyInfo` structure.
+        if (!PAL::TASN1::createStructure("WebCrypto.SubjectPublicKeyInfo", &spki))
+            return Exception { OperationError };
+
+        // Write out the id-rsaEncryption identifier under `algorithm.algorithm`.
+        // FIXME: In case the key algorithm is:
+        // - RSA-PSS:
+        //     - this should write out id-RSASSA-PSS, along with setting `algorithm.parameters`
+        //       to a RSASSA-PSS-params structure
+        // - RSA-OAEP:
+        //     - this should write out id-RSAES-OAEP, along with setting `algorithm.parameters`
+        //       to a RSAES-OAEP-params structure
+        if (!PAL::TASN1::writeElement(spki, "algorithm.algorithm", "1.2.840.113549.1.1.1", 1))
+            return Exception { OperationError };
+
+        // Write out the null value under `algorithm.parameters`.
+        if (!PAL::TASN1::writeElement(spki, "algorithm.parameters", "\x05\x00", 2))
+            return Exception { OperationError };
+
+        // Write out the `RSAPublicKey` data under `subjectPublicKey`. Because this is a
+        // bit string parameter, the data size has to be multiplied by 8.
+        {
+            auto data = PAL::TASN1::encodedData(rsaPublicKey, "");
+            if (!data || !PAL::TASN1::writeElement(spki, "subjectPublicKey", data->data(), data->size() * 8))
+                return Exception { OperationError };
+        }
+    }
+
+    // Retrieve the encoded `SubjectPublicKeyInfo` data and return it.
+    auto result = PAL::TASN1::encodedData(spki, "");
+    if (!result)
+        return Exception { OperationError };
+
+    return WTFMove(result.value());
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const

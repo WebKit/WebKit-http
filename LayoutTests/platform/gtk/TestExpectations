@@ -661,6 +661,11 @@ imported/w3c/web-platform-tests/webrtc/no-media-call.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/getstats.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/promises-call.html [ Failure ]
 imported/w3c/web-platform-tests/webrtc/rtcpeerconnection/setRemoteDescription.html [ Failure ]
+http/tests/webrtc/filtering-ice-candidate-cross-origin-frame.html [ Timeout ]
+http/tests/webrtc/filtering-ice-candidate-same-origin-frame.html [ Timeout ]
+http/tests/webrtc/filtering-ice-candidate-same-origin-frame2.html [ Timeout ]
+webrtc/filtering-ice-candidate-after-reload.html [ Timeout ]
+webrtc/ice-candidate-sdpMLineIndex.html [ Timeout ]
 http/tests/media/media-stream/getusermedia-with-canvas.html [ Timeout ]
 webkit.org/b/169110 webrtc/audio-peer-connection-webaudio.html [ Failure Timeout ]
 webkit.org/b/173456 imported/w3c/web-platform-tests/webrtc/RTCPeerConnection-createOffer.html [ Crash ]
@@ -762,33 +767,20 @@ webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p256.html
 webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p384.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-export-key-malformed-parameters.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-import-jwk-key-export-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-import-jwk-key-export-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-import-pkcs8-key-export-jwk-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-import-pkcs8-key-export-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-import-spki-key-export-jwk-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-import-spki-key-export-spki-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-import-spki-small-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-indexeddb-non-exportable.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-indexeddb-private.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-indexeddb.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-oaep-generate-export-key-pkcs8.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-oaep-generate-export-key-spki.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-oaep-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-oaep-import-spki-key-empty-usages.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-oaep-import-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsa-pss-generate-export-key-pkcs8.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-pss-generate-export-key-spki.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-pkcs8.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsaes-pkcs1-v1_5-generate-export-key-spki.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsaes-pkcs1-v1_5-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsaes-pkcs1-v1_5-import-spki-key-empty-usages.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsaes-pkcs1-v1_5-import-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-pkcs8.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsassa-pkcs1-v1_5-generate-export-key-spki.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/rsassa-pkcs1-v1_5-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsassa-pkcs1-v1_5-import-spki-key-empty-usages.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsassa-pkcs1-v1_5-import-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-decrypt.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-encrypt.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-unwrap-key.html [ Skip ]
@@ -801,9 +793,7 @@ webkit.org/b/133122 crypto/workers/subtle/hrsa-postMessage-worker.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/multiple-postMessage-worker.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/raw-postMessage-worker.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/rsa-export-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/rsa-export-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/rsa-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/rsa-import-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/rsa-postMessage-worker.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Skip ]
@@ -1255,17 +1245,6 @@ http/tests/ssl/applepay [ Skip ]
 
 # GTK port doesn't use the scrolling tree
 fast/scrolling/scrolling-tree-includes-frame.html [ Skip ]
-
-# Regressions on fast/forms spinbutton related tests after r219332
-webkit.org/b/174395 fast/events/touch/touch-before-pressing-spin-button.html [ Failure ]
-webkit.org/b/174395 fast/forms/input-number-click.html [ Failure ]
-webkit.org/b/174395 fast/forms/input-step-as-double.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-large-padding.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-spinbutton-capturing.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-spinbutton-change-and-input-events.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-spinbutton-gets-disabled-or-readonly.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-spinbutton-in-multi-column.html [ Failure ]
-webkit.org/b/174395 fast/forms/number/number-spinbutton-state.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
@@ -2262,6 +2241,12 @@ webkit.org/b/174241 media/video-inactive-playback.html [ Timeout ]
 webkit.org/b/174242 media/media-fullscreen-pause-inline.html [ Timeout ]
 
 webkit.org/b/174243 fast/images/low-memory-decode.html [ Timeout ]
+
+webkit.org/b/174459 fast/images/async-image-background-image-repeated.html [ Timeout ]
+webkit.org/b/174459 fast/images/async-image-background-image.html [ Timeout ]
+webkit.org/b/174459 fast/images/async-image-body-background-image.html [ Timeout ]
+webkit.org/b/174459 fast/images/async-image-multiple-clients-repaint.html [ Timeout ]
+webkit.org/b/174459 fast/images/sprite-sheet-image-draw.html [ Timeout ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
@@ -3456,6 +3441,13 @@ webkit.org/b/173413 imported/w3c/web-platform-tests/html/semantics/forms/textfie
 webkit.org/b/143702 media/progress-events-generated-correctly.html [ Failure ]
 
 webkit.org/b/173413 imported/w3c/web-platform-tests/html/webappapis/system-state-and-capabilities/the-navigator-object/navigator-pluginarray.html [ Failure ]
+
+webkit.org/b/174460 fast/canvas/canvas-blend-image.html [ Failure ]
+webkit.org/b/174460 fast/canvas/canvas-blend-solid.html [ Failure ]
+
+webkit.org/b/174461 inspector/canvas/memory.html [ Failure ]
+webkit.org/b/174461 inspector/canvas/requestContent-2d.html [ Failure ]
+webkit.org/b/174461 inspector/canvas/requestContent-webgl.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
