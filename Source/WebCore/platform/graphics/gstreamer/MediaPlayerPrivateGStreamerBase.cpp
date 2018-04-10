@@ -172,9 +172,8 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  extractEventsAndSys
     ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
     unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
     Vector<GRefPtr<GstEvent>> streamEncryptionEventsVector;
-    for (i = 0; i < streamEncryptionEventsListSize; ++i) {
+    for (i = 0; i < streamEncryptionEventsListSize; ++i)
         streamEncryptionEventsVector.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
-    }
 
     return std::make_pair(streamEncryptionEventsVector, streamEncryptionAllowedSystemsVector);
 }

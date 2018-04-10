@@ -100,7 +100,7 @@ static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, A
 }
 
 #if GST_CHECK_VERSION(1, 5, 3)
-static GstElement* createDecryptor(const char* protectionSystem)
+static GstElement* createDecryptor(const char* requestedProtectionSystemUuid)
 {
     GstElement* decryptor = nullptr;
     GList* decryptors = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECRYPTOR, GST_RANK_MARGINAL);
@@ -118,10 +118,10 @@ static GstElement* createDecryptor(const char* protectionSystem)
                 GstStructure* structure = gst_caps_get_structure(caps.get(), i);
                 GST_TRACE("checking structure %s", gst_structure_get_name(structure));
                 if (gst_structure_has_field_typed(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD, G_TYPE_STRING)) {
-                    const char* sysId = gst_structure_get_string(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
-                    GST_TRACE("structure %s has protection system %s", gst_structure_get_name(structure), sysId);
-                    if (!g_ascii_strcasecmp(protectionSystem, sysId)) {
-                        GST_DEBUG("found decryptor %s for %s", GST_OBJECT_NAME(factory), protectionSystem);
+                    const char* protectionSystemUuid = gst_structure_get_string(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
+                    GST_TRACE("structure %s has protection system %s", gst_structure_get_name(structure), protectionSystemUuid);
+                    if (!g_ascii_strcasecmp(requestedProtectionSystemUuid, protectionSystemUuid)) {
+                        GST_DEBUG("found decryptor %s for %s", GST_OBJECT_NAME(factory), requestedProtectionSystemUuid);
                         decryptor = gst_element_factory_create(factory, nullptr);
                         break;
                     }
