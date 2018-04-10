@@ -34,6 +34,9 @@
 
 #define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptPrivate))
 
+#define WEBCORE_NON_MSE_PLAYREADY_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
+#define WEBCORE_NON_MSE_WIDEVINE_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
     unsigned m_protectionEvent;
@@ -54,7 +57,21 @@ static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
     "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
     "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID ";"));
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID ";"
+
+    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID ";"
+
+    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID ";"));
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_SRC,
