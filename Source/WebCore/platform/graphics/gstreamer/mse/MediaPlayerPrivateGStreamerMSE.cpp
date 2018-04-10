@@ -30,7 +30,6 @@
 
 #include "AppendPipeline.h"
 #include "AudioTrackPrivateGStreamer.h"
-#include "GStreamerEMEUtilities.h"
 #include "InbandTextTrackPrivateGStreamer.h"
 #include "MIMETypeRegistry.h"
 #include "MediaDescription.h"
@@ -55,12 +54,13 @@
 #include <wtf/text/AtomicStringHash.h>
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#include "CDMClearKey.h"
 #include "SharedBuffer.h"
 #endif
 
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
+#else 
+#include "CDMClearKey.h"
 #endif
 
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
@@ -1015,6 +1015,10 @@ MediaTime MediaPlayerPrivateGStreamerMSE::maxMediaTimeSeekable() const
 #if ENABLE(ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInstance& instance)
 {
+#if USE(OPENCDM)
+    if (is<CDMInstanceOpenCDM>(instance))
+        MediaPlayerPrivateGStreamer::attemptToDecryptWithInstance(instance);
+#else
     if (is<CDMInstanceClearKey>(instance)) {
         GST_TRACE("instance is clear key, continuing");
         auto& ckInstance = downcast<CDMInstanceClearKey>(instance);
@@ -1047,9 +1051,6 @@ void MediaPlayerPrivateGStreamerMSE::attemptToDecryptWithInstance(const CDMInsta
         for (auto it : m_appendPipelinesMap)
             it.value->dispatchDecryptionStructure(GUniquePtr<GstStructure>(gst_structure_copy(structure.get())));
     }
-#if USE(OPENCDM)
-    else if (is<CDMInstanceOpenCDM>(instance))
-        MediaPlayerPrivateGStreamer::attemptToDecryptWithInstance(instance);
 #endif // USE(OPENCDM)
 }
 

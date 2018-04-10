@@ -28,6 +28,8 @@
 
 G_BEGIN_DECLS
 
+#define WEBCORE_CDMFACTORY_SYSTEM_UUID "edef8ba9-79d6-dead-beef-27dcd51d21ed"
+
 #define WEBKIT_TYPE_OPENCDM_DECRYPT          (webkit_media_opencdm_decrypt_get_type())
 #define WEBKIT_OPENCDM_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecrypt))
 #define WEBKIT_OPENCDM_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptClass))
