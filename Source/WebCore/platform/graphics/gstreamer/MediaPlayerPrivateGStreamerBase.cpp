@@ -163,12 +163,10 @@ static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  extractEventsAndSys
     ASSERT(streamEncryptionAllowedSystems);
     Vector<String> streamEncryptionAllowedSystemsVector;
     unsigned i;
-    if (streamEncryptionAllowedSystems != NULL) {
-        for (i = 0; streamEncryptionAllowedSystems[i]; ++i) {
+    if (streamEncryptionAllowedSystems != nullptr) 
+        for (i = 0; streamEncryptionAllowedSystems[i]; ++i) 
             streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
-        }
-    }
-
+        
     const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
     ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
     unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
@@ -189,9 +187,9 @@ void registerWebKitGStreamerElements()
 #if ENABLE(ENCRYPTED_MEDIA)
 #if USE(OPENCDM)
     GRefPtr<GstElementFactory> decryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdm"));
-    if (!decryptorFactory) {
+    if (!decryptorFactory) 
         gst_element_register(0, "webkitopencdm", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_DECRYPT);
-    }
+
 #else
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitclearkey"));
     if (!clearKeyDecryptorFactory)
