@@ -28,15 +28,12 @@
 #include "CDMPrivate.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeysRequirement.h"
-#include "inspector/InspectorValues.h"
 
 #include <gst/gst.h>
 #include <wtf/text/Base64.h>
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
-
-using namespace Inspector;
 
 namespace WebCore {
 
