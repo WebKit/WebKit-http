@@ -45,6 +45,7 @@ namespace WebCore {
     M(DisplayLists) \
     M(DOMTimers) \
     M(Editing) \
+    M(EME) \
     M(Events) \
     M(FileAPI) \
     M(Frames) \
