@@ -47,6 +47,9 @@ public:
 
     virtual std::unique_ptr<CDMPrivate> createCDM(const String&) final;
     virtual bool supportsKeySystem(const String&) final;
+
+private:
+    media::OpenCdm m_openCDM;
 };
 
 class CDMInstanceOpenCDM final : public CDMInstance {

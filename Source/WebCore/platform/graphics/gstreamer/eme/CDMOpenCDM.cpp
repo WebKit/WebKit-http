@@ -98,9 +98,11 @@ std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(const String& keySystem
     return std::unique_ptr<CDMPrivate>(new CDMPrivateOpenCDM(keySystem));
 }
 
-bool CDMFactoryOpenCDM::supportsKeySystem(const String& /* keySystem */)
+bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
 {
-    return true;
+    std::string emptyString;
+
+    return m_openCDM.IsTypeSupported(keySystem.utf8().data(), emptyString);
 }
 
 // Class CDMInstanceOpenCDM.
