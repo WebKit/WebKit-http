@@ -1,3 +1,143 @@
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called
+        https://bugs.webkit.org/show_bug.cgi?id=174557
+
+        Reviewed by Michael Catanzaro.
+
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-07-16  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Raise minimum CMake requirement
+        https://bugs.webkit.org/show_bug.cgi?id=174545
+
+        Reviewed by Konstantin Tokarev.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+
+2017-07-14  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Unclear distinction between WebKitHelpers and WebKitMacros
+        https://bugs.webkit.org/show_bug.cgi?id=153189
+
+        Reviewed by Antonio Gomes.
+
+        Merge WebKitHelpers.cmake into WebKitMacros.cmake, since there is no meaningful distinction
+        between the macros that belong in each file. Then, move the macros that are only needed by
+        one project into project-specific CMake files. Retain here only the macros that are needed
+        in multiple places.
+
+        * Source/cmake/OptionsCommon.cmake: Update a comment.
+        * Source/cmake/OptionsGTK.cmake: New location for libtool macro, exclusively needed here.
+        * Source/cmake/WebKitCommon.cmake: Do not include WebKitHelpers.cmake.
+        * Source/cmake/WebKitHelpers.cmake: Removed.
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK][WPE] Avoid setting settings that are set by default
+
+        Unreviewed.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-07-13  Konstantin Tokarev  <annulen@ynadex.ru>
+
+        Unreviewed, Windows ports should enable WebKitLegacy and disable
+        WebKit.
+
+        * Source/cmake/OptionsWin.cmake:
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix the Mac CMake build.
+
+        Unreviewed build fix.
+
+        Fix the Mac CMake build after r219488 broke it. r219488 erroneously updated
+        the variable name DERIVED_SOURCES_WEBKITLEGACY_DIR to DERIVED_SOURCES_WEBKIT_LEGACY_DIR
+        without updating subsequent users of that variable.
+
+        * Source/cmake/WebKitFS.cmake:
+        Rename DERIVED_SOURCES_WEBKIT_LEGACY_DIR back to DERIVED_SOURCES_WEBKITLEGACY_DIR.
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix the cMake builds (GTK and WPE.)
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/WebKitPackaging.cmake:
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Rename WebKit2.xcodeproj to WebKit.xcodeproj.
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update tools and configurations after renaming Source/WebKit2 to Source/WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * Source/Makefile:
+        * Source/PlatformGTK.cmake:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/WebKitPackaging.cmake:
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2017-07-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update the Xcode project name from WebKit to WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=174162
+        rdar://problem/33137594
+
+        Reviewed by Dan Bernstein.
+
+        Rename WebKit to WebKitLegacy.
+
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
+2017-07-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update tools and configurations after renaming Source/WebKit to Source/WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=174162
+        rdar://problem/33137594
+
+        Reviewed by Dan Bernstein.
+
+        Mass rename of Source/WebKit to Source/WebKitLegacy in OpenSource cmake files
+        and Xcode project files.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * WebKit.xcworkspace/contents.xcworkspacedata:
+        * WebKit.xcworkspace/xcshareddata/xcschemes/All Source.xcscheme:
+
 2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Fix compiler warnings when building with GCC 7

@@ -1,3 +1,60 @@
+2017-07-17  Saam Barati  <sbarati@apple.com>
+
+        Remove custom defined RELEASE_ASSERT in DFGObjectAllocationSinkingPhase
+        https://bugs.webkit.org/show_bug.cgi?id=174584
+
+        Rubber stamped by Keith Miller.
+
+        I used it to diagnose a bug. The bug is now fixed. This custom
+        RELEASE_ASSERT is no longer needed.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        -Wformat-truncation warning in ConfigFile.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=174506
+
+        Reviewed by Darin Adler.
+
+        Check if the JSC config filename would be truncated due to exceeding max path length. If so,
+        return ParseError.
+
+        * runtime/ConfigFile.cpp:
+        (JSC::ConfigFile::parse):
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called
+        https://bugs.webkit.org/show_bug.cgi?id=174557
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+
+2017-07-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use std::unique_ptr for StackTrace
+        https://bugs.webkit.org/show_bug.cgi?id=174495
+
+        Reviewed by Alex Christensen.
+
+        * runtime/ExceptionScope.cpp:
+        (JSC::ExceptionScope::unexpectedExceptionMessage):
+        * runtime/VM.cpp:
+        (JSC::VM::throwException):
+
+2017-07-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use WTFMove to prune liveness in DFGAvailabilityMap
+        https://bugs.webkit.org/show_bug.cgi?id=174423
+
+        Reviewed by Saam Barati.
+
+        * dfg/DFGAvailabilityMap.cpp:
+        (JSC::DFG::AvailabilityMap::pruneHeap):
+        (JSC::DFG::AvailabilityMap::pruneByLiveness):
+
 2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         Fix compiler warnings when building with GCC 7

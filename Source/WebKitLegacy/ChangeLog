@@ -1,3 +1,54 @@
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called
+        https://bugs.webkit.org/show_bug.cgi?id=174557
+
+        Reviewed by Michael Catanzaro.
+
+        * CMakeLists.txt:
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Add iOS 11 SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174430
+        <rdar://problem/33269288>
+
+        Reviewed by Tim Horton.
+
+        * Storage/StorageTracker.cpp: sqlite3_private.h no longer exists in the iOS
+        Simulator SDK, explicitly define the required macro.
+
+2017-07-13  Dan Bernstein  <mitz@apple.com>
+
+        Removed empty project directories left behind after the rename
+
+        * WebKit.vcxproj: Removed.
+        * WebKit.xcodeproj: Removed.
+
+2017-07-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update the Visual Studio project name from WebKit to WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=174162
+        rdar://problem/33137594
+
+        Reviewed by Dan Bernstein.
+
+        Rename WebKit to WebKitLegacy.
+
+        * WebKitLegacy.vcxproj/WebKitLegacy.proj: Renamed from Source/WebKitLegacy/WebKit.vcxproj/WebKit.proj.
+
+2017-07-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update the Xcode project name from WebKit to WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=174162
+        rdar://problem/33137594
+
+        Reviewed by Dan Bernstein.
+
+        Rename WebKit to WebKitLegacy.
+
+        * WebKitLegacy.xcodeproj/project.pbxproj: Renamed from Source/WebKitLegacy/WebKit.xcodeproj/project.pbxproj.
+
 2017-07-10  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] Link error when building WTF from WTF.proj project file.

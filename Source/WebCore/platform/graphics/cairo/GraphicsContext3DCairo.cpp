@@ -49,7 +49,7 @@
 
 #if USE(LIBEPOXY)
 #include <epoxy/gl.h>
-#elif USE(OPENGL)
+#elif !USE(OPENGL_ES_2)
 #include "OpenGLShims.h"
 #endif
 
@@ -86,19 +86,7 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3DAttributes 
 }
 
 GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
-    : m_currentWidth(0)
-    , m_currentHeight(0)
-    , m_attrs(attributes)
-    , m_texture(0)
-    , m_compositorTexture(0)
-    , m_fbo(0)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_intermediateTexture(0)
-#endif
-    , m_layerComposited(false)
-    , m_multisampleFBO(0)
-    , m_multisampleDepthStencilBuffer(0)
-    , m_multisampleColorBuffer(0)
+    : m_attrs(attributes)
 {
 #if USE(TEXTURE_MAPPER)
     m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
@@ -233,8 +221,10 @@ GraphicsContext3D::~GraphicsContext3D()
     makeContextCurrent();
     if (m_texture)
         ::glDeleteTextures(1, &m_texture);
+#if USE(COORDINATED_GRAPHICS_THREADED)
     if (m_compositorTexture)
         ::glDeleteTextures(1, &m_compositorTexture);
+#endif
 
     if (m_attrs.antialias) {
         ::glDeleteRenderbuffers(1, &m_multisampleColorBuffer);

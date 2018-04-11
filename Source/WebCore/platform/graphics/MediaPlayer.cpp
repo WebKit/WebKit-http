@@ -1487,6 +1487,11 @@ const Vector<ContentType>& MediaPlayer::mediaContentTypesRequiringHardwareSuppor
     return client().mediaContentTypesRequiringHardwareSupport();
 }
 
+bool MediaPlayer::shouldCheckHardwareSupport() const
+{
+    return client().mediaPlayerShouldCheckHardwareSupport();
+}
+
 }
 
 #endif

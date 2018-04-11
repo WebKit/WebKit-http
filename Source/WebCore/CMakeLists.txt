@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 2.8.12)
+
 include(WebKitCommon)
+include(WebCoreMacros.cmake)
+
 set_property(DIRECTORY . PROPERTY FOLDER "WebCore")
+
 add_subdirectory(PAL/pal)
 
 if (PAL_LIBRARY_TYPE MATCHES STATIC)
@@ -1155,9 +1159,9 @@ set(WebCore_SOURCES
     bindings/js/JSDOMConvertStrings.cpp
     bindings/js/JSDOMConvertWebGL.cpp
     bindings/js/JSDOMIterator.cpp
+    bindings/js/JSDeprecatedCSSOMValueCustom.cpp
     bindings/js/JSFontFaceCustom.cpp
     bindings/js/JSFontFaceSetCustom.cpp
-    bindings/js/JSCSSValueCustom.cpp
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
     bindings/js/JSCommandLineAPIHostCustom.cpp
@@ -3590,6 +3594,7 @@ set(WINDOW_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DOMWindowConstructor
 set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlobalScopeConstructors.idl)
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
 
+WEBKIT_FRAMEWORK_DECLARE(WebCore)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
 # Generate InspectorOverlayPage.h

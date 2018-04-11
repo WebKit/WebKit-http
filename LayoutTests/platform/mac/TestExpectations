@@ -134,7 +134,7 @@ http/tests/misc/link-rel-prefetch-and-subresource.html
 http/tests/misc/prefetch-purpose.html
 
 # Filenames aren't filtered out from edit drags yet, see https://bugs.webkit.org/show_bug.cgi?id=38826
-editing/pasteboard/file-drag-to-editable.html [ Failure ]
+editing/pasteboard/file-drag-to-editable.html [ Skip ]
 
 # EventSender::dumpFilenameBeingDragged not implemented.
 webkit.org/b/61827 fast/events/drag-image-filename.html
@@ -1309,9 +1309,7 @@ webkit.org/b/156983 media/video-fullscreen-restriction-removed.html [ Pass Failu
 webkit.org/b/156320 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Pass ImageOnlyFailure ]
-webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
-webkit.org/b/155196 security/contentSecurityPolicy/video-with-data-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
-webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Skip ]
 
 webkit.org/b/158101 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
 
@@ -1563,6 +1561,7 @@ media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-med
 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-mute-button-in-bottom-or-top-right-controls-bar.html [ Pass ]
 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-top-right-controls-bar-hidden-when-mute-button-disabled.html [ Pass ]
 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-rtl.html [ Pass ]
+media/modern-media-controls/media-controls/media-controls-display-above-captions.html [ Pass ]
 media/modern-media-controls/media-documents [ Pass ]
 media/modern-media-controls/mute-button [ Pass ]
 media/modern-media-controls/mute-support [ Pass ]
@@ -1580,6 +1579,8 @@ media/modern-media-controls/slider [ Pass ]
 media/modern-media-controls/status-label [ Pass ]
 media/modern-media-controls/time-control [ Pass ]
 media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/tracks-panel/tracks-panel-up-click-outside-media-does-not-dimiss-media-controls-when-media-is-paused.html [ Pass ]
+media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass ]
 media/modern-media-controls/tracks-button [ Pass ]
 media/modern-media-controls/volume-up-support [ Pass ]
 

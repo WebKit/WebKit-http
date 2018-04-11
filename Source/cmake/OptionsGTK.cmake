@@ -8,7 +8,13 @@ set(WEBKITGTK_API_VERSION 4.0)
 
 # Libtool library version, not to be confused with API version.
 # See http://www.gnu.org/software/libtool/manual/html_node/Libtool-versioning.html
-CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT2 60 0 23)
+macro(CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE library_name current revision age)
+    math(EXPR ${library_name}_VERSION_MAJOR "${current} - ${age}")
+    set(${library_name}_VERSION_MINOR ${age})
+    set(${library_name}_VERSION_MICRO ${revision})
+    set(${library_name}_VERSION ${${library_name}_VERSION_MAJOR}.${age}.${revision})
+endmacro()
+CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(WEBKIT 60 0 23)
 CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE(JAVASCRIPTCORE 24 4 6)
 
 # These are shared variables, but we special case their definition so that we can use the
@@ -180,8 +186,6 @@ if (${ENABLE_X11_TARGET})
     SET_AND_EXPOSE_TO_BUILD(XP_UNIX 1)
 endif ()
 
-set(ENABLE_WEBKIT OFF)
-set(ENABLE_WEBKIT2 ON)
 set(ENABLE_PLUGIN_PROCESS ${ENABLE_NETSCAPE_PLUGIN_API})
 
 add_definitions(-DBUILDING_GTK__=1)
@@ -439,9 +443,9 @@ set(DERIVED_SOURCES_WEBKIT2GTK_API_DIR ${DERIVED_SOURCES_WEBKIT2GTK_DIR}/webkit2
 set(FORWARDING_HEADERS_WEBKIT2GTK_DIR ${FORWARDING_HEADERS_DIR}/webkit2gtk)
 set(FORWARDING_HEADERS_WEBKIT2GTK_EXTENSION_DIR ${FORWARDING_HEADERS_DIR}/webkit2gtk-webextension)
 
-set(WebKit_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc)
-set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-${WEBKITGTK_API_VERSION}.pc)
-set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit2/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKitLegacy/gtk/webkitgtk-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit2_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-${WEBKITGTK_API_VERSION}.pc)
+set(WebKit2WebExtension_PKGCONFIG_FILE ${CMAKE_BINARY_DIR}/Source/WebKit/webkit2gtk-web-extension-${WEBKITGTK_API_VERSION}.pc)
 
 set(SHOULD_INSTALL_JS_SHELL ON)
 
@@ -470,24 +474,3 @@ macro(ADD_WHOLE_ARCHIVE_TO_LIBRARIES _list_name)
         set(${_list_name} "${${_list_name}_TMP}")
     endif ()
 endmacro()
-
-if (CMAKE_MAJOR_VERSION LESS 3)
-    # Before CMake 3 it was necessary to use a build script instead of using cmake --build directly
-    # to preserve colors and pretty-printing.
-
-    build_command(COMMAND_LINE_TO_BUILD)
-    # build_command unconditionally adds -i (ignore errors) for make, and there's
-    # no reasonable way to turn that off, so we just replace it with -k, which has
-    # the same effect, except that the return code will indicate that an error occurred.
-    # See: http://www.cmake.org/cmake/help/v3.0/command/build_command.html
-    string(REPLACE " -i" " -k" COMMAND_LINE_TO_BUILD ${COMMAND_LINE_TO_BUILD})
-    file(WRITE
-        ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        "#!/bin/sh\n"
-        "${COMMAND_LINE_TO_BUILD} $@"
-    )
-    file(COPY ${CMAKE_BINARY_DIR}${CMAKE_FILES_DIRECTORY}/build.sh
-        DESTINATION ${CMAKE_BINARY_DIR}
-        FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE
-    )
-endif ()

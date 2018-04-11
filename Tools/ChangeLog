@@ -1,3 +1,359 @@
+2017-07-17  Alex Christensen  <achristensen@webkit.org>
+
+        Modernize content extension code
+        https://bugs.webkit.org/show_bug.cgi?id=174588
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/ContentExtensions.cpp:
+        (TestWebKitAPI::InMemoryCompiledContentExtension::createFromFilter):
+        (TestWebKitAPI::testRequest):
+        (TestWebKitAPI::makeBackend):
+        (TestWebKitAPI::TEST_F):
+
+2017-07-17  Brady Eidson  <beidson@apple.com>
+
+        WKHTTPCookieStore observing only works on the default cookie store.
+        <rdar://problem/33330724> and https://bugs.webkit.org/show_bug.cgi?id=174580
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (runTestWithWebsiteDataStore): Refactor the cookie observing test out so it can be
+          called for the default store, a non-persistent store, and a custom store.
+        (TEST):
+
+2017-07-16  Sam Weinig  <sam@webkit.org>
+
+        [Scripts] Fix missing variable warnings from svn-create-patch when there are untracked files
+        https://bugs.webkit.org/show_bug.cgi?id=174575
+
+        Reviewed by Brady Eidson.
+
+        * Scripts/svn-create-patch:
+        (findModificationType):
+        Add support for more status codes. C -> conflicted, ? -> untracked, ! -> missing. Give a
+        default value of "unknown".
+
+        (generateFileList):
+        Handle all the new modification types. Abort on conflicted, missing, and unknown. Log
+        for untracked, which matches our old behavior.
+
+2017-07-17  Charlie Turner  <cturner@igalia.com>
+
+        Add some missing build dependencies on Fedora
+        https://bugs.webkit.org/show_bug.cgi?id=174578
+
+        Unreviewed dependency update.
+
+        * gtk/install-dependencies:
+
+2017-07-16  Brady Eidson  <beidson@apple.com>
+
+        Crash when a WKHTTPCookieStore outlives its owning WKWebsiteDataStore.
+        <rdar://problem/33341730> and https://bugs.webkit.org/show_bug.cgi?id=174574
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (-[CookieNavigationDelegate webView:didFinishNavigation:]):
+        (TEST):
+
+2017-07-16  Bernhard M. Wiedemann  <bwiedemann@suse.de>
+
+        [GTK] Sort inspector GResource manifest to ensure reproducible builds
+        https://bugs.webkit.org/show_bug.cgi?id=174540
+
+        Reviewed by Michael Catanzaro.
+
+        * gtk/generate-inspector-gresource-manifest.py:
+        (get_filenames): sort list of input files
+
+2017-07-15  Brady Eidson  <beidson@apple.com>
+
+        Make sure all CFHTTPCookieStorageRefs we create are scheduled.
+        <rdar://problem/33221110> and https://bugs.webkit.org/show_bug.cgi?id=174513
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKHTTPCookieStore.mm:
+        (TEST): Make this test more reliable by clearing everything beforehand.
+
+2017-07-15  David Kilzer  <ddkilzer@apple.com>
+
+        Make it possible to extend check-webkit-style with Apple-internal checkers
+        <https://webkit.org/b/174464>
+        <rdar://problem/25564402>
+
+        Reviewed by Darin Adler.
+
+        * Scripts/webkitpy/style/checker.py: Import apple_additions.
+        (_all_categories): Add categories from apple_additions() if it
+        exists.
+        (CheckerDispatcher._create_checker): Create python checker
+        from apple_additions() if it exists.
+
+2017-07-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS WK2] Presenting an action sheet on an image map prevents selection UI from updating
+        https://bugs.webkit.org/show_bug.cgi?id=174539
+        <rdar://problem/33307395>
+
+        Reviewed by Darin Adler.
+
+        Adds a new unit test suite to cover action sheet popover presentation.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-map.html: Added.
+        * TestWebKitAPI/Tests/ios/ActionSheetTests.mm: Added.
+        (-[ActionSheetObserver waitForActionSheetAfterBlock:]):
+
+        Runs the given block and waits until the UI process has indicated that it will present an action sheet.
+
+        (-[ActionSheetObserver _webView:actionsForElement:defaultActions:]):
+        (TestWebKitAPI::IPadUserInterfaceSwizzler::IPadUserInterfaceSwizzler):
+
+        Helper class to alter the behavior of [[UIDevice currentDevice] userInterfaceIdiom] for testing.
+
+        (TestWebKitAPI::IPadUserInterfaceSwizzler::padUserInterfaceIdiom):
+        (TestWebKitAPI::TEST):
+
+2017-07-15  Sam Weinig  <sam@webkit.org>
+
+        [Scripts] Make svn-create-patch work better when called in sub directories
+        https://bugs.webkit.org/show_bug.cgi?id=174551
+
+        Reviewed by Darin Adler.
+
+        - Fixes manufacturePatchForAdditionWithHistory to use the correct path
+          by ensuring that the prefix is applied as is done in generateDiff.
+        - Silence output of explanatory lines from svn stat (" > move to ...")
+          that show up in STDERR when running svn-create-patch.
+        - Add verbose logging that I found useful while debugging this issue.
+
+        * Scripts/svn-create-patch:
+        (findBaseUrl):
+        (findMimeType):
+        (findSourceFileAndRevision):
+        (generateDiff):
+        (generateFileList):
+        (manufacturePatchForAdditionWithHistory):
+
+2017-07-15  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed build fix after r219537.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Add iOS 11 SPI
+        https://bugs.webkit.org/show_bug.cgi?id=174430
+        <rdar://problem/33269288>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm: Define drag-and-drop API required for testing.
+        * TestWebKitAPI/ios/DataInteractionSimulator.h: Ditto.
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm: Ditto.
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Failing to install on iPad simulators
+        https://bugs.webkit.org/show_bug.cgi?id=174532
+        <rdar://problem/33328347>
+
+        Reviewed by Stephanie Lewis.
+
+        * Scripts/webkitpy/xcode/simulated_device.py:
+        (SimulatedDevice.install_app): Place install command in retry try-except block.
+
+2017-07-14  Jeff Miller  <jeffm@apple.com>
+
+        Add test for -[WKProcessPool _setObjectsForBundleParametersWithDictionary:].
+        https://bugs.webkit.org/show_bug.cgi?id=174524
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParameters.mm:
+        (TEST):
+        Renamed TestParameter to TestParameter1.
+        Add test for -[WKProcessPool _setObjectsForBundleParametersWithDictionary:].
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/BundleParametersPlugIn.mm:
+        (-[BundleParametersPlugIn webProcessPlugIn:didCreateBrowserContextController:]):
+        Observe changes for two bundle parameters.
+
+        (-[BundleParametersPlugIn dealloc]):
+        Remove observers for two bundle parameters.
+
+2017-07-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219510.
+        https://bugs.webkit.org/show_bug.cgi?id=174525
+
+        Need to revert length() == 0 check for null string (Requested
+        by yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Newly added AtomicStringImpl should use BufferInternal
+        static string if StringImpl is static"
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+        http://trac.webkit.org/changeset/219510
+
+2017-07-14  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Removing samples when presentation order does not match decode order can cause bad behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=174514
+
+        Reviewed by Sam Weinig.
+
+        * TestWebKitAPI/Tests/WebCore/SampleMap.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-07-14  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Newly added AtomicStringImpl should use BufferInternal static string if StringImpl is static
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Bring mac expectations in-line with other platforms
+        https://bugs.webkit.org/show_bug.cgi?id=174472
+        <rdar://problem/33297388>
+
+        Reviewed by David Kilzer.
+
+        The override order for Mac test expectations does not conform to the pattern used by iOS,
+        GTK, Windows and WPE. Before this change, El Capitan's baseline search path looks like this:
+
+            platform/mac-wk2
+            platform/wk2
+            platform/mac-elcapitan
+            platform/mac-sierra
+            generic
+
+        After this change, El Capitan's baseline search path looks like this:
+
+            platform/mac-sierra-wk2
+            platform/mac-sierra
+            platform/mac-wk2
+            platform/wk2
+            generic
+
+        * Scripts/webkitpy/port/mac.py:
+        (MacPort.__init__): If a specific version is specified in the port name, use that
+        as the os version.
+        (MacPort.default_baseline_search_path): Expectation search paths should work the
+        same way they do on other ports. Port + version overrides port, port overrides generic
+        and wk1/wk2 should override expectations for the two combined.
+        * Scripts/webkitpy/port/mac_unittest.py:
+        (MacTest.test_tests_for_other_platforms): Deleted.
+        (MacTest._assert_search_path): Deleted.
+        (MacTest.test_baseline_search_path): Deleted.
+        * Scripts/webkitpy/tool/commands/rebaseline_unittest.py:
+        (TestRebaselineTest.test_baseline_directory): Adjust expectations for new over-ride order.
+        (test_rebaseline_test_and_print_scm_changes): Ditto.
+        (test_rebaseline_and_copy_test): Ditto.
+        (test_rebaseline_and_copy_test_no_existing_result): Ditto.
+        (test_rebaseline_and_copy_test_with_lion_result): Ditto.
+        (test_rebaseline_and_copy_no_overwrite_test): Ditto.
+
+2017-07-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Fix style checker unit test
+
+        Unreviewed WebKit2 => WebKit fixup.
+
+        * Scripts/webkitpy/style/checker_unittest.py:
+        (CheckerDispatcherSkipTest.test_should_skip_with_warning):
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Use the old WebKit/WebKit2 targets for CMake builds. (v2)
+
+        Unreviewed build fix.
+
+        r219492 missed one hunk from its partial revert of r219489.
+        This patch reverts that hunk.
+
+        * TestWebKitAPI/CMakeLists.txt:
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Use the old WebKit/WebKit2 targets for CMake builds.
+
+        Unreviewed build fix.
+
+        We can update the target names to match the Framework names in a future patch.
+        This is a partial revert of r219489.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        WebKitLegacy => WebKit
+        WebKit => WebKit2
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Fix TestWebKit API.
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2017-07-13  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update tools and configurations after renaming Source/WebKit2 to Source/WebKit.
+        https://bugs.webkit.org/show_bug.cgi?id=174164
+        rdar://problem/33137595
+
+        Reviewed by Dan Bernstein.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        (ShouldBuildTest):
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * Scripts/build-webkit:
+        * Scripts/do-file-rename:
+        * Scripts/do-webcore-rename:
+        * Scripts/update-webkit-localizable-strings:
+        * Scripts/webkitpy/common/config/watchlist:
+        * Scripts/webkitpy/style/checker.py:
+        * Scripts/webkitpy/style/checkers/featuredefines.py:
+        * gtk/make-dist.py:
+        (ensure_version_if_possible):
+        * gtk/manifest.txt.in:
+
+2017-07-05  Matthew Hanson  <matthew_hanson@apple.com>
+
+        Update tools and configurations after renaming Source/WebKit to Source/WebKitLegacy.
+        https://bugs.webkit.org/show_bug.cgi?id=174162
+        rdar://problem/33137594
+
+        Reviewed by Dan Bernstein.
+
+        Mass rename of Source/WebKit to Source/WebKitLegacy in OpenSource tooling.
+
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild_unittest.py:
+        * DumpRenderTree/mac/InternalHeaders/WebKit/WebTypesInternal.h:
+        * EWSTools/configure-clang-linux.sh:
+        * Scripts/build-webkit:
+        * Scripts/do-file-rename:
+        * Scripts/do-webcore-rename:
+        * Scripts/update-webkit-localizable-strings:
+        * Scripts/webkitpy/common/checkout/checkout_unittest.py:
+        * Scripts/webkitpy/style/checkers/changelog_unittest.py:
+        * Scripts/webkitpy/style/checkers/featuredefines.py:
+        * gtk/manifest.txt.in:
+
 2017-07-13  Jonathan Bedard  <jbedard@apple.com>
 
         Add script to rebase patches during the WebKit2->WebKit/WebKit->WebKitLegacy transition

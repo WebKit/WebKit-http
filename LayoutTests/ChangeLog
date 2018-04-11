@@ -1,3 +1,287 @@
+2017-07-17  Chris Dumez  <cdumez@apple.com>
+
+        fast/workers/worker-user-gesture.html crashes on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=174592
+
+        Reviewed by Simon Fraser.
+
+        Make sure the tap/click event is fully processed before finishing the test by using
+        the promise returned by UIHelper.activateAt().
+
+        * fast/workers/worker-user-gesture.html:
+
+2017-07-17  Simon Fraser  <simon.fraser@apple.com>
+
+        clientX/clientY on TouchEvent.touches are wrong
+        https://bugs.webkit.org/show_bug.cgi?id=174561
+
+        Reviewed by Tim Horton.
+
+        * fast/events/touch/ios/touches-client-coords-after-zoom-expected.txt: Added.
+        * fast/events/touch/ios/touches-client-coords-after-zoom.html: Added.
+
+2017-07-17  Chris Dumez  <cdumez@apple.com>
+
+        click event does not dispatch to parent when child target stops hit testing after mousedown
+        https://bugs.webkit.org/show_bug.cgi?id=174564
+        <rdar://problem/33340234>
+
+        Reviewed by Simon Fraser.
+
+        Add layout test coverage.
+
+        * fast/events/mouse-click-different-mouseDown-mouseUp-nodes-expected.txt: Added.
+        * fast/events/mouse-click-different-mouseDown-mouseUp-nodes.html: Added.
+
+2017-07-17  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: order of AirPlay and volume controls is inconsistent between <audio> and <video>
+        https://bugs.webkit.org/show_bug.cgi?id=174581
+        <rdar://problem/33297519>
+
+        Reviewed by Sam Weinig.
+
+        Update the audio controls layout test to match the new expectations.
+
+        * media/modern-media-controls/audio/audio-controls-buttons-expected.txt:
+        * media/modern-media-controls/audio/audio-controls-buttons.html:
+
+2017-07-17  Antoine Quint  <graouts@apple.com>
+
+        Media controls draw behind captions
+        https://bugs.webkit.org/show_bug.cgi?id=174579
+        <rdar://problem/33295427>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test that checks the order in which order the captions and controls containers appear
+        under the media shadow root.
+
+        * media/modern-media-controls/media-controls/media-controls-display-above-captions-expected.txt: Added.
+        * media/modern-media-controls/media-controls/media-controls-display-above-captions.html: Added.
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac/TestExpectations:
+
+2017-07-16  Antoine Quint  <graouts@apple.com>
+
+        Dismissing the captions panel using the mouse is too eager to remove the captions panel and media controls
+        https://bugs.webkit.org/show_bug.cgi?id=174571
+        <rdar://problem/33294968>
+
+        Reviewed by Eric Carlson.
+
+        Adding a method to show the tracks panel for a given shadow root and adding new tests to check the correct
+        behavior when dismissing the tracks panel when clicking over the media element or outside the media element
+        when it's paused.
+
+        * media/modern-media-controls/resources/media-controls-utils.js:
+        (pressOnElement):
+        (pressAtPoint):
+        (showTracksPanel):
+        (finishMediaControlsTest): Deleted.
+        * media/modern-media-controls/tracks-panel/tracks-panel-up-click-outside-media-does-not-dimiss-media-controls-when-media-is-paused-expected.txt: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-up-click-outside-media-does-not-dimiss-media-controls-when-media-is-paused.html: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing-expected.txt: Added.
+        * media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html: Added.
+        * platform/mac/TestExpectations:
+
+2017-07-16  Ali Juma  <ajuma@chromium.org>
+
+        DisallowUserAgentShadowContent moves out of non-UA shadow roots
+        https://bugs.webkit.org/show_bug.cgi?id=165647
+
+        Reviewed by Ryosuke Niwa.
+
+        * fast/dom/nodesFromRect/nodesFromRect-shadow-expected.txt: Added.
+        * fast/dom/nodesFromRect/nodesFromRect-shadow.html: Added.
+        * fast/dom/nodesFromRect/resources/nodesFromRect.js:
+        (check):
+        (checkShadowContent):
+        (nodesFromRectAsString):
+
+2017-07-16  Antoine Quint  <graouts@apple.com>
+
+        Clicking edges of media control buttons changes visual state of button (pressed) but doesn't execute action
+        https://bugs.webkit.org/show_bug.cgi?id=174565
+        <rdar://problem/33294833>
+
+        Reviewed by Dean Jackson.
+
+        Add a new test where we click on the edge of a button and check that we trigger the Button's
+        UI delegate. This test fails prior to this patch.
+
+        * media/modern-media-controls/button/button-click-on-edges-expected.txt: Added.
+        * media/modern-media-controls/button/button-click-on-edges.html: Added.
+        * platform/ios-simulator/TestExpectations:
+
+2017-07-15  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        line-height: <number> gets visually applied twice when text autosizing is in effect
+        https://bugs.webkit.org/show_bug.cgi?id=174536
+        <rdar://problem/33338259>
+
+        Reviewed by Simon Fraser.
+
+        * fast/text-autosizing/line-height-number-expected.html: Added.
+        * fast/text-autosizing/line-height-number.html: Added.
+
+2017-07-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyRSA PKCS#8 exports
+        https://bugs.webkit.org/show_bug.cgi?id=173697
+
+        Reviewed by Jiewen Tan.
+
+        * platform/gtk/TestExpectations: Unskip the RSA PKCS#8 export tests
+
+2017-07-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Implement CryptoKeyRSA PKCS#8 imports
+        https://bugs.webkit.org/show_bug.cgi?id=173696
+
+        Reviewed by Jiewen Tan.
+
+        * platform/gtk/TestExpectations: Unskip the RSA PKCS#8 import tests
+        that are now passing.
+
+2017-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Possible crash in ~UserGestureIndicator() when on non-main thread
+        https://bugs.webkit.org/show_bug.cgi?id=174522
+        <rdar://problem/30283071>
+
+        Reviewed by Sam Weinig.
+
+        Add layout test coverage.
+
+        * fast/workers/worker-user-gesture-expected.txt: Added.
+        * fast/workers/worker-user-gesture.html: Added.
+        * fast/workers/worker-user-gesture.js: Added.
+        (setInterval):
+
+2017-07-14  Daniel Bates  <dabates@apple.com>
+
+        REGRESSION (r219013): Compute source frame info for frameless document
+        https://bugs.webkit.org/show_bug.cgi?id=174385
+        <rdar://problem/33217736>
+
+        Reviewed by Brady Eidson.
+
+        * http/tests/navigation/resources/window-open-redirect-and-remove-opener.html: Added.
+        * http/tests/navigation/window-open-redirect-and-remove-opener-expected.txt: Added.
+        * http/tests/navigation/window-open-redirect-and-remove-opener.html: Added.
+
+2017-07-14  Matt Lewis  <jlewis3@apple.com>
+
+        Fixed expectations after Mac expectation change.
+        https://trac.webkit.org/changeset/219507/webkit
+
+        Unreviewed test gardening.
+
+        * platform/wk2/TestExpectations:
+
+2017-07-14  Youenn Fablet  <youenn@apple.com>
+
+        WebRTC: silence data not sent for disabled audio track
+        https://bugs.webkit.org/show_bug.cgi?id=174456
+        <rdar://problem/33284623>
+
+        Reviewed by Eric Carlson.
+
+        * webrtc/audio-muted-stats-expected.txt: Added.
+        * webrtc/audio-muted-stats.html: Added.
+        * webrtc/audio-muted-stats2-expected.txt: Added.
+        * webrtc/audio-muted-stats2.html: Added.
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Add High Sierra test expectations
+        https://bugs.webkit.org/show_bug.cgi?id=174518
+        <rdar://problem/32716970>
+
+        Unreviewed test gardening.
+
+        * platform/mac-highsierra: Added.
+        * platform/mac-highsierra-wk1: Added.
+        * platform/mac-highsierra-wk2: Added.
+
+2017-07-14  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Removing samples when presentation order does not match decode order can cause bad behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=174514
+
+        Reviewed by Sam Weinig.
+
+        * media/media-source/media-source-remove-decodeorder-crash-expected.txt: Added.
+        * media/media-source/media-source-remove-decodeorder-crash.html: Added.
+
+2017-07-14  Matt Lewis  <jlewis3@apple.com>
+
+        Correcting test expectations after mac-expectation changes.
+        https://bugs.webkit.org/show_bug.cgi?id=174472
+
+        Unreviews test gardening.
+
+        * platform/mac/TestExpectations:
+
+2017-07-14  Jer Noble  <jer.noble@apple.com>
+
+        Adding the 'autoplay' attribute to a media element during a user gesture should remove user gesture restrictions.
+        https://bugs.webkit.org/show_bug.cgi?id=174373
+
+        Reviewed by Eric Carlson.
+
+        * media/video-add-autoplay-user-gesture-expected.txt: Added.
+        * media/video-add-autoplay-user-gesture.html: Added.
+        * media/platform/ios/TestExpectations: Skipped; requires EventSender.
+
+2017-07-14  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r219500.
+
+        The test is consistently failing on iOS simulator.
+
+        Reverted changeset:
+
+        "AX: VoiceOver silent or skipping over time values on media
+        player."
+        https://bugs.webkit.org/show_bug.cgi?id=174324
+        http://trac.webkit.org/changeset/219500
+
+2017-07-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Add script to rebase patches during the WebKit2->WebKit/WebKit->WebKitLegacy transition
+        https://bugs.webkit.org/show_bug.cgi?id=174438
+        <rdar://problem/33277112>
+
+        Reviewed by David Kilzer.
+
+        * platform/mac-wk2/TestExpectations: Move skipped tests because of webkit.org/b/174504. 
+        * platform/wk2/TestExpectations: Ditto.
+
+2017-07-14  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [HarfBuzz] Decomposed Vietnamese characters are rendered incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=174418
+
+        Reviewed by Michael Catanzaro.
+
+        * fast/text/international/vietnamese-nfd-expected.html: Added.
+        * fast/text/international/vietnamese-nfd.html: Added.
+
+2017-07-14  Aaron Chu  <aaron_chu@apple.com>
+
+        AX: VoiceOver silent or skipping over time values on media player.
+        https://bugs.webkit.org/show_bug.cgi?id=174324
+        <rdar://problem/32021784>
+
+        Reviewed by Antoine Quint.
+
+        Added role attribute to modern media controls time lable class so that VoiceOver can access the time label when the media is playing.
+
+        * media/modern-media-controls/time-label/time-label-expected.txt:
+        * media/modern-media-controls/time-label/time-label.html:
+
 2017-07-13  Matt Lewis  <jlewis3@apple.com>
 
         Skipped multiple http/tests/webrtc/ test on iOS simulator.
