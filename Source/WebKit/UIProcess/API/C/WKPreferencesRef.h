@@ -347,6 +347,10 @@ WK_EXPORT bool WKPreferencesGetScrollToFocusedElementEnabled(WKPreferencesRef pr
 WK_EXPORT void WKPreferencesSetNonCompositedWebGLEnabled(WKPreferencesRef preferences, bool enabled);
 WK_EXPORT bool WKPreferencesGetNonCompositedWebGLEnabled(WKPreferencesRef preferences);
 
+// Defaults to true
+WK_EXPORT void WKPreferencesSetCookieEnabled(WKPreferencesRef preferences, bool enabled);
+WK_EXPORT bool WKPreferencesGetCookieEnabled(WKPreferencesRef preferences);
+
 #ifdef __cplusplus
 }
 #endif
