@@ -1167,7 +1167,6 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
 #if ENABLE(ENCRYPTED_MEDIA)
         if (m_decryptor) {
             GST_INFO("we have a decryptor %s", GST_ELEMENT_NAME(m_decryptor.get()));
-            gst_object_ref(m_decryptor.get());
             gst_bin_add(GST_BIN(m_pipeline.get()), m_decryptor.get());
             gst_element_sync_state_with_parent(m_decryptor.get());
 
