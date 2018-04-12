@@ -1,3 +1,51 @@
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, minor adjustments to the previous demo.
+
+        * demos/frames/index.html: Added. Index page for the list of demos.
+        * demos/frames/sandboxing/index.html: Minor fixes.
+
+2017-07-26  Frederic Wang  <fwang@igalia.com>
+
+        Unreviewed, add demos (frame sandboxing and scrolling) for a blog post.
+
+        * demos/frames/sandboxing/am-i-sandboxed.html: Added.
+        * demos/frames/sandboxing/framebusting-success.html: Added.
+        * demos/frames/sandboxing/framebusting-without-user-activation.html: Added.
+        * demos/frames/sandboxing/index.html: Added.
+        * demos/frames/scrollable-iframes.html: Added.
+        * demos/frames/scrollingElement.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add the final demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/pbkdf2.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add yet another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html:
+        * demos/webcrypto/alice.png: Added.
+        * demos/webcrypto/bob.png: Added.
+        * demos/webcrypto/ecdh.html: Added.
+
+2017-07-20  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add another demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/aes-gcm.html: Added.
+        * demos/webcrypto/asynchronous-execution.html:
+        * demos/webcrypto/common.js: Added.
+
+2017-07-19  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Unreviewed, add a demo page for a WebCrypto API blog post
+
+        * demos/webcrypto/asynchronous-execution-worker.js: Added.
+        * demos/webcrypto/asynchronous-execution.html: Added.
+
 2017-06-30  Jon Lee  <jonlee@apple.com>
 
         Add a WebRTC example for a blog post

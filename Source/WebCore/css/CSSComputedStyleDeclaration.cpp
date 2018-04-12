@@ -53,7 +53,6 @@
 #include "CursorList.h"
 #include "DeprecatedCSSOMValue.h"
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "FontCascade.h"
 #include "FontSelectionValueInlines.h"
 #include "FontTaggedSettings.h"
@@ -1702,7 +1701,7 @@ String CSSComputedStyleDeclaration::cssText() const
 
 ExceptionOr<void> CSSComputedStyleDeclaration::setCssText(const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 RefPtr<CSSPrimitiveValue> ComputedStyleExtractor::getFontSizeCSSValuePreferringKeyword()
@@ -4224,7 +4223,7 @@ RefPtr<DeprecatedCSSOMValue> CSSComputedStyleDeclaration::getPropertyCSSValue(co
         auto value = ComputedStyleExtractor(m_element.ptr(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
         if (!value)
             return nullptr;
-        return value->createDeprecatedCSSOMWrapper();
+        return value->createDeprecatedCSSOMWrapper(*this);
     }
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
@@ -4233,7 +4232,7 @@ RefPtr<DeprecatedCSSOMValue> CSSComputedStyleDeclaration::getPropertyCSSValue(co
     auto value = getPropertyCSSValue(propertyID);
     if (!value)
         return nullptr;
-    return value->createDeprecatedCSSOMWrapper();
+    return value->createDeprecatedCSSOMWrapper(*this);
 }
 
 String CSSComputedStyleDeclaration::getPropertyValue(const String &propertyName)
@@ -4265,12 +4264,12 @@ bool CSSComputedStyleDeclaration::isPropertyImplicit(const String&)
 
 ExceptionOr<void> CSSComputedStyleDeclaration::setProperty(const String&, const String&, const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 ExceptionOr<String> CSSComputedStyleDeclaration::removeProperty(const String&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
     
 RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValueInternal(CSSPropertyID propertyID)
@@ -4285,7 +4284,7 @@ String CSSComputedStyleDeclaration::getPropertyValueInternal(CSSPropertyID prope
 
 ExceptionOr<bool> CSSComputedStyleDeclaration::setPropertyInternal(CSSPropertyID, const String&, bool)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 Ref<CSSValueList> ComputedStyleExtractor::getBackgroundShorthandValue()

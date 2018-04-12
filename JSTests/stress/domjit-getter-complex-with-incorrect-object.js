@@ -24,5 +24,5 @@ noInline(access);
 for (var i = 0; i < 1e4; ++i) {
     shouldThrow(() => {
         access(object);
-    }, `TypeError: Type error`);
+    }, `TypeError: The DOMJITGetterComplex.customGetter getter can only be used on instances of DOMJITGetterComplex`);
 }

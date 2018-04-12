@@ -48,7 +48,6 @@
 #include "WebFrame.h"
 #include "WebFrameNetworkingContext.h"
 #include "WebFullScreenManager.h"
-#include "WebIconDatabaseMessages.h"
 #include "WebNavigationDataStore.h"
 #include "WebPage.h"
 #include "WebPageGroupProxy.h"
@@ -288,6 +287,18 @@ void WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad()
 
     // Notify the UIProcess.
     webPage->send(Messages::WebPageProxy::DidReceiveServerRedirectForProvisionalLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), url, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
+}
+
+void WebFrameLoaderClient::dispatchDidPerformClientRedirect()
+{
+    WebPage* webPage = m_frame->page();
+    if (!webPage)
+        return;
+
+    auto navigationID = static_cast<WebDocumentLoader&>(*m_frame->coreFrame()->loader().documentLoader()).navigationID();
+
+    // Notify the UIProcess.
+    webPage->send(Messages::WebPageProxy::DidPerformClientRedirectForLoadForFrame(m_frame->frameID(), navigationID));
 }
 
 void WebFrameLoaderClient::dispatchDidChangeProvisionalURL()
@@ -1790,11 +1801,6 @@ void WebFrameLoaderClient::didRestoreScrollPosition()
         return;
 
     webPage->didRestoreScrollPosition();
-}
-
-bool WebFrameLoaderClient::useIconLoadingClient()
-{
-    return m_useIconLoadingClient;
 }
 
 void WebFrameLoaderClient::getLoadDecisionForIcons(const Vector<std::pair<WebCore::LinkIcon&, uint64_t>>& icons)

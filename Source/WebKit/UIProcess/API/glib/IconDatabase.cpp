@@ -35,7 +35,6 @@
 #include <WebCore/SQLiteTransaction.h>
 #include <WebCore/SharedBuffer.h>
 #include <WebCore/URL.h>
-#include <wtf/AutodrainedPool.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -117,17 +116,20 @@ Image* IconDatabase::IconRecord::image(const IntSize&)
 
 void IconDatabase::IconRecord::setImageData(RefPtr<SharedBuffer>&& data)
 {
+    m_dataSet = true;
+
     // It's okay to delete the raw image here. Any existing clients using this icon will be
     // managing an image that was created with a copy of this raw image data.
-    m_image = BitmapImage::create();
+    if (!data->size()) {
+        m_image = nullptr;
+        return;
+    }
 
-    // Copy the provided data into the buffer of the new Image object.
+    m_image = BitmapImage::create();
     if (m_image->setData(WTFMove(data), true) < EncodedDataStatus::SizeAvailable) {
         LOG(IconDatabase, "Manual image data for iconURL '%s' FAILED - it was probably invalid image data", m_iconURL.ascii().data());
         m_image = nullptr;
     }
-
-    m_dataSet = true;
 }
 
 void IconDatabase::IconRecord::loadImageFromResource(const char* resource)
@@ -189,10 +191,8 @@ IconDatabase::PageURLSnapshot IconDatabase::PageURLRecord::snapshot(bool forDele
 
 void IconDatabase::setClient(std::unique_ptr<IconDatabaseClient>&& client)
 {
-    // We don't allow a null client, because we never null check it anywhere in this code
-    // Also don't allow a client change after the thread has already began
+    // Don't allow a client change after the thread has already began
     // (setting the client should occur before the database is opened)
-    ASSERT(client);
     ASSERT(!m_syncThreadRunning);
     if (!client || m_syncThreadRunning)
         return;
@@ -255,6 +255,8 @@ void IconDatabase::close()
     // But if it is closed, notify the client now.
     if (!isOpen() && m_client)
         m_client->didClose();
+
+    m_client = nullptr;
 }
 
 void IconDatabase::removeAllIcons()
@@ -579,18 +581,13 @@ void IconDatabase::setIconDataForIconURL(RefPtr<SharedBuffer>&& data, const Stri
     }
 
     // Send notification out regarding all PageURLs that retain this icon
-    // But not if we're on the sync thread because that implies this mapping
-    // comes from the initial import which we don't want notifications for
-    if (!IS_ICON_SYNC_THREAD()) {
-        // Start the timer to commit this change - or further delay the timer if it was already started
-        scheduleOrDeferSyncTimer();
+    // Start the timer to commit this change - or further delay the timer if it was already started
+    scheduleOrDeferSyncTimer();
 
-        for (auto& pageURL : pageURLs) {
-            AutodrainedPool pool;
-
-            LOG(IconDatabase, "Dispatching notification that retaining pageURL %s has a new icon", urlForLogging(pageURL).ascii().data());
+    for (auto& pageURL : pageURLs) {
+        LOG(IconDatabase, "Dispatching notification that retaining pageURL %s has a new icon", urlForLogging(pageURL).ascii().data());
+        if (m_client)
             m_client->didChangeIconForPageURL(pageURL);
-        }
     }
 }
 
@@ -657,8 +654,8 @@ void IconDatabase::setIconURLForPageURL(const String& iconURLOriginal, const Str
         scheduleOrDeferSyncTimer();
 
         LOG(IconDatabase, "Dispatching notification that we changed an icon mapping for url %s", urlForLogging(pageURL).ascii().data());
-        AutodrainedPool pool;
-        m_client->didChangeIconForPageURL(pageURL);
+        if (m_client)
+            m_client->didChangeIconForPageURL(pageURL);
     }
 }
 
@@ -897,10 +894,8 @@ void IconDatabase::iconDatabaseSyncThread()
     // Existence of a journal file is evidence of a previous crash/force quit and automatically qualifies
     // us to do an integrity check
     String journalFilename = m_completeDatabasePath + "-journal";
-    if (!checkIntegrityOnOpen) {
-        AutodrainedPool pool;
+    if (!checkIntegrityOnOpen)
         checkIntegrityOnOpen = fileExists(journalFilename);
-    }
 
     {
         LockHolder locker(m_syncLock);
@@ -1117,7 +1112,6 @@ void IconDatabase::performURLImport()
 
     int result = query.step();
     while (result == SQLITE_ROW) {
-        AutodrainedPool pool;
         String pageURL = query.getColumnText(0);
         String iconURL = query.getColumnText(1);
 
@@ -1228,8 +1222,6 @@ void IconDatabase::performURLImport()
     LOG(IconDatabase, "Notifying %lu interested page URLs that their icon URL is known due to the import", static_cast<unsigned long>(urlsToNotify.size()));
     // Now that we don't hold any locks, perform the actual notifications
     for (auto& url : urlsToNotify) {
-        AutodrainedPool pool;
-
         LOG(IconDatabase, "Notifying icon info known for pageURL %s", url.ascii().data());
         dispatchDidImportIconURLForPageURLOnMainThread(url);
         if (shouldStopThreadActivity())
@@ -1449,8 +1441,6 @@ bool IconDatabase::readFromDatabase()
 
         // Now that we don't hold any locks, perform the actual notifications
         for (HashSet<String>::const_iterator it = urlsToNotify.begin(), end = urlsToNotify.end(); it != end; ++it) {
-            AutodrainedPool pool;
-
             LOG(IconDatabase, "Notifying icon received for pageURL %s", urlForLogging(*it).ascii().data());
             dispatchDidImportIconDataForPageURLOnMainThread(*it);
             if (shouldStopThreadActivity())

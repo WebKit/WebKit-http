@@ -525,7 +525,7 @@ ImageFrame* JPEGImageDecoder::frameBufferAtIndex(size_t index)
         return 0;
 
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(1);
+        m_frameBufferCache.grow(1);
 
     ImageFrame& frame = m_frameBufferCache[0];
     if (!frame.isComplete())
@@ -608,7 +608,7 @@ bool JPEGImageDecoder::outputScanlines()
     if (buffer.isInvalid()) {
         if (!buffer.initialize(scaledSize(), m_premultiplyAlpha))
             return setFailed();
-        buffer.setDecodingStatus(ImageFrame::DecodingStatus::Partial);
+        buffer.setDecodingStatus(DecodingStatus::Partial);
         // The buffer is transparent outside the decoded area while the image is
         // loading. The completed image will be marked fully opaque in jpegComplete().
         buffer.setHasAlpha(true);
@@ -652,7 +652,7 @@ void JPEGImageDecoder::jpegComplete()
     // empty.
     ImageFrame& buffer = m_frameBufferCache[0];
     buffer.setHasAlpha(false);
-    buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+    buffer.setDecodingStatus(DecodingStatus::Complete);
 }
 
 void JPEGImageDecoder::decode(bool onlySize, bool allDataReceived)

@@ -37,9 +37,7 @@ messages -> WebProcessProxy LegacyReceiver {
     GetPluginProcessConnection(uint64_t pluginProcessToken) -> (IPC::Attachment connectionHandle, bool supportsAsynchronousInitialization) Delayed
 #endif
     GetNetworkProcessConnection() -> (IPC::Attachment connectionHandle) Delayed
-#if ENABLE(DATABASE_PROCESS)
     GetDatabaseProcessConnection() -> (IPC::Attachment connectionHandle) Delayed
-#endif
     ProcessReadyToSuspend()
     DidCancelProcessSuspension()
 
@@ -50,9 +48,6 @@ messages -> WebProcessProxy LegacyReceiver {
     DidExceedCPULimit()
 
     StopResponsivenessTimer()
-
-    RetainIconForPageURL(String pageURL)
-    ReleaseIconForPageURL(String pageURL)
 
     DidReceiveMainThreadPing()
     DidReceiveBackgroundResponsivenessPing()

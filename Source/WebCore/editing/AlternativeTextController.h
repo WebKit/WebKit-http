@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,37 +27,24 @@
 
 #include "AlternativeTextClient.h"
 #include "DocumentMarker.h"
-#include "FrameSelection.h"
-#include "Range.h"
-#include "TextChecking.h"
+#include "Position.h"
 #include "Timer.h"
-#include "VisibleSelection.h"
 #include <wtf/Noncopyable.h>
+#include <wtf/Variant.h>
 
 namespace WebCore {
 
 class CompositeEditCommand;
-class EditorClient;
 class EditCommand;
 class EditCommandComposition;
+class EditorClient;
 class Event;
 class Frame;
+class Range;
 class TextCheckerClient;
+class VisibleSelection;
+
 struct DictationAlternative;
-
-class AlternativeTextDetails : public RefCounted<AlternativeTextDetails> {
-public:
-    virtual ~AlternativeTextDetails() { }
-};
-
-struct AlternativeTextInfo {
-    RefPtr<Range> rangeWithAlternative;
-    bool isActive;
-    AlternativeTextType type;
-    String originalText;
-    RefPtr<AlternativeTextDetails> details;
-};
-
 struct TextCheckingResult;
 
 #if USE(AUTOCORRECTION_PANEL)
@@ -116,8 +103,19 @@ public:
 
 private:
 #if USE(AUTOCORRECTION_PANEL)
+    using AutocorrectionReplacement = String;
+    using AlternativeDictationContext = uint64_t;
+
+    struct AlternativeTextInfo {
+        RefPtr<Range> rangeWithAlternative;
+        bool isActive;
+        AlternativeTextType type;
+        String originalText;
+        Variant<AutocorrectionReplacement, AlternativeDictationContext> details;
+    };
+
     String dismissSoon(ReasonForDismissingAlternativeText);
-    void applyAlternativeTextToRange(const Range&, const String& alternative, AlternativeTextType, const Vector<DocumentMarker::MarkerType>&);
+    void applyAlternativeTextToRange(const Range&, const String& alternative, AlternativeTextType, OptionSet<DocumentMarker::MarkerType>);
     void timerFired();
     void recordSpellcheckerResponseForModifiedCorrection(Range& rangeOfCorrection, const String& corrected, const String& correction);
     String markerDescriptionForAppliedAlternativeText(AlternativeTextType, DocumentMarker::MarkerType);
@@ -133,8 +131,12 @@ private:
     void markPrecedingWhitespaceForDeletedAutocorrectionAfterCommand(EditCommand*);
 
     Timer m_timer;
-    AlternativeTextInfo m_alternativeTextInfo;
+    RefPtr<Range> m_rangeWithAlternative;
+    bool m_isActive;
     bool m_isDismissedByEditing;
+    AlternativeTextType m_type;
+    String m_originalText;
+    Variant<AutocorrectionReplacement, AlternativeDictationContext> m_details;
 
     String m_originalStringForLastDeletedAutocorrection;
     Position m_positionForLastDeletedAutocorrection;

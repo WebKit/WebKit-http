@@ -45,7 +45,6 @@
 #include "WebProcessPool.h"
 #include "WebProcessProxy.h"
 #include <WebCore/NotImplemented.h>
-#include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(GTK)
 #include "WebInspectorProxyClient.h"
@@ -359,7 +358,7 @@ static void decidePolicyForNavigationAction(WKPageRef pageRef, WKNavigationActio
     toImpl(listenerRef)->ignore();
 
     // And instead load it in the inspected page.
-    webInspectorProxy->inspectedPage()->loadRequest(request);
+    webInspectorProxy->inspectedPage()->loadRequest(WTFMove(request));
 }
 
 static void getContextMenuFromProposedMenu(WKPageRef pageRef, WKArrayRef proposedMenuRef, WKArrayRef* newMenuRef, WKHitTestResultRef, WKTypeRef, const void*)

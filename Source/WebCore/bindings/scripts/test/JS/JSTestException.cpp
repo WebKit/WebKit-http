@@ -68,20 +68,6 @@ private:
 
 using JSTestExceptionConstructor = JSDOMConstructorNotConstructable<JSTestException>;
 
-/* Hash table */
-
-static const struct CompactHashIndex JSTestExceptionTableIndex[2] = {
-    { -1, -1 },
-    { 0, -1 },
-};
-
-
-static const HashTableValue JSTestExceptionTableValues[] =
-{
-    { "name", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionName), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-};
-
-static const HashTable JSTestExceptionTable = { 1, 1, true, JSTestExceptionTableValues, JSTestExceptionTableIndex };
 template<> JSValue JSTestExceptionConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
     UNUSED_PARAM(vm);
@@ -102,6 +88,7 @@ template<> const ClassInfo JSTestExceptionConstructor::s_info = { "TestException
 static const HashTableValue JSTestExceptionPrototypeTableValues[] =
 {
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestExceptionConstructor) } },
+    { "name", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestExceptionName), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 };
 
 const ClassInfo JSTestExceptionPrototype::s_info = { "TestExceptionPrototype", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestExceptionPrototype) };
@@ -109,10 +96,10 @@ const ClassInfo JSTestExceptionPrototype::s_info = { "TestExceptionPrototype", &
 void JSTestExceptionPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestExceptionPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestException::info(), JSTestExceptionPrototypeTableValues, *this);
 }
 
-const ClassInfo JSTestException::s_info = { "TestException", &Base::s_info, &JSTestExceptionTable, nullptr, CREATE_METHOD_TABLE(JSTestException) };
+const ClassInfo JSTestException::s_info = { "TestException", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestException) };
 
 JSTestException::JSTestException(Structure* structure, JSDOMGlobalObject& globalObject, Ref<TestException>&& impl)
     : JSDOMWrapper<TestException>(structure, globalObject, WTFMove(impl))
@@ -186,7 +173,7 @@ static inline JSValue jsTestExceptionNameGetter(ExecState& state, JSTestExceptio
 
 EncodedJSValue jsTestExceptionName(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestException>::get<jsTestExceptionNameGetter>(*state, thisValue, "name");
+    return IDLAttribute<JSTestException>::get<jsTestExceptionNameGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "name");
 }
 
 bool JSTestExceptionOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)

@@ -72,6 +72,7 @@
 #include <WebCore/FrameView.h> // FIXME: Move LayoutViewportConstraint to its own file and stop including this.
 #include <WebCore/LayoutPoint.h>
 #include <WebCore/LayoutSize.h>
+#include <WebCore/MediaPlaybackTargetContext.h>
 #include <WebCore/MediaProducer.h>
 #include <WebCore/PlatformScreen.h>
 #include <WebCore/ScrollTypes.h>
@@ -200,9 +201,9 @@ class WebBackForwardListItem;
 class WebContextMenuProxy;
 class WebEditCommandProxy;
 class WebFullScreenManagerProxy;
-class WebPlaybackSessionManagerProxy;
+class PlaybackSessionManagerProxy;
 class WebNavigationState;
-class WebVideoFullscreenManagerProxy;
+class VideoFullscreenManagerProxy;
 class WebKeyboardEvent;
 class WebURLSchemeHandler;
 class WebMouseEvent;
@@ -342,8 +343,8 @@ public:
     void setFullscreenClient(std::unique_ptr<API::FullscreenClient>&&);
 #endif
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    WebPlaybackSessionManagerProxy* playbackSessionManager();
-    WebVideoFullscreenManagerProxy* videoFullscreenManager();
+    PlaybackSessionManagerProxy* playbackSessionManager();
+    VideoFullscreenManagerProxy* videoFullscreenManager();
 #endif
 
 #if PLATFORM(IOS)
@@ -390,7 +391,7 @@ public:
     void closePage(bool stopResponsivenessTimer);
 
     void addPlatformLoadParameters(LoadParameters&);
-    RefPtr<API::Navigation> loadRequest(const WebCore::ResourceRequest&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, API::Object* userData = nullptr);
+    RefPtr<API::Navigation> loadRequest(WebCore::ResourceRequest&&, WebCore::ShouldOpenExternalURLsPolicy = WebCore::ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadFile(const String& fileURL, const String& resourceDirectoryURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadData(API::Data*, const String& MIMEType, const String& encoding, const String& baseURL, API::Object* userData = nullptr);
     RefPtr<API::Navigation> loadHTMLString(const String& htmlString, const String& baseURL, API::Object* userData = nullptr);
@@ -499,7 +500,7 @@ public:
     void overflowScrollWillStartScroll();
     void overflowScrollDidEndScroll();
 
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& unobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation);
     void synchronizeDynamicViewportUpdate();
 
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
@@ -1248,6 +1249,7 @@ private:
 
     void didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& url, const String& unreachableURL, const UserData&);
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
+    void didPerformClientRedirectForLoadForFrame(uint64_t frameID, uint64_t navigationID);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
     void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
@@ -1274,8 +1276,8 @@ private:
 
     void didDestroyNavigation(uint64_t navigationID);
 
-    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData&, const FrameInfoData&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, uint64_t listenerID, const UserData&, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&&);
-    void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const NavigationActionData&, const WebCore::ResourceRequest&, const String& frameName, uint64_t listenerID, const UserData&);
+    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&&, const FrameInfoData&, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, WebCore::ResourceRequest&&, uint64_t listenerID, const UserData&, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&&);
+    void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, NavigationActionData&&, WebCore::ResourceRequest&&, const String& frameName, uint64_t listenerID, const UserData&);
     void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
     void decidePolicyForResponseSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&, Ref<Messages::WebPageProxy::DecidePolicyForResponseSync::DelayedReply>&&);
     void unableToImplementPolicy(uint64_t frameID, const WebCore::ResourceError&, const UserData&);
@@ -1289,7 +1291,7 @@ private:
     void didUpdateHistoryTitle(const String& title, const String& url, uint64_t frameID);
 
     // UI client
-    void createNewPage(const FrameInfoData&, uint64_t originatingPageID, const WebCore::ResourceRequest&, const WebCore::WindowFeatures&, const NavigationActionData&, RefPtr<Messages::WebPageProxy::CreateNewPage::DelayedReply>);
+    void createNewPage(const FrameInfoData&, uint64_t originatingPageID, WebCore::ResourceRequest&&, const WebCore::WindowFeatures&, NavigationActionData&&, Ref<Messages::WebPageProxy::CreateNewPage::DelayedReply>&&);
     void showPage();
     void runJavaScriptAlert(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptAlert::DelayedReply>&&);
     void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>&&);
@@ -1621,6 +1623,8 @@ private:
 
     void viewIsBecomingVisible();
 
+    void stopAllURLSchemeTasks();
+
     PageClient& m_pageClient;
     Ref<API::PageConfiguration> m_configuration;
 
@@ -1678,8 +1682,8 @@ private:
 #endif
 
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    RefPtr<WebPlaybackSessionManagerProxy> m_playbackSessionManager;
-    RefPtr<WebVideoFullscreenManagerProxy> m_videoFullscreenManager;
+    RefPtr<PlaybackSessionManagerProxy> m_playbackSessionManager;
+    RefPtr<VideoFullscreenManagerProxy> m_videoFullscreenManager;
 #endif
 
 #if PLATFORM(IOS)

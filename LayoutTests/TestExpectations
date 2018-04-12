@@ -77,11 +77,11 @@ http/tests/loading/resourceLoadStatistics/ [ Skip ]
 fast/harness/uiscriptcontroller [ Skip ]
 
 # This test only makes sense on Mac
-fast/attachment/attachment-subtitle-resize.html
+fast/attachment/attachment-subtitle-resize.html [ Skip ]
 
 # This test only makes sense on iOS
-fast/attachment/attachment-wrapping-action.html
-fast/attachment/attachment-borderless.html
+fast/attachment/attachment-wrapping-action.html [ Skip ]
+fast/attachment/attachment-borderless.html [ Skip ]
 editing/selection/character-granularity-selected-range-after-dismissing-selection.html [ Skip ]
 editing/selection/character-granularity-select-text-with-click-handler.html [ Skip ]
 editing/selection/caret-after-tap-in-editable-selection.html [ Skip ]
@@ -1347,7 +1347,6 @@ fast/table/colspanMinWidth-vertical.html [ Skip ]
 fast/forms/range/range-remove-on-drag.html [ Skip ]
 
 # CSSOM View module
-webkit.org/b/153137 imported/w3c/web-platform-tests/cssom-view/elementsFromPoint.html [ Skip ]
 webkit.org/b/5991 imported/w3c/web-platform-tests/cssom-view/scrollingElement.html [ Skip ]
 
 # FileAPI
@@ -1399,5 +1398,3 @@ webkit.org/b/172609 fetch/closing-while-fetching-blob.html [ Skip ]
 webkit.org/b/172514 [ Debug ] imported/w3c/web-platform-tests/innerText/getter.html [ Skip ]
 
 webkit.org/b/173333 imported/w3c/web-platform-tests/dom/nodes/Document-constructor-svg.svg [ Skip ]
-
-webkit.org/b/174284 media/video-source-before-src.html [ Skip ]

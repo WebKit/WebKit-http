@@ -270,7 +270,7 @@ ImageFrame* PNGImageDecoder::frameBufferAtIndex(size_t index)
 #endif
 
     if (m_frameBufferCache.isEmpty())
-        m_frameBufferCache.resize(1);
+        m_frameBufferCache.grow(1);
 
     ImageFrame& frame = m_frameBufferCache[index];
     if (!frame.isComplete())
@@ -450,7 +450,7 @@ void PNGImageDecoder::rowAvailable(unsigned char* rowBuffer, unsigned rowIndex, 
             }
         }
 
-        buffer.setDecodingStatus(ImageFrame::DecodingStatus::Partial);
+        buffer.setDecodingStatus(DecodingStatus::Partial);
         buffer.setHasAlpha(false);
 
 #if ENABLE(APNG)
@@ -558,7 +558,7 @@ void PNGImageDecoder::pngComplete()
     }
 #endif
     if (!m_frameBufferCache.isEmpty())
-        m_frameBufferCache.first().setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+        m_frameBufferCache.first().setDecodingStatus(DecodingStatus::Complete);
 }
 
 void PNGImageDecoder::decode(bool onlySize, unsigned haltAtFrame, bool allDataReceived)
@@ -644,7 +644,7 @@ void PNGImageDecoder::readChunks(png_unknown_chunkp chunk)
         }
 
         if (m_frameBufferCache.isEmpty())
-            m_frameBufferCache.resize(1);
+            m_frameBufferCache.grow(1);
 
         if (m_currentFrame < m_frameBufferCache.size()) {
             ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
@@ -825,7 +825,7 @@ void PNGImageDecoder::frameComplete()
         return;
 
     ImageFrame& buffer = m_frameBufferCache[m_currentFrame];
-    buffer.setDecodingStatus(ImageFrame::DecodingStatus::Complete);
+    buffer.setDecodingStatus(DecodingStatus::Complete);
 
     png_bytep interlaceBuffer = m_reader->interlaceBuffer();
 

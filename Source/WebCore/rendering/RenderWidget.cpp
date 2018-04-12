@@ -230,10 +230,10 @@ void RenderWidget::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintO
     LayoutRect paintRect = paintInfo.rect;
 
     PaintBehavior oldBehavior = PaintBehaviorNormal;
-    if (is<FrameView>(*m_widget) && (paintInfo.paintBehavior & PaintBehaviorAllowAsyncImageDecoding)) {
+    if (is<FrameView>(*m_widget) && (paintInfo.paintBehavior & PaintBehaviorTileFirstPaint)) {
         FrameView& frameView = downcast<FrameView>(*m_widget);
         oldBehavior = frameView.paintBehavior();
-        frameView.setPaintBehavior(oldBehavior | PaintBehaviorAllowAsyncImageDecoding);
+        frameView.setPaintBehavior(oldBehavior | PaintBehaviorTileFirstPaint);
     }
 
     IntPoint widgetLocation = m_widget->frameRect().location();
@@ -257,7 +257,7 @@ void RenderWidget::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintO
             ASSERT(!paintInfo.overlapTestRequests->contains(this) || (paintInfo.overlapTestRequests->get(this) == m_widget->frameRect()));
             paintInfo.overlapTestRequests->set(this, m_widget->frameRect());
         }
-        if (paintInfo.paintBehavior & PaintBehaviorAllowAsyncImageDecoding)
+        if (paintInfo.paintBehavior & PaintBehaviorTileFirstPaint)
             frameView.setPaintBehavior(oldBehavior);
     }
 }
@@ -372,8 +372,8 @@ bool RenderWidget::nodeAtPoint(const HitTestRequest& request, HitTestResult& res
 
         bool isInsideChildFrame = childRoot.hitTest(newHitTestRequest, newHitTestLocation, childFrameResult);
 
-        if (newHitTestLocation.isRectBasedTest())
-            result.append(childFrameResult);
+        if (request.resultIsElementList())
+            result.append(childFrameResult, request);
         else if (isInsideChildFrame)
             result = childFrameResult;
 

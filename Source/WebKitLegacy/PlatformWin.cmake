@@ -101,7 +101,6 @@ list(APPEND WebKit_INCLUDES
     win/WebHTMLRepresentation.h
     win/WebHistory.h
     win/WebHistoryItem.h
-    win/WebIconDatabase.h
     win/WebJavaScriptCollector.h
     win/WebKitCOMAPI.h
     win/WebKitClassFactory.h
@@ -173,7 +172,6 @@ list(APPEND WebKit_SOURCES_Classes
     win/WebHTMLRepresentation.cpp
     win/WebHistory.cpp
     win/WebHistoryItem.cpp
-    win/WebIconDatabase.cpp
     win/WebInspector.cpp
     win/WebJavaScriptCollector.cpp
     win/WebKitCOMAPI.cpp
@@ -337,7 +335,6 @@ set(WEBKIT_IDL_DEPENDENCIES
     win/Interfaces/IWebHistoryItem.idl
     win/Interfaces/IWebHistoryItemPrivate.idl
     win/Interfaces/IWebHistoryPrivate.idl
-    win/Interfaces/IWebIconDatabase.idl
     win/Interfaces/IWebInspector.idl
     win/Interfaces/IWebInspectorPrivate.idl
     win/Interfaces/IWebJavaScriptCollector.idl
@@ -456,8 +453,6 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         libGLESv2${DEBUG_SUFFIX}
     )
 endif ()
-
-set(WebKit_LIBRARY_TYPE SHARED)
 
 set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:WINDOWS")

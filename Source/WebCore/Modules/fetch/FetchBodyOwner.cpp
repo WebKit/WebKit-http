@@ -109,7 +109,7 @@ void FetchBodyOwner::cloneBody(const FetchBodyOwner& owner)
     m_body = owner.m_body->clone();
 }
 
-void FetchBodyOwner::extractBody(ScriptExecutionContext& context, FetchBody::BindingDataType&& value)
+void FetchBodyOwner::extractBody(ScriptExecutionContext& context, FetchBody::Init&& value)
 {
     m_body = FetchBody::extract(context, WTFMove(value), m_contentType);
 }
@@ -152,7 +152,7 @@ void FetchBodyOwner::formData(Ref<DeferredPromise>&& promise)
 void FetchBodyOwner::json(Ref<DeferredPromise>&& promise)
 {
     if (isBodyNull()) {
-        promise->reject(SYNTAX_ERR);
+        promise->reject(SyntaxError);
         return;
     }
     if (isDisturbedOrLocked()) {

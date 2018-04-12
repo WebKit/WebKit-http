@@ -31,7 +31,6 @@
 
 #include "CryptoAlgorithmRsaSsaParamsDeprecated.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 #include "GCryptUtilities.h"
 #include "NotImplemented.h"
 #include "ScriptExecutionContext.h"
@@ -194,13 +193,13 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify(Ref<CryptoKey>&& key, Vect
 ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformSign(const CryptoAlgorithmRsaSsaParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
 {
     notImplemented();
-    return Exception { NOT_SUPPORTED_ERR };
+    return Exception { NotSupportedError };
 }
 
 ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::platformVerify(const CryptoAlgorithmRsaSsaParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, const CryptoOperationData&, BoolCallback&&, VoidCallback&&)
 {
     notImplemented();
-    return Exception { NOT_SUPPORTED_ERR };
+    return Exception { NotSupportedError };
 }
 
 } // namespace WebCore

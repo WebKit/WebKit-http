@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "SVGPropertyTearOff.h"
 
 namespace WebCore {
@@ -62,7 +61,7 @@ public:
     ExceptionOr<void> setValueForBindings(float value)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference() = value;
         commitChange();

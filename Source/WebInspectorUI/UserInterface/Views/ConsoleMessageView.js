@@ -376,7 +376,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
 
         this._makeExpandable();
 
-        // Auto-expand if there are multiple objects.
+        // Auto-expand if there are multiple objects or if there were simple parameters.
         if (this._extraParameters.length > 1)
             this.expand();
 
@@ -426,11 +426,11 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         if (!parameters.length)
             return;
 
-        for (var i = 0; i < parameters.length; ++i)
+        for (let i = 0; i < parameters.length; ++i)
             parameters[i] = this._createRemoteObjectIfNeeded(parameters[i]);
 
-        var builderElement = element.appendChild(document.createElement("span"));
-        var shouldFormatWithStringSubstitution = WebInspector.RemoteObject.type(parameters[0]) === "string" && this._message.type !== WebInspector.ConsoleMessage.MessageType.Result;
+        let builderElement = element.appendChild(document.createElement("span"));
+        let shouldFormatWithStringSubstitution = parameters[0].type === "string" && this._message.type !== WebInspector.ConsoleMessage.MessageType.Result;
 
         // Single object (e.g. console result or logging a non-string object).
         if (parameters.length === 1 && !shouldFormatWithStringSubstitution) {
@@ -444,48 +444,93 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         if (shouldFormatWithStringSubstitution && this._isStackTrace(parameters[0]))
             shouldFormatWithStringSubstitution = false;
 
-        // Format string / message / default message.
-        if (shouldFormatWithStringSubstitution) {
-            var result = this._formatWithSubstitutionString(parameters, builderElement);
-            parameters = result.unusedSubstitutions;
-            this._extraParameters = parameters;
-        } else {
-            var defaultMessage = WebInspector.UIString("No message");
-            builderElement.append(defaultMessage);
+        let needsDivider = false;
+        function appendDividerIfNeeded() {
+            if (!needsDivider)
+                return null;
+            let element = builderElement.appendChild(document.createElement("span"));
+            element.classList.add("console-message-preview-divider");
+            element.textContent = ` ${enDash} `;
+            return element;
         }
 
-        // Trailing parameters.
-        if (parameters.length) {
-            let enclosedElement = document.createElement("span");
+        // Format string.
+        if (shouldFormatWithStringSubstitution) {
+            let result = this._formatWithSubstitutionString(parameters, builderElement);
+            parameters = result.unusedSubstitutions;
+            this._extraParameters = parameters;
+            needsDivider = true;
+        }
 
+        // Trailing inline parameters.
+        if (parameters.length) {
+            let simpleParametersCount = 0;
+            for (let parameter of parameters) {
+                if (!this._hasSimpleDisplay(parameter))
+                    break;
+                simpleParametersCount++;
+            }
+
+            // Show one or more simple parameters inline on the message line.
+            if (simpleParametersCount) {
+                let simpleParameters = parameters.splice(0, simpleParametersCount);
+                this._extraParameters = parameters;
+
+                for (let parameter of simpleParameters) {
+                    let dividerElement = appendDividerIfNeeded();
+                    if (dividerElement)
+                        dividerElement.classList.add("inline-lossless");
+
+                    let previewContainer = builderElement.appendChild(document.createElement("span"));
+                    previewContainer.classList.add("inline-lossless");
+
+                    let preview = WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject(parameter, WebInspector.ObjectPreviewView.Mode.Brief);
+                    let isPreviewView = preview instanceof WebInspector.ObjectPreviewView;
+
+                    if (isPreviewView)
+                        preview.setOriginatingObjectInfo(parameter, null);
+
+                    let previewElement = isPreviewView ? preview.element : preview;
+                    previewContainer.appendChild(previewElement);
+
+                    needsDivider = true;
+
+                    // Simple displayable parameters should pretty much always be lossless.
+                    // An exception might be a truncated string.
+                    console.assert((isPreviewView && preview.lossless) || (!isPreviewView && this._shouldConsiderObjectLossless(parameter)));
+                }
+            }
+
+            // If there is a single non-simple parameter after simple paramters, show it inline.
             if (parameters.length === 1 && !this._isStackTrace(parameters[0])) {
                 let parameter = parameters[0];
 
-                // Single object. Show a preview.
-                builderElement.append(enclosedElement);
-                enclosedElement.classList.add("console-message-preview-divider");
-                enclosedElement.textContent = " \u2013 ";
+                let dividerElement = appendDividerIfNeeded();
 
-                var previewContainer = builderElement.appendChild(document.createElement("span"));
+                let previewContainer = builderElement.appendChild(document.createElement("span"));
                 previewContainer.classList.add("console-message-preview");
 
-                var preview = WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject(parameter, WebInspector.ObjectPreviewView.Mode.Brief);
-                var isPreviewView = preview instanceof WebInspector.ObjectPreviewView;
+                let preview = WebInspector.FormattedValue.createObjectPreviewOrFormattedValueForRemoteObject(parameter, WebInspector.ObjectPreviewView.Mode.Brief);
+                let isPreviewView = preview instanceof WebInspector.ObjectPreviewView;
 
                 if (isPreviewView)
                     preview.setOriginatingObjectInfo(parameter, null);
 
-                var previewElement = isPreviewView ? preview.element : preview;
+                let previewElement = isPreviewView ? preview.element : preview;
                 previewContainer.appendChild(previewElement);
+
+                needsDivider = true;
 
                 // If this preview is effectively lossless, we can avoid making this console message expandable.
                 if ((isPreviewView && preview.lossless) || (!isPreviewView && this._shouldConsiderObjectLossless(parameter))) {
                     this._extraParameters = null;
-                    enclosedElement.classList.add("inline-lossless");
+                    if (dividerElement)
+                        dividerElement.classList.add("inline-lossless");
                     previewContainer.classList.add("inline-lossless");
                 }
-            } else {
-                // Multiple objects. Show an indicator.
+            } else if (parameters.length) {
+                // Multiple remaining objects. Show an indicator and they will be appended as extra parameters.
+                let enclosedElement = document.createElement("span");
                 builderElement.append(" ", enclosedElement);
                 enclosedElement.classList.add("console-message-enclosed");
                 enclosedElement.textContent = "(" + parameters.length + ")";
@@ -493,14 +538,18 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
         }
     }
 
+    _hasSimpleDisplay(parameter)
+    {
+        console.assert(parameter instanceof WebInspector.RemoteObject);
+
+        return WebInspector.FormattedValue.hasSimpleDisplay(parameter) && !this._isStackTrace(parameter);
+    }
+
     _isStackTrace(parameter)
     {
         console.assert(parameter instanceof WebInspector.RemoteObject);
 
-        if (WebInspector.RemoteObject.type(parameter) !== "string")
-            return false;
-
-        return WebInspector.StackTrace.isLikelyStackTrace(parameter.description);
+        return parameter.type === "string" && WebInspector.StackTrace.isLikelyStackTrace(parameter.description);
     }
 
     _shouldConsiderObjectLossless(object)

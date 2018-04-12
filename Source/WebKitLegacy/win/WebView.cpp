@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2016 Apple, Inc.  All rights reserved.
+ * Copyright (C) 2006-2017 Apple, Inc. All rights reserved.
  * Copyright (C) 2009, 2010, 2011 Appcelerator, Inc. All rights reserved.
  * Copyright (C) 2011 Brent Fulgham. All rights reserved.
  *
@@ -55,7 +55,6 @@
 #include "WebFrameNetworkingContext.h"
 #include "WebGeolocationClient.h"
 #include "WebGeolocationPosition.h"
-#include "WebIconDatabase.h"
 #include "WebInspector.h"
 #include "WebInspectorClient.h"
 #include "WebKit.h"
@@ -228,24 +227,24 @@ using namespace WebCore;
 using namespace std;
 using JSC::JSLock;
 
+static String webKitVersionString();
+
+static const CFStringRef WebKitLocalCacheDefaultsKey = CFSTR("WebKitLocalCache");
 static HMODULE accessibilityLib;
+
 static HashSet<WebView*>& pendingDeleteBackingStoreSet()
 {
     static NeverDestroyed<HashSet<WebView*>> pendingDeleteBackingStoreSet;
     return pendingDeleteBackingStoreSet;
 }
 
-static CFStringRef WebKitLocalCacheDefaultsKey = CFSTR("WebKitLocalCache");
-
-static String webKitVersionString();
-
 WebView* kit(Page* page)
 {
     if (!page)
-        return 0;
+        return nullptr;
     
     if (page->chrome().client().isEmptyChromeClient())
-        return 0;
+        return nullptr;
     
     return static_cast<WebChromeClient&>(page->chrome().client()).webView();
 }
@@ -780,7 +779,6 @@ HRESULT WebView::close()
 
     m_mainFrame = nullptr;
 
-    registerForIconNotification(false);
     IWebNotificationCenter* notifyCenter = WebNotificationCenter::defaultCenterInternal();
     notifyCenter->removeObserver(this, WebPreferences::webPreferencesChangedNotification(), static_cast<IWebPreferences*>(m_preferences.get()));
 
@@ -1558,10 +1556,8 @@ bool WebView::canHandleRequest(const WebCore::ResourceRequest& request)
 
 String WebView::standardUserAgentWithApplicationName(const String& applicationName)
 {
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, osVersion, (windowsVersionForUAString()));
-    DEPRECATED_DEFINE_STATIC_LOCAL(String, webKitVersion, (webKitVersionString()));
-
-    return makeString("Mozilla/5.0 (", osVersion, ") AppleWebKit/", webKitVersion, " (KHTML, like Gecko)", applicationName.isEmpty() ? "" : " ", applicationName);
+    static const NeverDestroyed<String> prefix = makeString("Mozilla/5.0 (", windowsVersionForUAString(), ") AppleWebKit/", webKitVersionString(), " (KHTML, like Gecko)");
+    return makeString(prefix.get(), applicationName.isEmpty() ? "" : " ", applicationName);
 }
 
 Page* WebView::page()
@@ -3224,67 +3220,17 @@ void WebView::setToolTip(const String& toolTip)
     ::SendMessage(m_toolTipHwnd, TTM_ACTIVATE, !m_toolTip.isEmpty(), 0);
 }
 
-HRESULT WebView::notifyDidAddIcon(IWebNotification* notification)
+HRESULT WebView::notifyDidAddIcon(IWebNotification*)
 {
-    COMPtr<IPropertyBag> propertyBag;
-    HRESULT hr = notification->userInfo(&propertyBag);
-    if (FAILED(hr))
-        return hr;
-    if (!propertyBag)
-        return E_FAIL;
-
-    COMVariant iconUserInfoURL;
-    hr = propertyBag->Read(WebIconDatabase::iconDatabaseNotificationUserInfoURLKey(), &iconUserInfoURL, nullptr);
-    if (FAILED(hr))
-        return hr;
-
-    if (iconUserInfoURL.variantType() != VT_BSTR)
-        return E_FAIL;
-
-    String mainFrameURL;
-    if (m_mainFrame)
-        mainFrameURL = m_mainFrame->url().string();
-
-    if (!mainFrameURL.isEmpty() && mainFrameURL == toString(V_BSTR(&iconUserInfoURL)))
-        dispatchDidReceiveIconFromWebFrame(m_mainFrame);
-
-    return hr;
+    return E_FAIL;
 }
 
-void WebView::registerForIconNotification(bool listen)
+void WebView::registerForIconNotification(bool)
 {
-    IWebNotificationCenter* nc = WebNotificationCenter::defaultCenterInternal();
-    if (listen)
-        nc->addObserver(this, WebIconDatabase::iconDatabaseDidAddIconNotification(), 0);
-    else
-        nc->removeObserver(this, WebIconDatabase::iconDatabaseDidAddIconNotification(), 0);
 }
 
-void WebView::dispatchDidReceiveIconFromWebFrame(WebFrame* frame)
+void WebView::dispatchDidReceiveIconFromWebFrame(WebFrame*)
 {
-    registerForIconNotification(false);
-
-    if (m_frameLoadDelegate) {
-        String str = frame->url().string();
-
-        IntSize sz(16, 16);
-
-        BitmapInfo bmInfo = BitmapInfo::create(sz);
-
-        HBITMAP hBitmap = nullptr;
-
-        Image* icon = iconDatabase().synchronousIconForPageURL(str, sz);
-
-        if (icon && icon->width()) {
-            HWndDC dc(0);
-            hBitmap = CreateDIBSection(dc, &bmInfo, DIB_RGB_COLORS, 0, 0, 0);
-            icon->getHBITMAPOfSize(hBitmap, &sz);
-        }
-
-        HRESULT hr = m_frameLoadDelegate->didReceiveIcon(this, hBitmap, frame);
-        if ((hr == E_NOTIMPL) && hBitmap)
-            DeleteObject(hBitmap);
-    }
 }
 
 HRESULT WebView::setAccessibilityDelegate(_In_opt_ IAccessibilityDelegate* d)
@@ -5106,9 +5052,6 @@ HRESULT WebView::onNotify(_In_opt_ IWebNotification* notification)
     if (FAILED(hr))
         return hr;
 
-    if (!wcscmp(name, WebIconDatabase::iconDatabaseDidAddIconNotification()))
-        return notifyDidAddIcon(notification);
-
     if (!wcscmp(name, WebPreferences::webPreferencesChangedNotification()))
         return notifyPreferencesChanged(notification);
 
@@ -6098,7 +6041,6 @@ void WebView::prepareCandidateWindow(Frame* targetFrame, HIMC hInputContext)
 {
     IntRect caret;
     if (RefPtr<Range> range = targetFrame->selection().selection().toNormalizedRange()) {
-        ExceptionCode ec = 0;
         RefPtr<Range> tempRange = range->cloneRange();
         caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }

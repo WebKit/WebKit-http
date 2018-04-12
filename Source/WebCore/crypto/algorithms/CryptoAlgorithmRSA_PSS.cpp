@@ -32,7 +32,6 @@
 #include "CryptoAlgorithmRsaHashedKeyGenParams.h"
 #include "CryptoKeyPair.h"
 #include "CryptoKeyRSA.h"
-#include "ExceptionCode.h"
 #include <wtf/Variant.h>
 
 namespace WebCore {
@@ -56,7 +55,7 @@ CryptoAlgorithmIdentifier CryptoAlgorithmRSA_PSS::identifier() const
 void CryptoAlgorithmRSA_PSS::sign(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
     if (key->type() != CryptoKeyType::Private) {
-        exceptionCallback(INVALID_ACCESS_ERR);
+        exceptionCallback(InvalidAccessError);
         return;
     }
     platformSign(WTFMove(parameters), WTFMove(key), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
@@ -65,7 +64,7 @@ void CryptoAlgorithmRSA_PSS::sign(std::unique_ptr<CryptoAlgorithmParameters>&& p
 void CryptoAlgorithmRSA_PSS::verify(std::unique_ptr<CryptoAlgorithmParameters>&& parameters, Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
     if (key->type() != CryptoKeyType::Public) {
-        exceptionCallback(INVALID_ACCESS_ERR);
+        exceptionCallback(InvalidAccessError);
         return;
     }
     platformVerify(WTFMove(parameters), WTFMove(key), WTFMove(signature), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
@@ -76,7 +75,7 @@ void CryptoAlgorithmRSA_PSS::generateKey(const CryptoAlgorithmParameters& parame
     const auto& rsaParameters = downcast<CryptoAlgorithmRsaHashedKeyGenParams>(parameters);
 
     if (usages & (CryptoKeyUsageDecrypt | CryptoKeyUsageEncrypt | CryptoKeyUsageDeriveKey | CryptoKeyUsageDeriveBits | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey)) {
-        exceptionCallback(SYNTAX_ERR);
+        exceptionCallback(SyntaxError);
         return;
     }
 
@@ -102,7 +101,7 @@ void CryptoAlgorithmRSA_PSS::importKey(SubtleCrypto::KeyFormat format, KeyData&&
         JsonWebKey key = WTFMove(WTF::get<JsonWebKey>(data));
 
         if (usages && ((!key.d.isNull() && (usages ^ CryptoKeyUsageSign)) || (key.d.isNull() && (usages ^ CryptoKeyUsageVerify)))) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
         if (usages && !key.use.isNull() && key.use != "sig") {
@@ -140,7 +139,7 @@ void CryptoAlgorithmRSA_PSS::importKey(SubtleCrypto::KeyFormat format, KeyData&&
     }
     case SubtleCrypto::KeyFormat::Spki: {
         if (usages && (usages ^ CryptoKeyUsageVerify)) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
         // FIXME: <webkit.org/b/165436>
@@ -149,7 +148,7 @@ void CryptoAlgorithmRSA_PSS::importKey(SubtleCrypto::KeyFormat format, KeyData&&
     }
     case SubtleCrypto::KeyFormat::Pkcs8: {
         if (usages && (usages ^ CryptoKeyUsageSign)) {
-            exceptionCallback(SYNTAX_ERR);
+            exceptionCallback(SyntaxError);
             return;
         }
         // FIXME: <webkit.org/b/165436>
@@ -157,7 +156,7 @@ void CryptoAlgorithmRSA_PSS::importKey(SubtleCrypto::KeyFormat format, KeyData&&
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
     if (!result) {
@@ -222,7 +221,7 @@ void CryptoAlgorithmRSA_PSS::exportKey(SubtleCrypto::KeyFormat format, Ref<Crypt
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
 

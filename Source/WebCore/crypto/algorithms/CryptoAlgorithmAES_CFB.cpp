@@ -31,7 +31,6 @@
 #include "CryptoAlgorithmAesCbcCfbParams.h"
 #include "CryptoAlgorithmAesKeyParams.h"
 #include "CryptoKeyAES.h"
-#include "ExceptionCode.h"
 
 namespace WebCore {
 
@@ -82,7 +81,7 @@ void CryptoAlgorithmAES_CFB::generateKey(const CryptoAlgorithmParameters& parame
     const auto& aesParameters = downcast<CryptoAlgorithmAesKeyParams>(parameters);
 
     if (usagesAreInvalidForCryptoAlgorithmAES_CFB(usages)) {
-        exceptionCallback(SYNTAX_ERR);
+        exceptionCallback(SyntaxError);
         return;
     }
 
@@ -99,7 +98,7 @@ void CryptoAlgorithmAES_CFB::importKey(SubtleCrypto::KeyFormat format, KeyData&&
 {
     ASSERT(parameters);
     if (usagesAreInvalidForCryptoAlgorithmAES_CFB(usages)) {
-        exceptionCallback(SYNTAX_ERR);
+        exceptionCallback(SyntaxError);
         return;
     }
 
@@ -124,7 +123,7 @@ void CryptoAlgorithmAES_CFB::importKey(SubtleCrypto::KeyFormat format, KeyData&&
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
     if (!result) {
@@ -168,7 +167,7 @@ void CryptoAlgorithmAES_CFB::exportKey(SubtleCrypto::KeyFormat format, Ref<Crypt
         break;
     }
     default:
-        exceptionCallback(NOT_SUPPORTED_ERR);
+        exceptionCallback(NotSupportedError);
         return;
     }
 

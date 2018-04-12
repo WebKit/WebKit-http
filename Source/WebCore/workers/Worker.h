@@ -32,6 +32,7 @@
 #include "MessagePort.h"
 #include "WorkerScriptLoaderClient.h"
 #include <runtime/RuntimeFlags.h>
+#include <wtf/MonotonicTime.h>
 #include <wtf/Optional.h>
 #include <wtf/text/AtomicStringHash.h>
 
@@ -76,7 +77,7 @@ private:
     void stop() final;
     const char* activeDOMObjectName() const final;
 
-    friend void networkStateChanged(bool isOnLine);
+    static void networkStateChanged(bool isOnLine);
 
     RefPtr<WorkerScriptLoader> m_scriptLoader;
     String m_identifier;

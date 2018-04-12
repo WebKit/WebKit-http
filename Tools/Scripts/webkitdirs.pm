@@ -140,6 +140,7 @@ my $osXVersion;
 my $iosVersion;
 my $generateDsym;
 my $isCMakeBuild;
+my $isGenerateProjectOnly;
 my $isWin64;
 my $isInspectorFrontend;
 my $portName;
@@ -2157,6 +2158,7 @@ sub buildCMakeProjectOrExit($$$@)
 
     $returnCode = exitStatus(generateBuildSystemFromCMakeProject($prefixPath, @cmakeArgs));
     exit($returnCode) if $returnCode;
+    exit 0 if isGenerateProjectOnly();
 
     $returnCode = exitStatus(buildCMakeGeneratedProject($makeArgs));
     exit($returnCode) if $returnCode;
@@ -2184,6 +2186,18 @@ sub isCMakeBuild()
     return 1 unless isAppleCocoaWebKit();
     determineIsCMakeBuild();
     return $isCMakeBuild;
+}
+
+sub determineIsGenerateProjectOnly()
+{
+    return if defined($isGenerateProjectOnly);
+    $isGenerateProjectOnly = checkForArgumentAndRemoveFromARGV("--generate-project-only");
+}
+
+sub isGenerateProjectOnly()
+{
+    determineIsGenerateProjectOnly();
+    return $isGenerateProjectOnly;
 }
 
 sub promptUser

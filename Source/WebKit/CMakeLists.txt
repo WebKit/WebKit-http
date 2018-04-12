@@ -1,5 +1,4 @@
-include(CheckCXXSourceCompiles)
-include(CheckFunctionExists)
+include(WebKitCommon)
 
 set_property(DIRECTORY . PROPERTY FOLDER "WebKit2")
 
@@ -45,8 +44,8 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/Network/CustomProtocols"
     "${WEBKIT2_DIR}/UIProcess/Notifications"
     "${WEBKIT2_DIR}/UIProcess/Plugins"
-    "${WEBKIT2_DIR}/UIProcess/Storage"
     "${WEBKIT2_DIR}/UIProcess/UserContent"
+    "${WEBKIT2_DIR}/UIProcess/WebStorage"
     "${WEBKIT2_DIR}/UIProcess/WebsiteData"
     "${WEBKIT2_DIR}/WebProcess"
     "${WEBKIT2_DIR}/WebProcess/ApplePay"
@@ -74,10 +73,10 @@ set(WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/WebProcess/Plugins"
     "${WEBKIT2_DIR}/WebProcess/Plugins/Netscape"
     "${WEBKIT2_DIR}/WebProcess/ResourceCache"
-    "${WEBKIT2_DIR}/WebProcess/Storage"
     "${WEBKIT2_DIR}/WebProcess/UserContent"
     "${WEBKIT2_DIR}/WebProcess/WebCoreSupport"
     "${WEBKIT2_DIR}/WebProcess/WebPage"
+    "${WEBKIT2_DIR}/WebProcess/WebStorage"
     "${DERIVED_SOURCES_WEBKIT2_DIR}"
     "${DERIVED_SOURCES_WEBKIT2_DIR}/include"
     "${CMAKE_SOURCE_DIR}/WebKitLibraries"
@@ -292,6 +291,7 @@ set(WebKit2_SOURCES
     UIProcess/ProcessAssertion.cpp
     UIProcess/ProcessThrottler.cpp
     UIProcess/RemoteWebInspectorProxy.cpp
+    UIProcess/ResourceLoadStatisticsPersistentStorage.cpp
     UIProcess/ResponsivenessTimer.cpp
     UIProcess/StatisticsRequest.cpp
     UIProcess/TextCheckerCompletion.cpp
@@ -319,8 +319,6 @@ set(WebKit2_SOURCES
     UIProcess/WebGeolocationManagerProxy.cpp
     UIProcess/WebGeolocationProvider.cpp
     UIProcess/WebGrammarDetail.cpp
-    UIProcess/WebIconDatabase.cpp
-    UIProcess/WebIconDatabaseClient.cpp
     UIProcess/WebInspectorProxy.cpp
     UIProcess/WebInspectorUtilities.cpp
     UIProcess/WebNavigationState.cpp
@@ -439,12 +437,11 @@ set(WebKit2_SOURCES
     UIProcess/Plugins/PluginProcessManager.cpp
     UIProcess/Plugins/PluginProcessProxy.cpp
 
-    UIProcess/Storage/LocalStorageDatabase.cpp
-    UIProcess/Storage/LocalStorageDatabaseTracker.cpp
-    UIProcess/Storage/ResourceLoadStatisticsPersistentStorage.cpp
-
     UIProcess/UserContent/WebScriptMessageHandler.cpp
     UIProcess/UserContent/WebUserContentControllerProxy.cpp
+
+    UIProcess/WebStorage/LocalStorageDatabase.cpp
+    UIProcess/WebStorage/LocalStorageDatabaseTracker.cpp
 
     UIProcess/WebsiteData/WebsiteDataRecord.cpp
     UIProcess/WebsiteData/WebsiteDataStore.cpp
@@ -470,8 +467,6 @@ set(WebKit2_SOURCES
 
     WebProcess/Geolocation/GeolocationPermissionRequestManager.cpp
     WebProcess/Geolocation/WebGeolocationManager.cpp
-
-    WebProcess/IconDatabase/WebIconDatabaseProxy.cpp
 
     WebProcess/InjectedBundle/InjectedBundle.cpp
     WebProcess/InjectedBundle/InjectedBundleBackForwardList.cpp
@@ -539,11 +534,6 @@ set(WebKit2_SOURCES
     WebProcess/Plugins/Netscape/NetscapePluginNone.cpp
     WebProcess/Plugins/Netscape/NetscapePluginStream.cpp
 
-    WebProcess/Storage/StorageAreaImpl.cpp
-    WebProcess/Storage/StorageAreaMap.cpp
-    WebProcess/Storage/StorageNamespaceImpl.cpp
-    WebProcess/Storage/WebStorageNamespaceProvider.cpp
-
     WebProcess/UserContent/WebUserContentController.cpp
 
     WebProcess/WebCoreSupport/SessionStateConversion.cpp
@@ -588,6 +578,11 @@ set(WebKit2_SOURCES
     WebProcess/WebPage/WebURLSchemeHandlerProxy.cpp
     WebProcess/WebPage/WebURLSchemeTaskProxy.cpp
     WebProcess/WebPage/WebUndoStep.cpp
+
+    WebProcess/WebStorage/StorageAreaImpl.cpp
+    WebProcess/WebStorage/StorageAreaMap.cpp
+    WebProcess/WebStorage/StorageNamespaceImpl.cpp
+    WebProcess/WebStorage/WebStorageNamespaceProvider.cpp
 )
 
 set(WebKit2_MESSAGES_IN_FILES
@@ -624,7 +619,6 @@ set(WebKit2_MESSAGES_IN_FILES
     UIProcess/WebCookieManagerProxy.messages.in
     UIProcess/WebFullScreenManagerProxy.messages.in
     UIProcess/WebGeolocationManagerProxy.messages.in
-    UIProcess/WebIconDatabase.messages.in
     UIProcess/WebInspectorProxy.messages.in
     UIProcess/WebPageProxy.messages.in
     UIProcess/WebPasteboardProxy.messages.in
@@ -644,9 +638,9 @@ set(WebKit2_MESSAGES_IN_FILES
 
     UIProcess/Plugins/PluginProcessProxy.messages.in
 
-    UIProcess/Storage/StorageManager.messages.in
-
     UIProcess/UserContent/WebUserContentControllerProxy.messages.in
+
+    UIProcess/WebStorage/StorageManager.messages.in
 
     WebProcess/WebProcess.messages.in
 
@@ -659,8 +653,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/FullScreen/WebFullScreenManager.messages.in
 
     WebProcess/Geolocation/WebGeolocationManager.messages.in
-
-    WebProcess/IconDatabase/WebIconDatabaseProxy.messages.in
 
     WebProcess/Network/webrtc/WebRTCMonitor.messages.in
     WebProcess/Network/webrtc/WebRTCResolver.messages.in
@@ -676,8 +668,6 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/Plugins/PluginProcessConnectionManager.messages.in
     WebProcess/Plugins/PluginProxy.messages.in
 
-    WebProcess/Storage/StorageAreaMap.messages.in
-
     WebProcess/UserContent/WebUserContentController.messages.in
 
     WebProcess/WebPage/DrawingArea.messages.in
@@ -688,6 +678,8 @@ set(WebKit2_MESSAGES_IN_FILES
     WebProcess/WebPage/WebInspectorInterruptDispatcher.messages.in
     WebProcess/WebPage/WebInspectorUI.messages.in
     WebProcess/WebPage/WebPage.messages.in
+
+    WebProcess/WebStorage/StorageAreaMap.messages.in
 )
 
 set(WebProcess_LIBRARIES
@@ -698,7 +690,7 @@ set(NetworkProcess_LIBRARIES
     WebKit2
 )
 
-set(DatabaseProcess_LIBRARIES
+set(StorageProcess_LIBRARIES
     WebKit2
 )
 
@@ -805,6 +797,8 @@ set(WebKit2_AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/cpp_generator_templates.py
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_backend_dispatcher_header.py
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_backend_dispatcher_implementation.py
+    ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_frontend_dispatcher_header.py
+    ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_frontend_dispatcher_implementation.py
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_protocol_types_header.py
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generate_cpp_protocol_types_implementation.py
     ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/codegen/generator.py
@@ -817,7 +811,7 @@ set(WebKit2_AUTOMATION_PROTOCOL_GENERATOR_INPUTS
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.h ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.cpp ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.h ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.cpp
+    OUTPUT ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.h ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.cpp ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.h ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.cpp ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationFrontendDispatchers.h ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationFrontendDispatchers.cpp
     MAIN_DEPENDENCY ${WebKit2_AUTOMATION_PROTOCOL_GENERATOR_INPUTS}
     DEPENDS ${WebKit2_AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS}
     COMMAND ${PYTHON_EXECUTABLE} ${PROTOCOL_GENERATOR_SCRIPTS_DIR}/generate-inspector-protocol-bindings.py --outputDir "${DERIVED_SOURCES_WEBKIT2_DIR}" --framework WebKit ${WebKit2_AUTOMATION_PROTOCOL_GENERATOR_EXTRA_FLAGS} --backend ${WebKit2_AUTOMATION_PROTOCOL_GENERATOR_INPUTS}
@@ -825,11 +819,13 @@ add_custom_command(
 
 list(APPEND WebKit2_HEADERS
     ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.h
+    ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationFrontendDispatchers.h
     ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.h
 )
 
 list(APPEND WebKit2_SOURCES
     ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationBackendDispatchers.cpp
+    ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationFrontendDispatchers.cpp
     ${DERIVED_SOURCES_WEBKIT2_DIR}/AutomationProtocolObjects.cpp
 )
 
@@ -858,11 +854,11 @@ endif ()
 
 # Suppress unused parameter warnings for sources in WebKit2.
 if (COMPILER_IS_GCC_OR_CLANG)
-    ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
+    WEBKIT_ADD_TARGET_PROPERTIES(WebKit2 COMPILE_FLAGS "-Wno-unused-parameter")
 endif ()
 
 if (WebKit2_VERSION_SCRIPT)
-    ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")
+    WEBKIT_ADD_TARGET_PROPERTIES(WebKit2 LINK_FLAGS "${WebKit2_VERSION_SCRIPT}")
 endif ()
 
 add_executable(WebProcess ${WebProcess_SOURCES})
@@ -881,6 +877,17 @@ if (WebKit2_NetworkProcess_OUTPUT_NAME)
     set_target_properties(NetworkProcess PROPERTIES OUTPUT_NAME ${WebKit2_NetworkProcess_OUTPUT_NAME})
 endif ()
 
+if (NOT "${PORT}" STREQUAL "Mac")
+    add_executable(StorageProcess ${StorageProcess_SOURCES})
+    add_webkit2_prefix_header(StorageProcess)
+    target_link_libraries(StorageProcess ${StorageProcess_LIBRARIES})
+    install(TARGETS StorageProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
+
+    if (WebKit2_StorageProcess_OUTPUT_NAME)
+        set_target_properties(StorageProcess PROPERTIES OUTPUT_NAME ${WebKit2_StorageProcess_OUTPUT_NAME})
+    endif ()
+endif ()
+
 if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
     add_definitions(-DENABLE_PLUGIN_PROCESS=1)
     add_executable(PluginProcess ${PluginProcess_SOURCES})
@@ -890,18 +897,6 @@ if (ENABLE_PLUGIN_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
 
     if (WebKit2_PluginProcess_OUTPUT_NAME)
       set_target_properties(PluginProcess PROPERTIES OUTPUT_NAME ${WebKit2_PluginProcess_OUTPUT_NAME})
-    endif ()
-endif ()
-
-if (ENABLE_DATABASE_PROCESS AND NOT "${PORT}" STREQUAL "Mac")
-    add_definitions(-DENABLE_DATABASE_PROCESS=1)
-    add_executable(DatabaseProcess ${DatabaseProcess_SOURCES})
-    add_webkit2_prefix_header(DatabaseProcess)
-    target_link_libraries(DatabaseProcess ${DatabaseProcess_LIBRARIES})
-    install(TARGETS DatabaseProcess DESTINATION "${LIBEXEC_INSTALL_DIR}")
-
-    if (WebKit2_DatabaseProcess_OUTPUT_NAME)
-        set_target_properties(DatabaseProcess PROPERTIES OUTPUT_NAME ${WebKit2_DatabaseProcess_OUTPUT_NAME})
     endif ()
 endif ()
 
@@ -933,7 +928,7 @@ if ("${PORT}" STREQUAL "Mac")
 
     set_target_properties(NetworkProcess PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${_net_xpc_dir}/MacOS")
 else ()
-    POPULATE_LIBRARY_VERSION(WEBKIT2)
+    WEBKIT_POPULATE_LIBRARY_VERSION(WEBKIT2)
     set_target_properties(WebKit2 PROPERTIES VERSION ${WEBKIT2_VERSION} SOVERSION ${WEBKIT2_VERSION_MAJOR})
 
     install(TARGETS WebKit2 WebProcess NetworkProcess

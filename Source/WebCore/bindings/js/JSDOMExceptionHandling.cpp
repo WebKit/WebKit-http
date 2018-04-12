@@ -23,24 +23,19 @@
 #include "JSDOMExceptionHandling.h"
 
 #include "CachedScript.h"
+#include "DOMException.h"
 #include "DOMWindow.h"
-#include "ExceptionCodeDescription.h"
-#include "ExceptionHeaders.h"
-#include "ExceptionInterfaces.h"
+#include "JSDOMException.h"
 #include "JSDOMPromiseDeferred.h"
 #include "JSDOMWindow.h"
 #include "JSDynamicDowncast.h"
-#include "JSExceptionBase.h"
+#include "ScriptExecutionContext.h"
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
 #include <runtime/ErrorHandlingScope.h>
 #include <runtime/Exception.h>
 #include <runtime/ExceptionHelpers.h>
 #include <wtf/text/StringBuilder.h>
-
-#if ENABLE(INDEXED_DATABASE)
-#include "IDBDatabaseException.h"
-#endif
 
 using namespace JSC;
 
@@ -62,9 +57,6 @@ void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cach
 
 String retrieveErrorMessage(ExecState& state, VM& vm, JSValue exception, CatchScope& catchScope)
 {
-    if (auto* exceptionBase = toExceptionBase(vm, exception))
-        return exceptionBase->toString();
-
     // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
     // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
     String errorMessage;
@@ -132,7 +124,7 @@ void reportCurrentException(ExecState* exec)
 
 static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message = nullptr)
 {
-    if (!ec || ec == ExistingExceptionError)
+    if (ec == ExistingExceptionError)
         return jsUndefined();
 
     // FIXME: Handle other WebIDL exception types.
@@ -155,38 +147,7 @@ static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const Strin
     // For now, we're going to assume the lexicalGlobalObject. Which is wrong in cases like this:
     // frames[0].document.createElement(null, null); // throws an exception which should have the subframe's prototypes.
     JSDOMGlobalObject* globalObject = deprecatedGlobalObjectForPrototype(exec);
-
-    ExceptionCodeDescription description(ec);
-
-    CString messageCString;
-    if (message)
-        messageCString = message->utf8();
-    if (message && !message->isEmpty()) {
-        // It is safe to do this because the char* contents of the CString are copied into a new WTF::String before the CString is destroyed.
-        description.description = messageCString.data();
-    }
-
-    JSValue errorObject;
-    switch (description.type) {
-    case DOMCoreExceptionType:
-#if ENABLE(INDEXED_DATABASE)
-    case IDBDatabaseExceptionType:
-#endif
-        errorObject = toJS(exec, globalObject, DOMCoreException::create(description));
-        break;
-    case FileExceptionType:
-        errorObject = toJS(exec, globalObject, FileException::create(description));
-        break;
-    case SQLExceptionType:
-        errorObject = toJS(exec, globalObject, SQLException::create(description));
-        break;
-    case SVGExceptionType:
-        errorObject = toJS(exec, globalObject, SVGException::create(description));
-        break;
-    case XPathExceptionType:
-        errorObject = toJS(exec, globalObject, XPathException::create(description));
-        break;
-    }
+    JSValue errorObject = toJS(exec, globalObject, DOMException::create(ec, message));
     
     ASSERT(errorObject);
     addErrorInfo(exec, asObject(errorObject), true);
@@ -249,27 +210,27 @@ void reportDeprecatedSetterError(JSC::ExecState& state, const char* interfaceNam
 void throwNotSupportedError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, NOT_SUPPORTED_ERR));
+    throwException(&state, scope, createDOMException(&state, NotSupportedError));
 }
 
 void throwNotSupportedError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* message)
 {
     scope.assertNoException();
     String messageString(message);
-    throwException(&state, scope, createDOMException(&state, NOT_SUPPORTED_ERR, &messageString));
+    throwException(&state, scope, createDOMException(&state, NotSupportedError, &messageString));
 }
 
 void throwInvalidStateError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* message)
 {
     scope.assertNoException();
     String messageString(message);
-    throwException(&state, scope, createDOMException(&state, INVALID_STATE_ERR, &messageString));
+    throwException(&state, scope, createDOMException(&state, InvalidStateError, &messageString));
 }
 
 void throwSecurityError(JSC::ExecState& state, JSC::ThrowScope& scope, const String& message)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, SECURITY_ERR, message));
+    throwException(&state, scope, createDOMException(&state, SecurityError, message));
 }
 
 JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState& state, JSC::ThrowScope& scope, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues)
@@ -380,25 +341,25 @@ JSC::EncodedJSValue rejectPromiseWithThisTypeError(JSC::ExecState& state, const 
 void throwDOMSyntaxError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, SYNTAX_ERR));
+    throwException(&state, scope, createDOMException(&state, SyntaxError));
 }
 
 void throwDataCloneError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, DATA_CLONE_ERR));
+    throwException(&state, scope, createDOMException(&state, DataCloneError));
 }
 
 void throwIndexSizeError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, INDEX_SIZE_ERR));
+    throwException(&state, scope, createDOMException(&state, IndexSizeError));
 }
 
 void throwTypeMismatchError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
     scope.assertNoException();
-    throwException(&state, scope, createDOMException(&state, TYPE_MISMATCH_ERR));
+    throwException(&state, scope, createDOMException(&state, TypeMismatchError));
 }
 
 } // namespace WebCore

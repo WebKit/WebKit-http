@@ -38,7 +38,6 @@
 #include "TextCheckerState.h"
 #include "UserData.h"
 #include "WebBackForwardListItem.h"
-#include "WebIconDatabase.h"
 #include "WebInspectorUtilities.h"
 #include "WebNavigationDataStore.h"
 #include "WebNotificationManagerProxy.h"
@@ -167,8 +166,6 @@ void WebProcessProxy::processWillShutDown(IPC::Connection& connection)
 
     for (auto& page : m_pageMap.values())
         page->webProcessWillShutDown();
-
-    releaseRemainingIconsForPageURLs();
 }
 
 void WebProcessProxy::shutDown()
@@ -330,6 +327,10 @@ void WebProcessProxy::topPrivatelyControlledDomainsWithWebsiteData(OptionSet<Web
             callbackAggregator->removePendingCallback();
         });
     }
+
+    // FIXME: It's bizarre that this call is on WebProcessProxy and that it doesn't work if there are no visited pages.
+    // This should actually be a function of WebsiteDataStore and it should work even if there are no WebViews instances.
+    callbackAggregator->callIfNeeded();
 }
     
 void WebProcessProxy::notifyPageStatisticsAndDataRecordsProcessed()
@@ -572,58 +573,9 @@ void WebProcessProxy::getNetworkProcessConnection(Ref<Messages::WebProcessProxy:
     m_processPool->getNetworkProcessConnection(WTFMove(reply));
 }
 
-#if ENABLE(DATABASE_PROCESS)
 void WebProcessProxy::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
     m_processPool->getDatabaseProcessConnection(WTFMove(reply));
-}
-#endif // ENABLE(DATABASE_PROCESS)
-
-void WebProcessProxy::retainIconForPageURL(const String& pageURL)
-{
-    WebIconDatabase* iconDatabase = processPool().iconDatabase();
-    if (!iconDatabase || pageURL.isEmpty())
-        return;
-
-    // Track retain counts so we can release them if the WebProcess terminates early.
-    auto result = m_pageURLRetainCountMap.add(pageURL, 1);
-    if (!result.isNewEntry)
-        ++result.iterator->value;
-
-    iconDatabase->retainIconForPageURL(pageURL);
-}
-
-void WebProcessProxy::releaseIconForPageURL(const String& pageURL)
-{
-    WebIconDatabase* iconDatabase = processPool().iconDatabase();
-    if (!iconDatabase || pageURL.isEmpty())
-        return;
-
-    // Track retain counts so we can release them if the WebProcess terminates early.
-    auto result = m_pageURLRetainCountMap.find(pageURL);
-    if (result == m_pageURLRetainCountMap.end())
-        return;
-
-    --result->value;
-    if (!result->value)
-        m_pageURLRetainCountMap.remove(result);
-
-    iconDatabase->releaseIconForPageURL(pageURL);
-}
-
-void WebProcessProxy::releaseRemainingIconsForPageURLs()
-{
-    WebIconDatabase* iconDatabase = processPool().iconDatabase();
-    if (!iconDatabase)
-        return;
-
-    for (auto& entry : m_pageURLRetainCountMap) {
-        uint64_t count = entry.value;
-        for (uint64_t i = 0; i < count; ++i)
-            iconDatabase->releaseIconForPageURL(entry.key);
-    }
-
-    m_pageURLRetainCountMap.clear();
 }
 
 #if !PLATFORM(COCOA)

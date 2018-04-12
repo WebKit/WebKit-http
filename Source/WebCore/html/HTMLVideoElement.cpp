@@ -33,7 +33,6 @@
 #include "ChromeClient.h"
 #include "Document.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "HTMLImageLoader.h"
 #include "HTMLNames.h"
@@ -45,10 +44,9 @@
 #include "ScriptController.h"
 #include "Settings.h"
 #include "TextStream.h"
-#include <wtf/NeverDestroyed.h>
 
 #if ENABLE(VIDEO_PRESENTATION_MODE)
-#include "WebVideoFullscreenModel.h"
+#include "VideoFullscreenModel.h"
 #endif
 
 namespace WebCore {
@@ -315,7 +313,7 @@ ExceptionOr<void> HTMLVideoElement::webkitEnterFullscreen()
     // Generate an exception if this isn't called in response to a user gesture, or if the 
     // element does not support fullscreen.
     if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard))
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     enterFullscreen();
     return { };

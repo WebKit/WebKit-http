@@ -131,6 +131,7 @@
 		DCEE22011CEA7551000C2396 /* BlockObjCExceptions.mm in Sources */ = {isa = PBXBuildFile; fileRef = DCEE21FD1CEA7551000C2396 /* BlockObjCExceptions.mm */; };
 		DCEE22031CEA7551000C2396 /* PlatformUserPreferredLanguagesMac.mm in Sources */ = {isa = PBXBuildFile; fileRef = DCEE21FF1CEA7551000C2396 /* PlatformUserPreferredLanguagesMac.mm */; };
 		E15556F518A0CC18006F48FB /* CryptographicUtilities.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E15556F318A0CC18006F48FB /* CryptographicUtilities.cpp */; };
+		E311FB171F0A568B003C08DE /* ThreadGroup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E311FB151F0A568B003C08DE /* ThreadGroup.cpp */; };
 		E3200AB81E9A536D003B59D2 /* ThreadHolder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E3200AB51E9A536D003B59D2 /* ThreadHolder.cpp */; };
 		E38C41251EB4E04C0042957D /* CPUTimeCocoa.mm in Sources */ = {isa = PBXBuildFile; fileRef = E38C41241EB4E04C0042957D /* CPUTimeCocoa.mm */; };
 		E38C41281EB4E0680042957D /* CPUTime.cpp in Sources */ = {isa = PBXBuildFile; fileRef = E38C41261EB4E0680042957D /* CPUTime.cpp */; };
@@ -173,11 +174,13 @@
 		0F30BA8D1E78708E002CA847 /* LoggingHashMap.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggingHashMap.h; sourceTree = "<group>"; };
 		0F30BA8E1E78708E002CA847 /* LoggingHashSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggingHashSet.h; sourceTree = "<group>"; };
 		0F30BA8F1E78708E002CA847 /* LoggingHashTraits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LoggingHashTraits.h; sourceTree = "<group>"; };
+		0F31DD701F1308BC0072EB4A /* LockAlgorithmInlines.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LockAlgorithmInlines.h; sourceTree = "<group>"; };
 		0F3501631BB258C800F0A2A3 /* WeakRandom.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WeakRandom.h; sourceTree = "<group>"; };
 		0F43D8EF1DB5ADDC00108FB6 /* AutomaticThread.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AutomaticThread.cpp; sourceTree = "<group>"; };
 		0F43D8F01DB5ADDC00108FB6 /* AutomaticThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AutomaticThread.h; sourceTree = "<group>"; };
 		0F4570421BE5B58F0062A629 /* Dominators.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Dominators.h; sourceTree = "<group>"; };
 		0F4570441BE834410062A629 /* BubbleSort.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BubbleSort.h; sourceTree = "<group>"; };
+		0F5BF1651F2317830029D91D /* NaturalLoops.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = NaturalLoops.h; sourceTree = "<group>"; };
 		0F60F32D1DFCBD1B00416D6C /* LockedPrintStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = LockedPrintStream.cpp; sourceTree = "<group>"; };
 		0F60F32E1DFCBD1B00416D6C /* LockedPrintStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LockedPrintStream.h; sourceTree = "<group>"; };
 		0F66B2801DC97BAB004A1D3F /* ClockType.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ClockType.cpp; sourceTree = "<group>"; };
@@ -294,6 +297,7 @@
 		515F794C1CFC9F4A00CCED93 /* CrossThreadCopier.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossThreadCopier.h; sourceTree = "<group>"; };
 		515F794D1CFC9F4A00CCED93 /* CrossThreadTask.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossThreadTask.h; sourceTree = "<group>"; };
 		515F79551CFD3A6900CCED93 /* CrossThreadQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CrossThreadQueue.h; sourceTree = "<group>"; };
+		5182C22C1F2BC7E60059BA7C /* InstanceCounted.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InstanceCounted.h; sourceTree = "<group>"; };
 		5311BD511EA71CAD00525281 /* Signals.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Signals.cpp; sourceTree = "<group>"; };
 		5311BD551EA7E15A00525281 /* LocklessBag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = LocklessBag.h; sourceTree = "<group>"; };
 		5311BD571EA7E1A100525281 /* Signals.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Signals.h; sourceTree = "<group>"; };
@@ -342,8 +346,8 @@
 		9BC70F04176C379D00101DEC /* AtomicStringTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = AtomicStringTable.cpp; sourceTree = "<group>"; };
 		9BD8F40A176C2AD80002D865 /* AtomicStringTable.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AtomicStringTable.h; sourceTree = "<group>"; };
 		9C67C542589348E285B49699 /* IndexedContainerIterator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IndexedContainerIterator.h; sourceTree = "<group>"; };
-		A30D412C1F0DE0BA00B71954 /* SoftLinking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SoftLinking.h; path = SoftLinking.h; sourceTree = "<group>"; };
-		A30D412D1F0DE13F00B71954 /* SoftLinking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SoftLinking.h; path = SoftLinking.h; sourceTree = "<group>"; };
+		A30D412C1F0DE0BA00B71954 /* SoftLinking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoftLinking.h; sourceTree = "<group>"; };
+		A30D412D1F0DE13F00B71954 /* SoftLinking.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SoftLinking.h; sourceTree = "<group>"; };
 		A5098AFF1C169E0700087797 /* SandboxSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SandboxSPI.h; sourceTree = "<group>"; };
 		A5098B011C16A4F900087797 /* SecuritySPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SecuritySPI.h; sourceTree = "<group>"; };
 		A561F30F1DF2642100FF675D /* DeprecatedOptional.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeprecatedOptional.h; sourceTree = "<group>"; };
@@ -491,7 +495,6 @@
 		A8A4732C151A825B004123FF /* TextPosition.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextPosition.h; sourceTree = "<group>"; };
 		A8A4732D151A825B004123FF /* WTFString.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WTFString.cpp; sourceTree = "<group>"; };
 		A8A4732E151A825B004123FF /* WTFString.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = WTFString.h; sourceTree = "<group>"; };
-		A8A4732F151A825B004123FF /* ThreadFunctionInvocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadFunctionInvocation.h; sourceTree = "<group>"; };
 		A8A47330151A825B004123FF /* ThreadHolderPthreads.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ThreadHolderPthreads.cpp; sourceTree = "<group>"; };
 		A8A47332151A825B004123FF /* Threading.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Threading.cpp; sourceTree = "<group>"; };
 		A8A47333151A825B004123FF /* Threading.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Threading.h; sourceTree = "<group>"; };
@@ -539,6 +542,8 @@
 		DE5A09FB1BA36992003D4424 /* CommonCryptoSPI.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CommonCryptoSPI.h; sourceTree = "<group>"; };
 		E15556F318A0CC18006F48FB /* CryptographicUtilities.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CryptographicUtilities.cpp; sourceTree = "<group>"; };
 		E15556F418A0CC18006F48FB /* CryptographicUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = CryptographicUtilities.h; sourceTree = "<group>"; };
+		E311FB151F0A568B003C08DE /* ThreadGroup.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ThreadGroup.cpp; sourceTree = "<group>"; };
+		E311FB161F0A568B003C08DE /* ThreadGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadGroup.h; sourceTree = "<group>"; };
 		E3200AB41E9A536D003B59D2 /* PlatformRegisters.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PlatformRegisters.h; sourceTree = "<group>"; };
 		E3200AB51E9A536D003B59D2 /* ThreadHolder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ThreadHolder.cpp; sourceTree = "<group>"; };
 		E3200AB61E9A536D003B59D2 /* ThreadHolder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ThreadHolder.h; sourceTree = "<group>"; };
@@ -819,6 +824,7 @@
 				2684D4351C000D400081D663 /* IndexSparseSet.h */,
 				A8A472BC151A825A004123FF /* InlineASM.h */,
 				A70DA0821799F04D00529A9B /* Insertion.h */,
+				5182C22C1F2BC7E60059BA7C /* InstanceCounted.h */,
 				7CDD7FF7186D291E007433CD /* IteratorAdaptors.h */,
 				7CDD7FF9186D2A54007433CD /* IteratorRange.h */,
 				539EB0621D55284200C82EF7 /* LEBDecoder.h */,
@@ -827,6 +833,7 @@
 				0FF4B4C41E88939C00DBBE86 /* Liveness.h */,
 				0FE164681B6FFC9600400E7C /* Lock.cpp */,
 				0FE164691B6FFC9600400E7C /* Lock.h */,
+				0F31DD701F1308BC0072EB4A /* LockAlgorithmInlines.h */,
 				0F0FCDDD1DD167F900CCAB53 /* LockAlgorithm.h */,
 				0F60F32D1DFCBD1B00416D6C /* LockedPrintStream.cpp */,
 				0F60F32E1DFCBD1B00416D6C /* LockedPrintStream.h */,
@@ -856,6 +863,7 @@
 				0F66B2821DC97BAB004A1D3F /* MonotonicTime.cpp */,
 				0F66B2831DC97BAB004A1D3F /* MonotonicTime.h */,
 				FE8225301B2A1E5B00BA68FD /* NakedPtr.h */,
+				0F5BF1651F2317830029D91D /* NaturalLoops.h */,
 				1A3F6BE6174ADA2100B2EEA7 /* NeverDestroyed.h */,
 				0F0D85B317234CB100338210 /* NoLock.h */,
 				A8A472D0151A825B004123FF /* Noncopyable.h */,
@@ -955,7 +963,8 @@
 				5597F82C1D94B9970066BC21 /* SynchronizedFixedQueue.h */,
 				E3E158251EADA53C004A079D /* SystemFree.h */,
 				0FB317C31C488001007E395A /* SystemTracing.h */,
-				A8A4732F151A825B004123FF /* ThreadFunctionInvocation.h */,
+				E311FB151F0A568B003C08DE /* ThreadGroup.cpp */,
+				E311FB161F0A568B003C08DE /* ThreadGroup.h */,
 				E3200AB51E9A536D003B59D2 /* ThreadHolder.cpp */,
 				E3200AB61E9A536D003B59D2 /* ThreadHolder.h */,
 				A8A47330151A825B004123FF /* ThreadHolderPthreads.cpp */,
@@ -1388,6 +1397,7 @@
 				A8A47448151A825B004123FF /* ThreadHolderPthreads.cpp in Sources */,
 				A8A4744A151A825B004123FF /* Threading.cpp in Sources */,
 				A8A4744E151A825B004123FF /* ThreadingPthreads.cpp in Sources */,
+				E311FB171F0A568B003C08DE /* ThreadGroup.cpp in Sources */,
 				5311BD5C1EA822F900525281 /* ThreadMessage.cpp in Sources */,
 				0F66B2901DC97BAB004A1D3F /* TimeWithDynamicClockType.cpp in Sources */,
 				1C181C8F1D307AB800F5FA16 /* UTextProvider.cpp in Sources */,

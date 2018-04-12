@@ -76,7 +76,6 @@
 #include "HTTPParsers.h"
 #include "HistoryController.h"
 #include "HistoryItem.h"
-#include "IconController.h"
 #include "IgnoreOpensDuringUnloadCountIncrementer.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
@@ -263,7 +262,6 @@ FrameLoader::FrameLoader(Frame& frame, FrameLoaderClient& client)
     , m_history(std::make_unique<HistoryController>(frame))
     , m_notifier(frame)
     , m_subframeLoader(std::make_unique<SubframeLoader>(frame))
-    , m_icon(std::make_unique<IconController>(frame))
     , m_mixedContentChecker(frame)
     , m_state(FrameStateProvisional)
     , m_loadType(FrameLoadType::Standard)
@@ -498,8 +496,6 @@ void FrameLoader::stop()
         parser->stopParsing();
         parser->finish();
     }
-    
-    icon().stopLoader();
 }
 
 void FrameLoader::willTransitionToCommitted()
@@ -2049,6 +2045,12 @@ void FrameLoader::clientRedirected(const URL& url, double seconds, double fireDa
     m_quickRedirectComing = (lockBackForwardList == LockBackForwardList::Yes || history().currentItemShouldBeReplaced()) && m_documentLoader && !m_isExecutingJavaScriptFormAction;
 }
 
+void FrameLoader::performClientRedirect(FrameLoadRequest&& frameLoadRequest)
+{
+    changeLocation(WTFMove(frameLoadRequest));
+    m_client.dispatchDidPerformClientRedirect();
+}
+
 bool FrameLoader::shouldReload(const URL& currentURL, const URL& destinationURL)
 {
     // This function implements the rule: "Don't reload if navigating by fragment within
@@ -2232,6 +2234,11 @@ CachePolicy FrameLoader::subresourceCachePolicy(const URL& url) const
 void FrameLoader::checkLoadCompleteForThisFrame()
 {
     ASSERT(m_client.hasWebView());
+
+    // FIXME: Should this check be done in checkLoadComplete instead of here?
+    // FIXME: Why does this one check need to be repeated here, and not the many others from checkCompleted?
+    if (m_frame.document()->isDelayingLoadEvent())
+        return;
 
     switch (m_state) {
         case FrameStateProvisional: {
@@ -2573,6 +2580,7 @@ void FrameLoader::detachFromParent()
     if (Frame* parent = m_frame.tree().parent()) {
         parent->loader().closeAndRemoveChild(m_frame);
         parent->loader().scheduleCheckCompleted();
+        parent->loader().scheduleCheckLoadComplete();
     } else {
         m_frame.setView(nullptr);
         m_frame.willDetachPage();

@@ -30,7 +30,6 @@
 
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyData.h"
-#include "ExceptionCode.h"
 #include "JsonWebKey.h"
 #include <wtf/text/Base64.h>
 
@@ -60,7 +59,7 @@ ExceptionOr<CryptoKeyPair> CryptoKeyEC::generatePair(CryptoAlgorithmIdentifier i
 {
     auto namedCurve = toNamedCurve(curve);
     if (!namedCurve)
-        return Exception { NOT_SUPPORTED_ERR };
+        return Exception { NotSupportedError };
 
     auto result = platformGeneratePair(identifier, *namedCurve, extractable, usages);
     if (!result)
@@ -134,7 +133,7 @@ RefPtr<CryptoKeyEC> CryptoKeyEC::importPkcs8(CryptoAlgorithmIdentifier identifie
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportRaw() const
 {
     if (type() != CryptoKey::Type::Public)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     return platformExportRaw();
 }
@@ -160,7 +159,7 @@ JsonWebKey CryptoKeyEC::exportJwk() const
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
 {
     if (type() != CryptoKey::Type::Public)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     return platformExportSpki();
 }
@@ -168,7 +167,7 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportPkcs8() const
 {
     if (type() != CryptoKey::Type::Private)
-        return Exception { INVALID_ACCESS_ERR };
+        return Exception { InvalidAccessError };
 
     return platformExportPkcs8();
 }

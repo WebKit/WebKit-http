@@ -30,7 +30,6 @@
 
 #include "Clock.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "HTMLMediaElement.h"
 #include "TimeRanges.h"
 #include <wtf/CurrentTime.h>
@@ -257,7 +256,7 @@ ExceptionOr<void> MediaController::setVolume(double level)
     // If the new value is outside the range 0.0 to 1.0 inclusive, then, on setting, an 
     // IndexSizeError exception must be raised instead.
     if (!(level >= 0 && level <= 1))
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
 
     // The volume attribute, on setting, if the new value is in the range 0.0 to 1.0 inclusive,
     // must set the MediaController's media controller volume multiplier to the new value

@@ -79,6 +79,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/animation"
     "${WEBCORE_DIR}/platform/audio"
     "${WEBCORE_DIR}/platform/crypto"
+    "${WEBCORE_DIR}/platform/encryptedmedia"
     "${WEBCORE_DIR}/platform/gamepad"
     "${WEBCORE_DIR}/platform/gamepad/deprecated"
     "${WEBCORE_DIR}/platform/gamepad/linux"
@@ -197,7 +198,13 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
     Modules/fetch/FetchHeaders.idl
+    Modules/fetch/FetchReferrerPolicy.idl
     Modules/fetch/FetchRequest.idl
+    Modules/fetch/FetchRequestCache.idl
+    Modules/fetch/FetchRequestCredentials.idl
+    Modules/fetch/FetchRequestInit.idl
+    Modules/fetch/FetchRequestMode.idl
+    Modules/fetch/FetchRequestRedirect.idl
     Modules/fetch/FetchResponse.idl
     Modules/fetch/WorkerGlobalScopeFetch.idl
 
@@ -337,7 +344,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/webdatabase/Database.idl
     Modules/webdatabase/DatabaseCallback.idl
     Modules/webdatabase/SQLError.idl
-    Modules/webdatabase/SQLException.idl
     Modules/webdatabase/SQLResultSet.idl
     Modules/webdatabase/SQLResultSetRowList.idl
     Modules/webdatabase/SQLStatementCallback.idl
@@ -433,8 +439,8 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/CompositionEvent.idl
     dom/CustomElementRegistry.idl
     dom/CustomEvent.idl
-    dom/DOMCoreException.idl
     dom/DOMError.idl
+    dom/DOMException.idl
     dom/DOMImplementation.idl
     dom/DOMNamedFlowCollection.idl
     dom/DOMPoint.idl
@@ -523,7 +529,6 @@ set(WebCore_NON_SVG_IDL_FILES
     fileapi/BlobPropertyBag.idl
     fileapi/File.idl
     fileapi/FileError.idl
-    fileapi/FileException.idl
     fileapi/FileList.idl
     fileapi/FileReader.idl
     fileapi/FileReaderSync.idl
@@ -708,7 +713,6 @@ set(WebCore_NON_SVG_IDL_FILES
     xml/XMLHttpRequestUpload.idl
     xml/XMLSerializer.idl
     xml/XPathEvaluator.idl
-    xml/XPathException.idl
     xml/XPathExpression.idl
     xml/XPathNSResolver.idl
     xml/XPathResult.idl
@@ -747,7 +751,6 @@ set(WebCore_SVG_IDL_FILES
     svg/SVGDocument.idl
     svg/SVGElement.idl
     svg/SVGEllipseElement.idl
-    svg/SVGException.idl
     svg/SVGExternalResourcesRequired.idl
     svg/SVGFEBlendElement.idl
     svg/SVGFEColorMatrixElement.idl
@@ -901,7 +904,6 @@ set(WebCore_SOURCES
     Modules/indexeddb/IDBCursor.cpp
     Modules/indexeddb/IDBCursorWithValue.cpp
     Modules/indexeddb/IDBDatabase.cpp
-    Modules/indexeddb/IDBDatabaseException.cpp
     Modules/indexeddb/IDBDatabaseIdentifier.cpp
     Modules/indexeddb/IDBEventDispatcher.cpp
     Modules/indexeddb/IDBFactory.cpp
@@ -1076,7 +1078,6 @@ set(WebCore_SOURCES
     Modules/webdatabase/DatabaseThread.cpp
     Modules/webdatabase/DatabaseTracker.cpp
     Modules/webdatabase/OriginLock.cpp
-    Modules/webdatabase/SQLException.cpp
     Modules/webdatabase/SQLResultSet.cpp
     Modules/webdatabase/SQLResultSetRowList.cpp
     Modules/webdatabase/SQLStatement.cpp
@@ -1142,6 +1143,7 @@ set(WebCore_SOURCES
 
     bindings/js/CachedModuleScriptLoader.cpp
     bindings/js/CachedScriptFetcher.cpp
+    bindings/js/CallTracer.cpp
     bindings/js/CommonVM.cpp
     bindings/js/DOMWrapperWorld.cpp
     bindings/js/GCController.cpp
@@ -1164,7 +1166,6 @@ set(WebCore_SOURCES
     bindings/js/JSFontFaceSetCustom.cpp
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
-    bindings/js/JSCommandLineAPIHostCustom.cpp
     bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
     bindings/js/JSCryptoKeyCustom.cpp
@@ -1198,8 +1199,6 @@ set(WebCore_SOURCES
     bindings/js/JSEventCustom.cpp
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
-    bindings/js/JSExceptionBase.cpp
-    bindings/js/JSHTMLCanvasElementCustom.cpp
     bindings/js/JSHTMLCollectionCustom.cpp
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
@@ -1211,7 +1210,6 @@ set(WebCore_SOURCES
     bindings/js/JSIDBObjectStoreCustom.cpp
     bindings/js/JSIDBTransactionCustom.cpp
     bindings/js/JSImageDataCustom.cpp
-    bindings/js/JSInspectorFrontendHostCustom.cpp
     bindings/js/JSLazyEventListener.cpp
     bindings/js/JSLocationCustom.cpp
     bindings/js/JSMainThreadExecState.cpp
@@ -1303,6 +1301,41 @@ set(WebCore_SOURCES
     contentextensions/NFAToDFA.cpp
     contentextensions/URLFilterParser.cpp
 
+    crypto/CryptoAlgorithm.cpp
+    crypto/CryptoAlgorithmRegistry.cpp
+    crypto/CryptoKey.cpp
+    crypto/SubtleCrypto.cpp
+    crypto/WebKitSubtleCrypto.cpp
+
+    crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
+    crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
+    crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
+    crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
+    crypto/algorithms/CryptoAlgorithmAES_KW.cpp
+    crypto/algorithms/CryptoAlgorithmECDH.cpp
+    crypto/algorithms/CryptoAlgorithmECDSA.cpp
+    crypto/algorithms/CryptoAlgorithmHKDF.cpp
+    crypto/algorithms/CryptoAlgorithmHMAC.cpp
+    crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
+    crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
+    crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
+    crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
+    crypto/algorithms/CryptoAlgorithmRSA_PSS.cpp
+    crypto/algorithms/CryptoAlgorithmSHA1.cpp
+    crypto/algorithms/CryptoAlgorithmSHA224.cpp
+    crypto/algorithms/CryptoAlgorithmSHA256.cpp
+    crypto/algorithms/CryptoAlgorithmSHA384.cpp
+    crypto/algorithms/CryptoAlgorithmSHA512.cpp
+
+    crypto/keys/CryptoKeyAES.cpp
+    crypto/keys/CryptoKeyDataOctetSequence.cpp
+    crypto/keys/CryptoKeyDataRSAComponents.cpp
+    crypto/keys/CryptoKeyEC.cpp
+    crypto/keys/CryptoKeyHMAC.cpp
+    crypto/keys/CryptoKeyRSA.cpp
+    crypto/keys/CryptoKeyRaw.cpp
+    crypto/keys/CryptoKeySerializationRaw.cpp
+
     css/BasicShapeFunctions.cpp
     css/CSSAspectRatioValue.cpp
     css/CSSBasicShapes.cpp
@@ -1363,6 +1396,7 @@ set(WebCore_SOURCES
     css/CSSSelector.cpp
     css/CSSSelectorList.cpp
     css/CSSShadowValue.cpp
+    css/CSSStyleDeclaration.cpp
     css/CSSStyleRule.cpp
     css/CSSStyleSheet.cpp
     css/CSSSupportsRule.cpp
@@ -1466,8 +1500,8 @@ set(WebCore_SOURCES
     dom/CustomElementReactionQueue.cpp
     dom/CustomElementRegistry.cpp
     dom/CustomEvent.cpp
-    dom/DOMCoreException.cpp
     dom/DOMError.cpp
+    dom/DOMException.cpp
     dom/DOMImplementation.cpp
     dom/DOMNamedFlowCollection.cpp
     dom/DOMPointReadOnly.cpp
@@ -1504,7 +1538,6 @@ set(WebCore_SOURCES
     dom/EventNames.cpp
     dom/EventPath.cpp
     dom/EventTarget.cpp
-    dom/ExceptionBase.cpp
     dom/ExtensionStyleSheets.cpp
     dom/FocusEvent.cpp
     dom/GenericEventQueue.cpp
@@ -1669,7 +1702,6 @@ set(WebCore_SOURCES
     fileapi/BlobCallback.cpp
     fileapi/BlobURL.cpp
     fileapi/File.cpp
-    fileapi/FileException.cpp
     fileapi/FileList.cpp
     fileapi/FileReader.cpp
     fileapi/FileReaderLoader.cpp
@@ -1907,6 +1939,7 @@ set(WebCore_SOURCES
     inspector/DOMPatchSupport.cpp
     inspector/InspectorApplicationCacheAgent.cpp
     inspector/InspectorCSSAgent.cpp
+    inspector/InspectorCanvas.cpp
     inspector/InspectorCanvasAgent.cpp
     inspector/InspectorClient.cpp
     inspector/InspectorController.cpp
@@ -2028,12 +2061,7 @@ set(WebCore_SOURCES
     loader/cache/CachedXSLStyleSheet.cpp
     loader/cache/MemoryCache.cpp
 
-    loader/icon/IconController.cpp
-    loader/icon/IconDatabase.cpp
-    loader/icon/IconDatabaseBase.cpp
     loader/icon/IconLoader.cpp
-    loader/icon/IconRecord.cpp
-    loader/icon/PageURLRecord.cpp
 
     mathml/MathMLAnnotationElement.cpp
     mathml/MathMLElement.cpp
@@ -2806,7 +2834,6 @@ set(WebCore_SOURCES
     svg/SVGDocumentExtensions.cpp
     svg/SVGElement.cpp
     svg/SVGEllipseElement.cpp
-    svg/SVGException.cpp
     svg/SVGExternalResourcesRequired.cpp
     svg/SVGFEBlendElement.cpp
     svg/SVGFEColorMatrixElement.cpp
@@ -2957,7 +2984,6 @@ set(WebCore_SOURCES
     xml/XMLSerializer.cpp
     xml/XMLTreeViewer.cpp
     xml/XPathEvaluator.cpp
-    xml/XPathException.cpp
     xml/XPathExpression.cpp
     xml/XPathExpressionNode.cpp
     xml/XPathFunctions.cpp
@@ -3804,12 +3830,8 @@ add_dependencies(WebCoreTestSupportBindings WebCoreDerivedSources)
 # WebCore JS Builtins
 
 set(WebCore_BUILTINS_SOURCES
-    ${WEBCORE_DIR}/Modules/fetch/DOMWindowFetch.js
-    ${WEBCORE_DIR}/Modules/fetch/FetchHeaders.js
     ${WEBCORE_DIR}/Modules/fetch/FetchInternals.js
-    ${WEBCORE_DIR}/Modules/fetch/FetchRequest.js
     ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
-    ${WEBCORE_DIR}/Modules/fetch/WorkerGlobalScopeFetch.js
     ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
@@ -3827,7 +3849,6 @@ set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/streams/WritableStream.js
     ${WEBCORE_DIR}/Modules/streams/WritableStreamInternals.js
     ${WEBCORE_DIR}/bindings/js/JSDOMBindingInternals.js
-    ${WEBCORE_DIR}/xml/XMLHttpRequest.js
 )
 
 set(BUILTINS_GENERATOR_SCRIPTS
@@ -3888,10 +3909,6 @@ GENERATE_EVENT_FACTORY(${WEBCORE_DIR}/dom/EventTargetFactory.in EventTargetInter
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/EventNames.cpp EventTargetInterfaces.h)
 ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES(${WEBCORE_DIR}/dom/DOMAllInOne.cpp EventTargetInterfaces.h)
 list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/EventTargetInterfaces.h)
-
-
-GENERATE_EXCEPTION_CODE_DESCRIPTION(${WEBCORE_DIR}/dom/DOMExceptions.in ExceptionCodeDescription.cpp)
-list(APPEND WebCore_DERIVED_SOURCES ${DERIVED_SOURCES_WEBCORE_DIR}/ExceptionCodeDescription.cpp)
 
 
 GENERATE_SETTINGS_MACROS(${WEBCORE_DIR}/page/Settings.in SettingsMacros.h)
@@ -3955,8 +3972,8 @@ ENDIF (HAIKU)
 include_directories(SYSTEM ${WebCore_SYSTEM_INCLUDE_DIRECTORIES})
 
 if (MSVC)
-    ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
-    ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
+    WEBKIT_ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCorePrefix.cpp" WebCore_SOURCES)
+    WEBKIT_ADD_PRECOMPILED_HEADER("WebCorePrefix.h" "WebCoreDerivedSourcesPrefix.cpp" WebCore_DERIVED_SOURCES)
 endif ()
 
 # This is split into a separate library as a workaround for command line length
@@ -3988,11 +4005,11 @@ endif ()
 # See https://bugs.webkit.org/show_bug.cgi?id=146440
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
 if (CMAKE_COMPILER_IS_GNUCXX AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86)$")
-    ADD_TARGET_PROPERTIES(WebCore COMPILE_FLAGS "-fno-tree-sra")
+    WEBKIT_ADD_TARGET_PROPERTIES(WebCore COMPILE_FLAGS "-fno-tree-sra")
 endif ()
 
 if (MSVC)
-    ADD_PRECOMPILED_HEADER("WebCoreTestSupportPrefix.h" "testing/js/WebCoreTestSupportPrefix.cpp" WebCoreTestSupport_SOURCES)
+    WEBKIT_ADD_PRECOMPILED_HEADER("WebCoreTestSupportPrefix.h" "testing/js/WebCoreTestSupportPrefix.cpp" WebCoreTestSupport_SOURCES)
 endif ()
 
 add_library(WebCoreTestSupport ${WebCoreTestSupport_LIBRARY_TYPE} ${WebCoreTestSupport_SOURCES})
@@ -4012,7 +4029,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
 
     # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
     if (COMPILER_IS_CLANG)
-        ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
+        WEBKIT_ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
     endif ()
 
     # Enable the ESSL and GLSL translators.

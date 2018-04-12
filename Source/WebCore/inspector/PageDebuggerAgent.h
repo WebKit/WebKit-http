@@ -35,9 +35,13 @@
 
 namespace WebCore {
 
+class Document;
+class EventListener;
+class EventTarget;
 class InspectorOverlay;
 class InspectorPageAgent;
 class Page;
+class RegisteredEventListener;
 
 class PageDebuggerAgent final : public WebDebuggerAgent {
     WTF_MAKE_NONCOPYABLE(PageDebuggerAgent);
@@ -52,11 +56,21 @@ public:
     void mainFrameStoppedLoading();
     void mainFrameNavigated();
 
+    void didRequestAnimationFrame(int callbackId, Document&);
+    void willFireAnimationFrame(int callbackId);
+    void didCancelAnimationFrame(int callbackId);
+
+    void didAddEventListener(EventTarget&, const AtomicString& eventType);
+    void willRemoveEventListener(EventTarget&, const AtomicString& eventType, EventListener&, bool capture);
+    void willHandleEvent(const RegisteredEventListener&);
+
 protected:
     void enable() override;
     void disable(bool isBeingDestroyed) override;
 
     String sourceMapURLForScript(const Script&) override;
+
+    void didClearAsyncStackTraceData() override;
 
 private:
     void muteConsole() override;
@@ -71,6 +85,9 @@ private:
 
     InspectorPageAgent* m_pageAgent;
     InspectorOverlay* m_overlay { nullptr };
+
+    HashMap<const RegisteredEventListener*, int> m_registeredEventListeners;
+    int m_nextEventListenerIdentifier { 1 };
 };
 
 } // namespace WebCore

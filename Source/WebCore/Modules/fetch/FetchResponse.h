@@ -31,6 +31,7 @@
 #if ENABLE(FETCH_API)
 
 #include "FetchBodyOwner.h"
+#include "FetchHeaders.h"
 #include "ResourceResponse.h"
 #include <runtime/TypedArrays.h>
 
@@ -48,6 +49,12 @@ class FetchResponse final : public FetchBodyOwner {
 public:
     using Type = ResourceResponse::Type;
 
+    struct Init {
+        unsigned short status { 200 };
+        String statusText { ASCIILiteral("OK") };
+        std::optional<FetchHeaders::Init> headers;
+    };
+
     static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static ExceptionOr<Ref<FetchResponse>> redirect(ScriptExecutionContext&, const String& url, int status);
@@ -63,7 +70,7 @@ public:
 #endif
 
     ExceptionOr<void> setStatus(int status, const String& statusText);
-    void initializeWith(FetchBody::BindingDataType&&);
+    void initializeWith(FetchBody::Init&&);
     void setBodyAsReadableStream();
 
     Type type() const { return m_response.type(); }

@@ -88,18 +88,26 @@ media/modern-media-controls/mute-button [ Pass ]
 media/modern-media-controls/mute-support [ Pass ]
 media/modern-media-controls/pip-button [ Pass ]
 media/modern-media-controls/pip-placard [ Pass ]
+media/modern-media-controls/pip-support/ipad [ Pass ]
 media/modern-media-controls/placard [ Pass ]
 media/modern-media-controls/placard-support [ Pass ]
 media/modern-media-controls/play-pause-button [ Pass ]
+media/modern-media-controls/playback-support [ Pass ]
 media/modern-media-controls/rewind-button [ Pass ]
 media/modern-media-controls/scheduler [ Pass ]
 media/modern-media-controls/scrubber [ Pass ]
+media/modern-media-controls/scrubber-support [ Pass ]
 media/modern-media-controls/skip-back-button [ Pass ]
 media/modern-media-controls/skip-forward-button [ Pass ]
 media/modern-media-controls/slider [ Pass ]
 media/modern-media-controls/status-label [ Pass ]
+media/modern-media-controls/status-support [ Pass ]
 media/modern-media-controls/time-control [ Pass ]
 media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/time-labels-support [ Pass ]
+
+# accessibilityController.role cannot be tested on iOS
+media/modern-media-controls/time-label/time-label.html [ Skip ]
 media/modern-media-controls/tracks-button [ Pass ]
 
 # AirPlay cannot be tested on iOS
@@ -112,11 +120,17 @@ media/modern-media-controls/button/button.html [ Skip ]
 media/modern-media-controls/button/button-active-state.html [ Skip ]
 media/modern-media-controls/fullscreen-support/fullscreen-support-press.html [ Skip ]
 media/modern-media-controls/mute-support/mute-support-press-on-button.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
 media/modern-media-controls/placard-support/ipad [ Skip ]
+media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+
+# There is no focus state for on iOS
+media/modern-media-controls/button/button-focus-state.html [ Skip ]
 
 # These tests rely on fullscreen which do not use the WebKit media controls on iOS
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-parent-element.html [ Skip ]
 media/modern-media-controls/controls-visibility-support/controls-visibility-support-fullscreen-on-video.html [ Skip ]
+media/modern-media-controls/css/webkit-cursor-visibility-auto-hide.html [ Skip ]
 media/modern-media-controls/placard-support/placard-support-airplay-fullscreen.html [ Skip ]
 
 # These tests specifically test iOS-only media controls features
@@ -127,6 +141,9 @@ media/modern-media-controls/button/button-click-on-edges.html [ Skip ]
 media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-audio-mac-sizing.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-video-mac-sizing.html [ Skip ]
+media/modern-media-controls/playback-support/playback-support-button-click.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
 
 webkit.org/b/172965 media/track/track-cue-overlap-snap-to-lines-not-set.html [ Failure ]
 

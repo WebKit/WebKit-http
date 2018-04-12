@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PluginProcessManager_h
-#define PluginProcessManager_h
+#pragma once
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
 
@@ -35,7 +34,6 @@
 #include "WebProcessProxyMessages.h"
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefCounter.h>
 #include <wtf/Vector.h>
@@ -71,6 +69,8 @@ public:
     void updateProcessSuppressionDisabled(RefCounterEvent);
 #endif
 
+    const Vector<RefPtr<PluginProcessProxy>>& pluginProcesses() const { return m_pluginProcesses; }
+
 private:
     PluginProcessManager();
 
@@ -101,5 +101,3 @@ inline bool PluginProcessManager::processSuppressionDisabled() const
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
-
-#endif // PluginProcessManager_h

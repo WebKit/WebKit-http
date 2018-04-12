@@ -27,12 +27,14 @@
 #include "WebAutomationSession.h"
 
 #include "APIAutomationSessionClient.h"
+#include "APIOpenPanelParameters.h"
 #include "AutomationProtocolObjects.h"
 #include "WebAutomationSessionMacros.h"
 #include "WebAutomationSessionMessages.h"
 #include "WebAutomationSessionProxyMessages.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorProxy.h"
+#include "WebOpenPanelResultListenerProxy.h"
 #include "WebProcessPool.h"
 #include <JavaScriptCore/InspectorBackendDispatcher.h>
 #include <JavaScriptCore/InspectorFrontendRouter.h>
@@ -47,11 +49,17 @@ using namespace Inspector;
 
 namespace WebKit {
 
+// §8. Sessions
+// https://www.w3.org/TR/webdriver/#dfn-session-page-load-timeout
+static const Seconds defaultPageLoadTimeout = 300_s;
+
 WebAutomationSession::WebAutomationSession()
     : m_client(std::make_unique<API::AutomationSessionClient>())
     , m_frontendRouter(FrontendRouter::create())
     , m_backendDispatcher(BackendDispatcher::create(m_frontendRouter.copyRef()))
     , m_domainDispatcher(AutomationBackendDispatcher::create(m_backendDispatcher, this))
+    , m_domainNotifier(std::make_unique<AutomationFrontendDispatcher>(m_frontendRouter))
+    , m_loadTimer(RunLoop::main(), this, &WebAutomationSession::loadTimerFired)
 {
 }
 
@@ -375,66 +383,128 @@ void WebAutomationSession::moveWindowOfBrowsingContext(Inspector::ErrorString& e
 #endif
 }
 
-void WebAutomationSession::navigateBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String& url, Ref<NavigateBrowsingContextCallback>&& callback)
+void WebAutomationSession::waitForNavigationToComplete(Inspector::ErrorString& errorString, const String& browsingContextHandle, const String* optionalFrameHandle, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<WaitForNavigationToCompleteCallback>&& callback)
+{
+    WebPageProxy* page = webPageProxyForHandle(browsingContextHandle);
+    if (!page)
+        FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
+
+    // FIXME: Implement page load strategy.
+
+    Seconds pageLoadTimeout = optionalPageLoadTimeout ? Seconds::fromMilliseconds(*optionalPageLoadTimeout) : defaultPageLoadTimeout;
+
+    if (optionalFrameHandle && !optionalFrameHandle->isEmpty()) {
+        std::optional<uint64_t> frameID = webFrameIDForHandle(*optionalFrameHandle);
+        if (!frameID)
+            FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
+        WebFrameProxy* frame = page->process().webFrame(frameID.value());
+        if (!frame)
+            FAIL_WITH_PREDEFINED_ERROR(FrameNotFound);
+        waitForNavigationToCompleteOnFrame(*frame, pageLoadTimeout, WTFMove(callback));
+    } else
+        waitForNavigationToCompleteOnPage(*page, pageLoadTimeout, WTFMove(callback));
+}
+
+void WebAutomationSession::waitForNavigationToCompleteOnPage(WebPageProxy& page, Seconds timeout, Ref<Inspector::BackendDispatcher::CallbackBase>&& callback)
+{
+    ASSERT(!m_loadTimer.isActive());
+    if (!page.pageLoadState().isLoading()) {
+        callback->sendSuccess(InspectorObject::create());
+        return;
+    }
+
+    m_loadTimer.startOneShot(timeout);
+    m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page.pageID(), WTFMove(callback));
+}
+
+void WebAutomationSession::waitForNavigationToCompleteOnFrame(WebFrameProxy& frame, Seconds timeout, Ref<Inspector::BackendDispatcher::CallbackBase>&& callback)
+{
+    ASSERT(!m_loadTimer.isActive());
+    if (frame.frameLoadState().state() == FrameLoadState::State::Finished) {
+        callback->sendSuccess(InspectorObject::create());
+        return;
+    }
+
+    m_loadTimer.startOneShot(timeout);
+    m_pendingNavigationInBrowsingContextCallbacksPerFrame.set(frame.frameID(), WTFMove(callback));
+}
+
+void WebAutomationSession::loadTimerFired()
+{
+    for (auto frameID : m_pendingNavigationInBrowsingContextCallbacksPerFrame.keys()) {
+        auto callback = m_pendingNavigationInBrowsingContextCallbacksPerFrame.take(frameID);
+        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
+    }
+    for (auto pageID : m_pendingNavigationInBrowsingContextCallbacksPerPage.keys()) {
+        auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(pageID);
+        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
+    }
+}
+
+void WebAutomationSession::navigateBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String& url, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<NavigateBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
-        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
-    m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
+    // FIXME: Implement page load strategy.
 
     page->loadRequest(WebCore::URL(WebCore::URL(), url));
+    waitForNavigationToCompleteOnPage(*page, optionalPageLoadTimeout ? Seconds::fromMilliseconds(*optionalPageLoadTimeout) : defaultPageLoadTimeout, WTFMove(callback));
 }
 
-void WebAutomationSession::goBackInBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<GoBackInBrowsingContextCallback>&& callback)
+void WebAutomationSession::goBackInBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoBackInBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
-        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
+    // FIXME: Implement page load strategy.
 
-    if (page->goBack())
-        m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
-    else
-        callback->sendSuccess();
+    page->goBack();
+    waitForNavigationToCompleteOnPage(*page, optionalPageLoadTimeout ? Seconds::fromMilliseconds(*optionalPageLoadTimeout) : defaultPageLoadTimeout, WTFMove(callback));
 }
 
-void WebAutomationSession::goForwardInBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<GoForwardInBrowsingContextCallback>&& callback)
+void WebAutomationSession::goForwardInBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoForwardInBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
-        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
+    // FIXME: Implement page load strategy.
 
-    if (page->goForward())
-        m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
-    else
-        callback->sendSuccess();
+    page->goForward();
+    waitForNavigationToCompleteOnPage(*page, optionalPageLoadTimeout ? Seconds::fromMilliseconds(*optionalPageLoadTimeout) : defaultPageLoadTimeout, WTFMove(callback));
 }
 
-void WebAutomationSession::reloadBrowsingContext(Inspector::ErrorString& errorString, const String& handle, Ref<ReloadBrowsingContextCallback>&& callback)
+void WebAutomationSession::reloadBrowsingContext(Inspector::ErrorString& errorString, const String& handle, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<ReloadBrowsingContextCallback>&& callback)
 {
     WebPageProxy* page = webPageProxyForHandle(handle);
     if (!page)
         FAIL_WITH_PREDEFINED_ERROR(WindowNotFound);
 
-    if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page->pageID()))
-        callback->sendFailure(STRING_FOR_PREDEFINED_ERROR_NAME(Timeout));
-    m_pendingNavigationInBrowsingContextCallbacksPerPage.set(page->pageID(), WTFMove(callback));
+    // FIXME: Implement page load strategy.
 
     page->reload({ });
+    waitForNavigationToCompleteOnPage(*page, optionalPageLoadTimeout ? Seconds::fromMilliseconds(*optionalPageLoadTimeout) : defaultPageLoadTimeout, WTFMove(callback));
 }
 
-void WebAutomationSession::navigationOccurredForPage(const WebPageProxy& page)
+void WebAutomationSession::navigationOccurredForFrame(const WebFrameProxy& frame)
 {
-    if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(page.pageID()))
-        callback->sendSuccess(InspectorObject::create());
+    if (frame.isMainFrame()) {
+        // New page loaded, clear frame handles previously cached.
+        m_handleWebFrameMap.clear();
+        m_webFrameHandleMap.clear();
+        if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerPage.take(frame.page()->pageID())) {
+            m_loadTimer.stop();
+            callback->sendSuccess(InspectorObject::create());
+        }
+    } else {
+        if (auto callback = m_pendingNavigationInBrowsingContextCallbacksPerFrame.take(frame.frameID())) {
+            m_loadTimer.stop();
+            callback->sendSuccess(InspectorObject::create());
+        }
+    }
 }
 
 void WebAutomationSession::inspectorFrontendLoaded(const WebPageProxy& page)
@@ -447,6 +517,35 @@ void WebAutomationSession::keyboardEventsFlushedForPage(const WebPageProxy& page
 {
     if (auto callback = m_pendingKeyboardEventsFlushedCallbacksPerPage.take(page.pageID()))
         callback->sendSuccess(InspectorObject::create());
+}
+
+void WebAutomationSession::handleRunOpenPanel(const WebPageProxy& page, const WebFrameProxy&, const API::OpenPanelParameters& parameters, WebOpenPanelResultListenerProxy& resultListener)
+{
+    if (!m_filesToSelectForFileUpload.size()) {
+        resultListener.cancel();
+        m_domainNotifier->fileChooserDismissed(m_activeBrowsingContextHandle, true);
+        return;
+    }
+
+    if (m_filesToSelectForFileUpload.size() > 1 && !parameters.allowMultipleFiles()) {
+        resultListener.cancel();
+        m_domainNotifier->fileChooserDismissed(m_activeBrowsingContextHandle, true);
+        return;
+    }
+
+    // Per §14.3.10.5 in the W3C spec, if at least one file no longer exists, the command should fail.
+    // The REST API service can tell that this failed by checking the "value" attribute of the input element.
+    for (const String& filename : m_filesToSelectForFileUpload) {
+        if (!WebCore::fileExists(filename)) {
+            resultListener.cancel();
+            m_domainNotifier->fileChooserDismissed(m_activeBrowsingContextHandle, true);
+            return;
+        }
+    }
+
+    // FIXME: validate filenames against allowed MIME types before choosing them. <https://webkit.org/b/174803>
+    resultListener.chooseFiles(m_filesToSelectForFileUpload);
+    m_domainNotifier->fileChooserDismissed(m_activeBrowsingContextHandle, false);
 }
 
 void WebAutomationSession::evaluateJavaScriptFunction(Inspector::ErrorString& errorString, const String& browsingContextHandle, const String* optionalFrameHandle, const String& function, const Inspector::InspectorArray& arguments, const bool* optionalExpectsImplicitCallbackArgument, const int* optionalCallbackTimeout, Ref<EvaluateJavaScriptFunctionCallback>&& callback)
@@ -686,6 +785,22 @@ void WebAutomationSession::setUserInputForCurrentJavaScriptPrompt(Inspector::Err
         FAIL_WITH_PREDEFINED_ERROR(NoJavaScriptDialog);
 
     m_client->setUserInputForCurrentJavaScriptPromptOnPage(*this, *page, promptValue);
+}
+
+void WebAutomationSession::setFilesToSelectForFileUpload(ErrorString& errorString, const String& browsingContextHandle, const Inspector::InspectorArray& filenames)
+{
+    Vector<String> newFileList;
+    newFileList.reserveInitialCapacity(filenames.length());
+
+    for (auto item : filenames) {
+        String filename;
+        if (!item->asString(filename))
+            FAIL_WITH_PREDEFINED_ERROR(InternalError);
+
+        newFileList.append(filename);
+    }
+
+    m_filesToSelectForFileUpload.swap(newFileList);
 }
 
 void WebAutomationSession::getAllCookies(ErrorString& errorString, const String& browsingContextHandle, Ref<GetAllCookiesCallback>&& callback)

@@ -239,7 +239,7 @@ void RenderTable::removeCaption(const RenderTableCaption* oldCaption)
 void RenderTable::invalidateCachedColumns()
 {
     m_columnRenderersValid = false;
-    m_columnRenderers.resize(0);
+    m_columnRenderers.shrink(0);
     m_effectiveColumnIndexMap.clear();
 }
 
@@ -1575,7 +1575,7 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     LayoutRect boundsRect(adjustedLocation, size());
     if (visibleToHitTesting() && (action == HitTestBlockBackground || action == HitTestChildBlockBackground) && locationInContainer.intersects(boundsRect)) {
         updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - toLayoutSize(adjustedLocation)));
-        if (!result.addNodeToRectBasedTestResult(element(), request, locationInContainer, boundsRect))
+        if (result.addNodeToListBasedTestResult(element(), request, locationInContainer, boundsRect) == HitTestProgress::Stop)
             return true;
     }
 

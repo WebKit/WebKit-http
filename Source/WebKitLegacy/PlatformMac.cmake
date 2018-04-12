@@ -2,7 +2,6 @@ find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
 find_library(QUARTZ_LIBRARY Quartz)
 add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
-link_directories(../../WebKitLibraries)
 
 list(APPEND WebKit_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_WEBKITLEGACY_DIR}"
@@ -262,7 +261,6 @@ list(APPEND WebKit_SOURCES
     mac/WebCoreSupport/WebFrameLoaderClient.mm
     mac/WebCoreSupport/WebFrameNetworkingContext.mm
     mac/WebCoreSupport/WebGeolocationClient.mm
-    mac/WebCoreSupport/WebIconDatabaseClient.mm
     mac/WebCoreSupport/WebInspectorClient.mm
     mac/WebCoreSupport/WebJavaScriptTextInputPanel.m
     mac/WebCoreSupport/WebKitFullScreenListener.mm
@@ -319,8 +317,6 @@ list(APPEND WebKit_SOURCES
     mac/WebView/WebView.mm
     mac/WebView/WebViewData.mm
 )
-
-set(WebKit_LIBRARY_TYPE SHARED)
 
 set(WebKitLegacy_FORWARDING_HEADERS_DIRECTORIES
     mac/DOM

@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-WebInspector.DatabaseObject = class DatabaseObject extends WebInspector.Object
+WebInspector.DatabaseObject = class DatabaseObject
 {
     constructor(id, host, name, version)
     {
-        super();
-
         this._id = id;
         this._host = host ? host : WebInspector.UIString("Local File");
         this._name = name;
@@ -70,10 +68,10 @@ WebInspector.DatabaseObject = class DatabaseObject extends WebInspector.Object
 
             if (sqlError) {
                 switch (sqlError.code) {
-                case SQLException.VERSION_ERR:
+                case SQLError.VERSION_ERR:
                     errorCallback(WebInspector.UIString("Database no longer has expected version."));
                     break;
-                case SQLException.TOO_LARGE_ERR:
+                case SQLError.TOO_LARGE_ERR:
                     errorCallback(WebInspector.UIString("Data returned from the database is too large."));
                     break;
                 default:

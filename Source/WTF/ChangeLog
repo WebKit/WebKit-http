@@ -1,3 +1,672 @@
+2017-07-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Private Symbols
+        https://bugs.webkit.org/show_bug.cgi?id=174935
+
+        Reviewed by Darin Adler.
+
+        Upcoming proposal of class fields[1] requires private fields.
+        The simple way to implement it is adding a property with a private symbol.
+        Currently, we have private symbols for internal properties. They are usual
+        Symbols managed by the hash table. So basically private symbols are statically
+        created in BuiltinNames. However this new proposal encourages users to create
+        such private symbols more and more.
+
+        So, this patch introduces notion of "Private" into WTF SymbolImpl. This patch
+        adds PrivateSymbolImpl. This is SymbolImpl with "Private" flag. We do not need
+        to look up the symbol from the hash table to check whether the given symbol
+        is a private one.
+
+        [1]: https://github.com/tc39/proposal-class-fields
+
+        * wtf/text/StringImpl.h:
+        * wtf/text/SymbolImpl.cpp:
+        (WTF::PrivateSymbolImpl::create):
+        (WTF::PrivateSymbolImpl::createNullSymbol):
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::isPrivate):
+        (WTF::SymbolImpl::StaticSymbolImpl::StaticSymbolImpl):
+        (WTF::SymbolImpl::SymbolImpl):
+        (WTF::PrivateSymbolImpl::PrivateSymbolImpl):
+
+2017-07-30  Brady Eidson  <beidson@apple.com>
+
+        Add URLSchemeHandler API tests that verify the lack of URLSchemeTask object leaks.
+        https://bugs.webkit.org/show_bug.cgi?id=174958
+
+        Reviewed by Darin Adler.
+
+        This patch adds a new template class "InstanceCounted<T>".
+        
+        For each specialization, "InstanceCounted" will keep track of the total number of
+        instances in existence.
+        
+        This makes explicate leak checking in API tests possible.
+        
+        Since this adds some runtime and storage overhead the code that actually does anything
+        is only compiled in debug builds.
+        
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/InstanceCounted.h: Added.
+        (WTF::InstanceCounted::InstanceCounted):
+        (WTF::InstanceCounted::instanceCount):
+        (WTF::InstanceCounted::~InstanceCounted):
+
+2017-07-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop Thread initialization wait in some platforms by introducing StackBounds::newThreadStackBounds(PlatformThreadHandle&)
+        https://bugs.webkit.org/show_bug.cgi?id=174303
+
+        Reviewed by Mark Lam.
+
+        Currently, the caller thread of Thread::create() need to wait for completion of the initialization of the target thread.
+        This is because we need to initialize Thread::m_stack in the target thread. Before this patch, a target thread's
+        StackBounds can only be retrieved by the target thread itself. However, this potentially causes context-switching between
+        the caller and the target threads and hurts efficiency of creating threads.
+
+        Fortunately, in some platforms (including major platforms except for Windows), we can get StackBounds of a target
+        thread from a caller thread. This allows us to avoid waiting for completion of thread initialization.
+
+        In this patch, we introduce HAVE_STACK_BOUNDS_FOR_NEW_THREAD and StackBounds::newThreadStackBounds. When creating
+        a new thread, we will use StackBounds::newThreadStackBounds to get StackBounds if possible. As a result, we
+        do not need to wait for completion of thread initialization to ensure m_stack field of Thread is initialized.
+
+        While some documents claim that it is possible on Windows to get the StackBounds of another thread[1], the method relies on
+        undocumented Windows NT APIs (NtQueryInformationThread, NtReadVirtualMemory etc.). So in this patch, we just
+        use the conservative approach simply waiting for completion of thread initialization.
+
+        [1]: https://stackoverflow.com/questions/3918375/how-to-get-thread-stack-information-on-windows
+
+        * wtf/Platform.h:
+        * wtf/StackBounds.cpp:
+        (WTF::StackBounds::newThreadStackBounds):
+        (WTF::StackBounds::currentThreadStackBoundsInternal):
+        (WTF::StackBounds::initialize): Deleted.
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::currentThreadStackBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/Threading.cpp:
+        (WTF::Thread::NewThreadContext::NewThreadContext):
+        (WTF::Thread::entryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::initialize): Deleted.
+        * wtf/Threading.h:
+        * wtf/ThreadingPrimitives.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2017-07-27  JF Bastien  <jfbastien@apple.com>
+
+        Update lock benchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=174907
+
+        Reviewed by Filip Pizlo.
+
+        * benchmarks/ConditionSpeedTest.cpp:
+        (main):
+        * benchmarks/LockFairnessTest.cpp:
+        * benchmarks/LockSpeedTest.cpp:
+        * benchmarks/ToyLocks.h:
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * wtf/FeatureDefines.h:
+
+2017-07-26  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Enable KeyboardEvent key and code attributes
+        https://bugs.webkit.org/show_bug.cgi?id=174822
+
+        Reviewed by Žan Doberšek.
+
+        There is no reason for this to be disabled from what I see.
+
+        * wtf/FeatureDefines.h: Enable KeyboardEvent key and code attributes.
+
+2017-07-23  Filip Pizlo  <fpizlo@apple.com>
+
+        B3 should do LICM
+        https://bugs.webkit.org/show_bug.cgi?id=174750
+
+        Reviewed by Keith Miller and Saam Barati.
+        
+        Moved DFG::NaturalLoops to WTF. The new templatized NaturalLoops<> uses the same Graph abstraction as
+        Dominators<>. This allows us to add a B3::NaturalLoops for free.
+        
+        Also made small tweaks to RangeSet, which the LICM uses.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Dominators.h:
+        * wtf/NaturalLoops.h: Added.
+        (WTF::NaturalLoop::NaturalLoop):
+        (WTF::NaturalLoop::graph):
+        (WTF::NaturalLoop::header):
+        (WTF::NaturalLoop::size):
+        (WTF::NaturalLoop::at):
+        (WTF::NaturalLoop::operator[]):
+        (WTF::NaturalLoop::contains):
+        (WTF::NaturalLoop::index):
+        (WTF::NaturalLoop::isOuterMostLoop):
+        (WTF::NaturalLoop::dump):
+        (WTF::NaturalLoop::addBlock):
+        (WTF::NaturalLoops::NaturalLoops):
+        (WTF::NaturalLoops::graph):
+        (WTF::NaturalLoops::numLoops):
+        (WTF::NaturalLoops::loop):
+        (WTF::NaturalLoops::headerOf):
+        (WTF::NaturalLoops::innerMostLoopOf):
+        (WTF::NaturalLoops::innerMostOuterLoop):
+        (WTF::NaturalLoops::belongsTo):
+        (WTF::NaturalLoops::loopDepth):
+        (WTF::NaturalLoops::loopsOf):
+        (WTF::NaturalLoops::dump):
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::begin):
+        (WTF::RangeSet::end):
+        (WTF::RangeSet::addAll):
+
+2017-07-23  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Implement FALLTHROUGH attribute for C with GCC
+        https://bugs.webkit.org/show_bug.cgi?id=174555
+
+        Reviewed by Darin Adler.
+
+        My previous attempt to silence the JSC -Wimplicit-fallthrough warnings failed because they
+        are coming from a C file, and our FALLTHROUGH macro is only implemented for C++. So
+        implement it for C as well, using C attribute syntax.
+ 
+        Note this is only possible to do for GCC, because Clang only supports this attribute using
+        the [[C++ attribute syntax]].
+
+        * wtf/Compiler.h:
+
+2017-07-14  Filip Pizlo  <fpizlo@apple.com>
+
+        It should be easy to decide how WebKit yields
+        https://bugs.webkit.org/show_bug.cgi?id=174298
+
+        Reviewed by Saam Barati.
+        
+        Created a Thread::yield() abstraction for sched_yield(), and made WTF use it everywhere that it
+        had previously used std::this_thread::yield().
+        
+        To make it less annoying to experiment with changes to the lock algorithm in the future, this also
+        moves the meat of the algorithm into LockAlgorithmInlines.h. Only two files include that header.
+        Since LockAlgorithm.h no longer includes ParkingLot.h, a bunch of files in WK now need to include
+        timing headers (Seconds, MonotonicTime, etc) manually.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * benchmarks/ToyLocks.h:
+        * wtf/CMakeLists.txt:
+        * wtf/Lock.cpp:
+        * wtf/LockAlgorithm.h:
+        (WTF::LockAlgorithm::lockSlow): Deleted.
+        (WTF::LockAlgorithm::unlockSlow): Deleted.
+        * wtf/LockAlgorithmInlines.h: Added.
+        (WTF::hasParkedBit>::lockSlow):
+        (WTF::hasParkedBit>::unlockSlow):
+        * wtf/MainThread.cpp:
+        * wtf/RunLoopTimer.h:
+        * wtf/Threading.cpp:
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::yield):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::yield):
+        * wtf/WordLock.cpp:
+        (WTF::WordLockBase::lockSlow):
+        (WTF::WordLockBase::unlockSlow):
+
+2017-07-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Extend ThreadGroup::add results from bool to ThreadGroupAddResult
+        https://bugs.webkit.org/show_bug.cgi?id=174705
+
+        Reviewed by Mark Lam.
+
+        After starting using ThreadGroup to bookkeep active threads for Signals,
+        we would like to know tristate of ThreadGroup::add result, NewlyAdded, AlreadyAdded, NotAdded.
+        This patch extends the result of ThreadGroup::add from bool to ThreadGroupAddResult tristate.
+        Note that NotAdded is returned if the target thread is dying.
+
+        * wtf/ThreadGroup.cpp:
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        * wtf/ThreadGroup.h:
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+        * wtf/Threading.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::registerThreadForMachExceptionHandling):
+
+2017-07-21  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219732.
+        https://bugs.webkit.org/show_bug.cgi?id=174748
+
+        static is not threadsafe in WebKit tree (Requested by
+        yusukesuzuki on #webkit).
+
+        Reverted changeset:
+
+        "[WTF] Drop initializeDate"
+        https://bugs.webkit.org/show_bug.cgi?id=174714
+        http://trac.webkit.org/changeset/219732
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Drop initializeDate
+        https://bugs.webkit.org/show_bug.cgi?id=174714
+
+        Reviewed by Darin Adler.
+
+        minYear static variable will be initialized in an exclusive manner, which is ensured by C++ "static" semantics.
+        Thus, we do not need to call initializeDate() explicitly.
+
+        * wtf/DateMath.cpp:
+        (WTF::equivalentYearForDST):
+        (WTF::initializeDates): Deleted.
+        * wtf/Threading.cpp:
+        (WTF::initializeThreading):
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Introduce static symbols
+        https://bugs.webkit.org/show_bug.cgi?id=158863
+
+        Reviewed by Darin Adler.
+
+        We add a new class StaticSymbolImpl. StaticSymbolImpl can offer
+        the way to create static SymbolImpl. It can be shared between
+        multiple VMs and multiple threads.
+
+        * wtf/text/SymbolImpl.h:
+        (WTF::SymbolImpl::StaticSymbolImpl::StaticSymbolImpl):
+        (WTF::SymbolImpl::StaticSymbolImpl::operator SymbolImpl&):
+        For StaticSymbolImpl's hashForSymbol, we use usual string hash value.
+        Since all the SymbolImpls are unique, basically, any value is OK here.
+        Non-confilicting to the other SymbolImpls is ideal.
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Newly added AtomicStringImpl should use BufferInternal static string if StringImpl is static
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+
+        Reviewed by Darin Adler.
+
+        When creating AtomicStringImpl from static StringImpl, we can just use createWithoutCopying
+        to create a BufferInternal AtomicStringImpl which m_data{8,16} is static string's one.
+
+        * wtf/text/AtomicStringImpl.cpp:
+        (WTF::CStringTranslator::hash):
+        (WTF::CStringTranslator::equal):
+        (WTF::CStringTranslator::translate):
+        (WTF::AtomicStringImpl::add):
+        (WTF::HashTranslatorCharBuffer::HashTranslatorCharBuffer):
+        (WTF::UCharBufferTranslator::hash):
+        (WTF::UCharBufferTranslator::equal):
+        (WTF::UCharBufferTranslator::translate):
+        (WTF::LCharBufferTranslator::hash):
+        (WTF::LCharBufferTranslator::equal):
+        (WTF::LCharBufferTranslator::translate):
+        (WTF::BufferFromStaticDataTranslator::hash):
+        (WTF::BufferFromStaticDataTranslator::equal):
+        (WTF::BufferFromStaticDataTranslator::translate):
+        (WTF::AtomicStringImpl::addLiteral):
+        (WTF::addSymbol):
+        (WTF::addStatic):
+        (WTF::AtomicStringImpl::addSlowCase):
+        (WTF::AtomicStringImpl::lookUp):
+        (WTF::CharBufferFromLiteralDataTranslator::hash): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::equal): Deleted.
+        (WTF::CharBufferFromLiteralDataTranslator::translate): Deleted.
+        (WTF::addSubstring): Deleted.
+        * wtf/text/StringImpl.h:
+
+2017-07-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+       [cmake] Unreviewed, add definitions necessary to use ICU shipped with macOS
+
+       macOS system ICU libraries are built with U_DISABLE_RENAMING=1 and
+       U_SHOW_CPLUSPLUS_API=0. After r219155 we have to pass this definitons
+       explicitly, because ICU headers in the tree are not modified anymore.
+
+        * wtf/PlatformMac.cmake: Rely on ICU_LIBRARIES instead of passing ICU
+        library name explicitly in WTF_LIBRARIES.
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable
+        https://bugs.webkit.org/show_bug.cgi?id=174660
+
+        Reviewed by Geoffrey Garen.
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable.
+        This essentially replaces a branch to figure out if the new size is less or greater than the
+        current size by an assertion.
+
+        * wtf/IndexSparseSet.h:
+        (WTF::OverflowHandler>::IndexSparseSet):
+        (WTF::OverflowHandler>::clear):
+        * wtf/Insertion.h:
+        (WTF::executeInsertions):
+        * wtf/RangeSet.h:
+        (WTF::RangeSet::compact):
+        * wtf/Vector.h:
+        (WTF::removeRepeatedElements):
+        * wtf/persistence/Coders.h:
+
+2017-07-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Use ThreadGroup to bookkeep active threads for Mach exception
+        https://bugs.webkit.org/show_bug.cgi?id=174678
+
+        Reviewed by Mark Lam.
+
+        We can use ThreadGroup to bookkeep active threads for Mach exceptions.
+        When the thread dies, it is automatically removed from the thread groups.
+        So we do not need to call unregisterThreadForMachExceptionHandling.
+
+        * wtf/ThreadGroup.cpp:
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        * wtf/ThreadGroup.h:
+        * wtf/ThreadHolder.cpp:
+        (WTF::ThreadHolder::~ThreadHolder):
+        * wtf/Threading.cpp:
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        * wtf/threads/Signals.cpp:
+        (WTF::setExceptionPorts):
+        (WTF::activeThreads):
+        (WTF::registerThreadForMachExceptionHandling):
+        (WTF::installSignalHandler):
+        (WTF::unregisterThreadForMachExceptionHandling): Deleted.
+        * wtf/threads/Signals.h:
+
+2017-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Remove unnecessary indirection of WTF::Thread entry point
+        https://bugs.webkit.org/show_bug.cgi?id=174291
+
+        Reviewed by Mark Lam.
+
+        Now wtfThreadEntryPoint is almost the same. Only the difference is function signature due to platform APIs.
+        We remove ThreadFunctionInvocation indirection in ThreadingPthread.cpp and ThreadingWin.cpp.
+
+        Also, ThreadFunctionInvocation keeps a RefPtr to the Thread object. This was previously needed to keep the
+        Thread object alive until the thread itself could install the ThreadHolder into its thread local storage.
+        The ThreadHolder has a Ref that keeps the Thread object alive for the lifetime of the thread. Since
+        Thread::create() now waits for the thread to be initialized before returning and Thread::create() hold a Ref
+        to the Thread object, we are guaranteed that the Thread object will be alive long enough for it to be installed
+        in the thread's ThreadHolder, and we no longer need ThreadFunctionInvocation.
+
+        And we also simplify ThreadHolder::initialize a bit. Now Thread::create waits for the completion of Thread
+        initialization. So, after establishing thread handle, we can call ThreadHolder::initialize before completing
+        Thread initialization.
+
+        Also we drop errno.h ifdefs in ThreadingWin.cpp. This is introduced to support WinCE. But now WinCE port is removed.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/ThreadFunctionInvocation.h: Removed.
+        * wtf/ThreadHolder.h:
+        * wtf/ThreadHolderWin.cpp:
+        (WTF::ThreadHolder::initialize):
+        * wtf/Threading.cpp:
+        (WTF::Thread::entryPoint):
+        (WTF::Thread::create):
+        (WTF::threadEntryPoint): Deleted.
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        (WTF::Thread::createInternal): Deleted.
+        (WTF::Thread::establish): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::wtfThreadEntryPoint):
+        (WTF::Thread::establishHandle):
+        (WTF::Thread::current):
+        (WTF::Thread::establishPlatformSpecificHandle):
+        (WTF::Thread::createInternal): Deleted.
+        (WTF::Thread::establish): Deleted.
+        * wtf/win/MainThreadWin.cpp:
+        (WTF::initializeMainThreadPlatform):
+
+2017-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        This patch implements WTF::ThreadGroup. It implements core of JSC::MachineThreads with more reliable way.
+        JSC::MachineThreads was complicated because of managing dead threads. Each JSC::MachineThreads has its
+        own TLS with a registered destructor. And everytime a thread dies, the registered TLS destructor is called.
+        And this destructor will remove the current dying thread from JSC::MachineThreads.
+
+        However the above implementation is tricky. And each JSC::MachineThreads requires own TLS space, which is
+        not considered in WTF's Windows ThreadSpecific implementation. Current design works well since we only
+        have small number of MachineThreads right now.
+
+        Instead, we use more reliable way. After introducing WTF::Thread, WTF::Thread has WTF::Thread::didExit,
+        which is called when associated TLS (with WTF::Thread) is destroyed. We leverage this mechanism to remove
+        WTF::Thread from MachineThreads.
+
+        This patch introduces WTF::ThreadGroup. It is tightly integrated with WTF::Thread: WTF::Thread knows
+        ThreadGroups which includes this thread. And WTF::ThreadGroup of course knows WTF::Threads added to it.
+        WTF::Thread::didExit carefully remove itself from WTF::ThreadGroups.
+
+        The most important part of this patch is locking. WTF::Thread can die. And WTF::ThreadGroup can die.
+        If we take a design using two fine grain locks in WTF::Thread and WTF::ThreadGroup, we easily encounter
+        dead lock. Consider the following case.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold a lock of THG, and hold a lock of TH (locking order is THG -> TH).
+        2. When TH dies, TH need to hold a lock of TH to iterate THGs. And we hold a lock of THG to unregister TH from it (locking order is TH -> THG).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (locking order is THG -> TH).
+        4. When destroying THG, we need to hold a lock of TH to unregister THG from TH. We can hold a lock of THG before that (locking order is THG -> TH).
+
+        Then, it easily causes dead lock. We cannot swap the locking order of (2) since iterating THG requires a lock of TH.
+        To solve this problem, we use std::shared_ptr and std::weak_ptr.
+
+        1. When adding WTF::Thread (TH) to WTF::ThreadGroup (THG), we first hold THG, and hold a lock of TH. (THG -> TH)
+        2. When TH dies, TH first hold lock of TH. And we use std::weak_ptr<>::lock() to retain non-destructed ThreadGroups.
+        If some of ThreadGroups are dying, we just ignore them. It is ok because such a ThreadGroup will be destructed. So we do not need to unregister this thread from
+        such a ThreadGroup. Then, we have Vector<std::shared_ptr<ThreadGroup>>. So we unlock a lock of TH. To unregister a thread from thread group, we first hold a
+        lock of THG and then hold a lock of TH. Both lifetime is ensured: THG is retained by std::shared_ptr. And TH is itself. (TH), (THG -> TH).
+        3. When suspending and resuming THs in THG, we first hold a lock of THG. And then, we hold a lock of TH to suspend and resume it (THG -> TH).
+        4. When destroying THG, we hold a lock of THG. And hold a lock of TH. During holding THG's lock, registered thread never dies because (2) holds THG lock. (THG -> TH).
+
+        We also fix suspend and resume locking mechanism to avoid dead lock. We should hold the global lock when suspending and resuming.
+        If we use per-thread lock, the suspended thread can hold the lock of the other threads. It causes dead lock.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        * wtf/CMakeLists.txt:
+        * wtf/CrossThreadCopier.h:
+        * wtf/ParkingLot.h:
+        * wtf/ThreadGroup.cpp: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::~ThreadGroup):
+        (WTF::ThreadGroup::add):
+        (WTF::ThreadGroup::addCurrentThread):
+        * wtf/ThreadGroup.h: Copied from Source/JavaScriptCore/wasm/WasmMachineThreads.cpp.
+        (WTF::ThreadGroup::create):
+        (WTF::ThreadGroup::threads):
+        (WTF::ThreadGroup::getLock):
+        (WTF::ThreadGroup::weakFromThis):
+        * wtf/Threading.cpp:
+        (WTF::shouldRemoveThreadFromThreadGroup):
+        (WTF::Thread::didExit):
+        (WTF::Thread::addToThreadGroup):
+        (WTF::Thread::removeFromThreadGroup):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::resume):
+        (WTF::Thread::getRegisters):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        WTF::Thread should have the threads stack bounds.
+        https://bugs.webkit.org/show_bug.cgi?id=173975
+
+        Reviewed by Mark Lam.
+
+        We move StackBounds from WTFThreadData to WTF::Thread.
+        One important thing is that we should make valid StackBounds
+        visible to Thread::create() caller. When the caller get
+        WTF::Thread from Thread::create(), this WTF::Thread should
+        have a valid StackBounds. But StackBounds information can be
+        retrived only in the WTF::Thread's thread itself.
+
+        We also clean up WTF::initializeThreading. StringImpl::empty()
+        is now statically initialized by using constexpr constructor.
+        Thus we do not need to call StringImpl::empty() explicitly here.
+        And WTF::initializeThreading() does not have any main thread
+        affinity right now in all the platforms. So we fix the comment
+        in Threading.h. Then, now, WTF::initializeThreading() is called
+        in UI thread when using Web thread in iOS.
+
+        * wtf/StackBounds.h:
+        (WTF::StackBounds::emptyBounds):
+        (WTF::StackBounds::StackBounds):
+        * wtf/Threading.cpp:
+        (WTF::threadEntryPoint):
+        (WTF::Thread::create):
+        (WTF::Thread::currentMayBeNull):
+        (WTF::Thread::initialize):
+        (WTF::initializeThreading):
+        * wtf/Threading.h:
+        (WTF::Thread::stack):
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::current):
+        (WTF::initializeCurrentThreadEvenIfNonWTFCreated): Deleted.
+        (WTF::Thread::currentMayBeNull): Deleted.
+        * wtf/ThreadingWin.cpp:
+        (WTF::Thread::initializeCurrentThreadEvenIfNonWTFCreated):
+        (WTF::Thread::initializeCurrentThreadInternal):
+        (WTF::Thread::current):
+        * wtf/WTFThreadData.cpp:
+        (WTF::WTFThreadData::WTFThreadData):
+        * wtf/WTFThreadData.h:
+        (WTF::WTFThreadData::stack):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Set library types before their targets are created
+        https://bugs.webkit.org/show_bug.cgi?id=174600
+
+        Reviewed by Michael Catanzaro.
+
+        Since r219560 library targets are created before PlatformXXX.cmake
+        files are processed, however library type must be passed in
+        add_library() call and cannot be changed afterwards. Set these
+        variables in OptionsXXX.cmake.
+
+        * wtf/PlatformGTK.cmake:
+        * wtf/PlatformMac.cmake:
+
+2017-07-17  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        Move USE_AVFOUNDATION definition on Windows to wtf/Platform.h
+        https://bugs.webkit.org/show_bug.cgi?id=174356
+
+        Reviewed by Brent Fulgham.
+
+        Move the definition of USE_AVFOUNDATION on Windows to wtf/platform.h
+
+        Add a custom command to generate AVFoundationHeaderDetection.h, which
+        is renamed from WebCoreHeaderDetection.h
+
+        * AVFoundationSupport.py: Moved from Source/WebCore/AVFoundationSupport.py.
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+
+2017-07-17  Darin Adler  <darin@apple.com>
+
+        Improve use of NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=174348
+
+        Reviewed by Sam Weinig.
+
+        * wtf/HashSet.h: Added an overload of HashSet::add that takes an initializer list of
+        const references. This is handy to add a bunch of values all at once. Later we can
+        consider optimizing to grow the hash table only once instead of deciding whether to
+        grow repeatedly as we add each value.
+        (WTF::copyToVector): Changed to use std::copy, removing 4 of the 6 lines of code here.
+
+        * wtf/MemoryPressureHandler.cpp: Include NeverDestroyed.h here ...
+        * wtf/MemoryPressureHandler.h: ... not here.
+
+        * wtf/NeverDestroyed.h: Added the ability to have a const NeverDestroyed.
+        Added a makeNeverDestroyed function that deduces the type from the argument.
+        With auto, this can be used to avoid writing out a long type twice.
+
+        * wtf/ThreadingPthreads.cpp: Removed unneeded include of NeverDestroyed.h.
+        * wtf/text/AtomicString.cpp: Ditto.
+
 2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
 
         [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called

@@ -186,11 +186,11 @@ class WebNotificationClient;
 class WebOpenPanelResultListener;
 class WebPageGroupProxy;
 class WebPageOverlay;
-class WebPlaybackSessionManager;
+class PlaybackSessionManager;
 class WebPopupMenu;
 class WebUndoStep;
 class WebUserContentController;
-class WebVideoFullscreenManager;
+class VideoFullscreenManager;
 class WebWheelEvent;
 enum FindOptions : uint16_t;
 struct AssistedNodeInformation;
@@ -266,8 +266,8 @@ public:
     bool isInspectorPage() { return !!m_inspectorUI || !!m_remoteInspectorUI; }
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    WebPlaybackSessionManager& playbackSessionManager();
-    WebVideoFullscreenManager& videoFullscreenManager();
+    PlaybackSessionManager& playbackSessionManager();
+    VideoFullscreenManager& videoFullscreenManager();
 #endif
 #if PLATFORM(IOS)
     void setAllowsMediaDocumentInlinePlayback(bool);
@@ -825,7 +825,7 @@ public:
     void setViewportConfigurationMinimumLayoutSize(const WebCore::FloatSize&);
     void setMaximumUnobscuredSize(const WebCore::FloatSize&);
     void setDeviceOrientation(int32_t);
-    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double scale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID);
+    void dynamicViewportSizeUpdate(const WebCore::FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const WebCore::FloatRect& targetExposedContentRect, const WebCore::FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double scale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID);
     void synchronizeDynamicViewportUpdate(double& newTargetScale, WebCore::FloatPoint& newScrollPosition, uint64_t& nextValidLayerTreeTransactionID);
     std::optional<float> scaleFromUIProcess(const VisibleContentRectUpdateInfo&) const;
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&, MonotonicTime oldestTimestamp);
@@ -979,6 +979,8 @@ public:
 #endif
 
     WebURLSchemeHandlerProxy* urlSchemeHandlerForScheme(const String&);
+    void stopAllURLSchemeTasks();
+
     std::optional<double> cpuLimit() const { return m_cpuLimit; }
 
     static PluginView* pluginViewForFrame(WebCore::Frame*);
@@ -1178,7 +1180,7 @@ private:
     void didChooseFilesForOpenPanel(const Vector<String>&);
     void didCancelForOpenPanel();
 #if ENABLE(SANDBOX_EXTENSIONS)
-    void extendSandboxForFileFromOpenPanel(const SandboxExtension::Handle&);
+    void extendSandboxForFilesFromOpenPanel(SandboxExtension::HandleArray&&);
 #endif
 
     void didReceiveGeolocationPermissionDecision(uint64_t geolocationID, bool allowed);
@@ -1400,8 +1402,8 @@ private:
     RefPtr<RemoteWebInspectorUI> m_remoteInspectorUI;
 
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    RefPtr<WebPlaybackSessionManager> m_playbackSessionManager;
-    RefPtr<WebVideoFullscreenManager> m_videoFullscreenManager;
+    RefPtr<PlaybackSessionManager> m_playbackSessionManager;
+    RefPtr<VideoFullscreenManager> m_videoFullscreenManager;
 #endif
 #if PLATFORM(IOS)
     bool m_allowsMediaDocumentInlinePlayback { false };

@@ -32,12 +32,12 @@
 #include "Element.h"
 #include "Frame.h"
 #include "InspectorDOMAgent.h"
-#include "InspectorPageAgent.h"
 #include "InstrumentingAgents.h"
 #include "JSCanvasRenderingContext2D.h"
 #include "JSMainThreadExecState.h"
 #include "MainFrame.h"
 #include "ScriptState.h"
+#include "StringAdaptors.h"
 #include <inspector/IdentifiersFactory.h>
 #include <inspector/InjectedScript.h>
 #include <inspector/InjectedScriptManager.h>
@@ -46,32 +46,27 @@
 
 #if ENABLE(WEBGL)
 #include "JSWebGLRenderingContext.h"
-#include "WebGLContextAttributes.h"
-#include "WebGLRenderingContext.h"
-#include "WebGLRenderingContextBase.h"
 #endif
 
 #if ENABLE(WEBGL2)
 #include "JSWebGL2RenderingContext.h"
-#include "WebGL2RenderingContext.h"
 #endif
 
 #if ENABLE(WEBGPU)
 #include "JSWebGPURenderingContext.h"
-#include "WebGPURenderingContext.h"
 #endif
 
 using namespace Inspector;
 
 namespace WebCore {
 
-InspectorCanvasAgent::InspectorCanvasAgent(WebAgentContext& context, InspectorPageAgent* pageAgent)
+InspectorCanvasAgent::InspectorCanvasAgent(WebAgentContext& context)
     : InspectorAgentBase(ASCIILiteral("Canvas"), context)
     , m_frontendDispatcher(std::make_unique<Inspector::CanvasFrontendDispatcher>(context.frontendRouter))
     , m_backendDispatcher(Inspector::CanvasBackendDispatcher::create(context.backendDispatcher, this))
     , m_injectedScriptManager(context.injectedScriptManager)
-    , m_pageAgent(pageAgent)
-    , m_timer(*this, &InspectorCanvasAgent::canvasDestroyedTimerFired)
+    , m_canvasDestroyedTimer(*this, &InspectorCanvasAgent::canvasDestroyedTimerFired)
+    , m_canvasRecordingTimer(*this, &InspectorCanvasAgent::canvasRecordingTimerFired)
 {
 }
 
@@ -97,11 +92,8 @@ void InspectorCanvasAgent::enable(ErrorString&)
 
     m_enabled = true;
 
-    for (const auto& pair : m_canvasEntries) {
-        auto* canvasElement = pair.key;
-        auto& canvasEntry = pair.value;
-        m_frontendDispatcher->canvasAdded(buildObjectForCanvas(canvasEntry, *canvasElement));
-    }
+    for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values())
+        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(m_instrumentingAgents));
 }
 
 void InspectorCanvasAgent::disable(ErrorString&)
@@ -109,61 +101,63 @@ void InspectorCanvasAgent::disable(ErrorString&)
     if (!m_enabled)
         return;
 
-    if (m_timer.isActive())
-        m_timer.stop();
+    if (m_canvasDestroyedTimer.isActive())
+        m_canvasDestroyedTimer.stop();
 
     m_removedCanvasIdentifiers.clear();
+
+    if (m_canvasRecordingTimer.isActive())
+        m_canvasRecordingTimer.stop();
+
+    for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values())
+        inspectorCanvas->resetRecordingData();
 
     m_enabled = false;
 }
 
 void InspectorCanvasAgent::requestNode(ErrorString& errorString, const String& canvasId, int* nodeId)
 {
-    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
-    if (!canvasEntry) {
-        errorString = ASCIILiteral("Invalid canvas identifier");
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
         return;
-    }
 
-    int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&canvasEntry->element->document());
+    int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&inspectorCanvas->canvas().document());
     if (!documentNodeId) {
         errorString = ASCIILiteral("Document has not been requested");
         return;
     }
 
-    *nodeId = m_instrumentingAgents.inspectorDOMAgent()->pushNodeToFrontend(errorString, documentNodeId, canvasEntry->element);
+    *nodeId = m_instrumentingAgents.inspectorDOMAgent()->pushNodeToFrontend(errorString, documentNodeId, &inspectorCanvas->canvas());
 }
 
 void InspectorCanvasAgent::requestContent(ErrorString& errorString, const String& canvasId, String* content)
 {
-    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
-    if (!canvasEntry) {
-        errorString = ASCIILiteral("Invalid canvas identifier");
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
         return;
-    }
 
-    CanvasRenderingContext* context = canvasEntry->element->renderingContext();
+    CanvasRenderingContext* context = inspectorCanvas->canvas().renderingContext();
     if (is<CanvasRenderingContext2D>(context)) {
-        ExceptionOr<String> result = canvasEntry->element->toDataURL(ASCIILiteral("image/png"));
+        auto result = inspectorCanvas->canvas().toDataURL(ASCIILiteral("image/png"));
         if (result.hasException()) {
             errorString = result.releaseException().releaseMessage();
             return;
         }
-        *content = result.releaseReturnValue();
+        *content = result.releaseReturnValue().string;
     }
 #if ENABLE(WEBGL)
     else if (is<WebGLRenderingContextBase>(context)) {
         WebGLRenderingContextBase* gl = downcast<WebGLRenderingContextBase>(context);
 
         gl->setPreventBufferClearForInspector(true);
-        ExceptionOr<String> result = canvasEntry->element->toDataURL(ASCIILiteral("image/png"));
+        auto result = inspectorCanvas->canvas().toDataURL(ASCIILiteral("image/png"));
         gl->setPreventBufferClearForInspector(false);
 
         if (result.hasException()) {
             errorString = result.releaseException().releaseMessage();
             return;
         }
-        *content = result.releaseReturnValue();
+        *content = result.releaseReturnValue().string;
     }
 #endif
     // FIXME: <https://webkit.org/b/173621> Web Inspector: Support getting the content of WebGPU contexts
@@ -173,14 +167,12 @@ void InspectorCanvasAgent::requestContent(ErrorString& errorString, const String
 
 void InspectorCanvasAgent::requestCSSCanvasClientNodes(ErrorString& errorString, const String& canvasId, RefPtr<Inspector::Protocol::Array<int>>& result)
 {
-    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
-    if (!canvasEntry) {
-        errorString = ASCIILiteral("Invalid canvas identifier");
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
         return;
-    }
 
     result = Inspector::Protocol::Array<int>::create();
-    for (Element* element : canvasEntry->element->cssCanvasClients()) {
+    for (Element* element : inspectorCanvas->canvas().cssCanvasClients()) {
         if (int documentNodeId = m_instrumentingAgents.inspectorDOMAgent()->boundNodeId(&element->document()))
             result->addItem(m_instrumentingAgents.inspectorDOMAgent()->pushNodeToFrontend(errorString, documentNodeId, element));
     }
@@ -210,13 +202,11 @@ static JSC::JSValue contextAsScriptValue(JSC::ExecState& state, CanvasRenderingC
 
 void InspectorCanvasAgent::resolveCanvasContext(ErrorString& errorString, const String& canvasId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>& result)
 {
-    const CanvasEntry* canvasEntry = getCanvasEntry(canvasId);
-    if (!canvasEntry) {
-        errorString = ASCIILiteral("Invalid canvas identifier");
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
         return;
-    }
 
-    Frame* frame = canvasEntry->element->document().frame();
+    Frame* frame = inspectorCanvas->canvas().document().frame();
     if (!frame) {
         errorString = ASCIILiteral("Canvas belongs to a document without a frame");
         return;
@@ -226,7 +216,7 @@ void InspectorCanvasAgent::resolveCanvasContext(ErrorString& errorString, const 
     auto injectedScript = m_injectedScriptManager.injectedScriptFor(&state);
     ASSERT(!injectedScript.hasNoValue());
 
-    CanvasRenderingContext* context = canvasEntry->element->renderingContext();
+    CanvasRenderingContext* context = inspectorCanvas->canvas().renderingContext();
     JSC::JSValue value = contextAsScriptValue(state, context);
     if (!value) {
         ASSERT_NOT_REACHED();
@@ -238,6 +228,40 @@ void InspectorCanvasAgent::resolveCanvasContext(ErrorString& errorString, const 
     result = injectedScript.wrapObject(value, objectGroupName);
 }
 
+void InspectorCanvasAgent::requestRecording(ErrorString& errorString, const String& canvasId, const bool* const singleFrame, const int* const memoryLimit)
+{
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
+        return;
+
+    if (inspectorCanvas->canvas().renderingContext()->callTracingActive()) {
+        errorString = ASCIILiteral("Already recording canvas");
+        return;
+    }
+
+    inspectorCanvas->resetRecordingData();
+    if (singleFrame)
+        inspectorCanvas->setSingleFrame(*singleFrame);
+    if (memoryLimit)
+        inspectorCanvas->setBufferLimit(*memoryLimit);
+
+    inspectorCanvas->canvas().renderingContext()->setCallTracingActive(true);
+}
+
+void InspectorCanvasAgent::cancelRecording(ErrorString& errorString, const String& canvasId)
+{
+    auto* inspectorCanvas = assertInspectorCanvas(errorString, canvasId);
+    if (!inspectorCanvas)
+        return;
+
+    if (!inspectorCanvas->canvas().renderingContext()->callTracingActive()) {
+        errorString = ASCIILiteral("No active recording for canvas");
+        return;
+    }
+
+    didFinishRecordingCanvasFrame(inspectorCanvas->canvas(), true);
+}
+
 void InspectorCanvasAgent::frameNavigated(Frame& frame)
 {
     if (frame.isMainFrame()) {
@@ -245,83 +269,152 @@ void InspectorCanvasAgent::frameNavigated(Frame& frame)
         return;
     }
 
-    Vector<HTMLCanvasElement*> canvasesForFrame;
-    for (const auto& canvasElement : m_canvasEntries.keys()) {
-        if (canvasElement->document().frame() == &frame)
-            canvasesForFrame.append(canvasElement);
+    Vector<InspectorCanvas*> inspectorCanvases;
+    for (RefPtr<InspectorCanvas>& inspectorCanvas : m_identifierToInspectorCanvas.values()) {
+        if (inspectorCanvas->canvas().document().frame() == &frame)
+            inspectorCanvases.append(inspectorCanvas.get());
     }
 
-    for (auto* canvasElement : canvasesForFrame) {
-        auto canvasEntry = m_canvasEntries.take(canvasElement);
+    for (auto* inspectorCanvas : inspectorCanvases) {
+        String identifier = unbindCanvas(*inspectorCanvas);
         if (m_enabled)
-            m_frontendDispatcher->canvasRemoved(canvasEntry.identifier);
+            m_frontendDispatcher->canvasRemoved(identifier);
     }
 }
 
 void InspectorCanvasAgent::didCreateCSSCanvas(HTMLCanvasElement& canvasElement, const String& name)
 {
-    ASSERT(!m_canvasToCSSCanvasId.contains(&canvasElement));
-    ASSERT(!m_canvasEntries.contains(&canvasElement));
-
-    m_canvasToCSSCanvasId.set(&canvasElement, name);
-}
-
-void InspectorCanvasAgent::didChangeCSSCanvasClientNodes(HTMLCanvasElement& canvasElement)
-{
-    const CanvasEntry* canvasEntry = getCanvasEntry(canvasElement);
-    if (!canvasEntry)
-        return;
-
-    m_frontendDispatcher->cssCanvasClientNodesChanged(canvasEntry->identifier);
-}
-
-void InspectorCanvasAgent::didCreateCanvasRenderingContext(HTMLCanvasElement& canvasElement)
-{
-    if (m_canvasEntries.contains(&canvasElement)) {
+    if (findInspectorCanvas(canvasElement)) {
         ASSERT_NOT_REACHED();
         return;
     }
 
-    CanvasEntry newCanvasEntry("canvas:" + IdentifiersFactory::createIdentifier(), &canvasElement);
-    newCanvasEntry.cssCanvasName = m_canvasToCSSCanvasId.take(&canvasElement);
+    ASSERT(!m_canvasToCSSCanvasName.contains(&canvasElement));
+    m_canvasToCSSCanvasName.set(&canvasElement, name);
+}
 
-    m_canvasEntries.set(&canvasElement, newCanvasEntry);
-    canvasElement.addObserver(*this);
-
-    if (!m_enabled)
+void InspectorCanvasAgent::didChangeCSSCanvasClientNodes(HTMLCanvasElement& canvasElement)
+{
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    if (!inspectorCanvas)
         return;
 
-    m_frontendDispatcher->canvasAdded(buildObjectForCanvas(newCanvasEntry, canvasElement));
+    m_frontendDispatcher->cssCanvasClientNodesChanged(inspectorCanvas->identifier());
+}
+
+void InspectorCanvasAgent::didCreateCanvasRenderingContext(HTMLCanvasElement& canvasElement)
+{
+    if (findInspectorCanvas(canvasElement)) {
+        ASSERT_NOT_REACHED();
+        return;
+    }
+
+    canvasElement.addObserver(*this);
+
+    String cssCanvasName = m_canvasToCSSCanvasName.take(&canvasElement);
+    auto inspectorCanvas = InspectorCanvas::create(canvasElement, cssCanvasName);
+
+    if (m_enabled)
+        m_frontendDispatcher->canvasAdded(inspectorCanvas->buildObjectForCanvas(m_instrumentingAgents));
+
+    m_identifierToInspectorCanvas.set(inspectorCanvas->identifier(), WTFMove(inspectorCanvas));
 }
 
 void InspectorCanvasAgent::didChangeCanvasMemory(HTMLCanvasElement& canvasElement)
 {
-    CanvasEntry* canvasEntry = getCanvasEntry(canvasElement);
-    if (!canvasEntry)
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    if (!inspectorCanvas)
         return;
 
-    m_frontendDispatcher->canvasMemoryChanged(canvasEntry->identifier, canvasElement.memoryCost());
+    m_frontendDispatcher->canvasMemoryChanged(inspectorCanvas->identifier(), canvasElement.memoryCost());
+}
+
+void InspectorCanvasAgent::recordCanvasAction(CanvasRenderingContext& canvasRenderingContext, const String& name, Vector<RecordCanvasActionVariant>&& parameters)
+{
+    HTMLCanvasElement& canvasElement = canvasRenderingContext.canvas();
+
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    ASSERT(inspectorCanvas);
+    if (!inspectorCanvas)
+        return;
+
+    ASSERT(canvasRenderingContext.callTracingActive());
+    if (!canvasRenderingContext.callTracingActive())
+        return;
+
+    inspectorCanvas->recordAction(name, WTFMove(parameters));
+
+    if (!m_canvasRecordingTimer.isActive())
+        m_canvasRecordingTimer.startOneShot(0_s);
+
+    if (!inspectorCanvas->hasBufferSpace())
+        didFinishRecordingCanvasFrame(canvasElement, true);
 }
 
 void InspectorCanvasAgent::canvasDestroyed(HTMLCanvasElement& canvasElement)
 {
-    auto it = m_canvasEntries.find(&canvasElement);
-    if (it == m_canvasEntries.end())
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    ASSERT(inspectorCanvas);
+    if (!inspectorCanvas)
         return;
 
-    String canvasIdentifier = it->value.identifier;
-    m_canvasEntries.remove(it);
-
+    String identifier = unbindCanvas(*inspectorCanvas);
     if (!m_enabled)
         return;
 
     // WebCore::CanvasObserver::canvasDestroyed is called in response to the GC destroying the HTMLCanvasElement.
     // Due to the single-process model used in WebKit1, the event must be dispatched from a timer to prevent
     // the frontend from making JS allocations while the GC is still active.
-    m_removedCanvasIdentifiers.append(canvasIdentifier);
+    m_removedCanvasIdentifiers.append(identifier);
 
-    if (!m_timer.isActive())
-        m_timer.startOneShot(0_s);
+    if (!m_canvasDestroyedTimer.isActive())
+        m_canvasDestroyedTimer.startOneShot(0_s);
+}
+
+void InspectorCanvasAgent::didFinishRecordingCanvasFrame(HTMLCanvasElement& canvasElement, bool forceDispatch)
+{
+    auto* inspectorCanvas = findInspectorCanvas(canvasElement);
+    ASSERT(inspectorCanvas);
+    if (!inspectorCanvas)
+        return;
+
+    CanvasRenderingContext* canvasRenderingContext = inspectorCanvas->canvas().renderingContext();
+    ASSERT(canvasRenderingContext->callTracingActive());
+    if (!canvasRenderingContext->callTracingActive())
+        return;
+
+    if (!inspectorCanvas->hasRecordingData())
+        return;
+
+    if (!forceDispatch && !inspectorCanvas->singleFrame()) {
+        inspectorCanvas->markNewFrame();
+        return;
+    }
+
+    if (forceDispatch)
+        inspectorCanvas->markCurrentFrameIncomplete();
+
+    // <https://webkit.org/b/174483> Web Inspector: Record actions performed on WebGLRenderingContext
+
+    Inspector::Protocol::Recording::Type type;
+    if (is<CanvasRenderingContext2D>(canvasRenderingContext))
+        type = Inspector::Protocol::Recording::Type::Canvas2D;
+    else {
+        ASSERT_NOT_REACHED();
+        type = Inspector::Protocol::Recording::Type::Canvas2D;
+    }
+
+    auto recording = Inspector::Protocol::Recording::Recording::create()
+        .setVersion(1)
+        .setType(type)
+        .setInitialState(inspectorCanvas->releaseInitialState())
+        .setFrames(inspectorCanvas->releaseFrames())
+        .setData(inspectorCanvas->releaseData())
+        .release();
+
+    m_frontendDispatcher->recordingFinished(inspectorCanvas->identifier(), WTFMove(recording));
+
+    inspectorCanvas->resetRecordingData();
 }
 
 void InspectorCanvasAgent::canvasDestroyedTimerFired()
@@ -329,111 +422,69 @@ void InspectorCanvasAgent::canvasDestroyedTimerFired()
     if (!m_removedCanvasIdentifiers.size())
         return;
 
-    for (const auto& identifier : m_removedCanvasIdentifiers)
-        m_frontendDispatcher->canvasRemoved(identifier);
+    if (m_enabled) {
+        for (auto& identifier : m_removedCanvasIdentifiers)
+            m_frontendDispatcher->canvasRemoved(identifier);
+    }
 
     m_removedCanvasIdentifiers.clear();
+}
+
+void InspectorCanvasAgent::canvasRecordingTimerFired()
+{
+    for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values()) {
+        if (!inspectorCanvas->canvas().renderingContext()->callTracingActive())
+            continue;
+
+        didFinishRecordingCanvasFrame(inspectorCanvas->canvas());
+    }
 }
 
 void InspectorCanvasAgent::clearCanvasData()
 {
-    for (auto* canvasElement : m_canvasEntries.keys())
-        canvasElement->removeObserver(*this);
+    for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values())
+        inspectorCanvas->canvas().removeObserver(*this);
 
-    m_canvasEntries.clear();
-    m_canvasToCSSCanvasId.clear();
+    m_identifierToInspectorCanvas.clear();
+    m_canvasToCSSCanvasName.clear();
     m_removedCanvasIdentifiers.clear();
 
-    if (m_timer.isActive())
-        m_timer.stop();
+    if (m_canvasRecordingTimer.isActive())
+        m_canvasRecordingTimer.stop();
+
+    if (m_canvasDestroyedTimer.isActive())
+        m_canvasDestroyedTimer.stop();
 }
 
-InspectorCanvasAgent::CanvasEntry* InspectorCanvasAgent::getCanvasEntry(HTMLCanvasElement& canvasElement)
+String InspectorCanvasAgent::unbindCanvas(InspectorCanvas& inspectorCanvas)
 {
-    auto findResult = m_canvasEntries.find(&canvasElement);
-    if (findResult != m_canvasEntries.end())
-        return &findResult->value;
+    ASSERT(!m_canvasToCSSCanvasName.contains(&inspectorCanvas.canvas()));
+
+    String identifier = inspectorCanvas.identifier();
+    m_identifierToInspectorCanvas.remove(identifier);
+
+    return identifier;
+}
+
+InspectorCanvas* InspectorCanvasAgent::assertInspectorCanvas(ErrorString& errorString, const String& identifier)
+{
+    RefPtr<InspectorCanvas> inspectorCanvas = m_identifierToInspectorCanvas.get(identifier);
+    if (!inspectorCanvas) {
+        errorString = ASCIILiteral("No canvas for given identifier.");
+        return nullptr;
+    }
+
+    return inspectorCanvas.get();
+}
+
+InspectorCanvas* InspectorCanvasAgent::findInspectorCanvas(HTMLCanvasElement& canvasElement)
+{
+    for (auto& inspectorCanvas : m_identifierToInspectorCanvas.values()) {
+        if (&inspectorCanvas->canvas() == &canvasElement)
+            return inspectorCanvas.get();
+    }
 
     return nullptr;
-}
-
-InspectorCanvasAgent::CanvasEntry* InspectorCanvasAgent::getCanvasEntry(const String& canvasIdentifier)
-{
-    for (auto& canvasEntry : m_canvasEntries.values()) {
-        if (canvasEntry.identifier == canvasIdentifier)
-            return &canvasEntry;
-    }
-
-    return nullptr;
-}
-
-Ref<Inspector::Protocol::Canvas::Canvas> InspectorCanvasAgent::buildObjectForCanvas(const CanvasEntry& canvasEntry, HTMLCanvasElement& canvasElement)
-{
-    Frame* frame = canvasElement.document().frame();
-    CanvasRenderingContext* context = canvasElement.renderingContext();
-
-    Inspector::Protocol::Canvas::ContextType contextType;
-    if (is<CanvasRenderingContext2D>(context))
-        contextType = Inspector::Protocol::Canvas::ContextType::Canvas2D;
-#if ENABLE(WEBGL)
-    else if (is<WebGLRenderingContext>(context))
-        contextType = Inspector::Protocol::Canvas::ContextType::WebGL;
-#endif
-#if ENABLE(WEBGL2)
-    else if (is<WebGL2RenderingContext>(context))
-        contextType = Inspector::Protocol::Canvas::ContextType::WebGL2;
-#endif
-#if ENABLE(WEBGPU)
-    else if (is<WebGPURenderingContext>(context))
-        contextType = Inspector::Protocol::Canvas::ContextType::WebGPU;
-#endif
-    else {
-        ASSERT_NOT_REACHED();
-        contextType = Inspector::Protocol::Canvas::ContextType::Canvas2D;
-    }
-
-    auto canvas = Inspector::Protocol::Canvas::Canvas::create()
-        .setCanvasId(canvasEntry.identifier)
-        .setFrameId(m_pageAgent->frameId(frame))
-        .setContextType(contextType)
-        .release();
-
-    if (!canvasEntry.cssCanvasName.isEmpty())
-        canvas->setCssCanvasName(canvasEntry.cssCanvasName);
-    else {
-        InspectorDOMAgent* domAgent = m_instrumentingAgents.inspectorDOMAgent();
-        int nodeId = domAgent->boundNodeId(&canvasElement);
-        if (!nodeId) {
-            if (int documentNodeId = domAgent->boundNodeId(&canvasElement.document())) {
-                ErrorString ignored;
-                nodeId = domAgent->pushNodeToFrontend(ignored, documentNodeId, &canvasElement);
-            }
-        }
-
-        if (nodeId)
-            canvas->setNodeId(nodeId);
-    }
-
-#if ENABLE(WEBGL)
-    if (is<WebGLRenderingContextBase>(context)) {
-        if (std::optional<WebGLContextAttributes> attributes = downcast<WebGLRenderingContextBase>(context)->getContextAttributes()) {
-            canvas->setContextAttributes(Inspector::Protocol::Canvas::ContextAttributes::create()
-                .setAlpha(attributes->alpha)
-                .setDepth(attributes->depth)
-                .setStencil(attributes->stencil)
-                .setAntialias(attributes->antialias)
-                .setPremultipliedAlpha(attributes->premultipliedAlpha)
-                .setPreserveDrawingBuffer(attributes->preserveDrawingBuffer)
-                .setFailIfMajorPerformanceCaveat(attributes->failIfMajorPerformanceCaveat)
-                .release());
-        }
-    }
-#endif
-
-    if (size_t memoryCost = canvasElement.memoryCost())
-        canvas->setMemoryCost(memoryCost);
-
-    return canvas;
 }
 
 } // namespace WebCore

@@ -867,7 +867,6 @@ webkit.org/b/141084 http/tests/media/video-preload.html [ Pass Timeout ]
 webkit.org/b/141294 compositing/reflections/masked-reflection-on-composited.html [ Pass Crash ]
 webkit.org/b/142152 media/track/track-in-band-cues-added-once.html [ Failure Timeout ]
 webkit.org/b/147944 media/video-seek-to-current-time.html [ Pass Failure ]
-webkit.org/b/114177 media/event-queue-crash.html [ Pass Failure ]
 webkit.org/b/150408 http/tests/media/video-load-suspend.html [ Pass Timeout ]
 webkit.org/b/155956 media/track/track-remove-track.html [ Pass Failure Timeout ]
 webkit.org/b/124222 [ Yosemite ] media/track/track-in-band-duplicate-tracks-when-source-changes.html [ Pass Crash Timeout ]
@@ -1308,8 +1307,10 @@ webkit.org/b/156983 media/video-fullscreen-restriction-removed.html [ Pass Failu
 
 webkit.org/b/156320 fast/regions/inline-block-inside-anonymous-overflow.html [ ImageOnlyFailure ]
 
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-data-url-allowed-by-media-src-star.html [ Pass ImageOnlyFailure ]
+webkit.org/b/155196 security/contentSecurityPolicy/video-with-blob-url-allowed-by-media-src-star.html [ Skip ]
 webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star-with-AllowContentSecurityPolicySourceStarToMatchAnyProtocol-enabled.html [ Pass ImageOnlyFailure ]
-webkit.org/b/155196 security/contentSecurityPolicy/video-with-file-url-allowed-by-media-src-star.html [ Skip ]
 
 webkit.org/b/158101 imported/blink/http/tests/plugins/get-url-notify-on-removal.html [ Pass Timeout ]
 
@@ -1567,18 +1568,26 @@ media/modern-media-controls/mute-button [ Pass ]
 media/modern-media-controls/mute-support [ Pass ]
 media/modern-media-controls/pip-button [ Pass ]
 media/modern-media-controls/pip-placard [ Pass ]
+media/modern-media-controls/pip-support [ Pass ]
 media/modern-media-controls/placard [ Pass ]
 media/modern-media-controls/placard-support [ Pass ]
 media/modern-media-controls/play-pause-button [ Pass ]
+media/modern-media-controls/playback-support [ Pass ]
 media/modern-media-controls/rewind-button [ Pass ]
 media/modern-media-controls/scheduler [ Pass ]
 media/modern-media-controls/scrubber [ Pass ]
+media/modern-media-controls/scrubber-support [ Pass ]
+media/modern-media-controls/seek-backward-support [ Pass ]
+media/modern-media-controls/seek-forward-support [ Pass ]
 media/modern-media-controls/skip-back-button [ Pass ]
 media/modern-media-controls/skip-forward-button [ Pass ]
 media/modern-media-controls/slider [ Pass ]
 media/modern-media-controls/status-label [ Pass ]
+media/modern-media-controls/status-support [ Pass ]
 media/modern-media-controls/time-control [ Pass ]
 media/modern-media-controls/time-label [ Pass ]
+media/modern-media-controls/time-label/ios-time-label.html [ Skip ]
+media/modern-media-controls/time-labels-support [ Pass ]
 media/modern-media-controls/tracks-panel/tracks-panel-up-click-outside-media-does-not-dimiss-media-controls-when-media-is-paused.html [ Pass ]
 media/modern-media-controls/tracks-panel/tracks-panel-up-click-over-media-does-not-dimiss-media-controls-when-media-is-playing.html [ Pass ]
 media/modern-media-controls/tracks-button [ Pass ]
@@ -1590,9 +1599,16 @@ media/modern-media-controls/placard-support/ipad [ Skip ]
 media/modern-media-controls/media-documents/ipad [ Skip ]
 media/modern-media-controls/media-documents/media-document-audio-ios-sizing.html [ Skip ]
 media/modern-media-controls/media-documents/media-document-video-ios-sizing.html [ Skip ]
+media/modern-media-controls/scrubber-support/ipad [ Skip ]
+
+# This test relies on the control overlay not being visible in the top left. But the test now fails on Mac because
+# the image is dumped after the video is loaded and the control overlay is displayed. It seems the test still works
+# on iOS, and the bug it was created to regression-test was iOS-only, so there is no hurry to make it work on Mac.
+media/modern-media-controls/media-documents/background-color-and-centering.html [ Pass ImageOnlyFailure ]
 
 # These tests use Picture-in-Picture which isn't supported on El Capitan.
 [ ElCapitan ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+media/modern-media-controls/pip-support/ipad [ Skip ]
 
 webkit.org/b/170907 [ Debug ] imported/w3c/web-platform-tests/WebCryptoAPI/derive_bits_keys/hkdf.worker.html [ Pass Failure Timeout ]
 
@@ -1608,4 +1624,6 @@ webkit.org/b/313156 [ ElCapitan ] fast/text/system-font-japanese-synthetic-itali
 webkit.org/b/173565 [ ElCapitan Release ] media/media-source/media-source-paint-to-canvas.html [ Pass Failure ]
 
 webkit.org/b/173068 imported/w3c/web-platform-tests/IndexedDB/idbobjectstore_getKey.html [ Pass Failure ]
+
+webkit.org/b/174682 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Pass Failure ]
 

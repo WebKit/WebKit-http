@@ -25,7 +25,6 @@
 
 #include "AttributeChangeInvalidation.h"
 #include "Event.h"
-#include "ExceptionCode.h"
 #include "NoEventDispatchAssertion.h"
 #include "ScopedEventQueue.h"
 #include "StyleProperties.h"
@@ -75,7 +74,7 @@ ExceptionOr<void> Attr::setPrefix(const AtomicString& prefix)
         return result.releaseException();
 
     if ((prefix == xmlnsAtom() && namespaceURI() != XMLNSNames::xmlnsNamespaceURI) || qualifiedName() == xmlnsAtom())
-        return Exception { NAMESPACE_ERR };
+        return Exception { NamespaceError };
 
     const AtomicString& newPrefix = prefix.isEmpty() ? nullAtom() : prefix;
     if (m_element)

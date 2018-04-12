@@ -24,6 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
+
 from linux_browser_driver import LinuxBrowserDriver
 
 
@@ -35,3 +37,19 @@ class LinuxChromeDriver(LinuxBrowserDriver):
         self._browser_arguments = ['--temp-profile', '--start-maximized',
                                    '--homepage', url]
         super(LinuxChromeDriver, self).launch_url(url, options, browser_build_path)
+
+    def launch_driver(self, url, options, browser_build_path):
+        from webkitpy.thirdparty.autoinstalled.selenium.webdriver.chrome.options import Options
+        options = Options()
+        options.add_argument("--disable-web-security")
+        options.add_argument("--user-data-dir")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--start-maximized")
+        if browser_build_path:
+            binary_path = os.path.join(browser_build_path, 'chromium-browser')
+            options.binary_location = binary_path
+        driver_executable = self.webdriver_binary_path
+        from webkitpy.thirdparty.autoinstalled.selenium import webdriver
+        driver = webdriver.Chrome(chrome_options=options, executable_path=driver_executable)
+        super(LinuxChromeDriver, self).launch_webdriver(url, driver)
+        return driver

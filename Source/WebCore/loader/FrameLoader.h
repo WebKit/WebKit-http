@@ -66,7 +66,6 @@ class FrameLoaderClient;
 class FrameNetworkingContext;
 class HistoryController;
 class HistoryItem;
-class IconController;
 class NavigationAction;
 class NetworkingContext;
 class Page;
@@ -101,7 +100,6 @@ public:
     HistoryController& history() const { return *m_history; }
     ResourceLoadNotifier& notifier() const { return m_notifier; }
     SubframeLoader& subframeLoader() const { return *m_subframeLoader; }
-    IconController& icon() const { return *m_icon; }
     MixedContentChecker& mixedContentChecker() const { return m_mixedContentChecker; }
 
     void setupForReplace();
@@ -263,6 +261,7 @@ public:
     bool allAncestorsAreComplete() const; // including this
     void clientRedirected(const URL&, double delay, double fireDate, LockBackForwardList);
     void clientRedirectCancelledOrFinished(bool cancelWithLoadInProgress);
+    void performClientRedirect(FrameLoadRequest&&);
 
     // FIXME: This is public because this asynchronous callback from the FrameLoaderClient
     // uses the policy machinery (and therefore is called via the PolicyChecker).  Once we
@@ -396,7 +395,6 @@ private:
     mutable ResourceLoadNotifier m_notifier;
     const std::unique_ptr<SubframeLoader> m_subframeLoader;
     mutable FrameLoaderStateMachine m_stateMachine;
-    const std::unique_ptr<IconController> m_icon;
     mutable MixedContentChecker m_mixedContentChecker;
 
     class FrameProgressTracker;

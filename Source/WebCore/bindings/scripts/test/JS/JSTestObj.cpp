@@ -21,6 +21,7 @@
 #include "config.h"
 #include "JSTestObj.h"
 
+#include "DOMWindow.h"
 #include "Document.h"
 #include "EventNames.h"
 #include "Frame.h"
@@ -113,7 +114,7 @@ namespace WebCore {
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumType enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         emptyString(),
         MAKE_STATIC_STRING_IMPL("enumValue1"),
         MAKE_STATIC_STRING_IMPL("EnumValue2"),
@@ -148,7 +149,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumType>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Optional enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         emptyString(),
         MAKE_STATIC_STRING_IMPL("OptionalValue1"),
         MAKE_STATIC_STRING_IMPL("OptionalValue2"),
@@ -183,7 +184,7 @@ template<> const char* expectedEnumerationValues<TestObj::Optional>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, AlternateEnumName enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("enumValue1"),
         MAKE_STATIC_STRING_IMPL("EnumValue2"),
     };
@@ -212,7 +213,7 @@ template<> const char* expectedEnumerationValues<AlternateEnumName>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumA enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("A"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumA::A) == 0, "TestObj::EnumA::A is not 0 as expected");
@@ -239,7 +240,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumA>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumB enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("B"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumB::B) == 0, "TestObj::EnumB::B is not 0 as expected");
@@ -266,7 +267,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumB>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::EnumC enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("C"),
     };
     static_assert(static_cast<size_t>(TestObj::EnumC::C) == 0, "TestObj::EnumC::C is not 0 as expected");
@@ -291,7 +292,7 @@ template<> const char* expectedEnumerationValues<TestObj::EnumC>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Kind enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("quick"),
         MAKE_STATIC_STRING_IMPL("dead"),
     };
@@ -318,7 +319,7 @@ template<> const char* expectedEnumerationValues<TestObj::Kind>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Size enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("small"),
         MAKE_STATIC_STRING_IMPL("much-much-larger"),
     };
@@ -345,7 +346,7 @@ template<> const char* expectedEnumerationValues<TestObj::Size>()
 
 template<> JSString* convertEnumerationToJS(ExecState& state, TestObj::Confidence enumerationValue)
 {
-    static NeverDestroyed<const String> values[] = {
+    static const NeverDestroyed<String> values[] = {
         MAKE_STATIC_STRING_IMPL("high"),
         MAKE_STATIC_STRING_IMPL("kinda-low"),
     };
@@ -1421,7 +1422,7 @@ static const struct CompactHashIndex JSTestObjTableIndex[17] = {
 static const HashTableValue JSTestObjTableValues[] =
 {
     { "TestSubObjEnabledBySetting", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestSubObjEnabledBySettingConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestSubObjEnabledBySettingConstructor) } },
-    { "unforgeableAttr", DontDelete | ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnforgeableAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "unforgeableAttr", DontDelete | ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnforgeableAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 #if ENABLE(Condition1)
     { "conditionalAttr4", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr4Constructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr4Constructor) } },
 #else
@@ -1440,7 +1441,7 @@ static const HashTableValue JSTestObjTableValues[] =
     { "unforgeableMethod", DontDelete | ReadOnly | JSC::Function, NoIntrinsic, { (intptr_t)static_cast<NativeFunction>(jsTestObjInstanceFunctionUnforgeableMethod), (intptr_t) (0) } },
 };
 
-static const HashTable JSTestObjTable = { 6, 15, true, JSTestObjTableValues, JSTestObjTableIndex };
+static const HashTable JSTestObjTable = { 6, 15, true, JSTestObj::info(), JSTestObjTableValues, JSTestObjTableIndex };
 /* Hash table for constructor */
 
 static const HashTableValue JSTestObjConstructorTableValues[] =
@@ -1530,7 +1531,7 @@ template<> void JSTestObjConstructor::initializeProperties(VM& vm, JSDOMGlobalOb
     putDirect(vm, vm.propertyNames->prototype, JSTestObj::prototype(vm, globalObject), DontDelete | ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->name, jsNontrivialString(&vm, String(ASCIILiteral("TestObject"))), ReadOnly | DontEnum);
     putDirect(vm, vm.propertyNames->length, jsNumber(2), ReadOnly | DontEnum);
-    reifyStaticProperties(vm, JSTestObjConstructorTableValues, *this);
+    reifyStaticProperties(vm, JSTestObj::info(), JSTestObjConstructorTableValues, *this);
 }
 
 template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestObjConstructor) };
@@ -1540,66 +1541,66 @@ template<> const ClassInfo JSTestObjConstructor::s_info = { "TestObject", &Base:
 static const HashTableValue JSTestObjPrototypeTableValues[] =
 {
     { "constructor", DontEnum, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConstructor), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConstructor) } },
-    { "readOnlyLongAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "readOnlyStringAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "readOnlyTestObjAttr", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "enumAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnumAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnumAttr) } },
-    { "byteAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteAttr) } },
-    { "octetAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOctetAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOctetAttr) } },
-    { "shortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjShortAttr) } },
-    { "clampedShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjClampedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjClampedShortAttr) } },
-    { "enforceRangeShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnforceRangeShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnforceRangeShortAttr) } },
-    { "unsignedShortAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedShortAttr) } },
-    { "longAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongAttr) } },
-    { "longLongAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongLongAttr) } },
-    { "unsignedLongLongAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedLongLongAttr) } },
-    { "stringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttr) } },
-    { "usvstringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttr) } },
-    { "testObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestObjAttr) } },
-    { "testNullableObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestNullableObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestNullableObjAttr) } },
+    { "readOnlyLongAttr", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "readOnlyStringAttr", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "readOnlyTestObjAttr", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReadOnlyTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "enumAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnumAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnumAttr) } },
+    { "byteAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteAttr) } },
+    { "octetAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOctetAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOctetAttr) } },
+    { "shortAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjShortAttr) } },
+    { "clampedShortAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjClampedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjClampedShortAttr) } },
+    { "enforceRangeShortAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnforceRangeShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnforceRangeShortAttr) } },
+    { "unsignedShortAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedShortAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedShortAttr) } },
+    { "longAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongAttr) } },
+    { "longLongAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLongLongAttr) } },
+    { "unsignedLongLongAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUnsignedLongLongAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUnsignedLongLongAttr) } },
+    { "stringAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttr) } },
+    { "usvstringAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttr) } },
+    { "testObjAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestObjAttr) } },
+    { "testNullableObjAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTestNullableObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTestNullableObjAttr) } },
     { "lenientTestObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjLenientTestObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjLenientTestObjAttr) } },
-    { "stringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrTreatingNullAsEmptyString) } },
-    { "usvstringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttrTreatingNullAsEmptyString) } },
-    { "byteStringAttrTreatingNullAsEmptyString", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteStringAttrTreatingNullAsEmptyString) } },
-    { "stringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringLongRecordAttr) } },
-    { "usvstringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
-    { "usvstringLongRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
-    { "stringObjRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringObjRecordAttr) } },
-    { "stringNullableObjRecordAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringNullableObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringNullableObjRecordAttr) } },
-    { "dictionaryAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjDictionaryAttr) } },
-    { "nullableDictionaryAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableDictionaryAttr) } },
-    { "annotatedTypeInUnionAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInUnionAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInUnionAttr) } },
-    { "annotatedTypeInSequenceAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInSequenceAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInSequenceAttr) } },
-    { "implementationEnumAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImplementationEnumAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjImplementationEnumAttr) } },
-    { "XMLObjAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjXMLObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjXMLObjAttr) } },
-    { "create", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCreate), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCreate) } },
-    { "reflectedStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
-    { "reflectedUSVStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVStringAttr) } },
-    { "reflectedIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedIntegralAttr) } },
-    { "reflectedUnsignedIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUnsignedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUnsignedIntegralAttr) } },
-    { "reflectedBooleanAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedBooleanAttr) } },
-    { "reflectedURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedURLAttr) } },
-    { "reflectedUSVURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVURLAttr) } },
-    { "reflectedStringAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
-    { "reflectedCustomIntegralAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomIntegralAttr) } },
-    { "reflectedCustomBooleanAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomBooleanAttr) } },
-    { "reflectedCustomURLAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomURLAttr) } },
+    { "stringAttrTreatingNullAsEmptyString", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrTreatingNullAsEmptyString) } },
+    { "usvstringAttrTreatingNullAsEmptyString", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringAttrTreatingNullAsEmptyString) } },
+    { "byteStringAttrTreatingNullAsEmptyString", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjByteStringAttrTreatingNullAsEmptyString), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjByteStringAttrTreatingNullAsEmptyString) } },
+    { "stringLongRecordAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringLongRecordAttr) } },
+    { "usvstringLongRecordAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
+    { "usvstringLongRecordAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjUsvstringLongRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjUsvstringLongRecordAttr) } },
+    { "stringObjRecordAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringObjRecordAttr) } },
+    { "stringNullableObjRecordAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringNullableObjRecordAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringNullableObjRecordAttr) } },
+    { "dictionaryAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjDictionaryAttr) } },
+    { "nullableDictionaryAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableDictionaryAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableDictionaryAttr) } },
+    { "annotatedTypeInUnionAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInUnionAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInUnionAttr) } },
+    { "annotatedTypeInSequenceAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnnotatedTypeInSequenceAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnnotatedTypeInSequenceAttr) } },
+    { "implementationEnumAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjImplementationEnumAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjImplementationEnumAttr) } },
+    { "XMLObjAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjXMLObjAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjXMLObjAttr) } },
+    { "create", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCreate), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCreate) } },
+    { "reflectedStringAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
+    { "reflectedUSVStringAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVStringAttr) } },
+    { "reflectedIntegralAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedIntegralAttr) } },
+    { "reflectedUnsignedIntegralAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUnsignedIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUnsignedIntegralAttr) } },
+    { "reflectedBooleanAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedBooleanAttr) } },
+    { "reflectedURLAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedURLAttr) } },
+    { "reflectedUSVURLAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedUSVURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedUSVURLAttr) } },
+    { "reflectedStringAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedStringAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedStringAttr) } },
+    { "reflectedCustomIntegralAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomIntegralAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomIntegralAttr) } },
+    { "reflectedCustomBooleanAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomBooleanAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomBooleanAttr) } },
+    { "reflectedCustomURLAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReflectedCustomURLAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReflectedCustomURLAttr) } },
 #if ENABLE(TEST_FEATURE)
-    { "enabledAtRuntimeAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledAtRuntimeAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledAtRuntimeAttribute) } },
+    { "enabledAtRuntimeAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledAtRuntimeAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledAtRuntimeAttribute) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
 #if ENABLE(TEST_FEATURE)
-    { "enabledBySettingAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledBySettingAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledBySettingAttribute) } },
+    { "enabledBySettingAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjEnabledBySettingAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjEnabledBySettingAttribute) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "typedArrayAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTypedArrayAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTypedArrayAttr) } },
-    { "attributeWithGetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithGetterException) } },
-    { "attributeWithSetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithSetterException) } },
-    { "stringAttrWithGetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithGetterException) } },
-    { "stringAttrWithSetterException", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithSetterException) } },
-    { "customAttr", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCustomAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCustomAttr) } },
+    { "typedArrayAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjTypedArrayAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjTypedArrayAttr) } },
+    { "attributeWithGetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithGetterException) } },
+    { "attributeWithSetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithSetterException) } },
+    { "stringAttrWithGetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithGetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithGetterException) } },
+    { "stringAttrWithSetterException", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringAttrWithSetterException), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringAttrWithSetterException) } },
+    { "customAttr", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCustomAttr), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjCustomAttr) } },
 #if ENABLE(Condition4)
     { "jsBuiltinAttribute", Accessor | Builtin, NoIntrinsic, { (intptr_t)static_cast<BuiltinGenerator>(testObjJsBuiltinAttributeCodeGenerator), (intptr_t) (setTestObjJsBuiltinAttributeCodeGenerator) } },
 #else
@@ -1610,66 +1611,66 @@ static const HashTableValue JSTestObjPrototypeTableValues[] =
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "onfoo", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnfoo) } },
-    { "onwebkitfoo", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnwebkitfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnwebkitfoo) } },
-    { "withScriptStateAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptStateAttribute) } },
-    { "withCallWithAndSetterCallWithAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithCallWithAndSetterCallWithAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithCallWithAndSetterCallWithAttribute) } },
-    { "withScriptExecutionContextAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAttribute) } },
-    { "withScriptStateAttributeRaises", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptStateAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptStateAttributeRaises) } },
-    { "withScriptExecutionContextAttributeRaises", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAttributeRaises) } },
-    { "withScriptExecutionContextAndScriptStateAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttribute) } },
-    { "withScriptExecutionContextAndScriptStateAttributeRaises", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises) } },
-    { "withScriptExecutionContextAndScriptStateWithSpacesAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute) } },
+    { "onfoo", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnfoo) } },
+    { "onwebkitfoo", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjOnwebkitfoo), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjOnwebkitfoo) } },
+    { "withScriptStateAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptStateAttribute) } },
+    { "withCallWithAndSetterCallWithAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithCallWithAndSetterCallWithAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithCallWithAndSetterCallWithAttribute) } },
+    { "withScriptExecutionContextAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAttribute) } },
+    { "withScriptStateAttributeRaises", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptStateAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptStateAttributeRaises) } },
+    { "withScriptExecutionContextAttributeRaises", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAttributeRaises) } },
+    { "withScriptExecutionContextAndScriptStateAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttribute) } },
+    { "withScriptExecutionContextAndScriptStateAttributeRaises", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaises) } },
+    { "withScriptExecutionContextAndScriptStateWithSpacesAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute) } },
 #if ENABLE(Condition1)
-    { "conditionalAttr1", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr1) } },
+    { "conditionalAttr1", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr1) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
 #if ENABLE(Condition1) && ENABLE(Condition2)
-    { "conditionalAttr2", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr2) } },
+    { "conditionalAttr2", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr2) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
 #if ENABLE(Condition1) || ENABLE(Condition2)
-    { "conditionalAttr3", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr3), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr3) } },
+    { "conditionalAttr3", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAttr3), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAttr3) } },
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
 #endif
-    { "cachedAttribute1", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "cachedAttribute2", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "anyAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnyAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnyAttribute) } },
-    { "objectAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjObjectAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjObjectAttribute) } },
-    { "contentDocument", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "mutablePoint", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjMutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjMutablePoint) } },
-    { "strawberry", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStrawberry), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStrawberry) } },
-    { "description", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDescription), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "id", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjId), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjId) } },
-    { "hash", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjHash), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "replaceableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReplaceableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReplaceableAttribute) } },
-    { "nullableDoubleAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableDoubleAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "nullableLongAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableLongAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "nullableBooleanAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableBooleanAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "nullableStringAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "nullableLongSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableLongSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableLongSettableAttribute) } },
-    { "nullableStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringSettableAttribute) } },
-    { "nullableUSVStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableUSVStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableUSVStringSettableAttribute) } },
-    { "nullableByteStringSettableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableByteStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableByteStringSettableAttribute) } },
-    { "nullableStringValue", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringValue), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringValue) } },
-    { "attribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
-    { "attributeWithReservedEnumType", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithReservedEnumType), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithReservedEnumType) } },
-    { "putForwardsAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsAttribute) } },
-    { "putForwardsNullableAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsNullableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsNullableAttribute) } },
-    { "stringifierAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringifierAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringifierAttribute) } },
+    { "cachedAttribute1", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute1), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "cachedAttribute2", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjCachedAttribute2), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "anyAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAnyAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAnyAttribute) } },
+    { "objectAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjObjectAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjObjectAttribute) } },
+    { "contentDocument", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjContentDocument), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "mutablePoint", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjMutablePoint), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjMutablePoint) } },
+    { "strawberry", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStrawberry), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStrawberry) } },
+    { "description", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjDescription), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "id", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjId), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjId) } },
+    { "hash", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjHash), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "replaceableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjReplaceableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjReplaceableAttribute) } },
+    { "nullableDoubleAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableDoubleAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "nullableLongAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableLongAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "nullableBooleanAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableBooleanAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "nullableStringAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "nullableLongSettableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableLongSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableLongSettableAttribute) } },
+    { "nullableStringSettableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringSettableAttribute) } },
+    { "nullableUSVStringSettableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableUSVStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableUSVStringSettableAttribute) } },
+    { "nullableByteStringSettableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableByteStringSettableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableByteStringSettableAttribute) } },
+    { "nullableStringValue", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjNullableStringValue), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjNullableStringValue) } },
+    { "attribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "attributeWithReservedEnumType", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjAttributeWithReservedEnumType), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjAttributeWithReservedEnumType) } },
+    { "putForwardsAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsAttribute) } },
+    { "putForwardsNullableAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjPutForwardsNullableAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjPutForwardsNullableAttribute) } },
+    { "stringifierAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjStringifierAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjStringifierAttribute) } },
 #if ENABLE(CONDITION)
-    { "conditionallyReadWriteAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyReadWriteAttribute) } },
+    { "conditionallyReadWriteAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionallyReadWriteAttribute) } },
 #else
-    { "conditionallyReadWriteAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "conditionallyReadWriteAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 #endif
 #if ENABLE(CONDITION2)
 #if ENABLE(CONDITION)
-    { "conditionalAndConditionallyReadWriteAttribute", CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAndConditionallyReadWriteAttribute) } },
+    { "conditionalAndConditionallyReadWriteAttribute", CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(setJSTestObjConditionalAndConditionallyReadWriteAttribute) } },
 #else
-    { "conditionalAndConditionallyReadWriteAttribute", ReadOnly | CustomAccessor, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
+    { "conditionalAndConditionallyReadWriteAttribute", ReadOnly | CustomAccessor | DOMAttribute, NoIntrinsic, { (intptr_t)static_cast<PropertySlot::GetValueFunc>(jsTestObjConditionalAndConditionallyReadWriteAttribute), (intptr_t) static_cast<PutPropertySlot::PutValueFunc>(0) } },
 #endif
 #else
     { 0, 0, NoIntrinsic, { 0, 0 } },
@@ -1876,7 +1877,7 @@ const ClassInfo JSTestObjPrototype::s_info = { "TestObjectPrototype", &Base::s_i
 void JSTestObjPrototype::finishCreation(VM& vm, JSDOMGlobalObject& globalObject)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestObjPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestObj::info(), JSTestObjPrototypeTableValues, *this);
 #if ENABLE(TEST_FEATURE)
     if (!RuntimeEnabledFeatures::sharedFeatures().testFeatureEnabled()) {
         auto propertyName = Identifier::fromString(&vm, reinterpret_cast<const LChar*>("enabledAtRuntimeOperation"), strlen("enabledAtRuntimeOperation"));
@@ -2123,7 +2124,7 @@ static inline JSValue jsTestObjReadOnlyLongAttrGetter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjReadOnlyLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyLongAttrGetter>(*state, thisValue, "readOnlyLongAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyLongAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "readOnlyLongAttr");
 }
 
 static inline JSValue jsTestObjReadOnlyStringAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -2137,7 +2138,7 @@ static inline JSValue jsTestObjReadOnlyStringAttrGetter(ExecState& state, JSTest
 
 EncodedJSValue jsTestObjReadOnlyStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyStringAttrGetter>(*state, thisValue, "readOnlyStringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyStringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "readOnlyStringAttr");
 }
 
 static inline JSValue jsTestObjReadOnlyTestObjAttrGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -2151,7 +2152,7 @@ static inline JSValue jsTestObjReadOnlyTestObjAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjReadOnlyTestObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyTestObjAttrGetter>(*state, thisValue, "readOnlyTestObjAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReadOnlyTestObjAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "readOnlyTestObjAttr");
 }
 
 static inline JSValue jsTestObjConstructorStaticReadOnlyLongAttrGetter(ExecState& state, ThrowScope& throwScope)
@@ -2248,7 +2249,7 @@ static inline JSValue jsTestObjEnumAttrGetter(ExecState& state, JSTestObj& thisO
 
 EncodedJSValue jsTestObjEnumAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjEnumAttrGetter>(*state, thisValue, "enumAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnumAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "enumAttr");
 }
 
 static inline bool setJSTestObjEnumAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2281,7 +2282,7 @@ static inline JSValue jsTestObjByteAttrGetter(ExecState& state, JSTestObj& thisO
 
 EncodedJSValue jsTestObjByteAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjByteAttrGetter>(*state, thisValue, "byteAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjByteAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "byteAttr");
 }
 
 static inline bool setJSTestObjByteAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2311,7 +2312,7 @@ static inline JSValue jsTestObjOctetAttrGetter(ExecState& state, JSTestObj& this
 
 EncodedJSValue jsTestObjOctetAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjOctetAttrGetter>(*state, thisValue, "octetAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjOctetAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "octetAttr");
 }
 
 static inline bool setJSTestObjOctetAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2341,7 +2342,7 @@ static inline JSValue jsTestObjShortAttrGetter(ExecState& state, JSTestObj& this
 
 EncodedJSValue jsTestObjShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjShortAttrGetter>(*state, thisValue, "shortAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjShortAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "shortAttr");
 }
 
 static inline bool setJSTestObjShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2371,7 +2372,7 @@ static inline JSValue jsTestObjClampedShortAttrGetter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjClampedShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjClampedShortAttrGetter>(*state, thisValue, "clampedShortAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjClampedShortAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "clampedShortAttr");
 }
 
 static inline bool setJSTestObjClampedShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2401,7 +2402,7 @@ static inline JSValue jsTestObjEnforceRangeShortAttrGetter(ExecState& state, JST
 
 EncodedJSValue jsTestObjEnforceRangeShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjEnforceRangeShortAttrGetter>(*state, thisValue, "enforceRangeShortAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnforceRangeShortAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "enforceRangeShortAttr");
 }
 
 static inline bool setJSTestObjEnforceRangeShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2431,7 +2432,7 @@ static inline JSValue jsTestObjUnsignedShortAttrGetter(ExecState& state, JSTestO
 
 EncodedJSValue jsTestObjUnsignedShortAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedShortAttrGetter>(*state, thisValue, "unsignedShortAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedShortAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "unsignedShortAttr");
 }
 
 static inline bool setJSTestObjUnsignedShortAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2461,7 +2462,7 @@ static inline JSValue jsTestObjLongAttrGetter(ExecState& state, JSTestObj& thisO
 
 EncodedJSValue jsTestObjLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjLongAttrGetter>(*state, thisValue, "longAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjLongAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "longAttr");
 }
 
 static inline bool setJSTestObjLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2491,7 +2492,7 @@ static inline JSValue jsTestObjLongLongAttrGetter(ExecState& state, JSTestObj& t
 
 EncodedJSValue jsTestObjLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjLongLongAttrGetter>(*state, thisValue, "longLongAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjLongLongAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "longLongAttr");
 }
 
 static inline bool setJSTestObjLongLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2521,7 +2522,7 @@ static inline JSValue jsTestObjUnsignedLongLongAttrGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjUnsignedLongLongAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedLongLongAttrGetter>(*state, thisValue, "unsignedLongLongAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnsignedLongLongAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "unsignedLongLongAttr");
 }
 
 static inline bool setJSTestObjUnsignedLongLongAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2551,7 +2552,7 @@ static inline JSValue jsTestObjStringAttrGetter(ExecState& state, JSTestObj& thi
 
 EncodedJSValue jsTestObjStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrGetter>(*state, thisValue, "stringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringAttr");
 }
 
 static inline bool setJSTestObjStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2581,7 +2582,7 @@ static inline JSValue jsTestObjUsvstringAttrGetter(ExecState& state, JSTestObj& 
 
 EncodedJSValue jsTestObjUsvstringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrGetter>(*state, thisValue, "usvstringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "usvstringAttr");
 }
 
 static inline bool setJSTestObjUsvstringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2611,7 +2612,7 @@ static inline JSValue jsTestObjTestObjAttrGetter(ExecState& state, JSTestObj& th
 
 EncodedJSValue jsTestObjTestObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjTestObjAttrGetter>(*state, thisValue, "testObjAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjTestObjAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "testObjAttr");
 }
 
 static inline bool setJSTestObjTestObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2641,7 +2642,7 @@ static inline JSValue jsTestObjTestNullableObjAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjTestNullableObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjTestNullableObjAttrGetter>(*state, thisValue, "testNullableObjAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjTestNullableObjAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "testNullableObjAttr");
 }
 
 static inline bool setJSTestObjTestNullableObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2701,7 +2702,7 @@ static inline JSValue jsTestObjUnforgeableAttrGetter(ExecState& state, JSTestObj
 
 EncodedJSValue jsTestObjUnforgeableAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUnforgeableAttrGetter>(*state, thisValue, "unforgeableAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUnforgeableAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "unforgeableAttr");
 }
 
 static inline JSValue jsTestObjStringAttrTreatingNullAsEmptyStringGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -2715,7 +2716,7 @@ static inline JSValue jsTestObjStringAttrTreatingNullAsEmptyStringGetter(ExecSta
 
 EncodedJSValue jsTestObjStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "stringAttrTreatingNullAsEmptyString");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrTreatingNullAsEmptyStringGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringAttrTreatingNullAsEmptyString");
 }
 
 static inline bool setJSTestObjStringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2745,7 +2746,7 @@ static inline JSValue jsTestObjUsvstringAttrTreatingNullAsEmptyStringGetter(Exec
 
 EncodedJSValue jsTestObjUsvstringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "usvstringAttrTreatingNullAsEmptyString");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringAttrTreatingNullAsEmptyStringGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "usvstringAttrTreatingNullAsEmptyString");
 }
 
 static inline bool setJSTestObjUsvstringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2775,7 +2776,7 @@ static inline JSValue jsTestObjByteStringAttrTreatingNullAsEmptyStringGetter(Exe
 
 EncodedJSValue jsTestObjByteStringAttrTreatingNullAsEmptyString(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjByteStringAttrTreatingNullAsEmptyStringGetter>(*state, thisValue, "byteStringAttrTreatingNullAsEmptyString");
+    return IDLAttribute<JSTestObj>::get<jsTestObjByteStringAttrTreatingNullAsEmptyStringGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "byteStringAttrTreatingNullAsEmptyString");
 }
 
 static inline bool setJSTestObjByteStringAttrTreatingNullAsEmptyStringSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2805,7 +2806,7 @@ static inline JSValue jsTestObjStringLongRecordAttrGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjStringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringLongRecordAttrGetter>(*state, thisValue, "stringLongRecordAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringLongRecordAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringLongRecordAttr");
 }
 
 static inline bool setJSTestObjStringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2835,7 +2836,7 @@ static inline JSValue jsTestObjUsvstringLongRecordAttrGetter(ExecState& state, J
 
 EncodedJSValue jsTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter>(*state, thisValue, "usvstringLongRecordAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "usvstringLongRecordAttr");
 }
 
 static inline bool setJSTestObjUsvstringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2865,7 +2866,7 @@ static inline JSValue jsTestObjUsvstringLongRecordAttrGetter(ExecState& state, J
 
 EncodedJSValue jsTestObjUsvstringLongRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter>(*state, thisValue, "usvstringLongRecordAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjUsvstringLongRecordAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "usvstringLongRecordAttr");
 }
 
 static inline bool setJSTestObjUsvstringLongRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2895,7 +2896,7 @@ static inline JSValue jsTestObjStringObjRecordAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjStringObjRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringObjRecordAttrGetter>(*state, thisValue, "stringObjRecordAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringObjRecordAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringObjRecordAttr");
 }
 
 static inline bool setJSTestObjStringObjRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2925,7 +2926,7 @@ static inline JSValue jsTestObjStringNullableObjRecordAttrGetter(ExecState& stat
 
 EncodedJSValue jsTestObjStringNullableObjRecordAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringNullableObjRecordAttrGetter>(*state, thisValue, "stringNullableObjRecordAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringNullableObjRecordAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringNullableObjRecordAttr");
 }
 
 static inline bool setJSTestObjStringNullableObjRecordAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2955,7 +2956,7 @@ static inline JSValue jsTestObjDictionaryAttrGetter(ExecState& state, JSTestObj&
 
 EncodedJSValue jsTestObjDictionaryAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjDictionaryAttrGetter>(*state, thisValue, "dictionaryAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjDictionaryAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "dictionaryAttr");
 }
 
 static inline bool setJSTestObjDictionaryAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -2985,7 +2986,7 @@ static inline JSValue jsTestObjNullableDictionaryAttrGetter(ExecState& state, JS
 
 EncodedJSValue jsTestObjNullableDictionaryAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDictionaryAttrGetter>(*state, thisValue, "nullableDictionaryAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDictionaryAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableDictionaryAttr");
 }
 
 static inline bool setJSTestObjNullableDictionaryAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3015,7 +3016,7 @@ static inline JSValue jsTestObjAnnotatedTypeInUnionAttrGetter(ExecState& state, 
 
 EncodedJSValue jsTestObjAnnotatedTypeInUnionAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInUnionAttrGetter>(*state, thisValue, "annotatedTypeInUnionAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInUnionAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "annotatedTypeInUnionAttr");
 }
 
 static inline bool setJSTestObjAnnotatedTypeInUnionAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3045,7 +3046,7 @@ static inline JSValue jsTestObjAnnotatedTypeInSequenceAttrGetter(ExecState& stat
 
 EncodedJSValue jsTestObjAnnotatedTypeInSequenceAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInSequenceAttrGetter>(*state, thisValue, "annotatedTypeInSequenceAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnnotatedTypeInSequenceAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "annotatedTypeInSequenceAttr");
 }
 
 static inline bool setJSTestObjAnnotatedTypeInSequenceAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3075,7 +3076,7 @@ static inline JSValue jsTestObjImplementationEnumAttrGetter(ExecState& state, JS
 
 EncodedJSValue jsTestObjImplementationEnumAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjImplementationEnumAttrGetter>(*state, thisValue, "implementationEnumAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjImplementationEnumAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "implementationEnumAttr");
 }
 
 static inline bool setJSTestObjImplementationEnumAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3108,7 +3109,7 @@ static inline JSValue jsTestObjXMLObjAttrGetter(ExecState& state, JSTestObj& thi
 
 EncodedJSValue jsTestObjXMLObjAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjXMLObjAttrGetter>(*state, thisValue, "XMLObjAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjXMLObjAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "XMLObjAttr");
 }
 
 static inline bool setJSTestObjXMLObjAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3138,7 +3139,7 @@ static inline JSValue jsTestObjCreateGetter(ExecState& state, JSTestObj& thisObj
 
 EncodedJSValue jsTestObjCreate(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjCreateGetter>(*state, thisValue, "create");
+    return IDLAttribute<JSTestObj>::get<jsTestObjCreateGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "create");
 }
 
 static inline bool setJSTestObjCreateSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3168,7 +3169,7 @@ static inline JSValue jsTestObjReflectedStringAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter>(*state, thisValue, "reflectedStringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedStringAttr");
 }
 
 static inline bool setJSTestObjReflectedStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3198,7 +3199,7 @@ static inline JSValue jsTestObjReflectedUSVStringAttrGetter(ExecState& state, JS
 
 EncodedJSValue jsTestObjReflectedUSVStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVStringAttrGetter>(*state, thisValue, "reflectedUSVStringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVStringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedUSVStringAttr");
 }
 
 static inline bool setJSTestObjReflectedUSVStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3228,7 +3229,7 @@ static inline JSValue jsTestObjReflectedIntegralAttrGetter(ExecState& state, JST
 
 EncodedJSValue jsTestObjReflectedIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedIntegralAttrGetter>(*state, thisValue, "reflectedIntegralAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedIntegralAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedIntegralAttr");
 }
 
 static inline bool setJSTestObjReflectedIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3258,7 +3259,7 @@ static inline JSValue jsTestObjReflectedUnsignedIntegralAttrGetter(ExecState& st
 
 EncodedJSValue jsTestObjReflectedUnsignedIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUnsignedIntegralAttrGetter>(*state, thisValue, "reflectedUnsignedIntegralAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUnsignedIntegralAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedUnsignedIntegralAttr");
 }
 
 static inline bool setJSTestObjReflectedUnsignedIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3288,7 +3289,7 @@ static inline JSValue jsTestObjReflectedBooleanAttrGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjReflectedBooleanAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedBooleanAttrGetter>(*state, thisValue, "reflectedBooleanAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedBooleanAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedBooleanAttr");
 }
 
 static inline bool setJSTestObjReflectedBooleanAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3318,7 +3319,7 @@ static inline JSValue jsTestObjReflectedURLAttrGetter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjReflectedURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedURLAttrGetter>(*state, thisValue, "reflectedURLAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedURLAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedURLAttr");
 }
 
 static inline bool setJSTestObjReflectedURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3348,7 +3349,7 @@ static inline JSValue jsTestObjReflectedUSVURLAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjReflectedUSVURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVURLAttrGetter>(*state, thisValue, "reflectedUSVURLAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedUSVURLAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedUSVURLAttr");
 }
 
 static inline bool setJSTestObjReflectedUSVURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3378,7 +3379,7 @@ static inline JSValue jsTestObjReflectedStringAttrGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjReflectedStringAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter>(*state, thisValue, "reflectedStringAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedStringAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedStringAttr");
 }
 
 static inline bool setJSTestObjReflectedStringAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3408,7 +3409,7 @@ static inline JSValue jsTestObjReflectedCustomIntegralAttrGetter(ExecState& stat
 
 EncodedJSValue jsTestObjReflectedCustomIntegralAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomIntegralAttrGetter>(*state, thisValue, "reflectedCustomIntegralAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomIntegralAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedCustomIntegralAttr");
 }
 
 static inline bool setJSTestObjReflectedCustomIntegralAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3438,7 +3439,7 @@ static inline JSValue jsTestObjReflectedCustomBooleanAttrGetter(ExecState& state
 
 EncodedJSValue jsTestObjReflectedCustomBooleanAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomBooleanAttrGetter>(*state, thisValue, "reflectedCustomBooleanAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomBooleanAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedCustomBooleanAttr");
 }
 
 static inline bool setJSTestObjReflectedCustomBooleanAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3468,7 +3469,7 @@ static inline JSValue jsTestObjReflectedCustomURLAttrGetter(ExecState& state, JS
 
 EncodedJSValue jsTestObjReflectedCustomURLAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomURLAttrGetter>(*state, thisValue, "reflectedCustomURLAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReflectedCustomURLAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "reflectedCustomURLAttr");
 }
 
 static inline bool setJSTestObjReflectedCustomURLAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3499,7 +3500,7 @@ static inline JSValue jsTestObjEnabledAtRuntimeAttributeGetter(ExecState& state,
 
 EncodedJSValue jsTestObjEnabledAtRuntimeAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledAtRuntimeAttributeGetter>(*state, thisValue, "enabledAtRuntimeAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledAtRuntimeAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "enabledAtRuntimeAttribute");
 }
 
 #endif
@@ -3535,7 +3536,7 @@ static inline JSValue jsTestObjEnabledBySettingAttributeGetter(ExecState& state,
 
 EncodedJSValue jsTestObjEnabledBySettingAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledBySettingAttributeGetter>(*state, thisValue, "enabledBySettingAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjEnabledBySettingAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "enabledBySettingAttribute");
 }
 
 #endif
@@ -3570,7 +3571,7 @@ static inline JSValue jsTestObjTypedArrayAttrGetter(ExecState& state, JSTestObj&
 
 EncodedJSValue jsTestObjTypedArrayAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjTypedArrayAttrGetter>(*state, thisValue, "typedArrayAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjTypedArrayAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "typedArrayAttr");
 }
 
 static inline bool setJSTestObjTypedArrayAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3600,7 +3601,7 @@ static inline JSValue jsTestObjAttributeWithGetterExceptionGetter(ExecState& sta
 
 EncodedJSValue jsTestObjAttributeWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithGetterExceptionGetter>(*state, thisValue, "attributeWithGetterException");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithGetterExceptionGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "attributeWithGetterException");
 }
 
 static inline bool setJSTestObjAttributeWithGetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3630,7 +3631,7 @@ static inline JSValue jsTestObjAttributeWithSetterExceptionGetter(ExecState& sta
 
 EncodedJSValue jsTestObjAttributeWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithSetterExceptionGetter>(*state, thisValue, "attributeWithSetterException");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithSetterExceptionGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "attributeWithSetterException");
 }
 
 static inline bool setJSTestObjAttributeWithSetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3660,7 +3661,7 @@ static inline JSValue jsTestObjStringAttrWithGetterExceptionGetter(ExecState& st
 
 EncodedJSValue jsTestObjStringAttrWithGetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithGetterExceptionGetter>(*state, thisValue, "stringAttrWithGetterException");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithGetterExceptionGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringAttrWithGetterException");
 }
 
 static inline bool setJSTestObjStringAttrWithGetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3690,7 +3691,7 @@ static inline JSValue jsTestObjStringAttrWithSetterExceptionGetter(ExecState& st
 
 EncodedJSValue jsTestObjStringAttrWithSetterException(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithSetterExceptionGetter>(*state, thisValue, "stringAttrWithSetterException");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringAttrWithSetterExceptionGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringAttrWithSetterException");
 }
 
 static inline bool setJSTestObjStringAttrWithSetterExceptionSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3718,7 +3719,7 @@ static inline JSValue jsTestObjCustomAttrGetter(ExecState& state, JSTestObj& thi
 
 EncodedJSValue jsTestObjCustomAttr(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjCustomAttrGetter>(*state, thisValue, "customAttr");
+    return IDLAttribute<JSTestObj>::get<jsTestObjCustomAttrGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "customAttr");
 }
 
 static inline bool setJSTestObjCustomAttrSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3743,7 +3744,7 @@ static inline JSValue jsTestObjOnfooGetter(ExecState& state, JSTestObj& thisObje
 
 EncodedJSValue jsTestObjOnfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjOnfooGetter>(*state, thisValue, "onfoo");
+    return IDLAttribute<JSTestObj>::get<jsTestObjOnfooGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "onfoo");
 }
 
 static inline bool setJSTestObjOnfooSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3768,7 +3769,7 @@ static inline JSValue jsTestObjOnwebkitfooGetter(ExecState& state, JSTestObj& th
 
 EncodedJSValue jsTestObjOnwebkitfoo(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjOnwebkitfooGetter>(*state, thisValue, "onwebkitfoo");
+    return IDLAttribute<JSTestObj>::get<jsTestObjOnwebkitfooGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "onwebkitfoo");
 }
 
 static inline bool setJSTestObjOnwebkitfooSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3795,7 +3796,7 @@ static inline JSValue jsTestObjWithScriptStateAttributeGetter(ExecState& state, 
 
 EncodedJSValue jsTestObjWithScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeGetter>(*state, thisValue, "withScriptStateAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptStateAttribute");
 }
 
 static inline bool setJSTestObjWithScriptStateAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3825,7 +3826,7 @@ static inline JSValue jsTestObjWithCallWithAndSetterCallWithAttributeGetter(Exec
 
 EncodedJSValue jsTestObjWithCallWithAndSetterCallWithAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithCallWithAndSetterCallWithAttributeGetter>(*state, thisValue, "withCallWithAndSetterCallWithAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithCallWithAndSetterCallWithAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withCallWithAndSetterCallWithAttribute");
 }
 
 static inline bool setJSTestObjWithCallWithAndSetterCallWithAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3858,7 +3859,7 @@ static inline JSValue jsTestObjWithScriptExecutionContextAttributeGetter(ExecSta
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeGetter>(*state, thisValue, "withScriptExecutionContextAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptExecutionContextAttribute");
 }
 
 static inline bool setJSTestObjWithScriptExecutionContextAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3891,7 +3892,7 @@ static inline JSValue jsTestObjWithScriptStateAttributeRaisesGetter(ExecState& s
 
 EncodedJSValue jsTestObjWithScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeRaisesGetter>(*state, thisValue, "withScriptStateAttributeRaises");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptStateAttributeRaisesGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptStateAttributeRaises");
 }
 
 static inline bool setJSTestObjWithScriptStateAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3924,7 +3925,7 @@ static inline JSValue jsTestObjWithScriptExecutionContextAttributeRaisesGetter(E
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeRaisesGetter>(*state, thisValue, "withScriptExecutionContextAttributeRaises");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAttributeRaisesGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptExecutionContextAttributeRaises");
 }
 
 static inline bool setJSTestObjWithScriptExecutionContextAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3960,7 +3961,7 @@ static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttribute");
 }
 
 static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -3996,7 +3997,7 @@ static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateAttribute
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaises(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttributeRaises");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptExecutionContextAndScriptStateAttributeRaises");
 }
 
 static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateAttributeRaisesSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4032,7 +4033,7 @@ static inline JSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpace
 
 EncodedJSValue jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeGetter>(*state, thisValue, "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "withScriptExecutionContextAndScriptStateWithSpacesAttribute");
 }
 
 static inline bool setJSTestObjWithScriptExecutionContextAndScriptStateWithSpacesAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4066,7 +4067,7 @@ static inline JSValue jsTestObjConditionalAttr1Getter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjConditionalAttr1(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr1Getter>(*state, thisValue, "conditionalAttr1");
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr1Getter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionalAttr1");
 }
 
 #endif
@@ -4102,7 +4103,7 @@ static inline JSValue jsTestObjConditionalAttr2Getter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjConditionalAttr2(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr2Getter>(*state, thisValue, "conditionalAttr2");
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr2Getter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionalAttr2");
 }
 
 #endif
@@ -4138,7 +4139,7 @@ static inline JSValue jsTestObjConditionalAttr3Getter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjConditionalAttr3(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr3Getter>(*state, thisValue, "conditionalAttr3");
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAttr3Getter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionalAttr3");
 }
 
 #endif
@@ -4269,7 +4270,7 @@ static inline JSValue jsTestObjCachedAttribute1Getter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjCachedAttribute1(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute1Getter>(*state, thisValue, "cachedAttribute1");
+    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute1Getter, CastedThisErrorBehavior::Assert>(*state, thisValue, "cachedAttribute1");
 }
 
 static inline JSValue jsTestObjCachedAttribute2Getter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4286,7 +4287,7 @@ static inline JSValue jsTestObjCachedAttribute2Getter(ExecState& state, JSTestOb
 
 EncodedJSValue jsTestObjCachedAttribute2(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute2Getter>(*state, thisValue, "cachedAttribute2");
+    return IDLAttribute<JSTestObj>::get<jsTestObjCachedAttribute2Getter, CastedThisErrorBehavior::Assert>(*state, thisValue, "cachedAttribute2");
 }
 
 static inline JSValue jsTestObjAnyAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4300,7 +4301,7 @@ static inline JSValue jsTestObjAnyAttributeGetter(ExecState& state, JSTestObj& t
 
 EncodedJSValue jsTestObjAnyAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAnyAttributeGetter>(*state, thisValue, "anyAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAnyAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "anyAttribute");
 }
 
 static inline bool setJSTestObjAnyAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4330,7 +4331,7 @@ static inline JSValue jsTestObjObjectAttributeGetter(ExecState& state, JSTestObj
 
 EncodedJSValue jsTestObjObjectAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjObjectAttributeGetter>(*state, thisValue, "objectAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjObjectAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "objectAttribute");
 }
 
 static inline bool setJSTestObjObjectAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4360,7 +4361,7 @@ static inline JSValue jsTestObjContentDocumentGetter(ExecState& state, JSTestObj
 
 EncodedJSValue jsTestObjContentDocument(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjContentDocumentGetter>(*state, thisValue, "contentDocument");
+    return IDLAttribute<JSTestObj>::get<jsTestObjContentDocumentGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "contentDocument");
 }
 
 static inline JSValue jsTestObjMutablePointGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4374,7 +4375,7 @@ static inline JSValue jsTestObjMutablePointGetter(ExecState& state, JSTestObj& t
 
 EncodedJSValue jsTestObjMutablePoint(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjMutablePointGetter>(*state, thisValue, "mutablePoint");
+    return IDLAttribute<JSTestObj>::get<jsTestObjMutablePointGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "mutablePoint");
 }
 
 static inline bool setJSTestObjMutablePointSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4404,7 +4405,7 @@ static inline JSValue jsTestObjStrawberryGetter(ExecState& state, JSTestObj& thi
 
 EncodedJSValue jsTestObjStrawberry(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStrawberryGetter>(*state, thisValue, "strawberry");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStrawberryGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "strawberry");
 }
 
 static inline bool setJSTestObjStrawberrySetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4434,7 +4435,7 @@ static inline JSValue jsTestObjDescriptionGetter(ExecState& state, JSTestObj& th
 
 EncodedJSValue jsTestObjDescription(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjDescriptionGetter>(*state, thisValue, "description");
+    return IDLAttribute<JSTestObj>::get<jsTestObjDescriptionGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "description");
 }
 
 static inline JSValue jsTestObjIdGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4448,7 +4449,7 @@ static inline JSValue jsTestObjIdGetter(ExecState& state, JSTestObj& thisObject,
 
 EncodedJSValue jsTestObjId(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjIdGetter>(*state, thisValue, "id");
+    return IDLAttribute<JSTestObj>::get<jsTestObjIdGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "id");
 }
 
 static inline bool setJSTestObjIdSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4478,7 +4479,7 @@ static inline JSValue jsTestObjHashGetter(ExecState& state, JSTestObj& thisObjec
 
 EncodedJSValue jsTestObjHash(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjHashGetter>(*state, thisValue, "hash");
+    return IDLAttribute<JSTestObj>::get<jsTestObjHashGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "hash");
 }
 
 static inline JSValue jsTestObjReplaceableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4492,7 +4493,7 @@ static inline JSValue jsTestObjReplaceableAttributeGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjReplaceableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjReplaceableAttributeGetter>(*state, thisValue, "replaceableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjReplaceableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "replaceableAttribute");
 }
 
 static inline bool setJSTestObjReplaceableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4519,7 +4520,7 @@ static inline JSValue jsTestObjNullableDoubleAttributeGetter(ExecState& state, J
 
 EncodedJSValue jsTestObjNullableDoubleAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDoubleAttributeGetter>(*state, thisValue, "nullableDoubleAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableDoubleAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableDoubleAttribute");
 }
 
 static inline JSValue jsTestObjNullableLongAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4533,7 +4534,7 @@ static inline JSValue jsTestObjNullableLongAttributeGetter(ExecState& state, JST
 
 EncodedJSValue jsTestObjNullableLongAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongAttributeGetter>(*state, thisValue, "nullableLongAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableLongAttribute");
 }
 
 static inline JSValue jsTestObjNullableBooleanAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4547,7 +4548,7 @@ static inline JSValue jsTestObjNullableBooleanAttributeGetter(ExecState& state, 
 
 EncodedJSValue jsTestObjNullableBooleanAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableBooleanAttributeGetter>(*state, thisValue, "nullableBooleanAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableBooleanAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableBooleanAttribute");
 }
 
 static inline JSValue jsTestObjNullableStringAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4561,7 +4562,7 @@ static inline JSValue jsTestObjNullableStringAttributeGetter(ExecState& state, J
 
 EncodedJSValue jsTestObjNullableStringAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringAttributeGetter>(*state, thisValue, "nullableStringAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableStringAttribute");
 }
 
 static inline JSValue jsTestObjNullableLongSettableAttributeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4575,7 +4576,7 @@ static inline JSValue jsTestObjNullableLongSettableAttributeGetter(ExecState& st
 
 EncodedJSValue jsTestObjNullableLongSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongSettableAttributeGetter>(*state, thisValue, "nullableLongSettableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableLongSettableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableLongSettableAttribute");
 }
 
 static inline bool setJSTestObjNullableLongSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4605,7 +4606,7 @@ static inline JSValue jsTestObjNullableStringSettableAttributeGetter(ExecState& 
 
 EncodedJSValue jsTestObjNullableStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringSettableAttributeGetter>(*state, thisValue, "nullableStringSettableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringSettableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableStringSettableAttribute");
 }
 
 static inline bool setJSTestObjNullableStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4635,7 +4636,7 @@ static inline JSValue jsTestObjNullableUSVStringSettableAttributeGetter(ExecStat
 
 EncodedJSValue jsTestObjNullableUSVStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableUSVStringSettableAttributeGetter>(*state, thisValue, "nullableUSVStringSettableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableUSVStringSettableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableUSVStringSettableAttribute");
 }
 
 static inline bool setJSTestObjNullableUSVStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4665,7 +4666,7 @@ static inline JSValue jsTestObjNullableByteStringSettableAttributeGetter(ExecSta
 
 EncodedJSValue jsTestObjNullableByteStringSettableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableByteStringSettableAttributeGetter>(*state, thisValue, "nullableByteStringSettableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableByteStringSettableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableByteStringSettableAttribute");
 }
 
 static inline bool setJSTestObjNullableByteStringSettableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4695,7 +4696,7 @@ static inline JSValue jsTestObjNullableStringValueGetter(ExecState& state, JSTes
 
 EncodedJSValue jsTestObjNullableStringValue(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringValueGetter>(*state, thisValue, "nullableStringValue");
+    return IDLAttribute<JSTestObj>::get<jsTestObjNullableStringValueGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "nullableStringValue");
 }
 
 static inline bool setJSTestObjNullableStringValueSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4725,7 +4726,7 @@ static inline JSValue jsTestObjAttributeGetter(ExecState& state, JSTestObj& this
 
 EncodedJSValue jsTestObjAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeGetter>(*state, thisValue, "attribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "attribute");
 }
 
 static inline JSValue jsTestObjAttributeWithReservedEnumTypeGetter(ExecState& state, JSTestObj& thisObject, ThrowScope& throwScope)
@@ -4739,7 +4740,7 @@ static inline JSValue jsTestObjAttributeWithReservedEnumTypeGetter(ExecState& st
 
 EncodedJSValue jsTestObjAttributeWithReservedEnumType(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithReservedEnumTypeGetter>(*state, thisValue, "attributeWithReservedEnumType");
+    return IDLAttribute<JSTestObj>::get<jsTestObjAttributeWithReservedEnumTypeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "attributeWithReservedEnumType");
 }
 
 static inline bool setJSTestObjAttributeWithReservedEnumTypeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4772,7 +4773,7 @@ static inline JSValue jsTestObjPutForwardsAttributeGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjPutForwardsAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsAttributeGetter>(*state, thisValue, "putForwardsAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "putForwardsAttribute");
 }
 
 static inline bool setJSTestObjPutForwardsAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4809,7 +4810,7 @@ static inline JSValue jsTestObjPutForwardsNullableAttributeGetter(ExecState& sta
 
 EncodedJSValue jsTestObjPutForwardsNullableAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsNullableAttributeGetter>(*state, thisValue, "putForwardsNullableAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjPutForwardsNullableAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "putForwardsNullableAttribute");
 }
 
 static inline bool setJSTestObjPutForwardsNullableAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4846,7 +4847,7 @@ static inline JSValue jsTestObjStringifierAttributeGetter(ExecState& state, JSTe
 
 EncodedJSValue jsTestObjStringifierAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjStringifierAttributeGetter>(*state, thisValue, "stringifierAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjStringifierAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "stringifierAttribute");
 }
 
 static inline bool setJSTestObjStringifierAttributeSetter(ExecState& state, JSTestObj& thisObject, JSValue value, ThrowScope& throwScope)
@@ -4876,7 +4877,7 @@ static inline JSValue jsTestObjConditionallyReadWriteAttributeGetter(ExecState& 
 
 EncodedJSValue jsTestObjConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyReadWriteAttributeGetter>(*state, thisValue, "conditionallyReadWriteAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionallyReadWriteAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionallyReadWriteAttribute");
 }
 
 #if ENABLE(CONDITION)
@@ -4910,7 +4911,7 @@ static inline JSValue jsTestObjConditionalAndConditionallyReadWriteAttributeGett
 
 EncodedJSValue jsTestObjConditionalAndConditionallyReadWriteAttribute(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAndConditionallyReadWriteAttributeGetter>(*state, thisValue, "conditionalAndConditionallyReadWriteAttribute");
+    return IDLAttribute<JSTestObj>::get<jsTestObjConditionalAndConditionallyReadWriteAttributeGetter, CastedThisErrorBehavior::Assert>(*state, thisValue, "conditionalAndConditionallyReadWriteAttribute");
 }
 
 #endif
@@ -6739,7 +6740,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionOverloadedMethod13Bo
     auto& impl = castedThis->wrapped();
     auto blobArgs = convertVariadicArguments<IDLInterface<Blob>>(*state, 0);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.overloadedMethod(WTFMove(blobArgs.arguments.value()));
+    impl.overloadedMethod(WTFMove(blobArgs));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7538,7 +7539,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicStringMethod
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto tail = convertVariadicArguments<IDLDOMString>(*state, 1);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.variadicStringMethod(WTFMove(head), WTFMove(tail.arguments.value()));
+    impl.variadicStringMethod(WTFMove(head), WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7558,7 +7559,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicDoubleMethod
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto tail = convertVariadicArguments<IDLUnrestrictedDouble>(*state, 1);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.variadicDoubleMethod(WTFMove(head), WTFMove(tail.arguments.value()));
+    impl.variadicDoubleMethod(WTFMove(head), WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7578,7 +7579,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicNodeMethodBo
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto tail = convertVariadicArguments<IDLInterface<Node>>(*state, 1);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.variadicNodeMethod(*head, WTFMove(tail.arguments.value()));
+    impl.variadicNodeMethod(*head, WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 
@@ -7598,7 +7599,7 @@ static inline JSC::EncodedJSValue jsTestObjPrototypeFunctionVariadicUnionMethodB
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto tail = convertVariadicArguments<IDLUnion<IDLInterface<Node>, IDLDOMString>>(*state, 1);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    impl.variadicUnionMethod(WTFMove(head), WTFMove(tail.arguments.value()));
+    impl.variadicUnionMethod(WTFMove(head), WTFMove(tail));
     return JSValue::encode(jsUndefined());
 }
 

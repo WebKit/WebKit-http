@@ -48,6 +48,7 @@
         "MemoryAgent": true,
         "NetworkAgent": true,
         "PageAgent": true,
+        "RecordingAgent": true,
         "RuntimeAgent": true,
         "ScriptProfilerAgent": true,
         "TimelineAgent": true,
@@ -80,7 +81,6 @@
         // DOM
         "CSSPrimitiveValue": true,
         "Exception": true,
-        "SQLException": true,
         "WebKitPoint": true,
 
         // Utilities

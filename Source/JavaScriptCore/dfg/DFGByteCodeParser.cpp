@@ -414,7 +414,7 @@ private:
     {
         for (unsigned i = 0; i < m_setLocalQueue.size(); ++i)
             m_setLocalQueue[i].execute(this);
-        m_setLocalQueue.resize(0);
+        m_setLocalQueue.shrink(0);
     }
 
     Node* set(VirtualRegister operand, Node* value, SetMode setMode = NormalSet)
@@ -3043,16 +3043,16 @@ bool ByteCodeParser::handleIntrinsicGetter(int resultOperand, const GetByIdVaria
 static void blessCallDOMGetter(Node* node)
 {
     DOMJIT::CallDOMGetterSnippet* snippet = node->callDOMGetterData()->snippet;
-    if (!snippet->effect.mustGenerate())
+    if (snippet && !snippet->effect.mustGenerate())
         node->clearFlags(NodeMustGenerate);
 }
 
 bool ByteCodeParser::handleDOMJITGetter(int resultOperand, const GetByIdVariant& variant, Node* thisNode, unsigned identifierNumber, SpeculatedType prediction)
 {
-    if (!variant.domJIT())
+    if (!variant.domAttribute())
         return false;
 
-    DOMJIT::GetterSetter* domJIT = variant.domJIT();
+    auto domAttribute = variant.domAttribute().value();
 
     // We do not need to actually look up CustomGetterSetter here. Checking Structures or registering watchpoints are enough,
     // since replacement of CustomGetterSetter always incurs Structure transition.
@@ -3061,19 +3061,24 @@ bool ByteCodeParser::handleDOMJITGetter(int resultOperand, const GetByIdVariant&
     addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), thisNode);
 
     // We do not need to emit CheckCell thingy here. When the custom accessor is replaced to different one, Structure transition occurs.
-    addToGraph(CheckSubClass, OpInfo(domJIT->thisClassInfo()), thisNode);
+    addToGraph(CheckSubClass, OpInfo(domAttribute.classInfo), thisNode);
 
     CallDOMGetterData* callDOMGetterData = m_graph.m_callDOMGetterData.add();
-    Ref<DOMJIT::CallDOMGetterSnippet> callDOMGetterSnippet = domJIT->callDOMGetter();
-    m_graph.m_domJITSnippets.append(callDOMGetterSnippet.copyRef());
+    callDOMGetterData->customAccessorGetter = variant.customAccessorGetter();
+    ASSERT(callDOMGetterData->customAccessorGetter);
 
-    callDOMGetterData->domJIT = domJIT;
-    callDOMGetterData->snippet = callDOMGetterSnippet.ptr();
+    if (const auto* domJIT = domAttribute.domJIT) {
+        callDOMGetterData->domJIT = domJIT;
+        Ref<DOMJIT::CallDOMGetterSnippet> snippet = domJIT->compiler()();
+        callDOMGetterData->snippet = snippet.ptr();
+        m_graph.m_domJITSnippets.append(WTFMove(snippet));
+    }
+    DOMJIT::CallDOMGetterSnippet* callDOMGetterSnippet = callDOMGetterData->snippet;
     callDOMGetterData->identifierNumber = identifierNumber;
 
     Node* callDOMGetterNode = nullptr;
     // GlobalObject of thisNode is always used to create a DOMWrapper.
-    if (callDOMGetterSnippet->requireGlobalObject) {
+    if (callDOMGetterSnippet && callDOMGetterSnippet->requireGlobalObject) {
         Node* globalObject = addToGraph(GetGlobalObject, thisNode);
         callDOMGetterNode = addToGraph(CallDOMGetter, OpInfo(callDOMGetterData), OpInfo(prediction), thisNode, globalObject);
     } else
@@ -3492,7 +3497,7 @@ Node* ByteCodeParser::load(
 
 bool ByteCodeParser::check(const ObjectPropertyConditionSet& conditionSet)
 {
-    for (const ObjectPropertyCondition condition : conditionSet) {
+    for (const ObjectPropertyCondition& condition : conditionSet) {
         if (!check(condition))
             return false;
     }
@@ -3505,7 +3510,7 @@ GetByOffsetMethod ByteCodeParser::planLoad(const ObjectPropertyConditionSet& con
         dataLog("conditionSet = ", conditionSet, "\n");
     
     GetByOffsetMethod result;
-    for (const ObjectPropertyCondition condition : conditionSet) {
+    for (const ObjectPropertyCondition& condition : conditionSet) {
         switch (condition.kind()) {
         case PropertyCondition::Presence:
             RELEASE_ASSERT(!result); // Should only see exactly one of these.
@@ -3724,7 +3729,7 @@ void ByteCodeParser::handleGetById(
         ASSERT(getByIdStatus.numVariants() == 1);
         ASSERT(!getByIdStatus.makesCalls());
         GetByIdVariant variant = getByIdStatus[0];
-        ASSERT(variant.domJIT());
+        ASSERT(variant.domAttribute());
         if (handleDOMJITGetter(destinationOperand, variant, base, identifierNumber, prediction)) {
             if (m_graph.compilation())
                 m_graph.compilation()->noticeInlinedGetById();
@@ -4055,7 +4060,7 @@ void ByteCodeParser::prepareToParseBlock()
 
 void ByteCodeParser::clearCaches()
 {
-    m_constants.resize(0);
+    m_constants.shrink(0);
 }
 
 bool ByteCodeParser::parseBlock(unsigned limit)

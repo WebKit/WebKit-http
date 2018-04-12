@@ -109,7 +109,7 @@ enum TemporarySelectionOption : uint8_t {
     // Scroll to reveal the selection.
     TemporarySelectionOptionRevealSelection = 1 << 0,
 
-    // Don't propagate selection changes to the UI process.
+    // Don't propagate selection changes to the client layer.
     TemporarySelectionOptionIgnoreSelectionChanges = 1 << 1,
 
     // Force the render tree to update selection state. Only respected on iOS.
@@ -401,7 +401,7 @@ public:
     void clearMisspellingsAndBadGrammar(const VisibleSelection&);
     void markMisspellingsAndBadGrammar(const VisibleSelection&);
 
-    Node* findEventTargetFrom(const VisibleSelection& selection) const;
+    Element* findEventTargetFrom(const VisibleSelection& selection) const;
 
     WEBCORE_EXPORT String selectedText() const;
     String selectedTextForDataTransfer() const;
@@ -541,7 +541,7 @@ private:
 
     void editorUIUpdateTimerFired();
 
-    Node* findEventTargetFromSelection() const;
+    Element* findEventTargetFromSelection() const;
 
     bool unifiedTextCheckerEnabled() const;
 

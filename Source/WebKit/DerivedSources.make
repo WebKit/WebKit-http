@@ -57,6 +57,7 @@ VPATH = \
     $(WebKit2)/WebProcess/UserContent \
     $(WebKit2)/WebProcess/WebCoreSupport \
     $(WebKit2)/WebProcess/WebPage \
+    $(WebKit2)/WebProcess/WebStorage \
     $(WebKit2)/WebProcess/cocoa \
     $(WebKit2)/WebProcess/ios \
     $(WebKit2)/WebProcess \
@@ -71,8 +72,8 @@ VPATH = \
     $(WebKit2)/UIProcess/Network/CustomProtocols \
     $(WebKit2)/UIProcess/Notifications \
     $(WebKit2)/UIProcess/Plugins \
-    $(WebKit2)/UIProcess/Storage \
     $(WebKit2)/UIProcess/UserContent \
+    $(WebKit2)/UIProcess/WebStorage \
     $(WebKit2)/UIProcess/mac \
     $(WebKit2)/UIProcess/ios \
     $(WEBKITADDITIONS_HEADER_SEARCH_PATHS) \
@@ -142,8 +143,6 @@ MESSAGE_RECEIVERS = \
     WebGeolocationManagerProxy \
     WebIDBConnectionToClient \
     WebIDBConnectionToServer \
-    WebIconDatabase \
-    WebIconDatabaseProxy \
     WebInspector \
     WebInspectorInterruptDispatcher \
     WebInspectorProxy \
@@ -154,8 +153,8 @@ MESSAGE_RECEIVERS = \
     WebPasteboardProxy \
     WebPaymentCoordinator \
     WebPaymentCoordinatorProxy \
-    WebPlaybackSessionManager \
-    WebPlaybackSessionManagerProxy \
+    PlaybackSessionManager \
+    PlaybackSessionManagerProxy \
     WebProcess \
     WebProcessConnection \
     WebProcessPool \
@@ -168,8 +167,8 @@ MESSAGE_RECEIVERS = \
     WebSocketStream \
     WebUserContentController \
     WebUserContentControllerProxy \
-    WebVideoFullscreenManager \
-    WebVideoFullscreenManagerProxy \
+    VideoFullscreenManager \
+    VideoFullscreenManagerProxy \
 #
 
 SCRIPTS = \
@@ -232,6 +231,8 @@ AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS = \
 	$(JavaScriptCore_SCRIPTS_DIR)/cpp_generator.py \
 	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_backend_dispatcher_header.py \
 	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_backend_dispatcher_implementation.py \
+	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_frontend_dispatcher_header.py \
+	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_frontend_dispatcher_implementation.py \
 	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_protocol_types_header.py \
 	$(JavaScriptCore_SCRIPTS_DIR)/generate_cpp_protocol_types_implementation.py \
 	$(JavaScriptCore_SCRIPTS_DIR)/generator_templates.py \
@@ -247,6 +248,8 @@ AUTOMATION_PROTOCOL_INPUT_FILES = \
 AUTOMATION_PROTOCOL_OUTPUT_FILES = \
     AutomationBackendDispatchers.h \
     AutomationBackendDispatchers.cpp \
+    AutomationFrontendDispatchers.h \
+    AutomationFrontendDispatchers.cpp \
 #
 
 ifeq ($(OS),MACOS)
@@ -257,7 +260,7 @@ else
 endif
 endif # MACOS
 
-# JSON-RPC Backend Dispatchers, Type Builders
+# JSON-RPC Frontend Dispatchers, Backend Dispatchers, Type Builders
 $(firstword $(AUTOMATION_PROTOCOL_OUTPUT_FILES)) : $(AUTOMATION_PROTOCOL_INPUT_FILES) $(AUTOMATION_PROTOCOL_GENERATOR_SCRIPTS)
 	$(PYTHON) $(JavaScriptCore_SCRIPTS_DIR)/generate-inspector-protocol-bindings.py --framework WebKit $(AUTOMATION_BACKEND_PLATFORM_ARGUMENTS) --backend --outputDir . $(AUTOMATION_PROTOCOL_INPUT_FILES)
 

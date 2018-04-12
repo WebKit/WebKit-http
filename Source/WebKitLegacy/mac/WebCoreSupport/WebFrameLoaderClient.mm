@@ -51,7 +51,6 @@
 #import "WebHTMLViewInternal.h"
 #import "WebHistoryInternal.h"
 #import "WebHistoryItemInternal.h"
-#import "WebIconDatabaseInternal.h"
 #import "WebKitErrorsPrivate.h"
 #import "WebKitLogging.h"
 #import "WebKitNSStringExtras.h"
@@ -101,7 +100,6 @@
 #import <WebCore/HistoryController.h>
 #import <WebCore/HistoryItem.h>
 #import <WebCore/HitTestResult.h>
-#import <WebCore/IconDatabase.h>
 #import <WebCore/LoaderNSURLExtras.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
@@ -1844,21 +1842,21 @@ public:
         return false;
     }
 
-    virtual void handleEvent(Event* event)
+    virtual void handleEvent(Event& event)
     {
         Frame* frame = Frame::frameForWidget(*this);
         if (!frame)
             return;
         
         NSEvent* currentNSEvent = frame->eventHandler().currentNSEvent();
-        if (event->type() == eventNames().mousemoveEvent)
+        if (event.type() == eventNames().mousemoveEvent)
             [(WebBaseNetscapePluginView *)platformWidget() handleMouseMoved:currentNSEvent];
-        else if (event->type() == eventNames().mouseoverEvent)
+        else if (event.type() == eventNames().mouseoverEvent)
             [(WebBaseNetscapePluginView *)platformWidget() handleMouseEntered:currentNSEvent];
-        else if (event->type() == eventNames().mouseoutEvent)
+        else if (event.type() == eventNames().mouseoutEvent)
             [(WebBaseNetscapePluginView *)platformWidget() handleMouseExited:currentNSEvent];
-        else if (event->type() == eventNames().contextmenuEvent)
-            event->setDefaultHandled(); // We don't know if the plug-in has handled mousedown event by displaying a context menu, so we never want WebKit to show a default one.
+        else if (event.type() == eventNames().contextmenuEvent)
+            event.setDefaultHandled(); // We don't know if the plug-in has handled mousedown event by displaying a context menu, so we never want WebKit to show a default one.
     }
 
     virtual void clipRectChanged()
@@ -2313,6 +2311,31 @@ void WebFrameLoaderClient::getLoadDecisionForIcons(const Vector<std::pair<WebCor
         documentLoader->didGetLoadDecisionForIcon(false, icon.second, 0);
 #endif
 }
+
+#if !PLATFORM(IOS)
+static NSImage *webGetNSImage(Image* image, NSSize size)
+{
+    ASSERT(size.width);
+    ASSERT(size.height);
+
+    // FIXME: We're doing the resize here for now because WebCore::Image doesn't yet support resizing/multiple representations
+    // This makes it so there's effectively only one size of a particular icon in the system at a time. We should move this
+    // to WebCore::Image at some point.
+    if (!image)
+        return nil;
+    NSImage* nsImage = image->nsImage();
+    if (!nsImage)
+        return nil;
+    if (!NSEqualSizes([nsImage size], size)) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+        [nsImage setScalesWhenResized:YES];
+#pragma clang diagnostic pop
+        [nsImage setSize:size];
+    }
+    return nsImage;
+}
+#endif // !PLATFORM(IOS)
 
 void WebFrameLoaderClient::finishedLoadingIcon(uint64_t callbackID, SharedBuffer* iconData)
 {

@@ -33,10 +33,9 @@
 #include "JSDOMConvertBufferSource.h"
 #include "JSDOMConvertInterface.h"
 #include "JSDOMConvertJSON.h"
+#include "JSDOMConvertNullable.h"
+#include "JSDOMConvertStrings.h"
 #include "JSDocument.h"
-#include <runtime/ArrayBuffer.h>
-#include <runtime/JSArrayBuffer.h>
-#include <runtime/JSArrayBufferView.h>
 
 using namespace JSC;
 
@@ -51,40 +50,31 @@ void JSXMLHttpRequest::visitAdditionalChildren(SlotVisitor& visitor)
         visitor.addOpaqueRoot(responseDocument);
 }
 
-JSValue JSXMLHttpRequest::responseText(ExecState& state) const
+JSValue JSXMLHttpRequest::response(ExecState& state) const
 {
-    auto result = wrapped().responseText();
+    auto cacheResult = [&] (JSValue value) -> JSValue {
+        m_response.set(state.vm(), this, value);
+        return value;
+    };
 
-    if (UNLIKELY(result.hasException())) {
-        auto& vm = state.vm();
-        auto scope = DECLARE_THROW_SCOPE(vm);
-        propagateException(state, scope, result.releaseException());
-        return { };
-    }
 
-    auto resultValue = result.releaseReturnValue();
-    if (resultValue.isNull())
-        return jsNull();
+    if (wrapped().responseCacheIsValid())
+        return m_response.get();
 
-    // See JavaScriptCore for explanation: Should be used for any string that is already owned by another
-    // object, to let the engine know that collecting the JSString wrapper is unlikely to save memory.
-    return jsOwnedString(&state, resultValue);
-}
-
-JSValue JSXMLHttpRequest::retrieveResponse(ExecState& state)
-{
     auto type = wrapped().responseType();
 
     switch (type) {
     case XMLHttpRequest::ResponseType::EmptyString:
-    case XMLHttpRequest::ResponseType::Text:
-        return responseText(state);
+    case XMLHttpRequest::ResponseType::Text: {
+        auto scope = DECLARE_THROW_SCOPE(state.vm());
+        return cacheResult(toJS<IDLNullable<IDLUSVString>>(state, scope, wrapped().responseText()));
+    }
     default:
         break;
     }
 
     if (!wrapped().doneWithoutErrors())
-        return jsNull();
+        return cacheResult(jsNull());
 
     JSValue value;
     switch (type) {
@@ -116,7 +106,7 @@ JSValue JSXMLHttpRequest::retrieveResponse(ExecState& state)
     }
 
     wrapped().didCacheResponse();
-    return value;
+    return cacheResult(value);
 }
 
 } // namespace WebCore

@@ -1,3 +1,409 @@
+2017-07-28  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Cleanup unused/invalid parameters for TreeElements
+        https://bugs.webkit.org/show_bug.cgi?id=173987
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/TreeElement.js:
+        * UserInterface/Views/GeneralTreeElement.js:
+
+        * UserInterface/Views/ApplicationCacheFrameTreeElement.js:
+        * UserInterface/Views/BreakpointTreeElement.js:
+        * UserInterface/Views/CSSStyleSheetTreeElement.js:
+        * UserInterface/Views/CallFrameTreeElement.js:
+        * UserInterface/Views/ContentFlowTreeElement.js:
+        * UserInterface/Views/DOMNodeTreeElement.js:
+        * UserInterface/Views/DatabaseTableTreeElement.js:
+        * UserInterface/Views/DatabaseTreeElement.js:
+        * UserInterface/Views/FolderTreeElement.js:
+        * UserInterface/Views/FolderizedTreeElement.js:
+        * UserInterface/Views/FrameTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreIndexTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseObjectStoreTreeElement.js:
+        * UserInterface/Views/IndexedDatabaseTreeElement.js:
+        * UserInterface/Views/IssueTreeElement.js:
+        * UserInterface/Views/ObjectTreeBaseTreeElement.js:
+        * UserInterface/Views/ProfileNodeTreeElement.js:
+        * UserInterface/Views/ResourceTreeElement.js:
+        * UserInterface/Views/ScriptTreeElement.js:
+        * UserInterface/Views/SearchResultTreeElement.js:
+        * UserInterface/Views/SourceCodeTreeElement.js:
+        * UserInterface/Views/SourceMapResourceTreeElement.js:
+        * UserInterface/Views/StorageTreeElement.js:
+        * UserInterface/Views/TimelineRecordTreeElement.js:
+        * UserInterface/Views/TypeTreeElement.js:
+
+2017-07-26  Devin Rousso  <drousso@apple.com>
+
+        Uncaught Exception: undefined is not an object (evaluating 'this._memoryRow.value = Number.bytesToString(this._canvas.memoryCost)')
+        https://bugs.webkit.org/show_bug.cgi?id=174823
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/CanvasDetailsSidebarPanel.js:
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshIdentitySection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshSourceSection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshAttributesSection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._refreshCSSCanvasSection):
+        (WebInspector.CanvasDetailsSidebarPanel.prototype._formatMemoryRow):
+        Early return if the view has not called initialLayout, as the rows might not have been
+        constructed yet.
+
+        * UserInterface/Views/View.js:
+        (WebInspector.View.prototype.get didInitialLayout): Added.
+
+2017-07-26  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: create protocol for recording Canvas contexts
+        https://bugs.webkit.org/show_bug.cgi?id=174481
+
+        Reviewed by Joseph Pecoraro.
+
+        Create model objects that effectively mirror the protocol objects sent for Canvas recordings.
+
+        * .eslintrc:
+        * UserInterface/Main.html:
+        * UserInterface/Test.html:
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WebInspector.CanvasManager.prototype.recordingFinished):
+        * UserInterface/Protocol/CanvasObserver.js:
+        (WebInspector.CanvasObserver.prototype.recordingFinished):
+
+        * UserInterface/Models/Recording.js: Added.
+        (WebInspector.Recording):
+        (WebInspector.Recording.fromPayload):
+        (WebInspector.Recording.prototype.get type):
+        (WebInspector.Recording.prototype.get initialState):
+        (WebInspector.Recording.prototype.get frames):
+        (WebInspector.Recording.prototype.get data):
+        (WebInspector.Recording.prototype.toJSON):
+
+        * UserInterface/Models/RecordingAction.js: Added.
+        (WebInspector.RecordingAction):
+        (WebInspector.RecordingAction.fromPayload):
+        (WebInspector.RecordingAction.prototype.get name):
+        (WebInspector.RecordingAction.prototype.get parameters):
+        (WebInspector.RecordingAction.prototype.toJSON):
+
+        * UserInterface/Models/RecordingFrame.js: Added.
+        (WebInspector.RecordingFrame):
+        (WebInspector.RecordingFrame.fromPayload):
+        (WebInspector.RecordingFrame.prototype.get actions):
+        (WebInspector.RecordingFrame.prototype.get incomplete):
+        (WebInspector.RecordingFrame.prototype.toJSON):
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        Remove fallback for ports that lack WEB_TIMING.
+
+        * UserInterface/Base/Utilities.js:
+        (timestamp): Deleted.
+        * UserInterface/Protocol/Connection.js:
+        (InspectorBackend.Connection.prototype._dispatchResponse):
+        (InspectorBackend.Connection.prototype._dispatchEvent):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendWithCallback):
+        (InspectorBackend.Connection.prototype._sendCommandToBackendExpectingPromise):
+        * UserInterface/Protocol/MessageDispatcher.js:
+        (WebInspector.dispatchNextQueuedMessageFromBackend):
+
+2017-07-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Don't output "No message" for multi-value logs like console.log(x, y)
+        https://bugs.webkit.org/show_bug.cgi?id=174842
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        Removed "No message".
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendFormattedArguments):
+        Track whether or not outputting the next parameter will need a divider
+        in front of it or not.
+
+2017-07-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Fix warnings about console.assert lines without semicolons
+        https://bugs.webkit.org/show_bug.cgi?id=174840
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype.set selectedSettingsView):
+        (WebInspector.SettingsTabContentView.prototype.setSettingsViewVisible):
+        Add semicolon to assert lines so they can be stripped in optimized builds.
+
+2017-07-25  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Inline multiple console log values if they are simple
+        https://bugs.webkit.org/show_bug.cgi?id=174746
+        <rdar://problem/33469376>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/IssueMessage.js:
+        * UserInterface/Protocol/RemoteObject.js:
+        (WebInspector.RemoteObject.type): Deleted.
+        Remove this as it isn't as useful as directly checking the type.
+
+        * UserInterface/Views/ConsoleMessageView.js:
+        (WebInspector.ConsoleMessageView.prototype._appendExtraParameters):
+        (WebInspector.ConsoleMessageView.prototype._appendFormattedArguments):
+        (WebInspector.ConsoleMessageView.prototype._hasSimpleDisplay):
+        (WebInspector.ConsoleMessageView.prototype._isStackTrace):
+        For leading primitive/simple values, display them inline on the console message.
+
+        * UserInterface/Views/FormattedValue.js:
+        (WebInspector.FormattedValue.hasSimpleDisplay):
+        Provide a helper to determine if a formatted value will be simple.
+
+2017-07-25  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Add a switch for Spreadsheet model style editor to experimental settings
+        https://bugs.webkit.org/show_bug.cgi?id=174741
+        <rdar://problem/33467954>
+
+        Reviewed by Brian Burg.
+
+        Show a blank panel when Spreadsheet Style Editor is enabled.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Main.html:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WebInspector.CSSStyleDetailsSidebarPanel):
+        (WebInspector.CSSStyleDetailsSidebarPanel.prototype.computedStyleDetailsPanelShowProperty):
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.js: Added.
+        (WebInspector.RulesStyleSpreadsheetDetailsPanel):
+        (WebInspector.RulesStyleSpreadsheetDetailsPanel.prototype.filterDidChange):
+        (WebInspector.RulesStyleSpreadsheetDetailsPanel.prototype.scrollToSectionAndHighlightProperty):
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings > .settings-view > .container.hidden):
+        (.content-view.settings > .settings-view > .container-centered):
+        (.content-view.settings > .settings-view > .container button):
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype._createDebugSettingsView):
+        * UserInterface/Views/SettingsView.js:
+        (WebInspector.SettingsView.prototype.addCenteredContainer):
+        (WebInspector.SettingsView):
+        Show "Reload Web Inspector" button when Spreadsheet Style Editor setting is modified.
+
+2017-07-25  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add context menu item for taking a screenshot of a node
+        https://bugs.webkit.org/show_bug.cgi?id=174754
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/ContextMenuUtilities.js:
+        (WebInspector.appendContextMenuItemsForDOMNode):
+        Add "Capture Element Screenshot " context menu item that opens a save dialog with a picture of the node.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.saveDataToFile):
+        Allow the saveData to specify whether the contained content is base64Encoded, instead of
+        having to go through a Blob to save base64 data.
+
+        * UserInterface/Base/Utilities.js:
+        Add Number.pad to add leading zeros up to a certain width.
+
+        Drive-by: fix failing test for Number.constrain.
+
+        * UserInterface/Models/DOMNode.js:
+        (WebInspector.DOMNode.prototype.scrollIntoView.resolvedNode.scrollIntoView): Added.
+        (WebInspector.DOMNode.prototype.scrollIntoView.resolvedNode): Added.
+        (WebInspector.DOMNode.prototype.scrollIntoView): Added.
+        * UserInterface/Views/DOMTreeElement.js:
+        (WebInspector.DOMTreeElement.prototype._populateNodeContextMenu):
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode.scrollIntoView): Deleted.
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView.resolvedNode): Deleted.
+        (WebInspector.DOMTreeElement.prototype._scrollIntoView): Deleted.
+        * UserInterface/Views/DOMTreeOutline.js:
+        (WebInspector.DOMTreeOutline.prototype.populateContextMenu):
+        Drive-by: move "Scroll Into View" context menu command to WebInspector.appendContextMenuItemsForDOMNode
+        so that it can be triggered from more places than just the DOM tree.
+
+2017-07-24  Nikita Vasilyev  <me@elv1s.ru>
+
+        Web Inspector: Settings: Some controls overlay settings header
+        https://bugs.webkit.org/show_bug.cgi?id=174804
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/SettingsTabContentView.css:
+        (.content-view.settings .navigation-bar):
+
+2017-07-24  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: should only show Canvases in resource type filter if debug setting enabled
+        https://bugs.webkit.org/show_bug.cgi?id=174765
+        <rdar://problem/33479009>
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WebInspector.ResourceSidebarPanel):
+
+2017-07-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: inspect(aFunction) should jump to function definition
+        https://bugs.webkit.org/show_bug.cgi?id=149344
+        <rdar://problem/11563607>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Protocol/InspectorObserver.js:
+        (WebInspector.InspectorObserver.prototype.inspect):
+        If we receive a function remote object jump to its location if available.
+
+2017-07-21  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Avoid subclassing WebInspector.Object if we do not need to
+        https://bugs.webkit.org/show_bug.cgi?id=174703
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Models/LogObject.js:
+        (WebInspector.LogObject):
+        (WebInspector.LogObject.prototype.get startDate): Deleted.
+        Remove unused startDate property as well.
+
+        * UserInterface/Base/YieldableTask.js:
+        * UserInterface/Debug/ProtocolTrace.js:
+        * UserInterface/Models/AnalyzerMessage.js:
+        * UserInterface/Models/ApplicationCacheFrame.js:
+        * UserInterface/Models/ApplicationCacheManifest.js:
+        * UserInterface/Models/BackForwardEntry.js:
+        * UserInterface/Models/Branch.js:
+        * UserInterface/Models/BreakpointAction.js:
+        * UserInterface/Models/CSSMedia.js:
+        * UserInterface/Models/CSSSelector.js:
+        * UserInterface/Models/CallFrame.js:
+        * UserInterface/Models/CallingContextTree.js:
+        * UserInterface/Models/CallingContextTreeNode.js:
+        * UserInterface/Models/CollectionEntry.js:
+        * UserInterface/Models/CollectionEntryPreview.js:
+        * UserInterface/Models/ConsoleMessage.js:
+        * UserInterface/Models/DOMSearchMatchObject.js:
+        * UserInterface/Models/DatabaseObject.js:
+        * UserInterface/Models/DatabaseTableObject.js:
+        * UserInterface/Models/DebuggerDashboard.js:
+        * UserInterface/Models/DebuggerData.js:
+        * UserInterface/Models/ExecutionContext.js:
+        * UserInterface/Models/ExecutionContextList.js:
+        * UserInterface/Models/GarbageCollection.js:
+        * UserInterface/Models/HeapSnapshotRootPath.js:
+        * UserInterface/Models/IndexedDatabase.js:
+        * UserInterface/Models/IndexedDatabaseObjectStore.js:
+        * UserInterface/Models/IndexedDatabaseObjectStoreIndex.js:
+        * UserInterface/Models/Instrument.js:
+        * UserInterface/Models/KeyboardShortcut.js:
+        * UserInterface/Models/LineWidget.js:
+        * UserInterface/Models/MemoryCategory.js:
+        * UserInterface/Models/MemoryPressureEvent.js:
+        * UserInterface/Models/ObjectPreview.js:
+        * UserInterface/Models/Probe.js:
+        * UserInterface/Models/ProbeSetDataFrame.js:
+        * UserInterface/Models/Profile.js:
+        * UserInterface/Models/ProfileNode.js:
+        * UserInterface/Models/ProfileNodeCall.js:
+        * UserInterface/Models/PropertyDescriptor.js:
+        * UserInterface/Models/PropertyPath.js:
+        * UserInterface/Models/PropertyPreview.js:
+        * UserInterface/Models/ResourceQueryMatch.js:
+        * UserInterface/Models/ResourceQueryResult.js:
+        * UserInterface/Models/ResourceTimingData.js:
+        * UserInterface/Models/Revision.js:
+        * UserInterface/Models/ScopeChainNode.js:
+        * UserInterface/Models/ScriptSyntaxTree.js:
+        * UserInterface/Models/SourceCodePosition.js:
+        * UserInterface/Models/SourceCodeSearchMatchObject.js:
+        * UserInterface/Models/SourceMap.js:
+        * UserInterface/Models/StackTrace.js:
+        * UserInterface/Models/StructureDescription.js:
+        * UserInterface/Models/TextMarker.js:
+        * UserInterface/Models/TextRange.js:
+        * UserInterface/Models/TimelineRange.js:
+        * UserInterface/Models/TypeDescription.js:
+        * UserInterface/Models/TypeSet.js:
+        * UserInterface/Protocol/ProtocolTracer.js:
+        * UserInterface/Proxies/FormatterWorkerProxy.js:
+        * UserInterface/Proxies/HeapSnapshotDiffProxy.js:
+        * UserInterface/Proxies/HeapSnapshotWorkerProxy.js:
+        * UserInterface/Test/TestSuite.js:
+
+2017-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Drop SQLException type
+        https://bugs.webkit.org/show_bug.cgi?id=174665
+
+        Reviewed by Sam Weinig.
+
+        Use SQLError instead of SQLException, this is what the script should really
+        use here since it is checking the code of an SQLError.
+
+        * .eslintrc:
+        * UserInterface/Models/DatabaseObject.js:
+        (WebInspector.DatabaseObject.prototype.executeSQL.queryCallback):
+        (WebInspector.DatabaseObject.prototype.executeSQL):
+        (WebInspector.DatabaseObject):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: adjust wording of "clear when page {navigates -> loads}"
+        https://bugs.webkit.org/show_bug.cgi?id=174589
+        <rdar://problem/32797981>
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView.prototype._createGeneralSettingsView):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
 2017-07-13  Joseph Pecoraro  <pecoraro@apple.com>
 
         Web Inspector: Remove unused and untested Page domain commands

@@ -34,6 +34,7 @@
 
 #include "CommandLineAPIHost.h"
 #include "CommonVM.h"
+#include "DOMWindow.h"
 #include "DOMWrapperWorld.h"
 #include "GraphicsContext.h"
 #include "InspectorApplicationCacheAgent.h"
@@ -179,7 +180,7 @@ InspectorController::InspectorController(Page& page, InspectorClient* inspectorC
     m_agents.append(std::make_unique<InspectorLayerTreeAgent>(pageContext));
     m_agents.append(std::make_unique<InspectorWorkerAgent>(pageContext));
 
-    auto canvasAgentPtr = std::make_unique<InspectorCanvasAgent>(pageContext, pageAgent);
+    auto canvasAgentPtr = std::make_unique<InspectorCanvasAgent>(pageContext);
     m_instrumentingAgents->setInspectorCanvasAgent(canvasAgentPtr.get());
     m_agents.append(WTFMove(canvasAgentPtr));
 

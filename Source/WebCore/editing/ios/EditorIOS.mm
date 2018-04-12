@@ -199,16 +199,22 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
 {
     PasteboardImage pasteboardImage;
 
+    RefPtr<Image> image;
     CachedImage* cachedImage;
-    getImage(imageElement, pasteboardImage.image, cachedImage);
-    if (!pasteboardImage.image)
+    getImage(imageElement, image, cachedImage);
+    if (!image)
         return;
     ASSERT(cachedImage);
 
     auto imageSourceURL = imageElement.document().completeURL(stripLeadingAndTrailingHTMLSpaces(imageElement.imageSourceURL()));
-    pasteboardImage.url.url = url.isEmpty() ? imageSourceURL : url;
-    pasteboardImage.url.title = title;
+
+    auto pasteboardImageURL = url.isEmpty() ? imageSourceURL : url;
+    if (!pasteboardImageURL.isLocalFile()) {
+        pasteboardImage.url.url = pasteboardImageURL;
+        pasteboardImage.url.title = title;
+    }
     pasteboardImage.suggestedName = imageSourceURL.lastPathComponent();
+    pasteboardImage.imageSize = image->size();
     pasteboardImage.resourceMIMEType = pasteboard.resourceMIMEType(cachedImage->response().mimeType());
     pasteboardImage.resourceData = cachedImage->resourceBuffer();
 

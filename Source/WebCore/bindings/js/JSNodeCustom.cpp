@@ -32,7 +32,6 @@
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
-#include "ExceptionCode.h"
 #include "HTMLAudioElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLElement.h"
@@ -183,7 +182,7 @@ JSValue toJSNewlyCreated(ExecState* exec, JSDOMGlobalObject* globalObject, Ref<N
 JSC::JSObject* getOutOfLineCachedWrapper(JSDOMGlobalObject* globalObject, Node& node)
 {
     ASSERT(!globalObject->world().isNormal());
-    return globalObject->world().m_wrappers.get(&node);
+    return globalObject->world().wrappers().get(&node);
 }
 
 void willCreatePossiblyOrphanedTreeByRemovalSlowCase(Node* root)

@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "StringAdaptors.h"
 #include <heap/HandleTypes.h>
 #include <wtf/Brigand.h>
 #include <wtf/HashMap.h>
@@ -50,6 +51,7 @@ class IDBKey;
 class IDBKeyData;
 class IDBValue;
 class DOMPromise;
+class ScheduledAction;
 
 #if ENABLE(WEBGL)
 class WebGLExtension;
@@ -121,6 +123,8 @@ template<typename StringType> struct IDLString : IDLType<StringType> {
     using NullableType = StringType;
     static StringType nullValue() { return StringType(); }
     static bool isNullValue(const StringType& value) { return value.isNull(); }
+    static bool isNullValue(const UncachedString& value) { return value.string.isNull(); }
+    static bool isNullValue(const OwnedString& value) { return value.string.isNull(); }
     template <typename U> static U&& extractValueFromNullable(U&& value) { return std::forward<U>(value); }
 };
 struct IDLDOMString : IDLString<String> { };
@@ -252,6 +256,7 @@ struct IDLJSON : IDLType<String> {
     template <typename U> static U&& extractValueFromNullable(U&& value) { return std::forward<U>(value); }
 };
 
+struct IDLScheduledAction : IDLType<std::unique_ptr<ScheduledAction>> { };
 template<typename T> struct IDLSerializedScriptValue : IDLWrapper<T> { };
 template<typename T> struct IDLEventListener : IDLWrapper<T> { };
 template<typename T> struct IDLXPathNSResolver : IDLWrapper<T> { };

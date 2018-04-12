@@ -73,7 +73,7 @@
 #import "WebHTMLRepresentation.h"
 #import "WebHTMLViewInternal.h"
 #import "WebHistoryItemInternal.h"
-#import "WebIconDatabaseInternal.h"
+#import "WebIconDatabase.h"
 #import "WebInspector.h"
 #import "WebInspectorClient.h"
 #import "WebKitErrors.h"
@@ -154,7 +154,6 @@
 #import <WebCore/HTMLVideoElement.h>
 #import <WebCore/HistoryController.h>
 #import <WebCore/HistoryItem.h>
-#import <WebCore/IconDatabase.h>
 #import <WebCore/JSCSSStyleDeclaration.h>
 #import <WebCore/JSDocument.h>
 #import <WebCore/JSElement.h>
@@ -268,10 +267,8 @@
 #import <WebCore/EventNames.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/GraphicsLayer.h>
-#import <WebCore/IconController.h>
 #import <WebCore/LegacyTileCache.h>
 #import <WebCore/MobileGestaltSPI.h>
-#import <WebCore/NetworkStateNotifier.h>
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/ResourceLoadStatistics.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
@@ -319,8 +316,8 @@
 
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
-#import <WebCore/WebPlaybackSessionInterfaceMac.h>
-#import <WebCore/WebPlaybackSessionModelMediaElement.h>
+#import <WebCore/PlaybackSessionInterfaceMac.h>
+#import <WebCore/PlaybackSessionModelMediaElement.h>
 #endif
 
 #if ENABLE(DATA_INTERACTION)
@@ -1794,6 +1791,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 - (BOOL)_requestStartDataInteraction:(CGPoint)clientPosition globalPosition:(CGPoint)globalPosition
 {
+    WebThreadLock();
     return _private->page->mainFrame().eventHandler().tryToBeginDataInteractionAtPoint(IntPoint(clientPosition), IntPoint(globalPosition));
 }
 
@@ -1815,6 +1813,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 
 - (CGRect)_dataInteractionCaretRect
 {
+    WebThreadLock();
     if (auto* page = _private->page)
         return page->dragCaretController().caretRectInRootViewCoordinates();
 
@@ -6223,12 +6222,6 @@ static NSString * const backingPropertyOldScaleFactorKey = @"NSBackingPropertyOl
 
     _private->frameLoadDelegate = delegate;
     [self _cacheFrameLoadDelegateImplementations];
-
-#if ENABLE(ICONDATABASE)
-    // If this delegate wants callbacks for icons, fire up the icon database.
-    if (_private->frameLoadDelegateImplementations.didReceiveIconForFrameFunc)
-        [WebIconDatabase sharedIconDatabase];
-#endif
 }
 
 - (id)frameLoadDelegate
@@ -6985,8 +6978,11 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 
     if (auto *icon = _private->_mainFrameIcon.get())
         return icon;
-    
+
+#pragma GCC diagnostic push 
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     return [[WebIconDatabase sharedIconDatabase] defaultIconWithSize:WebIconSmallSize];
+#pragma GCC diagnostic pop
 }
 
 - (void)_setMainFrameIcon:(NSImage *)icon
@@ -7011,9 +7007,17 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
     Frame *coreMainFrame = core(mainFrame);
     if (!coreMainFrame)
         return nil;
+    
+    auto* documentLoader = coreMainFrame->loader().documentLoader();
+    if (!documentLoader)
+        return nil;
+    
+    auto& linkIcons = documentLoader->linkIcons();
+    if (linkIcons.isEmpty())
+        return nil;
 
-    NSURL *url = (NSURL *)coreMainFrame->loader().icon().url();
-    return url;
+    // We arbitrarily choose the first icon in the list if there is more than one.
+    return (NSURL *)linkIcons[0].url;
 }
 #endif
 
@@ -7630,15 +7634,12 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
             }
         } else if (object->inherits(vm, JSArray::info())) {
             static NeverDestroyed<HashSet<JSObject*>> visitedElems;
-            if (!visitedElems.get().contains(object)) {
-                visitedElems.get().add(object);
-                
+            if (visitedElems.get().add(object).isNewEntry) {
                 JSArray* array = static_cast<JSArray*>(object);
                 aeDesc = [NSAppleEventDescriptor listDescriptor];
                 unsigned numItems = array->length();
                 for (unsigned i = 0; i < numItems; ++i)
                     [aeDesc insertDescriptor:aeDescFromJSValue(exec, array->get(exec, i)) atIndex:0];
-                
                 visitedElems.get().remove(object);
                 return aeDesc;
             }
@@ -9264,11 +9265,11 @@ bool LayerFlushController::flushLayers()
         return;
 
     if (!_private->playbackSessionModel)
-        _private->playbackSessionModel = WebPlaybackSessionModelMediaElement::create();
+        _private->playbackSessionModel = PlaybackSessionModelMediaElement::create();
     _private->playbackSessionModel->setMediaElement(&mediaElement);
 
     if (!_private->playbackSessionInterface)
-        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create(*_private->playbackSessionModel);
+        _private->playbackSessionInterface = PlaybackSessionInterfaceMac::create(*_private->playbackSessionModel);
 
     [self updateTouchBar];
 }

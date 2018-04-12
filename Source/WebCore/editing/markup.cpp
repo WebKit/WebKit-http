@@ -39,7 +39,6 @@
 #include "Editing.h"
 #include "Editor.h"
 #include "ElementIterator.h"
-#include "ExceptionCode.h"
 #include "File.h"
 #include "Frame.h"
 #include "HTMLAttachmentElement.h"
@@ -891,7 +890,7 @@ ExceptionOr<Ref<DocumentFragment>> createFragmentForInnerOuterHTML(Element& cont
 
     bool wasValid = fragment->parseXML(markup, &contextElement, parserContentPolicy);
     if (!wasValid)
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return WTFMove(fragment);
 }
 

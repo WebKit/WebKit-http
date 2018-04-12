@@ -150,6 +150,7 @@ void NavigationState::setNavigationDelegate(id <WKNavigationDelegate> delegate)
     m_navigationDelegateMethods.webViewDidFailNavigationWithError = [delegate respondsToSelector:@selector(webView:didFailNavigation:withError:)];
 
     m_navigationDelegateMethods.webViewNavigationDidFailProvisionalLoadInSubframeWithError = [delegate respondsToSelector:@selector(_webView:navigation:didFailProvisionalLoadInSubframe:withError:)];
+    m_navigationDelegateMethods.webViewDidPerformClientRedirectForNavigation = [delegate respondsToSelector:@selector(_webView:didPerformClientRedirectForNavigation:)];
     m_navigationDelegateMethods.webViewNavigationDidFinishDocumentLoad = [delegate respondsToSelector:@selector(_webView:navigationDidFinishDocumentLoad:)];
     m_navigationDelegateMethods.webViewNavigationDidSameDocumentNavigation = [delegate respondsToSelector:@selector(_webView:navigation:didSameDocumentNavigation:)];
     m_navigationDelegateMethods.webViewRenderingProgressDidChange = [delegate respondsToSelector:@selector(_webView:renderingProgressDidChange:)];
@@ -303,16 +304,16 @@ static void tryAppLink(RefPtr<API::NavigationAction>&& navigationAction, const S
 #endif
 }
 
-void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageProxy& webPageProxy, API::NavigationAction& navigationAction, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData)
+void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageProxy& webPageProxy, Ref<API::NavigationAction>&& navigationAction, Ref<WebFramePolicyListenerProxy>&& listener, API::Object* userData)
 {
     String mainFrameURLString = webPageProxy.mainFrame()->url();
 
     if (!m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandler
         && !m_navigationState.m_navigationDelegateMethods.webViewDecidePolicyForNavigationActionDecisionHandlerWebsitePolicies) {
-        RefPtr<API::NavigationAction> localNavigationAction = &navigationAction;
+        Ref<API::NavigationAction> localNavigationAction = navigationAction.copyRef();
         RefPtr<WebFramePolicyListenerProxy> localListener = WTFMove(listener);
 
-        tryAppLink(WTFMove(localNavigationAction), mainFrameURLString, [webPage = RefPtr<WebPageProxy>(&webPageProxy), localListener, localNavigationAction = RefPtr<API::NavigationAction>(&navigationAction)] (bool followedLinkToApp) {
+        tryAppLink(WTFMove(localNavigationAction), mainFrameURLString, [webPage = RefPtr<WebPageProxy>(&webPageProxy), localListener, localNavigationAction = navigationAction.copyRef()] (bool followedLinkToApp) {
             if (followedLinkToApp) {
                 localListener->ignore();
                 return;
@@ -352,7 +353,7 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     
     RefPtr<CompletionHandlerCallChecker> checker = CompletionHandlerCallChecker::create(navigationDelegate.get(), delegateHasWebsitePolicies ? @selector(_webView:decidePolicyForNavigationAction:decisionHandler:) : @selector(webView:decidePolicyForNavigationAction:decisionHandler:));
     
-    auto decisionHandlerWithPolicies = [localListener = RefPtr<WebFramePolicyListenerProxy>(WTFMove(listener)), localNavigationAction = RefPtr<API::NavigationAction>(&navigationAction), checker = WTFMove(checker), mainFrameURLString](WKNavigationActionPolicy actionPolicy, _WKWebsitePolicies *websitePolicies) mutable {
+    auto decisionHandlerWithPolicies = [localListener = RefPtr<WebFramePolicyListenerProxy>(WTFMove(listener)), localNavigationAction = navigationAction.copyRef(), checker = WTFMove(checker), mainFrameURLString](WKNavigationActionPolicy actionPolicy, _WKWebsitePolicies *websitePolicies) mutable {
         if (checker->completionHandlerHasBeenCalled())
             return;
         checker->didCallCompletionHandler();
@@ -392,12 +393,12 @@ void NavigationState::NavigationClient::decidePolicyForNavigationAction(WebPageP
     };
     
     if (delegateHasWebsitePolicies)
-        [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:decisionHandlerWithPolicies];
+        [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:BlockPtr<void(WKNavigationActionPolicy, _WKWebsitePolicies *)>::fromCallable(WTFMove(decisionHandlerWithPolicies)).get()];
     else {
-        auto decisionHandlerWithoutPolicies = [decisionHandlerWithPolicies] (WKNavigationActionPolicy actionPolicy) mutable {
+        auto decisionHandlerWithoutPolicies = [decisionHandlerWithPolicies = WTFMove(decisionHandlerWithPolicies)] (WKNavigationActionPolicy actionPolicy) mutable {
             decisionHandlerWithPolicies(actionPolicy, nil);
         };
-        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:decisionHandlerWithoutPolicies];
+        [navigationDelegate webView:m_navigationState.m_webView decidePolicyForNavigationAction:wrapper(navigationAction) decisionHandler:BlockPtr<void(WKNavigationActionPolicy)>::fromCallable(WTFMove(decisionHandlerWithoutPolicies)).get()];
     }
 }
 
@@ -486,6 +487,23 @@ void NavigationState::NavigationClient::didReceiveServerRedirectForProvisionalNa
         wkNavigation = wrapper(*navigation);
 
     [navigationDelegate webView:m_navigationState.m_webView didReceiveServerRedirectForProvisionalNavigation:wkNavigation];
+}
+
+void NavigationState::NavigationClient::didPerformClientRedirectForNavigation(WebPageProxy& page, API::Navigation* navigation)
+{
+    if (!m_navigationState.m_navigationDelegateMethods.webViewDidPerformClientRedirectForNavigation)
+        return;
+
+    auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
+    if (!navigationDelegate)
+        return;
+
+    // FIXME: We should assert that navigation is not null here, but it's currently null for some navigations through the page cache.
+    WKNavigation *wkNavigation = nil;
+    if (navigation)
+        wkNavigation = wrapper(*navigation);
+
+    [(id <WKNavigationDelegatePrivate>)navigationDelegate _webView:m_navigationState.m_webView didPerformClientRedirectForNavigation:wkNavigation];
 }
 
 static RetainPtr<NSError> createErrorWithRecoveryAttempter(WKWebView *webView, WebFrameProxy& webFrameProxy, NSError *originalError)

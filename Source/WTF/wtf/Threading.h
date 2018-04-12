@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2010, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2007 Justin Haygood <jhaygood@reaktix.com>
  * Copyright (C) 2017 Yusuke Suzuki <utatane.tea@gmail.com>
  *
@@ -38,7 +38,9 @@
 #include <wtf/Function.h>
 #include <wtf/PlatformRegisters.h>
 #include <wtf/RefPtr.h>
+#include <wtf/StackBounds.h>
 #include <wtf/ThreadSafeRefCounted.h>
+#include <wtf/Vector.h>
 
 #if USE(PTHREADS) && !OS(DARWIN)
 #include <semaphore.h>
@@ -47,16 +49,21 @@
 
 namespace WTF {
 
+class AbstractLocker;
 class ThreadMessageData;
+
+enum class ThreadGroupAddResult;
 
 using ThreadIdentifier = uint32_t;
 typedef void (*ThreadFunction)(void* argument);
 
+class ThreadGroup;
 class ThreadHolder;
 class PrintStream;
 
 class Thread : public ThreadSafeRefCounted<Thread> {
 public:
+    friend class ThreadGroup;
     friend class ThreadHolder;
 
     WTF_EXPORT_PRIVATE ~Thread();
@@ -67,7 +74,7 @@ public:
 
     // Returns Thread object.
     WTF_EXPORT_PRIVATE static Thread& current();
-    WTF_EXPORT_PRIVATE static Thread* currentMayBeNull();
+    static Thread* currentMayBeNull();
 
     // Returns ThreadIdentifier directly. It is useful if the user only cares about identity
     // of threads. At that time, users should know that holding this ThreadIdentifier does not ensure
@@ -108,6 +115,10 @@ public:
     // Called in the thread during initialization.
     // Helpful for platforms where the thread name must be set from within the thread.
     static void initializeCurrentThreadInternal(const char* threadName);
+    static void initializeCurrentThreadEvenIfNonWTFCreated();
+    
+    WTF_EXPORT_PRIVATE static const unsigned lockSpinLimit;
+    WTF_EXPORT_PRIVATE static void yield();
 
     WTF_EXPORT_PRIVATE void dump(PrintStream& out) const;
 
@@ -125,20 +136,27 @@ public:
 
     static void initializePlatformThreading();
 
+    const StackBounds& stack() const
+    {
+        return m_stack;
+    }
+
 #if OS(DARWIN)
     mach_port_t machThread() { return m_platformThread; }
 #endif
 
+    struct NewThreadContext;
+    static void entryPoint(NewThreadContext*);
 protected:
     Thread();
 
-    // Internal platform-specific Thread::create implementation.
-    static RefPtr<Thread> createInternal(ThreadFunction, void*, const char* threadName);
+    // Internal platform-specific Thread establishment implementation.
+    bool establishHandle(NewThreadContext*);
 
 #if USE(PTHREADS)
-    void establish(pthread_t);
+    void establishPlatformSpecificHandle(pthread_t);
 #else
-    void establish(HANDLE, ThreadIdentifier);
+    void establishPlatformSpecificHandle(HANDLE, ThreadIdentifier);
 #endif
 
 #if USE(PTHREADS) && !OS(DARWIN)
@@ -167,10 +185,17 @@ protected:
     void didJoin() { m_joinableState = Joined; }
     bool hasExited() { return m_didExit; }
 
+    // These functions are only called from ThreadGroup.
+    ThreadGroupAddResult addToThreadGroup(const AbstractLocker& threadGroupLocker, ThreadGroup&);
+    void removeFromThreadGroup(const AbstractLocker& threadGroupLocker, ThreadGroup&);
+
     // WordLock & Lock rely on ThreadSpecific. But Thread object can be destroyed even after ThreadSpecific things are destroyed.
     std::mutex m_mutex;
     ThreadIdentifier m_id { 0 };
     JoinableState m_joinableState { Joinable };
+    StackBounds m_stack { StackBounds::emptyBounds() };
+    Vector<std::weak_ptr<ThreadGroup>> m_threadGroups;
+    bool m_isShuttingDown { false };
     bool m_didExit { false };
 #if USE(PTHREADS)
     pthread_t m_handle;
@@ -190,9 +215,7 @@ protected:
 #endif
 };
 
-// This function must be called from the main thread. It is safe to call it repeatedly.
-// Darwin is an exception to this rule: it is OK to call it from any thread, the only
-// requirement is that the calls are not reentrant.
+// This function can be called from any threads.
 WTF_EXPORT_PRIVATE void initializeThreading();
 
 inline ThreadIdentifier currentThread()

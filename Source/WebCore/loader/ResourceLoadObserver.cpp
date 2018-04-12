@@ -54,6 +54,51 @@ ResourceLoadObserver& ResourceLoadObserver::shared()
     return resourceLoadObserver;
 }
 
+static bool shouldEnableSiteSpecificQuirks(Page* page)
+{
+#if PLATFORM(IOS)
+    UNUSED_PARAM(page);
+
+    // There is currently no way to toggle the needsSiteSpecificQuirks setting on iOS so we always enable
+    // the site-specific quirks on iOS.
+    return true;
+#else
+    return page && page->settings().needsSiteSpecificQuirks();
+#endif
+}
+
+// FIXME: Temporary fix for <rdar://problem/32343256> until content can be updated.
+static bool areDomainsAssociated(Page* page, const String& firstDomain, const String& secondDomain)
+{
+    static NeverDestroyed<HashMap<String, unsigned>> metaDomainIdentifiers = [] {
+        HashMap<String, unsigned> map;
+
+        // Domains owned by Dow Jones & Company, Inc.
+        const unsigned dowJonesIdentifier = 1;
+        map.add(ASCIILiteral("dowjones.com"), dowJonesIdentifier);
+        map.add(ASCIILiteral("wsj.com"), dowJonesIdentifier);
+        map.add(ASCIILiteral("barrons.com"), dowJonesIdentifier);
+        map.add(ASCIILiteral("marketwatch.com"), dowJonesIdentifier);
+        map.add(ASCIILiteral("wsjplus.com"), dowJonesIdentifier);
+
+        return map;
+    }();
+
+    if (firstDomain == secondDomain)
+        return true;
+
+    ASSERT(!equalIgnoringASCIICase(firstDomain, secondDomain));
+
+    if (!shouldEnableSiteSpecificQuirks(page))
+        return false;
+
+    unsigned firstMetaDomainIdentifier = metaDomainIdentifiers.get().get(firstDomain);
+    if (!firstMetaDomainIdentifier)
+        return false;
+
+    return firstMetaDomainIdentifier == metaDomainIdentifiers.get().get(secondDomain);
+}
+
 void ResourceLoadObserver::setShouldThrottleObserverNotifications(bool shouldThrottle)
 {
     m_shouldThrottleNotifications = shouldThrottle;
@@ -106,7 +151,8 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
     if (frame.isMainFrame())
         return;
     
-    if (!shouldLog(topFrame.page()))
+    auto* page = topFrame.page();
+    if (!shouldLog(page))
         return;
 
     auto& sourceURL = frame.document()->url();
@@ -126,7 +172,7 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
     auto sourcePrimaryDomain = primaryDomain(sourceURL);
     
-    if (targetPrimaryDomain == mainFramePrimaryDomain || targetPrimaryDomain == sourcePrimaryDomain)
+    if (areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain) || areDomainsAssociated(page, targetPrimaryDomain, sourcePrimaryDomain))
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);
@@ -135,12 +181,22 @@ void ResourceLoadObserver::logFrameNavigation(const Frame& frame, const Frame& t
     if (subframeUnderTopFrameOriginsResult.isNewEntry)
         scheduleNotificationIfNeeded();
 }
-    
+
+// FIXME: This quirk was added to address <rdar://problem/33325881> and should be removed once content is fixed.
+static bool resourceNeedsSSOQuirk(Page* page, const URL& url)
+{
+    if (!shouldEnableSiteSpecificQuirks(page))
+        return false;
+
+    return equalIgnoringASCIICase(url.host(), "sp.auth.adobe.com");
+}
+
 void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const ResourceRequest& newRequest, const ResourceResponse& redirectResponse)
 {
     ASSERT(frame->page());
 
-    if (!shouldLog(frame->page()))
+    auto* page = frame->page();
+    if (!shouldLog(page))
         return;
 
     bool isRedirect = is3xxRedirect(redirectResponse);
@@ -158,7 +214,10 @@ void ResourceLoadObserver::logSubresourceLoading(const Frame* frame, const Resou
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
     auto sourcePrimaryDomain = primaryDomain(sourceURL);
     
-    if (targetPrimaryDomain == mainFramePrimaryDomain || (isRedirect && targetPrimaryDomain == sourcePrimaryDomain))
+    if (areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain) || (isRedirect && areDomainsAssociated(page, targetPrimaryDomain, sourcePrimaryDomain)))
+        return;
+
+    if (resourceNeedsSSOQuirk(page, targetURL))
         return;
 
     bool shouldCallNotificationCallback = false;
@@ -186,7 +245,8 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     if (!frame)
         return;
 
-    if (!shouldLog(frame->page()))
+    auto* page = frame->page();
+    if (!shouldLog(page))
         return;
 
     auto& mainFrameURL = frame->mainFrame().document()->url();
@@ -200,7 +260,7 @@ void ResourceLoadObserver::logWebSocketLoading(const Frame* frame, const URL& ta
     auto targetPrimaryDomain = primaryDomain(targetURL);
     auto mainFramePrimaryDomain = primaryDomain(mainFrameURL);
     
-    if (targetPrimaryDomain == mainFramePrimaryDomain)
+    if (areDomainsAssociated(page, targetPrimaryDomain, mainFramePrimaryDomain))
         return;
 
     auto& targetStatistics = ensureResourceStatisticsForPrimaryDomain(targetPrimaryDomain);

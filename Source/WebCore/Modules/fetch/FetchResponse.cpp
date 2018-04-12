@@ -31,7 +31,6 @@
 
 #if ENABLE(FETCH_API)
 
-#include "ExceptionCode.h"
 #include "FetchRequest.h"
 #include "HTTPParsers.h"
 #include "JSBlob.h"
@@ -75,7 +74,7 @@ ExceptionOr<void> FetchResponse::setStatus(int status, const String& statusText)
     return { };
 }
 
-void FetchResponse::initializeWith(FetchBody::BindingDataType&& body)
+void FetchResponse::initializeWith(FetchBody::Init&& body)
 {
     ASSERT(scriptExecutionContext());
     extractBody(*scriptExecutionContext(), WTFMove(body));

@@ -31,11 +31,8 @@
 #include "Structure.h"
 
 namespace JSC {
-namespace DOMJIT {
-class GetterSetter;
-}
 
-class CustomGetterSetter final : public JSCell {
+class CustomGetterSetter : public JSCell {
 public:
     typedef JSCell Base;
     static const unsigned StructureFlags = Base::StructureFlags | StructureIsImmortal;
@@ -43,16 +40,15 @@ public:
     typedef PropertySlot::GetValueFunc CustomGetter;
     typedef PutPropertySlot::PutValueFunc CustomSetter;
 
-    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter, DOMJIT::GetterSetter* domJIT = nullptr)
+    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter)
     {
-        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, customGetter, customSetter, domJIT);
+        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, vm.customGetterSetterStructure.get(), customGetter, customSetter);
         customGetterSetter->finishCreation(vm);
         return customGetterSetter;
     }
 
     CustomGetterSetter::CustomGetter getter() const { return m_getter; }
     CustomGetterSetter::CustomSetter setter() const { return m_setter; }
-    DOMJIT::GetterSetter* domJIT() const { return m_domJIT; }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
@@ -61,18 +57,17 @@ public:
         
     DECLARE_EXPORT_INFO;
 
-private:
-    CustomGetterSetter(VM& vm, CustomGetter getter, CustomSetter setter, DOMJIT::GetterSetter* domJIT)
-        : JSCell(vm, vm.customGetterSetterStructure.get())
+protected:
+    CustomGetterSetter(VM& vm, Structure* structure, CustomGetter getter, CustomSetter setter)
+        : JSCell(vm, structure)
         , m_getter(getter)
         , m_setter(setter)
-        , m_domJIT(domJIT)
     {
     }
 
+private:
     CustomGetter m_getter;
     CustomSetter m_setter;
-    DOMJIT::GetterSetter* m_domJIT;
 };
 
 JS_EXPORT_PRIVATE bool callCustomSetter(ExecState*, CustomGetterSetter::CustomSetter, bool isAccessor, JSValue thisValue, JSValue);

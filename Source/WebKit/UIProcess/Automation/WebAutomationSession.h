@@ -27,10 +27,12 @@
 
 #include "APIObject.h"
 #include "AutomationBackendDispatchers.h"
+#include "AutomationFrontendDispatchers.h"
 #include "Connection.h"
 #include "ShareableBitmap.h"
 #include "WebEvent.h"
 #include <wtf/Forward.h>
+#include <wtf/RunLoop.h>
 
 #if ENABLE(REMOTE_INSPECTOR)
 #include <JavaScriptCore/RemoteAutomationTarget.h>
@@ -61,10 +63,15 @@ typedef unsigned short unichar;
 OBJC_CLASS NSEvent;
 #endif
 
+namespace API {
+class OpenPanelParameters;
+}
+
 namespace WebKit {
 
 class WebAutomationSessionClient;
 class WebFrameProxy;
+class WebOpenPanelResultListenerProxy;
 class WebPageProxy;
 class WebProcessPool;
 
@@ -86,9 +93,10 @@ public:
     WebProcessPool* processPool() const { return m_processPool; }
     void setProcessPool(WebProcessPool*);
 
-    void navigationOccurredForPage(const WebPageProxy&);
+    void navigationOccurredForFrame(const WebFrameProxy&);
     void inspectorFrontendLoaded(const WebPageProxy&);
     void keyboardEventsFlushedForPage(const WebPageProxy&);
+    void handleRunOpenPanel(const WebPageProxy&, const WebFrameProxy&, const API::OpenPanelParameters&, WebOpenPanelResultListenerProxy&);
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Inspector::RemoteAutomationTarget API
@@ -111,10 +119,11 @@ public:
     void switchToBrowsingContext(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle) override;
     void resizeWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& size) override;
     void moveWindowOfBrowsingContext(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& position) override;
-    void navigateBrowsingContext(Inspector::ErrorString&, const String& handle, const String& url, Ref<NavigateBrowsingContextCallback>&&) override;
-    void goBackInBrowsingContext(Inspector::ErrorString&, const String&, Ref<GoBackInBrowsingContextCallback>&&) override;
-    void goForwardInBrowsingContext(Inspector::ErrorString&, const String&, Ref<GoForwardInBrowsingContextCallback>&&) override;
-    void reloadBrowsingContext(Inspector::ErrorString&, const String&, Ref<ReloadBrowsingContextCallback>&&) override;
+    void navigateBrowsingContext(Inspector::ErrorString&, const String& handle, const String& url, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<NavigateBrowsingContextCallback>&&) override;
+    void goBackInBrowsingContext(Inspector::ErrorString&, const String&, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoBackInBrowsingContextCallback>&&) override;
+    void goForwardInBrowsingContext(Inspector::ErrorString&, const String&, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<GoForwardInBrowsingContextCallback>&&) override;
+    void reloadBrowsingContext(Inspector::ErrorString&, const String&, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<ReloadBrowsingContextCallback>&&) override;
+    void waitForNavigationToComplete(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, const String* optionalPageLoadStrategyString, const int* optionalPageLoadTimeout, Ref<WaitForNavigationToCompleteCallback>&&) override;
     void evaluateJavaScriptFunction(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, const String& function, const Inspector::InspectorArray& arguments, const bool* optionalExpectsImplicitCallbackArgument, const int* optionalCallbackTimeout, Ref<Inspector::AutomationBackendDispatcherHandler::EvaluateJavaScriptFunctionCallback>&&) override;
     void performMouseInteraction(Inspector::ErrorString&, const String& handle, const Inspector::InspectorObject& requestedPosition, const String& mouseButton, const String& mouseInteraction, const Inspector::InspectorArray& keyModifiers, RefPtr<Inspector::Protocol::Automation::Point>& updatedPosition) override;
     void performKeyboardInteractions(Inspector::ErrorString&, const String& handle, const Inspector::InspectorArray& interactions, Ref<PerformKeyboardInteractionsCallback>&&) override;
@@ -127,6 +136,7 @@ public:
     void acceptCurrentJavaScriptDialog(Inspector::ErrorString&, const String& browsingContextHandle) override;
     void messageOfCurrentJavaScriptDialog(Inspector::ErrorString&, const String& browsingContextHandle, String* text) override;
     void setUserInputForCurrentJavaScriptPrompt(Inspector::ErrorString&, const String& browsingContextHandle, const String& text) override;
+    void setFilesToSelectForFileUpload(Inspector::ErrorString&, const String& browsingContextHandle, const Inspector::InspectorArray& filenames) override;
     void getAllCookies(Inspector::ErrorString&, const String& browsingContextHandle, Ref<GetAllCookiesCallback>&&) override;
     void deleteSingleCookie(Inspector::ErrorString&, const String& browsingContextHandle, const String& cookieName, Ref<DeleteSingleCookieCallback>&&) override;
     void addSingleCookie(Inspector::ErrorString&, const String& browsingContextHandle, const Inspector::InspectorObject& cookie, Ref<AddSingleCookieCallback>&&) override;
@@ -151,6 +161,10 @@ private:
     std::optional<uint64_t> webFrameIDForHandle(const String&);
     String handleForWebFrameID(uint64_t frameID);
     String handleForWebFrameProxy(const WebFrameProxy&);
+
+    void waitForNavigationToCompleteOnPage(WebPageProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void waitForNavigationToCompleteOnFrame(WebFrameProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void loadTimerFired();
 
     // Implemented in generated WebAutomationSessionMessageReceiver.cpp.
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
@@ -188,6 +202,7 @@ private:
     Ref<Inspector::FrontendRouter> m_frontendRouter;
     Ref<Inspector::BackendDispatcher> m_backendDispatcher;
     Ref<Inspector::AutomationBackendDispatcher> m_domainDispatcher;
+    std::unique_ptr<Inspector::AutomationFrontendDispatcher> m_domainNotifier;
 
     HashMap<uint64_t, String> m_webPageHandleMap;
     HashMap<String, uint64_t> m_handleWebPageMap;
@@ -197,6 +212,7 @@ private:
     HashMap<String, uint64_t> m_handleWebFrameMap;
 
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerPage;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerFrame;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingInspectorCallbacksPerPage;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingKeyboardEventsFlushedCallbacksPerPage;
 
@@ -220,6 +236,9 @@ private:
 
     uint64_t m_nextDeleteCookieCallbackID { 1 };
     HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::DeleteSingleCookieCallback>> m_deleteCookieCallbacks;
+
+    RunLoop::Timer<WebAutomationSession> m_loadTimer;
+    Vector<String> m_filesToSelectForFileUpload;
 
 #if ENABLE(REMOTE_INSPECTOR)
     Inspector::FrontendChannel* m_remoteChannel { nullptr };

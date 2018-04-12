@@ -1,3 +1,1166 @@
+2017-07-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Introduce Private Symbols
+        https://bugs.webkit.org/show_bug.cgi?id=174935
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-07-30  Darin Adler  <darin@apple.com>
+
+        Remove code in HTMLObjectElement attribute parsing that forces style resolution and layout
+        https://bugs.webkit.org/show_bug.cgi?id=130653
+
+        Reviewed by Antti Koivisto.
+
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.cpp:
+        (WTR::InjectedBundlePage::didFinishLoadForFrame): Omit now-unneeded "shouldDump" argument
+        when calling frameDidChangeLocation.
+        (WTR::InjectedBundlePage::frameDidChangeLocation): Removed "shouldDump" argument. This was
+        causing WebKitTestRunner to not dump anything in cases where DumpRenderTree will dump, and
+        thus causing mysterious failures of a couple of tests. There are two remaining issues:
+        1) WebKitTestRunner won't run its dump code if there is no "page", and there is no such
+        consideration in DumpRenderTree and 2) Both DumpRenderTree and WebKitTestRunner share the
+        same logic flaw that causes "top loading frame" to get set to one of the subframes in
+        tests where  the following sequence occurs: test calls waitUntilDone, main frame finishes
+        loading, subframe starts loading. It would be good to clean that up some day, but for now
+        this patch makes the two work identically rather than changing both.
+        * WebKitTestRunner/InjectedBundle/InjectedBundlePage.h: Updated for change above.
+
+2017-07-30  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Replace RetainPtr<> with auto when adopting allocated ObjC objects in DataInteractionTests
+        https://bugs.webkit.org/show_bug.cgi?id=174963
+
+        Reviewed by Darin Adler.
+
+        Replaces several uses of RetainPtr<>s with auto. Some test cases in this file use auto, while other test cases declare using
+        RetainPtr<>. This patch changes them to all use auto.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-07-30  Brady Eidson  <beidson@apple.com>
+
+        Add URLSchemeHandler API tests that verify the lack of URLSchemeTask object leaks.
+        https://bugs.webkit.org/show_bug.cgi?id=174958
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-leaks.mm: Added.
+        (-[LeakSchemeHandler webView:startURLSchemeTask:]):
+        (-[LeakSchemeHandler webView:stopURLSchemeTask:]):
+        (runUntilTasksInFlight):
+        (TEST):
+
+2017-07-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219990.
+        https://bugs.webkit.org/show_bug.cgi?id=174961
+
+        "broke PLT on iOS (rdar://problem/33602751)" (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "Part 2 of: Rename DatabaseProcess to StorageProcess."
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+        http://trac.webkit.org/changeset/219990
+
+2017-07-28  Brady Eidson  <beidson@apple.com>
+
+        API tests that use URLSchemeHandler are failing.
+        https://bugs.webkit.org/show_bug.cgi?id=174950
+
+        Reviewed by Alex Christensen.
+
+        Fix the NoMIMEType test to be correct.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKURLSchemeHandler-1.mm:
+        (-[SchemeHandler initWithData:mimeType:]):
+        (-[SchemeHandler webView:startURLSchemeTask:]):
+        (TEST):
+
+2017-07-28  Daniel Bates  <dabates@apple.com>
+
+        prepare-ChangeLog should not list added layout tests in PAL ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174876
+
+        Reviewed by Alex Christensen.
+
+        Do not list added layout tests in the PAL ChangeLog as such tests are unlikely to be related
+        to a PAL change. Unit tests are more appropriate for PAL changes than layout tests because
+        they provide a more direct way to test the platform abstraction.
+
+        As a side effect of this change we no longer list added layout tests in WebCore/platform/gtk/po/ChangeLog.
+
+        * Scripts/prepare-ChangeLog:
+        (generateNewChangeLogs): Only list added layout tests in the WebCore ChangeLog regardless
+        of the current working directory.
+
+2017-07-28  Jonathan Bedard  <jbedard@apple.com>
+
+        Using "auto <function()> -> returnType" breaks prepare-ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174930
+
+        Unreviewed test fix.
+
+        We need to check parentheses before printing 'const' or 'volatile' in the ChangeLog. 
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp):
+
+2017-07-28  JF Bastien  <jfbastien@apple.com>
+
+        Using "auto <function()> -> returnType" breaks prepare-ChangeLog
+        https://bugs.webkit.org/show_bug.cgi?id=174930
+
+        Reviewed by Daniel Bates.
+
+        Teach prepare-ChangeLog about C++ auto arrow return, and while I'm
+        here also teach it about const and volatile overloads. I didn't do
+        reference and rvalue reference overloads because we don't really
+        use them, and the current parser throws away those characters and
+        it doesn't seem worth making it more complex.
+
+        * Scripts/prepare-ChangeLog:
+        (get_function_line_ranges_for_cpp):
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/cpp_unittests-expected.txt:
+        * Scripts/webkitperl/prepare-ChangeLog_unittest/resources/cpp_unittests.cpp:
+        (Foo::Arrow::arrow):
+        (Foo::Arrow::otherArrow):
+        (Foo::Arrow::otherArrow const):
+        (Foo::Arrow::otherArrow volatile):
+        (Foo::Arrow::otherArrow const volatile):
+
+2017-07-28  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Building with ENABLE_VIDEO=OFF fails
+        https://bugs.webkit.org/show_bug.cgi?id=174940
+
+        Reviewed by Alex Christensen.
+
+        When GStreamer usage is completely disabled at build time, CMake does not query pkg-config for the GStreamer.
+        This adds missing USE(GSTREAMER) guards in order to make testing code buildable when GStreamer usage is disabled.
+
+        * TestWebKitAPI/Tests/WebKitGLib/WebExtensionTest.cpp:
+        (methodCallCallback): Add missing USE(GSTREAMER) guard.
+
+2017-07-28  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Implement EventSenderProxy in WTR
+        https://bugs.webkit.org/show_bug.cgi?id=173419
+
+        Reviewed by Žan Doberšek.
+
+        Add the implementation of EventSenderProxy to the WTR. This
+        allows us to extend the coverage of the test suite in WKWPE.
+
+        * WebKitTestRunner/EventSenderProxy.h:
+        * WebKitTestRunner/PlatformWPE.cmake: Add dependency on
+        libxkbcommon needed to deal with key events.
+        * WebKitTestRunner/wpe/EventSenderProxyWPE.cpp:
+        (WTR::EventSenderProxy::EventSenderProxy):
+        (WTR::senderButtonToWPEButton):
+        (WTR::EventSenderProxy::mouseDown):
+        (WTR::EventSenderProxy::mouseUp):
+        (WTR::EventSenderProxy::mouseMoveTo):
+        (WTR::EventSenderProxy::mouseScrollBy):
+        (WTR::EventSenderProxy::mouseScrollByWithWheelAndMomentumPhases):
+        (WTR::EventSenderProxy::leapForward):
+        (WTR::wkEventModifiersToWPE):
+        (WTR::getXKBKeySymForKeyRef):
+        (WTR::EventSenderProxy::keyDown):
+        (WTR::EventSenderProxy::addTouchPoint):
+        (WTR::EventSenderProxy::updateTouchPoint):
+        (WTR::EventSenderProxy::setTouchModifier):
+        (WTR::EventSenderProxy::setTouchPointRadius):
+        (WTR::EventSenderProxy::getUpdatedTouchEvents):
+        (WTR::EventSenderProxy::removeUpdatedTouchEvents):
+        (WTR::EventSenderProxy::prepareAndDispatchTouchEvent):
+        (WTR::EventSenderProxy::touchStart):
+        (WTR::EventSenderProxy::touchMove):
+        (WTR::EventSenderProxy::touchEnd):
+        (WTR::EventSenderProxy::touchCancel):
+        (WTR::EventSenderProxy::clearTouchPoints):
+        (WTR::EventSenderProxy::releaseTouchPoint):
+        (WTR::EventSenderProxy::cancelTouchPoint):
+
+2017-07-27  Brady Eidson  <beidson@apple.com>
+
+        Part 2 of: Rename DatabaseProcess to StorageProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=174880
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBDeleteRecovery.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IDBIndexUpgradeToV2.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBDatabaseProcessKill.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBMultiProcess.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/IndexedDBPersistence.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ResourceLoadStatistics.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebProcessKillIDBCleanup.mm:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+
+2017-07-26  Mark Lam  <mark.lam@apple.com>
+
+        Add ability to only run specific tests in run-javascriptcore-tests.
+        https://bugs.webkit.org/show_bug.cgi?id=174884
+
+        Reviewed by Saam Barati.
+
+        For example, if we only want to run testapi, we can do so as follows:
+            $ run-javascriptcore-tests --testapi
+
+        Previously, specifying --testapi effectively does nothing because we run all tests
+        by default.  Only --no-testapi had the effect of disabling the test set.  This
+        old behavior for --testapi is not very useful or meaningful.  We're now changing
+        it to mean that we will only run that test.
+
+        With this change, we can also run more than one set of tests.  For example, if we
+        only want to run testmasm and testair, we can do so as follows:
+            $ run-javascriptcore-tests --testmasm --testair
+
+        By default, if no specific test option is specified, run-javascriptcore-tests will
+        run all tests.
+
+        Note that the jsc stress tests (--jsc-stress) are a different set of tests than
+        the mozilla tests (--mozilla-tests) even though both are run via the lower level
+        run-jsc-stress-tests test harness.  Hence, if you only specify one of the tests,
+        the other set will not run.  For example, the following only runs the mozilla tests:
+            $ run-javascriptcore-tests --mozilla-tests
+
+        Note also that --jit-stress-tests is not for choosing a different set of tests.
+        Instead, it is used for determining whether we run JIT'ed test configurations
+        on the jsc stress tests and mozilla tests.  As a result, specifying
+        --jit-stress-tests will not omit other tests.  For example, the following still
+        runs all tests:
+            $ run-javascriptcore-tests --jit-stress-tests
+
+        * Scripts/run-javascriptcore-tests:
+        (defaultStringForTestState):
+        (enableTestOrNot):
+        (runJSCStressTests):
+
+2017-07-26  Mark Lam  <mark.lam@apple.com>
+
+        Make run-javascriptcore-test run testair, testb3, and testmasm.
+        https://bugs.webkit.org/show_bug.cgi?id=174837
+        <rdar://problem/33522927>
+
+        Reviewed by Saam Barati and Filip Pizlo.
+
+        1. Refactors code for running testapi so that we can use it to run other tests.
+        2. Added running of testmasm, testair, testb3.
+
+        Note: the existing testapi invocation code does not support remote invocation of
+        the tests (e.g. on a ARM device).  Hence, the new additions of testmasm, testair,
+        and testb3 also do not support remote invocation.  If we wish to add remote
+        invocation support, we should do that in a separate patch.
+
+        * Scripts/run-javascriptcore-tests:
+        (testPath):
+        (runTest):
+        (testapiPath): Deleted.
+
+2017-07-26  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove duplicate code from Buildbot.js in dashboard
+        https://bugs.webkit.org/show_bug.cgi?id=174870
+
+        Reviewed by Daniel Bates.
+
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Buildbot.js:
+        (Buildbot.prototype.javaScriptCoreTestFailuresURLForIteration): Remove duplicate code and reuse buildPageURLForIteration() to construct URL.
+        (Buildbot.prototype.javaScriptCoreTestStdioUrlForIteration): Ditto.
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/tests/resources/MockBuildbot.js:
+        (MockBuildbot.prototype.javaScriptCoreTestStdioUrlForIteration): Ditto for tests.
+
+2017-07-26  Brady Eidson  <beidson@apple.com>
+
+        Add test to verify certain child processes are not launched as a side effect of enabling ResourceLoadStatistics.
+        https://bugs.webkit.org/show_bug.cgi?id=174851
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ResourceLoadStatistics.mm:
+        (TEST):
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-07-26  Chris Dumez  <cdumez@apple.com>
+
+        Pressing the Escape key should not be a valid user gesture to enter fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=174864
+        <rdar://problem/33009088>
+
+        Reviewed by Geoffrey Garen.
+
+        Add support for eventSender.keyDown('escape') in DRT to match the behavior of
+        WKTR.
+
+        * DumpRenderTree/mac/EventSendingController.mm:
+        (-[EventSendingController keyDown:withModifiers:withLocation:]):
+
+2017-07-26  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        Unreviewed, added Romain Bellessort to contributors.json.
+
+        * Scripts/webkitpy/common/config/contributors.json:
+
+2017-07-26  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] WebGL2 support
+        https://bugs.webkit.org/show_bug.cgi?id=174249
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        Enable WebGL2 for WPE when building through build-webkit.
+
+2017-07-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK distcheck.
+
+        * gtk/make-dist.py:
+        (ensure_version_if_possible): Use the right pkg-config filename, it's webkit2gtk not webkitgtk.
+
+2017-07-25  Brady Eidson  <beidson@apple.com>
+
+        ResourceLoadStatistics grandfathering happens much too often.
+        <rdar://problem/32655834> and https://bugs.webkit.org/show_bug.cgi?id=174825
+
+        Reviewed by Chris Dumez.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/EmptyGrandfatheredResourceLoadStatistics.plist: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/ResourceLoadStatistics.mm: Added.
+        (TEST):
+
+2017-07-25  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Fix autoinstaller failing on autoinstall_everything
+        https://bugs.webkit.org/show_bug.cgi?id=174830
+
+        Reviewed by Joseph Pecoraro.
+
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook.install_chromedriver):
+        (AutoinstallImportHook.install_geckodriver):
+        (AutoinstallImportHook._install_chromedriver): Deleted.
+        (AutoinstallImportHook._install_geckodriver): Deleted.
+
+2017-07-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Replace --runtime with something for both ios-simulator and ios-device
+        https://bugs.webkit.org/show_bug.cgi?id=173775
+        <rdar://problem/32952164>
+
+        Reviewed by Aakash Jain.
+
+        Add --version flag for both iOS simulator and iOS device.
+
+        * Scripts/webkitpy/layout_tests/run_webkit_tests.py:
+        (parse_args): Add --version flag and move --no-install.
+        * Scripts/webkitpy/port/factory.py:
+        (platform_options): Move --no-intall to run_webkit_tests.py.
+        * Scripts/webkitpy/port/ios.py:
+        (IOSPort):
+        (IOSPort._is_valid_ios_version): Check that the provided version string is legal.
+        (IOSPort.get_option): If accessing the iOS version, check that it is a valid version string.
+        * Scripts/webkitpy/port/ios_device.py:
+        (IOSDevicePort.ios_version): Consult --version flag before checking connected
+        devices for iOS version.
+        * Scripts/webkitpy/port/ios_device_unittest.py:
+        (IOSDeviceTest.make_port): Set --version option so that we can generate test
+        expectation paths without devices connected.
+        (IOSDeviceTest.test_additional_platform_directory): Deleted.
+        (IOSDeviceTest.test_baseline_searchpath): Deleted.
+        (IOSDeviceTest.test_expectations_ordering): Deleted.
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.simulator_runtime): If no runtime is specified, use the --version
+        flag to specify a runtime.
+        (IOSSimulatorPort.ios_version): First check the --version flag, then the --runtime
+        flag and then use the default runtime.
+
+2017-07-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] TestWebKitAPI tests are no longer built since the WebKit2 rename
+        https://bugs.webkit.org/show_bug.cgi?id=174815
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        Only WebKitGTK specific tests are built, but not WebKit2, WTF nor WebCore ones. We are still checking
+        ENABLE_WEBKIT2 in the makefile, that was renamed to ENABLE_WEBKIT. Also, all WebKit2 test paths were updated to
+        use WebKit dir, while the tests are still in WebKit2 directory. This patch also removes
+        TestWebKitAPIInjectedBundle_PATH that is unused and now makes the configure to fail (it used to be a warning, I
+        think), probably because of a newer CMake version.
+
+        * CMakeLists.txt:
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/PlatformGTK.cmake:
+
+2017-07-24  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Fix BenchmarkRunner to only import selenium when needed
+        https://bugs.webkit.org/show_bug.cgi?id=174808
+
+        Reviewed by Stephanie Lewis.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_chrome_driver.py:
+        (LinuxChromeDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_firefox_driver.py:
+        (LinuxFirefoxDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver.launch_driver):
+        (OSXChromeCanaryDriver.launch_driver):
+        (create_chrome_options):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver.launch_driver):
+        (OSXFirefoxNightlyDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/webdriver_benchmark_runner.py:
+        (WebDriverBenchmarkRunner._run_one_test):
+
+2017-07-23  Darin Adler  <darin@apple.com>
+
+        More NeverDestroyed and related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=174745
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/JavaScriptThreading.cpp:
+        (javaScriptThreadsMutex): Use NeverDestroyed instead of
+        DEPRECATED_DEFINE_STATIC_LOCAL.
+        (javaScriptThreads): Ditto.
+
+2017-07-24  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Subclass Benchmark Runner script for WebDriver support
+        https://bugs.webkit.org/show_bug.cgi?id=174390
+
+        Reviewed by Dewei Zhu, Stephanie Lewis.
+
+        Add WebServerBenchmarkRunner and WebDriverBenchmarkRunner subclasses.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder.py:
+        (BenchmarkBuilder.__init__):
+        * Scripts/webkitpy/benchmark_runner/benchmark_runner.py:
+        (BenchmarkRunner.__init__):
+        (BenchmarkRunner._find_plan_file):
+        (BenchmarkRunner._run_one_test.and):
+        (BenchmarkRunner.execute):
+        (BenchmarkRunner._get_result): Deleted.
+        * Scripts/webkitpy/benchmark_runner/run_benchmark.py:
+        (parse_args):
+        (start):
+        * Scripts/webkitpy/benchmark_runner/webdriver_benchmark_runner.py: Added.
+        (WebDriverBenchmarkRunner):
+        (WebDriverBenchmarkRunner._get_result):
+        (WebDriverBenchmarkRunner._run_one_test):
+        * Scripts/webkitpy/benchmark_runner/webserver_benchmark_runner.py: Added.
+        (WebServerBenchmarkRunner):
+        (WebServerBenchmarkRunner.__init__):
+        (WebServerBenchmarkRunner._get_result):
+        (WebServerBenchmarkRunner._run_one_test):
+
+2017-07-24  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Add BenchmarkRunner patches with WebDriver support for each testing plan
+        https://bugs.webkit.org/show_bug.cgi?id=174443
+
+        Reviewed by Dewei Zhu, Stephanie Lewis.
+
+        * Scripts/webkitpy/benchmark_runner/benchmark_builder.py:
+        (BenchmarkBuilder.__enter__):
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/ARES-6.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/ContentAnimation.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/Dromaeo.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/JSBench.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/JetStream.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/Kraken.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/MotionMark.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/Octane.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/Speedometer.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webdriver/SunSpider.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/ARES-6.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/Animometer.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/ContentAnimation.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/Dromaeo.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/JSBench.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/JetStream.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/Kraken.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/MotionMark.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/Octane.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/Speedometer.patch:
+        * Scripts/webkitpy/benchmark_runner/data/patches/webserver/SunSpider.patch:
+        * Scripts/webkitpy/benchmark_runner/data/plans/ares6.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/content-animation.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-cssquery.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-dom.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/dromaeo-jslib.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/jetstream.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/jsbench.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/kraken.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/motionmark.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/octane.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/speedometer.plan:
+        * Scripts/webkitpy/benchmark_runner/data/plans/sunspider.plan:
+
+2017-07-24  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Add functions to autoinstaller needed for Benchmark Runner script
+        https://bugs.webkit.org/show_bug.cgi?id=174331
+
+        Reviewed by Dean Johnson, Dewei Zhu, Stephanie Lewis.
+
+        Adds autoinstaller functions to install selenium and webdriver binaries
+        which will be used by the browser driver part of Benchmark Runner.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.restore_env):
+        (BrowserDriver):
+        (BrowserDriver.get_webdriver_binary_path):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_chrome_driver.py:
+        (LinuxChromeDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_firefox_driver.py:
+        (LinuxFirefoxDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver.launch_driver):
+        (OSXChromeCanaryDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver.launch_driver):
+        (OSXFirefoxNightlyDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        * Scripts/webkitpy/benchmark_runner/utils.py:
+        (get_driver_binary_path):
+        * Scripts/webkitpy/common/system/autoinstall.py:
+        (AutoInstaller._unzip):
+        * Scripts/webkitpy/thirdparty/__init__.py:
+        (AutoinstallImportHook.find_module):
+        (AutoinstallImportHook._install_selenium):
+        (AutoinstallImportHook):
+        (AutoinstallImportHook._install_chromedriver):
+        (AutoinstallImportHook._install_geckodriver):
+        (AutoinstallImportHook.get_latest_pypi_url):
+        (AutoinstallImportHook.install_binary):
+        (autoinstall_everything):
+        (get_driver_filename):
+        (get_os_info):
+
+2017-07-24  Matthew Stewart  <matthew_r_stewart@apple.com>
+
+        Add WebDriver support in browser driver part of BenchmarkRunner
+        https://bugs.webkit.org/show_bug.cgi?id=174445
+
+        Reviewed by Stephanie Lewis.
+
+        Adds a launch_driver function to each BrowserDriver subclass. This
+        function sets up the arguments for the webdriver and launches the
+        webdriver specific to that browser.
+
+        * Scripts/webkitpy/benchmark_runner/browser_driver/browser_driver.py:
+        (BrowserDriver.launch_webdriver):
+        (BrowserDriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_browser_driver.py:
+        (LinuxBrowserDriver.launch_webdriver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_chrome_driver.py:
+        (LinuxChromeDriver.launch_url):
+        (LinuxChromeDriver):
+        (LinuxChromeDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_epiphany_driver.py:
+        (EpiphanyBrowserDriver.launch_url):
+        (EpiphanyBrowserDriver):
+        (EpiphanyBrowserDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_firefox_driver.py:
+        (LinuxFirefoxDriver):
+        (LinuxFirefoxDriver.launch_url):
+        (LinuxFirefoxDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/linux_minibrowsergtk_driver.py:
+        (GTKMiniBrowserDriver.launch_url):
+        (GTKMiniBrowserDriver):
+        (GTKMiniBrowserDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_browser_driver.py:
+        (OSXBrowserDriver._launch_webdriver):
+        (OSXBrowserDriver):
+        (OSXBrowserDriver._screen_size):
+        (OSXBrowserDriver._insert_url):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_chrome_driver.py:
+        (OSXChromeDriver):
+        (OSXChromeDriver.launch_url):
+        (OSXChromeDriver.launch_driver):
+        (OSXChromeCanaryDriver):
+        (OSXChromeCanaryDriver.launch_url):
+        (OSXChromeCanaryDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_firefox_driver.py:
+        (OSXFirefoxDriver):
+        (OSXFirefoxDriver.launch_url):
+        (OSXFirefoxDriver.launch_driver):
+        (OSXFirefoxNightlyDriver):
+        (OSXFirefoxNightlyDriver.launch_url):
+        (OSXFirefoxNightlyDriver.launch_driver):
+        * Scripts/webkitpy/benchmark_runner/browser_driver/osx_safari_driver.py:
+        (OSXSafariDriver.launch_driver):
+
+2017-07-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [Mac WK2] Add an API test to cover r219765 (null dereference in [WKWebView dealloc])
+        https://bugs.webkit.org/show_bug.cgi?id=174793
+
+        Reviewed by Tim Horton.
+
+        Adds a new unit test that invokes some asynchronous NSTextInputClient SPI methods as the web view is tearing
+        down. Without r219765, this test will dereference null and crash.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/TestWebKitAPI/mac/NSTextInputClientSPI.h: Added.
+        * TestWebKitAPI/Tests/mac/WKWebViewSelectionTests.mm:
+        (TEST):
+
+2017-07-24  Basuke Suzuki  <Basuke.Suzuki@sony.com>
+
+        [Win] Implement Authentication dialog in MiniBrowser
+        https://bugs.webkit.org/show_bug.cgi?id=174662
+
+        Reviewed by Alex Christensen.
+
+        * MiniBrowser/win/Common.cpp:
+        (CustomUserAgent):
+        (DisplayAuthDialog):
+        (AuthDialogProc):
+        * MiniBrowser/win/MiniBrowserLib.rc:
+        * MiniBrowser/win/MiniBrowserLibResource.h:
+        * MiniBrowser/win/ResourceLoadDelegate.cpp:
+        (ResourceLoadDelegate::didReceiveAuthenticationChallenge):
+
+2017-07-24  Jonathan Bedard  <jbedard@apple.com>
+
+        Handle case where line_numbers is None instead of an array of line numbers
+        https://bugs.webkit.org/show_bug.cgi?id=174775
+
+        Reviewed by Aakash Jain.
+
+        Added files set line_numbers to None in process_file.
+
+        * Scripts/webkitpy/style/filereader.py:
+        (TextFileReader.process_file): Handle case where line_number is set to None.
+        * Scripts/webkitpy/style/main_unittest.py:
+        (ExpectationLinterInStyleCheckerTest.test_linter_added_file_with_error): Test case of an added file.
+
+2017-07-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Add libepoxy to the Jhbuild moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=174711
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        * wpe/jhbuild.modules: Add libepoxy 1.4.3 to WPE's Jhbuild moduleset.
+
+2017-07-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] libepoxy headers can use EGL_CAST, which might not be defined by eglplatform.h
+        https://bugs.webkit.org/show_bug.cgi?id=174780
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/wpe/HeadlessViewBackend.cpp:
+        Manually define the EGL_CAST macro to the C++ version that uses static_cast<>
+        in case the eglplatform.h header doesn't provide that macro. This replicates
+        the work in WebCore's EpoxyEGL.h header, but we can't include that header here.
+
+2017-07-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS WK2] Remove _WKDraggableElementInfo and fold PositionInformationTests into WKRequestActivatedElementInfo
+        https://bugs.webkit.org/show_bug.cgi?id=174758
+
+        Reviewed by Dan Bernstein.
+
+        Migrate position-information-related unit tests from the PositionInformationTests suite to
+        WKRequestActivatedElementInfo as 2 new unit tests. See WebKit2 ChangeLog for more details.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKRequestActivatedElementInfo.mm:
+        (TestWebKitAPI::checkElementTypeAndBoundingRect):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/Tests/ios/PositionInformationTests.mm: Removed.
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView activatedElementAtPosition:]):
+
+2017-07-22  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION(r204565): WKObject is broken
+        https://bugs.webkit.org/show_bug.cgi?id=174736
+        <rdar://problem/33246169>
+
+        Reviewed by Dan Bernstein.
+
+        Add API test that used to crash.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKObject.mm:
+        (TestWebKitAPI::TEST):
+
+2017-07-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Extend ThreadGroup::add results from bool to ThreadGroupAddResult
+        https://bugs.webkit.org/show_bug.cgi?id=174705
+
+        Reviewed by Mark Lam.
+
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp:
+        (TestWebKitAPI::testThreadGroup):
+        (TestWebKitAPI::TEST):
+
+2017-07-21  Jonathan Bedard  <jbedard@apple.com>
+
+        Fail gracefully when xcrun fails in IOSSimulatorPort constructor
+        https://bugs.webkit.org/show_bug.cgi?id=174724
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/port/ios_simulator.py:
+        (IOSSimulatorPort.__init__): Ignore any errors when attempting to find a running
+        simulator. Errors here should be treated the same as no simulators found.
+
+2017-07-21  Yousuke Kimoto  <Yousuke.Kimoto@sony.com>
+
+        [CMake] Add an option to stop build after generating project files
+        https://bugs.webkit.org/show_bug.cgi?id=174664
+
+        Reviewed by Konstantin Tokarev.
+
+        Add "--generate-project-only" to stop build after generating project files.
+
+        * Scripts/build-webkit: Add '--generate-project-only' option and a checker to stop build.
+        * Scripts/webkitdirs.pm: Add a function to check '--generate-project-only' option and the same checker as the above
+        (buildCMakeProjectOrExit): Add a cheker to stop build stop build after generating project files.
+        (determineIsGenerateProjectOnly): Check if '--generate-project-only' option is specified
+        (isGenerateProjectOnly): ditto
+
+2017-07-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Newly added AtomicStringImpl should use BufferInternal static string if StringImpl is static
+        https://bugs.webkit.org/show_bug.cgi?id=174501
+
+        Reviewed by Darin Adler.
+
+        * TestWebKitAPI/Tests/WTF/StringImpl.cpp:
+        (TestWebKitAPI::TEST):
+
+2017-07-20  David Quesada  <david_quesada@apple.com>
+
+        Add SPI to notify WKNavigationDelegate about client redirects
+        https://bugs.webkit.org/show_bug.cgi?id=174680
+        rdar://problem/33184886
+
+        Reviewed by Brady Eidson.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/Navigation.mm:
+        (-[DidPerformClientRedirectNavigationDelegate _webView:didPerformClientRedirectForNavigation:]):
+        (TEST):
+        Add API test for -[id<WKNavigationDelegatePrivate> _webView:didPerformClientRedirectForNavigation:].
+
+2017-07-20  Brady Eidson  <beidson@apple.com>
+
+        Test WebKit2CustomProtocolsTest.ProcessPoolDestroyedDuringLoading added in r219664 fails on El Capitan.
+        https://bugs.webkit.org/show_bug.cgi?id=174685
+
+        Reviewed by Andy Estes.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        (TestWebKitAPI::TEST): Use a scoped AutodrainedPool instead of a RetainPtr<NSAutoreleasePool>.
+
+2017-07-20  Brady Eidson  <beidson@apple.com>
+
+        Deprecate WebIconDatabase in WebKitLegacy/mac.
+        https://bugs.webkit.org/show_bug.cgi?id=174607
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/mac/TestRunnerMac.mm:
+
+2017-07-20  Jonathan Bedard  <jbedard@apple.com>
+
+        lint-test-expectations should be run during style checking
+        https://bugs.webkit.org/show_bug.cgi?id=173559
+        <rdar://problem/32854941>
+
+        Reviewed by Aakash Jain.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationsModel._already_seen_better_match): Append returns 'None' when successful,
+        prevents identifying errors on specific lines in a file.
+        * Scripts/webkitpy/style/main_unittest.py:
+        (ExpectationLinterInStyleCheckerTest.test_linter_duplicate_line_edit_in_file): Test for the
+        case where a linter error is in the file modified, but the line modified is not related to
+        the linter error.
+
+2017-07-20  Brady Eidson  <beidson@apple.com>
+
+        Remove WebIconDatabase from WebKitLegacy/win.
+        https://bugs.webkit.org/show_bug.cgi?id=174608
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (main):
+        * DumpRenderTree/win/TestRunnerWin.cpp:
+        (TestRunner::setIconDatabaseEnabled):
+
+2017-07-20  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Adjust priority of GSource used in WKTR's HeadlessViewBackend
+        https://bugs.webkit.org/show_bug.cgi?id=174671
+
+        Reviewed by Carlos Garcia Campos.
+
+        * WebKitTestRunner/wpe/HeadlessViewBackend.cpp:
+        (HeadlessViewBackend::HeadlessViewBackend): Use the RunLoopDispatcher
+        priority for this source in order to have it dispatched on the same
+        priority as the other WebKit-controlled GSource objects.
+
+2017-07-19  Jonathan Bedard  <jbedard@apple.com>
+
+        lint-test-expectations should be run during style checking
+        https://bugs.webkit.org/show_bug.cgi?id=173559
+        <rdar://problem/32854941>
+
+        Reviewed by Daniel Bates.
+
+        Follow up fix addressing style and a few minor bugs.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser.__init__): Use lambda x: x instead of str
+        (TestExpectationsModel.__init__): Make lambda x: x the default argument.
+        (TestExpectationsModel._already_seen_better_match): Use a temporary variable to
+        reduce the calls of _shorten_filename, fix minor bug in appending the current
+        expectation's line number instead of the previous ones, clarify treatment of None
+        in file-to-line-number mapping.
+        (TestExpectations._report_warnings): Collapse call.
+        * Scripts/webkitpy/style/checkers/test_expectations.py:
+        (TestExpectationsChecker.lint_test_expectations):
+        * Scripts/webkitpy/style/filereader.py: Re-write comment.
+        (TextFileReader.process_file): Add comment explaining treatment of None in
+        file-to-line-number mapping.
+        (TextFileReader.delete_file): Collapse call.
+
+2017-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix API test failure after r219663.
+
+        The test was hard-coding an exception string and the string has changed slightly
+        in r219663.
+
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsiteDataStoreCustomPaths.mm:
+        (TEST):
+
+2017-07-19  Megan Gardner  <megan_gardner@apple.com>
+
+        Don't write file URLs to iOS Pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=174647
+        <rdar://problem/33199730>
+
+        Reviewed by Wenson Hsieh.
+
+        Updating tests to reflect the lack of file URLs for images.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (checkTypeIdentifierAndIsNotOtherTypeIdentifier):
+        (checkEstimatedSize):
+        (TestWebKitAPI::TEST):
+
+2017-07-19  Brady Eidson  <beidson@apple.com>
+
+        iBooks sometimes crashes when closing a book.
+        <rdar://problem/31180331> and https://bugs.webkit.org/show_bug.cgi?id=174658
+
+        Reviewed by Oliver Hunt.
+
+        * TestWebKitAPI/Tests/WebKit2ObjC/CustomProtocolsTest.mm:
+        (-[ProcessPoolDestroyedDuringLoadingProtocol startLoading]):
+        (-[ProcessPoolDestroyedDuringLoadingProtocol finishTheLoad]):
+        (-[ProcessPoolDestroyedDuringLoadingProtocol stopLoading]):
+        (TestWebKitAPI::TEST):
+
+        Add a "spin the runloop X number of times" utility:
+        * TestWebKitAPI/Utilities.h:
+        * TestWebKitAPI/cocoa/UtilitiesCocoa.mm:
+        (TestWebKitAPI::Util::spinRunLoop):
+
+2017-07-19  Jonathan Bedard  <jbedard@apple.com>
+
+        lint-test-expectations should be run during style checking
+        https://bugs.webkit.org/show_bug.cgi?id=173559
+        <rdar://problem/32854941>
+
+        Reviewed by David Kilzer.
+
+        Running the test expectation linter requires reading both files and lines not in the
+        patch because, for example, deletion of a test can cause a lint failure even though
+        no test expectations where modified. This means that the linter will occasionally warn
+        about lines which were not changed in a given patch but whose error is related to a
+        change made in that patch.
+
+        * Scripts/webkitpy/common/system/filesystem_mock.py:
+        (MockFileSystem.open_text_file_for_reading): Add 'errors' argument to mimic filesystem.
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationWarning): Added class to pass warnings as an object instead of a string.
+        (TestExpectationWarning.__init__): Construct warning with file name, line number, line
+        content, description of the error and the name of the associated test.
+        (TestExpectationWarning.__str__): Convert to string so that existing printing code works.
+        (TestExpectationParser.__init__): Pass shorten_filename function to
+        TestExpectationsParser to add a deleted file to the related_files dictionary.
+        (TestExpectationParser._check_test_exists): If the test does not exist, add the
+        missing path to the related_files dictionary.
+        (TestExpectationLine.__init__): Add related_files dictionary, which tracks
+        files and line numbers related to this test expectation line. This will allow
+        tracking linter errors in the style checker occurring across multiple files.
+        (TestExpectationsModel._already_seen_better_match): Add redundant expectation
+        lines to related_files dictionary.
+        (TestExpectations.__init__): Pass self._shorten_filename to TestExpectationParser.
+        (TestExpectations._report_warnings): Construct warning object instead of string
+        when adding to warnings list.
+        * Scripts/webkitpy/port/win.py: Changed logging level form warning to debug to
+        clean-up log.
+        * Scripts/webkitpy/style/checker.py:
+        (ProcessorBase.do_association_check): Add required function for processor classes.
+        (StyleProcessor):
+        (StyleProcessor.do_association_check): Run the TestExpectations linter when
+        checking for errors between associated files.
+        * Scripts/webkitpy/style/checkers/test_expectations.py:
+        (TestExpectationsChecker.check_test_expectations): Reflect changed import statements.
+        (TestExpectationsChecker):
+        (TestExpectationsChecker._should_log_linter_warning): Given a warning, a dictionary
+        of modified files, the current working directory and the host, determine if the linter
+        warning is associated with the changes.
+        (TestExpectationsChecker.lint_test_expectations): Lint test expectations for the
+        style checker.
+        * Scripts/webkitpy/style/filereader.py:
+        (TextFileReader):
+        (TextFileReader.__init__): Track modified files in dictionary instead of a counter.
+        (TextFileReader.file_count): Use dictionary to determine the number of modified files.
+        (TextFileReader.process_file): Track both the number of files changed and which lines
+        in those files were changed.
+        (TextFileReader.do_association_check): Run the processor's association check on all
+        modified or deleted files processed by TextFileReader.
+        (TextFileReader.delete_file): Track deleted files in _files dictionary.
+        (TextFileReader.count_delete_only_file): Deleted.
+        * Scripts/webkitpy/style/filereader_unittest.py:
+        (TextFileReaderTest.test_delete_file): Renamed function to reflect new function name.
+        (TextFileReaderTest.test_count_delete_only_file): Moved to test_delete_file.
+        * Scripts/webkitpy/style/main.py:
+        (CheckWebKitStyle.main): When running the style checker on a specific list of files,
+        explicitly run the association check on the file reader.
+        * Scripts/webkitpy/style/main_unittest.py:
+        (ExpectationLinterInStyleCheckerTest): Added to test the TestExpectationLinter now
+        embedded in the style checker.
+        (ExpectationLinterInStyleCheckerTest.setUp): Set up the style checker configuration.
+        (ExpectationLinterInStyleCheckerTest._generate_file_reader): Given a filesystem object,
+        construct the TextFileReader object with a StyleProcessor used to run style checks on
+        specific files.
+        (ExpectationLinterInStyleCheckerTest._generate_testing_host): Generate a host used for
+        testing the test expectation linter inside the style checker. This host must contain a
+        mock file system with the basic structure of test expectations.
+        (ExpectationLinterInStyleCheckerTest.test_no_linter_errors):
+        (ExpectationLinterInStyleCheckerTest.test_linter_duplicate_line):
+        (ExpectationLinterInStyleCheckerTest.test_linter_duplicate_line_no_edit):
+        (ExpectationLinterInStyleCheckerTest.test_linter_deleted_file):
+        (ExpectationLinterInStyleCheckerTest.test_linter_deleted_file_no_edit):
+        * Scripts/webkitpy/style/patchreader.py:
+        (PatchReader.check): Specify which file was deleted, run the association check.
+        * Scripts/webkitpy/style/patchreader_unittest.py:
+        (PatchReaderTest.MockTextFileReader.delete_file): Renamed count_delete_only_file.
+        (PatchReaderTest.MockTextFileReader.do_association_check): Added.
+        (PatchReaderTest.MockTextFileReader.count_delete_only_file): Renamed delete_file.
+
+2017-07-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Implement WTF::ThreadGroup
+        https://bugs.webkit.org/show_bug.cgi?id=174081
+
+        Reviewed by Mark Lam.
+
+        Add WTF::ThreadGroup tests.
+
+        * TestWebKitAPI/CMakeLists.txt:
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WTF/ThreadGroup.cpp: Added.
+        (TestWebKitAPI::testThreadGroup):
+        (TestWebKitAPI::TEST):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MobileMiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MobileMiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-18  Daniel Bates  <dabates@apple.com>
+
+        lldb: Add type summary for StringView
+        https://bugs.webkit.org/show_bug.cgi?id=174637
+
+        Reviewed by Sam Weinig.
+
+        For debugging convenience, adds a pretty-print type summary for StringView. Evaluating a
+        StringView object will print output that has the form:
+
+            (WTF::StringView) $4 = { length = 2, contents = 'li' } {
+              m_characters = 0x000000011b57abb5 "eeeeeefjh0n"
+              m_length = 2
+              m_is8Bit = true
+              m_underlyingString = 0x0000614000000a90
+            }
+
+        * lldb/lldb_webkit.py:
+        (__lldb_init_module): Use WTFStringView_SummaryProvider to format StringView types.
+        (WTFStringView_SummaryProvider):
+        (WTFStringViewProvider):
+        (WTFStringViewProvider.__init__):
+        (WTFStringViewProvider.is_8bit): Access field StringView.m_is8Bit.
+        (WTFStringViewProvider.get_length): Access field StringView.m_length.
+        (WTFStringViewProvider.get_characters): Access field StringView.m_characters.
+        (WTFStringViewProvider.to_string): Returns the string represented by the StringView.
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MobileMiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-18  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Add memoryCost to Inspector Protocol objects
+        https://bugs.webkit.org/show_bug.cgi?id=174478
+
+        Reviewed by Joseph Pecoraro.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/JavaScriptCore/InspectorValue.cpp: Added.
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostNull)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostBoolean)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostDouble)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostInteger)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostString)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostStringEmpty)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostStringNull)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostStringGrowing)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostStringUnicode)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostObject)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostObjectEmpty)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostObjectGrowing)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostArray)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostArrayEmpty)):
+        (TestWebKitAPI::TEST(InspectorValue, MemoryCostArrayGrowing)):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * DumpRenderTree/mac/Configurations/Base.xcconfig:
+        * MiniBrowser/Configurations/Base.xcconfig:
+        * MobileMiniBrowser/Configurations/Base.xcconfig:
+        * TestWebKitAPI/Configurations/Base.xcconfig:
+        * WebKitTestRunner/Configurations/Base.xcconfig:
+
+2017-07-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the iOS build.
+
+        I missed a spot when renaming -synchronouslyLoadHTML: to -synchronouslyLoadHTMLString:.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-07-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] Web process uses too much memory when beginning a drag on a very large image
+        https://bugs.webkit.org/show_bug.cgi?id=174585
+        <rdar://problem/33302541>
+
+        Reviewed by Tim Horton.
+
+        Adds a new test verifying that we don't try to allocate any image buffer equal to the true size of the image
+        being dragged when initiating a drag.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/enormous.svg: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+
+        Add a new -synchronouslyLoadHTMLString: helper that works like -synchronouslyLoadTestPage:, but takes markup.
+
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView synchronouslyLoadHTMLString:]):
+
+2017-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Macros in WebKitMacros.cmake should be prefixed with WEBKIT_ namespace
+        https://bugs.webkit.org/show_bug.cgi?id=174547
+
+        Reviewed by Alex Christensen.
+
+        * DumpRenderTree/PlatformWin.cmake:
+        * DumpRenderTree/TestNetscapePlugIn/CMakeLists.txt:
+
+2017-07-17  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        Update style checker to deal with "final"
+        https://bugs.webkit.org/show_bug.cgi?id=174528
+
+        Reviewed by Alex Christensen.
+        
+        check-webkit-style shouldn't complain about an open brace to start a
+        line after a function definition with "final" or "const final".
+
+        * Scripts/webkitpy/style/checkers/cpp.py:
+        (check_braces):
+        * Scripts/webkitpy/style/checkers/cpp_unittest.py:
+        (CppStyleTest.test_brace_at_begin_of_line):
+
 2017-07-17  Alex Christensen  <achristensen@webkit.org>
 
         Modernize content extension code

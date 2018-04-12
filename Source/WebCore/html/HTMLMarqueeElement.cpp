@@ -26,7 +26,6 @@
 #include "Attribute.h"
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "RenderLayer.h"
@@ -152,7 +151,7 @@ int HTMLMarqueeElement::loop() const
 ExceptionOr<void> HTMLMarqueeElement::setLoop(int loop)
 {
     if (loop <= 0 && loop != -1)
-        return Exception { INDEX_SIZE_ERR };
+        return Exception { IndexSizeError };
     setIntegralAttribute(loopAttr, loop);
     return { };
 }

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "TextIndicator.h"
 
+#include "ColorHash.h"
 #include "Document.h"
 #include "Editor.h"
 #include "Element.h"
@@ -209,21 +210,15 @@ static bool styleContainsComplexBackground(const RenderStyle& style)
     return false;
 }
 
-static Vector<Color> estimatedTextColorsForRange(const Range& range)
+static HashSet<Color> estimatedTextColorsForRange(const Range& range)
 {
-    Vector<Color> colors;
-    HashSet<RGBA32> uniqueRGBValues;
+    HashSet<Color> colors;
     for (TextIterator iterator(&range); !iterator.atEnd(); iterator.advance()) {
         auto* node = iterator.node();
         if (!is<Text>(node) || !is<RenderText>(node->renderer()))
             continue;
 
-        auto& color = node->renderer()->style().color();
-        if (uniqueRGBValues.contains(color.rgb()))
-            continue;
-
-        uniqueRGBValues.add(color.rgb());
-        colors.append(color);
+        colors.add(node->renderer()->style().color());
     }
     return colors;
 }
@@ -242,7 +237,7 @@ static Color estimatedBackgroundColorForRange(const Range& range, const Frame& f
         commonAncestor = commonAncestor->parentOrShadowHostElement();
     }
 
-    auto boundingRectForRange = enclosingIntRect(range.absoluteBoundingRect());
+    auto boundingRectForRange = enclosingIntRect(range.absoluteBoundingRect(Range::RespectClippingForTextRects::Yes));
     Vector<Color> parentRendererBackgroundColors;
     for (; !!renderer; renderer = renderer->parent()) {
         auto absoluteBoundingBox = renderer->absoluteBoundingBoxRect();
@@ -264,13 +259,16 @@ static Color estimatedBackgroundColorForRange(const Range& range, const Frame& f
     return estimatedBackgroundColor;
 }
 
-static void adjustTextIndicatorDataOptionsForEstimatedColorsIfNecessary(TextIndicatorData& data, const Color& backgroundColor, Vector<Color>&& textColors)
+static bool hasAnyIllegibleColors(TextIndicatorData& data, const Color& backgroundColor, HashSet<Color>&& textColors)
 {
     if (data.options & TextIndicatorOptionPaintAllContent)
-        return;
+        return false;
 
     if (!(data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges))
-        return;
+        return false;
+
+    if (!(data.options & TextIndicatorOptionComputeEstimatedBackgroundColor))
+        return false;
 
     bool hasOnlyLegibleTextColors = true;
     if (data.options & TextIndicatorOptionRespectTextColor) {
@@ -282,11 +280,7 @@ static void adjustTextIndicatorDataOptionsForEstimatedColorsIfNecessary(TextIndi
     } else
         hasOnlyLegibleTextColors = textColorIsLegibleAgainstBackgroundColor(Color::black, backgroundColor);
 
-    if (!hasOnlyLegibleTextColors || !textColors.size()) {
-        // If the text color is not legible against the estimated color, force all content to be painted.
-        data.options &= ~TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges;
-        data.options |= TextIndicatorOptionPaintAllContent;
-    }
+    return !hasOnlyLegibleTextColors || textColors.isEmpty();
 }
 
 static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Range& range, FloatSize margin, bool indicatesCurrentSelection)
@@ -294,9 +288,10 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
     if (auto* document = frame.document())
         document->updateLayoutIgnorePendingStylesheets();
 
+    bool treatRangeAsComplexDueToIllegibleTextColors = false;
     if (data.options & TextIndicatorOptionComputeEstimatedBackgroundColor) {
         data.estimatedBackgroundColor = estimatedBackgroundColorForRange(range, frame);
-        adjustTextIndicatorDataOptionsForEstimatedColorsIfNecessary(data, data.estimatedBackgroundColor, estimatedTextColorsForRange(range));
+        treatRangeAsComplexDueToIllegibleTextColors = hasAnyIllegibleColors(data, data.estimatedBackgroundColor, estimatedTextColorsForRange(range));
     }
 
     Vector<FloatRect> textRects;
@@ -309,17 +304,23 @@ static bool initializeIndicator(TextIndicatorData& data, Frame& frame, const Ran
 
     FrameSelection::TextRectangleHeight textRectHeight = (data.options & TextIndicatorOptionTightlyFitContent) ? FrameSelection::TextRectangleHeight::TextHeight : FrameSelection::TextRectangleHeight::SelectionHeight;
 
-    if ((data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges) && hasNonInlineOrReplacedElements(range))
+    if ((data.options & TextIndicatorOptionUseBoundingRectAndPaintAllContentForComplexRanges) && (hasNonInlineOrReplacedElements(range) || treatRangeAsComplexDueToIllegibleTextColors))
         data.options |= TextIndicatorOptionPaintAllContent;
 #if PLATFORM(IOS)
     else if (data.options & TextIndicatorOptionUseSelectionRectForSizing)
         getSelectionRectsForRange(textRects, range);
 #endif
-    else
-        frame.selection().getTextRectangles(textRects, textRectHeight);
+    else {
+        Vector<IntRect> absoluteTextRects;
+        range.absoluteTextRects(absoluteTextRects, textRectHeight == FrameSelection::TextRectangleHeight::SelectionHeight, nullptr, Range::RespectClippingForTextRects::Yes);
+
+        textRects.reserveInitialCapacity(absoluteTextRects.size());
+        for (auto& rect : absoluteTextRects)
+            textRects.uncheckedAppend(rect);
+    }
 
     if (textRects.isEmpty())
-        textRects.append(range.absoluteBoundingRect());
+        textRects.append(range.absoluteBoundingRect(Range::RespectClippingForTextRects::Yes));
 
     auto frameView = frame.view();
 

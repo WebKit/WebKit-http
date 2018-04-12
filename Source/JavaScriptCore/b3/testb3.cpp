@@ -14592,6 +14592,559 @@ void testOptimizeMaterialization()
     CHECK(found);
 }
 
+template<typename Func>
+void generateLoop(Procedure& proc, const Func& func)
+{
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* loop = proc.addBlock();
+    BasicBlock* end = proc.addBlock();
+
+    UpsilonValue* initialIndex = root->appendNew<UpsilonValue>(
+        proc, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+    root->appendNew<Value>(proc, Jump, Origin());
+    root->setSuccessors(loop);
+    
+    Value* index = loop->appendNew<Value>(proc, Phi, Int32, Origin());
+    initialIndex->setPhi(index);
+    
+    Value* one = func(loop, index);
+    
+    Value* nextIndex = loop->appendNew<Value>(proc, Add, Origin(), index, one);
+    UpsilonValue* loopIndex = loop->appendNew<UpsilonValue>(proc, Origin(), nextIndex);
+    loopIndex->setPhi(index);
+    loop->appendNew<Value>(
+        proc, Branch, Origin(),
+        loop->appendNew<Value>(
+            proc, LessThan, Origin(), nextIndex,
+            loop->appendNew<Const32Value>(proc, Origin(), 100)));
+    loop->setSuccessors(loop, end);
+    
+    end->appendNew<Value>(proc, Return, Origin());
+}
+
+std::array<int, 100> makeArrayForLoops()
+{
+    std::array<int, 100> result;
+    for (unsigned i = 0; i < result.size(); ++i)
+        result[i] = i & 1;
+    return result;
+}
+
+template<typename Func>
+void generateLoopNotBackwardsDominant(Procedure& proc, std::array<int, 100>& array, const Func& func)
+{
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* loopHeader = proc.addBlock();
+    BasicBlock* loopCall = proc.addBlock();
+    BasicBlock* loopFooter = proc.addBlock();
+    BasicBlock* end = proc.addBlock();
+
+    UpsilonValue* initialIndex = root->appendNew<UpsilonValue>(
+        proc, Origin(), root->appendNew<Const32Value>(proc, Origin(), 0));
+    // If you look carefully, you'll notice that this is an extremely sneaky use of Upsilon that demonstrates
+    // the extent to which our SSA is different from normal-person SSA.
+    UpsilonValue* defaultOne = root->appendNew<UpsilonValue>(
+        proc, Origin(), root->appendNew<Const32Value>(proc, Origin(), 1));
+    root->appendNew<Value>(proc, Jump, Origin());
+    root->setSuccessors(loopHeader);
+    
+    Value* index = loopHeader->appendNew<Value>(proc, Phi, Int32, Origin());
+    initialIndex->setPhi(index);
+    
+    // if (array[index])
+    loopHeader->appendNew<Value>(
+        proc, Branch, Origin(),
+        loopHeader->appendNew<MemoryValue>(
+            proc, Load, Int32, Origin(),
+            loopHeader->appendNew<Value>(
+                proc, Add, Origin(),
+                loopHeader->appendNew<ConstPtrValue>(proc, Origin(), &array),
+                loopHeader->appendNew<Value>(
+                    proc, Mul, Origin(),
+                    loopHeader->appendNew<Value>(proc, ZExt32, Origin(), index),
+                    loopHeader->appendNew<ConstPtrValue>(proc, Origin(), sizeof(int))))));
+    loopHeader->setSuccessors(loopCall, loopFooter);
+    
+    Value* functionCall = func(loopCall, index);
+    UpsilonValue* oneFromFunction = loopCall->appendNew<UpsilonValue>(proc, Origin(), functionCall);
+    loopCall->appendNew<Value>(proc, Jump, Origin());
+    loopCall->setSuccessors(loopFooter);
+    
+    Value* one = loopFooter->appendNew<Value>(proc, Phi, Int32, Origin());
+    defaultOne->setPhi(one);
+    oneFromFunction->setPhi(one);
+    Value* nextIndex = loopFooter->appendNew<Value>(proc, Add, Origin(), index, one);
+    UpsilonValue* loopIndex = loopFooter->appendNew<UpsilonValue>(proc, Origin(), nextIndex);
+    loopIndex->setPhi(index);
+    loopFooter->appendNew<Value>(
+        proc, Branch, Origin(),
+        loopFooter->appendNew<Value>(
+            proc, LessThan, Origin(), nextIndex,
+            loopFooter->appendNew<Const32Value>(proc, Origin(), 100)));
+    loopFooter->setSuccessors(loopHeader, end);
+    
+    end->appendNew<Value>(proc, Return, Origin());
+}
+
+static int oneFunction(int* callCount)
+{
+    (*callCount)++;
+    return 1;
+}
+
+static void noOpFunction()
+{
+}
+
+void testLICMPure()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMPureSideExits()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.exitsSideways = true;
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMPureWritesPinned()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writesPinned = true;
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMPureWrites()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writes = HeapRange(63479);
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMReadsLocalState()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.readsLocalState = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u); // We'll fail to hoist because the loop has Upsilons.
+}
+
+void testLICMReadsPinned()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.readsPinned = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMReads()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.reads = HeapRange::top();
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMPureNotBackwardsDominant()
+{
+    Procedure proc;
+    auto array = makeArrayForLoops();
+    generateLoopNotBackwardsDominant(
+        proc, array,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMPureFoiledByChild()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value* index) -> Value* {
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                index);
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMPureNotBackwardsDominantFoiledByChild()
+{
+    Procedure proc;
+    auto array = makeArrayForLoops();
+    generateLoopNotBackwardsDominant(
+        proc, array,
+        [&] (BasicBlock* loop, Value* index) -> Value* {
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), Effects::none(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0),
+                index);
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 50u);
+}
+
+void testLICMExitsSideways()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.exitsSideways = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMWritesLocalState()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writesLocalState = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMWrites()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writes = HeapRange(666);
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMFence()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.fence = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMWritesPinned()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writesPinned = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMControlDependent()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.controlDependent = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMControlDependentNotBackwardsDominant()
+{
+    Procedure proc;
+    auto array = makeArrayForLoops();
+    generateLoopNotBackwardsDominant(
+        proc, array,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.controlDependent = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 50u);
+}
+
+void testLICMControlDependentSideExits()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.exitsSideways = true;
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+            
+            effects = Effects::none();
+            effects.controlDependent = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMReadsPinnedWritesPinned()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writesPinned = true;
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+            
+            effects = Effects::none();
+            effects.readsPinned = true;
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMReadsWritesDifferentHeaps()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writes = HeapRange(6436);
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+            
+            effects = Effects::none();
+            effects.reads = HeapRange(4886);
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 1u);
+}
+
+void testLICMReadsWritesOverlappingHeaps()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            Effects effects = Effects::none();
+            effects.writes = HeapRange(6436, 74458);
+            loop->appendNew<CCallValue>(
+                proc, Void, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(noOpFunction)));
+            
+            effects = Effects::none();
+            effects.reads = HeapRange(48864, 78239);
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(), effects,
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
+void testLICMDefaultCall()
+{
+    Procedure proc;
+    generateLoop(
+        proc,
+        [&] (BasicBlock* loop, Value*) -> Value* {
+            return loop->appendNew<CCallValue>(
+                proc, Int32, Origin(),
+                loop->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(oneFunction)),
+                loop->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::argumentGPR0));
+        });
+    
+    unsigned callCount = 0;
+    compileAndRun<void>(proc, &callCount);
+    CHECK_EQ(callCount, 100u);
+}
+
 template<typename T>
 void testAtomicWeakCAS()
 {
@@ -15543,6 +16096,100 @@ void testFloatEqualOrUnorderedDontFold()
             CHECK(!!invoke<int32_t>(*code, static_cast<double>(b)) == expectedResult);
         }
     }
+}
+
+void functionNineArgs(int32_t, void*, void*, void*, void*, void*, void*, void*, void*) { }
+
+void testShuffleDoesntTrashCalleeSaves()
+{
+    Procedure proc;
+
+    BasicBlock* root = proc.addBlock();
+    BasicBlock* likely = proc.addBlock();
+    BasicBlock* unlikely = proc.addBlock();
+
+    RegisterSet regs = RegisterSet::allGPRs();
+    regs.exclude(RegisterSet::stackRegisters());
+    regs.exclude(RegisterSet::reservedHardwareRegisters());
+    regs.exclude(RegisterSet::calleeSaveRegisters());
+    regs.exclude(RegisterSet::argumentGPRS());
+
+    unsigned i = 0;
+    Vector<Value*> patches;
+    for (Reg reg : regs) {
+        ++i;
+        PatchpointValue* patchpoint = root->appendNew<PatchpointValue>(proc, Int32, Origin());
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        RELEASE_ASSERT(reg.isGPR());
+        patchpoint->resultConstraint = ValueRep::reg(reg.gpr());
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                jit.move(CCallHelpers::TrustedImm32(i), params[0].gpr());
+            });
+        patches.append(patchpoint);
+    }
+
+    Value* arg1 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(0 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg2 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(1 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg3 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(2 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg4 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(3 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg5 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(4 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg6 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(5 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg7 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(6 % GPRInfo::numberOfArgumentRegisters));
+    Value* arg8 = root->appendNew<ArgumentRegValue>(proc, Origin(), GPRInfo::toArgumentRegister(7 % GPRInfo::numberOfArgumentRegisters));
+
+    PatchpointValue* ptr = root->appendNew<PatchpointValue>(proc, Int64, Origin());
+    ptr->clobber(RegisterSet::macroScratchRegisters());
+    ptr->resultConstraint = ValueRep::reg(GPRInfo::regCS0);
+    ptr->appendSomeRegister(arg1);
+    ptr->setGenerator(
+        [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+            AllowMacroScratchRegisterUsage allowScratch(jit);
+            jit.move(params[1].gpr(), params[0].gpr());
+        });
+
+    Value* condition = root->appendNew<Value>(
+        proc, Equal, Origin(), 
+        ptr,
+        root->appendNew<Const64Value>(proc, Origin(), 0));
+
+    root->appendNewControlValue(
+        proc, Branch, Origin(),
+        condition,
+        FrequentedBlock(likely, FrequencyClass::Normal), FrequentedBlock(unlikely, FrequencyClass::Rare));
+
+    // Never executes.
+    Value* const42 = likely->appendNew<Const32Value>(proc, Origin(), 42);
+    likely->appendNewControlValue(proc, Return, Origin(), const42);
+
+    // Always executes.
+    Value* constNumber = unlikely->appendNew<Const32Value>(proc, Origin(), 0x1);
+
+    unlikely->appendNew<CCallValue>(
+        proc, Void, Origin(),
+        unlikely->appendNew<ConstPtrValue>(proc, Origin(), bitwise_cast<void*>(functionNineArgs)),
+        constNumber, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+
+    PatchpointValue* voidPatch = unlikely->appendNew<PatchpointValue>(proc, Void, Origin());
+    voidPatch->clobber(RegisterSet::macroScratchRegisters());
+    for (Value* v : patches)
+        voidPatch->appendSomeRegister(v);
+    voidPatch->appendSomeRegister(arg1);
+    voidPatch->appendSomeRegister(arg2);
+    voidPatch->appendSomeRegister(arg3);
+    voidPatch->appendSomeRegister(arg4);
+    voidPatch->appendSomeRegister(arg5);
+    voidPatch->appendSomeRegister(arg6);
+    voidPatch->setGenerator([=] (CCallHelpers&, const StackmapGenerationParams&) { });
+
+    unlikely->appendNewControlValue(proc, Return, Origin(),
+        unlikely->appendNew<MemoryValue>(proc, Load, Int32, Origin(), ptr));
+
+    int32_t* inputPtr = static_cast<int32_t*>(fastMalloc(sizeof(int32_t)));
+    *inputPtr = 48;
+    CHECK(compileAndRun<int32_t>(proc, inputPtr) == 48);
+    fastFree(inputPtr);
 }
 
 // Make sure the compiler does not try to optimize anything out.
@@ -17034,7 +17681,29 @@ void run(const char* filter)
     RUN(testLoadBaseIndexShift2());
     RUN(testLoadBaseIndexShift32());
     RUN(testOptimizeMaterialization());
-    
+    RUN(testLICMPure());
+    RUN(testLICMPureSideExits());
+    RUN(testLICMPureWritesPinned());
+    RUN(testLICMPureWrites());
+    RUN(testLICMReadsLocalState());
+    RUN(testLICMReadsPinned());
+    RUN(testLICMReads());
+    RUN(testLICMPureNotBackwardsDominant());
+    RUN(testLICMPureFoiledByChild());
+    RUN(testLICMPureNotBackwardsDominantFoiledByChild());
+    RUN(testLICMExitsSideways());
+    RUN(testLICMWritesLocalState());
+    RUN(testLICMWrites());
+    RUN(testLICMWritesPinned());
+    RUN(testLICMFence());
+    RUN(testLICMControlDependent());
+    RUN(testLICMControlDependentNotBackwardsDominant());
+    RUN(testLICMControlDependentSideExits());
+    RUN(testLICMReadsPinnedWritesPinned());
+    RUN(testLICMReadsWritesDifferentHeaps());
+    RUN(testLICMReadsWritesOverlappingHeaps());
+    RUN(testLICMDefaultCall());
+
     RUN(testAtomicWeakCAS<int8_t>());
     RUN(testAtomicWeakCAS<int16_t>());
     RUN(testAtomicWeakCAS<int32_t>());
@@ -17087,6 +17756,8 @@ void run(const char* filter)
     RUN(testFloatEqualOrUnorderedFolding());
     RUN(testFloatEqualOrUnorderedFoldingNaN());
     RUN(testFloatEqualOrUnorderedDontFold());
+    
+    RUN(testShuffleDoesntTrashCalleeSaves());
 
     if (isX86()) {
         RUN(testBranchBitAndImmFusion(Identity, Int64, 1, Air::BranchTest32, Air::Arg::Tmp));

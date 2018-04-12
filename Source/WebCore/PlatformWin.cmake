@@ -147,15 +147,13 @@ list(APPEND WebCore_SOURCES
     platform/win/WheelEventWin.cpp
     platform/win/WidgetWin.cpp
     platform/win/WindowMessageBroadcaster.cpp
+
+    rendering/RenderThemeWin.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
     ${WEBCORE_DIR}/css/themeWin.css
     ${WEBCORE_DIR}/css/themeWinQuirks.css
-)
-
-list(APPEND WebCore_DERIVED_SOURCES
-    "${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreHeaderDetection.h"
 )
 
 set(WebCore_FORWARDING_HEADERS_DIRECTORIES
@@ -272,12 +270,6 @@ if (${WTF_PLATFORM_WIN_CAIRO})
 else ()
     include(PlatformAppleWin.cmake)
 endif ()
-
-add_custom_command(
-    OUTPUT "${DERIVED_SOURCES_WEBCORE_DIR}/WebCoreHeaderDetection.h"
-    WORKING_DIRECTORY "${DERIVED_SOURCES_WEBCORE_DIR}"
-    COMMAND ${PYTHON_EXECUTABLE} ${WEBCORE_DIR}/AVFoundationSupport.py ${WEBKIT_LIBRARIES_DIR} > WebCoreHeaderDetection.h
-    VERBATIM)
 
 make_directory(${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/WebKit.resources/en.lproj)
 file(COPY

@@ -58,7 +58,7 @@ macro(ADD_SOURCE_WEBCORE_DERIVED_DEPENDENCIES _source _deps)
         list(APPEND _tmp "${DERIVED_SOURCES_WEBCORE_DIR}/${f}")
     endforeach ()
 
-    ADD_SOURCE_DEPENDENCIES(${_source} ${_tmp})
+    WEBKIT_ADD_SOURCE_DEPENDENCIES(${_source} ${_tmp})
     unset(_tmp)
 endmacro()
 
@@ -69,7 +69,7 @@ macro(MAKE_JS_FILE_ARRAYS _output_cpp _output_h _namespace _scripts _scripts_dep
         DEPENDS ${JavaScriptCore_SCRIPTS_DIR}/make-js-file-arrays.py ${${_scripts}}
         COMMAND ${PYTHON_EXECUTABLE} ${JavaScriptCore_SCRIPTS_DIR}/make-js-file-arrays.py -n ${_namespace} ${_output_h} ${_output_cpp} ${${_scripts}}
         VERBATIM)
-    ADD_SOURCE_DEPENDENCIES(${${_scripts_dependencies}} ${_output_h} ${_output_cpp})
+    WEBKIT_ADD_SOURCE_DEPENDENCIES(${${_scripts_dependencies}} ${_output_h} ${_output_cpp})
 endmacro()
 
 
@@ -117,6 +117,7 @@ function(GENERATE_BINDINGS target)
     if (arg_SUPPLEMENTAL_DEPFILE)
         list(APPEND args --supplementalDependencyFile ${arg_SUPPLEMENTAL_DEPFILE})
     endif ()
+    ProcessorCount(PROCESSOR_COUNT)
     if (PROCESSOR_COUNT)
         list(APPEND args --numOfJobs ${PROCESSOR_COUNT})
     endif ()
@@ -191,18 +192,6 @@ endmacro()
 
 macro(GENERATE_EVENT_FACTORY _infile _outfile)
     set(NAMES_GENERATOR ${WEBCORE_DIR}/dom/make_event_factory.pl)
-
-    add_custom_command(
-        OUTPUT  ${DERIVED_SOURCES_WEBCORE_DIR}/${_outfile}
-        MAIN_DEPENDENCY ${_infile}
-        DEPENDS ${NAMES_GENERATOR} ${SCRIPTS_BINDINGS}
-        COMMAND ${PERL_EXECUTABLE} ${NAMES_GENERATOR} --input ${_infile} --outputDir ${DERIVED_SOURCES_WEBCORE_DIR}
-        VERBATIM)
-endmacro()
-
-
-macro(GENERATE_EXCEPTION_CODE_DESCRIPTION _infile _outfile)
-    set(NAMES_GENERATOR ${WEBCORE_DIR}/dom/make_dom_exceptions.pl)
 
     add_custom_command(
         OUTPUT  ${DERIVED_SOURCES_WEBCORE_DIR}/${_outfile}

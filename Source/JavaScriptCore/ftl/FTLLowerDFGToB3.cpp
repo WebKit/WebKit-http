@@ -464,7 +464,7 @@ private:
         if (verboseCompilationEnabled())
             dataLog("Lowering ", m_node, "\n");
         
-        m_availableRecoveries.resize(0);
+        m_availableRecoveries.shrink(0);
         
         m_interpreter.startExecuting();
         m_interpreter.executeKnownEdgeTypes(m_node);
@@ -10480,6 +10480,15 @@ private:
     void compileCallDOMGetter()
     {
         DOMJIT::CallDOMGetterSnippet* domJIT = m_node->callDOMGetterData()->snippet;
+        if (!domJIT) {
+            // The following function is not an operation: we directly call a custom accessor getter.
+            // Since the getter does not have code setting topCallFrame, As is the same to IC, we should set topCallFrame in caller side.
+            m_out.storePtr(m_callFrame, m_out.absolute(&vm().topCallFrame));
+            setJSValue(
+                vmCall(Int64, m_out.operation(m_node->callDOMGetterData()->customAccessorGetter),
+                    m_callFrame, lowCell(m_node->child1()), m_out.constIntPtr(m_graph.identifiers()[m_node->callDOMGetterData()->identifierNumber])));
+            return;
+        }
 
         Edge& baseEdge = m_node->child1();
         LValue base = lowCell(baseEdge);

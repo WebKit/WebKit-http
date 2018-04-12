@@ -33,6 +33,7 @@
 #include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
 #include "FetchOptions.h"
+#include "FetchRequestInit.h"
 #include "ResourceRequest.h"
 #include <wtf/Optional.h>
 
@@ -44,7 +45,8 @@ class URLSearchParams;
 
 class FetchRequest final : public FetchBodyOwner {
 public:
-    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
+    using Init = FetchRequestInit;
+    using Info = Variant<RefPtr<FetchRequest>, String>;
 
     using Cache = FetchOptions::Cache;
     using Credentials = FetchOptions::Credentials;
@@ -54,22 +56,7 @@ public:
     using ReferrerPolicy = FetchOptions::ReferrerPolicy;
     using Type = FetchOptions::Type;
 
-    struct Init {
-        String method;
-        String referrer;
-        std::optional<ReferrerPolicy> referrerPolicy;
-        std::optional<Mode> mode;
-        std::optional<Credentials> credentials;
-        std::optional<Cache> cache;
-        std::optional<Redirect> redirect;
-        String integrity;
-        JSC::JSValue window;
-    };
-
-    ExceptionOr<FetchHeaders&> initializeWith(FetchRequest&, const Init&);
-    ExceptionOr<FetchHeaders&> initializeWith(const String&, const Init&);
-    ExceptionOr<void> setBody(FetchBody::BindingDataType&&);
-    ExceptionOr<void> setBodyFromInputRequest(FetchRequest*);
+    static ExceptionOr<Ref<FetchRequest>> create(ScriptExecutionContext&, Info&&, Init&&);
 
     const String& method() const { return m_internalRequest.request.httpMethod(); }
     const String& url() const;
@@ -103,7 +90,11 @@ public:
 private:
     FetchRequest(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
 
-    ExceptionOr<FetchHeaders&> initializeOptions(const Init&);
+    ExceptionOr<void> initializeOptions(const Init&);
+    ExceptionOr<void> initializeWith(FetchRequest&, Init&&);
+    ExceptionOr<void> initializeWith(const String&, Init&&);
+    ExceptionOr<void> setBody(FetchBody::Init&&);
+    ExceptionOr<void> setBody(FetchRequest&);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;

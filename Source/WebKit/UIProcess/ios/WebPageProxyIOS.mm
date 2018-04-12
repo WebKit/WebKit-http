@@ -41,11 +41,11 @@
 #import "RemoteLayerTreeTransaction.h"
 #import "UIKitSPI.h"
 #import "UserData.h"
+#import "VideoFullscreenManagerProxy.h"
 #import "ViewUpdateDispatcherMessages.h"
 #import "WKBrowsingContextControllerInternal.h"
 #import "WebPageMessages.h"
 #import "WebProcessProxy.h"
-#import "WebVideoFullscreenManagerProxy.h"
 #import <WebCore/FrameView.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformScreen.h>
@@ -287,7 +287,7 @@ void WebPageProxy::overflowScrollDidEndScroll()
     m_pageClient.overflowScrollDidEndScroll();
 }
 
-void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates,  double targetScale, int32_t deviceOrientation)
+void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& unobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation)
 {
     if (!isValid())
         return;
@@ -296,7 +296,7 @@ void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize,
 
     m_dynamicViewportSizeUpdateWaitingForTarget = true;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = true;
-    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation, ++m_currentDynamicViewportSizeUpdateID), m_pageID);
+    m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, unobscuredSafeAreaInsets, targetScale, deviceOrientation, ++m_currentDynamicViewportSizeUpdateID), m_pageID);
 }
 
 void WebPageProxy::synchronizeDynamicViewportUpdate()

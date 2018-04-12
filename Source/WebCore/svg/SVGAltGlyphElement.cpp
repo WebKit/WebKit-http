@@ -25,7 +25,6 @@
 
 #if ENABLE(SVG_FONTS)
 
-#include "ExceptionCode.h"
 #include "RenderInline.h"
 #include "RenderSVGTSpan.h"
 #include "SVGAltGlyphDefElement.h"
@@ -57,7 +56,7 @@ Ref<SVGAltGlyphElement> SVGAltGlyphElement::create(const QualifiedName& tagName,
 
 ExceptionOr<void> SVGAltGlyphElement::setGlyphRef(const AtomicString&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 const AtomicString& SVGAltGlyphElement::glyphRef() const
@@ -67,7 +66,7 @@ const AtomicString& SVGAltGlyphElement::glyphRef() const
 
 ExceptionOr<void> SVGAltGlyphElement::setFormat(const AtomicString&)
 {
-    return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    return Exception { NoModificationAllowedError };
 }
 
 const AtomicString& SVGAltGlyphElement::format() const

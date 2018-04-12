@@ -37,11 +37,11 @@ function(strategy, ancestorElement, query, firstResultOnly, timeoutDuration, cal
         break;
     case "link text":
         strategy = "xpath";
-        query = ".//a[@href][descendant-or-self::text() = \"" + escape(query) + "\"]";
+        query = ".//a[@href][normalize-space(descendant-or-self::text()) = \"" + escape(query) + "\"]";
         break;
     case "partial link text":
         strategy = "xpath";
-        query = ".//a[@href][contains(descendant-or-self::text(), \"" + escape(query) + "\")]";
+        query = ".//a[@href][contains(normalize-space(descendant-or-self::text()), \"" + escape(query) + "\")]";
         break;
     }
 
@@ -100,11 +100,10 @@ function(strategy, ancestorElement, query, firstResultOnly, timeoutDuration, cal
                 return arrayResult;
             }
         } catch (error) {
-            if (error instanceof XPathException && error.code === XPathException.INVALID_EXPRESSION_ERR)
-                return "InvalidXPathExpression";
-            // FIXME: Bad CSS can throw an error that we should report back to the endpoint. There is no
-            // special error code for that though, so we just return an empty match.
-            return firstResultOnly ? null : [];
+            // §12. Element Retrieval. Step 6: If a DOMException, SyntaxError, or other error occurs during
+            // the execution of the element location strategy, return error invalid selector.
+            // https://www.w3.org/TR/webdriver/#dfn-find
+            throw { name: "InvalidSelector", message: error.message };
         }
     }
 

@@ -1,3 +1,323 @@
+2017-07-28  Jeremy Jones  <jeremyj@apple.com>
+
+        Remove Web prefix from WebVideoFullscreen and WebPlaybackSession classes.
+        https://bugs.webkit.org/show_bug.cgi?id=174437
+
+        Reviewed by Darin Adler.
+
+        Remove redundant Web- prefix from classes in WebKit namespace.
+
+        * WebView/WebView.mm:
+        (-[WebView _setUpPlaybackControlsManagerForMediaElement:]):
+        * WebView/WebViewData.h:
+        * WebView/WebViewData.mm:
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-07-25  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Async image decoding for large images should be disabled after the first time a tile is painted
+        https://bugs.webkit.org/show_bug.cgi?id=174451
+        <rdar://problem/31246421>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebFrame.mm:
+        (-[WebFrame _paintBehaviorForDestinationContext:]):
+        (-[WebFrame _drawRect:contentsOnly:]):
+        * WebView/WebHTMLView.mm:
+        (imageFromRect):
+
+2017-07-23  Darin Adler  <darin@apple.com>
+
+        More NeverDestroyed and related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=174745
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMUIKitExtensions.mm: Removed a lot of unneeded "using"
+        for names that aren't even used in this file.
+        (-[DOMNode boundingBoxes]): Use @[] syntax instead of
+        -[NSArray arrayWithObject:].
+        (-[DOMNode absoluteQuads]): Ditto.
+        (-[DOMNode findExplodedTextNodeAtPoint:]): Use auto* instead
+        of writing out various types.
+        (-[DOMHTMLAreaElement boundingBoxesWithOwner:]): Use @[]
+        syntax instea of -[NSArray arrayWithObject:].
+        (-[DOMHTMLAreaElement absoluteQuadsWithOwner:]): Ditto.
+        (-[DOMHTMLImageElement dataRepresentation:]): Use auto* instead
+        of writing out various types.
+        (-[DOMHTMLImageElement mimeType]): Ditto.
+
+2017-07-24  Chris Dumez  <cdumez@apple.com>
+
+        ExceptionCode enumeration should use modern exception names
+        https://bugs.webkit.org/show_bug.cgi?id=174794
+
+        Reviewed by Geoffrey Garen.
+
+        * DOM/ExceptionHandlers.mm:
+        (raiseNotSupportedErrorException):
+
+2017-07-23  Chris Dumez  <cdumez@apple.com>
+
+        Drop ExceptionCodeDescription class
+        https://bugs.webkit.org/show_bug.cgi?id=174757
+
+        Reviewed by Darin Adler.
+
+        Stop using ExceptionCodeDescription.
+
+        * DOM/ExceptionHandlers.mm:
+        (raiseDOMErrorException):
+
+2017-07-21  Andreas Kling  <akling@apple.com>
+
+        Use more references in event dispatch code
+        https://bugs.webkit.org/show_bug.cgi?id=174681
+
+        Reviewed by Geoffrey Garen.
+
+        * DOM/ObjCEventListener.h:
+        * DOM/ObjCEventListener.mm:
+        (WebCore::ObjCEventListener::handleEvent):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (NetscapePluginWidget::handleEvent):
+
+2017-07-21  Brady Eidson  <beidson@apple.com>
+
+        Get rid of WebCore IconDatabase code.
+        https://bugs.webkit.org/show_bug.cgi?id=174700
+
+        Reviewed by Tim Horton.
+
+        * Misc/WebCoreStatistics.mm:
+        (+[WebCoreStatistics iconPageURLMappingCount]):
+        (+[WebCoreStatistics iconRetainedPageURLCount]):
+        (+[WebCoreStatistics iconRecordCount]):
+        (+[WebCoreStatistics iconsWithDataCount]):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebCoreSupport/WebIconDatabaseClient.h: Removed.
+        * WebCoreSupport/WebIconDatabaseClient.mm: Removed.
+        * WebView/WebView.mm:
+        (-[WebView mainFrameIconURL]):
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Drop legacy XPathException type
+        https://bugs.webkit.org/show_bug.cgi?id=174679
+
+        Reviewed by Sam Weinig.
+
+        Drop legacy XPathException type and use DOMException instead. Both Firefox and Chrome
+        no longer expose XPathException.
+
+        * DOM/ExceptionHandlers.mm:
+        (raiseDOMErrorException):
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r219706.
+
+        Broke iOS build
+
+        Reverted changeset:
+
+        "Drop legacy XPathException type"
+        https://bugs.webkit.org/show_bug.cgi?id=174679
+        http://trac.webkit.org/changeset/219706
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Drop legacy XPathException type
+        https://bugs.webkit.org/show_bug.cgi?id=174679
+
+        Reviewed by Sam Weinig.
+
+        Drop legacy XPathException type and use DOMException instead. Both Firefox and Chrome
+        no longer expose XPathException.
+
+        * DOM/ExceptionHandlers.mm:
+        (raiseDOMErrorException):
+        * WebKit.exp:
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable
+        https://bugs.webkit.org/show_bug.cgi?id=174660
+
+        Reviewed by Geoffrey Garen.
+
+        Replace calls to Vector::resize() with calls to more efficient shrink() / grow() when applicable.
+        This essentially replaces a branch to figure out if the new size is less or greater than the
+        current size by an assertion.
+
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView saveAndSetNewPortStateForUpdate:]):
+
+2017-07-20  Brady Eidson  <beidson@apple.com>
+
+        Deprecate WebIconDatabase in WebKitLegacy/mac.
+        https://bugs.webkit.org/show_bug.cgi?id=174607
+
+        Reviewed by Alex Christensen.
+
+        This patch:
+        1 - Formally deprecates WebIconDatabase (which was never API anyways)
+        2 - Guts the class to where it can only return the default icon at the small size
+        3 - Reworks other parts of WebKitLegacy that used it for anything to either
+            use something else or to not do anything.
+        
+        This patch *could* go much farther. A future patch is what will remove WebCore/IconDatabase
+        and that patch will remove all of the last remnants of WebIconDatabase.
+        
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem icon]):
+
+        * Misc/WebIconDatabase.h:
+        * Misc/WebIconDatabase.mm:
+        (-[WebIconDatabase init]):
+        (-[WebIconDatabase iconForURL:withSize:cache:]):
+        (-[WebIconDatabase iconForURL:withSize:]):
+        (-[WebIconDatabase defaultIconWithSize:]):
+        (-[WebIconDatabase defaultIconForURL:withSize:]):
+        (-[WebIconDatabase iconURLForURL:]):
+        (-[WebIconDatabase retainIconForURL:]):
+        (-[WebIconDatabase releaseIconForURL:]):
+        (+[WebIconDatabase delayDatabaseCleanup]):
+        (+[WebIconDatabase allowDatabaseCleanup]):
+        (-[WebIconDatabase setDelegate:]):
+        (-[WebIconDatabase delegate]):
+        (+[WebIconDatabase initialize]): Deleted.
+        (-[WebIconDatabase isEnabled]): Deleted.
+        (-[WebIconDatabase setEnabled:]): Deleted.
+        (-[WebIconDatabase removeAllIcons]): Deleted.
+        (+[WebIconDatabase _checkIntegrityBeforeOpening]): Deleted.
+        (-[WebIconDatabase _sendNotificationForURL:]): Deleted.
+        (-[WebIconDatabase _sendDidRemoveAllIconsNotification]): Deleted.
+        (-[WebIconDatabase _startUpIconDatabase]): Deleted.
+        (-[WebIconDatabase _shutDownIconDatabase]): Deleted.
+        (-[WebIconDatabase _applicationWillTerminate:]): Deleted.
+        (-[WebIconDatabase _iconForFileURL:withSize:]): Deleted.
+        (-[WebIconDatabase _resetCachedWebPreferences:]): Deleted.
+        (-[WebIconDatabase _largestIconFromDictionary:]): Deleted.
+        (-[WebIconDatabase _iconsBySplittingRepresentationsOfIcon:]): Deleted.
+        (-[WebIconDatabase _iconFromDictionary:forSize:cache:]): Deleted.
+        (-[WebIconDatabase _scaleIcon:toSize:]): Deleted.
+        (-[WebIconDatabase _databaseDirectory]): Deleted.
+        (webGetNSImage): Deleted.
+
+        * Misc/WebIconDatabaseDelegate.h: Removed.
+        * Misc/WebIconDatabaseInternal.h: Removed.
+        * Misc/WebIconDatabasePrivate.h: Removed.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (webGetNSImage):
+
+        * WebCoreSupport/WebIconDatabaseClient.mm:
+        (WebIconDatabaseClient::didRemoveAllIcons):
+        (WebIconDatabaseClient::didImportIconURLForPageURL):
+
+        * WebView/WebView.mm:
+        (-[WebView setFrameLoadDelegate:]):
+        (-[WebView mainFrameIcon]):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_RANGE_LOOP_ANALYSIS
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_OBJC_LITERAL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Sam Weinig.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_NON_LITERAL_NULL_CONVERSION
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Dan Bernstein.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS DnD] [WK1] Add missing calls to WebThreadLock() in some WebView drag-and-drop SPIs
+        https://bugs.webkit.org/show_bug.cgi?id=174640
+        <rdar://problem/33297400>
+
+        Reviewed by Tim Horton.
+
+        Adds a missing call to WebThreadLock() in -_requestStartDataInteraction:globalPosition:. Previously, this was
+        invoked at the call site in UIKit, but was removed after some refactoring in UIKit. Instead, we should lock the
+        web thread here, to match the other WebView drag and drop SPI methods.
+
+        This patch also adds a WebThreadLock() call in -_dataInteractionCaretRect. While this is fine today, since all
+        existing callers of _dataInteractionCaretRect already invoke other methods that WebThreadLock() beforehand, we
+        should make this robust against future UIKit changes that could make this no longer the case.
+
+        * WebView/WebView.mm:
+        (-[WebView _requestStartDataInteraction:globalPosition:]):
+        (-[WebView _dataInteractionCaretRect]):
+
+2017-07-18  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Enable CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING
+        https://bugs.webkit.org/show_bug.cgi?id=174631
+
+        Reviewed by Darin Adler.
+
+        * Configurations/Base.xcconfig:
+
+2017-07-17  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings that require non-caching JS strings
+        https://bugs.webkit.org/show_bug.cgi?id=174552
+
+        Reviewed by Darin Adler.
+
+        * DOM/DOMHTMLCanvasElement.mm:
+        (-[DOMHTMLCanvasElement toDataURL:]):
+        Update to account for implementation now returning an UncachedString.
+
+2017-07-17  Darin Adler  <darin@apple.com>
+
+        Improve use of NeverDestroyed
+        https://bugs.webkit.org/show_bug.cgi?id=174348
+
+        Reviewed by Sam Weinig.
+
+        * Misc/WebStringTruncator.mm:
+        (+[WebStringTruncator centerTruncateString:toWidth:]): Replace
+        NeverDestroyed<RetainPtr> with just an NSFont * global.
+
+        * Plugins/Hosted/NetscapePluginHostManager.h: Removed unneeded include of
+        NeverDestroyed.h.
+        * Storage/WebDatabaseManager.mm: Ditto.
+        * WebCoreSupport/WebFrameNetworkingContext.mm: Ditto.
+        * WebCoreSupport/WebPlatformStrategies.mm: Ditto.
+
+        * WebView/WebView.mm: Removed unneeded include of NetworkStateNotifier.h.
+        (aeDescFromJSValue): Removed double hashing by using the return value from
+        add rather than calling contains before calling add.
+
 2017-07-14  Jer Noble  <jer.noble@apple.com>
 
         Allow clients to override their own hardware media requirements where no fallback media exists.

@@ -47,7 +47,7 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
-list(APPEND DatabaseProcess_SOURCES
+list(APPEND StorageProcess_SOURCES
     DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
 )
 
@@ -130,8 +130,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/WKGrammarDetail.cpp
 
-    UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
-
     UIProcess/API/C/wpe/WKView.cpp
 
     UIProcess/API/glib/IconDatabase.cpp
@@ -200,7 +198,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
-    UIProcess/Storage/StorageManager.cpp
+    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
 

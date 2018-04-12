@@ -27,7 +27,6 @@
 #include "DatasetDOMStringMap.h"
 
 #include "Element.h"
-#include "ExceptionCode.h"
 #include <wtf/ASCIICType.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/StringBuilder.h>
@@ -220,7 +219,7 @@ String DatasetDOMStringMap::namedItem(const AtomicString& name) const
 ExceptionOr<void> DatasetDOMStringMap::setNamedItem(const String& name, const String& value)
 {
     if (!isValidPropertyName(name))
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
     return m_element.setAttribute(convertPropertyNameToAttributeName(name), value);
 }
 

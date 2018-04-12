@@ -49,7 +49,7 @@ public:
     void blob(FetchBodyOwner&, Ref<DeferredPromise>&&, const String&);
     void json(FetchBodyOwner&, Ref<DeferredPromise>&&);
     void text(FetchBodyOwner&, Ref<DeferredPromise>&&);
-    void formData(FetchBodyOwner&, Ref<DeferredPromise>&& promise) { promise.get().reject(0); }
+    void formData(FetchBodyOwner&, Ref<DeferredPromise>&& promise) { promise.get().reject(NotSupportedError); }
 
 #if ENABLE(STREAMS_API)
     void consumeAsStream(FetchBodyOwner&, FetchResponseSource&);
@@ -63,8 +63,8 @@ public:
     bool isText() const { return WTF::holds_alternative<String>(m_data); }
     bool isReadableStream() const { return m_isReadableStream; }
 
-    using BindingDataType = Variant<RefPtr<Blob>, RefPtr<ArrayBufferView>, RefPtr<ArrayBuffer>, RefPtr<DOMFormData>, RefPtr<URLSearchParams>, String>;
-    static FetchBody extract(ScriptExecutionContext&, BindingDataType&&, String&);
+    using Init = Variant<RefPtr<Blob>, RefPtr<ArrayBufferView>, RefPtr<ArrayBuffer>, RefPtr<DOMFormData>, RefPtr<URLSearchParams>, String>;
+    static FetchBody extract(ScriptExecutionContext&, Init&&, String&);
     static FetchBody loadingBody() { return { }; }
     static FetchBody readableStreamBody();
 

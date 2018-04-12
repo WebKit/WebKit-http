@@ -46,4 +46,9 @@ WebInspector.CanvasObserver = class CanvasObserver
     {
         WebInspector.canvasManager.cssCanvasClientNodesChanged(canvasId);
     }
+
+    recordingFinished(canvasId, recording)
+    {
+        WebInspector.canvasManager.recordingFinished(canvasId, recording);
+    }
 };

@@ -36,7 +36,6 @@
 #include "IDBConnectionProxy.h"
 #include "IDBCursor.h"
 #include "IDBDatabase.h"
-#include "IDBDatabaseException.h"
 #include "IDBEventDispatcher.h"
 #include "IDBIndex.h"
 #include "IDBKeyData.h"
@@ -157,7 +156,7 @@ IDBRequest::~IDBRequest()
 ExceptionOr<std::optional<IDBRequest::Result>> IDBRequest::result() const
 {
     if (!isDone())
-        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to read the 'result' property from 'IDBRequest': The request has not finished.") };
+        return Exception { InvalidStateError, ASCIILiteral("Failed to read the 'result' property from 'IDBRequest': The request has not finished.") };
 
     return std::optional<IDBRequest::Result> { m_result };
 }
@@ -167,7 +166,7 @@ ExceptionOr<DOMError*> IDBRequest::error() const
     ASSERT(currentThread() == originThreadID());
 
     if (!isDone())
-        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to read the 'error' property from 'IDBRequest': The request has not finished.") };
+        return Exception { InvalidStateError, ASCIILiteral("Failed to read the 'error' property from 'IDBRequest': The request has not finished.") };
 
     return m_domError.get();
 }
@@ -354,8 +353,8 @@ void IDBRequest::uncaughtExceptionInEventHandler()
 
     ASSERT(currentThread() == originThreadID());
 
-    if (m_transaction && m_idbError.code() != IDBDatabaseException::AbortError)
-        m_transaction->abortDueToFailedRequest(DOMError::create(IDBDatabaseException::getErrorName(IDBDatabaseException::AbortError), ASCIILiteral("IDBTransaction will abort due to uncaught exception in an event handler")));
+    if (m_transaction && m_idbError.code() != AbortError)
+        m_transaction->abortDueToFailedRequest(DOMError::create("AbortError", ASCIILiteral("IDBTransaction will abort due to uncaught exception in an event handler")));
 }
 
 void IDBRequest::setResult(const IDBKeyData& keyData)
@@ -486,7 +485,7 @@ void IDBRequest::willIterateCursor(IDBCursor& cursor)
     m_result = std::nullopt;
     m_readyState = ReadyState::Pending;
     m_domError = nullptr;
-    m_idbError = { };
+    m_idbError = IDBError { };
 
     m_cursorRequestNotifier = std::make_unique<ScopeGuard>([this]() {
         m_pendingCursor->decrementOutstandingRequestCount();

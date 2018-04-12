@@ -2221,7 +2221,7 @@ void WebPage::requestAutocorrectionData(const String& textForAutocorrection, Cal
         range->collectSelectionRects(selectionRects);
 
     Vector<FloatRect> rectsForText;
-    rectsForText.resize(selectionRects.size());
+    rectsForText.grow(selectionRects.size());
 
     convertSelectionRectsToRootView(frame.view(), selectionRects);
     for (size_t i = 0; i < selectionRects.size(); i++)
@@ -2856,7 +2856,7 @@ void WebPage::resetTextAutosizing()
     }
 }
 
-void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, double targetScale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID)
+void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, const WebCore::FloatSize& maximumUnobscuredSize, const FloatRect& targetExposedContentRect, const FloatRect& targetUnobscuredRect, const WebCore::FloatRect& targetUnobscuredRectInScrollViewCoordinates, const WebCore::FloatBoxExtent& targetUnobscuredSafeAreaInsets, double targetScale, int32_t deviceOrientation, uint64_t dynamicViewportSizeUpdateID)
 {
     SetForScope<bool> dynamicSizeUpdateGuard(m_inDynamicSizeUpdate, true);
     // FIXME: this does not handle the cases where the content would change the content size or scroll position from JavaScript.
@@ -2900,6 +2900,7 @@ void WebPage::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize, cons
         resetTextAutosizing();
 
     setMaximumUnobscuredSize(maximumUnobscuredSize);
+    m_page->setUnobscuredSafeAreaInsets(targetUnobscuredSafeAreaInsets);
 
     frameView.updateLayoutAndStyleIfNeededRecursive();
 
@@ -3267,8 +3268,19 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
         frameView.setCustomSizeForResizeEvent(expandedIntSize(visibleContentRectUpdateInfo.unobscuredRectInScrollViewCoordinates().size()));
 
-    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator())
-        scrollingCoordinator->reconcileScrollingState(frameView, scrollPosition, visibleContentRectUpdateInfo.customFixedPositionRect(), false, m_isInStableState, m_isInStableState ? ScrollingLayerPositionAction::Sync : ScrollingLayerPositionAction::SetApproximate);
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
+        ViewportRectStability viewportStability = ViewportRectStability::Stable;
+        ScrollingLayerPositionAction layerAction = ScrollingLayerPositionAction::Sync;
+        
+        if (visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively()) {
+            viewportStability = ViewportRectStability::ChangingObscuredInsetsInteractively;
+            layerAction = ScrollingLayerPositionAction::SetApproximate;
+        } else if (!m_isInStableState) {
+            viewportStability = ViewportRectStability::Unstable;
+            layerAction = ScrollingLayerPositionAction::SetApproximate;
+        }
+        scrollingCoordinator->reconcileScrollingState(frameView, scrollPosition, visibleContentRectUpdateInfo.customFixedPositionRect(), false, viewportStability, layerAction);
+    }
 }
 
 void WebPage::willStartUserTriggeredZooming()

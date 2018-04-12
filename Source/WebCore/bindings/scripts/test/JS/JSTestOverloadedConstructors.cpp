@@ -132,7 +132,7 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors5(ExecState* s
     ASSERT(castedThis);
     auto longArgs = convertVariadicArguments<IDLLong>(*state, 0);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto object = TestOverloadedConstructors::create(WTFMove(longArgs.arguments.value()));
+    auto object = TestOverloadedConstructors::create(WTFMove(longArgs));
     return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
@@ -187,7 +187,7 @@ const ClassInfo JSTestOverloadedConstructorsPrototype::s_info = { "TestOverloade
 void JSTestOverloadedConstructorsPrototype::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    reifyStaticProperties(vm, JSTestOverloadedConstructorsPrototypeTableValues, *this);
+    reifyStaticProperties(vm, JSTestOverloadedConstructors::info(), JSTestOverloadedConstructorsPrototypeTableValues, *this);
 }
 
 const ClassInfo JSTestOverloadedConstructors::s_info = { "TestOverloadedConstructors", &Base::s_info, nullptr, nullptr, CREATE_METHOD_TABLE(JSTestOverloadedConstructors) };

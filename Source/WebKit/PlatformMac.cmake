@@ -1,5 +1,4 @@
 add_definitions("-ObjC++ -std=c++14")
-link_directories(../../WebKitLibraries)
 find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
 find_library(CARBON_LIBRARY Carbon)
 find_library(QUARTZ_LIBRARY Quartz)
@@ -264,7 +263,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Cocoa/WebPasteboardProxyCocoa.mm
     UIProcess/Cocoa/WebProcessPoolCocoa.mm
     UIProcess/Cocoa/WebProcessProxyCocoa.mm
-    UIProcess/Cocoa/WebResourceLoadStatisticsManagerCocoa.mm
     UIProcess/Cocoa/WebResourceLoadStatisticsStoreCocoa.mm
     UIProcess/Cocoa/WebURLSchemeHandlerCocoa.mm
     UIProcess/Cocoa/WebViewImpl.mm
@@ -280,7 +278,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Scrolling/RemoteScrollingCoordinatorProxy.cpp
     UIProcess/Scrolling/RemoteScrollingTree.cpp
 
-    UIProcess/Storage/StorageManager.cpp
+    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/Cocoa/WebsiteDataStoreCocoa.mm
 
@@ -453,7 +451,7 @@ list(APPEND NetworkProcess_SOURCES
     ${XPCService_SOURCES}
 )
 
-list(APPEND DatabaseProcess_SOURCES
+list(APPEND StorageProcess_SOURCES
     DatabaseProcess/EntryPoint/mac/XPCService/DatabaseServiceEntryPoint.mm
     ${XPCService_SOURCES}
 )

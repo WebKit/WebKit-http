@@ -34,7 +34,6 @@
 
 #include "DOMWrapperWorld.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "InspectorInstrumentation.h"
 #include "JSEventListener.h"
 #include "NoEventDispatchAssertion.h"
@@ -69,7 +68,15 @@ bool EventTarget::isMessagePort() const
 
 bool EventTarget::addEventListener(const AtomicString& eventType, Ref<EventListener>&& listener, const AddEventListenerOptions& options)
 {
-    return ensureEventTargetData().eventListenerMap.add(eventType, WTFMove(listener), { options.capture, options.passive, options.once });
+    bool listenerCreatedFromScript = listener->type() == EventListener::JSEventListenerType && !listener->wasCreatedFromMarkup();
+
+    if (!ensureEventTargetData().eventListenerMap.add(eventType, WTFMove(listener), { options.capture, options.passive, options.once }))
+        return false;
+
+    if (listenerCreatedFromScript)
+        InspectorInstrumentation::didAddEventListener(*this, eventType);
+
+    return true;
 }
 
 void EventTarget::addEventListenerForBindings(const AtomicString& eventType, RefPtr<EventListener>&& listener, AddEventListenerOptionsOrBoolean&& variant)
@@ -103,7 +110,12 @@ void EventTarget::removeEventListenerForBindings(const AtomicString& eventType, 
 bool EventTarget::removeEventListener(const AtomicString& eventType, EventListener& listener, const ListenerOptions& options)
 {
     auto* data = eventTargetData();
-    return data && data->eventListenerMap.remove(eventType, listener, options.capture);
+    if (!data)
+        return false;
+
+    InspectorInstrumentation::willRemoveEventListener(*this, eventType, listener, options.capture);
+
+    return data->eventListenerMap.remove(eventType, listener, options.capture);
 }
 
 bool EventTarget::setAttributeEventListener(const AtomicString& eventType, RefPtr<EventListener>&& listener, DOMWrapperWorld& isolatedWorld)
@@ -147,7 +159,7 @@ ExceptionOr<bool> EventTarget::dispatchEventForBindings(Event& event)
     event.setUntrusted();
 
     if (!event.isInitialized() || event.isBeingDispatched())
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
 
     if (!scriptExecutionContext())
         return false;
@@ -232,12 +244,13 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
 {
     Ref<EventTarget> protectedThis(*this);
     ASSERT(!listeners.isEmpty());
+    ASSERT(scriptExecutionContext());
 
-    auto* context = scriptExecutionContext();
+    auto& context = *scriptExecutionContext();
     bool contextIsDocument = is<Document>(context);
     InspectorInstrumentationCookie willDispatchEventCookie;
     if (contextIsDocument)
-        willDispatchEventCookie = InspectorInstrumentation::willDispatchEvent(downcast<Document>(*context), event, true);
+        willDispatchEventCookie = InspectorInstrumentation::willDispatchEvent(downcast<Document>(context), event, true);
 
     for (auto& registeredListener : listeners) {
         if (UNLIKELY(registeredListener->wasRemoved()))
@@ -260,8 +273,9 @@ void EventTarget::fireEventListeners(Event& event, EventListenerVector listeners
         if (registeredListener->isPassive())
             event.setInPassiveListener(true);
 
-        InspectorInstrumentation::willHandleEvent(context, event);
-        registeredListener->callback().handleEvent(context, &event);
+        InspectorInstrumentation::willHandleEvent(context, event, *registeredListener);
+        registeredListener->callback().handleEvent(context, event);
+        InspectorInstrumentation::didHandleEvent(context);
 
         if (registeredListener->isPassive())
             event.setInPassiveListener(false);

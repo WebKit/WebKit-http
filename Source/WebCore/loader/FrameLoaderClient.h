@@ -153,6 +153,7 @@ public:
     virtual void dispatchDidChangeProvisionalURL() { }
     virtual void dispatchDidCancelClientRedirect() = 0;
     virtual void dispatchWillPerformClientRedirect(const URL&, double interval, double fireDate) = 0;
+    virtual void dispatchDidPerformClientRedirect() { }
     virtual void dispatchDidChangeMainDocument() { }
     virtual void dispatchDidNavigateWithinPage() { }
     virtual void dispatchDidChangeLocationWithinPage() = 0;
@@ -355,7 +356,6 @@ public:
 
     virtual void didRestoreScrollPosition() { }
 
-    virtual bool useIconLoadingClient() { return false; }
     virtual void getLoadDecisionForIcons(const Vector<std::pair<WebCore::LinkIcon&, uint64_t>>&) { }
     virtual void finishedLoadingIcon(uint64_t, SharedBuffer*) { }
 };

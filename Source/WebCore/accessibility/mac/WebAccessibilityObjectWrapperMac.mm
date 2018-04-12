@@ -3415,6 +3415,15 @@ static NSString* roleValueToNSString(AccessibilityRole value)
 
 - (void)accessibilityPerformPressAction
 {
+    // In case anything we do by performing the press action causes an alert or other modal
+    // behaviors, we need to return now, so that VoiceOver doesn't hang indefinitely.
+    dispatch_async(dispatch_get_main_queue(), ^ {
+        [self _accessibilityPerformPressAction];
+    });
+}
+
+- (void)_accessibilityPerformPressAction
+{
     if (![self updateObjectBackingStore])
         return;
     
@@ -3951,6 +3960,11 @@ static void formatForDebugger(const VisiblePositionRange& range, char* buffer, u
     }
     
     if ([attribute isEqualToString:NSAccessibilityStringForRangeParameterizedAttribute]) {
+        if (m_object->isTextControl()) {
+            PlainTextRange plainTextRange = PlainTextRange(range.location, range.length);
+            return m_object->doAXStringForRange(plainTextRange);
+        }
+        
         CharacterOffset start = cache->characterOffsetForIndex(range.location, m_object);
         CharacterOffset end = cache->characterOffsetForIndex(range.location + range.length, m_object);
         if (start.isNull() || end.isNull())

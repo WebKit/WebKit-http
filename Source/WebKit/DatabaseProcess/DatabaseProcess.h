@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if ENABLE(DATABASE_PROCESS)
-
 #include "ChildProcess.h"
 #include "SandboxExtension.h"
 #include <WebCore/IDBBackingStore.h>
@@ -35,7 +33,6 @@
 #include <WebCore/UniqueIDBDatabase.h>
 #include <wtf/CrossThreadTask.h>
 #include <wtf/Function.h>
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 struct SecurityOriginData;
@@ -127,5 +124,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // ENABLE(DATABASE_PROCESS)

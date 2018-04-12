@@ -29,7 +29,6 @@
 
 #include "CSSParser.h"
 #include "ElementDescendantIterator.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "SelectorChecker.h"
 #include "StaticNodeList.h"
@@ -627,10 +626,10 @@ ExceptionOr<SelectorQuery&> SelectorQueryCache::add(const String& selectors, Doc
     parser.parseSelector(selectors, selectorList);
 
     if (!selectorList.first() || selectorList.hasInvalidSelector())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     if (selectorList.selectorsNeedNamespaceResolution())
-        return Exception { SYNTAX_ERR };
+        return Exception { SyntaxError };
 
     const int maximumSelectorQueryCacheSize = 256;
     if (m_entries.size() == maximumSelectorQueryCacheSize)

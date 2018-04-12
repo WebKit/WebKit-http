@@ -51,7 +51,6 @@
 
 #if USE(CG)
 #include "PDFDocumentImage.h"
-#include "UTIRegistry.h"
 #endif
 
 namespace WebCore {
@@ -375,10 +374,10 @@ bool CachedImage::CachedImageObserver::canDestroyDecodedData(const Image& image)
     return true;
 }
 
-void CachedImage::CachedImageObserver::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+void CachedImage::CachedImageObserver::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect, DecodingStatus decodingStatus)
 {
     for (auto cachedImage : m_cachedImages)
-        cachedImage->imageFrameAvailable(image, animatingState, changeRect);
+        cachedImage->imageFrameAvailable(image, animatingState, changeRect, decodingStatus);
 }
 
 void CachedImage::CachedImageObserver::changedInRect(const Image& image, const IntRect* rect)
@@ -440,12 +439,7 @@ void CachedImage::addIncrementalDataBuffer(SharedBuffer& data)
 
 EncodedDataStatus CachedImage::setImageDataBuffer(SharedBuffer* data, bool allDataReceived)
 {
-    EncodedDataStatus encodedDataStatus = m_image ? m_image->setData(data, allDataReceived) : EncodedDataStatus::Error;
-#if USE(CG)
-    if (encodedDataStatus >= EncodedDataStatus::TypeAvailable && m_image->isBitmapImage() && !isAllowedImageUTI(m_image->uti()))
-        return EncodedDataStatus::Error;
-#endif
-    return encodedDataStatus;
+    return m_image ? m_image->setData(data, allDataReceived) : EncodedDataStatus::Error;
 }
 
 void CachedImage::addDataBuffer(SharedBuffer& data)
@@ -554,7 +548,7 @@ bool CachedImage::canDestroyDecodedData(const Image& image)
     return true;
 }
 
-void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect)
+void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState animatingState, const IntRect* changeRect, DecodingStatus decodingStatus)
 {
     if (&image != m_image)
         return;
@@ -573,7 +567,8 @@ void CachedImage::imageFrameAvailable(const Image& image, ImageAnimatingState an
     if (visibleState == VisibleInViewportState::No && animatingState == ImageAnimatingState::Yes)
         m_image->stopAnimation();
 
-    m_pendingImageDrawingClients.clear();
+    if (decodingStatus != DecodingStatus::Partial)
+        m_pendingImageDrawingClients.clear();
 }
 
 void CachedImage::changedInRect(const Image& image, const IntRect* rect)

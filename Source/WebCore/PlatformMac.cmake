@@ -1,13 +1,10 @@
-set(WebCore_LIBRARY_TYPE SHARED)
-
 if ("${CURRENT_OSX_VERSION}" MATCHES "10.9")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceMavericks.a)
-elif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceYosemite.a)
+    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceMavericks.a)
+elseif ("${CURRENT_OSX_VERSION}" MATCHES "10.10")
+    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceYosemite.a)
 else ()
-set(WEBKITSYSTEMINTERFACE_LIBRARY libWebKitSystemInterfaceElCapitan.a)
+    set(WEBKITSYSTEMINTERFACE_LIBRARY ${CMAKE_SOURCE_DIR}/WebKitLibraries/libWebKitSystemInterfaceElCapitan.a)
 endif ()
-link_directories(../../WebKitLibraries)
 
 find_library(ACCELERATE_LIBRARY accelerate)
 find_library(APPLICATIONSERVICES_LIBRARY ApplicationServices)
@@ -176,40 +173,6 @@ list(APPEND WebCore_SOURCES
     bridge/objc/objc_utility.mm
 
     crypto/CommonCryptoUtilities.cpp
-    crypto/CryptoAlgorithm.cpp
-    crypto/CryptoAlgorithmRegistry.cpp
-    crypto/CryptoKey.cpp
-    crypto/SubtleCrypto.cpp
-    crypto/WebKitSubtleCrypto.cpp
-
-    crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
-    crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
-    crypto/algorithms/CryptoAlgorithmAES_CTR.cpp
-    crypto/algorithms/CryptoAlgorithmAES_GCM.cpp
-    crypto/algorithms/CryptoAlgorithmAES_KW.cpp
-    crypto/algorithms/CryptoAlgorithmECDH.cpp
-    crypto/algorithms/CryptoAlgorithmECDSA.cpp
-    crypto/algorithms/CryptoAlgorithmHKDF.cpp
-    crypto/algorithms/CryptoAlgorithmHMAC.cpp
-    crypto/algorithms/CryptoAlgorithmPBKDF2.cpp
-    crypto/algorithms/CryptoAlgorithmRSAES_PKCS1_v1_5.cpp
-    crypto/algorithms/CryptoAlgorithmRSASSA_PKCS1_v1_5.cpp
-    crypto/algorithms/CryptoAlgorithmRSA_OAEP.cpp
-    crypto/algorithms/CryptoAlgorithmRSA_PSS.cpp
-    crypto/algorithms/CryptoAlgorithmSHA1.cpp
-    crypto/algorithms/CryptoAlgorithmSHA224.cpp
-    crypto/algorithms/CryptoAlgorithmSHA256.cpp
-    crypto/algorithms/CryptoAlgorithmSHA384.cpp
-    crypto/algorithms/CryptoAlgorithmSHA512.cpp
-
-    crypto/keys/CryptoKeyAES.cpp
-    crypto/keys/CryptoKeyDataOctetSequence.cpp
-    crypto/keys/CryptoKeyDataRSAComponents.cpp
-    crypto/keys/CryptoKeyEC.cpp
-    crypto/keys/CryptoKeyHMAC.cpp
-    crypto/keys/CryptoKeyRSA.cpp
-    crypto/keys/CryptoKeyRaw.cpp
-    crypto/keys/CryptoKeySerializationRaw.cpp
 
     crypto/mac/CommonCryptoDERUtilities.cpp
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
@@ -473,7 +436,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cocoa/WebCoreDecompressionSession.mm
     platform/graphics/cocoa/WebGLLayer.mm
     platform/graphics/cocoa/WebGPULayer.mm
-    platform/graphics/cocoa/WebLayer.mm
 
     platform/graphics/cv/PixelBufferConformerCV.cpp
     platform/graphics/cv/TextureCacheCV.mm
@@ -500,6 +462,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/mac/MediaTimeQTKit.mm
     platform/graphics/mac/PDFDocumentImageMac.mm
     platform/graphics/mac/SimpleFontDataCoreText.cpp
+    platform/graphics/mac/WebLayer.mm
 
     platform/graphics/opengl/Extensions3DOpenGL.cpp
     platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
@@ -579,6 +542,7 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/SynchronousResourceHandleCFURLConnectionDelegate.cpp
 
     platform/network/cocoa/CookieCocoa.mm
+    platform/network/cocoa/CookieStorageObserver.mm
     platform/network/cocoa/CredentialCocoa.mm
     platform/network/cocoa/NetworkLoadMetrics.mm
     platform/network/cocoa/NetworkStorageSessionCocoa.mm
@@ -800,11 +764,8 @@ set(ADDITIONAL_BINDINGS_DEPENDENCIES
     ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
 )
 
-set(WebCoreTestSupport_LIBRARY_TYPE SHARED)
 list(APPEND WebCoreTestSupport_LIBRARIES PRIVATE WebCore)
 list(APPEND WebCoreTestSupport_SOURCES
-    bindings/js/JSMockContentFilterSettingsCustom.cpp
-
     testing/Internals.mm
     testing/MockContentFilter.cpp
     testing/MockContentFilterSettings.cpp

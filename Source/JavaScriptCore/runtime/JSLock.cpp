@@ -151,7 +151,7 @@ void JSLock::didAcquireLock()
 #endif
 
 #if HAVE(MACH_EXCEPTIONS)
-    registerThreadForMachExceptionHandling(&Thread::current());
+    registerThreadForMachExceptionHandling(Thread::current());
 #endif
 
     // Note: everything below must come after addCurrentThread().
@@ -246,7 +246,7 @@ void JSLock::grabAllLocks(DropAllLocks* dropper, unsigned droppedLockCount)
 
     while (dropper->dropDepth() != m_lockDropDepth) {
         unlock(droppedLockCount);
-        std::this_thread::yield();
+        Thread::yield();
         lock(droppedLockCount);
     }
 

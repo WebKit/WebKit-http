@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "ExceptionCode.h"
 #include "SVGMatrix.h"
 #include "SVGPropertyTearOff.h"
 #include "SVGTransformValue.h"
@@ -71,7 +70,7 @@ public:
     ExceptionOr<void> setMatrix(SVGMatrix& matrix)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setMatrix(matrix.propertyReference());
         commitChange();
@@ -82,7 +81,7 @@ public:
     ExceptionOr<void> setTranslate(float tx, float ty)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setTranslate(tx, ty);
         commitChange();
@@ -93,7 +92,7 @@ public:
     ExceptionOr<void> setScale(float sx, float sy)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setScale(sx, sy);
         commitChange();
@@ -104,7 +103,7 @@ public:
     ExceptionOr<void> setRotate(float angle, float cx, float cy)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setRotate(angle, cx, cy);
         commitChange();
@@ -115,7 +114,7 @@ public:
     ExceptionOr<void> setSkewX(float angle)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setSkewX(angle);
         commitChange();
@@ -126,7 +125,7 @@ public:
     ExceptionOr<void> setSkewY(float angle)
     {
         if (isReadOnly())
-            return Exception { NO_MODIFICATION_ALLOWED_ERR };
+            return Exception { NoModificationAllowedError };
 
         propertyReference().setSkewY(angle);
         commitChange();

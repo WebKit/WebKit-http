@@ -83,9 +83,9 @@ public:
     virtual ExceptionOr<void> importScripts(const Vector<String>& urls);
     WorkerNavigator& navigator() const;
 
-    int setTimeout(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setTimeout(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearTimeout(int timeoutId);
-    int setInterval(std::unique_ptr<ScheduledAction>, int timeout);
+    ExceptionOr<int> setInterval(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearInterval(int timeoutId);
 
     bool isContextThread() const final;
@@ -102,10 +102,7 @@ public:
     void addConsoleMessage(std::unique_ptr<Inspector::ConsoleMessage>&&) final;
 
     Crypto& crypto();
-
-#if ENABLE(WEB_TIMING)
     Performance& performance() const;
-#endif
 
     void removeAllEventListeners() final;
 
@@ -185,10 +182,7 @@ private:
     RefPtr<SocketProvider> m_socketProvider;
 #endif
 
-#if ENABLE(WEB_TIMING)
     RefPtr<Performance> m_performance;
-#endif
-
     mutable RefPtr<Crypto> m_crypto;
 };
 

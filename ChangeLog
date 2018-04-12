@@ -1,3 +1,200 @@
+2017-07-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix for GTK and WPE about StorageProcess renaming
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-07-28  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r219986.
+        https://bugs.webkit.org/show_bug.cgi?id=174962
+
+        "broke PLT on iOS (rdar://problem/33602751)" (Requested by
+        estes on #webkit).
+
+        Reverted changeset:
+
+        "Part 1 of: Rename DatabaseProcess to StorageProcess."
+        https://bugs.webkit.org/show_bug.cgi?id=174879
+        http://trac.webkit.org/changeset/219986
+
+2017-07-28  Adrian Perez de Castro  <aperez@igalia.com>
+
+        [GTK] Building with ENABLE_VIDEO=OFF fails
+        https://bugs.webkit.org/show_bug.cgi?id=174940
+
+        Reviewed by Alex Christensen.
+
+        Code guarded by ENABLE(MEDIA_STREAM) requires the definition of HTMLVideoElement to
+        be available, which in turn is guarded by ENABLE(VIDEO).
+
+        * Source/cmake/WebKitFeatures.cmake: Make ENABLE_MEDIA_STREAM depend on ENABLE_VIDEO.
+
+2017-07-28  Claudio Saavedra  <csaavedra@igalia.com>
+
+        [WPE] Implement EventSenderProxy in WTR
+        https://bugs.webkit.org/show_bug.cgi?id=173419
+
+        Reviewed by Žan Doberšek.
+
+        Add the implementation of EventSenderProxy to the WTR. This
+        allows us to extend the coverage of the test suite in WKWPE.
+
+        * Source/cmake/FindLibxkbcommon.cmake: Added.
+
+2017-07-28  Zan Dobersek  <zdobersek@igalia.com>
+
+        Unreviewed. Bumping the patch version for WPEWebKit library to 20170728.
+
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-07-27  Brady Eidson  <beidson@apple.com>
+
+        Part 1 of: Rename DatabaseProcess to StorageProcess.
+        https://bugs.webkit.org/show_bug.cgi?id=174879
+
+        Reviewed by Andy Estes.
+
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/gtksymbols.filter:
+
+
+2017-07-26  Brady Eidson  <beidson@apple.com>
+
+        Remove DATABASE_PROCESS build flag.
+        https://bugs.webkit.org/show_bug.cgi?id=174868
+
+        Reviewed by Andy Estes.
+
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-07-26  Brian Burg  <bburg@apple.com>
+
+        Remove WEB_TIMING feature flag
+        https://bugs.webkit.org/show_bug.cgi?id=174795
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+        * Source/cmake/tools/vsprops/FeatureDefines.props:
+        * Source/cmake/tools/vsprops/FeatureDefinesCairo.props:
+
+2017-07-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix WebKit2 derived sources directory creation after r219488.
+
+        The variable is still DERIVED_SOURCES_WEBKIT2_DIR, not DERIVED_SOURCES_WEBKIT_DIR. Build was not really affected
+        because WebKit2 makefile creates the directory too.
+
+        * Source/cmake/WebKitFS.cmake:
+
+2017-07-26  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.17.5 release.
+
+        * Source/cmake/OptionsGTK.cmake: Bump version numbers.
+
+2017-07-25  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ WebKit2 library soname after r219488.
+
+        The WebKit2 -> WebKit rename shouldn't affect the GTK+ library that is still called libwebkit2gtk, so keep using
+        WEBKIT2 as the library name in CALCULATE_LIBRARY_VERSIONS_FROM_LIBTOOL_TRIPLE, since that's also what the WebKit
+        makefile passes to WEBKIT_POPULATE_LIBRARY_VERSION.
+
+        * Source/cmake/OptionsGTK.cmake:
+
+2017-07-24  Zan Dobersek  <zdobersek@igalia.com>
+
+        [WPE] Add libepoxy to the Jhbuild moduleset
+        https://bugs.webkit.org/show_bug.cgi?id=174711
+
+        Reviewed by Carlos Alberto Lopez Perez.
+
+        libepoxy 1.3.1 that's widely available in current stable distributions (Debian stable,
+        Ubuntu LTS) does suffice our needs, but also contains a bug that incorrectly determines
+        the current EGL context and the API version of OpenGL that's bound to that context.
+        Focusing on experiences on Debian systems, while the current stable Debian release has
+        this bug patched, the package for the testing distribution of Debian removed that same
+        patch for whatever reason, despite using the 1.3.1 version as the package basis.
+
+        To avoid this, libepoxy 1.4.3 is now added to WPE's Jhbuild moduleset. The WPE port
+        also now demands at least the 1.4.0 version to be available when configuring.
+
+        We should revisit the minimum version for libepoxy in the future if the 1.3 release
+        branch gets updated with the proper fix.
+
+        * Source/cmake/FindLibEpoxy.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+
+2017-07-21  Konstantin Tokarev  <annulen@yandex.ru>
+
+       [cmake] Unreviewed, add definitions necessary to use ICU shipped with macOS
+
+       macOS system ICU libraries are built with U_DISABLE_RENAMING=1 and
+       U_SHOW_CPLUSPLUS_API=0. After r219155 we have to pass this definitons
+       explicitly, because ICU headers in the tree are not modified anymore.
+
+        * Source/cmake/OptionsJSCOnly.cmake:
+        * Source/cmake/OptionsMac.cmake:
+
+2017-07-17  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Add initial implementation of WebDriver process to run the HTTP server
+        https://bugs.webkit.org/show_bug.cgi?id=166682
+
+        Reviewed by Brian Burg.
+
+        Enable WebDriver in the GTK port by default.
+
+        * Source/CMakeLists.txt:
+        * Source/cmake/OptionsGTK.cmake:
+        * Source/cmake/WebKitFS.cmake:
+        * Source/cmake/WebKitFeatures.cmake:
+
+2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Set library types before their targets are created
+        https://bugs.webkit.org/show_bug.cgi?id=174600
+
+        Reviewed by Michael Catanzaro.
+
+        Since r219560 library targets are created before PlatformXXX.cmake
+        files are processed, however library type must be passed in
+        add_library() call and cannot be changed afterwards. Set these
+        variables in OptionsXXX.cmake.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsMac.cmake:
+        * Source/cmake/OptionsWPE.cmake:
+        * Source/cmake/OptionsWin.cmake:
+
+2017-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Include most CMake modules from WebKitCommon.cmake
+        https://bugs.webkit.org/show_bug.cgi?id=174546
+
+        Reviewed by Konstantin Tokarev.
+
+        * CMakeLists.txt:
+        * Source/cmake/OptionsCommon.cmake:
+        * Source/cmake/WebKitCommon.cmake:
+        * Source/cmake/WebKitMacros.cmake:
+
+2017-07-17  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [CMake] Macros in WebKitMacros.cmake should be prefixed with WEBKIT_ namespace
+        https://bugs.webkit.org/show_bug.cgi?id=174547
+
+        Reviewed by Alex Christensen.
+
+        * Source/cmake/WebKitMacros.cmake:
+
 2017-07-17  Konstantin Tokarev  <annulen@yandex.ru>
 
         [CMake] Create targets before WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS is called

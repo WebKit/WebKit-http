@@ -152,9 +152,9 @@
 #if PLATFORM(COCOA)
 #include "RemoteLayerTreeDrawingAreaProxy.h"
 #include "RemoteLayerTreeScrollingPerformanceData.h"
+#include "VideoFullscreenManagerProxy.h"
+#include "VideoFullscreenManagerProxyMessages.h"
 #include "ViewSnapshotStore.h"
-#include "WebVideoFullscreenManagerProxy.h"
-#include "WebVideoFullscreenManagerProxyMessages.h"
 #include <WebCore/MachSendRight.h>
 #include <WebCore/RunLoopObserver.h>
 #include <WebCore/TextIndicatorWindow.h>
@@ -180,7 +180,7 @@
 #endif
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-#include "WebPlaybackSessionManagerProxy.h"
+#include "PlaybackSessionManagerProxy.h"
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -394,8 +394,8 @@ WebPageProxy::WebPageProxy(PageClient& pageClient, WebProcessProxy& process, uin
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    m_playbackSessionManager = WebPlaybackSessionManagerProxy::create(*this);
-    m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this, *m_playbackSessionManager);
+    m_playbackSessionManager = PlaybackSessionManagerProxy::create(*this);
+    m_videoFullscreenManager = VideoFullscreenManagerProxy::create(*this, *m_playbackSessionManager);
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -636,8 +636,8 @@ void WebPageProxy::reattachToWebProcess()
     m_fullScreenManager = WebFullScreenManagerProxy::create(*this, m_pageClient.fullScreenManagerProxyClient());
 #endif
 #if PLATFORM(IOS) && HAVE(AVKIT) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-    m_playbackSessionManager = WebPlaybackSessionManagerProxy::create(*this);
-    m_videoFullscreenManager = WebVideoFullscreenManagerProxy::create(*this, *m_playbackSessionManager);
+    m_playbackSessionManager = PlaybackSessionManagerProxy::create(*this);
+    m_videoFullscreenManager = VideoFullscreenManagerProxy::create(*this, *m_playbackSessionManager);
 #endif
 
 #if ENABLE(APPLE_PAY)
@@ -781,6 +781,8 @@ void WebPageProxy::close()
     // Make sure we don't hold a process assertion after getting closed.
     m_activityToken = nullptr;
 #endif
+
+    stopAllURLSchemeTasks();
 }
 
 bool WebPageProxy::tryClose()
@@ -819,26 +821,27 @@ void WebPageProxy::addPlatformLoadParameters(LoadParameters&)
 }
 #endif
 
-RefPtr<API::Navigation> WebPageProxy::loadRequest(const ResourceRequest& request, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, API::Object* userData)
+RefPtr<API::Navigation> WebPageProxy::loadRequest(ResourceRequest&& request, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, API::Object* userData)
 {
     if (m_isClosed)
         return nullptr;
 
-    auto navigation = m_navigationState->createLoadRequestNavigation(request);
+    auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
 
     auto transaction = m_pageLoadState.transaction();
 
-    m_pageLoadState.setPendingAPIRequestURL(transaction, request.url());
+    auto url = request.url();
+    m_pageLoadState.setPendingAPIRequestURL(transaction, url);
 
     if (!isValid())
         reattachToWebProcess();
 
     LoadParameters loadParameters;
     loadParameters.navigationID = navigation->navigationID();
-    loadParameters.request = request;
+    loadParameters.request = WTFMove(request);
     loadParameters.shouldOpenExternalURLsPolicy = (uint64_t)shouldOpenExternalURLsPolicy;
     loadParameters.userData = UserData(process().transformObjectsToHandles(userData).get());
-    bool createdExtension = maybeInitializeSandboxExtensionHandle(request.url(), loadParameters.sandboxExtensionHandle);
+    bool createdExtension = maybeInitializeSandboxExtensionHandle(url, loadParameters.sandboxExtensionHandle);
     if (createdExtension)
         m_process->willAcquireUniversalFileReadSandboxExtension();
     addPlatformLoadParameters(loadParameters);
@@ -3189,6 +3192,24 @@ void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t f
         m_loaderClient->didReceiveServerRedirectForProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
+void WebPageProxy::didPerformClientRedirectForLoadForFrame(uint64_t frameID, uint64_t navigationID)
+{
+    PageClientProtector protector(m_pageClient);
+
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
+
+    // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
+    RefPtr<API::Navigation> navigation;
+    if (frame->isMainFrame() && navigationID)
+        navigation = &navigationState().navigation(navigationID);
+
+    if (m_navigationClient) {
+        if (frame->isMainFrame())
+            m_navigationClient->didPerformClientRedirectForNavigation(*this, navigation.get());
+    }
+}
+
 void WebPageProxy::didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t, const String& url)
 {
     PageClientProtector protector(m_pageClient);
@@ -3373,9 +3394,9 @@ void WebPageProxy::didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID
     if (isMainFrame)
         m_pageLoadState.didFinishLoad(transaction);
 
-    if (isMainFrame && m_controlledByAutomation) {
+    if (m_controlledByAutomation) {
         if (auto* automationSession = process().processPool().automationSession())
-            automationSession->navigationOccurredForPage(*this);
+            automationSession->navigationOccurredForFrame(*frame);
     }
 
     frame->didFinishLoad();
@@ -3414,9 +3435,9 @@ void WebPageProxy::didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, 
     if (isMainFrame)
         m_pageLoadState.didFailLoad(transaction);
 
-    if (isMainFrame && m_controlledByAutomation) {
+    if (m_controlledByAutomation) {
         if (auto* automationSession = process().processPool().automationSession())
-            automationSession->navigationOccurredForPage(*this);
+            automationSession->navigationOccurredForFrame(*frame);
     }
 
     frame->didFailLoad();
@@ -3451,9 +3472,9 @@ void WebPageProxy::didSameDocumentNavigationForFrame(uint64_t frameID, uint64_t 
     if (isMainFrame)
         m_pageLoadState.didSameDocumentNavigation(transaction, url);
 
-    if (isMainFrame && m_controlledByAutomation) {
+    if (m_controlledByAutomation) {
         if (auto* automationSession = process().processPool().automationSession())
-            automationSession->navigationOccurredForPage(*this);
+            automationSession->navigationOccurredForFrame(*frame);
     }
 
     m_pageLoadState.clearPendingAPIRequestURL(transaction);
@@ -3599,7 +3620,7 @@ void WebPageProxy::frameDidBecomeFrameSet(uint64_t frameID, bool value)
         m_frameSetLargestFrame = value ? m_mainFrame : 0;
 }
 
-void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, const ResourceRequest& request, uint64_t listenerID, const UserData& userData, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&& reply)
+void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, NavigationActionData&& navigationActionData, const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const WebCore::ResourceRequest& originalRequest, ResourceRequest&& request, uint64_t listenerID, const UserData& userData, Ref<Messages::WebPageProxy::DecidePolicyForNavigationAction::DelayedReply>&& reply)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3617,7 +3638,7 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     m_newNavigationID = 0;
     Ref<WebFramePolicyListenerProxy> listener = frame->setUpPolicyListenerProxy(listenerID);
     if (!navigationID && frame->isMainFrame()) {
-        auto navigation = m_navigationState->createLoadRequestNavigation(request);
+        auto navigation = m_navigationState->createLoadRequestNavigation(ResourceRequest(request));
         m_newNavigationID = navigation->navigationID();
         listener->setNavigation(WTFMove(navigation));
     }
@@ -3638,26 +3659,26 @@ void WebPageProxy::decidePolicyForNavigationAction(uint64_t frameID, const Secur
     WebFrameProxy* originatingFrame = m_process->webFrame(originatingFrameInfoData.frameID);
 
     if (m_navigationClient) {
-        RefPtr<API::FrameInfo> destinationFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
+        auto destinationFrameInfo = API::FrameInfo::create(*frame, frameSecurityOrigin.securityOrigin());
         RefPtr<API::FrameInfo> sourceFrameInfo;
         if (!fromAPI && originatingFrame == frame)
-            sourceFrameInfo = destinationFrameInfo;
+            sourceFrameInfo = destinationFrameInfo.copyRef();
         else if (!fromAPI)
             sourceFrameInfo = API::FrameInfo::create(originatingFrameInfoData, originatingPageID ? m_process->webPage(originatingPageID) : nullptr);
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
-        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && (!destinationFrameInfo || destinationFrameInfo->isMainFrame()) && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
+        bool shouldOpenAppLinks = !m_shouldSuppressAppLinksInNextNavigationPolicyDecision && destinationFrameInfo->isMainFrame() && !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url()) && navigationActionData.navigationType != WebCore::NavigationType::BackForward;
 
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), destinationFrameInfo.get(), request, originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), destinationFrameInfo.ptr(), WTFMove(request), originalRequest.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
-        m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
+        m_navigationClient->decidePolicyForNavigationAction(*this, WTFMove(navigationAction), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
     } else
-        m_policyClient->decidePolicyForNavigationAction(*this, frame, navigationActionData, originatingFrame, originalRequest, request, WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
+        m_policyClient->decidePolicyForNavigationAction(*this, frame, WTFMove(navigationActionData), originatingFrame, originalRequest, WTFMove(request), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
     m_shouldSuppressAppLinksInNextNavigationPolicyDecision = false;
 }
 
-void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, const NavigationActionData& navigationActionData, const ResourceRequest& request, const String& frameName, uint64_t listenerID, const UserData& userData)
+void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const SecurityOriginData& frameSecurityOrigin, NavigationActionData&& navigationActionData, ResourceRequest&& request, const String& frameName, uint64_t listenerID, const UserData& userData)
 {
     PageClientProtector protector(m_pageClient);
 
@@ -3674,7 +3695,7 @@ void WebPageProxy::decidePolicyForNewWindowAction(uint64_t frameID, const Securi
 
         auto userInitiatedActivity = m_process->userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
         bool shouldOpenAppLinks = !hostsAreEqual(URL(ParsedURLString, m_mainFrame->url()), request.url());
-        auto navigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.get(), nullptr, request, request.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
+        auto navigationAction = API::NavigationAction::create(WTFMove(navigationActionData), sourceFrameInfo.get(), nullptr, WTFMove(request), request.url(), shouldOpenAppLinks, WTFMove(userInitiatedActivity));
 
         m_navigationClient->decidePolicyForNavigationAction(*this, navigationAction.get(), WTFMove(listener), m_process->transformHandlesToObjects(userData.object()).get());
 
@@ -3814,7 +3835,7 @@ void WebPageProxy::didUpdateHistoryTitle(const String& title, const String& url,
 
 // UIClient
 
-void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, const ResourceRequest& request, const WindowFeatures& windowFeatures, const NavigationActionData& navigationActionData, RefPtr<Messages::WebPageProxy::CreateNewPage::DelayedReply> reply)
+void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, uint64_t originatingPageID, ResourceRequest&& request, const WindowFeatures& windowFeatures, NavigationActionData&& navigationActionData, Ref<Messages::WebPageProxy::CreateNewPage::DelayedReply>&& reply)
 {
     MESSAGE_CHECK(m_process->webFrame(originatingFrameInfoData.frameID));
     auto originatingFrameInfo = API::FrameInfo::create(originatingFrameInfoData, m_process->webPage(originatingPageID));
@@ -3834,10 +3855,14 @@ void WebPageProxy::createNewPage(const FrameInfoData& originatingFrameInfoData, 
 
     };
 
-    if (m_uiClient->createNewPageAsync(this, originatingFrameInfo, request, windowFeatures, navigationActionData, [completionHandler](RefPtr<WebPageProxy> newPage) { completionHandler(newPage); }))
+    if (m_uiClient->canCreateNewPageAsync()) {
+        m_uiClient->createNewPageAsync(this, originatingFrameInfo, WTFMove(request), windowFeatures, WTFMove(navigationActionData), [completionHandler = WTFMove(completionHandler)](RefPtr<WebPageProxy> newPage) {
+            completionHandler(newPage);
+        });
         return;
+    }
 
-    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, originatingFrameInfo, request, windowFeatures, navigationActionData);
+    RefPtr<WebPageProxy> newPage = m_uiClient->createNewPage(this, originatingFrameInfo, WTFMove(request), windowFeatures, WTFMove(navigationActionData));
     completionHandler(WTFMove(newPage));
 }
     
@@ -4096,9 +4121,16 @@ void WebPageProxy::runOpenPanel(uint64_t frameID, const SecurityOriginData& fram
     Ref<API::OpenPanelParameters> parameters = API::OpenPanelParameters::create(settings);
     m_openPanelResultListener = WebOpenPanelResultListenerProxy::create(this);
 
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->handleRunOpenPanel(*this, *frame, parameters.get(), *m_openPanelResultListener);
+
+        // Don't show a file chooser, since automation will be unable to interact with it.
+        return;
+    }
+
     // Since runOpenPanel() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
-
 
     if (!m_uiClient->runOpenPanel(this, frame, frameSecurityOrigin, parameters.ptr(), m_openPanelResultListener.get())) {
         if (!m_pageClient.handleRunOpenPanel(this, frame, parameters.ptr(), m_openPanelResultListener.get()))
@@ -4295,12 +4327,12 @@ void WebPageProxy::setFullscreenClient(std::unique_ptr<API::FullscreenClient>&& 
 #endif
     
 #if (PLATFORM(IOS) && HAVE(AVKIT)) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
-WebPlaybackSessionManagerProxy* WebPageProxy::playbackSessionManager()
+PlaybackSessionManagerProxy* WebPageProxy::playbackSessionManager()
 {
     return m_playbackSessionManager.get();
 }
 
-WebVideoFullscreenManagerProxy* WebPageProxy::videoFullscreenManager()
+VideoFullscreenManagerProxy* WebPageProxy::videoFullscreenManager()
 {
     return m_videoFullscreenManager.get();
 }
@@ -4659,13 +4691,12 @@ void WebPageProxy::didChooseFilesForOpenPanelWithDisplayStringAndIcon(const Vect
         return;
 
 #if ENABLE(SANDBOX_EXTENSIONS)
-    // FIXME: The sandbox extensions should be sent with the DidChooseFilesForOpenPanel message. This
-    // is gated on a way of passing SandboxExtension::Handles in a Vector.
-    for (size_t i = 0; i < fileURLs.size(); ++i) {
-        SandboxExtension::Handle sandboxExtensionHandle;
-        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
-        m_process->send(Messages::WebPage::ExtendSandboxForFileFromOpenPanel(sandboxExtensionHandle), m_pageID);
-    }
+    SandboxExtension::HandleArray sandboxExtensionHandles;
+    sandboxExtensionHandles.allocate(fileURLs.size());
+    for (size_t i = 0; i < fileURLs.size(); ++i)
+        SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandles[i]);
+
+    m_process->send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(sandboxExtensionHandles), m_pageID);
 #endif
 
     m_process->send(Messages::WebPage::DidChooseFilesForOpenPanelWithDisplayStringAndIcon(fileURLs, displayString, iconData ? iconData->dataReference() : IPC::DataReference()), m_pageID);
@@ -4681,19 +4712,19 @@ void WebPageProxy::didChooseFilesForOpenPanel(const Vector<String>& fileURLs)
         return;
 
 #if ENABLE(SANDBOX_EXTENSIONS)
-    // FIXME: The sandbox extensions should be sent with the DidChooseFilesForOpenPanel message. This
-    // is gated on a way of passing SandboxExtension::Handles in a Vector.
+    SandboxExtension::HandleArray sandboxExtensionHandles;
+    sandboxExtensionHandles.allocate(fileURLs.size());
     for (size_t i = 0; i < fileURLs.size(); ++i) {
-        SandboxExtension::Handle sandboxExtensionHandle;
-        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandle);
+        bool createdExtension = SandboxExtension::createHandle(fileURLs[i], SandboxExtension::ReadOnly, sandboxExtensionHandles[i]);
         if (!createdExtension) {
             // This can legitimately fail if a directory containing the file is deleted after the file was chosen.
             // We also have reports of cases where this likely fails for some unknown reason, <rdar://problem/10156710>.
             WTFLogAlways("WebPageProxy::didChooseFilesForOpenPanel: could not create a sandbox extension for '%s'\n", fileURLs[i].utf8().data());
             continue;
         }
-        m_process->send(Messages::WebPage::ExtendSandboxForFileFromOpenPanel(sandboxExtensionHandle), m_pageID);
     }
+
+    m_process->send(Messages::WebPage::ExtendSandboxForFilesFromOpenPanel(sandboxExtensionHandles), m_pageID);
 #endif
 
     m_process->send(Messages::WebPage::DidChooseFilesForOpenPanel(fileURLs), m_pageID);
@@ -5326,6 +5357,18 @@ void WebPageProxy::processDidTerminate(ProcessTerminationReason reason)
         if (auto* automationSession = process().processPool().automationSession())
             automationSession->terminate();
     }
+
+    stopAllURLSchemeTasks();
+}
+
+void WebPageProxy::stopAllURLSchemeTasks()
+{
+    HashSet<WebURLSchemeHandler*> handlers;
+    for (auto& handler : m_urlSchemeHandlersByScheme.values())
+        handlers.add(handler.ptr());
+
+    for (auto* handler : handlers)
+        handler->stopAllTasksForPage(*this);
 }
 
 #if PLATFORM(IOS)

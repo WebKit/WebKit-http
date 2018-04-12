@@ -35,6 +35,8 @@
 #include "APILegacyContextHistoryClient.h"
 #include "APIPageConfiguration.h"
 #include "APIProcessPoolConfiguration.h"
+#include "DatabaseProcessCreationParameters.h"
+#include "DatabaseProcessMessages.h"
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "GamepadData.h"
@@ -57,7 +59,6 @@
 #include "WebCookieManagerProxy.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebGeolocationManagerProxy.h"
-#include "WebIconDatabase.h"
 #include "WebKit2Initialize.h"
 #include "WebMemorySampler.h"
 #include "WebNotificationManagerProxy.h"
@@ -83,11 +84,6 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringBuilder.h>
-
-#if ENABLE(DATABASE_PROCESS)
-#include "DatabaseProcessCreationParameters.h"
-#include "DatabaseProcessMessages.h"
-#endif
 
 #if ENABLE(SERVICE_CONTROLS)
 #include "ServicesController.h"
@@ -258,8 +254,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     addMessageReceiver(Messages::WebProcessPool::messageReceiverName(), *this);
 
     // NOTE: These sub-objects must be initialized after m_messageReceiverMap..
-    m_iconDatabase = WebIconDatabase::create(this);
-
     addSupplement<WebCookieManagerProxy>();
     addSupplement<WebGeolocationManagerProxy>();
     addSupplement<WebNotificationManagerProxy>();
@@ -304,11 +298,6 @@ WebProcessPool::~WebProcessPool()
         supplement->processPoolDestroyed();
         supplement->clearProcessPool();
     }
-
-    m_iconDatabase->invalidate();
-    m_iconDatabase->clearProcessPool();
-    WebIconDatabase* rawIconDatabase = m_iconDatabase.leakRef();
-    rawIconDatabase->derefWhenAppropriate();
 
     invalidateCallbackMap(m_dictionaryCallbacks, CallbackBase::Error::OwnerWasInvalidated);
 
@@ -525,7 +514,6 @@ void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::
     m_networkProcess->getNetworkProcessConnection(WTFMove(reply));
 }
 
-#if ENABLE(DATABASE_PROCESS)
 void WebProcessPool::ensureDatabaseProcessAndWebsiteDataStore(WebsiteDataStore* relevantDataStore)
 {
     // *********
@@ -572,7 +560,6 @@ void WebProcessPool::databaseProcessCrashed(DatabaseProcessProxy* databaseProces
     m_client.databaseProcessDidCrash(this);
     m_databaseProcess = nullptr;
 }
-#endif
 
 void WebProcessPool::willStartUsingPrivateBrowsing()
 {
@@ -595,8 +582,6 @@ void WebProcessPool::windowServerConnectionStateChanged()
 
 void WebProcessPool::setAnyPageGroupMightHavePrivateBrowsingEnabled(bool privateBrowsingEnabled)
 {
-    m_iconDatabase->setPrivateBrowsingEnabled(privateBrowsingEnabled);
-
     if (networkProcess()) {
         if (privateBrowsingEnabled)
             networkProcess()->send(Messages::NetworkProcess::EnsurePrivateBrowsingSession({SessionID::legacyPrivateSessionID(), { }, { }, { }}), 0);
@@ -725,8 +710,6 @@ WebProcessProxy& WebProcessPool::createNewWebProcess(WebsiteDataStore& websiteDa
 
     parameters.shouldAlwaysUseComplexTextCodePath = m_alwaysUsesComplexTextCodePath;
     parameters.shouldUseFontSmoothing = m_shouldUseFontSmoothing;
-
-    parameters.iconDatabaseEnabled = !iconDatabasePath().isEmpty();
 
     parameters.terminationTimeout = 0_s;
 
@@ -1092,14 +1075,10 @@ pid_t WebProcessPool::networkProcessIdentifier()
 
 pid_t WebProcessPool::databaseProcessIdentifier()
 {
-#if ENABLE(DATABASE_PROCESS)
     if (!m_databaseProcess)
         return 0;
 
     return m_databaseProcess->processIdentifier();
-#else
-    return 0;
-#endif
 }
 
 void WebProcessPool::setAlwaysUsesComplexTextCodePath(bool alwaysUseComplexText)
@@ -1290,23 +1269,6 @@ void WebProcessPool::stopMemorySampler()
     sendToAllProcesses(Messages::WebProcess::StopMemorySampler());
 }
 
-void WebProcessPool::setIconDatabasePath(const String& path)
-{
-    m_overrideIconDatabasePath = path;
-    if (!m_overrideIconDatabasePath.isEmpty()) {
-        // This implicitly enables the database on UI process side.
-        m_iconDatabase->setDatabasePath(path);
-    }
-}
-
-String WebProcessPool::iconDatabasePath() const
-{
-    if (!m_overrideIconDatabasePath.isNull())
-        return m_overrideIconDatabasePath;
-
-    return platformDefaultIconDatabasePath();
-}
-
 void WebProcessPool::useTestingNetworkSession()
 {
     ASSERT(m_processes.isEmpty());
@@ -1342,13 +1304,11 @@ void WebProcessPool::clearCachedCredentials()
 
 void WebProcessPool::terminateDatabaseProcess()
 {
-#if ENABLE(DATABASE_PROCESS)
     if (!m_databaseProcess)
         return;
 
     m_databaseProcess->terminate();
     m_databaseProcess = nullptr;
-#endif
 }
 
 void WebProcessPool::terminateNetworkProcess()
@@ -1541,7 +1501,7 @@ void WebProcessPool::gamepadDisconnected(const UIGamepad& gamepad)
 void WebProcessPool::setInitialConnectedGamepads(const Vector<std::unique_ptr<UIGamepad>>& gamepads)
 {
     Vector<GamepadData> gamepadDatas;
-    gamepadDatas.resize(gamepads.size());
+    gamepadDatas.grow(gamepads.size());
     for (size_t i = 0; i < gamepads.size(); ++i) {
         if (!gamepads[i])
             continue;

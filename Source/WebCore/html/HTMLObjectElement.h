@@ -31,10 +31,9 @@ class HTMLFormElement;
 
 class HTMLObjectElement final : public HTMLPlugInImageElement, public FormAssociatedElement {
 public:
-    static Ref<HTMLObjectElement> create(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
-    virtual ~HTMLObjectElement();
+    static Ref<HTMLObjectElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
-    bool isDocNamedItem() const { return m_docNamedItem; }
+    bool isExposed() const { return m_isExposed; }
     bool containsJavaApplet() const;
 
     bool hasFallbackContent() const;
@@ -57,7 +56,7 @@ public:
     HTMLFormElement* form() const final { return FormAssociatedElement::form(); }
 
 private:
-    HTMLObjectElement(const QualifiedName&, Document&, HTMLFormElement*, bool createdByParser);
+    HTMLObjectElement(const QualifiedName&, Document&, HTMLFormElement*);
 
     void parseAttribute(const QualifiedName&, const AtomicString&) final;
     bool isPresentationAttribute(const QualifiedName&) const final;
@@ -79,7 +78,7 @@ private:
     void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
     void updateWidget(CreatePlugins) final;
-    void updateDocNamedItem();
+    void updateExposedState();
 
     // FIXME: This function should not deal with url or serviceType
     // so that we can better share code between <object> and <embed>.
@@ -87,7 +86,6 @@ private:
     
     bool shouldAllowQuickTimeClassIdQuirk();
     bool hasValidClassId();
-    void clearUseFallbackContent() { m_useFallbackContent = false; }
 
     void refFormAssociatedElement() final { ref(); }
     void derefFormAssociatedElement() final { deref(); }
@@ -103,8 +101,8 @@ private:
 
     bool canContainRangeEndPoint() const final;
 
-    bool m_docNamedItem : 1;
-    bool m_useFallbackContent : 1;
+    bool m_isExposed { true };
+    bool m_useFallbackContent { false };
 };
 
 } // namespace WebCore

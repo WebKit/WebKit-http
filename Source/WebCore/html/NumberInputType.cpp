@@ -32,7 +32,6 @@
 #include "config.h"
 #include "NumberInputType.h"
 
-#include "ExceptionCode.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
@@ -109,7 +108,7 @@ ExceptionOr<void> NumberInputType::setValueAsDouble(double newValue, TextFieldEv
     // FIXME: We should use numeric_limits<double>::max for number input type.
     const double floatMax = std::numeric_limits<float>::max();
     if (newValue < -floatMax || newValue > floatMax)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     element().setValue(serializeForNumberType(newValue), eventBehavior);
     return { };
 }
@@ -119,7 +118,7 @@ ExceptionOr<void> NumberInputType::setValueAsDecimal(const Decimal& newValue, Te
     // FIXME: We should use numeric_limits<double>::max for number input type.
     const Decimal floatMax = Decimal::fromDouble(std::numeric_limits<float>::max());
     if (newValue < -floatMax || newValue > floatMax)
-        return Exception { INVALID_STATE_ERR };
+        return Exception { InvalidStateError };
     element().setValue(serializeForNumberType(newValue), eventBehavior);
     return { };
 }

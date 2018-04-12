@@ -1150,9 +1150,7 @@ public:
     DeviceOrientationController* deviceOrientationController() const;
 #endif
 
-#if ENABLE(WEB_TIMING)
     const DocumentTiming& timing() const { return m_documentTiming; }
-#endif
 
     double monotonicTimestamp() const;
 
@@ -1224,6 +1222,7 @@ public:
 #endif
 
     void convertAbsoluteToClientQuads(Vector<FloatQuad>&, const RenderStyle&);
+    void convertAbsoluteToClientRects(Vector<FloatRect>&, const RenderStyle&);
     void convertAbsoluteToClientRect(FloatRect&, const RenderStyle&);
 
     bool hasActiveParser();
@@ -1634,9 +1633,7 @@ private:
 
     ViewportArguments m_viewportArguments;
 
-#if ENABLE(WEB_TIMING)
     DocumentTiming m_documentTiming;
-#endif
 
     RefPtr<MediaQueryMatcher> m_mediaQueryMatcher;
     

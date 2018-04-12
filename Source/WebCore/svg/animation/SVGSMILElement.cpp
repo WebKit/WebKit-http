@@ -91,7 +91,7 @@ private:
     {
     }
 
-    void handleEvent(ScriptExecutionContext*, Event*) final;
+    void handleEvent(ScriptExecutionContext&, Event&) final;
 
     SVGSMILElement* m_animation;
     SVGSMILElement::Condition* m_condition;
@@ -104,11 +104,11 @@ bool ConditionEventListener::operator==(const EventListener& listener) const
     return false;
 }
 
-void ConditionEventListener::handleEvent(ScriptExecutionContext*, Event* event) 
+void ConditionEventListener::handleEvent(ScriptExecutionContext&, Event&)
 {
     if (!m_animation)
         return;
-    m_animation->handleConditionEvent(event, m_condition);
+    m_animation->handleConditionEvent(m_condition);
 }
 
 SVGSMILElement::Condition::Condition(Type type, BeginOrEnd beginOrEnd, const String& baseID, const String& name, SMILTime offset, int repeats)
@@ -457,18 +457,17 @@ void SVGSMILElement::parseBeginOrEnd(const String& parseString, BeginOrEnd begin
 
 bool SVGSMILElement::isSupportedAttribute(const QualifiedName& attrName)
 {
-    static NeverDestroyed<HashSet<QualifiedName>> supportedAttributes;
-    if (supportedAttributes.get().isEmpty()) {
-        supportedAttributes.get().add(SVGNames::beginAttr);
-        supportedAttributes.get().add(SVGNames::endAttr);
-        supportedAttributes.get().add(SVGNames::durAttr);
-        supportedAttributes.get().add(SVGNames::repeatDurAttr);
-        supportedAttributes.get().add(SVGNames::repeatCountAttr);
-        supportedAttributes.get().add(SVGNames::minAttr);
-        supportedAttributes.get().add(SVGNames::maxAttr);
-        supportedAttributes.get().add(SVGNames::attributeNameAttr);
-        supportedAttributes.get().add(XLinkNames::hrefAttr);
-    }
+    static const auto supportedAttributes = makeNeverDestroyed(HashSet<QualifiedName> {
+        SVGNames::beginAttr,
+        SVGNames::endAttr,
+        SVGNames::durAttr,
+        SVGNames::repeatDurAttr,
+        SVGNames::repeatCountAttr,
+        SVGNames::minAttr,
+        SVGNames::maxAttr,
+        SVGNames::attributeNameAttr,
+        XLinkNames::hrefAttr,
+    });
     return supportedAttributes.get().contains<SVGAttributeHashTranslator>(attrName);
 }
 
@@ -1196,7 +1195,7 @@ void SVGSMILElement::removeTimeDependent(SVGSMILElement* animation)
     m_timeDependents.remove(animation);
 }
     
-void SVGSMILElement::handleConditionEvent(Event*, Condition* condition)
+void SVGSMILElement::handleConditionEvent(Condition* condition)
 {
     SMILTime elapsed = this->elapsed();
     if (condition->m_beginOrEnd == Begin)

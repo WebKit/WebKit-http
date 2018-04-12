@@ -2,7 +2,7 @@ set(WebKit2_OUTPUT_NAME webkit2gtk-${WEBKITGTK_API_VERSION})
 set(WebKit2_WebProcess_OUTPUT_NAME WebKitWebProcess)
 set(WebKit2_NetworkProcess_OUTPUT_NAME WebKitNetworkProcess)
 set(WebKit2_PluginProcess_OUTPUT_NAME WebKitPluginProcess)
-set(WebKit2_DatabaseProcess_OUTPUT_NAME WebKitDatabaseProcess)
+set(WebKit2_StorageProcess_OUTPUT_NAME WebKitDatabaseProcess)
 
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2_DIR})
 file(MAKE_DIRECTORY ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR})
@@ -114,8 +114,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/WKGrammarDetail.cpp
 
-    UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
-
     UIProcess/API/C/gtk/WKTextCheckerGtk.cpp
     UIProcess/API/C/gtk/WKView.cpp
 
@@ -203,7 +201,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
 
-    UIProcess/Storage/StorageManager.cpp
+    UIProcess/WebStorage/StorageManager.cpp
 
     UIProcess/WebsiteData/unix/WebsiteDataStoreUnix.cpp
 
@@ -839,7 +837,7 @@ list(APPEND NetworkProcess_SOURCES
     NetworkProcess/EntryPoint/unix/NetworkProcessMain.cpp
 )
 
-list(APPEND DatabaseProcess_SOURCES
+list(APPEND StorageProcess_SOURCES
     DatabaseProcess/EntryPoint/unix/DatabaseProcessMain.cpp
 )
 

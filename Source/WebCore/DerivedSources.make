@@ -126,7 +126,13 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/fetch/DOMWindowFetch.idl \
     $(WebCore)/Modules/fetch/FetchBody.idl \
     $(WebCore)/Modules/fetch/FetchHeaders.idl \
+    $(WebCore)/Modules/fetch/FetchReferrerPolicy.idl \
     $(WebCore)/Modules/fetch/FetchRequest.idl \
+    $(WebCore)/Modules/fetch/FetchRequestCache.idl \
+    $(WebCore)/Modules/fetch/FetchRequestCredentials.idl \
+    $(WebCore)/Modules/fetch/FetchRequestInit.idl \
+    $(WebCore)/Modules/fetch/FetchRequestMode.idl \
+    $(WebCore)/Modules/fetch/FetchRequestRedirect.idl \
     $(WebCore)/Modules/fetch/FetchResponse.idl \
     $(WebCore)/Modules/fetch/WorkerGlobalScopeFetch.idl \
     $(WebCore)/Modules/gamepad/Gamepad.idl \
@@ -267,7 +273,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/webdatabase/Database.idl \
     $(WebCore)/Modules/webdatabase/DatabaseCallback.idl \
     $(WebCore)/Modules/webdatabase/SQLError.idl \
-    $(WebCore)/Modules/webdatabase/SQLException.idl \
     $(WebCore)/Modules/webdatabase/SQLResultSet.idl \
     $(WebCore)/Modules/webdatabase/SQLResultSetRowList.idl \
     $(WebCore)/Modules/webdatabase/SQLStatementCallback.idl \
@@ -357,8 +362,8 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/CompositionEvent.idl \
     $(WebCore)/dom/CustomElementRegistry.idl \
     $(WebCore)/dom/CustomEvent.idl \
-    $(WebCore)/dom/DOMCoreException.idl \
     $(WebCore)/dom/DOMError.idl \
+    $(WebCore)/dom/DOMException.idl \
     $(WebCore)/dom/DOMImplementation.idl \
     $(WebCore)/dom/DOMNamedFlowCollection.idl \
     $(WebCore)/dom/DOMPoint.idl \
@@ -443,7 +448,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/fileapi/BlobPropertyBag.idl \
     $(WebCore)/fileapi/File.idl \
     $(WebCore)/fileapi/FileError.idl \
-    $(WebCore)/fileapi/FileException.idl \
     $(WebCore)/fileapi/FileList.idl \
     $(WebCore)/fileapi/FileReader.idl \
     $(WebCore)/fileapi/FileReaderSync.idl \
@@ -697,7 +701,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/svg/SVGDocument.idl \
     $(WebCore)/svg/SVGElement.idl \
     $(WebCore)/svg/SVGEllipseElement.idl \
-    $(WebCore)/svg/SVGException.idl \
     $(WebCore)/svg/SVGExternalResourcesRequired.idl \
     $(WebCore)/svg/SVGFEBlendElement.idl \
     $(WebCore)/svg/SVGFEColorMatrixElement.idl \
@@ -832,7 +835,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/xml/XMLHttpRequestUpload.idl \
     $(WebCore)/xml/XMLSerializer.idl \
     $(WebCore)/xml/XPathEvaluator.idl \
-    $(WebCore)/xml/XPathException.idl \
     $(WebCore)/xml/XPathExpression.idl \
     $(WebCore)/xml/XPathNSResolver.idl \
     $(WebCore)/xml/XPathResult.idl \
@@ -951,7 +953,6 @@ all : \
     DOMJITAbstractHeapRepository.h \
     EventInterfaces.h \
     EventTargetInterfaces.h \
-    ExceptionCodeDescription.cpp \
     HTMLElementFactory.cpp \
     HTMLElementFactory.h \
     HTMLElementTypeHelpers.h \
@@ -1277,10 +1278,6 @@ all : EventTargetHeaders.h EventTargetInterfaces.h
 EventTargetHeaders%h EventTargetInterfaces%h : dom/make_event_factory.pl $(EVENT_TARGET_FACTORY)
 	$(PERL) $< $(addprefix --input , $(filter-out $(WebCore)/dom/make_event_factory.pl, $^))
 
-all : ExceptionCodeDescription.cpp ExceptionCodeDescription.h ExceptionHeaders.h ExceptionInterfaces.h
-ExceptionCodeDescription%cpp ExceptionCodeDescription%h ExceptionHeaders%h ExceptionInterfaces%h : dom/make_dom_exceptions.pl dom/DOMExceptions.in
-	$(PERL) $< --input $(WebCore)/dom/DOMExceptions.in
-
 # --------
 
 # MathML tag and attribute names, and element factory
@@ -1384,12 +1381,8 @@ CommandLineAPIModuleSource.h : CommandLineAPIModuleSource.js
 # WebCore JS Builtins
 
 WebCore_BUILTINS_SOURCES = \
-    ${WebCore}/Modules/fetch/DOMWindowFetch.js \
-    $(WebCore)/Modules/fetch/FetchHeaders.js \
     $(WebCore)/Modules/fetch/FetchInternals.js \
-    $(WebCore)/Modules/fetch/FetchRequest.js \
     $(WebCore)/Modules/fetch/FetchResponse.js \
-    ${WebCore}/Modules/fetch/WorkerGlobalScopeFetch.js \
     $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionInternals.js \
@@ -1407,7 +1400,6 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/streams/WritableStream.js \
     $(WebCore)/Modules/streams/WritableStreamInternals.js \
     $(WebCore)/bindings/js/JSDOMBindingInternals.js \
-    $(WebCore)/xml/XMLHttpRequest.js \
 #
 
 BUILTINS_GENERATOR_SCRIPTS = \
@@ -1476,15 +1468,3 @@ CharsetData.cpp : platform/text/mac/make-charset-table.pl platform/text/mac/char
 
 endif # MACOS
 
-# ------------------------
-
-# Header detection
-
-ifeq ($(OS),Windows_NT)
-
-all : WebCoreHeaderDetection.h
-
-WebCoreHeaderDetection.h : $(WebCore)/AVFoundationSupport.py DerivedSources.make
-	$(PYTHON) $(WebCore)/AVFoundationSupport.py $(WEBKIT_LIBRARIES) > $@
-
-endif # Windows_NT

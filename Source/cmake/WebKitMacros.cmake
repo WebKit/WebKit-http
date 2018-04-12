@@ -2,10 +2,6 @@
 # exclusively needed in only one subdirectory of Source (e.g. only needed by
 # WebCore), then put it there instead.
 
-include(CMakeParseArguments)
-include(ProcessorCount)
-ProcessorCount(PROCESSOR_COUNT)
-
 macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
     set(_file ${CMAKE_CURRENT_SOURCE_DIR}/Platform${PORT}.cmake)
     if (EXISTS ${_file})
@@ -17,7 +13,7 @@ macro(WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS)
 endmacro()
 
 # Append the given dependencies to the source file
-macro(ADD_SOURCE_DEPENDENCIES _source _deps)
+macro(WEBKIT_ADD_SOURCE_DEPENDENCIES _source _deps)
     set(_tmp)
     get_source_file_property(_tmp ${_source} OBJECT_DEPENDS)
     if (NOT _tmp)
@@ -32,7 +28,7 @@ macro(ADD_SOURCE_DEPENDENCIES _source _deps)
     unset(_tmp)
 endmacro()
 
-macro(ADD_PRECOMPILED_HEADER _header _cpp _source)
+macro(WEBKIT_ADD_PRECOMPILED_HEADER _header _cpp _source)
     if (MSVC)
         get_filename_component(PrecompiledBasename ${_cpp} NAME_WE)
         file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/${_source}")
@@ -53,7 +49,7 @@ macro(ADD_PRECOMPILED_HEADER _header _cpp _source)
             PROPERTIES COMPILE_FLAGS "/Yu\"${_header}\" /FI\"${_header}\" /Fp\"${PrecompiledBinary}\"")
 
         foreach (_src ${_sources})
-            ADD_SOURCE_DEPENDENCIES(${_src} ${PrecompiledBinary})
+            WEBKIT_ADD_SOURCE_DEPENDENCIES(${_src} ${PrecompiledBinary})
         endforeach ()
 
         list(APPEND ${_source} ${_cpp})
@@ -225,7 +221,7 @@ endmacro()
 
 # Append the given flag to the target property.
 # Builds on top of get_target_property() and set_target_properties()
-macro(ADD_TARGET_PROPERTIES _target _property _flags)
+macro(WEBKIT_ADD_TARGET_PROPERTIES _target _property _flags)
     get_target_property(_tmp ${_target} ${_property})
     if (NOT _tmp)
         set(_tmp "")
@@ -237,9 +233,9 @@ macro(ADD_TARGET_PROPERTIES _target _property _flags)
 
     set_target_properties(${_target} PROPERTIES ${_property} ${_tmp})
     unset(_tmp)
-endmacro(ADD_TARGET_PROPERTIES _target _property _flags)
+endmacro()
 
-macro(POPULATE_LIBRARY_VERSION library_name)
+macro(WEBKIT_POPULATE_LIBRARY_VERSION library_name)
     if (NOT DEFINED ${library_name}_VERSION_MAJOR)
         set(${library_name}_VERSION_MAJOR ${PROJECT_VERSION_MAJOR})
     endif ()

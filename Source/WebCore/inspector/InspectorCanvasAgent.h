@@ -25,13 +25,14 @@
 
 #pragma once
 
+#include "CallTracerTypes.h"
 #include "HTMLCanvasElement.h"
+#include "InspectorCanvas.h"
 #include "InspectorWebAgentBase.h"
 #include "Timer.h"
 #include <inspector/InspectorBackendDispatchers.h>
 #include <inspector/InspectorFrontendDispatchers.h>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -42,7 +43,7 @@ class InjectedScriptManager;
 
 namespace WebCore {
 
-class InspectorPageAgent;
+class CanvasRenderingContext;
 class WebGLRenderingContextBase;
 
 typedef String ErrorString;
@@ -51,7 +52,7 @@ class InspectorCanvasAgent final : public InspectorAgentBase, public CanvasObser
     WTF_MAKE_NONCOPYABLE(InspectorCanvasAgent);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    InspectorCanvasAgent(WebAgentContext&, InspectorPageAgent*);
+    explicit InspectorCanvasAgent(WebAgentContext&);
     virtual ~InspectorCanvasAgent() { }
 
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
@@ -65,6 +66,8 @@ public:
     void requestContent(ErrorString&, const String& canvasId, String* content) override;
     void requestCSSCanvasClientNodes(ErrorString&, const String& canvasId, RefPtr<Inspector::Protocol::Array<int>>&) override;
     void resolveCanvasContext(ErrorString&, const String& canvasId, const String* const objectGroup, RefPtr<Inspector::Protocol::Runtime::RemoteObject>&) override;
+    void requestRecording(ErrorString&, const String& canvasId, const bool* const singleFrame, const int* const memoryLimit) override;
+    void cancelRecording(ErrorString&, const String& canvasId) override;
 
     // InspectorInstrumentation
     void frameNavigated(Frame&);
@@ -72,6 +75,8 @@ public:
     void didChangeCSSCanvasClientNodes(HTMLCanvasElement&);
     void didCreateCanvasRenderingContext(HTMLCanvasElement&);
     void didChangeCanvasMemory(HTMLCanvasElement&);
+    void recordCanvasAction(CanvasRenderingContext&, const String&, Vector<RecordCanvasActionVariant>&& = { });
+    void didFinishRecordingCanvasFrame(HTMLCanvasElement&, bool forceDispatch = false);
 
     // CanvasObserver
     void canvasChanged(HTMLCanvasElement&, const FloatRect&) override { }
@@ -79,35 +84,23 @@ public:
     void canvasDestroyed(HTMLCanvasElement&) override;
 
 private:
-    struct CanvasEntry {
-        String identifier;
-        String cssCanvasName;
-        HTMLCanvasElement* element = { nullptr };
-
-        CanvasEntry() { }
-
-        CanvasEntry(const String& identifier, HTMLCanvasElement* canvasElement)
-            : identifier(identifier)
-            , element(canvasElement)
-        {
-        }
-    };
-
     void canvasDestroyedTimerFired();
+    void canvasRecordingTimerFired();
     void clearCanvasData();
-    CanvasEntry* getCanvasEntry(HTMLCanvasElement&);
-    CanvasEntry* getCanvasEntry(const String&);
-    Ref<Inspector::Protocol::Canvas::Canvas> buildObjectForCanvas(const CanvasEntry&, HTMLCanvasElement&);
+    String unbindCanvas(InspectorCanvas&);
+    InspectorCanvas* assertInspectorCanvas(ErrorString&, const String&);
+    InspectorCanvas* findInspectorCanvas(HTMLCanvasElement&);
 
     std::unique_ptr<Inspector::CanvasFrontendDispatcher> m_frontendDispatcher;
     RefPtr<Inspector::CanvasBackendDispatcher> m_backendDispatcher;
     Inspector::InjectedScriptManager& m_injectedScriptManager;
-    InspectorPageAgent* m_pageAgent;
 
-    HashMap<HTMLCanvasElement*, CanvasEntry> m_canvasEntries;
-    HashMap<HTMLCanvasElement*, String> m_canvasToCSSCanvasId;
+    HashMap<String, RefPtr<InspectorCanvas>> m_identifierToInspectorCanvas;
+    HashMap<HTMLCanvasElement*, String> m_canvasToCSSCanvasName;
     Vector<String> m_removedCanvasIdentifiers;
-    Timer m_timer;
+    Timer m_canvasDestroyedTimer;
+    Timer m_canvasRecordingTimer;
+
     bool m_enabled { false };
 };
 

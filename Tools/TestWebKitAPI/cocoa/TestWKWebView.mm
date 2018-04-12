@@ -33,6 +33,7 @@
 
 #import <WebKit/WKWebViewConfigurationPrivate.h>
 #import <WebKit/WebKitPrivate.h>
+#import <WebKit/_WKActivatedElementInfo.h>
 #import <WebKit/_WKProcessPoolConfiguration.h>
 #import <objc/runtime.h>
 #import <wtf/RetainPtr.h>
@@ -223,6 +224,13 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
     [self loadRequest:request];
 }
 
+- (void)synchronouslyLoadHTMLString:(NSString *)html
+{
+    NSURL *testResourceURL = [[[NSBundle mainBundle] bundleURL] URLByAppendingPathComponent:@"TestWebKitAPI.resources"];
+    [self loadHTMLString:html baseURL:testResourceURL];
+    [self _test_waitForDidFinishNavigation];
+}
+
 - (void)synchronouslyLoadTestPageNamed:(NSString *)pageName
 {
     [self loadTestPageNamed:pageName];
@@ -285,6 +293,19 @@ NSEventMask __simulated_forceClickAssociatedEventsMask(id self, SEL _cmd)
 
     TestWebKitAPI::Util::run(&isDone);
     return selectionRects;
+}
+
+- (_WKActivatedElementInfo *)activatedElementAtPosition:(CGPoint)position
+{
+    __block RetainPtr<_WKActivatedElementInfo> info;
+    __block bool finished = false;
+    [self _requestActivatedElementAtPosition:position completionBlock:^(_WKActivatedElementInfo *elementInfo) {
+        info = elementInfo;
+        finished = true;
+    }];
+
+    TestWebKitAPI::Util::run(&finished);
+    return info.autorelease();
 }
 
 @end

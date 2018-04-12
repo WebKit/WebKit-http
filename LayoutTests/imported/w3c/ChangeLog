@@ -1,3 +1,210 @@
+2017-07-30  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchRequest, DOMWindowFetch and WorkerGlobalScopeFetch
+        https://bugs.webkit.org/show_bug.cgi?id=174974
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/basic/mode-same-origin.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-about.any-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-blob-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-others-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies.any-expected.txt:
+        * web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-expected.txt:
+        * web-platform-tests/fetch/api/request/request-bad-port-expected.txt:
+        Update results to have the correct line number for exceptions reported in the console.
+
+2017-07-28  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove JS builtin bindings for FetchHeaders
+        https://bugs.webkit.org/show_bug.cgi?id=174905
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/fetch/api/headers/headers-basic-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-record-expected.txt:
+        Update results for more passing tests.
+
+2017-07-26  Ali Juma  <ajuma@chromium.org>
+
+        Implement document.elementsFromPoint
+        https://bugs.webkit.org/show_bug.cgi?id=153137
+
+        Reviewed by Simon Fraser.
+
+        Add tests from upstream pull request https://github.com/w3c/web-platform-tests/pull/6568.
+
+        * web-platform-tests/cssom-view/elementsFromPoint-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-iframes-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-iframes.html: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-invalid-cases-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-invalid-cases.html: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-shadowroot-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-shadowroot.html: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-simple-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-simple.html: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-svg-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-svg.html: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-table-expected.txt: Added.
+        * web-platform-tests/cssom-view/elementsFromPoint-table.html: Added.
+        * web-platform-tests/cssom-view/negativeMargins-expected.txt:
+        * web-platform-tests/cssom-view/resources/elementsFromPoint.js: Added.
+        (nodeToString.prototype.else):
+        (nodeListToString):
+        (assertElementsFromPoint):
+        (checkElementsFromPointFourCorners):
+        * web-platform-tests/cssom-view/resources/iframe1.html: Added.
+        * web-platform-tests/cssom-view/resources/iframe2.html: Added.
+
+2017-07-11  Frederic Wang  <fwang@igalia.com>
+
+        Add attribute allow-top-navigation-by-user-activation to iframe sandbox
+        https://bugs.webkit.org/show_bug.cgi?id=171327
+
+        Reviewed by Chris Dumez.
+
+        This commit updates the expectation for the test verifying that a sandboxed iframe without
+        the allow-top-navigation-by-user-activation flag set can not perform top navigation if it is
+        not triggered by a user gesture. The navigation is still prohibited but the parsing of the
+        allow-top-navigation-by-user-activation flag should not raised any error message.
+        A similar update is done for the test verifying that the combination of the flags
+        allow-top-navigation-by-user-activation and allow-top-navigation.
+
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation_by_user_activation_without_user_gesture-expected.txt: Remove the error message.
+        * web-platform-tests/html/semantics/embedded-content/the-iframe-element/iframe_sandbox_allow_top_navigation-3-expected.txt: Ditto.
+
+2017-07-22  Chris Dumez  <cdumez@apple.com>
+
+        Merge ExceptionBase into DOMException and drop custom toString
+        https://bugs.webkit.org/show_bug.cgi?id=174755
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline some tests now that DOMException's custom toString has been dropped
+        and we rely on Error's toString. This causes the exception message to be
+        slightly different.
+
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_bits.https-expected.txt:
+        * web-platform-tests/WebCryptoAPI/derive_bits_keys/test_ecdh_keys.https-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_match_origin-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_match_wildcard-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_multi-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_null-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_origin-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_origin_uppercase-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_space-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_wildcard-expected.txt:
+        * web-platform-tests/resource-timing/resource_TAO_zero-expected.txt:
+        * web-platform-tests/webrtc/RTCPeerConnection-addIceCandidate-expected.txt:
+
+2017-07-21  Chris Dumez  <cdumez@apple.com>
+
+        Drop IDBDatabaseException class
+        https://bugs.webkit.org/show_bug.cgi?id=174743
+
+        Reviewed by Darin Adler.
+
+        Rebaseline test as the exception message is slightly different.
+
+        * web-platform-tests/IndexedDB/keypath-special-identifiers-expected.txt:
+
+2017-07-20  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline test after r219663.
+
+        * web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https-expected.txt:
+
+2017-07-19  Chris Dumez  <cdumez@apple.com>
+
+        DOMException should not have its own toString()
+        https://bugs.webkit.org/show_bug.cgi?id=174630
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline existing tests now that more checks are passing.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker-expected.txt:
+
+2017-07-19  Chris Dumez  <cdumez@apple.com>
+
+        Make cross-origin properties enumerable
+        https://bugs.webkit.org/show_bug.cgi?id=174576
+
+        Reviewed by Darin Adler.
+
+        Re-sync tests from upstream and rebaseline to improve test coverage.
+
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects-expected.txt:
+        * web-platform-tests/html/browsers/origin/cross-origin-objects/cross-origin-objects.html:
+        * web-platform-tests/html/browsers/the-window-object/window-indexed-properties-expected.txt:
+        * web-platform-tests/html/browsers/the-window-object/window-indexed-properties.html:
+
+2017-07-18  Chris Dumez  <cdumez@apple.com>
+
+        DOMException should have its properties on the prototype
+        https://bugs.webkit.org/show_bug.cgi?id=174597
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.worker-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/exceptions-expected.txt:
+        Rebaseline now that more checks are passing.
+
+        * web-platform-tests/url/urlsearchparams-constructor-expected.txt:
+        * web-platform-tests/url/urlsearchparams-constructor.html:
+        Re-sync test from upstream as it would start failing otherwise.
+
+2017-07-17  Chris Dumez  <cdumez@apple.com>
+
+        Update WebIDL web-platform-tests from upstream
+        https://bugs.webkit.org/show_bug.cgi?id=174603
+
+        Reviewed by Sam Weinig.
+
+        Update WebIDL web-platform-tests from upstream 4c1301113.
+
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.any-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants-expected.txt.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.any.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.html.
+        (test.):
+        (test):
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.any.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants-expected.txt.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constants.any.worker.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.js: Added.
+        (test):
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.worker-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-and-prototype.any.worker.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any-expected.txt: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-expected.txt.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.js: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor.html.
+        (test):
+        (forEach):
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.worker-expected.txt: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-expected.txt.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-constructor-behavior.any.worker.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.html: Copied from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.js: Added.
+        (test):
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/DOMException-custom-bindings.any.worker.html: Renamed from LayoutTests/imported/w3c/web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.html.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object-expected.txt: Removed.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.html: Removed.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.js: Removed.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker-expected.txt: Removed.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/constructor-object.worker.js: Removed.
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/exceptions-expected.txt:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/exceptions.html:
+        * web-platform-tests/WebIDL/ecmascript-binding/es-exceptions/w3c-import.log:
+        * web-platform-tests/WebIDL/ecmascript-binding/legacy-platform-object-expected.txt: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/legacy-platform-object.html: Added.
+        * web-platform-tests/WebIDL/ecmascript-binding/w3c-import.log:
+
 2017-07-12  Ali Juma  <ajuma@chromium.org>
 
         Update web platform tests for elementFromPoint and elementsFromPoint

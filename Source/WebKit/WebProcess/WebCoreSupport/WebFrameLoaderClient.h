@@ -88,6 +88,7 @@ private:
 
     void dispatchDidDispatchOnloadEvents() final;
     void dispatchDidReceiveServerRedirectForProvisionalLoad() final;
+    void dispatchDidPerformClientRedirect() final;
     void dispatchDidChangeProvisionalURL() final;
     void dispatchDidCancelClientRedirect() final;
     void dispatchWillPerformClientRedirect(const WebCore::URL&, double interval, double fireDate) final;
@@ -256,7 +257,6 @@ private:
 
     void didRestoreScrollPosition() final;
 
-    bool useIconLoadingClient() final;
     void getLoadDecisionForIcons(const Vector<std::pair<WebCore::LinkIcon&, uint64_t>>&) final;
     void finishedLoadingIcon(uint64_t callbackIdentifier, WebCore::SharedBuffer*) final;
 

@@ -143,11 +143,13 @@ set(JavaScriptCore_SOURCES
     b3/B3DuplicateTails.cpp
     b3/B3Effects.cpp
     b3/B3EliminateCommonSubexpressions.cpp
+    b3/B3EnsureLoopPreHeaders.cpp
     b3/B3FenceValue.cpp
     b3/B3FixSSA.cpp
     b3/B3FoldPathConstants.cpp
     b3/B3FrequencyClass.cpp
     b3/B3Generate.cpp
+    b3/B3HoistLoopInvariantValues.cpp
     b3/B3InferSwitches.cpp
     b3/B3InsertionSet.cpp
     b3/B3Kind.cpp
@@ -199,6 +201,7 @@ set(JavaScriptCore_SOURCES
 
     builtins/BuiltinExecutables.cpp
     builtins/BuiltinExecutableCreator.cpp
+    builtins/BuiltinNames.cpp
 
     bytecode/AccessCase.cpp
     bytecode/AccessCaseSnippetParams.cpp
@@ -363,7 +366,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGMinifiedNode.cpp
     dfg/DFGMovHintRemovalPhase.cpp
     dfg/DFGMultiGetByOffsetData.cpp
-    dfg/DFGNaturalLoops.cpp
     dfg/DFGNode.cpp
     dfg/DFGNodeAbstractValuePair.cpp
     dfg/DFGNodeFlags.cpp
@@ -709,6 +711,7 @@ set(JavaScriptCore_SOURCES
     runtime/ConstructData.cpp
     runtime/ControlFlowProfiler.cpp
     runtime/CustomGetterSetter.cpp
+    runtime/DOMAttributeGetterSetter.cpp
     runtime/DataView.cpp
     runtime/DateConstructor.cpp
     runtime/DateConversion.cpp
@@ -1234,7 +1237,7 @@ macro(GENERATE_PYTHON _generator _additional_deps _input _output)
         COMMAND ${PYTHON_EXECUTABLE} ${_generator} ${_input} ${_output}
         VERBATIM)
     list(APPEND JavaScriptCore_HEADERS ${_output})
-    ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
+    WEBKIT_ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
 endmacro()
 GENERATE_PYTHON(${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasmOpsHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasm.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/wasm.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WasmOps.h)
 GENERATE_PYTHON(${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasmValidateInlinesHeader.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/generateWasm.py ${CMAKE_CURRENT_SOURCE_DIR}/wasm/wasm.json ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/WasmValidateInlines.h)
@@ -1251,7 +1254,7 @@ macro(GENERATE_HASH_LUT _input _output)
         COMMAND ${PERL_EXECUTABLE} ${HASH_LUT_GENERATOR} ${_input} > ${_output}
         VERBATIM)
     list(APPEND JavaScriptCore_HEADERS ${_output})
-    ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
+    WEBKIT_ADD_SOURCE_DEPENDENCIES(${_input} ${_output})
 endmacro()
 
 # GENERATOR 1-A: LUT creator
@@ -1300,7 +1303,7 @@ add_custom_command(
     MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/create_regex_tables
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/create_regex_tables > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h
     VERBATIM)
-ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/yarr/YarrPattern.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h)
+WEBKIT_ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/yarr/YarrPattern.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/RegExpJitTables.h)
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/YarrCanonicalizeUnicode.cpp
@@ -1320,7 +1323,7 @@ add_custom_command(
     DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table
     COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/KeywordLookupGenerator.py ${CMAKE_CURRENT_SOURCE_DIR}/parser/Keywords.table > ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h
     VERBATIM)
-ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h)
+WEBKIT_ADD_SOURCE_DEPENDENCIES(${CMAKE_CURRENT_SOURCE_DIR}/parser/Lexer.cpp ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/KeywordLookup.h)
 
 
 # Inspector Interfaces
@@ -1361,6 +1364,7 @@ set(JavaScriptCore_INSPECTOR_DOMAINS
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Network.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/OverlayTypes.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Page.json
+    ${JAVASCRIPTCORE_DIR}/inspector/protocol/Recording.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Runtime.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/ScriptProfiler.json
     ${JAVASCRIPTCORE_DIR}/inspector/protocol/Timeline.json
@@ -1537,7 +1541,7 @@ WEBKIT_FRAMEWORK(JavaScriptCore)
 
 if (NOT "${PORT}" STREQUAL "Mac")
     if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
-        POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
+        WEBKIT_POPULATE_LIBRARY_VERSION(JAVASCRIPTCORE)
         set_target_properties(JavaScriptCore PROPERTIES VERSION ${JAVASCRIPTCORE_VERSION} SOVERSION ${JAVASCRIPTCORE_VERSION_MAJOR})
         install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
     endif ()

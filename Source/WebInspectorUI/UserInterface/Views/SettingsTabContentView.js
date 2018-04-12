@@ -80,7 +80,7 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
         this._selectedSettingsView.updateLayout();
 
         let navigationItem = this._navigationBar.findNavigationItem(settingsView.identifier);
-        console.assert(navigationItem, "Missing navigation item for settings view.", settingsView)
+        console.assert(navigationItem, "Missing navigation item for settings view.", settingsView);
         if (!navigationItem)
             return;
 
@@ -125,7 +125,7 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
             return;
 
         let index = this._settingsViews.indexOf(settingsView);
-        console.assert(index !== -1, "SettingsView not found.", settingsView)
+        console.assert(index !== -1, "SettingsView not found.", settingsView);
         if (index === -1)
             return;
 
@@ -203,11 +203,11 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
 
         generalSettingsView.addSeparator();
 
-        generalSettingsView.addSetting(WebInspector.UIString("Network:"), WebInspector.settings.clearNetworkOnNavigate, WebInspector.UIString("Clear when page navigates"));
+        generalSettingsView.addSetting(WebInspector.UIString("Network:"), WebInspector.settings.clearNetworkOnNavigate, WebInspector.UIString("Clear when page loads"));
 
         generalSettingsView.addSeparator();
 
-        generalSettingsView.addSetting(WebInspector.UIString("Console:"), WebInspector.settings.clearLogOnNavigate, WebInspector.UIString("Clear when page navigates"));
+        generalSettingsView.addSetting(WebInspector.UIString("Console:"), WebInspector.settings.clearLogOnNavigate, WebInspector.UIString("Clear when page loads"));
 
         generalSettingsView.addSeparator();
 
@@ -265,6 +265,23 @@ WebInspector.SettingsTabContentView = class SettingsTabContentView extends WebIn
 
             this._debugSettingsView.addSetting(WebInspector.UIString("Canvas:"), WebInspector.settings.experimentalShowCanvasContextsInResources, WebInspector.UIString("Show Contexts in Resources Tab"));
         }
+
+        this._debugSettingsView.addSeparator();
+        this._debugSettingsView.addSetting(WebInspector.unlocalizedString("Styles Panel:"), WebInspector.settings.experimentalSpreadsheetStyleEditor, WebInspector.unlocalizedString("Spreadsheet Style Editor"));
+
+        this._debugSettingsView.addSeparator();
+
+        let reloadInspectorButton = document.createElement("button");
+        reloadInspectorButton.textContent = WebInspector.unlocalizedString("Reload Web Inspector");
+        reloadInspectorButton.addEventListener("click", () => { window.location.reload(); });
+
+        let reloadInspectorContainerElement = this._debugSettingsView.addCenteredContainer(reloadInspectorButton, WebInspector.unlocalizedString("for changes to take effect"));
+        reloadInspectorContainerElement.classList.add("hidden");
+
+        let experimentalSpreadsheetStyleEditorInitialValue = WebInspector.settings.experimentalSpreadsheetStyleEditor.value;
+        WebInspector.settings.experimentalSpreadsheetStyleEditor.addEventListener(WebInspector.Setting.Event.Changed, () => {
+            reloadInspectorContainerElement.classList.toggle("hidden", experimentalSpreadsheetStyleEditorInitialValue === WebInspector.settings.experimentalSpreadsheetStyleEditor.value);
+        });
 
         this.addSettingsView(this._debugSettingsView);
     }

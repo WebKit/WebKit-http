@@ -162,7 +162,7 @@ public:
     ScrollView* parent() const { return m_parent; }
     FrameView* root() const;
 
-    virtual void handleEvent(Event*) { }
+    virtual void handleEvent(Event&) { }
 
     virtual void notifyWidget(WidgetNotification) { }
 

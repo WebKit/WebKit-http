@@ -1656,7 +1656,7 @@ EXPRESSION: error = null; try { [].x.x; } catch (e) { error = e; }; error
       {
         "_name": "stack",
         "_type": "string",
-        "_value": "global code\nevaluateWithScopeExtension@[native code]\n_evaluateOn\n_evaluateAndWrap\nevaluate"
+        "_value": "global code\nevaluateWithScopeExtension@[native code]\n_evaluateOn\n_evaluateAndWrap"
       }
     ],
     "_entries": null
@@ -1695,7 +1695,7 @@ EXPRESSION: error = null; try { eval("if()"); } catch (e) { error = e; }; error
       {
         "_name": "stack",
         "_type": "string",
-        "_value": "eval@[native code]\nglobal code\nevaluateWithScopeEx…ative code]\n_evaluateOn\n_evaluateAndWrap\nevaluate"
+        "_value": "eval@[native code]\nglobal code\nevaluateWithScopeExtension@[native code]\n_evaluateOn\n_evaluateAndWrap"
       }
     ],
     "_entries": null
@@ -1708,29 +1708,14 @@ EXPRESSION: error = null; try { document.createTextNode("").splitText(100); } ca
   "_type": "object",
   "_subtype": "error",
   "_objectId": "<filtered>",
-  "_description": "IndexSizeError (DOM Exception 1): The index is not in the allowed range.",
+  "_description": "IndexSizeError: The index is not in the allowed range.",
   "_preview": {
     "_type": "object",
     "_subtype": "error",
-    "_description": "IndexSizeError (DOM Exception 1): The index is not in the allowed range.",
+    "_description": "IndexSizeError: The index is not in the allowed range.",
     "_lossless": false,
     "_overflow": true,
     "_properties": [
-      {
-        "_name": "code",
-        "_type": "number",
-        "_value": "1"
-      },
-      {
-        "_name": "name",
-        "_type": "string",
-        "_value": "IndexSizeError"
-      },
-      {
-        "_name": "message",
-        "_type": "string",
-        "_value": "The index is not in the allowed range."
-      },
       {
         "_name": "line",
         "_type": "number",
@@ -1740,6 +1725,21 @@ EXPRESSION: error = null; try { document.createTextNode("").splitText(100); } ca
         "_name": "column",
         "_type": "number",
         "_value": "58"
+      },
+      {
+        "_name": "stack",
+        "_type": "string",
+        "_value": "splitText@[native code]\nglobal code\nevaluateWithSc…ension@[native code]\n_evaluateOn\n_evaluateAndWrap"
+      },
+      {
+        "_name": "code",
+        "_type": "number",
+        "_value": "1"
+      },
+      {
+        "_name": "name",
+        "_type": "string",
+        "_value": "IndexSizeError"
       }
     ],
     "_entries": null

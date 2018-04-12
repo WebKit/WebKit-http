@@ -89,8 +89,8 @@ public:
     IntSize sizeRespectingOrientation() const { return m_source.sizeRespectingOrientation(); }
     Color singlePixelSolidColor() const override { return m_source.singlePixelSolidColor(); }
     bool frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(size_t index, const DecodingOptions& decodingOptions) const { return m_source.frameIsBeingDecodedAndIsCompatibleWithOptionsAtIndex(index, decodingOptions); }
-    ImageFrame::DecodingStatus frameDecodingStatusAtIndex(size_t index) const { return m_source.frameDecodingStatusAtIndex(index); }
-    bool frameIsCompleteAtIndex(size_t index) const { return frameDecodingStatusAtIndex(index) == ImageFrame::DecodingStatus::Complete; }
+    DecodingStatus frameDecodingStatusAtIndex(size_t index) const { return m_source.frameDecodingStatusAtIndex(index); }
+    bool frameIsCompleteAtIndex(size_t index) const { return frameDecodingStatusAtIndex(index) == DecodingStatus::Complete; }
     bool frameHasAlphaAtIndex(size_t index) const { return m_source.frameHasAlphaAtIndex(index); }
 
     bool frameHasFullSizeNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) { return m_source.frameHasFullSizeNativeImageAtIndex(index, subsamplingLevel); }
@@ -111,6 +111,8 @@ public:
     bool canUseAsyncDecodingForLargeImages() const;
     bool shouldUseAsyncDecodingForAnimatedImages() const;
     void setClearDecoderAfterAsyncFrameRequestForTesting(bool value) { m_clearDecoderAfterAsyncFrameRequestForTesting = value; }
+    void setLargeImageAsyncDecodingEnabledForTesting(bool enabled) { m_largeImageAsyncDecodingEnabledForTesting = enabled; }
+    bool isLargeImageAsyncDecodingEnabledForTesting() const { return m_largeImageAsyncDecodingEnabledForTesting; }
 
     WEBCORE_EXPORT unsigned decodeCountForTesting() const;
 
@@ -202,6 +204,7 @@ private:
     void clearTimer();
     void startTimer(Seconds delay);
     bool canDestroyDecodedData();
+    void setCurrentFrameDecodingStatusIfNecessary(DecodingStatus);
     bool isBitmapImage() const override { return true; }
     void dump(TextStream&) const override;
 
@@ -212,7 +215,7 @@ private:
 
     size_t m_currentFrame { 0 }; // The index of the current frame of animation.
     SubsamplingLevel m_currentSubsamplingLevel { SubsamplingLevel::Default };
-    ImageFrame::DecodingStatus m_currentFrameDecodingStatus { ImageFrame::DecodingStatus::Invalid };
+    DecodingStatus m_currentFrameDecodingStatus { DecodingStatus::Invalid };
     std::unique_ptr<Timer> m_frameTimer;
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     MonotonicTime m_desiredFrameStartTime; // The system time at which we hope to see the next call to startAnimation().
@@ -232,6 +235,7 @@ private:
     bool m_showDebugBackground { false };
 
     bool m_clearDecoderAfterAsyncFrameRequestForTesting { false };
+    bool m_largeImageAsyncDecodingEnabledForTesting { false };
 
 #if !LOG_DISABLED
     size_t m_lateFrameCount { 0 };

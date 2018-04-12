@@ -72,10 +72,6 @@ typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 class BCertificate;
 #endif
 
-#if USE(CURL)
-#include "CurlJobManager.h"
-#endif
-
 namespace WTF {
 class SchedulePair;
 }
@@ -137,15 +133,15 @@ public:
     id delegate();
     void releaseDelegate();
 #endif
-        
-#if PLATFORM(COCOA) && ENABLE(WEB_TIMING)
+
+#if PLATFORM(COCOA)
 #if USE(CFURLCONNECTION)
     static void getConnectionTimingData(CFURLConnectionRef, NetworkLoadMetrics&);
 #else
     static void getConnectionTimingData(NSURLConnection *, NetworkLoadMetrics&);
 #endif
 #endif
-        
+
 #if PLATFORM(COCOA)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
@@ -191,12 +187,6 @@ public:
     size_t currentStreamPosition() const;
     void didStartRequest();
     MonotonicTime m_requestTime;
-#endif
-
-#if USE(CURL)
-    void initialize();
-    void handleDataURL();
-    void handleCurlMsg(CURLMsg*);
 #endif
 
     bool hasAuthenticationChallenge() const;
@@ -298,15 +288,6 @@ private:
 
 #if USE(SOUP)
     void timeoutFired();
-#endif
-
-#if USE(CURL)
-    void dispatchSynchronousJob();
-
-    void setupPOST();
-    void setupPUT();
-
-    void applyAuthentication();
 #endif
 
     friend class ResourceHandleInternal;

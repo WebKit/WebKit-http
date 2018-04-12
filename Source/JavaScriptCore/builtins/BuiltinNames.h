@@ -32,6 +32,12 @@
 
 namespace JSC {
 
+#define INITIALIZE_BUILTIN_NAMES_IN_JSC(name) , m_##name(JSC::Identifier::fromString(vm, #name)), m_##name##PrivateName(JSC::Identifier::fromUid(vm, &static_cast<SymbolImpl&>(JSC::Symbols::name##PrivateName)))
+#define INITIALIZE_BUILTIN_SYMBOLS(name) , m_##name##Symbol(JSC::Identifier::fromUid(vm, &static_cast<SymbolImpl&>(JSC::Symbols::name##Symbol))), m_##name##SymbolPrivateIdentifier(JSC::Identifier::fromString(vm, #name "Symbol"))
+#define DECLARE_BUILTIN_SYMBOLS(name) const JSC::Identifier m_##name##Symbol; const JSC::Identifier m_##name##SymbolPrivateIdentifier;
+#define DECLARE_BUILTIN_SYMBOL_ACCESSOR(name) \
+    const JSC::Identifier& name##Symbol() const { return m_##name##Symbol; }
+
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSIC_FUNCTIONS_EACH_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
@@ -172,6 +178,18 @@ namespace JSC {
     macro(LinkError) \
     macro(RuntimeError) \
 
+namespace Symbols {
+#define DECLARE_BUILTIN_STATIC_SYMBOLS(name) extern SymbolImpl::StaticSymbolImpl name##Symbol;
+JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(DECLARE_BUILTIN_STATIC_SYMBOLS)
+#undef DECLARE_BUILTIN_STATIC_SYMBOLS
+
+#define DECLARE_BUILTIN_PRIVATE_NAMES(name) extern SymbolImpl::StaticSymbolImpl name##PrivateName;
+JSC_FOREACH_BUILTIN_FUNCTION_NAME(DECLARE_BUILTIN_PRIVATE_NAMES)
+JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(DECLARE_BUILTIN_PRIVATE_NAMES)
+#undef DECLARE_BUILTIN_PRIVATE_NAMES
+
+extern SymbolImpl::StaticSymbolImpl dollarVMPrivateName;
+}
 
 #define INITIALIZE_PRIVATE_TO_PUBLIC_ENTRY(name) m_privateToPublicMap.add(m_##name##PrivateName.impl(), &m_##name);
 #define INITIALIZE_PUBLIC_TO_PRIVATE_ENTRY(name) m_publicToPrivateMap.add(m_##name.impl(), &m_##name##PrivateName);
@@ -190,11 +208,11 @@ public:
 
     BuiltinNames(VM* vm, CommonIdentifiers* commonIdentifiers)
         : m_emptyIdentifier(commonIdentifiers->emptyIdentifier)
-        JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES)
-        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALIZE_BUILTIN_NAMES)
+        JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES_IN_JSC)
+        JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALIZE_BUILTIN_NAMES_IN_JSC)
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_WELL_KNOWN_SYMBOL(INITIALIZE_BUILTIN_SYMBOLS)
         , m_dollarVMName(Identifier::fromString(vm, "$vm"))
-        , m_dollarVMPrivateName(Identifier::fromUid(PrivateName(PrivateName::Description, ASCIILiteral("PrivateSymbol.$vm"))))
+        , m_dollarVMPrivateName(Identifier::fromUid(vm, &static_cast<SymbolImpl&>(Symbols::dollarVMPrivateName)))
     {
         JSC_FOREACH_BUILTIN_FUNCTION_NAME(INITIALIZE_PRIVATE_TO_PUBLIC_ENTRY)
         JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(INITIALIZE_PRIVATE_TO_PUBLIC_ENTRY)
@@ -205,9 +223,6 @@ public:
         m_publicToPrivateMap.add(m_dollarVMName.impl(), &m_dollarVMPrivateName);
     }
 
-    bool isPrivateName(SymbolImpl& uid) const;
-    bool isPrivateName(UniquedStringImpl& uid) const;
-    bool isPrivateName(const Identifier&) const;
     const Identifier* lookUpPrivateName(const Identifier&) const;
     const Identifier& lookUpPublicName(const Identifier&) const;
     
@@ -230,25 +245,6 @@ private:
     BuiltinNamesMap m_publicToPrivateMap;
     BuiltinNamesMap m_privateToPublicMap;
 };
-
-inline bool BuiltinNames::isPrivateName(SymbolImpl& uid) const
-{
-    return m_privateToPublicMap.contains(&uid);
-}
-
-inline bool BuiltinNames::isPrivateName(UniquedStringImpl& uid) const
-{
-    if (!uid.isSymbol())
-        return false;
-    return m_privateToPublicMap.contains(&uid);
-}
-
-inline bool BuiltinNames::isPrivateName(const Identifier& ident) const
-{
-    if (ident.isNull())
-        return false;
-    return isPrivateName(*ident.impl());
-}
 
 inline const Identifier* BuiltinNames::lookUpPrivateName(const Identifier& ident) const
 {

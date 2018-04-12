@@ -46,6 +46,7 @@
 #include "ElementAncestorIterator.h"
 #include "EventHandler.h"
 #include "FloatRect.h"
+#include "FocusController.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
 #include "FrameSelection.h"
@@ -258,6 +259,7 @@ inline static bool dragIsHandledByDocument(DragController::DragHandlingMethod dr
 bool DragController::performDragOperation(const DragData& dragData)
 {
     SetForScope<bool> isPerformingDrop(m_isPerformingDrop, true);
+    TemporarySelectionChange ignoreSelectionChanges(m_page.focusController().focusedOrMainFrame(), std::nullopt, TemporarySelectionOptionIgnoreSelectionChanges);
 
     m_documentUnderMouse = m_page.mainFrame().documentAtPoint(dragData.clientPosition());
 
@@ -517,7 +519,7 @@ bool DragController::dispatchTextInputEventFor(Frame* innerFrame, const DragData
 {
     ASSERT(m_page.dragCaretController().hasCaret());
     String text = m_page.dragCaretController().isContentRichlyEditable() ? emptyString() : dragData.asPlainText();
-    Node* target = innerFrame->editor().findEventTargetFrom(m_page.dragCaretController().caretPosition());
+    Element* target = innerFrame->editor().findEventTargetFrom(m_page.dragCaretController().caretPosition());
     return target->dispatchEvent(TextEvent::createForDrop(innerFrame->document()->domWindow(), text));
 }
 

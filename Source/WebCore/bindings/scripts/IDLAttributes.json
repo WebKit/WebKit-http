@@ -31,8 +31,15 @@
         "CachedAttribute": {
             "contextsAllowed": ["attribute"]
         },
+        "CallTracingCallback": {
+            "contextsAllowed": ["interface", "attribute", "operation"],
+            "values": ["*"]
+        },
         "CallbackNeedsOperatorEqual": {
             "contextsAllowed": ["callback-function"]
+        },
+        "CallNamedSetterOnlyForSupportedProperties": {
+            "contextsAllowed": ["operation"]
         },
         "CallWith": {
             "contextsAllowed": ["attribute", "operation"],
@@ -99,9 +106,6 @@
         "CustomGetOwnPropertySlot": {
             "contextsAllowed": ["interface"]
         },
-        "CustomGetOwnPropertySlotAndDescriptor": {
-            "contextsAllowed": ["interface"]
-        },
         "CustomGetPrototype": {
             "contextsAllowed": ["interface"]
         },
@@ -141,6 +145,9 @@
         "DOMJIT": {
             "contextsAllowed": ["interface", "attribute", "operation"],
             "values": ["", "ReadDOM", "Getter"]
+        },
+        "DefaultDefineOwnProperty": {
+            "contextsAllowed": ["interface"]
         },
         "DoNotCheckConstants": {
             "contextsAllowed": ["interface"]
