@@ -25,6 +25,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
+#include "GStreamerCommon.h"
 #include "GStreamerEMEUtilities.h"
 #include <CDMInstance.h>
 #include <wtf/Condition.h>
