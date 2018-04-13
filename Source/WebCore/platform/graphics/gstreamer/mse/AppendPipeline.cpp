@@ -25,6 +25,7 @@
 
 #include "AudioTrackPrivateGStreamer.h"
 #include "GStreamerCommon.h"
+#include "GStreamerEMEUtilities.h"
 #include "GStreamerMediaDescription.h"
 #include "GStreamerMediaSample.h"
 #include "InbandTextTrackPrivateGStreamer.h"
@@ -97,45 +98,6 @@ static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, A
 {
     appendPipeline->handleElementMessage(message);
 }
-
-#if GST_CHECK_VERSION(1, 5, 3)
-static GstElement* createDecryptor(const char* requestedProtectionSystemUuid)
-{
-    GstElement* decryptor = nullptr;
-    GList* decryptors = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_DECRYPTOR, GST_RANK_MARGINAL);
-
-    for (GList* walk = decryptors; !decryptor && walk; walk = g_list_next(walk)) {
-        GstElementFactory* factory = reinterpret_cast<GstElementFactory*>(walk->data);
-
-        for (const GList* current = gst_element_factory_get_static_pad_templates(factory); current && !decryptor; current = g_list_next(current)) {
-            GstStaticPadTemplate* staticPadTemplate = static_cast<GstStaticPadTemplate*>(current->data);
-            GRefPtr<GstCaps> caps = adoptGRef(gst_static_pad_template_get_caps(staticPadTemplate));
-            unsigned length = gst_caps_get_size(caps.get());
-
-            GST_TRACE("factory %s caps has size %u", GST_OBJECT_NAME(factory), length);
-            for (unsigned i = 0; !decryptor && i < length; ++i) {
-                GstStructure* structure = gst_caps_get_structure(caps.get(), i);
-                GST_TRACE("checking structure %s", gst_structure_get_name(structure));
-                if (gst_structure_has_field_typed(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD, G_TYPE_STRING)) {
-                    const char* requestedProtectionSystemUuidUuid = gst_structure_get_string(structure, GST_PROTECTION_SYSTEM_ID_CAPS_FIELD);
-                    GST_TRACE("structure %s has protection system %s", gst_structure_get_name(structure), requestedProtectionSystemUuidUuid);
-                    if (!g_ascii_strcasecmp(requestedProtectionSystemUuid, requestedProtectionSystemUuidUuid)) {
-                        GST_DEBUG("found decryptor %s for %s", GST_OBJECT_NAME(factory), requestedProtectionSystemUuid);
-                        decryptor = gst_element_factory_create(factory, nullptr);
-                        break;
-                    }
-                }
-            }
-        }
-    }
-    gst_plugin_feature_list_free(decryptors);
-    GST_TRACE("returning decryptor %p", decryptor);
-    return decryptor;
-}
-#else
-#error "At least a GStreamer version 1.5.3 is required to enable ENCRYPTED_MEDIA."
-#endif
-
 #endif
 
 static void appendPipelineStateChangeMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
@@ -699,7 +661,7 @@ void AppendPipeline::parseDemuxerSrcPadCaps(GstCaps* demuxerSrcPadCaps)
         // Any previous decryptor should have been removed from the pipeline by disconnectFromAppSinkFromStreamingThread()
         ASSERT(!m_decryptor);
 
-        m_decryptor = createDecryptor(gst_structure_get_string(structure, "protection-system"));
+        m_decryptor = GStreamerEMEUtilities::createDecryptor(gst_structure_get_string(structure, "protection-system"));
         if (!m_decryptor) {
             GST_ERROR("decryptor not found for caps: %" GST_PTR_FORMAT, m_demuxerSrcPadCaps.get());
             return;

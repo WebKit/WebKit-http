@@ -24,27 +24,25 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
-#include "WebKitCommonEncryptionDecryptorGStreamer.h"
+#include "WebKitOpenCDMDecryptorGStreamer.h"
 
 G_BEGIN_DECLS
 
-#define WEBKIT_TYPE_OPENCDM_DECRYPT          (webkit_media_opencdm_decrypt_get_type())
-#define WEBKIT_OPENCDM_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecrypt))
-#define WEBKIT_OPENCDM_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptClass))
+#define WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT          (webkit_media_opencdm_playready_decrypt_get_type())
+#define WEBKIT_OPENCDM_PLAYREADY_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT, WebKitOpenCDMPlayReadyDecrypt))
+#define WEBKIT_OPENCDM_PLAYREADY_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT, WebKitOpenCDMPlayReadyDecryptClass))
 
-typedef struct _WebKitOpenCDMDecrypt           WebKitOpenCDMDecrypt;
-typedef struct _WebKitOpenCDMDecryptClass      WebKitOpenCDMDecryptClass;
-typedef struct _WebKitOpenCDMDecryptPrivate    WebKitOpenCDMDecryptPrivate;
+typedef struct _WebKitOpenCDMPlayReadyDecrypt           WebKitOpenCDMPlayReadyDecrypt;
+typedef struct _WebKitOpenCDMPlayReadyDecryptClass      WebKitOpenCDMPlayReadyDecryptClass;
 
-GType webkit_media_opencdm_decrypt_get_type(void);
+GType webkit_media_opencdm_playready_decrypt_get_type(void);
 
-struct _WebKitOpenCDMDecrypt {
-    WebKitMediaCommonEncryptionDecrypt parent;
-    WebKitOpenCDMDecryptPrivate* priv;
+struct _WebKitOpenCDMPlayReadyDecrypt {
+    WebKitOpenCDMDecrypt parent;
 };
 
-struct _WebKitOpenCDMDecryptClass {
-    WebKitMediaCommonEncryptionDecryptClass parentClass;
+struct _WebKitOpenCDMPlayReadyDecryptClass {
+    WebKitOpenCDMDecryptClass parentClass;
 };
 
 G_END_DECLS

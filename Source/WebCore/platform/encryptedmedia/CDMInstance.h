@@ -49,10 +49,9 @@ public:
 
     enum class ImplementationType {
         Mock,
+        ClearKey,
 #if USE(OPENCDM)
         OpenCDM,
-#else
-        ClearKey,
 #endif
     };
 

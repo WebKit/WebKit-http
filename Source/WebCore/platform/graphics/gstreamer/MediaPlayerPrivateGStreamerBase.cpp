@@ -50,12 +50,13 @@
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #include "CDMInstance.h"
+#include "GStreamerEMEUtilities.h"
 #include "SharedBuffer.h"
+#include "WebKitClearKeyDecryptorGStreamer.h"
 #if USE(OPENCDM)
 #include "CDMOpenCDM.h"
-#include "WebKitOpenCDMDecryptorGStreamer.h"
-#else
-#include "WebKitClearKeyDecryptorGStreamer.h"
+#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
+#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 #endif
 #endif
 
@@ -149,35 +150,6 @@ static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_LINEA
 static const GstStreamVolumeFormat volumeFormat = GST_STREAM_VOLUME_FORMAT_CUBIC;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>>  extractEventsAndSystemsFromMessage(GstMessage* message)
-{
-    const GstStructure* structure = gst_message_get_structure(message);
-
-    const GValue* streamEncryptionAllowedSystemsValue = gst_structure_get_value(structure, "stream-encryption-systems");
-    ASSERT(streamEncryptionAllowedSystemsValue && G_VALUE_HOLDS(streamEncryptionAllowedSystemsValue, G_TYPE_STRV));
-
-    const char** streamEncryptionAllowedSystems = reinterpret_cast<const char**>(g_value_get_boxed(streamEncryptionAllowedSystemsValue));
-
-    GST_TRACE("extractEventsAndSystemsFromMessage message: %" GST_PTR_FORMAT, message);
-
-    ASSERT(streamEncryptionAllowedSystems);
-    Vector<String> streamEncryptionAllowedSystemsVector;
-    unsigned i;
-    if (streamEncryptionAllowedSystems != nullptr) 
-        for (i = 0; streamEncryptionAllowedSystems[i]; ++i) 
-            streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
-        
-    const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
-    ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
-    unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
-    Vector<GRefPtr<GstEvent>> streamEncryptionEventsVector;
-    for (i = 0; i < streamEncryptionEventsListSize; ++i)
-        streamEncryptionEventsVector.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
-
-    return std::make_pair(streamEncryptionEventsVector, streamEncryptionAllowedSystemsVector);
-}
-#endif
 
 void registerWebKitGStreamerElements()
 {
@@ -185,16 +157,17 @@ void registerWebKitGStreamerElements()
         return;
 
 #if ENABLE(ENCRYPTED_MEDIA)
-#if USE(OPENCDM)
-    GRefPtr<GstElementFactory> decryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdm"));
-    if (!decryptorFactory) 
-        gst_element_register(0, "webkitopencdm", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_DECRYPT);
-
-#else
     GRefPtr<GstElementFactory> clearKeyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitclearkey"));
     if (!clearKeyDecryptorFactory)
         gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 
+#if USE(OPENCDM)
+    GRefPtr<GstElementFactory> widevineDecryptorFactory = adoptGRef(gst_element_factory_find("webkitopencdmwidevine"));
+    if (!widevineDecryptorFactory)
+        gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
+    GRefPtr<GstElementFactory> playReadyDecryptorFactory = adoptGRef(gst_element_factory_find("webkitplayreadydec"));
+    if (!playReadyDecryptorFactory)
+        gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT);
 #endif
 #endif
 }
@@ -435,7 +408,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         }
         GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
         LockHolder lock(m_protectionMutex);
-        std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
+        std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(message);
         GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
         InitData concatenatedInitDataChunks;
         unsigned concatenatedInitDataChunksNumber = 0;
@@ -491,14 +464,15 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             return this->m_cdmInstance;
         });
         if (m_cdmInstance && !m_cdmInstance->keySystem().isEmpty()) {
-            GST_INFO("working with %s, continuing with " WEBCORE_CDMFACTORY_SYSTEM_UUID " on %s", m_cdmInstance->keySystem().utf8().data(), GST_MESSAGE_SRC_NAME(message));
+            const char* preferredKeySystemUuid = GStreamerEMEUtilities::keySystemToUuid(m_cdmInstance->keySystem());
+            GST_INFO("working with %s, continuing with %s on %s", m_cdmInstance->keySystem().utf8().data(), preferredKeySystemUuid, GST_MESSAGE_SRC_NAME(message));
 
             GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
             GstStructure* contextStructure = gst_context_writable_structure(context.get());
-            gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, WEBCORE_CDMFACTORY_SYSTEM_UUID, nullptr);
+            gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, preferredKeySystemUuid, nullptr);
             gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
 #if USE(OPENCDM)
-            mapProtectionEventToInitData(concatenatedInitDataChunks, keySystemProtectionEventMap.get(WEBCORE_CDMFACTORY_SYSTEM_UUID));
+            mapProtectionEventToInitData(concatenatedInitDataChunks, keySystemProtectionEventMap.get(preferredKeySystemUuid));
 #endif
         } else
             GST_WARNING("no proper CDM instance attached");
@@ -1555,8 +1529,8 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 {
     bool result = false;
 
-#if ENABLE(ENCRYPTED_MEDIA) && !USE(OPENCDM)
-    result = (keySystem == "org.w3.clearkey");
+#if ENABLE(ENCRYPTED_MEDIA)
+    result = GStreamerEMEUtilities::isClearKeyKeySystem(keySystem);
 #endif
 
     GST_DEBUG("checking for KeySystem support with %s and type %s: %s", keySystem.utf8().data(), mimeType.utf8().data(), boolForPrinting(result));

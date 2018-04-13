@@ -22,7 +22,6 @@
 
 #include "config.h"
 #include "WebKitOpenCDMDecryptorGStreamer.h"
-#include "CDMOpenCDM.h"
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OPENCDM)
 
@@ -34,10 +33,6 @@
 
 #define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptPrivate))
 
-#define WEBCORE_NON_MSE_PLAYREADY_UUID "9a04f079-9840-4286-ab92-e65be0885f95"
-#define WEBCORE_NON_MSE_WIDEVINE_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-#define WEBCORE_NON_MSE_CLEARKEY_UUID "58147ec8-0423-4659-92e6-f52c5ce8c3cc"
-
 struct _WebKitOpenCDMDecryptPrivate {
     String m_session;
     unsigned m_protectionEvent;
@@ -48,49 +43,6 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
 static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt*, GstEvent*);
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
 static void webKitMediaOpenCDMDecryptorReceivedProtectionEvent(WebKitMediaCommonEncryptionDecrypt*, unsigned);
-
-static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
-    GST_PAD_SINK,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS(
-    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_CDMFACTORY_SYSTEM_UUID ";"
-
-    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_NON_MSE_CLEARKEY_UUID ";"
-
-    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_NON_MSE_PLAYREADY_UUID ";"
-
-    "application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WEBCORE_NON_MSE_WIDEVINE_UUID ";"));
-
-static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
-    GST_PAD_SRC,
-    GST_PAD_ALWAYS,
-    GST_STATIC_CAPS(
-    "video/webm; "
-    "audio/webm; "
-    "video/mp4; "
-    "audio/mp4; "
-    "audio/mpeg; "
-    "video/x-h264"));
 
 GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
@@ -104,14 +56,12 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     gobjectClass->finalize = webKitMediaOpenCDMDecryptorFinalize;
 
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
-    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&sinkTemplate));
-    gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
 
     gst_element_class_set_static_metadata(elementClass,
         "Decrypt content with OpenCDM support",
         GST_ELEMENT_FACTORY_KLASS_DECRYPTOR,
         "Decrypts media with OpenCDM support",
-        "Metrological");
+        "TataElxsi");
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_decrypt_debug_category,
         "webkitopencdm", 0, "OpenCDM decryptor");
@@ -120,7 +70,6 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitOpenCDMDecryptClass* k
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
     cencClass->receivedProtectionEvent = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorReceivedProtectionEvent);
-    cencClass->protectionSystemId = WEBCORE_CDMFACTORY_SYSTEM_UUID;
 
     g_type_class_add_private(klass, sizeof(WebKitOpenCDMDecryptPrivate));
 }
@@ -156,13 +105,11 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
 
     GST_DEBUG_OBJECT(self, "handling session %s for event %u (ours %u)", session.get(), protectionEvent, priv->m_protectionEvent);
     if (priv->m_protectionEvent == protectionEvent) {
-        if (priv->m_openCdm == nullptr) {
+        if (priv->m_session != session.get()) {
             priv->m_session = session.get();
             priv->m_openCdm = std::make_unique<media::OpenCdm>(priv->m_session.utf8().data());
+            GST_DEBUG_OBJECT(self, "selected session %s", priv->m_session.utf8().data());
             returnValue = true;
-        }
-        else if (priv->m_session != session.get()) {
-            GST_DEBUG_OBJECT(self, "Different session send to:  %s - %s", priv->m_session.utf8().data(), session.get());
         } else
             GST_DEBUG_OBJECT(self, "session already selected!");
     } else

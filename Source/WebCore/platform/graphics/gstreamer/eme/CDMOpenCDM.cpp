@@ -26,6 +26,7 @@
 #if ENABLE(ENCRYPTED_MEDIA) && USE(OPENCDM)
 
 #include "CDMPrivate.h"
+#include "GStreamerEMEUtilities.h"
 #include "MediaKeyMessageType.h"
 #include "MediaKeysRequirement.h"
 
@@ -97,9 +98,7 @@ std::unique_ptr<CDMPrivate> CDMFactoryOpenCDM::createCDM(const String& keySystem
 
 bool CDMFactoryOpenCDM::supportsKeySystem(const String& keySystem)
 {
-    std::string emptyString;
-
-    return m_openCDM.IsTypeSupported(keySystem.utf8().data(), emptyString);
+    return GStreamerEMEUtilities::isPlayReadyKeySystem(keySystem) || GStreamerEMEUtilities::isWidevineKeySystem(keySystem);
 }
 
 // Class CDMInstanceOpenCDM.
@@ -221,6 +220,9 @@ CDMInstanceOpenCDM::CDMInstanceOpenCDM(media::OpenCdm& system, const String& key
     , m_keySystem(keySystem)
 {
     m_openCDM.SelectKeySystem(keySystem.utf8().data());
+
+    if (GStreamerEMEUtilities::isWidevineKeySystem(keySystem))
+        m_mimeType = "video/mp4";
 }
 
 CDMInstance::SuccessValue CDMInstanceOpenCDM::setServerCertificate(Ref<SharedBuffer>&& certificate)

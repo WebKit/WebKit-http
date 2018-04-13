@@ -21,13 +21,11 @@
 
 #pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER) && !USE(OPENCDM)
+#if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 G_BEGIN_DECLS
-
-#define WEBCORE_CDMFACTORY_SYSTEM_UUID "58147ec8-0423-4659-92e6-f52c5ce8c3cc"
 
 #define WEBKIT_TYPE_MEDIA_CK_DECRYPT          (webkit_media_clear_key_decrypt_get_type())
 #define WEBKIT_MEDIA_CK_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_MEDIA_CK_DECRYPT, WebKitMediaClearKeyDecrypt))
