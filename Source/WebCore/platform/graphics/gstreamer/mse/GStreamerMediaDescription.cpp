@@ -21,7 +21,7 @@
 #include "config.h"
 #include "GStreamerMediaDescription.h"
 
-#include "GUniquePtrGStreamer.h"
+#include "GStreamerCommon.h"
 
 #include <gst/pbutils/pbutils.h>
 #include <wtf/text/AtomicString.h>

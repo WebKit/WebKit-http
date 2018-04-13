@@ -24,9 +24,11 @@
  */
 
 #include "config.h"
+#include "TextCombinerGStreamer.h"
+
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(VIDEO_TRACK)
 
-#include "TextCombinerGStreamer.h"
+#include "GStreamerCommon.h"
 
 static GstStaticPadTemplate sinkTemplate =
     GST_STATIC_PAD_TEMPLATE("sink_%u", GST_PAD_SINK, GST_PAD_REQUEST,

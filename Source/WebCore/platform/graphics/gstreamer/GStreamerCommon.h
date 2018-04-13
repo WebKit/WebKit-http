@@ -19,7 +19,9 @@
 
 #pragma once
 
-
+#if USE(GSTREAMER)
+#include "GRefPtrGStreamer.h"
+#include "GUniquePtrGStreamer.h"
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
 #include <gst/video/video-info.h>
@@ -72,3 +74,5 @@ inline GstClockTime toGstClockTime(const MediaTime &mediaTime)
 
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
 }
+
+#endif // USE(GSTREAMER)

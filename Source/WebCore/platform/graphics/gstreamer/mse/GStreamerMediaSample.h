@@ -23,7 +23,7 @@
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 
 #include "FloatSize.h"
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include "MediaSample.h"
 #include <gst/gst.h>
 #include <wtf/PrintStream.h>

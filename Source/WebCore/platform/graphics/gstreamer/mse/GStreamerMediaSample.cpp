@@ -21,7 +21,7 @@
 #include "config.h"
 #include "GStreamerMediaSample.h"
 
-#include "GStreamerUtilities.h"
+#include "GStreamerCommon.h"
 
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE)
 

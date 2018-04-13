@@ -28,6 +28,7 @@
 #include "WebProcess.h"
 
 #include "WebProcessCreationParameters.h"
+#include <WebCore/GStreamerCommon.h>
 #include <WebCore/MemoryCache.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/SoupNetworkSession.h>
