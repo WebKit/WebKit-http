@@ -1,3 +1,483 @@
+2017-08-02  Jer Noble  <jer.noble@apple.com>
+
+        [MSE] Removing samples when presentation order does not match decode order can cause bad behavior.
+        https://bugs.webkit.org/show_bug.cgi?id=175091
+
+        Reviewed by Eric Carlson.
+
+        Address follow-up comments to r219519.
+
+        * Modules/mediasource/SourceBuffer.cpp:
+        (WebCore::SourceBuffer::removeCodedFrames):
+
+2017-08-02  Jeremy Jones  <jeremyj@apple.com>
+
+        Remove unused and obsolete setting mediaDocumentEntersFullscreenAutomatically
+        https://bugs.webkit.org/show_bug.cgi?id=175080
+
+        Reviewed by Jon Lee.
+
+        No new tests because this only removes unused code.
+
+        This is obsolete because of the alternate solution in
+        https://bugs.webkit.org/show_bug.cgi?id=174850
+
+        * page/Settings.in:
+
+2017-08-02  Filip Pizlo  <fpizlo@apple.com>
+
+        GPUBuffer::length() should return the size of the array buffer backing the GPU buffer, not the rounded-up GPU buffer length
+        https://bugs.webkit.org/show_bug.cgi?id=175079
+
+        Reviewed by Simon Fraser.
+
+        This fixes a failure in the GPU.BufferCreate unit test.
+        
+        The problem is that in order to have a Metal buffer wrap memory we allocated, we have to tell Metal
+        that the memory is page-aligned. This means that the Metal buffer reports back a page-aligned size,
+        which is different than what the test expected.
+        
+        It seems that it's most convenient for our GPUBuffer class to return the unaligned length, rather
+        than the aligned length. This is just a simple matter of returning the length from the ArrayBuffer
+        rather than the Metal buffer.
+        
+        This fixes the unit test and is probably more sensible for actual users of this class, since the page
+        alignment of the length is a goofy implementation detail.
+
+        * platform/graphics/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::length const):
+
+2017-08-01  Brian Burg  <bburg@apple.com>
+
+        HTML file input elements do not support file extensions in the "accept" attribute
+        https://bugs.webkit.org/show_bug.cgi?id=95698
+        <rdar://problem/12231850>
+
+        Reviewed by Darin Adler.
+
+        Serialize the accepted file extensions so they can be accessed in the UI process.
+
+        * platform/FileChooser.h:
+        * platform/FileChooser.cpp:
+        (WebCore::FileChooser::invalidate): Modernize.
+        (WebCore::FileChooserSettings::acceptTypes const): Deleted.
+        This is dead code, it was only used by Chromium.
+
+2017-08-02  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for QualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+        <rdar://problem/33647818>
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * contentextensions/ContentExtensionParser.cpp:
+        (WebCore::ContentExtensions::isValidCSSSelector):
+        Call QualifiedName::init().
+        * dom/DOMAllInOne.cpp: Remove the warning. Include QualifiedName.cpp.
+        * dom/QualifiedName.cpp:
+        (WebCore::QualifiedName::init): Call LazyNeverDestroyed::construct
+        instead of placement new.
+        * dom/QualifiedName.h: Use LazyNeverDestroyed.
+
+2017-08-01  Joseph Pecoraro  <pecoraro@apple.com>
+
+        CFString leak dragging an image - allocation under PlatformPasteboard::writeObjectRepresentations
+        https://bugs.webkit.org/show_bug.cgi?id=175064
+
+        Reviewed by Tim Horton.
+
+        * platform/ios/PlatformPasteboardIOS.mm:
+        (WebCore::PlatformPasteboard::writeObjectRepresentations):
+        Adopt a created string into the RetainPtr.
+
+        * platform/ios/WebItemProviderPasteboard.h:
+        * platform/ios/WebItemProviderPasteboard.mm:
+        (-[WebItemProviderRegistrationInfoList dealloc]):
+        Release suggestedName and switch from -strong to -copy.
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, update Beacon API status to "In Development".
+
+        * features.json:
+
+2017-08-01  Chris Dumez  <cdumez@apple.com>
+
+        Add initial support for navigator.sendBeacon
+        https://bugs.webkit.org/show_bug.cgi?id=175007
+        <rdar://problem/33547728>
+
+        Reviewed by Sam Weinig.
+
+        Add initial support for navigator.sendBeacon behind an experimental
+        feature runtime flag. The specification is available at:
+        - https://w3c.github.io/beacon/
+
+        The current implementation supports sending beacons with all types of
+        payloads except for ReadableStream. Some functionality is incomplete
+        and will be taken care of in follow-up patches:
+        - Support for CORS preflight for the cases where it is required. We currently
+          return false and do not send the beacon in such cases.
+        - Better support for redirects.
+        - Use a more power-friendly network priority for beacon requests.
+
+        Tests: http/tests/blink/sendbeacon/*
+               http/tests/security/mixedContent/beacon/insecure-beacon-in-iframe.html
+               http/wpt/beacon/*
+               imported/blink/fast/beacon/*
+               imported/w3c/web-platform-tests/beacon/*
+
+        * CMakeLists.txt:
+        * DerivedSources.make:
+        * Modules/beacon/NavigatorBeacon.cpp: Added.
+        (WebCore::NavigatorBeacon::sendBeacon):
+        * Modules/beacon/NavigatorBeacon.h: Added.
+        * Modules/beacon/NavigatorBeacon.idl: Added.
+        * WebCore.xcodeproj/project.pbxproj:
+        * loader/PingLoader.cpp:
+        (WebCore::PingLoader::sendBeacon):
+        * loader/PingLoader.h:
+
+2017-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Bmalloc and GC should put auxiliaries (butterflies, typed array backing stores) in a gigacage (separate multi-GB VM region)
+        https://bugs.webkit.org/show_bug.cgi?id=174727
+
+        Reviewed by Mark Lam.
+
+        No new tests because no change in behavior.
+        
+        Needed to teach Metal how to allocate in the Gigacage.
+
+        * platform/graphics/cocoa/GPUBufferMetal.mm:
+        (WebCore::GPUBuffer::GPUBuffer):
+        (WebCore::GPUBuffer::contents):
+
+2017-08-01  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [WinCairo] Implement Font::platformBoundsForGlyph
+        https://bugs.webkit.org/show_bug.cgi?id=174813
+
+        Reviewed by Alex Christensen.
+
+        Test: fast/text/emphasis.html
+
+        * platform/graphics/win/SimpleFontDataCairoWin.cpp:
+        (WebCore::Font::platformBoundsForGlyph): Implemented by copying
+        the code from Font::boundsForGDIGlyph().
+
+2017-08-01  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION (r217197): New Yorker website hangs for a long time on load, lots of blank tiles
+        https://bugs.webkit.org/show_bug.cgi?id=175009
+        <rdar://problem/33505791>
+
+        Reviewed by Simon Fraser.
+
+        This patch ensures that we report the desktop, non-frame-flattened frame size for media queries in subframes.
+        Some websites don't expect the iframes to be expanded to the size of the content and when the media query
+        callback mutates the content (triggering frame resize), they might end up getting into a never ending layout.
+
+        Test: fast/frames/flattening/media-query-growing-content.html
+
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::orientationEvaluate):
+        (WebCore::aspectRatioEvaluate):
+        (WebCore::heightEvaluate):
+        (WebCore::widthEvaluate):
+        * page/FrameView.cpp:
+        (WebCore::FrameView::layout):
+        (WebCore::FrameView::layoutSizeForMediaQuery const):
+        (WebCore::FrameView::evaluateMediaQueryList):
+        * page/FrameView.h:
+
+2017-07-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Add tests to detect mistakes in backward compatibility when the structured clone algorithm is changed in the future
+        https://bugs.webkit.org/show_bug.cgi?id=173998
+
+        Reviewed by Darin Adler.
+
+        * bindings/js/SerializedScriptValue.cpp:
+        Add a comment.
+
+2017-08-01  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220089.
+
+        This caused multiple crashes on macOS Debug testers.
+
+        Reverted changeset:
+
+        "Use LazyNeverDestroyed instead of DEFINE_GLOBAL for
+        QualifiedName"
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+        http://trac.webkit.org/changeset/220089
+
+2017-08-01  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Swap a custom attribute for a custom mark function for HTMLTemplateElement
+        https://bugs.webkit.org/show_bug.cgi?id=175006
+
+        Reviewed by Chris Dumez.
+
+        Use the standard way of augmenting GC, visitAdditionalChildren, rather
+        than using a private name to create ownership.
+
+        * bindings/js/JSHTMLTemplateElementCustom.cpp:
+        (WebCore::JSHTMLTemplateElement::visitAdditionalChildren):
+        (WebCore::JSHTMLTemplateElement::content const): Deleted.
+        * html/HTMLTemplateElement.idl:
+
+2017-08-01  Zan Dobersek  <zdobersek@igalia.com>
+
+        [GCrypt] Gather crypto constants in a single location
+        https://bugs.webkit.org/show_bug.cgi?id=174091
+
+        Reviewed by Jiewen Tan.
+
+        Gather common constants used across the libgcrypt-specific Web Crypto
+        implementations in a single place -- in the GCryptUtilities.h header,
+        inside the CryptoConstants namespace. The various ASN.1 object identifiers
+        and other helper values are placed inside, in the std::array<uint8_t, N>
+        container.
+
+        Additionally, CryptoConstants::matches() helper function is provided. It
+        compares the provided data-and-size pair with the given std::array
+        container and returns true if the std::memcmp() call returns 0.
+
+        Changes in CryptoKeyEC and CryptoKeyRSA consist mostly of switching to the
+        use of CryptoConstants::matches() and the CryptoConstants data arrays, as
+        well as some whitespace cleanup.
+
+        Additionallity in CryptoKeyEC, the helper functions covering various curve
+        attributes are reordered, renamed and reorganized for simplicity.
+
+        No new tests -- no changes in behavior.
+
+        * crypto/gcrypt/CryptoKeyECGCrypt.cpp:
+        (WebCore::curveIdentifier):
+        (WebCore::curveSize):
+        (WebCore::curveUncompressedFieldElementSize):
+        (WebCore::curveUncompressedPointSize):
+        (WebCore::CryptoKeyEC::platformImportRaw):
+        (WebCore::CryptoKeyEC::platformImportJWKPublic):
+        (WebCore::CryptoKeyEC::platformImportJWKPrivate):
+        (WebCore::supportedAlgorithmIdentifier):
+        (WebCore::curveForIdentifier):
+        (WebCore::CryptoKeyEC::platformImportSpki):
+        (WebCore::CryptoKeyEC::platformExportRaw):
+        (WebCore::CryptoKeyEC::platformAddFieldElements):
+        (WebCore::CryptoKeyEC::platformExportSpki):
+        (WebCore::CryptoKeyEC::platformExportPkcs8):
+        (WebCore::uncompressedPointSizeForCurve): Deleted.
+        (WebCore::uncompressedFieldElementSizeForCurve): Deleted.
+        * crypto/gcrypt/CryptoKeyRSAGCrypt.cpp:
+        (WebCore::supportedAlgorithmIdentifier):
+        (WebCore::CryptoKeyRSA::importPkcs8):
+        (WebCore::CryptoKeyRSA::exportSpki):
+        (WebCore::CryptoKeyRSA::exportPkcs8):
+        * crypto/gcrypt/GCryptUtilities.h:
+        (WebCore::CryptoConstants::matches):
+
+2017-07-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for MediaFeatureNames
+        https://bugs.webkit.org/show_bug.cgi?id=175008
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * css/MediaFeatureNames.cpp:
+        (WebCore::MediaFeatureNames::init): Do not include
+        <wtf/StaticConstructors.h>. Use LazyNeverDestroyed instead of
+        DEFINE_GLOBAL. Call LazyNeverDestroyed::construct instead of
+        placement new.
+        * css/MediaFeatureNames.h: Use LazyNeverDestroyed.
+        * css/MediaQueryEvaluator.cpp:
+        (WebCore::MediaQueryEvaluator::evaluate const): Dereference with ->.
+
+2017-07-31  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Use LazyNeverDestroyed instead of DEFINE_GLOBAL for QualifiedName
+        https://bugs.webkit.org/show_bug.cgi?id=175010
+
+        Reviewed by Alex Christensen.
+
+        No new tests because no behavior change.
+
+        Stop using DEFINE_GLOBAL hack in favor of LazyNeverDestroyed.
+
+        * dom/DOMAllInOne.cpp: Remove the warning. Include QualifiedName.cpp.
+        * dom/QualifiedName.cpp:
+        (WebCore::QualifiedName::init): Call LazyNeverDestroyed::construct
+        instead of placement new.
+        * dom/QualifiedName.h: Use LazyNeverDestroyed.
+
+2017-07-31  Matt Rajca  <mrajca@apple.com>
+
+        Support quirk for letting media autoplay if the user interacted with at least one media element.
+        https://bugs.webkit.org/show_bug.cgi?id=175005
+        <rdar://problem/33476038>
+
+        Reviewed by Eric Carlson.
+
+        If the user has interacted with at least one media element, let other media elements auto-play
+        as a quirk.
+
+        * dom/Document.cpp:
+        (WebCore::Document::updateIsPlayingMedia):
+        * dom/Document.h:
+        (WebCore::Document::noteUserInteractionWithMediaElement):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::removeBehaviorsRestrictionsAfterFirstUserGesture):
+        * html/MediaElementSession.cpp:
+        (WebCore::needsDocumentLevelMediaUserGestureQuirk):
+        (WebCore::MediaElementSession::playbackPermitted const):
+        * page/MediaProducer.h:
+
+2017-07-31  Nan Wang  <n_wang@apple.com>
+
+        AX: CFEqual is failing on text markers with exact same data
+        https://bugs.webkit.org/show_bug.cgi?id=175002
+        <rdar://problem/33636985>
+
+        Reviewed by Chris Fleizach.
+
+        We should zero the memory of the TextMarkerData instance so that it
+        can be tested for byte-equivalence.
+
+        Made sure this change won't break any of the existing tests.
+
+        * accessibility/AXObjectCache.cpp:
+        (WebCore::AXObjectCache::textMarkerDataForVisiblePosition):
+        (WebCore::AXObjectCache::textMarkerDataForFirstPositionInTextControl):
+
+2017-07-28  Matt Rajca  <mrajca@apple.com>
+
+        Propagate user gesture tokens when script elements are loaded.
+        https://bugs.webkit.org/show_bug.cgi?id=174959
+
+        Reviewed by Eric Carlson.
+
+        Propagate user gesture tokens when script elements are loaded (i.e. between the time an
+        element is created and its onload handler is invoked).
+
+        * dom/ScriptElement.cpp:
+        (WebCore::ScriptElement::ScriptElement):
+        (WebCore::ScriptElement::dispatchLoadEventRespectingUserGestureIndicator):
+        (WebCore::ScriptElement::executeScriptAndDispatchEvent):
+        (WebCore::ScriptElement::executePendingScript):
+        * dom/ScriptElement.h:
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220048.
+
+        This revision caused multiple crashes in fast/images. See
+        webkit.org/b/174990
+
+        Reverted changeset:
+
+        "RenderImageResourceStyleImage::image() should return the
+        nullImage() if the image is not available"
+        https://bugs.webkit.org/show_bug.cgi?id=174874
+        http://trac.webkit.org/changeset/220048
+
+2017-07-31  Sam Weinig  <sam@webkit.org>
+
+        Remove unnecessary exceptions from storage code
+        https://bugs.webkit.org/show_bug.cgi?id=174572
+
+        Reviewed by Chris Dumez.
+
+        Remove checks for canAccessStorage() and the exceptions they would cause.
+        These were used for Storage in ephemeral sessions, but they are now supported.
+        Add checks for a null frame to functions that can mutate the storage, as the
+        frame is needed for that, and it retains our existing behavior for disconnected
+        frames. By removing these checks / exceptions, we can fully generate Storage.idl.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/js/JSBindingsAllInOne.cpp:
+        * bindings/js/JSStorageCustom.cpp: Removed.
+        Remove JSStorageCustom.cpp
+
+        * loader/EmptyClients.cpp:
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::sessionStorage):
+        (WebCore::DOMWindow::localStorage):
+        * storage/StorageArea.h:
+        Remove canAccessStorage.
+
+        * storage/Storage.cpp:
+        (WebCore::Storage::length):
+        (WebCore::Storage::key):
+        (WebCore::Storage::getItem):
+        (WebCore::Storage::setItem):
+        (WebCore::Storage::removeItem):
+        (WebCore::Storage::clear):
+        (WebCore::Storage::contains):
+        (WebCore::Storage::isSupportedPropertyName):
+        (WebCore::Storage::supportedPropertyNames):
+        * storage/Storage.h:
+        * storage/Storage.idl:
+        Remove canAccessStorage checks and corresponding exceptions. Add supportedPropertyNames
+        to allow the removal of the [CustomGetOwnPropertyNames].
+
+2017-07-31  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r220060.
+
+        This broke our internal builds. Contact reviewer of patch for
+        more information.
+
+        Reverted changeset:
+
+        "Merge WTFThreadData to Thread::current"
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+        http://trac.webkit.org/changeset/220060
+
+2017-07-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Merge WTFThreadData to Thread::current
+        https://bugs.webkit.org/show_bug.cgi?id=174716
+
+        Reviewed by Sam Weinig.
+
+        Use Thread::current() instead.
+
+        * fileapi/AsyncFileStream.cpp:
+        * platform/ThreadGlobalData.cpp:
+        (WebCore::ThreadGlobalData::ThreadGlobalData):
+        * platform/graphics/cocoa/WebCoreDecompressionSession.h:
+        * platform/ios/wak/WebCoreThread.mm:
+        (StartWebThread):
+        * workers/WorkerThread.cpp:
+        (WebCore::WorkerThread::workerThread):
+
+2017-07-31  Xabier Rodriguez Calvar  <calvaris@igalia.com>
+
+        Created a bool pretty printer at WTF for debugging purposes
+        https://bugs.webkit.org/show_bug.cgi?id=174893
+
+        Reviewed by Darin Adler.
+
+        Use WTF::boolPrettyPrinter in debugging messages.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::supportsKeySystem):
+        * platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerMSE::seek):
+
 2017-07-30  Zan Dobersek  <zdobersek@igalia.com>
 
         Unreviewed. Suppress the -Wextra compiler warning when building with GCC 6.3.0,

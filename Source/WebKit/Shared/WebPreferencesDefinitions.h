@@ -195,7 +195,6 @@
     macro(AllowsPictureInPictureMediaPlayback, allowsPictureInPictureMediaPlayback, Bool, bool, DEFAULT_ALLOWS_PICTURE_IN_PICTURE_MEDIA_PLAYBACK, "", "") \
     macro(AllowsAirPlayForMediaPlayback, allowsAirPlayForMediaPlayback, Bool, bool, true, "", "") \
     macro(MediaControlsScaleWithPageZoom, mediaControlsScaleWithPageZoom, Bool, bool, DEFAULT_MEDIA_CONTROLS_SCALE_WITH_PAGE_ZOOM, "", "") \
-    macro(MediaDocumentEntersFullscreenAutomatically, mediaDocumentEntersFullscreenAutomatically, Bool, bool, false, "", "") \
     macro(InspectorStartsAttached, inspectorStartsAttached, Bool, bool, true, "", "") \
     macro(ShowsToolTipOverTruncatedText, showsToolTipOverTruncatedText, Bool, bool, false, "", "") \
     macro(MockScrollbarsEnabled, mockScrollbarsEnabled, Bool, bool, false, "", "") \
@@ -359,6 +358,7 @@
 //   wider testing).
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
+    macro(BeaconAPIEnabled, beaconAPIEnabled, Bool, bool, false, "Beacon API", "Beacon API prototype") \
     macro(ConstantPropertiesEnabled, constantPropertiesEnabled, Bool, bool, true, "Constant Properties", "Enable CSS constant() properties") \
     macro(DisplayContentsEnabled, displayContentsEnabled, Bool, bool, false, "CSS display: contents", "Enable CSS display: contents support") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \

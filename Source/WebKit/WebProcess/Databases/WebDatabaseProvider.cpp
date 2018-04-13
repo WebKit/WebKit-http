@@ -27,7 +27,7 @@
 #include "WebDatabaseProvider.h"
 
 #include "WebProcess.h"
-#include "WebToDatabaseProcessConnection.h"
+#include "WebToStorageProcessConnection.h"
 #include <WebCore/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/NeverDestroyed.h>
@@ -79,8 +79,8 @@ WebCore::IDBClient::IDBConnectionToServer& WebDatabaseProvider::idbConnectionToS
         return result.iterator->value->connectionToServer();
     }
 
-    ASSERT(WebProcess::singleton().webToDatabaseProcessConnection());
-    return WebProcess::singleton().webToDatabaseProcessConnection()->idbConnectionToServerForSession(sessionID).coreConnectionToServer();
+    ASSERT(WebProcess::singleton().webToStorageProcessConnection());
+    return WebProcess::singleton().webToStorageProcessConnection()->idbConnectionToServerForSession(sessionID).coreConnectionToServer();
 }
 
 #endif

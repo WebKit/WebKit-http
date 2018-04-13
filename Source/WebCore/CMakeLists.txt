@@ -15,6 +15,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${CMAKE_BINARY_DIR}"
     "${WEBCORE_DIR}"
     "${WEBCORE_DIR}/Modules/airplay"
+    "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/applepay"
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
@@ -181,6 +182,8 @@ set(WebCore_IDL_INCLUDES
 
 set(WebCore_NON_SVG_IDL_FILES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
+
+    Modules/beacon/NavigatorBeacon.idl
 
     Modules/credentials/BasicCredential.idl
     Modules/credentials/CredentialCreationOptions.idl
@@ -877,6 +880,8 @@ endif ()
 set(WebCore_SOURCES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.cpp
 
+    Modules/beacon/NavigatorBeacon.cpp
+
     Modules/credentials/BasicCredential.cpp
     Modules/credentials/CredentialsContainer.cpp
     Modules/credentials/FederatedCredential.cpp
@@ -1229,7 +1234,6 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamPrivateConstructors.cpp
     bindings/js/JSReadableStreamSourceCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
-    bindings/js/JSStorageCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
     bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
