@@ -77,13 +77,20 @@ StackBounds StackBounds::currentThreadStackBoundsInternal()
 
 #elif OS(HAIKU)
 
-void StackBounds::initialize()
+StackBounds StackBounds::newThreadStackBounds(PlatformThreadHandle thread)
+{
+    thread_info threadInfo;
+    get_thread_info(get_pthread_thread_id(thread), &threadInfo);
+	return StackBounds { threadInfo.stack_end, threadInfo.stack_base };
+}
+
+StackBounds StackBounds::currentThreadStackBoundsInternal()
 {
     thread_info threadInfo;
     get_thread_info(find_thread(NULL), &threadInfo);
-    m_origin = threadInfo.stack_end;
-    m_bound = threadInfo.stack_base;
+	return StackBounds { threadInfo.stack_end, threadInfo.stack_base };
 }
+
 
 #elif OS(SOLARIS)
 

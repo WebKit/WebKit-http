@@ -33,7 +33,6 @@
 #include "DatabaseTracker.h"
 #include "FontPlatformData.h"
 #include "FrameNetworkingContextHaiku.h"
-#include "IconDatabase.h"
 #include "Image.h"
 #include "IntSize.h"
 #include "Settings.h"
@@ -50,9 +49,6 @@
 
 enum {
 	HANDLE_SET_PERSISTENT_STORAGE_PATH = 'hspp',
-	HANDLE_SET_ICON_DATABASE_PATH = 'hsip',
-	HANDLE_CLEAR_ICON_DATABASE = 'hcli',
-	HANDLE_SEND_ICON_FOR_URL = 'sifu',
 	HANDLE_SET_OFFLINE_STORAGE_PATH = 'hsop',
 	HANDLE_SET_OFFLINE_STORAGE_DEFAULT_QUOTA = 'hsoq',
 	HANDLE_SET_OFFLINE_WEB_APPLICATION_CACHE_PATH = 'hsap',
@@ -114,26 +110,6 @@ BWebSettings* BWebSettings::Default()
 void BWebSettings::SetPersistentStoragePath(const BString& path)
 {
 	_PostSetPath(Default(), HANDLE_SET_PERSISTENT_STORAGE_PATH, path);
-}
-
-void BWebSettings::SetIconDatabasePath(const BString& path)
-{
-	_PostSetPath(Default(), HANDLE_SET_ICON_DATABASE_PATH, path);
-}
-
-void BWebSettings::ClearIconDatabase()
-{
-	Default()->Looper()->PostMessage(HANDLE_CLEAR_ICON_DATABASE, Default());
-}
-
-void BWebSettings::SendIconForURL(const BString& url, const BMessage& reply,
-    const BMessenger& target)
-{
-	BMessage message(HANDLE_SEND_ICON_FOR_URL);
-	message.AddString("url", url.String());
-	message.AddMessage("reply", &reply);
-	message.AddMessenger("target", target);
-	Default()->Looper()->PostMessage(&message, Default());
 }
 
 void BWebSettings::SetOfflineStoragePath(const BString& path)
@@ -275,19 +251,6 @@ void BWebSettings::MessageReceived(BMessage* message)
 		    _HandleSetPersistentStoragePath(path);
 		break;
 	}
-	case HANDLE_SET_ICON_DATABASE_PATH: {
-		BString path;
-		if (message->FindString("path", &path) == B_OK)
-		    _HandleSetIconDatabasePath(path);
-		break;
-	}
-	case HANDLE_CLEAR_ICON_DATABASE:
-	    _HandleClearIconDatabase();
-		break;
-	case HANDLE_SEND_ICON_FOR_URL: {
-		_HandleSendIconForURL(message);
-        break;
-	}
 	case HANDLE_SET_OFFLINE_STORAGE_PATH: {
 		BString path;
 		if (message->FindString("path", &path) == B_OK)
@@ -352,7 +315,6 @@ void BWebSettings::_HandleSetPersistentStoragePath(const BString& path)
 
 	create_directory(storagePath.Path(), 0777);
 
-    _HandleSetIconDatabasePath(storagePath.Path());
     _HandleSetWebApplicationCachePath(storagePath.Path());
     BPath dataBasePath(storagePath);
     dataBasePath.Append("Databases");
@@ -365,50 +327,6 @@ void BWebSettings::_HandleSetPersistentStoragePath(const BString& path)
     Default()->fData->databasesEnabled = true;
     Default()->fData->offlineWebApplicationCacheEnabled = true;
     Default()->fData->apply();
-}
-
-void BWebSettings::_HandleSetIconDatabasePath(const BString& path)
-{
-    WebCore::IconDatabase::delayDatabaseCleanup();
-
-    if (path.Length()) {
-        WebCore::iconDatabase().setEnabled(true);
-        BEntry entry(path.String());
-        if (entry.IsDirectory())
-            WebCore::iconDatabase().open(path, WebCore::IconDatabase::defaultDatabaseFilename());
-    } else {
-        WebCore::iconDatabase().setEnabled(false);
-        WebCore::iconDatabase().close();
-    }
-}
-
-void BWebSettings::_HandleClearIconDatabase()
-{
-    if (WebCore::iconDatabase().isEnabled() && WebCore::iconDatabase().isOpen())
-        WebCore::iconDatabase().removeAllIcons();
-}
-
-void BWebSettings::_HandleSendIconForURL(BMessage* message)
-{
-	BString url;
-	BMessage reply;
-	BMessenger target;
-	if (message->FindString("url", &url) != B_OK
-	    || message->FindMessage("reply", &reply) != B_OK
-		|| message->FindMessenger("target", &target) != B_OK) {
-		return;
-	}
-
-	reply.RemoveName("url");
-	reply.RemoveName("icon");
-    reply.AddString("url", url);
-
-	WebCore::NativeImagePtr icon = WebCore::iconDatabase().synchronousNativeIconForPageURL(url, WebCore::IntSize(16, 16));
-    BMessage iconArchive;
-    if (icon && icon->Archive(&iconArchive) == B_OK)
-        reply.AddMessage("icon", &iconArchive);
-
-    target.SendMessage(&reply);
 }
 
 void BWebSettings::_HandleSetOfflineStoragePath(const BString& path)

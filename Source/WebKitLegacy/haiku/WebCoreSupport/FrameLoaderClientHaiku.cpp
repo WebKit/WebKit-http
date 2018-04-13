@@ -50,7 +50,6 @@
 #include "HTMLFrameOwnerElement.h"
 #include "HTTPParsers.h"
 #include "HTTPStatusCodes.h"
-#include "IconDatabase.h"
 #include "MainFrame.h"
 #include "MouseEvent.h"
 #include "MIMETypeRegistry.h"

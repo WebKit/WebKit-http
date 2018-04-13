@@ -47,15 +47,10 @@ namespace WebCore {
 static const int sliderThumbWidth = 15;
 static const int sliderThumbHeight = 17;
 
-Ref<RenderTheme> RenderThemeHaiku::create()
-{
-    return adoptRef(*new RenderThemeHaiku());
-}
-
 RenderTheme& RenderTheme::singleton()
 {
-    static NeverDestroyed<Ref<RenderTheme>> theme(RenderThemeHaiku::create());
-    return theme.get();
+	static NeverDestroyed<RenderThemeHaiku> theme;
+	return theme;
 }
 
 RenderThemeHaiku::RenderThemeHaiku()

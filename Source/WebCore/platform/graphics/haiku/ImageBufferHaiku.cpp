@@ -170,7 +170,7 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext,
         m_data.m_image->drawPattern(destContext, destRect, srcRect, patternTransform, phase, size, op);
 }
 
-void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
+void ImageBuffer::platformTransformColorSpace(const std::array<uint8_t, 256>& lookUpTable)
 {
     uint8* rowData = reinterpret_cast<uint8*>(m_data.m_bitmap->Bits());
     unsigned bytesPerRow = m_data.m_bitmap->BytesPerRow();

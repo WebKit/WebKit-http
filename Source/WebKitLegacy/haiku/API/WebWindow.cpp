@@ -183,13 +183,6 @@ void BWebWindow::MessageReceived(BMessage* message)
             TitleChanged(title, _WebViewForMessage(message));
         break;
     }
-    case ICON_RECEIVED: {
-    	// The icon is now in the database.
-        BString url;
-        if (message->FindString("url", &url) == B_OK)
-            _FetchIconForURL(url, *message);
-        break;
-    }
     case ICON_FOR_URL_RECEIVED: {
         BMessage iconArchive;
         if (message->FindMessage("icon", &iconArchive) == B_OK) {
@@ -479,14 +472,6 @@ bool BWebWindow::AuthenticationChallenge(BString /*message*/,
 }
 
 // #pragma mark - private
-
-void BWebWindow::_FetchIconForURL(const BString& url, const BMessage& message)
-{
-	BMessage reply(message);
-	reply.what = ICON_FOR_URL_RECEIVED;
-	BMessenger target(this);
-	BWebSettings::SendIconForURL(url, reply, target);
-}
 
 BWebView* BWebWindow::_WebViewForMessage(const BMessage* message) const
 {
