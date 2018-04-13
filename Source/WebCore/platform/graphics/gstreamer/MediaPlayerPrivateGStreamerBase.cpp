@@ -437,7 +437,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 return false;
 
             GST_INFO("waiting for a CDM instance");
-            m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
+            m_protectionCondition.waitFor(m_protectionMutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [this] {
                 return this->m_cdmInstance;
             });
         }
