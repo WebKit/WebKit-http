@@ -36,7 +36,6 @@
 #include "InlineTextBoxStyle.h"
 #include "Page.h"
 #include "PaintInfo.h"
-#include "RenderedDocumentMarker.h"
 #include "RenderBlock.h"
 #include "RenderCombineText.h"
 #include "RenderLineBreak.h"
@@ -44,13 +43,14 @@
 #include "RenderRubyText.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "RenderedDocumentMarker.h"
 #include "Text.h"
 #include "TextDecorationPainter.h"
 #include "TextPaintStyle.h"
 #include "TextPainter.h"
-#include "TextStream.h"
 #include <stdio.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -1007,7 +1007,7 @@ void InlineTextBox::paintCompositionUnderline(GraphicsContext& context, const Fl
     start += 1;
     width -= 2;
 
-    context.setStrokeColor(underline.color);
+    context.setStrokeColor(underline.compositionUnderlineColor == CompositionUnderlineColor::TextColor ? renderer().style().visitedDependentColor(CSSPropertyWebkitTextFillColor) : underline.color);
     context.setStrokeThickness(lineThickness);
     context.drawLineForText(FloatPoint(boxOrigin.x() + start, boxOrigin.y() + logicalHeight() - lineThickness), width, renderer().document().printing());
 }

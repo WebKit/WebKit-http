@@ -92,9 +92,9 @@
 #include "StyleResolver.h"
 #include "StyleScope.h"
 #include "TextResourceDecoder.h"
-#include "TextStream.h"
 #include "TiledBacking.h"
 #include "WheelEventTestTrigger.h"
+#include <wtf/text/TextStream.h>
 
 #include <wtf/CurrentTime.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -2309,7 +2309,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
         // FIXME: use pixel snapping instead of enclosing when ScrollView has finished transitioning from IntRect to Float/LayoutRect.
         IntRect updateRect = enclosingIntRect(layer->repaintRectIncludingNonCompositingDescendants());
         updateRect = contentsToRootView(updateRect);
-        if (!isCompositedContentLayer && clipsRepaints())
+        if (!isCompositedContentLayer)
             updateRect.intersect(rectToScroll);
         if (!updateRect.isEmpty())
             regionToUpdate.unite(updateRect);
@@ -2329,8 +2329,7 @@ bool FrameView::scrollContentsFastPath(const IntSize& scrollDelta, const IntRect
             renderView()->layer()->setBackingNeedsRepaintInRect(updateRect);
             continue;
         }
-        if (clipsRepaints())
-            updateRect.intersect(rectToScroll);
+        updateRect.intersect(rectToScroll);
         frame().page()->chrome().invalidateContentsAndRootView(updateRect);
     }
 
@@ -4949,6 +4948,12 @@ FloatPoint FrameView::documentToClientPoint(FloatPoint p) const
 {
     p.move(documentToClientOffset());
     return p;
+}
+
+FloatPoint FrameView::clientToDocumentPoint(FloatPoint point) const
+{
+    point.move(-documentToClientOffset());
+    return point;
 }
 
 FloatRect FrameView::layoutViewportToAbsoluteRect(FloatRect rect) const

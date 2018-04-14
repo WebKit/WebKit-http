@@ -31,8 +31,6 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
 
         this.contentBrowser = contentBrowser;
 
-        this.filterBar.placeholder = WI.UIString("Filter Resource List");
-
         this._navigationBar = new WI.NavigationBar;
         this.addSubview(this._navigationBar);
 
@@ -201,6 +199,13 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
 
         if (WI.frameResourceManager.mainFrame)
             this._mainFrameMainResourceDidChange(WI.frameResourceManager.mainFrame);
+
+        for (let script of WI.debuggerManager.knownNonResourceScripts) {
+            this._addScript(script);
+
+            if (script.sourceMaps.length && WI.debuggableType === WI.DebuggableType.JavaScript)
+                this.contentTreeOutline.disclosureButtons = true;
+        }
     }
 
     hasCustomFilters()
@@ -231,7 +236,7 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
             if (treeElement instanceof WI.ScriptTreeElement)
                 return selectedScopeBarItem[WI.ResourceSidebarPanel.ResourceTypeSymbol] === WI.Resource.Type.Script;
 
-            if (treeElement instanceof WI.CanvasTreeElement)
+            if (treeElement instanceof WI.CanvasTreeElement || treeElement instanceof WI.ShaderProgramTreeElement)
                 return selectedScopeBarItem[WI.ResourceSidebarPanel.ResourceTypeSymbol] === WI.Canvas.ResourceSidebarType;
 
             if (treeElement instanceof WI.CSSStyleSheetTreeElement)
@@ -298,8 +303,11 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
 
     _scriptWasAdded(event)
     {
-        var script = event.data.script;
+        this._addScript(event.data.script);
+    }
 
+    _addScript(script)
+    {
         // We don't add scripts without URLs here. Those scripts can quickly clutter the interface and
         // are usually more transient. They will get added if/when they need to be shown in a content view.
         if (!script.url && !script.sourceURL)
@@ -458,7 +466,8 @@ WI.ResourceSidebarPanel = class ResourceSidebarPanel extends WI.NavigationSideba
             || treeElement instanceof WI.ScriptTreeElement
             || treeElement instanceof WI.CSSStyleSheetTreeElement
             || treeElement instanceof WI.ContentFlowTreeElement
-            || treeElement instanceof WI.CanvasTreeElement) {
+            || treeElement instanceof WI.CanvasTreeElement
+            || treeElement instanceof WI.ShaderProgramTreeElement) {
             const cookie = null;
             const options = {
                 ignoreNetworkTab: true,

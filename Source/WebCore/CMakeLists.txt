@@ -17,6 +17,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/airplay"
     "${WEBCORE_DIR}/Modules/beacon"
     "${WEBCORE_DIR}/Modules/applepay"
+    "${WEBCORE_DIR}/Modules/cache"
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/encryptedmedia/legacy"
@@ -33,7 +34,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/navigatorcontentutils"
     "${WEBCORE_DIR}/Modules/notifications"
     "${WEBCORE_DIR}/Modules/plugins"
-    "${WEBCORE_DIR}/Modules/proximity"
     "${WEBCORE_DIR}/Modules/quota"
     "${WEBCORE_DIR}/Modules/speech"
     "${WEBCORE_DIR}/Modules/streams"
@@ -82,8 +82,6 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/crypto"
     "${WEBCORE_DIR}/platform/encryptedmedia"
     "${WEBCORE_DIR}/platform/gamepad"
-    "${WEBCORE_DIR}/platform/gamepad/deprecated"
-    "${WEBCORE_DIR}/platform/gamepad/linux"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm"
     "${WEBCORE_DIR}/platform/graphics/cpu/arm/filters"
     "${WEBCORE_DIR}/platform/graphics/displaylists"
@@ -115,6 +113,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/svg/properties"
     "${WEBCORE_DIR}/websockets"
     "${WEBCORE_DIR}/workers"
+    "${WEBCORE_DIR}/workers/service"
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
@@ -155,6 +154,7 @@ set(WebCore_IDL_INCLUDES
     xml
 
     Modules/airplay
+    Modules/cache
     Modules/credentials
     Modules/encryptedmedia/legacy
     Modules/fetch
@@ -163,7 +163,6 @@ set(WebCore_IDL_INCLUDES
     Modules/mediasession
     Modules/mediastream
     Modules/notifications
-    Modules/proximity
     Modules/quota
     Modules/speech
     Modules/streams
@@ -184,6 +183,12 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/airplay/WebKitPlaybackTargetAvailabilityEvent.idl
 
     Modules/beacon/NavigatorBeacon.idl
+
+    Modules/cache/Cache.idl
+    Modules/cache/CacheQueryOptions.idl
+    Modules/cache/CacheStorage.idl
+    Modules/cache/DOMWindowCaches.idl
+    Modules/cache/WorkerGlobalScopeCaches.idl
 
     Modules/credentials/BasicCredential.idl
     Modules/credentials/CredentialCreationOptions.idl
@@ -296,8 +301,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/notifications/NotificationPermission.idl
     Modules/notifications/NotificationPermissionCallback.idl
 
-    Modules/proximity/DeviceProximityEvent.idl
-
     Modules/speech/DOMWindowSpeechSynthesis.idl
     Modules/speech/SpeechSynthesis.idl
     Modules/speech/SpeechSynthesisEvent.idl
@@ -376,6 +379,13 @@ set(WebCore_NON_SVG_IDL_FILES
     crypto/RsaOtherPrimesInfo.idl
     crypto/SubtleCrypto.idl
     crypto/WebKitSubtleCrypto.idl
+
+    crypto/keys/CryptoAesKeyAlgorithm.idl
+    crypto/keys/CryptoEcKeyAlgorithm.idl
+    crypto/keys/CryptoHmacKeyAlgorithm.idl
+    crypto/keys/CryptoKeyAlgorithm.idl
+    crypto/keys/CryptoRsaHashedKeyAlgorithm.idl
+    crypto/keys/CryptoRsaKeyAlgorithm.idl
 
     crypto/parameters/AesCbcCfbParams.idl
     crypto/parameters/AesCtrParams.idl
@@ -484,6 +494,7 @@ set(WebCore_NON_SVG_IDL_FILES
     dom/MessagePort.idl
     dom/MouseEvent.idl
     dom/MouseEventInit.idl
+    dom/MutationCallback.idl
     dom/MutationEvent.idl
     dom/MutationObserver.idl
     dom/MutationRecord.idl
@@ -678,6 +689,7 @@ set(WebCore_NON_SVG_IDL_FILES
     page/NavigatorID.idl
     page/NavigatorLanguage.idl
     page/NavigatorOnLine.idl
+    page/NavigatorServiceWorker.idl
     page/Performance.idl
     page/PerformanceEntry.idl
     page/PerformanceMark.idl
@@ -708,6 +720,13 @@ set(WebCore_NON_SVG_IDL_FILES
     workers/Worker.idl
     workers/WorkerGlobalScope.idl
     workers/WorkerLocation.idl
+    workers/WorkerType.idl
+
+    workers/service/ServiceWorker.idl
+    workers/service/ServiceWorkerContainer.idl
+    workers/service/ServiceWorkerGlobalScope.idl
+    workers/service/ServiceWorkerRegistration.idl
+    workers/service/ServiceWorkerUpdateViaCache.idl
 
     xml/DOMParser.idl
     xml/XMLHttpRequest.idl
@@ -882,6 +901,12 @@ set(WebCore_SOURCES
 
     Modules/beacon/NavigatorBeacon.cpp
 
+    Modules/cache/Cache.cpp
+    Modules/cache/CacheStorage.cpp
+    Modules/cache/CacheStorageConnection.cpp
+    Modules/cache/DOMWindowCaches.cpp
+    Modules/cache/WorkerGlobalScopeCaches.cpp
+
     Modules/credentials/BasicCredential.cpp
     Modules/credentials/CredentialsContainer.cpp
     Modules/credentials/FederatedCredential.cpp
@@ -1018,9 +1043,6 @@ set(WebCore_SOURCES
 
     Modules/notifications/Notification.cpp
     Modules/notifications/NotificationController.cpp
-
-    Modules/proximity/DeviceProximityController.cpp
-    Modules/proximity/DeviceProximityEvent.cpp
 
     Modules/speech/DOMWindowSpeechSynthesis.cpp
     Modules/speech/SpeechSynthesis.cpp
@@ -1167,13 +1189,9 @@ set(WebCore_SOURCES
     bindings/js/JSDOMConvertWebGL.cpp
     bindings/js/JSDOMIterator.cpp
     bindings/js/JSDeprecatedCSSOMValueCustom.cpp
-    bindings/js/JSFontFaceCustom.cpp
-    bindings/js/JSFontFaceSetCustom.cpp
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
-    bindings/js/JSCryptoAlgorithmBuilder.cpp
     bindings/js/JSCryptoAlgorithmDictionary.cpp
-    bindings/js/JSCryptoKeyCustom.cpp
     bindings/js/JSCryptoKeySerializationJWK.cpp
     bindings/js/JSCryptoOperationData.cpp
     bindings/js/JSCustomElementInterface.cpp
@@ -1218,12 +1236,10 @@ set(WebCore_SOURCES
     bindings/js/JSLazyEventListener.cpp
     bindings/js/JSLocationCustom.cpp
     bindings/js/JSMainThreadExecState.cpp
-    bindings/js/JSMediaKeySessionCustom.cpp
     bindings/js/JSMediaStreamTrackCustom.cpp
     bindings/js/JSMessageChannelCustom.cpp
     bindings/js/JSMessageEventCustom.cpp
     bindings/js/JSMessagePortCustom.cpp
-    bindings/js/JSMutationCallback.cpp
     bindings/js/JSMutationObserverCustom.cpp
     bindings/js/JSNodeCustom.cpp
     bindings/js/JSNodeIteratorCustom.cpp
@@ -1246,7 +1262,6 @@ set(WebCore_SOURCES
     bindings/js/JSVideoTrackListCustom.cpp
     bindings/js/JSWebGL2RenderingContextCustom.cpp
     bindings/js/JSWebGLRenderingContextCustom.cpp
-    bindings/js/JSWebGPUCommandBufferCustom.cpp
     bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
     bindings/js/JSWebGPURenderingContextCustom.cpp
     bindings/js/JSWebKitSubtleCryptoCustom.cpp
@@ -1260,7 +1275,6 @@ set(WebCore_SOURCES
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
     bindings/js/ScriptController.cpp
-    bindings/js/ScriptGlobalObject.cpp
     bindings/js/ScriptModuleLoader.cpp
     bindings/js/ScriptState.cpp
     bindings/js/StructuredClone.cpp
@@ -1514,6 +1528,7 @@ set(WebCore_SOURCES
     dom/DOMStringList.cpp
     dom/DataTransfer.cpp
     dom/DataTransferItem.cpp
+    dom/DataTransferItemList.cpp
     dom/DatasetDOMStringMap.cpp
     dom/DecodedDataDocumentParser.cpp
     dom/DeviceMotionController.cpp
@@ -2063,6 +2078,7 @@ set(WebCore_SOURCES
     loader/cache/CachedSVGFont.cpp
     loader/cache/CachedScript.cpp
     loader/cache/CachedXSLStyleSheet.cpp
+    loader/cache/KeepaliveRequestTracker.cpp
     loader/cache/MemoryCache.cpp
 
     loader/icon/IconLoader.cpp
@@ -2220,6 +2236,7 @@ set(WebCore_SOURCES
     platform/FileSystem.cpp
     platform/GenericTaskQueue.cpp
     platform/Language.cpp
+    platform/LayoutUnit.cpp
     platform/Length.cpp
     platform/LengthBox.cpp
     platform/LengthPoint.cpp
@@ -2247,9 +2264,7 @@ set(WebCore_SOURCES
     platform/ScrollbarThemeComposite.cpp
     platform/SharedBuffer.cpp
     platform/SharedBufferChunkReader.cpp
-    platform/SleepDisabler.cpp
     platform/StaticPasteboard.cpp
-    platform/SystemSleepListener.cpp
     platform/Theme.cpp
     platform/ThreadGlobalData.cpp
     platform/ThreadTimers.cpp
@@ -2302,6 +2317,8 @@ set(WebCore_SOURCES
     platform/audio/UpSampler.cpp
     platform/audio/VectorMath.cpp
     platform/audio/ZeroPole.cpp
+
+    platform/encryptedmedia/CDMFactory.cpp
 
     platform/graphics/BitmapImage.cpp
     platform/graphics/Color.cpp
@@ -2522,7 +2539,6 @@ set(WebCore_SOURCES
     platform/text/TextEncoding.cpp
     platform/text/TextEncodingDetectorICU.cpp
     platform/text/TextEncodingRegistry.cpp
-    platform/text/TextStream.cpp
 
     plugins/DOMMimeType.cpp
     plugins/DOMMimeTypeArray.cpp
@@ -2787,6 +2803,7 @@ set(WebCore_SOURCES
     style/InlineTextBoxStyle.cpp
     style/RenderTreePosition.cpp
     style/RenderTreeUpdater.cpp
+    style/RenderTreeUpdaterFirstLetter.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleInvalidator.cpp
@@ -2979,6 +2996,14 @@ set(WebCore_SOURCES
     workers/WorkerScriptLoader.cpp
     workers/WorkerThread.cpp
 
+    workers/service/ServiceWorker.cpp
+    workers/service/ServiceWorkerContainer.cpp
+    workers/service/ServiceWorkerGlobalScope.cpp
+    workers/service/ServiceWorkerJob.cpp
+    workers/service/ServiceWorkerProvider.cpp
+    workers/service/ServiceWorkerRegistration.cpp
+    workers/service/ServiceWorkerRegistrationParameters.cpp
+
     xml/DOMParser.cpp
     xml/NativeXPathNSResolver.cpp
     xml/XMLErrors.cpp
@@ -3039,26 +3064,6 @@ if (ENABLE_GAMEPAD)
 
         platform/gamepad/EmptyGamepadProvider.cpp
         platform/gamepad/GamepadProvider.cpp
-    )
-elseif (ENABLE_GAMEPAD_DEPRECATED)
-    list(APPEND WebCore_INCLUDE_DIRECTORIES
-        "${WEBCORE_DIR}/Modules/gamepad/deprecated"
-    )
-
-    list(APPEND WebCore_IDL_INCLUDES
-        Modules/gamepad/deprecated
-    )
-
-    list(APPEND WebCore_NON_SVG_IDL_FILES
-        Modules/gamepad/deprecated/Gamepad.idl
-        Modules/gamepad/deprecated/GamepadList.idl
-        Modules/gamepad/deprecated/NavigatorGamepad.idl
-    )
-
-    list(APPEND WebCore_SOURCES
-        Modules/gamepad/deprecated/Gamepad.cpp
-        Modules/gamepad/deprecated/GamepadList.cpp
-        Modules/gamepad/deprecated/NavigatorGamepad.cpp
     )
 endif ()
 
@@ -3243,6 +3248,8 @@ if (ENABLE_WEBGL)
         html/canvas/WebGLVertexArrayObject.cpp
         html/canvas/WebGLVertexArrayObjectBase.cpp
         html/canvas/WebGLVertexArrayObjectOES.cpp
+
+        inspector/InspectorShaderProgram.cpp
     )
     list(APPEND WebCore_IDL_FILES
         html/canvas/ANGLEInstancedArrays.idl
@@ -3366,34 +3373,6 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
     # For platforms that want to use system-provided OpenGL (ES) / EGL headers,
     # these include directories, libraries or definitions need to be
     # added before the ANGLE directories.
-    if (USE_OPENGL AND NOT USE_LIBEPOXY)
-        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGL_INCLUDE_DIRS}
-        )
-        list(APPEND WebCore_LIBRARIES
-            ${OPENGL_LIBRARIES}
-        )
-        add_definitions(${OPENGL_DEFINITIONS})
-    elseif (USE_OPENGL_ES_2 AND NOT USE_LIBEPOXY)
-        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-            ${OPENGLES2_INCLUDE_DIRS}
-        )
-        list(APPEND WebCore_LIBRARIES
-            ${OPENGLES2_LIBRARIES}
-        )
-        add_definitions(${OPENGLES2_DEFINITIONS})
-    endif ()
-
-    if (USE_EGL AND NOT USE_LIBEPOXY)
-        list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-            ${EGL_INCLUDE_DIRS}
-        )
-        list(APPEND WebCore_LIBRARIES
-            ${EGL_LIBRARIES}
-        )
-        add_definitions(${EGL_DEFINITIONS})
-    endif ()
-
     if (USE_LIBEPOXY)
         list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
             ${LIBEPOXY_INCLUDE_DIRS}
@@ -3401,6 +3380,34 @@ if (ENABLE_GRAPHICS_CONTEXT_3D)
         list(APPEND WebCore_LIBRARIES
             ${LIBEPOXY_LIBRARIES}
         )
+    else ()
+        if (USE_OPENGL)
+            list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+                ${OPENGL_INCLUDE_DIRS}
+            )
+            list(APPEND WebCore_LIBRARIES
+                ${OPENGL_LIBRARIES}
+            )
+            add_definitions(${OPENGL_DEFINITIONS})
+        elseif (USE_OPENGL_ES_2)
+            list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+                ${OPENGLES2_INCLUDE_DIRS}
+            )
+            list(APPEND WebCore_LIBRARIES
+                ${OPENGLES2_LIBRARIES}
+            )
+            add_definitions(${OPENGLES2_DEFINITIONS})
+        endif ()
+
+        if (USE_EGL)
+            list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
+                ${EGL_INCLUDE_DIRS}
+            )
+            list(APPEND WebCore_LIBRARIES
+                ${EGL_LIBRARIES}
+            )
+            add_definitions(${EGL_DEFINITIONS})
+        endif ()
     endif ()
 
     list(APPEND WebCore_INCLUDE_DIRECTORIES
@@ -3623,6 +3630,7 @@ set(SUPPLEMENTAL_DEPENDENCY_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/supplemental_dep
 set(WINDOW_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DOMWindowConstructors.idl)
 set(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/WorkerGlobalScopeConstructors.idl)
 set(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/DedicatedWorkerGlobalScopeConstructors.idl)
+set(SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE ${DERIVED_SOURCES_WEBCORE_DIR}/ServiceWorkerGlobalScopeConstructors.idl)
 
 WEBKIT_FRAMEWORK_DECLARE(WebCore)
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
@@ -3817,7 +3825,8 @@ GENERATE_BINDINGS(WebCoreBindings
     PP_EXTRA_ARGS
         --windowConstructorsFile ${WINDOW_CONSTRUCTORS_FILE}
         --workerGlobalScopeConstructorsFile ${WORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
-        --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
+        --dedicatedWorkerGlobalScopeConstructorsFile ${DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE}
+        --serviceWorkerGlobalScopeConstructorsFile ${SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE})
 
 GENERATE_BINDINGS(WebCoreTestSupportBindings
     OUTPUT_SOURCE WebCoreTestSupport_SOURCES
@@ -4009,7 +4018,7 @@ endif ()
 # See https://bugs.webkit.org/show_bug.cgi?id=146440
 string(TOLOWER ${CMAKE_HOST_SYSTEM_PROCESSOR} LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR)
 if (CMAKE_COMPILER_IS_GNUCXX AND "${LOWERCASE_CMAKE_HOST_SYSTEM_PROCESSOR}" MATCHES "(i[3-6]86|x86)$")
-    WEBKIT_ADD_TARGET_PROPERTIES(WebCore COMPILE_FLAGS "-fno-tree-sra")
+    WEBKIT_ADD_TARGET_CXX_FLAGS(WebCore -fno-tree-sra)
 endif ()
 
 if (MSVC)
@@ -4031,11 +4040,6 @@ endif ()
 if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     add_library(ANGLESupport STATIC ${ANGLESupport_SOURCES})
 
-    # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
-    if (COMPILER_IS_CLANG)
-        WEBKIT_ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
-    endif ()
-
     # Enable the ESSL and GLSL translators.
     set_property(TARGET ANGLESupport
         PROPERTY COMPILE_DEFINITIONS
@@ -4051,7 +4055,15 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
         "${THIRDPARTY_DIR}/ANGLE/src/common/third_party/numerics"
     )
     list(APPEND WebCore_LIBRARIES ANGLESupport)
-    WEBKIT_SET_EXTRA_COMPILER_FLAGS(ANGLESupport IGNORECXX_WARNINGS)
+
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(ANGLESupport -Wno-implicit-fallthrough
+                                                 -Wno-inconsistent-missing-override
+                                                 -Wno-null-conversion
+                                                 -Wno-suggest-attribute=format
+                                                 -Wno-unused-function
+                                                 -Wno-unused-parameter)
+    endif ()
 endif ()
 
 target_link_libraries(WebCore ${WebCore_LIBRARIES})

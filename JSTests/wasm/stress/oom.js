@@ -1,5 +1,5 @@
 // We don't need N versions of this simultaneously filling up RAM.
-//@ runDefault
+//@ skip
 
 const verbose = false;
 

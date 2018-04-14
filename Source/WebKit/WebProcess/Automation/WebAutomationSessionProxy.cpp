@@ -41,11 +41,16 @@
 #include <JavaScriptCore/JSStringRefPrivate.h>
 #include <JavaScriptCore/OpaqueJSString.h>
 #include <WebCore/CookieJar.h>
+#include <WebCore/DOMRect.h>
+#include <WebCore/DOMRectList.h>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameTree.h>
 #include <WebCore/FrameView.h>
 #include <WebCore/HTMLFrameElementBase.h>
+#include <WebCore/HTMLOptGroupElement.h>
+#include <WebCore/HTMLOptionElement.h>
+#include <WebCore/HTMLSelectElement.h>
 #include <WebCore/JSElement.h>
 #include <WebCore/MainFrame.h>
 #include <wtf/UUID.h>
@@ -470,12 +475,69 @@ void WebAutomationSessionProxy::focusFrame(uint64_t pageID, uint64_t frameID)
     coreDOMWindow->focus(true);
 }
 
+static std::optional<WebCore::FloatPoint> elementInViewClientCenterPoint(WebCore::Element& element, bool& isObscured)
+{
+    // §11.1 Element Interactability.
+    // https://www.w3.org/TR/webdriver/#dfn-in-view-center-point
+    auto* clientRect = element.getClientRects()->item(0);
+    if (!clientRect)
+        return std::nullopt;
+
+    auto clientCenterPoint = WebCore::FloatPoint::narrowPrecision(0.5 * (clientRect->left() + clientRect->right()), 0.5 * (clientRect->top() + clientRect->bottom()));
+    auto elementList = element.treeScope().elementsFromPoint(clientCenterPoint.x(), clientCenterPoint.y());
+    if (elementList.isEmpty()) {
+        // An element is obscured if the pointer-interactable paint tree at its center point is empty,
+        // or the first element in this tree is not an inclusive descendant of itself.
+        // https://w3c.github.io/webdriver/webdriver-spec.html#dfn-obscured
+        isObscured = true;
+        return clientCenterPoint;
+    }
+
+    auto index = elementList.findMatching([&element] (auto& item) { return item.get() == &element; });
+    if (index == notFound)
+        return std::nullopt;
+
+    if (index) {
+        // Element is not the first one in the list.
+        auto firstElement = elementList[0];
+        isObscured = !firstElement->isDescendantOf(element);
+    }
+
+    return clientCenterPoint;
+}
+
+static WebCore::Element* containerElementForElement(WebCore::Element& element)
+{
+    // §13. Element State.
+    // https://w3c.github.io/webdriver/webdriver-spec.html#dfn-container.
+    if (is<WebCore::HTMLOptionElement>(element)) {
+        auto& optionElement = downcast<WebCore::HTMLOptionElement>(element);
+#if ENABLE(DATALIST_ELEMENT)
+        if (auto* parentElement = optionElement.ownerDataListElement())
+            return parentElement;
+#endif
+        if (auto* parentElement = optionElement.ownerSelectElement())
+            return parentElement;
+
+        return nullptr;
+    }
+
+    if (is<WebCore::HTMLOptGroupElement>(element)) {
+        if (auto* parentElement = downcast<WebCore::HTMLOptGroupElement>(element).ownerSelectElement())
+            return parentElement;
+
+        return nullptr;
+    }
+
+    return &element;
+}
+
 void WebAutomationSessionProxy::computeElementLayout(uint64_t pageID, uint64_t frameID, String nodeHandle, bool scrollIntoViewIfNeeded, bool useViewportCoordinates, uint64_t callbackID)
 {
     WebPage* page = WebProcess::singleton().webPage(pageID);
     if (!page) {
         String windowNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::WindowNotFound);
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, WebCore::IntRect(), windowNotFoundErrorType), 0);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, { }, std::nullopt, false, windowNotFoundErrorType), 0);
         return;
     }
 
@@ -483,40 +545,92 @@ void WebAutomationSessionProxy::computeElementLayout(uint64_t pageID, uint64_t f
     String nodeNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
 
     WebFrame* frame = frameID ? WebProcess::singleton().webFrame(frameID) : page->mainWebFrame();
-    if (!frame) {
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, WebCore::IntRect(), frameNotFoundErrorType), 0);
+    if (!frame || !frame->coreFrame() || !frame->coreFrame()->view()) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, { }, std::nullopt, false, frameNotFoundErrorType), 0);
         return;
     }
 
     WebCore::Element* coreElement = elementForNodeHandle(*frame, nodeHandle);
     if (!coreElement) {
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, WebCore::IntRect(), nodeNotFoundErrorType), 0);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, { }, std::nullopt, false, nodeNotFoundErrorType), 0);
         return;
     }
 
-    if (scrollIntoViewIfNeeded)
-        coreElement->scrollIntoViewIfNeeded(false);
+    auto* containerElement = containerElementForElement(*coreElement);
+    if (scrollIntoViewIfNeeded && containerElement) {
+        // §14.1 Element Click. Step 4. Scroll into view the element’s container.
+        // https://w3c.github.io/webdriver/webdriver-spec.html#element-click
+        containerElement->scrollIntoViewIfNeeded(false);
+        // FIXME: Wait in an implementation-specific way up to the session implicit wait timeout for the element to become in view.
+    }
 
     WebCore::IntRect rect = coreElement->clientRect();
 
-    WebCore::Frame* coreFrame = frame->coreFrame();
-    if (!coreFrame) {
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, WebCore::IntRect(), frameNotFoundErrorType), 0);
-        return;
-    }
-
-    WebCore::FrameView *coreFrameView = coreFrame->view();
-    if (!coreFrameView) {
-        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, WebCore::IntRect(), frameNotFoundErrorType), 0);
-        return;
-    }
-
+    auto* coreFrameView = frame->coreFrame()->view();
     if (useViewportCoordinates)
         rect.moveBy(WebCore::IntPoint(0, -coreFrameView->topContentInset()));
     else
         rect = coreFrameView->rootViewToContents(rect);
 
-    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, rect, String()), 0);
+    bool isObscured = false;
+    std::optional<WebCore::IntPoint> inViewCenter;
+    if (containerElement) {
+        if (auto clientCenterPoint = elementInViewClientCenterPoint(*containerElement, isObscured)) {
+            inViewCenter = WebCore::IntPoint(coreFrameView->clientToDocumentPoint(clientCenterPoint.value()));
+            if (useViewportCoordinates)
+                inViewCenter = coreFrameView->contentsToRootView(inViewCenter.value());
+        }
+    }
+
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidComputeElementLayout(callbackID, rect, inViewCenter, isObscured, String()), 0);
+}
+
+void WebAutomationSessionProxy::selectOptionElement(uint64_t pageID, uint64_t frameID, String nodeHandle, uint64_t callbackID)
+{
+    WebPage* page = WebProcess::singleton().webPage(pageID);
+    if (!page) {
+        String windowNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::WindowNotFound);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, windowNotFoundErrorType), 0);
+        return;
+    }
+
+    WebFrame* frame = frameID ? WebProcess::singleton().webFrame(frameID) : page->mainWebFrame();
+    if (!frame || !frame->coreFrame() || !frame->coreFrame()->view()) {
+        String frameNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::FrameNotFound);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, frameNotFoundErrorType), 0);
+        return;
+    }
+
+    WebCore::Element* coreElement = elementForNodeHandle(*frame, nodeHandle);
+    if (!coreElement || (!is<WebCore::HTMLOptionElement>(coreElement) && !is<WebCore::HTMLOptGroupElement>(coreElement))) {
+        String nodeNotFoundErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::NodeNotFound);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, nodeNotFoundErrorType), 0);
+        return;
+    }
+
+    String elementNotInteractableErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::ElementNotInteractable);
+    if (is<WebCore::HTMLOptGroupElement>(coreElement)) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, elementNotInteractableErrorType), 0);
+        return;
+    }
+
+    auto& optionElement = downcast<WebCore::HTMLOptionElement>(*coreElement);
+    auto* selectElement = optionElement.ownerSelectElement();
+    if (!selectElement) {
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, elementNotInteractableErrorType), 0);
+        return;
+    }
+
+    if (selectElement->isDisabledFormControl() || optionElement.isDisabledFormControl()) {
+        String elementNotSelectableErrorType = Inspector::Protocol::AutomationHelpers::getEnumConstantValue(Inspector::Protocol::Automation::ErrorMessage::ElementNotSelectable);
+        WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, elementNotSelectableErrorType), 0);
+        return;
+    }
+
+    // FIXME: According to the spec we should fire mouse over, move and down events, then input and change, and finally mouse up and click.
+    // optionSelectedByUser() will fire input and change events if needed, but all other events should be fired manually here.
+    selectElement->optionSelectedByUser(optionElement.index(), true, selectElement->multiple());
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebAutomationSession::DidSelectOptionElement(callbackID, { }), 0);
 }
 
 void WebAutomationSessionProxy::takeScreenshot(uint64_t pageID, uint64_t callbackID)

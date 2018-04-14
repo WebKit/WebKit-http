@@ -4133,7 +4133,7 @@ void SpeculativeJIT::compile(Node* node)
             GPRTemporary scratch(this);
 
             // Tell GC mark phase how much of the scratch buffer is active during call.
-            m_jit.move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), scratch.gpr());
+            m_jit.move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), scratch.gpr());
             m_jit.storePtr(TrustedImmPtr(scratchSize), scratch.gpr());
         }
 
@@ -4147,7 +4147,7 @@ void SpeculativeJIT::compile(Node* node)
         if (scratchSize) {
             GPRTemporary scratch(this);
 
-            m_jit.move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), scratch.gpr());
+            m_jit.move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), scratch.gpr());
             m_jit.storePtr(TrustedImmPtr(0), scratch.gpr());
         }
 
@@ -5425,7 +5425,12 @@ void SpeculativeJIT::compile(Node* node)
         compileCreateActivation(node);
         break;
     }
-        
+    
+    case PushWithScope: {
+        compilePushWithScope(node);
+        break;
+    }
+
     case CreateDirectArguments: {
         compileCreateDirectArguments(node);
         break;
@@ -5786,6 +5791,7 @@ void SpeculativeJIT::compile(Node* node)
         // Otherwise it's out of line
         outOfLineAccess.link(&m_jit);
         m_jit.loadPtr(MacroAssembler::Address(baseGPR, JSObject::butterflyOffset()), scratch2GPR);
+        m_jit.cage(Gigacage::JSValue, scratch2GPR);
         m_jit.move(indexGPR, scratch1GPR);
         m_jit.sub32(MacroAssembler::Address(enumeratorGPR, JSPropertyNameEnumerator::cachedInlineCapacityOffset()), scratch1GPR);
         m_jit.neg32(scratch1GPR);
@@ -6115,6 +6121,7 @@ void SpeculativeJIT::compile(Node* node)
     case PhantomCreateRest:
     case PhantomSpread:
     case PhantomNewArrayWithSpread:
+    case IdentityWithProfile:
         DFG_CRASH(m_jit.graph(), node, "Unexpected node");
         break;
     }

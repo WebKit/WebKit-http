@@ -131,7 +131,9 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/API/C/wpe/WKView.cpp
 
+    UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp
     UIProcess/API/glib/IconDatabase.cpp
+    UIProcess/API/glib/WebKitApplicationInfo.cpp
     UIProcess/API/glib/WebKitAuthenticationRequest.cpp
     UIProcess/API/glib/WebKitAutomationSession.cpp
     UIProcess/API/glib/WebKitBackForwardList.cpp
@@ -189,6 +191,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/wpe/CompositingManagerProxy.cpp
     UIProcess/API/wpe/PageClientImpl.cpp
     UIProcess/API/wpe/ScrollGestureController.cpp
+    UIProcess/API/wpe/WebKitScriptDialogWPE.cpp
     UIProcess/API/wpe/WebKitWebViewWPE.cpp
     UIProcess/API/wpe/WPEView.cpp
 
@@ -275,6 +278,7 @@ list(APPEND WebKit2_DERIVED_SOURCES
 
 set(WPE_API_INSTALLED_HEADERS
     ${DERIVED_SOURCES_WPE_API_DIR}/WebKitEnumTypes.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitApplicationInfo.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitAuthenticationRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitAutomationSession.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitBackForwardList.h

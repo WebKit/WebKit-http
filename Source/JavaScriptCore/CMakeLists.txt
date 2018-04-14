@@ -70,6 +70,7 @@ set(JavaScriptCore_SOURCES
     assembler/LinkBuffer.cpp
     assembler/MacroAssembler.cpp
     assembler/MacroAssemblerARM.cpp
+    assembler/MacroAssemblerARM64.cpp
     assembler/MacroAssemblerARMv7.cpp
     assembler/MacroAssemblerCodeRef.cpp
     assembler/MacroAssemblerPrinter.cpp
@@ -377,9 +378,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGOSREntrypointCreationPhase.cpp
     dfg/DFGOSRExit.cpp
     dfg/DFGOSRExitBase.cpp
-    dfg/DFGOSRExitCompiler.cpp
-    dfg/DFGOSRExitCompiler32_64.cpp
-    dfg/DFGOSRExitCompiler64.cpp
     dfg/DFGOSRExitCompilerCommon.cpp
     dfg/DFGOSRExitFuzz.cpp
     dfg/DFGOSRExitJumpPlaceholder.cpp
@@ -490,6 +488,7 @@ set(JavaScriptCore_SOURCES
     ftl/FTLThunks.cpp
     ftl/FTLValueRange.cpp
 
+    heap/AlignedMemoryAllocator.cpp
     heap/AllocatorAttributes.cpp
     heap/CellContainer.cpp
     heap/CodeBlockSet.cpp
@@ -499,13 +498,14 @@ set(JavaScriptCore_SOURCES
     heap/DeferGC.cpp
     heap/DestructionMode.cpp
     heap/EdenGCActivityCallback.cpp
+    heap/FastMallocAlignedMemoryAllocator.cpp
     heap/FullGCActivityCallback.cpp
     heap/FreeList.cpp
     heap/GCActivityCallback.cpp
     heap/GCConductor.cpp
     heap/GCLogging.cpp
     heap/GCRequest.cpp
-    heap/GigacageSubspace.cpp
+    heap/GigacageAlignedMemoryAllocator.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
     heap/Heap.cpp
@@ -1149,21 +1149,42 @@ set(OFFLINE_ASM
 )
 
 add_custom_command(
-    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm
+    OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/generate-bytecode-files
     DEPENDS ${JAVASCRIPTCORE_DIR}/generate-bytecode-files bytecode/BytecodeList.json
-    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/generate-bytecode-files --bytecodes_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h --init_bytecodes_asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm ${JAVASCRIPTCORE_DIR}/bytecode/BytecodeList.json
+    COMMAND ${PYTHON_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/generate-bytecode-files --bytecodes_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h --init_bytecodes_asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm --bytecode_structs_h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h ${JAVASCRIPTCORE_DIR}/bytecode/BytecodeList.json
     VERBATIM)
 
 list(APPEND JavaScriptCore_HEADERS
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
 )
+
+if ((${CMAKE_SYSTEM_NAME} STREQUAL "Linux"))
+    if (WTF_CPU_X86)
+        set(OFFLINE_ASM_BACKEND "X86")
+    elseif (WTF_CPU_X86_64)
+        set(OFFLINE_ASM_BACKEND "X86_64")
+    elseif (WTF_CPU_ARM64)
+        set(OFFLINE_ASM_BACKEND "ARM64")
+    elseif (ARM_THUMB2_DETECTED)
+        set(OFFLINE_ASM_BACKEND "ARMv7")
+    elseif (ARM_TRADITIONAL_DETECTED)
+        set(OFFLINE_ASM_BACKEND "ARMv7_TRADITIONAL")
+    elseif (WTF_CPU_MIPS)
+        set(OFFLINE_ASM_BACKEND "MIPS")
+    endif ()
+
+    if (NOT ENABLE_JIT)
+        set(OFFLINE_ASM_BACKEND "C_LOOP")
+    endif ()
+endif ()
 
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
     MAIN_DEPENDENCY ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb
     DEPENDS ${LLINT_ASM} ${OFFLINE_ASM} ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/InitBytecodes.asm
-    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h
+    COMMAND ${RUBY_EXECUTABLE} ${JAVASCRIPTCORE_DIR}/offlineasm/generate_offset_extractor.rb -I${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/ ${JAVASCRIPTCORE_DIR}/llint/LowLevelInterpreter.asm ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${OFFLINE_ASM_BACKEND}
     VERBATIM)
 
 # We add the header files directly to the ADD_EXECUTABLE call instead of setting the
@@ -1177,7 +1198,7 @@ add_custom_command(
 # actually be run multiple times!
 add_executable(LLIntOffsetsExtractor
     ${JAVASCRIPTCORE_DIR}/llint/LLIntOffsetsExtractor.cpp
-    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h
+    ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/LLIntDesiredOffsets.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/Bytecodes.h ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}/BytecodeStructs.h
 )
 target_link_libraries(LLIntOffsetsExtractor WTF)
 

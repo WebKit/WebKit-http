@@ -617,6 +617,9 @@
     "imported/w3c/web-platform-tests/encrypted-media/drm-temporary-license-type.html": [
         "slow"
     ],
+    "imported/w3c/web-platform-tests/eventsource/eventsource-constructor-non-same-origin.htm": [
+        "slow"
+    ],
     "imported/w3c/web-platform-tests/fetch/api/headers/header-values-normalize.html": [
         "slow"
     ],
@@ -762,6 +765,9 @@
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/dom/reflection-text.html": [
+        "slow"
+    ],
+    "imported/w3c/web-platform-tests/html/semantics/document-metadata/the-meta-element/pragma-directives/attr-meta-http-equiv-refresh/parsing.html": [
         "slow"
     ],
     "imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html": [

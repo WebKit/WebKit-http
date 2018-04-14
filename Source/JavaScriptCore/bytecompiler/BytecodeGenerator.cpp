@@ -2974,6 +2974,15 @@ RegisterID* BytecodeGenerator::emitAssert(RegisterID* condition, int line)
     return condition;
 }
 
+RegisterID* BytecodeGenerator::emitIdWithProfile(RegisterID* src, SpeculatedType profile)
+{
+    emitOpcode(op_identity_with_profile);
+    instructions().append(src->index());
+    instructions().append(static_cast<uint32_t>(profile >> 32));
+    instructions().append(static_cast<uint32_t>(profile));
+    return src;
+}
+
 void BytecodeGenerator::emitUnreachable()
 {
     emitOpcode(op_unreachable);
@@ -3757,8 +3766,8 @@ RegisterID* BytecodeGenerator::emitPushWithScope(RegisterID* objectScope)
 
     emitOpcode(op_push_with_scope);
     instructions().append(newScope->index());
-    instructions().append(objectScope->index());
     instructions().append(scopeRegister()->index());
+    instructions().append(objectScope->index());
 
     emitMove(scopeRegister(), newScope);
     m_lexicalScopeStack.append({ nullptr, newScope, true, 0 });

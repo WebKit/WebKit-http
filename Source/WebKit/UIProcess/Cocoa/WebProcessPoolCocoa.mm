@@ -36,20 +36,19 @@
 #import "TextChecker.h"
 #import "VersionChecks.h"
 #import "WKBrowsingContextControllerInternal.h"
-#import "WKBrowsingContextControllerInternal.h"
 #import "WebKitSystemInterface.h"
 #import "WebPageGroup.h"
 #import "WebPreferencesKeys.h"
 #import "WebProcessCreationParameters.h"
 #import "WebProcessMessages.h"
 #import "WindowServerConnection.h"
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Color.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/NotImplemented.h>
 #import <WebCore/PlatformPasteboard.h>
-#import <WebCore/SharedBuffer.h>
 #import <WebCore/RuntimeApplicationChecks.h>
+#import <WebCore/SharedBuffer.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <sys/param.h>
 
 #if PLATFORM(IOS)
@@ -255,6 +254,10 @@ void WebProcessPool::platformInitializeWebProcess(WebProcessCreationParameters& 
 #elif PLATFORM(MAC)
     if (WebCore::MacApplication::isSafari())
         isSafari = true;
+#endif
+
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
+    parameters.webCoreLoggingChannels = [[NSUserDefaults standardUserDefaults] stringForKey:@"WebCoreLogging"];
 #endif
 
     // FIXME: Remove this and related parameter when <rdar://problem/29448368> is fixed.

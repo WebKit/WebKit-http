@@ -41,13 +41,13 @@
 #import "WebSystemInterface.h"
 #import <WebCore/ApplicationCacheStorage.h>
 #import <WebCore/AudioSession.h>
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PlatformCookieJar.h>
 #import <WebCore/ResourceHandle.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Settings.h>
 #import <WebCore/TextEncodingRegistry.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/MainThread.h>
 #import <wtf/RetainPtr.h>
@@ -624,17 +624,17 @@ public:
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
+        [NSNumber numberWithBool:NO], WebKitDataTransferItemsEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
-        [NSNumber numberWithBool:NO], WebKitBeaconAPIEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
 #if ENABLE(WEBGPU)
         [NSNumber numberWithBool:NO], WebKitWebGPUEnabledPreferenceKey,
 #endif
-#if ENABLE(FETCH_API)
+        [NSNumber numberWithBool:NO], WebKitCacheAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitFetchAPIEnabledPreferenceKey,
-#endif
+
 #if ENABLE(STREAMS_API)
         [NSNumber numberWithBool:NO], WebKitReadableByteStreamAPIEnabledPreferenceKey,
         [NSNumber numberWithBool:NO], WebKitWritableStreamAPIEnabledPreferenceKey,
@@ -679,6 +679,7 @@ public:
         @YES, WebKitViewportFitEnabledPreferenceKey,
         @YES, WebKitConstantPropertiesEnabledPreferenceKey,
         @YES, WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey,
+        @NO, WebKitInspectorAdditionsEnabledPreferenceKey,
         (NSString *)Settings::defaultMediaContentTypesRequiringHardwareSupport(), WebKitMediaContentTypesRequiringHardwareSupportPreferenceKey,
         nil];
 
@@ -2071,16 +2072,6 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitWebGL2EnabledPreferenceKey];
 }
 
-- (BOOL)beaconAPIEnabled
-{
-    return [self _boolValueForKey:WebKitBeaconAPIEnabledPreferenceKey];
-}
-
-- (void)setBeaconAPIEnabled:(BOOL)enabled
-{
-    [self _setBoolValue:enabled forKey:WebKitBeaconAPIEnabledPreferenceKey];
-}
-
 - (BOOL)forceSoftwareWebGLRendering
 {
     return [self _boolValueForKey:WebKitForceSoftwareWebGLRenderingPreferenceKey];
@@ -2984,6 +2975,26 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitCustomElementsEnabledPreferenceKey];
 }
 
+- (BOOL)dataTransferItemsEnabled
+{
+    return [self _boolValueForKey:WebKitDataTransferItemsEnabledPreferenceKey];
+}
+
+- (void)setDataTransferItemsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitDataTransferItemsEnabledPreferenceKey];
+}
+
+- (BOOL)cacheAPIEnabled
+{
+    return [self _boolValueForKey:WebKitCacheAPIEnabledPreferenceKey];
+}
+
+- (void)setCacheAPIEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitCacheAPIEnabledPreferenceKey];
+}
+
 - (BOOL)fetchAPIEnabled
 {
     return [self _boolValueForKey:WebKitFetchAPIEnabledPreferenceKey];
@@ -3194,6 +3205,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setAllowMediaContentTypesRequiringHardwareSupportAsFallback:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitAllowMediaContentTypesRequiringHardwareSupportAsFallbackKey];
+}
+
+- (BOOL)inspectorAdditionsEnabled
+{
+    return [self _boolValueForKey:WebKitInspectorAdditionsEnabledPreferenceKey];
+}
+
+- (void)setInspectorAdditionsEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitInspectorAdditionsEnabledPreferenceKey];
 }
 
 @end

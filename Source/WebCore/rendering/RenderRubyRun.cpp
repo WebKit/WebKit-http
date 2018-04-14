@@ -101,10 +101,6 @@ RenderBlock* RenderRubyRun::firstLineBlock() const
     return 0;
 }
 
-void RenderRubyRun::updateFirstLetter(RenderTreeMutationIsAllowed)
-{
-}
-
 bool RenderRubyRun::isChildAllowed(const RenderObject& child, const RenderStyle&) const
 {
     return child.isInline() || child.isRubyText();

@@ -66,8 +66,6 @@
 #import <CoreText/CTFontDescriptor.h>
 #import <MobileCoreServices/UTCoreTypes.h>
 #import <WebCore/Color.h>
-#import <WebCore/CoreGraphicsSPI.h>
-#import <WebCore/DataDetectorsCoreSPI.h>
 #import <WebCore/DataDetectorsUISPI.h>
 #import <WebCore/FloatQuad.h>
 #import <WebCore/NotImplemented.h>
@@ -77,15 +75,17 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/Scrollbar.h>
 #import <WebCore/TextIndicator.h>
-#import <WebCore/TextStream.h>
 #import <WebCore/VisibleSelection.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/WebEvent.h>
 #import <WebKit/WebSelectionRect.h> // FIXME: WK2 should not include WebKit headers!
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/DataDetectorsCoreSPI.h>
 #import <wtf/Optional.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
 #import <wtf/SoftLinking.h>
+#import <wtf/text/TextStream.h>
 
 #if ENABLE(DRAG_SUPPORT)
 #import <WebCore/DragData.h>
@@ -166,7 +166,7 @@ inline bool operator!=(const WKSelectionDrawingInfo& a, const WKSelectionDrawing
     return !(a == b);
 }
 
-static WebCore::TextStream& operator<<(WebCore::TextStream& stream, WKSelectionDrawingInfo::SelectionType type)
+static TextStream& operator<<(TextStream& stream, WKSelectionDrawingInfo::SelectionType type)
 {
     switch (type) {
     case WKSelectionDrawingInfo::SelectionType::None: stream << "none"; break;
@@ -177,7 +177,7 @@ static WebCore::TextStream& operator<<(WebCore::TextStream& stream, WKSelectionD
     return stream;
 }
 
-WebCore::TextStream& operator<<(WebCore::TextStream& stream, const WKSelectionDrawingInfo& info)
+TextStream& operator<<(TextStream& stream, const WKSelectionDrawingInfo& info)
 {
     TextStream::GroupScope group(stream);
     stream.dumpProperty("type", info.type);
@@ -1501,12 +1501,13 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         return NO;
     return _positionInformation.isNearMarkedText;
 }
-
+#if __IPHONE_OS_VERSION_MAX_ALLOWED < 110000
 - (BOOL)pointIsInAssistedNode:(CGPoint)point
 {
     // This method is still implemented for backwards compatibility with older UIKit versions.
     return [self textInteractionGesture:UIWKGestureLoupe shouldBeginAtPoint:point];
 }
+#endif
 
 - (BOOL)textInteractionGesture:(UIWKGestureType)gesture shouldBeginAtPoint:(CGPoint)point
 {
@@ -3999,9 +4000,15 @@ static bool isAssistableInputType(InputType type)
 
 - (void)_showPlaybackTargetPicker:(BOOL)hasVideo fromRect:(const IntRect&)elementRect
 {
+#if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000 && !PLATFORM(WATCHOS) && !PLATFORM(APPLETV)
+    if (!_airPlayRoutePicker)
+        _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] init]);
+    [_airPlayRoutePicker showFromView:self];
+#else
     if (!_airPlayRoutePicker)
         _airPlayRoutePicker = adoptNS([[WKAirPlayRoutePicker alloc] initWithView:self]);
     [_airPlayRoutePicker show:hasVideo fromRect:elementRect];
+#endif
 }
 
 - (void)_showRunOpenPanel:(API::OpenPanelParameters*)parameters resultListener:(WebOpenPanelResultListenerProxy*)listener

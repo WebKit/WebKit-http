@@ -101,14 +101,17 @@
 #if USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
 #include "BitmapTexturePool.h"
+#include "TextureMapperContextAttributes.h"
 #include "TextureMapperGL.h"
 #include "TextureMapperPlatformLayerBuffer.h"
+#include "TextureMapperPlatformLayerProxy.h"
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
 #include <cairo-gl.h>
 #endif
 #endif // USE(TEXTURE_MAPPER_GL)
 
 #if ENABLE(ENCRYPTED_MEDIA)
+#include "GStreamerEMEUtilities.h"
 #include "SharedBuffer.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 #endif
@@ -560,9 +563,16 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
     texture.updateContents(srcData, WebCore::IntRect(0, 0, GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo)), WebCore::IntPoint(0, 0), stride, BitmapTexture::UpdateCannotModifyOriginalImageData);
     gst_video_frame_unmap(&videoFrame);
 }
-#endif
 
-#if USE(TEXTURE_MAPPER_GL)
+RefPtr<TextureMapperPlatformLayerProxy> MediaPlayerPrivateGStreamerBase::proxy() const
+{
+    return m_platformLayerProxy.copyRef();
+}
+
+void MediaPlayerPrivateGStreamerBase::swapBuffersIfNeeded()
+{
+}
+
 void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
 {
 #if !USE(GSTREAMER_GL)
@@ -611,7 +621,10 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         if (UNLIKELY(!m_context3D))
             m_context3D = GraphicsContext3D::create(GraphicsContext3DAttributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
 
-        auto texture = BitmapTextureGL::create(*m_context3D);
+        TextureMapperContextAttributes contextAttributes;
+        contextAttributes.initialize();
+
+        auto texture = BitmapTextureGL::create(contextAttributes);
         texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }
@@ -1036,8 +1049,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
     bool result = false;
 
 #if ENABLE(ENCRYPTED_MEDIA)
-    if (equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey"))
-        result = true;
+    result = GStreamerEMEUtilities::isClearKeyKeySystem(keySystem);
 #endif
 
     GST_DEBUG("checking for KeySystem support with %s and type %s: %s", keySystem.utf8().data(), mimeType.utf8().data(), boolForPrinting(result));

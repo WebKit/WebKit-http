@@ -34,8 +34,7 @@
 #include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/NotImplemented.h>
-#include <WebCore/ScriptGlobalObject.h>
-#include <WebCore/ScriptState.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 
 using namespace WebCore;
 
@@ -50,6 +49,7 @@ WebInspectorUI::WebInspectorUI(WebPage& page)
     : m_page(page)
     , m_frontendAPIDispatcher(page)
 {
+    RuntimeEnabledFeatures::sharedFeatures().setInspectorAdditionsEnabled(true);
 }
 
 void WebInspectorUI::establishConnection(IPC::Attachment encodedConnectionIdentifier, uint64_t inspectedPageIdentifier, bool underTest, unsigned inspectionLevel)
@@ -84,7 +84,7 @@ void WebInspectorUI::windowObjectCleared()
         m_frontendHost->disconnectClient();
 
     m_frontendHost = InspectorFrontendHost::create(this, m_page.corePage());
-    ScriptGlobalObject::set(*execStateFromPage(mainThreadNormalWorld(), m_page.corePage()), ASCIILiteral("InspectorFrontendHost"), *m_frontendHost);
+    m_frontendHost->addSelfToGlobalObjectInWorld(mainThreadNormalWorld());
 }
 
 void WebInspectorUI::frontendLoaded()

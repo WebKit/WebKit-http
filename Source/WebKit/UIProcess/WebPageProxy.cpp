@@ -3369,6 +3369,11 @@ void WebPageProxy::didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navi
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->documentLoadedForFrame(*frame);
+    }
+
     // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
     RefPtr<API::Navigation> navigation;
     if (frame->isMainFrame() && navigationID)
@@ -3908,6 +3913,10 @@ void WebPageProxy::runJavaScriptAlert(uint64_t frameID, const SecurityOriginData
     // Since runJavaScriptAlert() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
 
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->willShowJavaScriptDialog(*this);
+    }
     m_uiClient->runJavaScriptAlert(this, message, frame, securityOrigin, [reply = WTFMove(reply)] {
         reply->send();
     });
@@ -3921,6 +3930,11 @@ void WebPageProxy::runJavaScriptConfirm(uint64_t frameID, const SecurityOriginDa
     // Since runJavaScriptConfirm() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
 
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->willShowJavaScriptDialog(*this);
+    }
+
     m_uiClient->runJavaScriptConfirm(this, message, frame, securityOrigin, [reply = WTFMove(reply)](bool result) {
         reply->send(result);
     });
@@ -3933,6 +3947,11 @@ void WebPageProxy::runJavaScriptPrompt(uint64_t frameID, const SecurityOriginDat
 
     // Since runJavaScriptPrompt() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
+
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->willShowJavaScriptDialog(*this);
+    }
 
     m_uiClient->runJavaScriptPrompt(this, message, defaultValue, frame, securityOrigin, [reply](const String& result) { reply->send(result); });
 }
@@ -4092,6 +4111,11 @@ void WebPageProxy::runBeforeUnloadConfirmPanel(uint64_t frameID, const SecurityO
 
     // Since runBeforeUnloadConfirmPanel() can spin a nested run loop we need to turn off the responsiveness timer.
     m_process->responsivenessTimer().stop();
+
+    if (m_controlledByAutomation) {
+        if (auto* automationSession = process().processPool().automationSession())
+            automationSession->willShowJavaScriptDialog(*this);
+    }
 
     m_uiClient->runBeforeUnloadConfirmPanel(this, message, frame, securityOrigin, [reply](bool result) { reply->send(result); });
 }
@@ -5514,8 +5538,6 @@ void WebPageProxy::resetState(ResetStateReason resetStateReason)
 #if ENABLE(POINTER_LOCK)
     requestPointerUnlock();
 #endif
-
-    m_avoidsUnsafeArea = true;
 }
 
 void WebPageProxy::resetStateAfterProcessExited()
@@ -6948,16 +6970,6 @@ void WebPageProxy::stopURLSchemeTask(uint64_t handlerIdentifier, uint64_t taskId
     ASSERT(iterator != m_urlSchemeHandlersByIdentifier.end());
 
     iterator->value->stopTask(*this, taskIdentifier);
-}
-
-void WebPageProxy::setAvoidsUnsafeArea(bool avoidsUnsafeArea)
-{
-    if (m_avoidsUnsafeArea == avoidsUnsafeArea)
-        return;
-
-    m_avoidsUnsafeArea = avoidsUnsafeArea;
-
-    m_pageClient.didChangeAvoidsUnsafeArea(avoidsUnsafeArea);
 }
 
 } // namespace WebKit

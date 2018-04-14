@@ -116,7 +116,9 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/gtk/WKTextCheckerGtk.cpp
     UIProcess/API/C/gtk/WKView.cpp
 
+    UIProcess/API/glib/APIWebsiteDataStoreGLib.cpp
     UIProcess/API/glib/IconDatabase.cpp
+    UIProcess/API/glib/WebKitApplicationInfo.cpp
     UIProcess/API/glib/WebKitAuthenticationRequest.cpp
     UIProcess/API/glib/WebKitAutomationSession.cpp
     UIProcess/API/glib/WebKitBackForwardList.cpp
@@ -171,7 +173,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/glib/WebKitWebsiteDataManager.cpp
     UIProcess/API/glib/WebKitWindowProperties.cpp
 
-    UIProcess/API/gtk/APIWebsiteDataStoreGtk.cpp
     UIProcess/API/gtk/PageClientImpl.cpp
     UIProcess/API/gtk/WebKitAuthenticationDialog.cpp
     UIProcess/API/gtk/WebKitColorChooser.cpp
@@ -182,6 +183,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitPrintCustomWidget.cpp
     UIProcess/API/gtk/WebKitPrintOperation.cpp
     UIProcess/API/gtk/WebKitRemoteInspectorProtocolHandler.cpp
+    UIProcess/API/gtk/WebKitScriptDialogGtk.cpp
     UIProcess/API/gtk/WebKitVersion.cpp
     UIProcess/API/gtk/WebKitVersion.h.in
     UIProcess/API/gtk/WebKitWebInspector.cpp
@@ -417,6 +419,7 @@ endif ()
 set(WebKit2GTK_INSTALLED_HEADERS
     ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/WebKitEnumTypes.h
     ${DERIVED_SOURCES_WEBKIT2GTK_API_DIR}/WebKitVersion.h
+    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitApplicationInfo.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAuthenticationRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAutocleanups.h
     ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitAutomationSession.h
@@ -806,7 +809,6 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
 list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
     ${CAIRO_INCLUDE_DIRS}
     ${ENCHANT_INCLUDE_DIRS}
-    ${GEOCLUE_INCLUDE_DIRS}
     ${GSTREAMER_INCLUDE_DIRS}
     ${GSTREAMER_PBUTILS_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
@@ -854,8 +856,6 @@ list(APPEND WebKit2_LIBRARIES
     ${LIBNOTIFY_LIBRARIES}
 )
 endif ()
-
-ADD_WHOLE_ARCHIVE_TO_LIBRARIES(WebKit2_LIBRARIES)
 
 # To generate WebKitEnumTypes.h we want to use all installed headers, except WebKitEnumTypes.h itself.
 set(WebKit2GTK_ENUM_GENERATION_HEADERS ${WebKit2GTK_INSTALLED_HEADERS})
@@ -1063,6 +1063,10 @@ if (ENABLE_PLUGIN_PROCESS_GTK2)
     add_dependencies(WebKitPluginProcess2 WebKit2)
 
     install(TARGETS WebKitPluginProcess2 DESTINATION "${LIBEXEC_INSTALL_DIR}")
+
+    if (COMPILER_IS_GCC_OR_CLANG)
+        WEBKIT_ADD_TARGET_CXX_FLAGS(WebKitPluginProcess2 -Wno-unused-parameter)
+    endif ()
 endif () # ENABLE_PLUGIN_PROCESS_GTK2
 
 # GTK3 PluginProcess
@@ -1086,6 +1090,10 @@ include_directories(
 add_library(webkit2gtkinjectedbundle MODULE "${WEBKIT2_DIR}/WebProcess/InjectedBundle/API/glib/WebKitInjectedBundleMain.cpp")
 add_webkit2_prefix_header(webkit2gtkinjectedbundle)
 target_link_libraries(webkit2gtkinjectedbundle WebKit2)
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    WEBKIT_ADD_TARGET_CXX_FLAGS(webkit2gtkinjectedbundle -Wno-unused-parameter)
+endif ()
 
 # Add ${CMAKE_LIBRARY_OUTPUT_DIRECTORY} to LD_LIBRARY_PATH or DYLD_LIBRARY_PATH
 if (APPLE)

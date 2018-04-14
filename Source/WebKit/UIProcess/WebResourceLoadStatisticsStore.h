@@ -60,7 +60,7 @@ enum class ShouldClearFirst;
 class WebResourceLoadStatisticsStore final : public IPC::Connection::WorkQueueMessageReceiver {
 public:
     using UpdateCookiePartitioningForDomainsHandler = WTF::Function<void(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst)>;
-    static Ref<WebResourceLoadStatisticsStore> create(const String& resourceLoadStatisticsDirectory, Function<void (const String&)>&& testingCallback, UpdateCookiePartitioningForDomainsHandler&& updateCookiePartitioningForDomainsHandler = { })
+    static Ref<WebResourceLoadStatisticsStore> create(const String& resourceLoadStatisticsDirectory, Function<void (const String&)>&& testingCallback, UpdateCookiePartitioningForDomainsHandler&& updateCookiePartitioningForDomainsHandler = [](const Vector<String>&, const Vector<String>&, ShouldClearFirst) { })
     {
         return adoptRef(*new WebResourceLoadStatisticsStore(resourceLoadStatisticsDirectory, WTFMove(testingCallback), WTFMove(updateCookiePartitioningForDomainsHandler)));
     }
@@ -164,7 +164,7 @@ private:
         std::optional<Seconds> timeToLiveUserInteraction;
         Seconds timeToLiveCookiePartitionFree { 24_h };
         Seconds minimumTimeBetweenDataRecordsRemoval { 1_h };
-        Seconds grandfatheringTime { 1_h };
+        Seconds grandfatheringTime { 24_h * 7 };
         bool shouldNotifyPagesWhenDataRecordsWereScanned { false };
         bool shouldClassifyResourcesBeforeDataRecordsRemoval { true };
         bool shouldSubmitTelemetry { true };

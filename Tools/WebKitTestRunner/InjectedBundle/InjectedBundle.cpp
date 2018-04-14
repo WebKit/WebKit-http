@@ -240,13 +240,19 @@ void InjectedBundle::didReceiveMessageToPage(WKBundlePageRef page, WKStringRef m
         return;
     }
 
+    if (WKStringIsEqualToUTF8CString(messageName, "CallDidClearStatisticsThroughWebsiteDataRemoval")) {
+        m_testRunner->statisticsCallClearThroughWebsiteDataRemovalCallback();
+        return;
+    }
+
     if (WKStringIsEqualToUTF8CString(messageName, "CallDidRemoveAllSessionCredentialsCallback")) {
         m_testRunner->callDidRemoveAllSessionCredentialsCallback();
         return;
     }
 
     if (WKStringIsEqualToUTF8CString(messageName, "NotifyDownloadDone")) {
-        m_testRunner->notifyDone();
+        if (m_testRunner->shouldFinishAfterDownload())
+            m_testRunner->notifyDone();
         return;
     }
 
@@ -349,6 +355,8 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     m_testRunner->setWebGL2Enabled(true);
     m_testRunner->setWebGPUEnabled(true);
 
+    m_testRunner->setCacheAPIEnabled(true);
+
     m_testRunner->setWritableStreamAPIEnabled(true);
     m_testRunner->setReadableByteStreamAPIEnabled(true);
 
@@ -367,6 +375,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleClearAllDatabases(m_bundle);
     WKBundlePageClearApplicationCache(page()->page());
     WKBundleResetOriginAccessWhitelists(m_bundle);
+    WKBundleClearResourceLoadStatistics(m_bundle);
 
     // [WK2] REGRESSION(r128623): It made layout tests extremely slow
     // https://bugs.webkit.org/show_bug.cgi?id=96862

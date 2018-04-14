@@ -387,6 +387,13 @@ void TestRunner::setWebGPUEnabled(bool enabled)
     WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
 }
 
+void TestRunner::setCacheAPIEnabled(bool enabled)
+{
+    WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitCacheAPIEnabled"));
+    auto& injectedBundle = InjectedBundle::singleton();
+    WKBundleOverrideBoolPreferenceForTestRunner(injectedBundle.bundle(), injectedBundle.pageGroup(), key.get(), enabled);
+}
+
 void TestRunner::setWritableStreamAPIEnabled(bool enabled)
 {
     WKRetainPtr<WKStringRef> key(AdoptWK, WKStringCreateWithUTF8CString("WebKitWritableStreamAPIEnabled"));
@@ -460,6 +467,8 @@ void TestRunner::setUseDashboardCompatibilityMode(bool enabled)
 #if ENABLE(DASHBOARD_SUPPORT)
     auto& injectedBundle = InjectedBundle::singleton();
     WKBundleSetUseDashboardCompatibilityMode(injectedBundle.bundle(), injectedBundle.pageGroup(), enabled);
+#else
+    UNUSED_PARAM(enabled);
 #endif
 }
     
@@ -636,6 +645,7 @@ enum {
     StatisticsDidModifyDataRecordsCallbackID,
     StatisticsDidScanDataRecordsCallbackID,
     StatisticsDidRunTelemetryCallbackID,
+    StatisticsDidClearThroughWebsiteDataRemovalCallbackID,
     DidRemoveAllSessionCredentialsCallbackID,
     FirstUIScriptCallbackID = 100
 };
@@ -1009,6 +1019,13 @@ void TestRunner::setHandlesAuthenticationChallenges(bool handlesAuthenticationCh
 void TestRunner::setShouldLogCanAuthenticateAgainstProtectionSpace(bool value)
 {
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetShouldLogCanAuthenticateAgainstProtectionSpace"));
+    WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(value));
+    WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
+}
+
+void TestRunner::setShouldLogDownloadCallbacks(bool value)
+{
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("SetShouldLogDownloadCallbacks"));
     WKRetainPtr<WKBooleanRef> messageBody(AdoptWK, WKBooleanCreate(value));
     WKBundlePagePostMessage(InjectedBundle::singleton().page()->page(), messageName.get(), messageBody.get());
 }
@@ -1541,6 +1558,19 @@ void TestRunner::statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(uns
     WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsClearInMemoryAndPersistentStoreModifiedSinceHours"));
     WKRetainPtr<WKTypeRef> messageBody(AdoptWK, WKUInt64Create(hours));
     WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), messageBody.get(), nullptr);
+}
+
+void TestRunner::statisticsClearThroughWebsiteDataRemoval(JSValueRef callback)
+{
+    cacheTestRunnerCallback(StatisticsDidClearThroughWebsiteDataRemovalCallbackID, callback);
+    
+    WKRetainPtr<WKStringRef> messageName(AdoptWK, WKStringCreateWithUTF8CString("StatisticsClearThroughWebsiteDataRemoval"));
+    WKBundlePostSynchronousMessage(InjectedBundle::singleton().bundle(), messageName.get(), 0, nullptr);
+}
+
+void TestRunner::statisticsCallClearThroughWebsiteDataRemovalCallback()
+{
+    callTestRunnerCallback(StatisticsDidClearThroughWebsiteDataRemovalCallbackID);
 }
 
 void TestRunner::statisticsResetToConsistentState()

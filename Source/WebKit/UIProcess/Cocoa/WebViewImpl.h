@@ -31,11 +31,12 @@
 #include "PluginComplexTextInputState.h"
 #include "WKDragDestinationAction.h"
 #include "WKLayoutMode.h"
+#include "WeakObjCPtr.h"
 #include "WebPageProxy.h"
 #include "_WKOverlayScrollbarStyle.h"
-#include <WebCore/AVKitSPI.h>
 #include <WebCore/TextIndicatorWindow.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
+#include <pal/spi/cocoa/AVKitSPI.h>
 #include <wtf/BlockPtr.h>
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
@@ -599,7 +600,7 @@ private:
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
 #endif
 
-    NSView <WebViewImplDelegate> *m_view;
+    WeakObjCPtr<NSView<WebViewImplDelegate>> m_view;
     std::unique_ptr<PageClient> m_pageClient;
     Ref<WebPageProxy> m_page;
 

@@ -120,7 +120,7 @@ private:
 
     void dispatchDecidePolicyForResponse(const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, WebCore::FramePolicyFunction&&) final;
     void dispatchDecidePolicyForNewWindowAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, const WTF::String& frameName, WebCore::FramePolicyFunction&&) final;
-    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, WebCore::FormState*, WebCore::FramePolicyFunction&&) final;
+    void dispatchDecidePolicyForNavigationAction(const WebCore::NavigationAction&, const WebCore::ResourceRequest&, bool didReceiveRedirectResponse, WebCore::FormState*, WebCore::FramePolicyFunction&&) final;
     void cancelPolicyCheck() final;
 
     void dispatchUnableToImplementPolicy(const WebCore::ResourceError&) final;
@@ -233,10 +233,6 @@ private:
     bool canCachePage() const final;
 
     Ref<WebCore::FrameNetworkingContext> createNetworkingContext() final;
-
-#if ENABLE(REQUEST_AUTOCOMPLETE)
-    void didRequestAutocomplete(Ref<WebCore::FormState>&&) final { }
-#endif
 
     bool shouldPaintBrokenImage(const WebCore::URL&) const final;
 

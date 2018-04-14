@@ -30,9 +30,6 @@
  */
 
 #include "config.h"
-
-#if ENABLE(WEB_SOCKETS)
-
 #include "WebSocket.h"
 
 #include "Blob.h"
@@ -127,18 +124,6 @@ static unsigned saturateAdd(unsigned a, unsigned b)
     if (std::numeric_limits<unsigned>::max() - a < b)
         return std::numeric_limits<unsigned>::max();
     return a + b;
-}
-
-static bool webSocketsAvailable = true;
-
-void WebSocket::setIsAvailable(bool available)
-{
-    webSocketsAvailable = available;
-}
-
-bool WebSocket::isAvailable()
-{
-    return webSocketsAvailable;
 }
 
 const char* WebSocket::subprotocolSeparator()
@@ -683,6 +668,4 @@ void WebSocket::dispatchOrQueueEvent(Ref<Event>&& event)
         dispatchEvent(event);
 }
 
-}  // namespace WebCore
-
-#endif
+} // namespace WebCore

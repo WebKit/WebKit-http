@@ -744,6 +744,7 @@ public:
 
     void compileDeleteById(Node*);
     void compileDeleteByVal(Node*);
+    void compilePushWithScope(Node*);
     void compileTryGetById(Node*);
     void compileIn(Node*);
     
@@ -1390,6 +1391,11 @@ public:
         m_jit.setupArgumentsWithExecState(arg1, arg2, arg3);
         return appendCallSetResult(operation, result);
     }
+    JITCompiler::Call callOperation(C_JITOperation_ECJ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2.gpr());
+        return appendCallSetResult(operation, result);
+    }
     JITCompiler::Call callOperation(J_JITOperation_EJMic operation, JSValueRegs result, JSValueRegs arg, TrustedImmPtr mathIC)
     {
         m_jit.setupArgumentsWithExecState(arg.gpr(), mathIC);
@@ -1937,6 +1943,11 @@ public:
     JITCompiler::Call callOperation(C_JITOperation_ECJZ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2, GPRReg arg3)
     {
         m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg2.tagGPR(), arg3);
+        return appendCallSetResult(operation, result);
+    }
+    JITCompiler::Call callOperation(C_JITOperation_ECJ operation, GPRReg result, GPRReg arg1, JSValueRegs arg2)
+    {
+        m_jit.setupArgumentsWithExecState(arg1, arg2.payloadGPR(), arg2.tagGPR());
         return appendCallSetResult(operation, result);
     }
     JITCompiler::Call callOperation(J_JITOperation_EJMic operation, JSValueRegs result, JSValueRegs arg, TrustedImmPtr mathIC)
@@ -3044,6 +3055,8 @@ public:
     
     template<bool strict>
     GPRReg fillSpeculateInt32Internal(Edge, DataFormat& returnFormat);
+    
+    void cageTypedArrayStorage(GPRReg);
     
     // It is possible, during speculative generation, to reach a situation in which we
     // can statically determine a speculation will fail (for example, when two nodes

@@ -37,6 +37,9 @@ function load() {
 
     document.body.appendChild(canvas);
 
+    ctx.save();
+    ctx.save(); // This matches the `restore` call in `performActions`.
+
     runTest();
 }
 
@@ -47,9 +50,25 @@ function ignoreException(f){
 }
 
 let timeoutID = NaN;
+let restoreCalled = false;
 
 function cancelActions() {
+    if (!isNaN(timeoutID)) {
+        ctx.restore();
+        if (!restoreCalled)
+            ctx.restore();
+    }
+
     clearTimeout(timeoutID);
+    timeoutID = NaN;
+
+    ctx.save();
+    ctx.save();
+    ctx.resetTransform();
+    ctx.beginPath();
+    ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+    restoreCalled = false;
 }
 
 function performActions() {
@@ -233,6 +252,8 @@ function performActions() {
         },
         () => {
             ctx.restore();
+
+            restoreCalled = true;
         },
         () => {
             ctx.rotate(1);
@@ -389,6 +410,10 @@ function performNaNActions() {
 function test() {
     let suite = InspectorTest.createAsyncSuite("Canvas.recording2D");
 
+    function sanitizeURL(url) {
+        return url.replace(/^.*?LayoutTests\//, "");
+    }
+
     function getCanvas() {
         let canvases = WI.canvasManager.canvases.filter((canvas) => canvas.contextType === WI.Canvas.ContextType.Canvas2D);
         InspectorTest.assert(canvases.length === 1, "There should only be one canvas-2d.");
@@ -409,6 +434,12 @@ function test() {
             InspectorTest.evaluateInPage(`cancelActions()`);
 
             let json = event.data.recording.toJSON();
+            json.data = json.data.map((item) => {
+                if (typeof item !== "string")
+                    return item;
+
+                return sanitizeURL(item);
+            });
             InspectorTest.log(JSON.stringify(json, null, 2));
         })
         .then(resolve, reject);

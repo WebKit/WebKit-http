@@ -137,6 +137,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case Identity:
+    case IdentityWithProfile:
     case Phantom:
     case Check:
     case ExtractOSREntryLocal:
@@ -470,6 +471,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(SideState);
         return;
 
+    case PushWithScope: {
+        read(World);
+        write(HeapObjectCount);
+        return;
+    }
+
     case CreateActivation: {
         SymbolTable* table = node->castOperand<SymbolTable*>();
         if (table->singletonScope()->isStillValid())
@@ -478,7 +485,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
     }
-        
+
     case CreateDirectArguments:
     case CreateScopedArguments:
     case CreateClonedArguments:

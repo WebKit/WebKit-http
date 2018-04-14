@@ -213,12 +213,6 @@ http/tests/download/default-encoding.html
 http/tests/download/inherited-encoding-form-submission-result.html
 http/tests/download/inherited-encoding.html
 
-# Those tests are loaded over HTTPS and pass locally. However, they get an SSL error on the bots and time out.
-webkit.org/b/175076 imported/w3c/web-platform-tests/beacon/headers/header-referrer-no-referrer-when-downgrade.https.html [ Skip ]
-webkit.org/b/175076 imported/w3c/web-platform-tests/beacon/headers/header-referrer-strict-origin-when-cross-origin.https.html [ Skip ]
-webkit.org/b/175076 imported/w3c/web-platform-tests/beacon/headers/header-referrer-strict-origin.https.html [ Skip ]
-webkit.org/b/175076 imported/w3c/web-platform-tests/beacon/headers/header-referrer-unsafe-url.https.html [ Skip ]
-
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -569,6 +563,7 @@ platform/mac/fast/events/objc-event-api.html
 
 # WebKitTestRunner needs an implementation of eventSender.beginDragWithFiles
 # https://bugs.webkit.org/show_bug.cgi?id=64285
+editing/pasteboard/datatransfer-items-drop-plaintext-file.html
 editing/pasteboard/file-drag-to-editable.html [ Skip ]
 editing/pasteboard/file-input-files-access.html
 fast/dom/FileList-iterator.html
@@ -685,7 +680,7 @@ http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-mixed-s
 http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-sub-frame-under-top-frame-origins.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-under-top-frame-origins.html [ Pass ]
 http/tests/loading/resourceLoadStatistics/classify-as-prevalent-based-on-subresource-unique-redirects-to.html [ Pass ]
-http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass ]
+webkit.org/b/175263 http/tests/loading/resourceLoadStatistics/clear-in-memory-and-persistent-store.html [ Pass Timeout ]
 webkit.org/b/172452 http/tests/loading/resourceLoadStatistics/grandfathering.html [ Pass Failure Timeout ]
 webkit.org/b/173499 http/tests/loading/resourceLoadStatistics/telemetry-generation.html [ Pass Failure ]
 http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]

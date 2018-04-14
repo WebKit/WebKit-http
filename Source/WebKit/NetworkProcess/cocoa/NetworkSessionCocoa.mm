@@ -33,12 +33,10 @@
 #import "Download.h"
 #import "LegacyCustomProtocolManager.h"
 #import "Logging.h"
-#import "NetworkCache.h"
 #import "NetworkLoad.h"
 #import "NetworkProcess.h"
 #import "SessionTracker.h"
 #import <Foundation/NSURLSession.h>
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/Credential.h>
 #import <WebCore/FormDataStreamMac.h>
 #import <WebCore/FrameLoaderTypes.h>
@@ -50,6 +48,7 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/URL.h>
 #import <WebCore/WebCoreURLResponse.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -449,6 +448,7 @@ static WebCore::NetworkLoadPriority toNetworkLoadPriority(float priority)
 namespace WebKit {
     
 static bool allowsCellularAccess { true };
+static bool usesNetworkCache { false };
 static LegacyCustomProtocolManager* legacyCustomProtocolManager;
 
 #if !ASSERT_DISABLED
@@ -520,6 +520,11 @@ void NetworkSessionCocoa::setAllowsCellularAccess(bool value)
     allowsCellularAccess = value;
 }
 
+void NetworkSessionCocoa::setUsesNetworkCache(bool value)
+{
+    usesNetworkCache = value;
+}
+
 #if PLATFORM(IOS)
 void NetworkSessionCocoa::setCTDataConnectionServiceType(const String& type)
 {
@@ -553,10 +558,10 @@ NetworkSessionCocoa::NetworkSessionCocoa(WebCore::SessionID sessionID, LegacyCus
 
     if (!allowsCellularAccess)
         configuration.allowsCellularAccess = NO;
-    
-    if (NetworkCache::singleton().isEnabled())
+
+    if (usesNetworkCache)
         configuration.URLCache = nil;
-    
+
     if (auto& data = globalSourceApplicationAuditTokenData())
         configuration._sourceApplicationAuditTokenData = (NSData *)data.get();
 

@@ -73,6 +73,9 @@ public:
     void setCustomElementsEnabled(bool areEnabled) { m_areCustomElementsEnabled = areEnabled; }
     bool customElementsEnabled() const { return m_areCustomElementsEnabled; }
 
+    void setDataTransferItemsEnabled(bool areEnabled) { m_areDataTransferItemsEnabled = areEnabled; }
+    bool dataTransferItemsEnabled() const { return m_areDataTransferItemsEnabled; }
+
     void setModernMediaControlsEnabled(bool areEnabled) { m_areModernMediaControlsEnabled = areEnabled; }
     bool modernMediaControlsEnabled() const { return m_areModernMediaControlsEnabled; }
 
@@ -162,10 +165,11 @@ public:
     bool webGPUEnabled() const { return m_isWebGPUEnabled; }
 #endif
 
-#if ENABLE(FETCH_API)
+    void setCacheAPIEnabled(bool isEnabled) { m_isCacheAPIEnabled = isEnabled; }
+    bool cacheAPIEnabled() const { return m_isCacheAPIEnabled; }
+
     void setFetchAPIEnabled(bool isEnabled) { m_isFetchAPIEnabled = isEnabled; }
     bool fetchAPIEnabled() const { return m_isFetchAPIEnabled; }
-#endif
     
 #if ENABLE(STREAMS_API)
     void setReadableByteStreamAPIEnabled(bool isEnabled) { m_isReadableByteStreamAPIEnabled = isEnabled; }
@@ -197,13 +201,17 @@ public:
     bool legacyEncryptedMediaAPIEnabled() const { return m_legacyEncryptedMediaAPIEnabled; }
 #endif
 
+#if ENABLE(SERVICE_WORKER)
+    bool serviceWorkerEnabled() const { return m_serviceWorkerEnabled; }
+    void setServiceWorkerEnabled(bool isEnabled) { m_serviceWorkerEnabled = isEnabled; }
+#endif
+
 #if ENABLE(VIDEO)
     bool audioEnabled() const;
 #endif
 
-#if ENABLE(WEB_SOCKETS)
-    bool webSocketEnabled() const;
-#endif
+    void setInspectorAdditionsEnabled(bool isEnabled) { m_inspectorAdditionsEnabled = isEnabled; }
+    bool inspectorAdditionsEnabled() const { return m_inspectorAdditionsEnabled; }
 
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
@@ -223,6 +231,7 @@ private:
     bool m_isDisplayContentsEnabled { false };
     bool m_isShadowDOMEnabled { true };
     bool m_areCustomElementsEnabled { true };
+    bool m_areDataTransferItemsEnabled { false };
     bool m_inputEventsEnabled { true };
 
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
@@ -292,9 +301,8 @@ private:
     bool m_isWebGPUEnabled { false };
 #endif
 
-#if ENABLE(FETCH_API)
+    bool m_isCacheAPIEnabled { false };
     bool m_isFetchAPIEnabled { true };
-#endif
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_isDownloadAttributeEnabled { false };
@@ -313,6 +321,12 @@ private:
 #if ENABLE(INTERSECTION_OBSERVER)
     bool m_intersectionObserverEnabled { false };
 #endif
+
+#if ENABLE(SERVICE_WORKER)
+    bool m_serviceWorkerEnabled { false };
+#endif
+
+    bool m_inspectorAdditionsEnabled { false };
 
     friend class WTF::NeverDestroyed<RuntimeEnabledFeatures>;
 };

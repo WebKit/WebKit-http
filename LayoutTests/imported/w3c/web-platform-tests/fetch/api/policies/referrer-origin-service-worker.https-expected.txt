@@ -1,3 +1,4 @@
+CONSOLE MESSAGE: line 153: TypeError: undefined is not an object (evaluating 'registration.unregister')
 
-FAIL Fetch in service worker: referrer with no-referrer policy undefined is not an object (evaluating 'navigator.serviceWorker.getRegistration')
+FAIL Fetch in service worker: referrer with no-referrer policy assert_unreached: unregister should not fail: serviceWorker.getRegistration() is not yet implemented Reached unreachable code
 

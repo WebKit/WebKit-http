@@ -102,7 +102,6 @@
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SchemeRegistry.h>
 #import <WebCore/Settings.h>
-#import <WebCore/TextStream.h>
 #import <WebCore/ValidationBubble.h>
 #import <WebCore/ViewportArguments.h>
 #import <WebCore/WritingMode.h>
@@ -114,6 +113,7 @@
 #import <wtf/RetainPtr.h>
 #import <wtf/SetForScope.h>
 #import <wtf/spi/darwin/dyldSPI.h>
+#import <wtf/text/TextStream.h>
 
 #if ENABLE(DATA_DETECTION)
 #import "WKDataDetectorTypesInternal.h"
@@ -134,13 +134,13 @@
 #import "WKWebViewContentProviderRegistry.h"
 #import "_WKWebViewPrintFormatter.h"
 #import <UIKit/UIApplication.h>
-#import <WebCore/CoreGraphicsSPI.h>
 #import <WebCore/FrameLoaderTypes.h>
 #import <WebCore/InspectorOverlay.h>
-#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/ScrollableArea.h>
 #import <WebCore/WebBackgroundTaskController.h>
 #import <WebCore/WebSQLiteDatabaseTrackerClient.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
 
 #if __has_include(<AccessibilitySupport.h>)
 #include <AccessibilitySupport.h>
@@ -246,6 +246,7 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     UIEdgeInsets _unobscuredSafeAreaInsets;
     BOOL _haveSetUnobscuredSafeAreaInsets;
+    BOOL _avoidsUnsafeArea;
     UIRectEdge _obscuredInsetEdgesAffectedBySafeArea;
 
     UIInterfaceOrientation _interfaceOrientationOverride;
@@ -523,6 +524,7 @@ static uint32_t convertSystemLayoutDirection(NSUserInterfaceLayoutDirection dire
     [_scrollView setInternalDelegate:self];
     [_scrollView setBouncesZoom:YES];
 
+    _avoidsUnsafeArea = YES;
     [self _updateScrollViewInsetAdjustmentBehavior];
 
     [self addSubview:_scrollView.get()];
@@ -1268,7 +1270,7 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
         _scrollViewBackgroundColor = WebCore::Color();
         [_scrollView setContentOffset:[self _adjustedContentOffset:CGPointZero]];
 
-        [self _didChangeAvoidsUnsafeArea:NO];
+        [self _setAvoidsUnsafeArea:NO];
     } else if (_customContentView) {
         [_customContentView removeFromSuperview];
         _customContentView = nullptr;
@@ -1282,8 +1284,6 @@ static CGSize roundScrollViewContentSize(const WebKit::WebPageProxy& page, CGSiz
 
         [_customContentFixedOverlayView setFrame:self.bounds];
         [self addSubview:_customContentFixedOverlayView.get()];
-
-        [self _didChangeAvoidsUnsafeArea:_page->avoidsUnsafeArea()];
     }
 
     if (self.isFirstResponder) {
@@ -1407,7 +1407,7 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 110000
     if (self._safeAreaShouldAffectObscuredInsets)
-        UIEdgeInsetsAdd(insets, [_scrollView _systemContentInset], self._effectiveObscuredInsetEdgesAffectedBySafeArea);
+        insets = UIEdgeInsetsAdd(insets, [_scrollView _systemContentInset], self._effectiveObscuredInsetEdgesAffectedBySafeArea);
 #endif
 
     return insets;
@@ -1461,6 +1461,8 @@ static WebCore::Color scrollViewBackgroundColor(WKWebView *webView)
     _firstPaintAfterCommitLoadTransactionID = 0;
     _firstTransactionIDAfterPageRestore = 0;
     _resizeAnimationTransformTransactionID = std::nullopt;
+
+    _avoidsUnsafeArea = YES;
 }
 
 - (void)_didCommitLoadForMainFrame
@@ -1559,6 +1561,7 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         [_contentView _setDoubleTapGesturesEnabled:self._allowsDoubleTapGestures];
 
     [self _updateScrollViewBackground];
+    [self _setAvoidsUnsafeArea:layerTreeTransaction.avoidsUnsafeArea()];
 
     if (_gestureController)
         _gestureController->setRenderTreeSize(layerTreeTransaction.renderTreeSize());
@@ -1862,7 +1865,7 @@ static WebCore::FloatPoint constrainContentOffset(WebCore::FloatPoint contentOff
         return;
     [_contentView willStartZoomOrScroll];
 
-    LOG_WITH_STREAM(VisibleRects, stream << "_scrollByContentOffset: scrolling to " << boundedOffset);
+    LOG_WITH_STREAM(VisibleRects, stream << "_scrollByContentOffset: scrolling to " << WebCore::FloatPoint(boundedOffset));
 
     [_scrollView setContentOffset:boundedOffset animated:YES];
 }
@@ -2676,7 +2679,7 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
     _frozenVisibleContentRect = [self convertRect:fullViewRect toView:_contentView.get()];
     _frozenUnobscuredContentRect = [self convertRect:unobscuredRect toView:_contentView.get()];
 
-    LOG_WITH_STREAM(VisibleRects, stream << "_navigationGestureDidBegin: freezing visibleContentRect " << _frozenVisibleContentRect.value() << " UnobscuredContentRect " << _frozenUnobscuredContentRect.value());
+    LOG_WITH_STREAM(VisibleRects, stream << "_navigationGestureDidBegin: freezing visibleContentRect " << WebCore::FloatRect(_frozenVisibleContentRect.value()) << " UnobscuredContentRect " << WebCore::FloatRect(_frozenUnobscuredContentRect.value()));
 }
 
 - (void)_navigationGestureDidEnd
@@ -2717,8 +2720,13 @@ static bool scrollViewCanScroll(UIScrollView *scrollView)
 #endif
 }
 
-- (void)_didChangeAvoidsUnsafeArea:(BOOL)avoidsUnsafeArea
+- (void)_setAvoidsUnsafeArea:(BOOL)avoidsUnsafeArea
 {
+    if (_avoidsUnsafeArea == avoidsUnsafeArea)
+        return;
+
+    _avoidsUnsafeArea = avoidsUnsafeArea;
+
     [self _updateScrollViewInsetAdjustmentBehavior];
     [self _scheduleVisibleContentRectUpdate];
 
@@ -4672,9 +4680,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 {
     if (![self usesStandardContentView])
         return NO;
-    if (!_page)
-        return YES;
-    return _page->avoidsUnsafeArea();
+    return _avoidsUnsafeArea;
 }
 
 - (void)_setInterfaceOrientationOverride:(UIInterfaceOrientation)interfaceOrientation

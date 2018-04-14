@@ -32,6 +32,7 @@
 #include "JSCInlines.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
+#include "SuperSampler.h"
 #include "ThunkGenerators.h"
 
 #if ENABLE(WEBASSEMBLY)
@@ -839,7 +840,7 @@ void AssemblyHelpers::debugCall(VM& vm, V_DebugOperation_EPP function, void* arg
     }
 
     // Tell GC mark phase how much of the scratch buffer is active during call.
-    move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
     storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
 
 #if CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)
@@ -858,7 +859,7 @@ void AssemblyHelpers::debugCall(VM& vm, V_DebugOperation_EPP function, void* arg
     move(TrustedImmPtr(reinterpret_cast<void*>(function)), scratch);
     call(scratch);
 
-    move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
+    move(TrustedImmPtr(scratchBuffer->addressOfActiveLength()), GPRInfo::regT0);
     storePtr(TrustedImmPtr(0), GPRInfo::regT0);
 
     for (unsigned i = 0; i < FPRInfo::numberOfRegisters; ++i) {

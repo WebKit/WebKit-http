@@ -401,15 +401,16 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     JSScope* scope)
 {
     Base::finishCreation(vm);
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
 
     if (vm.typeProfiler() || vm.controlFlowProfiler())
         vm.functionHasExecutedCache()->removeUnexecutedRange(ownerExecutable->sourceID(), ownerExecutable->typeProfilingStartOffset(), ownerExecutable->typeProfilingEndOffset());
 
-    if (!setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation()))
-        return false;
+    setConstantRegisters(unlinkedCodeBlock->constantRegisters(), unlinkedCodeBlock->constantsSourceCodeRepresentation());
+    RETURN_IF_EXCEPTION(throwScope, false);
 
-    if (!setConstantIdentifierSetRegisters(vm, unlinkedCodeBlock->constantIdentifierSets()))
-        return false;
+    setConstantIdentifierSetRegisters(vm, unlinkedCodeBlock->constantIdentifierSets());
+    RETURN_IF_EXCEPTION(throwScope, false);
 
     if (unlinkedCodeBlock->usesGlobalObject())
         m_constantRegisters[unlinkedCodeBlock->globalObjectRegister().toConstantIndex()].set(*m_vm, this, m_globalObject.get());
@@ -838,7 +839,7 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
 CodeBlock::~CodeBlock()
 {
-    if (m_vm->m_perBytecodeProfiler)
+    if (UNLIKELY(m_vm->m_perBytecodeProfiler))
         m_vm->m_perBytecodeProfiler->notifyDestruction(this);
 
     if (unlinkedCodeBlock()->didOptimize() == MixedTriState)
@@ -869,32 +870,30 @@ CodeBlock::~CodeBlock()
 #endif // ENABLE(JIT)
 }
 
-bool CodeBlock::setConstantIdentifierSetRegisters(VM& vm, const Vector<ConstantIndentifierSetEntry>& constants)
+void CodeBlock::setConstantIdentifierSetRegisters(VM& vm, const Vector<ConstantIndentifierSetEntry>& constants)
 {
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSGlobalObject* globalObject = m_globalObject.get();
     ExecState* exec = globalObject->globalExec();
 
     for (const auto& entry : constants) {
-        Structure* setStructure = globalObject->setStructure();
-        RETURN_IF_EXCEPTION(scope, false);
-        JSSet* jsSet = JSSet::create(exec, vm, setStructure);
-        RETURN_IF_EXCEPTION(scope, false);
-
         const IdentifierSet& set = entry.first;
+
+        Structure* setStructure = globalObject->setStructure();
+        RETURN_IF_EXCEPTION(scope, void());
+        JSSet* jsSet = JSSet::create(exec, vm, setStructure, set.size());
+        RETURN_IF_EXCEPTION(scope, void());
+
         for (auto setEntry : set) {
             JSString* jsString = jsOwnedString(&vm, setEntry.get()); 
             jsSet->add(exec, jsString);
-            RETURN_IF_EXCEPTION(scope, false);
+            RETURN_IF_EXCEPTION(scope, void());
         }
         m_constantRegisters[entry.second].set(vm, this, jsSet);
     }
-    
-    scope.release();
-    return true;
 }
 
-bool CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation)
+void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& constants, const Vector<SourceCodeRepresentation>& constantsSourceCodeRepresentation)
 {
     auto scope = DECLARE_THROW_SCOPE(*m_vm);
     JSGlobalObject* globalObject = m_globalObject.get();
@@ -921,7 +920,7 @@ bool CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
                 constant = clone;
             } else if (isTemplateRegistryKey(*m_vm, constant)) {
                 auto* templateObject = globalObject->templateRegistry().getTemplateObject(exec, jsCast<JSTemplateRegistryKey*>(constant));
-                RETURN_IF_EXCEPTION(scope, false);
+                RETURN_IF_EXCEPTION(scope, void());
                 constant = templateObject;
             }
         }
@@ -930,8 +929,6 @@ bool CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
     }
 
     m_constantsSourceCodeRepresentation = constantsSourceCodeRepresentation;
-
-    return true;
 }
 
 void CodeBlock::setAlternative(VM& vm, CodeBlock* alternative)
@@ -1920,7 +1917,8 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
 
 #if ENABLE(DFG_JIT)
     if (reason != Profiler::JettisonDueToOldAge) {
-        if (Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get())
+        Profiler::Compilation* compilation = jitCode()->dfgCommon()->compilation.get();
+        if (UNLIKELY(compilation))
             compilation->setJettisonReason(reason, detail);
         
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.

@@ -28,6 +28,7 @@
 #include "config.h"
 #include "SVGImage.h"
 
+#include "CacheStorageProvider.h"
 #include "Chrome.h"
 #include "CommonVM.h"
 #include "DOMWindow.h"
@@ -54,9 +55,9 @@
 #include "SVGSVGElement.h"
 #include "Settings.h"
 #include "SocketProvider.h"
-#include "TextStream.h"
 #include <runtime/JSCInlines.h>
 #include <runtime/JSLock.h>
+#include <wtf/text/TextStream.h>
 
 #if USE(DIRECT2D)
 #include "COMPtr.h"
@@ -429,7 +430,8 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
         PageConfiguration pageConfiguration(
             createEmptyEditorClient(),
             SocketProvider::create(),
-            makeUniqueRef<LibWebRTCProvider>()
+            makeUniqueRef<LibWebRTCProvider>(),
+            CacheStorageProvider::create()
         );
         fillWithEmptyClients(pageConfiguration);
         m_chromeClient = std::make_unique<SVGImageChromeClient>(this);

@@ -47,6 +47,8 @@ namespace JSC { namespace DFG {
     /* is to make one node alias another. CSE will later usually eliminate this node, */\
     /* though it may choose not to if it would corrupt predictions (very rare). */\
     macro(Identity, NodeResultJS) \
+    /* Used for debugging to force a profile to appear as anything we want. */ \
+    macro(IdentityWithProfile, NodeResultJS | NodeMustGenerate) \
     \
     /* Nodes for handling functions (both as call and as construct). */\
     macro(ToThis, NodeResultJS) \
@@ -359,6 +361,7 @@ namespace JSC { namespace DFG {
     macro(HasOwnProperty, NodeResultBoolean) \
     \
     macro(CreateActivation, NodeResultJS) \
+    macro(PushWithScope, NodeResultJS | NodeMustGenerate) \
     \
     macro(CreateDirectArguments, NodeResultJS) \
     macro(PhantomDirectArguments, NodeResultJS | NodeMustGenerate) \

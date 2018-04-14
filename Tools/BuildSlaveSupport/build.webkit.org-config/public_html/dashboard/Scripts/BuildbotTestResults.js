@@ -23,9 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-BuildbotTestResults = function(testStep)
+BuildbotTestResults = function(testStep, url)
 {
     BaseObject.call(this);
+    this.URL = url;
 
     this._parseResults(testStep);
 };
@@ -39,11 +40,6 @@ BuildbotTestResults.prototype = {
     _parseResults: function(testStep)
     {
         this.name = testStep.name;
-        try {
-            this.URL = testStep.logs[0][1];
-        } catch (ex) {
-        }
-
         this.allPassed = false;
         this.errorOccurred = false;
         this.tooManyFailures = false;
@@ -75,10 +71,11 @@ BuildbotTestResults.prototype = {
 
         function resultSummarizer(matchString, sum, outputLine)
         {
-            var match = /^(\d+)\s/.exec(outputLine);
+            // Sample outputLine: "53 failures 37 new passes 1 crashes"
+            var regex = new RegExp("(\\d+)\\s" + matchString);
+            match = regex.exec(outputLine);
             if (!match) {
-                var regex = new RegExp("(\\d+)\\s" + matchString);
-                match = regex.exec(outputLine);
+                match = /^(\d+)\s/.exec(outputLine);
             }
             if (!match)
                 return sum;

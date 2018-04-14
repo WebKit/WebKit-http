@@ -31,6 +31,7 @@ VPATH = \
     $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/applepay \
     $(WebCore)/Modules/beacon \
+    $(WebCore)/Modules/cache \
     $(WebCore)/Modules/credentials \
     $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/encryptedmedia/legacy \
@@ -55,11 +56,11 @@ VPATH = \
     $(WebCore)/animation \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
+    $(WebCore)/crypto/keys \
     $(WebCore)/crypto/parameters \
     $(WebCore)/css \
     $(WebCore)/dom \
     $(WebCore)/editing \
-    $(WebCore)/fetch \
     $(WebCore)/fileapi \
     $(WebCore)/html \
     $(WebCore)/html/canvas \
@@ -73,6 +74,7 @@ VPATH = \
     $(WebCore)/storage \
     $(WebCore)/xml \
     $(WebCore)/workers \
+    $(WebCore)/workers/service \
     $(WebCore)/svg \
     $(WebCore)/testing \
     $(WebCore)/websockets \
@@ -99,6 +101,11 @@ JS_BINDING_IDLS = \
 	$(WebCore)/Modules/applepay/ApplePayShippingMethodUpdate.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
     $(WebCore)/Modules/beacon/NavigatorBeacon.idl \
+    $(WebCore)/Modules/cache/DOMWindowCaches.idl \
+    $(WebCore)/Modules/cache/Cache.idl \
+    $(WebCore)/Modules/cache/CacheQueryOptions.idl \
+    $(WebCore)/Modules/cache/CacheStorage.idl \
+    $(WebCore)/Modules/cache/WorkerGlobalScopeCaches.idl \
     $(WebCore)/Modules/credentials/BasicCredential.idl \
     $(WebCore)/Modules/credentials/CredentialCreationOptions.idl \
     $(WebCore)/Modules/credentials/CredentialData.idl \
@@ -300,6 +307,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
+    $(WebCore)/crypto/keys/CryptoAesKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoEcKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoHmacKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoRsaHashedKeyAlgorithm.idl \
+    $(WebCore)/crypto/keys/CryptoRsaKeyAlgorithm.idl \
     $(WebCore)/crypto/parameters/AesCbcCfbParams.idl \
     $(WebCore)/crypto/parameters/AesCtrParams.idl \
     $(WebCore)/crypto/parameters/AesGcmParams.idl \
@@ -353,7 +366,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/WebKitCSSViewportRule.idl \
     $(WebCore)/dom/AnimationEvent.idl \
     $(WebCore)/dom/Attr.idl \
-    $(WebCore)/dom/AutocompleteErrorEvent.idl \
     $(WebCore)/dom/BeforeLoadEvent.idl \
     $(WebCore)/dom/BeforeUnloadEvent.idl \
     $(WebCore)/dom/CDATASection.idl \
@@ -406,6 +418,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/MessagePort.idl \
     $(WebCore)/dom/MouseEvent.idl \
     $(WebCore)/dom/MouseEventInit.idl \
+    $(WebCore)/dom/MutationCallback.idl \
     $(WebCore)/dom/MutationEvent.idl \
     $(WebCore)/dom/MutationObserver.idl \
     $(WebCore)/dom/MutationRecord.idl \
@@ -647,6 +660,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/NavigatorID.idl \
     $(WebCore)/page/NavigatorLanguage.idl \
     $(WebCore)/page/NavigatorOnLine.idl \
+    $(WebCore)/page/NavigatorServiceWorker.idl \
     $(WebCore)/page/Performance.idl \
     $(WebCore)/page/PerformanceEntry.idl \
     $(WebCore)/page/PerformanceMark.idl \
@@ -830,6 +844,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/workers/Worker.idl \
     $(WebCore)/workers/WorkerGlobalScope.idl \
     $(WebCore)/workers/WorkerLocation.idl \
+    $(WebCore)/workers/WorkerType.idl \
+    $(WebCore)/workers/service/ServiceWorker.idl \
+    $(WebCore)/workers/service/ServiceWorkerContainer.idl \
+    $(WebCore)/workers/service/ServiceWorkerGlobalScope.idl \
+    $(WebCore)/workers/service/ServiceWorkerRegistration.idl \
+    $(WebCore)/workers/service/ServiceWorkerUpdateViaCache.idl \
     $(WebCore)/xml/DOMParser.idl \
     $(WebCore)/xml/XMLHttpRequest.idl \
     $(WebCore)/xml/XMLHttpRequestEventTarget.idl \
@@ -1341,6 +1361,7 @@ SUPPLEMENTAL_MAKEFILE_DEPS = ./SupplementalDependencies.dep
 WINDOW_CONSTRUCTORS_FILE = ./DOMWindowConstructors.idl
 WORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./WorkerGlobalScopeConstructors.idl
 DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./DedicatedWorkerGlobalScopeConstructors.idl
+SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE = ./ServiceWorkerGlobalScopeConstructors.idl
 IDL_FILES_TMP = ./idl_files.tmp
 IDL_ATTRIBUTES_FILE = $(WebCore)/bindings/scripts/IDLAttributes.json
 
@@ -1353,7 +1374,7 @@ endef
 
 $(SUPPLEMENTAL_MAKEFILE_DEPS) : $(PREPROCESS_IDLS_SCRIPTS) $(JS_BINDING_IDLS) $(PLATFORM_FEATURE_DEFINES) DerivedSources.make
 	$(foreach f,$(JS_BINDING_IDLS),@echo $(f)>>$(IDL_FILES_TMP)$(NL))
-	$(PERL) $(WebCore)/bindings/scripts/preprocess-idls.pl --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
+	$(PERL) $(WebCore)/bindings/scripts/preprocess-idls.pl --defines "$(FEATURE_DEFINES) $(ADDITIONAL_IDL_DEFINES) LANGUAGE_JAVASCRIPT" --idlFilesList $(IDL_FILES_TMP) --supplementalDependencyFile $(SUPPLEMENTAL_DEPENDENCY_FILE) --windowConstructorsFile $(WINDOW_CONSTRUCTORS_FILE) --workerGlobalScopeConstructorsFile $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --dedicatedWorkerGlobalScopeConstructorsFile $(DEDICATEDWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --serviceWorkerGlobalScopeConstructorsFile $(SERVICEWORKERGLOBALSCOPE_CONSTRUCTORS_FILE) --supplementalMakefileDeps $@
 	$(DELETE) $(IDL_FILES_TMP)
 
 JS%.cpp JS%.h : %.idl $(JS_BINDINGS_SCRIPTS) $(IDL_ATTRIBUTES_FILE) $(WINDOW_CONSTRUCTORS_FILE) $(WORKERGLOBALSCOPE_CONSTRUCTORS_FILE) $(PLATFORM_FEATURE_DEFINES)

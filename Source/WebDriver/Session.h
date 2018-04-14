@@ -25,11 +25,11 @@
 
 #pragma once
 
+#include "Capabilities.h"
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Seconds.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -41,7 +41,6 @@ class InspectorValue;
 
 namespace WebDriver {
 
-class Capabilities;
 class CommandResult;
 class SessionHost;
 
@@ -59,12 +58,6 @@ public:
     enum class FindElementsMode { Single, Multiple };
     enum class ExecuteScriptMode { Sync, Async };
     enum class Timeout { Script, PageLoad, Implicit };
-
-    struct Timeouts {
-        std::optional<Seconds> script;
-        std::optional<Seconds> pageLoad;
-        std::optional<Seconds> implicit;
-    };
 
     void waitForNavigationToComplete(Function<void (CommandResult&&)>&&);
     void createTopLevelBrowsingContext(Function<void (CommandResult&&)>&&);
@@ -101,12 +94,23 @@ public:
     void elementSendKeys(const String& elementID, Vector<String>&& keys, Function<void (CommandResult&&)>&&);
     void elementSubmit(const String& elementID, Function<void (CommandResult&&)>&&);
     void executeScript(const String& script, RefPtr<Inspector::InspectorArray>&& arguments, ExecuteScriptMode, Function<void (CommandResult&&)>&&);
+    void dismissAlert(Function<void (CommandResult&&)>&&);
+    void acceptAlert(Function<void (CommandResult&&)>&&);
+    void getAlertText(Function<void (CommandResult&&)>&&);
+    void sendAlertText(const String&, Function<void (CommandResult&&)>&&);
 
 private:
     Session(std::unique_ptr<SessionHost>&&);
 
     void switchToTopLevelBrowsingContext(std::optional<String>);
     void switchToBrowsingContext(std::optional<String>);
+    void closeTopLevelBrowsingContext(const String& toplevelBrowsingContext, Function<void (CommandResult&&)>&&);
+    void closeAllToplevelBrowsingContexts(const String& toplevelBrowsingContext, Function<void (CommandResult&&)>&&);
+
+    std::optional<String> pageLoadStrategyString() const;
+
+    void handleUserPrompts(Function<void (CommandResult&&)>&&);
+    void reportUnexpectedAlertOpen(Function<void (CommandResult&&)>&&);
 
     RefPtr<Inspector::InspectorObject> createElement(RefPtr<Inspector::InspectorValue>&&);
     RefPtr<Inspector::InspectorObject> createElement(const String& elementID);
@@ -133,7 +137,9 @@ private:
         ScrollIntoViewIfNeeded = 1 << 0,
         UseViewportCoordinates = 1 << 1,
     };
-    void computeElementLayout(const String& elementID, OptionSet<ElementLayoutOption>, Function<void (std::optional<Rect>&&, RefPtr<Inspector::InspectorObject>&&)>&&);
+    void computeElementLayout(const String& elementID, OptionSet<ElementLayoutOption>, Function<void (std::optional<Rect>&&, std::optional<Point>&&, bool, RefPtr<Inspector::InspectorObject>&&)>&&);
+
+    void selectOptionElement(const String& elementID, Function<void (CommandResult&&)>&&);
 
     enum class MouseButton { None, Left, Middle, Right };
     enum class MouseInteraction { Move, Down, Up, SingleClick, DoubleClick };

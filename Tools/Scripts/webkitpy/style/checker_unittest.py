@@ -247,6 +247,18 @@ class GlobalVariablesTest(unittest.TestCase):
         # Javascript keywords.
         assertCheck(os.path.join('Source', 'JavaScriptCore', 'parser', 'Keywords.table'), "whitespace/carriage_return")
 
+        # Test if the exception for DataDetectorsCoreSPI.h is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'DataDetectorsCoreSPI.h'),
+                      "runtime/enum_bitfields")
+
+        # Test if the exception for PassKitSPI.h is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi', 'cocoa', 'PassKitSPI.h'),
+                      "build/include")
+
+        # Test if the exception for pal/spi is in place.
+        assertNoCheck(os.path.join('Source', 'WebCore', 'PAL', 'pal', 'spi'),
+                      "readability/naming/underscores")
+
     def test_max_reports_per_category(self):
         """Check that _MAX_REPORTS_PER_CATEGORY is valid."""
         all_categories = self._all_categories()

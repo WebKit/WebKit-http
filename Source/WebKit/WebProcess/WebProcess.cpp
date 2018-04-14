@@ -44,6 +44,7 @@
 #include "StatisticsData.h"
 #include "UserData.h"
 #include "WebAutomationSessionProxy.h"
+#include "WebCacheStorageProvider.h"
 #include "WebConnectionToUIProcess.h"
 #include "WebCookieManager.h"
 #include "WebCoreArgumentCoders.h"
@@ -63,6 +64,7 @@
 #include "WebProcessPoolMessages.h"
 #include "WebProcessProxyMessages.h"
 #include "WebResourceLoadStatisticsStoreMessages.h"
+#include "WebServiceWorkerProvider.h"
 #include "WebSocketStream.h"
 #include "WebToStorageProcessConnection.h"
 #include "WebsiteData.h"
@@ -146,11 +148,6 @@ static const Seconds nonVisibleProcessCleanupDelay { 10_s };
 
 namespace WebKit {
 
-static void gigacageDisabled(void*)
-{
-    UNREACHABLE_FOR_PLATFORM();
-}
-
 WebProcess& WebProcess::singleton()
 {
     static WebProcess& process = *new WebProcess;
@@ -164,6 +161,7 @@ WebProcess::WebProcess()
 #endif
     , m_webInspectorInterruptDispatcher(WebInspectorInterruptDispatcher::create())
     , m_webLoaderStrategy(*new WebLoaderStrategy)
+    , m_cacheStorageProvider(WebCacheStorageProvider::create())
     , m_dnsPrefetchHystereris([this](HysteresisState state) { if (state == HysteresisState::Stopped) m_dnsPrefetchedHosts.clear(); })
 #if ENABLE(NETSCAPE_PLUGIN_API)
     , m_pluginProcessConnectionManager(PluginProcessConnectionManager::create())
@@ -202,8 +200,7 @@ WebProcess::WebProcess()
         parentProcessConnection()->send(Messages::WebResourceLoadStatisticsStore::ResourceLoadStatisticsUpdated(WTFMove(statistics)), 0);
     });
 
-    if (Gigacage::shouldBeEnabled())
-        Gigacage::addDisableCallback(gigacageDisabled, nullptr);
+    Gigacage::disableDisablingPrimitiveGigacageIfShouldBeEnabled();
 }
 
 WebProcess::~WebProcess()
@@ -396,6 +393,10 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
 
 #if ENABLE(GAMEPAD)
     GamepadProvider::singleton().setSharedProvider(WebGamepadProvider::singleton());
+#endif
+
+#if ENABLE(SERVICE_WORKER)
+    ServiceWorkerProvider::setSharedProvider(WebServiceWorkerProvider::singleton());
 #endif
 
 #if ENABLE(WEBASSEMBLY)
@@ -1449,6 +1450,11 @@ void WebProcess::nonVisibleProcessCleanupTimerFired()
 void WebProcess::setResourceLoadStatisticsEnabled(bool enabled)
 {
     WebCore::Settings::setResourceLoadStatisticsEnabled(enabled);
+}
+
+void WebProcess::clearResourceLoadStatistics()
+{
+    ResourceLoadObserver::shared().clearState();
 }
 
 RefPtr<API::Object> WebProcess::transformHandlesToObjects(API::Object* object)

@@ -191,7 +191,7 @@ static void normalizeSpacesAndMirrorChars(const UChar* source, UChar* destinatio
         // Don't normalize tabs as they are not treated as spaces for word-end
         if (FontCascade::treatAsSpace(character) && character != '\t')
             character = ' ';
-        else if (FontCascade::treatAsZeroWidthSpace(character))
+        else if (FontCascade::treatAsZeroWidthSpaceInComplexScript(character))
             character = zeroWidthSpace;
         else if (normalizeMode == HarfBuzzShaper::NormalizeMirrorChars)
             character = u_charMirror(character);

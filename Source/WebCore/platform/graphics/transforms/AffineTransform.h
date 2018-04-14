@@ -45,6 +45,10 @@ struct D2D_MATRIX_3X2_F;
 typedef D2D_MATRIX_3X2_F D2D1_MATRIX_3X2_F;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class FloatPoint;
@@ -54,7 +58,6 @@ class FloatSize;
 class IntPoint;
 class IntSize;
 class IntRect;
-class TextStream;
 class TransformationMatrix;
 
 class AffineTransform {
@@ -211,7 +214,7 @@ private:
 
 WEBCORE_EXPORT AffineTransform makeMapBetweenRects(const FloatRect& source, const FloatRect& dest);
 
-WEBCORE_EXPORT TextStream& operator<<(TextStream&, const AffineTransform&);
+WEBCORE_EXPORT WTF::TextStream& operator<<(WTF::TextStream&, const AffineTransform&);
 
 }
 

@@ -28,9 +28,12 @@
 
 #include "NetworkLoadParameters.h"
 #include "SandboxExtension.h"
+#include <WebCore/ContentSecurityPolicyResponseHeaders.h>
+#include <WebCore/FetchOptions.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceLoaderOptions.h>
 #include <WebCore/ResourceRequest.h>
+#include <WebCore/SecurityOrigin.h>
 #include <WebCore/SessionID.h>
 #include <wtf/Seconds.h>
 
@@ -53,6 +56,9 @@ public:
     RefPtr<SandboxExtension> resourceSandboxExtension; // Created automatically for the sender.
     Seconds maximumBufferingTime;
     Vector<String> derivedCachedDataTypesToRetrieve;
+    RefPtr<WebCore::SecurityOrigin> sourceOrigin;
+    WebCore::FetchOptions::Mode mode;
+    std::optional<WebCore::ContentSecurityPolicyResponseHeaders> cspResponseHeaders;
 };
 
 } // namespace WebKit

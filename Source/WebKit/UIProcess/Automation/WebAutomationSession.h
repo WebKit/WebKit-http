@@ -94,10 +94,12 @@ public:
     void setProcessPool(WebProcessPool*);
 
     void navigationOccurredForFrame(const WebFrameProxy&);
+    void documentLoadedForFrame(const WebFrameProxy&);
     void inspectorFrontendLoaded(const WebPageProxy&);
     void keyboardEventsFlushedForPage(const WebPageProxy&);
     void willClosePage(const WebPageProxy&);
     void handleRunOpenPanel(const WebPageProxy&, const WebFrameProxy&, const API::OpenPanelParameters&, WebOpenPanelResultListenerProxy&);
+    void willShowJavaScriptDialog(WebPageProxy&);
 
 #if ENABLE(REMOTE_INSPECTOR)
     // Inspector::RemoteAutomationTarget API
@@ -132,6 +134,7 @@ public:
     void resolveChildFrameHandle(Inspector::ErrorString&, const String& browsingContextHandle, const String* optionalFrameHandle, const int* optionalOrdinal, const String* optionalName, const String* optionalNodeHandle, Ref<ResolveChildFrameHandleCallback>&&) override;
     void resolveParentFrameHandle(Inspector::ErrorString&, const String& browsingContextHandle, const String& frameHandle, Ref<ResolveParentFrameHandleCallback>&&) override;
     void computeElementLayout(Inspector::ErrorString&, const String& browsingContextHandle, const String& frameHandle, const String& nodeHandle, const bool* optionalScrollIntoViewIfNeeded, const bool* useViewportCoordinates, Ref<Inspector::AutomationBackendDispatcherHandler::ComputeElementLayoutCallback>&&) override;
+    void selectOptionElement(Inspector::ErrorString&, const String& browsingContextHandle, const String& frameHandle, const String& nodeHandle, Ref<Inspector::AutomationBackendDispatcherHandler::SelectOptionElementCallback>&&) override;
     void isShowingJavaScriptDialog(Inspector::ErrorString&, const String& browsingContextHandle, bool* result) override;
     void dismissCurrentJavaScriptDialog(Inspector::ErrorString&, const String& browsingContextHandle) override;
     void acceptCurrentJavaScriptDialog(Inspector::ErrorString&, const String& browsingContextHandle) override;
@@ -163,8 +166,10 @@ private:
     String handleForWebFrameID(uint64_t frameID);
     String handleForWebFrameProxy(const WebFrameProxy&);
 
-    void waitForNavigationToCompleteOnPage(WebPageProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
-    void waitForNavigationToCompleteOnFrame(WebFrameProxy&, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void waitForNavigationToCompleteOnPage(WebPageProxy&, Inspector::Protocol::Automation::PageLoadStrategy, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void waitForNavigationToCompleteOnFrame(WebFrameProxy&, Inspector::Protocol::Automation::PageLoadStrategy, Seconds, Ref<Inspector::BackendDispatcher::CallbackBase>&&);
+    void respondToPendingPageNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>&);
+    void respondToPendingFrameNavigationCallbacksWithTimeout(HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>>&);
     void loadTimerFired();
 
     // Implemented in generated WebAutomationSessionMessageReceiver.cpp.
@@ -174,7 +179,8 @@ private:
     void didEvaluateJavaScriptFunction(uint64_t callbackID, const String& result, const String& errorType);
     void didResolveChildFrame(uint64_t callbackID, uint64_t frameID, const String& errorType);
     void didResolveParentFrame(uint64_t callbackID, uint64_t frameID, const String& errorType);
-    void didComputeElementLayout(uint64_t callbackID, WebCore::IntRect, const String& errorType);
+    void didComputeElementLayout(uint64_t callbackID, WebCore::IntRect, std::optional<WebCore::IntPoint>, bool isObscured, const String& errorType);
+    void didSelectOptionElement(uint64_t callbackID, const String& errorType);
     void didTakeScreenshot(uint64_t callbackID, const ShareableBitmap::Handle&, const String& errorType);
     void didGetCookiesForFrame(uint64_t callbackID, Vector<WebCore::Cookie>, const String& errorType);
     void didDeleteCookie(uint64_t callbackID, const String& errorType);
@@ -212,8 +218,10 @@ private:
     HashMap<uint64_t, String> m_webFrameHandleMap;
     HashMap<String, uint64_t> m_handleWebFrameMap;
 
-    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerPage;
-    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNavigationInBrowsingContextCallbacksPerFrame;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNormalNavigationInBrowsingContextCallbacksPerPage;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingEagerNavigationInBrowsingContextCallbacksPerPage;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingNormalNavigationInBrowsingContextCallbacksPerFrame;
+    HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingEagerNavigationInBrowsingContextCallbacksPerFrame;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingInspectorCallbacksPerPage;
     HashMap<uint64_t, RefPtr<Inspector::BackendDispatcher::CallbackBase>> m_pendingKeyboardEventsFlushedCallbacksPerPage;
 
@@ -237,6 +245,9 @@ private:
 
     uint64_t m_nextDeleteCookieCallbackID { 1 };
     HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::DeleteSingleCookieCallback>> m_deleteCookieCallbacks;
+
+    uint64_t m_nextSelectOptionElementCallbackID { 1 };
+    HashMap<uint64_t, RefPtr<Inspector::AutomationBackendDispatcherHandler::SelectOptionElementCallback>> m_selectOptionElementCallbacks;
 
     RunLoop::Timer<WebAutomationSession> m_loadTimer;
     Vector<String> m_filesToSelectForFileUpload;

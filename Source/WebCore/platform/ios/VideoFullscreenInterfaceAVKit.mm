@@ -30,7 +30,6 @@
 
 #if HAVE(AVKIT)
 
-#import "AVKitSPI.h"
 #import "GeometryUtilities.h"
 #import "Logging.h"
 #import "PlaybackSessionInterfaceAVKit.h"
@@ -44,6 +43,7 @@
 #import <UIKit/UIKit.h>
 #import <objc/message.h>
 #import <objc/runtime.h>
+#import <pal/spi/cocoa/AVKitSPI.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/text/CString.h>
 #import <wtf/text/WTFString.h>
@@ -763,22 +763,12 @@ void VideoFullscreenInterfaceAVKit::exitFullscreen(const WebCore::IntRect& final
     };
 }
 
-@interface UIApplication ()
-- (void)_setStatusBarOrientation:(UIInterfaceOrientation)o;
-@end
-
-@interface UIWindow ()
-- (UIInterfaceOrientation)interfaceOrientation;
-@end
-
 void VideoFullscreenInterfaceAVKit::cleanupFullscreen()
 {
     LOG(Fullscreen, "VideoFullscreenInterfaceAVKit::cleanupFullscreen(%p)", this);
     if (m_window) {
         [m_window setHidden:YES];
         [m_window setRootViewController:nil];
-        if (m_parentWindow)
-            [[getUIApplicationClass() sharedApplication] _setStatusBarOrientation:[m_parentWindow interfaceOrientation]];
     }
     
     [m_playerViewController setDelegate:nil];

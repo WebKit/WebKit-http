@@ -108,7 +108,6 @@
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
 #import <WebCore/NSSpellCheckerSPI.h>
-#import <WebCore/NSURLFileTypeMappingsSPI.h>
 #import <WebCore/NSViewSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PrintContext.h>
@@ -132,6 +131,7 @@
 #import <WebKitSystemInterface.h>
 #import <dlfcn.h>
 #import <limits>
+#import <pal/spi/cocoa/NSURLFileTypeMappingsSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/MainThread.h>
@@ -6945,9 +6945,12 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 
         if (NSNumber *style = [attrs objectForKey:NSUnderlineStyleAttributeName]) {
             Color color = Color::black;
-            if (NSColor *colorAttr = [attrs objectForKey:NSUnderlineColorAttributeName])
+            CompositionUnderlineColor compositionUnderlineColor = CompositionUnderlineColor::TextColor;
+            if (NSColor *colorAttr = [attrs objectForKey:NSUnderlineColorAttributeName]) {
                 color = colorFromNSColor(colorAttr);
-            result.append(CompositionUnderline(range.location, NSMaxRange(range), color, [style intValue] > 1));
+                compositionUnderlineColor = CompositionUnderlineColor::GivenColor;
+            }
+            result.append(CompositionUnderline(range.location, NSMaxRange(range), compositionUnderlineColor, color, [style intValue] > 1));
         }
 
         i = range.location + range.length;
@@ -6997,9 +7000,13 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
             replacementRange = NSRangeFromString(rangeString);
 
         extractUnderlines(string, underlines);
-    } else
-#endif
+    } else {
         text = string;
+        underlines.append(CompositionUnderline(0, [text length], CompositionUnderlineColor::TextColor, Color::black, false));
+    }
+#else
+    text = string;
+#endif
 
     if (replacementRange.location != NSNotFound)
         [[self _frame] _selectNSRange:replacementRange];

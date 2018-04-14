@@ -33,7 +33,6 @@
 #include "RuntimeEnabledFeatures.h"
 
 #include "MediaPlayer.h"
-#include "WebSocket.h"
 #include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
@@ -56,13 +55,6 @@ RuntimeEnabledFeatures& RuntimeEnabledFeatures::sharedFeatures()
 bool RuntimeEnabledFeatures::audioEnabled() const
 {
     return MediaPlayer::isAvailable();
-}
-#endif
-
-#if ENABLE(WEB_SOCKETS)
-bool RuntimeEnabledFeatures::webSocketEnabled() const
-{
-    return WebSocket::isAvailable();
 }
 #endif
 

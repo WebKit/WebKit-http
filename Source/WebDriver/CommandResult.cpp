@@ -88,6 +88,8 @@ CommandResult::CommandResult(RefPtr<InspectorValue>&& result, std::optional<Erro
             m_errorCode = ErrorCode::NoSuchFrame;
         else if (errorName == "NotImplemented")
             m_errorCode = ErrorCode::UnsupportedOperation;
+        else if (errorName == "ElementNotInteractable")
+            m_errorCode = ErrorCode::ElementNotInteractable;
         else if (errorName == "JavaScriptError")
             m_errorCode = ErrorCode::JavascriptError;
         else if (errorName == "JavaScriptTimeout")
@@ -102,6 +104,10 @@ CommandResult::CommandResult(RefPtr<InspectorValue>&& result, std::optional<Erro
             m_errorCode = ErrorCode::InvalidSelector;
         else if (errorName == "Timeout")
             m_errorCode = ErrorCode::Timeout;
+        else if (errorName == "NoJavaScriptDialog")
+            m_errorCode = ErrorCode::NoSuchAlert;
+        else if (errorName == "ElementNotSelectable")
+            m_errorCode = ErrorCode::ElementNotSelectable;
 
         break;
     }
@@ -122,9 +128,13 @@ unsigned CommandResult::httpStatusCode() const
     // §6.6 Handling Errors.
     // https://www.w3.org/TR/webdriver/#handling-errors
     switch (m_errorCode.value()) {
+    case ErrorCode::ElementClickIntercepted:
+    case ErrorCode::ElementNotSelectable:
+    case ErrorCode::ElementNotInteractable:
     case ErrorCode::InvalidArgument:
     case ErrorCode::InvalidElementState:
     case ErrorCode::InvalidSelector:
+    case ErrorCode::NoSuchAlert:
     case ErrorCode::NoSuchElement:
     case ErrorCode::NoSuchFrame:
     case ErrorCode::NoSuchWindow:
@@ -138,6 +148,7 @@ unsigned CommandResult::httpStatusCode() const
         return 408;
     case ErrorCode::JavascriptError:
     case ErrorCode::SessionNotCreated:
+    case ErrorCode::UnexpectedAlertOpen:
     case ErrorCode::UnknownError:
     case ErrorCode::UnsupportedOperation:
         return 500;
@@ -152,6 +163,12 @@ String CommandResult::errorString() const
     ASSERT(isError());
 
     switch (m_errorCode.value()) {
+    case ErrorCode::ElementClickIntercepted:
+        return ASCIILiteral("element click intercepted");
+    case ErrorCode::ElementNotSelectable:
+        return ASCIILiteral("element not selectable");
+    case ErrorCode::ElementNotInteractable:
+        return ASCIILiteral("element not interactable");
     case ErrorCode::InvalidArgument:
         return ASCIILiteral("invalid argument");
     case ErrorCode::InvalidElementState:
@@ -162,6 +179,8 @@ String CommandResult::errorString() const
         return ASCIILiteral("invalid session id");
     case ErrorCode::JavascriptError:
         return ASCIILiteral("javascript error");
+    case ErrorCode::NoSuchAlert:
+        return ASCIILiteral("no such alert");
     case ErrorCode::NoSuchElement:
         return ASCIILiteral("no such element");
     case ErrorCode::NoSuchFrame:
@@ -176,6 +195,8 @@ String CommandResult::errorString() const
         return ASCIILiteral("stale element reference");
     case ErrorCode::Timeout:
         return ASCIILiteral("timeout");
+    case ErrorCode::UnexpectedAlertOpen:
+        return ASCIILiteral("unexpected alert open");
     case ErrorCode::UnknownCommand:
         return ASCIILiteral("unknown command");
     case ErrorCode::UnknownError:

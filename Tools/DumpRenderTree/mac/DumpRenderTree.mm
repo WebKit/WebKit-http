@@ -107,12 +107,12 @@
 #import "UIKitSPI.h"
 #import "UIKitTestSPI.h"
 #import <QuartzCore/QuartzCore.h>
-#import <WebCore/CoreGraphicsSPI.h>
 #import <WebKit/WAKWindow.h>
 #import <WebKit/WebCoreThread.h>
 #import <WebKit/WebCoreThreadRun.h>
 #import <WebKit/WebDOMOperations.h>
 #import <fcntl.h>
+#import <pal/spi/cg/CoreGraphicsSPI.h>
 #endif
 
 extern "C" {
@@ -847,12 +847,12 @@ static void enableExperimentalFeatures(WebPreferences* preferences)
     [preferences setMediaPreloadingEnabled:YES];
     // FIXME: InputEvents
     [preferences setWebAnimationsEnabled:YES];
-    [preferences setBeaconAPIEnabled:YES];
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
     // FIXME: AsyncFrameScrollingEnabled
     [preferences setWebRTCLegacyAPIEnabled:YES];
     [preferences setCredentialManagementEnabled:YES];
+    [preferences setCacheAPIEnabled:NO];
     [preferences setReadableByteStreamAPIEnabled:YES];
     [preferences setWritableStreamAPIEnabled:YES];
 }
@@ -951,6 +951,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setShadowDOMEnabled:YES];
     [preferences setCustomElementsEnabled:YES];
 
+    [preferences setDataTransferItemsEnabled:YES];
+
     [preferences setWebGL2Enabled:YES];
     [preferences setWebGPUEnabled:YES];
 
@@ -967,6 +969,8 @@ static void resetWebPreferencesToConsistentValues()
     [preferences setResourceTimingEnabled:YES];
     [preferences setUserTimingEnabled:YES];
 
+    [preferences setCacheAPIEnabled:NO];
+
     [WebPreferences _clearNetworkLoaderSession];
     [WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:NSHTTPCookieAcceptPolicyOnlyFromMainDocumentDomain];
 }
@@ -979,6 +983,7 @@ static void setWebPreferencesForTestOptions(const TestOptions& options)
     preferences.modernMediaControlsEnabled = options.enableModernMediaControls;
     preferences.credentialManagementEnabled = options.enableCredentialManagement;
     preferences.isSecureContextAttributeEnabled = options.enableIsSecureContextAttribute;
+    preferences.inspectorAdditionsEnabled = options.enableInspectorAdditions;
 }
 
 // Called once on DumpRenderTree startup.
@@ -1907,28 +1912,7 @@ static NSURL *computeTestURL(NSString *pathOrURLString, NSString **relativeTestP
         return [NSURL fileURLWithPath:absolutePath];
 
     *relativeTestPath = [absolutePath substringFromIndex:NSMaxRange(layoutTestsRange)];
-
-    // Convert file URLs in LayoutTests/http/tests to HTTP URLs, except for file URLs in LayoutTests/http/tests/local.
-
-    NSRange httpTestsRange = [absolutePath rangeOfString:@"/LayoutTests/http/tests/"];
-    if (httpTestsRange.location == NSNotFound || [absolutePath rangeOfString:@"/LayoutTests/http/tests/local/"].location != NSNotFound)
-        return [NSURL fileURLWithPath:absolutePath];
-
-    auto components = adoptNS([[NSURLComponents alloc] init]);
-    [components setPath:[absolutePath substringFromIndex:NSMaxRange(httpTestsRange) - 1]];
-    [components setHost:@"127.0.0.1"];
-
-    // Paths under /ssl/ should be loaded using HTTPS.
-    BOOL isSecure = [[components path] hasPrefix:@"/ssl/"];
-    if (isSecure) {
-        [components setScheme:@"https"];
-        [components setPort:@(8443)];
-    } else {
-        [components setScheme:@"http"];
-        [components setPort:@(8000)];
-    }
-
-    return [components URL];
+    return [NSURL fileURLWithPath:absolutePath];
 }
 
 static void runTest(const string& inputLine)
@@ -2106,6 +2090,8 @@ static void runTest(const string& inputLine)
 
     if (gcBetweenTests)
         [WebCoreStatistics garbageCollectJavaScriptObjects];
+    
+    JSC::waitForVMDestruction();
 
     fputs("#EOF\n", stderr);
     fflush(stderr);

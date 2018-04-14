@@ -26,13 +26,16 @@
 #include "config.h"
 #include "NavigatorBeacon.h"
 
+#include "CachedResourceLoader.h"
 #include "Document.h"
+#include "FetchBody.h"
+#include "HTTPParsers.h"
 #include "Navigator.h"
 #include "URL.h"
 
 namespace WebCore {
 
-ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, const String& url, std::optional<BodyInit>&& data)
+ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, const String& url, std::optional<FetchBody::Init>&& body)
 {
     URL parsedUrl = document.completeURL(url);
 
@@ -43,11 +46,39 @@ ExceptionOr<bool> NavigatorBeacon::sendBeacon(Navigator&, Document& document, co
     if (!parsedUrl.protocolIsInHTTPFamily())
         return Exception { TypeError, ASCIILiteral("Beacons can only be sent over HTTP(S)") };
 
-    auto* frame = document.frame();
-    if (!frame)
+    if (!document.frame())
         return false;
 
-    return PingLoader::sendBeacon(*frame, document, parsedUrl, WTFMove(data));
+    auto& contentSecurityPolicy = *document.contentSecurityPolicy();
+    if (!document.shouldBypassMainWorldContentSecurityPolicy() && !contentSecurityPolicy.allowConnectToSource(parsedUrl)) {
+        // We simulate a network error so we return true here. This is consistent with Blink.
+        return true;
+    }
+
+    ResourceRequest request(parsedUrl);
+    request.setHTTPMethod(ASCIILiteral("POST"));
+
+    FetchOptions options;
+    options.credentials = FetchOptions::Credentials::Include;
+    options.cache = FetchOptions::Cache::NoCache;
+    options.keepAlive = true;
+    if (body) {
+        options.mode = FetchOptions::Mode::Cors;
+        String mimeType;
+        auto fetchBody = FetchBody::extract(document, WTFMove(body.value()), mimeType);
+        request.setHTTPBody(fetchBody.bodyForInternalRequest(document));
+        if (!mimeType.isEmpty()) {
+            request.setHTTPContentType(mimeType);
+            if (isCrossOriginSafeRequestHeader(HTTPHeaderName::ContentType, mimeType))
+                options.mode = FetchOptions::Mode::NoCors;
+        }
+    }
+    auto cachedResource = document.cachedResourceLoader().requestBeaconResource({ WTFMove(request), options });
+    if (cachedResource)
+        return true;
+
+    document.addConsoleMessage(MessageSource::Network, MessageLevel::Error, cachedResource.error().localizedDescription());
+    return false;
 }
 
 }

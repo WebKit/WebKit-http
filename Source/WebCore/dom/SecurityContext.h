@@ -51,6 +51,7 @@ enum SandboxFlag {
     SandboxPointerLock          = 1 << 8,
     SandboxPropagatesToAuxiliaryBrowsingContexts = 1 << 9,
     SandboxTopNavigationByUserActivation = 1 << 10,
+    SandboxDocumentDomain       = 1 << 11,
     SandboxAll                  = -1 // Mask with all bits set to 1.
 };
 
@@ -95,6 +96,10 @@ protected:
     virtual ~SecurityContext();
 
     void setContentSecurityPolicy(std::unique_ptr<ContentSecurityPolicy>);
+
+    // It's only appropriate to call this during security context initialization; it's needed for
+    // flags that can't be disabled with allow-* attributes, such as SandboxNavigation.
+    void disableSandboxFlags(SandboxFlags mask) { m_sandboxFlags &= ~mask; }
 
     void didFailToInitializeSecurityOrigin() { m_haveInitializedSecurityOrigin = false; }
     bool haveInitializedSecurityOrigin() const { return m_haveInitializedSecurityOrigin; }

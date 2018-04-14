@@ -1,3 +1,483 @@
+2017-08-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Remove Proximity Events and related code
+        https://bugs.webkit.org/show_bug.cgi?id=175545
+
+        Reviewed by Daniel Bates.
+
+        No platform enables Proximity Events, so remove code inside ENABLE(PROXIMITY_EVENTS)
+        and other related code.
+
+        * UserInterface/Models/ScriptTimelineRecord.js:
+        (WI.ScriptTimelineRecord.EventType.displayName):
+
+2017-08-14  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Remove text-shadow and gradient backgrounds
+        https://bugs.webkit.org/show_bug.cgi?id=175430
+
+        Reviewed by Brian Burg.
+
+        Inspector should more closely match flat system look. Remove text-shadow
+        embossing and replace linear gradients in popover backgrounds and selected
+        tree item background color.
+
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.css:
+        (.sidebar > .panel.details.css-style > .content > .pseudo-classes > .group > label):
+        * UserInterface/Views/CompletionSuggestionsView.css:
+        (.completion-suggestions-container:not(:active) > .item.selected,):
+        * UserInterface/Views/DebuggerDashboardView.css:
+        (.toolbar .dashboard.debugger):
+        * UserInterface/Views/HierarchicalPathComponent.css:
+        (.hierarchical-path-component > .title):
+        * UserInterface/Views/Main.css:
+        (.bouncy-highlight):
+        * UserInterface/Views/NavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation > .content .empty-content-placeholder > .message):
+        * UserInterface/Views/Popover.js:
+        (WI.Popover.prototype._drawBackground):
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.css:
+        (.sidebar > .details.recording-trace > .content > .no-trace-data > .message):
+        * UserInterface/Views/RulesStyleDetailsPanel.css:
+        (.sidebar > .panel.details.css-style .rules .label):
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules.filter-non-matching > .no-filter-results > .no-filter-results-message):
+        (@media (-webkit-min-device-pixel-ratio: 2)): Deleted.
+        (.sidebar > .panel.details.css-style > .content.filter-in-progress > .rules .label.filter-matching-label,): Deleted.
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css:
+        (.style-spreadsheet .inherited):
+        * UserInterface/Views/TimelineDataGrid.css:
+        (.tree-outline.timeline-data-grid .item:hover):
+        * UserInterface/Views/TimelineDataGrid.js:
+        (WI.TimelineDataGrid.prototype._createPopoverContent):
+        * UserInterface/Views/Variables.css:
+        (:root):
+
+2017-08-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Clicking on suggestion hint should apply it, not dismiss
+        https://bugs.webkit.org/show_bug.cgi?id=175409
+
+        Reviewed by Matt Baker.
+
+        Make clicking on the suggestion hint apply the completion, and place the text caret after it.
+
+        * UserInterface/Controllers/CodeMirrorCompletionController.js:
+        (WI.CodeMirrorCompletionController.prototype._createCompletionHintMarker):
+
+2017-08-11  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Update the filter icon to match Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=175458
+        <rdar://problem/33838660>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/FilterFieldGlyph.svg:
+        Half-pixel transform is necessary for a cleaner rasterisation.
+
+        * UserInterface/Views/FilterBar.css:
+        (.filter-bar > input[type="search"]::-webkit-search-decoration):        
+        (.sidebar > .panel.dom-node-details .details-section.dom-node-event-listeners > .header > .filter):
+        ::-webkit-search-decoration is a flexbox item. Remove `vertical-align: bottom`,
+        since it didn't do anything for it.
+
+        * UserInterface/Views/DOMNodeDetailsSidebarPanel.css:
+        * UserInterface/Views/FilterBar.js:
+        (WI.FilterBar):        
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WI.CSSStyleDetailsSidebarPanel.prototype.initialLayout):
+        * UserInterface/Views/DebuggerSidebarPanel.js:
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        * UserInterface/Views/NetworkSidebarPanel.js:
+        (WI.NetworkSidebarPanel):
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel):
+        * UserInterface/Views/SearchSidebarPanel.js:
+        (WI.SearchSidebarPanel):
+        * UserInterface/Views/StorageSidebarPanel.js:
+        (WI.StorageSidebarPanel):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        * Localizations/en.lproj/localizedStrings.js:        
+        Replace placeholder text for all filter fields with "Filter".
+
+2017-08-10  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Add three.js in preparation for layer visualization.
+        https://bugs.webkit.org/show_bug.cgi?id=174798
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/External/three.js/LICENSE: Added.
+        * UserInterface/External/three.js/OrbitControls.js: Added.
+        * UserInterface/External/three.js/three.js: Added.
+
+2017-08-09  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: Add pre-populated data to spreadsheet-style view
+        https://bugs.webkit.org/show_bug.cgi?id=174838
+        <rdar://problem/33523220>
+
+        Reviewed by Matt Baker.
+
+        This patch adds static content to the experimental RulesStyleSpreadsheetDetailsPanel.
+        The static content will be replaced with actual data in the follow up patches.
+
+        * UserInterface/Main.html:
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css: Added.
+        (.style-spreadsheet .style-rule):
+        (.style-spreadsheet .selector-line):
+        (.style-spreadsheet .selector):
+        (.style-spreadsheet :matches(.selector .matched, .selector:focus)):
+        (.style-spreadsheet .name):
+        (.style-spreadsheet .value):
+        (.style-spreadsheet :matches(.selector, .name, .value)):
+        (.style-spreadsheet :matches(.selector, .name, .value):focus):
+        (.style-spreadsheet .selector-inline):
+        (.style-spreadsheet .property):
+        (.style-spreadsheet .property-disabled,):
+        (.style-spreadsheet .property-disabled :matches(.name, .value)):
+        (.style-spreadsheet .styles-source):
+        (.style-spreadsheet :matches(a, .node-link)):
+        (.style-spreadsheet :matches(a, .node-link):hover):
+        (.style-spreadsheet .inherited):
+        (.style-spreadsheet .declarations):
+        (.style-spreadsheet input[type="checkbox"]):
+        (.style-spreadsheet input[type="checkbox"]:not(:checked)):
+        (.style-spreadsheet .declarations:hover input[type="checkbox"]):
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.js:
+
+2017-08-08  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Canvas: support editing WebGL shaders
+        https://bugs.webkit.org/show_bug.cgi?id=124211
+        <rdar://problem/15448958>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram.prototype.updateVertexShader):
+        (WI.ShaderProgram.prototype.updateFragmentShader):
+        (WI.ShaderProgram.prototype._updateShader):
+
+        * UserInterface/Views/ShaderProgramContentView.js:
+        (WI.ShaderProgramContentView):
+        (WI.ShaderProgramContentView.prototype._contentDidChange):
+
+2017-08-07  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: Preview Canvas path when viewing a recording
+        https://bugs.webkit.org/show_bug.cgi?id=174967
+
+        Reviewed by Brian Burg.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Setting.js:
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.supportsCanvasPathDebugging):
+        (WI.RecordingContentView.prototype.get navigationItems):
+        (WI.RecordingContentView.prototype.shown):
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+        (WI.RecordingContentView.prototype._actionModifiesPath):
+        (WI.RecordingContentView.prototype._updateCanvasPath):
+        (WI.RecordingContentView.prototype._showPathButtonClicked):
+        Show each segment of the current path as an overlay when the setting is enabled.
+        Drive-by: fix forgotten function rename.
+
+        * UserInterface/Views/RecordingContentView.css:
+        (.content-view:not(.tab).recording canvas.path):
+
+        * UserInterface/Views/RecordingStateDetailsSidebarPanel.js:
+        (WI.RecordingStateDetailsSidebarPanel.prototype._generateDetailsCanvas2D):
+        Show the currentX/currentY in the current state.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction.isFunctionForType):
+        (WI.RecordingAction.prototype.swizzle):
+        Use Sets for better performance.
+
+2017-08-04  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add source view for WebGL shader programs
+        https://bugs.webkit.org/show_bug.cgi?id=138593
+        <rdar://problem/18936194>
+
+        Reviewed by Matt Baker.
+
+        Shader programs are now listed in the Resources sidebar as items within the owner Canvas
+        context. When selected, the shown content view has two editors, one for the Vertex shader
+        and one for the Fragment shader. These editors use CodeMirror's "clike" mode for GLSL syntax.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj:
+        * WebInspectorUI.vcxproj/WebInspectorUI.vcxproj.filters:
+        * UserInterface/Main.html:
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.canvasRemoved):
+        (WI.CanvasManager.prototype.programCreated):
+        (WI.CanvasManager.prototype.programDeleted):
+        (WI.CanvasManager.prototype._mainResourceDidChange):
+
+        * UserInterface/Models/Collection.js:
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.get shaderProgramCollection)
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram.prototype.requestVertexShaderSource):
+        (WI.ShaderProgram.prototype.requestFragmentShaderSource):
+        (WI.ShaderProgram.prototype._requestShaderSource):
+
+        * UserInterface/Views/CanvasTreeElement.js:
+        (WI.CanvasTreeElement):
+        (WI.CanvasTreeElement.prototype.onattach):
+        (WI.CanvasTreeElement.prototype.ondetach):
+        (WI.CanvasTreeElement.prototype.onpopulate):
+        (WI.CanvasTreeElement.prototype._shaderProgramAdded):
+        (WI.CanvasTreeElement.prototype._shaderProgramRemoved):
+
+        * UserInterface/Views/ShaderProgramTreeElement.js: Added.
+        (WI.ShaderProgramTreeElement):
+
+        * UserInterface/Views/ShaderProgramContentView.js: Added.
+        (WI.ShaderProgramContentView):
+        (WI.ShaderProgramContentView.prototype.shown):
+        (WI.ShaderProgramContentView.prototype.hidden):
+        (WI.ShaderProgramContentView.prototype.closed):
+        (WI.ShaderProgramContentView.prototype.get supportsSave):
+        (WI.ShaderProgramContentView.prototype.get saveData):
+        (WI.ShaderProgramContentView.prototype.get supportsSearch):
+        (WI.ShaderProgramContentView.prototype.get numberOfSearchResults):
+        (WI.ShaderProgramContentView.prototype.get hasPerformedSearch):
+        (WI.ShaderProgramContentView.prototype.set automaticallyRevealFirstSearchResult):
+        (WI.ShaderProgramContentView.prototype.performSearch):
+        (WI.ShaderProgramContentView.prototype.searchCleared):
+        (WI.ShaderProgramContentView.prototype.searchQueryWithSelection):
+        (WI.ShaderProgramContentView.prototype.revealPreviousSearchResult):
+        (WI.ShaderProgramContentView.prototype.revealNextSearchResult):
+        (WI.ShaderProgramContentView.prototype.revealPosition):
+        (WI.ShaderProgramContentView.prototype._editorFocused):
+        (WI.ShaderProgramContentView.prototype._numberOfSearchResultsDidChange):
+        * UserInterface/Views/ShaderProgramContentView.css: Added.
+        (.content-view.shader-program > .text-editor.shader):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader.vertex,):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader.fragment,):
+        (body[dir=ltr] .content-view.shader-program > .text-editor.shader + .text-editor.shader):
+        (body[dir=rtl] .content-view.shader-program > .text-editor.shader + .text-editor.shader):
+        (.content-view.shader-program > .text-editor.shader > .type-title):
+        (.content-view.shader-program > .text-editor.shader > .CodeMirror):
+
+        * UserInterface/Images/DocumentGL.png: Added.
+        * UserInterface/Images/DocumentGL@2x.png: Added.
+        * UserInterface/Views/ResourceIcons.css:
+        (.shader-program .icon):
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.createFromRepresentedObject):
+        (WI.ContentView.isViewable):
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters.match):
+        (WI.ResourceSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        (WI.ResourceSidebarPanel.prototype._treeSelectionDidChange):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WI.ResourcesTabContentView.prototype.canShowRepresentedObject):
+        Plumbing for displaying ShaderProgram content.
+
+        * UserInterface/Views/TextEditor.js:
+        (WebInspector.TextEditor):
+        (WebInspector.TextEditor.prototype._editorFocused):
+
+        * Scripts/update-codemirror-resources.rb:
+        * UserInterface/External/CodeMirror/clike.js: Added.
+        Add C-like mode for highlighting GLSL.
+
+2017-08-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Scripts sometimes do not show in resources tab
+        https://bugs.webkit.org/show_bug.cgi?id=175153
+        <rdar://problem/33708683>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/ResourceSidebarPanel.js:
+        (WI.ResourceSidebarPanel.prototype.initialLayout):
+        When the ResourceSidebar is lazily created, be sure to add any scripts
+        to the sidebar that are not backed by Resources.
+
+        (WI.ResourceSidebarPanel.prototype._scriptWasAdded):
+        (WI.ResourceSidebarPanel.prototype._addScript):
+        Extract so it can be used outside of an event handler.
+
+2017-08-03  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add button to open Inspector^2
+        https://bugs.webkit.org/show_bug.cgi?id=175108
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Debug/Bootstrap.js:
+        (updateDebugUI):
+        (WI.runBootstrapOperations):
+
+        * UserInterface/Views/ButtonToolbarItem.js:
+        (WI.ButtonToolbarItem):
+        (WI.ButtonToolbarItem.prototype.get label): Deleted.
+        (WI.ButtonToolbarItem.prototype.set label): Deleted.
+        * UserInterface/Views/ButtonToolbarItem.css:
+        (.toolbar .item.button):
+        (.toolbar .item.button:not(.disabled):active):
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated)):
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated)):
+        (.toolbar .item.button > .glyph):
+        (.toolbar .item.button:not(.disabled):active > .glyph): Deleted.
+        (.toolbar .item.button:not(.disabled):matches(:focus, .activate.activated) > .glyph): Deleted.
+        (.toolbar .item.button:not(.disabled):active:matches(:focus, .activate.activated) > .glyph): Deleted.
+        (.toolbar .item.button > .label): Deleted.
+        * UserInterface/Views/ActivateButtonToolbarItem.js:
+        (WI.ActivateButtonToolbarItem):
+        (WI.ActivateButtonToolbarItem.prototype.get label): Deleted.
+        (WI.ActivateButtonToolbarItem.prototype.set label): Deleted.
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        Remove unused `label` parameter from Toolbar objects.
+
+2017-08-03  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Instrument WebGLProgram created/deleted
+        https://bugs.webkit.org/show_bug.cgi?id=175059
+
+        Reviewed by Devin Rousso.
+
+        This patch adds frontend support for shader program instrumentation.
+        The frontend creates a ShaderProgram model object for each WebGLProgram.
+        Since only canvases with a WebGL context have programs, the Canvas model
+        object does not contain any logic specific to programs. CanvasManager
+        dispatches program added/removed events, and the parent Canvas can be
+        accessed from ShaderProgram but not the other way around.
+
+        * UserInterface/Controllers/CanvasManager.js:
+        (WI.CanvasManager):
+        (WI.CanvasManager.prototype.get shaderPrograms):
+        (WI.CanvasManager.prototype.canvasRemoved):
+        (WI.CanvasManager.prototype.programCreated):
+        (WI.CanvasManager.prototype.programDeleted):
+        (WI.CanvasManager.prototype._mainResourceDidChange):
+        (WI.CanvasManager.prototype._dispatchShaderProgramRemoved):
+
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/Canvas.js:
+        (WI.Canvas.prototype.nextShaderProgramDisplayNumber):
+        (WI.Canvas):
+
+        * UserInterface/Models/ShaderProgram.js: Added.
+        (WI.ShaderProgram):
+        (WI.ShaderProgram.prototype.get identifier):
+        (WI.ShaderProgram.prototype.get canvas):
+        (WI.ShaderProgram.prototype.get displayName):
+
+        * UserInterface/Protocol/CanvasObserver.js:
+        (WI.CanvasObserver.prototype.programCreated):
+        (WI.CanvasObserver.prototype.programDeleted):
+        (WI.CanvasObserver):
+
+        * UserInterface/Test.html:
+
+2017-08-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        JSContext Inspector: Recording tab should not be available in New Tab picker
+        https://bugs.webkit.org/show_bug.cgi?id=175155
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView.isTabAllowed):
+        Only allow the Recording Tab if we have a CanvasAgent.
+
+2017-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add stack trace information for each RecordingAction
+        https://bugs.webkit.org/show_bug.cgi?id=174663
+
+        Reviewed by Joseph Pecoraro.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.prototype.swizzle):
+        Add Array type for swizzling array values.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.get trace):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.js: Added.
+        (WI.RecordingTraceDetailsSidebarPanel):
+        (WI.RecordingTraceDetailsSidebarPanel.disallowInstanceForClass):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.inspect):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.set recording):
+        (WI.RecordingTraceDetailsSidebarPanel.prototype.updateActionIndex):
+        * UserInterface/Views/RecordingTraceDetailsSidebarPanel.css: Added.
+        (.sidebar > .panel.details.recording-trace > .content > .call-frame):
+        (.sidebar > .details.recording-trace > .content > .no-trace-data):
+        (.sidebar > .details.recording-trace > .content > .no-trace-data > .message):
+
+        * UserInterface/Views/RecordingTabContentView.js:
+        (WI.RecordingTabContentView):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement.prototype.populateContextMenu):
+
+        * UserInterface/Views/CallFrameView.css:
+        (.call-frame):
+        (body[dir=ltr] .call-frame .icon):
+        (body[dir=rtl] .call-frame .icon):
+        Apply the same trailing margin for CallFrameView icons as TreeElement.
+
+2017-08-02  Devin Rousso  <drousso@apple.com>
+
+        Web Inspector: add TreeElement virtualization for the Recording tab
+        https://bugs.webkit.org/show_bug.cgi?id=174968
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel):
+
+        * UserInterface/Views/TreeOutline.js:
+        (WI.TreeOutline):
+        (WI.TreeOutline.prototype.get virtualized):
+        (WI.TreeOutline.prototype.registerScrollVirtualizer):
+        (WI.TreeOutline.prototype.updateVirtualizedElements.walk):
+        (WI.TreeOutline.prototype.updateVirtualizedElements):
+        Add spacer elements before and after the TreeOutline element that will size to ensure that
+        the TreeOutline node still takes up the same amount of space after some of the TreeElements
+        are removed. Whenever the scroll of the container view changes, recalculate the visible area
+        and add/remove TreeElements based on whether they would be in that. This is only possible if
+        every TreeElement has the same vertical height, which is given when setting up the scroll
+        listener on the container view.
+
+        * UserInterface/Views/TreeElement.js:
+        (WI.TreeElement.prototype.set hidden):
+        (WI.TreeElement.prototype._attach):
+        (WI.TreeElement.prototype.collapse):
+        (WI.TreeElement.prototype.expand):
+        (WI.TreeElement.prototype.reveal):
+        If the TreeOutline is being virtualized, don't add each TreeElement's node to the DOM. They
+        will be added at the end of the frame (via setTimeout) if they are within the visible + padding
+        area of the TreeOutline.
+
 2017-08-01  Devin Rousso  <drousso@apple.com>
 
         Web Inspector: simplify WebInspector with WI

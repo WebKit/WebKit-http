@@ -1,3 +1,180 @@
+2017-08-15  Robin Morisset  <rmorisset@apple.com>
+
+        Support the 'with' keyword in FTL.
+        https://bugs.webkit.org/show_bug.cgi?id=175585
+
+        Reviewed by Saam Barati.
+
+        Also improve the JSTest/stress/with.js file to test
+        what happens when non-objects are passed to with.
+
+        * stress/with.js:
+        (foo):
+        (i.catch):
+        (i.with): Deleted.
+
+2017-08-14  Keith Miller  <keith_miller@apple.com>
+
+        Add testing tool to lie to the DFG about profiles
+        https://bugs.webkit.org/show_bug.cgi?id=175487
+
+        Reviewed by Saam Barati.
+
+        * stress/compare-eq-incomplete-profile.js: Added.
+        (const.test.createBuiltin):
+
+2017-08-14  Robin Morisset  <rmorisset@apple.com>
+
+        Support the with keyword in DFG
+        https://bugs.webkit.org/show_bug.cgi?id=175470
+
+        Reviewed by Saam Barati.
+
+        Added a new stress-test for the 'with' keyword, that caught a bug in a
+        previous version of this code.
+
+        * stress/with.js: Added.
+        (i.with):
+
+2017-08-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test test/fieldopts/objtypespec-newobj-invalidation.1.js
+        https://bugs.webkit.org/show_bug.cgi?id=175544
+
+        Unreviewed test gardening.
+
+        * ChakraCore.yaml:
+
+2017-08-09  Caitlin Potter  <caitp@igalia.com>
+
+        Early error on ANY operator before new.target
+        https://bugs.webkit.org/show_bug.cgi?id=157970
+
+        Reviewed by Saam Barati.
+
+        Instead of throwing if any unary operator precedes new.target, only
+        throw if the unary operator updates the reference.
+
+        The following become legal in JSC:
+
+        ```
+        !new.target
+        ~new.target
+        typeof new.target
+        delete new.target
+        void new.target
+        ```
+
+        All of which are legal in v8 and SpiderMonkey in strict and sloppy mode
+
+        * stress/new-target-syntax-errors.js:
+        * stress/new-target.js:
+
+2017-08-09  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip failing JSC tests stress/regress-169783.js and wasm.yaml/wasm/stress/oom.js.
+        https://bugs.webkit.org/show_bug.cgi?id=175255
+
+        Unreviewed test gardening.
+
+        * stress/regress-169783.js:
+        * wasm/stress/oom.js:
+
+2017-08-09  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        REGRESSION: 2 test262/test/language/statements/async-function failures
+        https://bugs.webkit.org/show_bug.cgi?id=175334
+
+        Reviewed by Yusuke Suzuki.
+
+        Add @skip parameters to tests, and remove test for async iterator from 
+        async await syntax test because it is already covered by async-iterator-syntax.js
+
+        * stress/async-await-syntax.js:
+        * stress/async-iteration-syntax.js:
+
+2017-08-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, gardening test262 for Promise resolve / reject function length
+        https://bugs.webkit.org/show_bug.cgi?id=175333
+
+        * test262.yaml:
+
+2017-08-07  Robin Morisset  <rmorisset@apple.com>
+
+        GetOwnProperty of TypedArray indexed fields is wrongly configurable
+        https://bugs.webkit.org/show_bug.cgi?id=175307
+
+        Reviewed by Saam Barati.
+
+        * stress/typedarray-getownproperty-not-configurable.js: Added.
+        (assert):
+        (foo):
+
+2017-08-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Promise resolve and reject function should have length = 1
+        https://bugs.webkit.org/show_bug.cgi?id=175242
+
+        Reviewed by Saam Barati.
+
+        * stress/builtin-function-length.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyDescriptor):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyNames.Array.prototype.filter.sort):
+
+2017-08-06  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - Implement Async Generator - parser
+        https://bugs.webkit.org/show_bug.cgi?id=175210
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-syntax.js:
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        * stress/async-iteration-syntax.js: Added.
+        (assert):
+        (checkSyntax):
+        (checkSyntaxError):
+        (checkSimpleAsyncGeneratorSloppyMode):
+        (checkSimpleAsyncGeneratorStrictMode):
+        (checkNestedAsyncGenerators):
+        (checkSimpleAsyncGeneratorSyntaxErrorInStrictMode):
+        * stress/generator-class-methods-syntax.js:
+
+2017-08-03  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        JSC test wasm/js-api/test_memory_constructor.js should be skipped on memoryLimited
+        https://bugs.webkit.org/show_bug.cgi?id=175150
+
+        Unreviewed test gardening.
+
+        * wasm/js-api/test_memory_constructor.js:
+
+2017-08-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [Linux] JSTests/wasm/stress/oom.js should not run on Linux
+        https://bugs.webkit.org/show_bug.cgi?id=175100
+
+        Reviewed by Mark Lam.
+
+        The JSC test JSTests/wasm/stress/oom.js tries to use all the
+        available memory until an out of memory exception happens.
+
+        The Linux kernel is more tuned for server workloads than for GUI
+        responsiveness. When a process tries to use a lot of memory, Linux
+        will do its best to serve the request. This usually translates to
+        free physical RAM by writing to disk dirty pages and/or moving out
+        less recently used pages to swap (disk storage).
+        Meanwhile it does this, the system will become unresponsive and this
+        leads to freezes that can last even some minutes on the worst cases.
+
+        Therefore, let's skip this test on Linux as it will cause more harm
+        than good on the Linux bots or on the machines of Linux developers.
+
+        * wasm/stress/oom.js:
+
 2017-08-01  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         [JSC] Remove unnecessary print from stress\promise-finally.js test

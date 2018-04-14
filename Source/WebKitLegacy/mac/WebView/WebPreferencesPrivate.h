@@ -266,9 +266,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (BOOL)webGL2Enabled;
 - (void)setWebGL2Enabled:(BOOL)enabled;
 
-- (BOOL)beaconAPIEnabled;
-- (void)setBeaconAPIEnabled:(BOOL)enabled;
-
 - (BOOL)forceSoftwareWebGLRendering;
 - (void)setForceSoftwareWebGLRendering:(BOOL)forced;
 
@@ -433,7 +430,6 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setVideoPluginProxyEnabled:(BOOL)flag;
 - (BOOL)isVideoPluginProxyEnabled;
 
-// WebSocket support depends on ENABLE(WEB_SOCKETS).
 - (void)setHixie76WebSocketProtocolEnabled:(BOOL)flag;
 - (BOOL)isHixie76WebSocketProtocolEnabled;
 
@@ -538,6 +534,12 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setCustomElementsEnabled:(BOOL)flag;
 - (BOOL)customElementsEnabled;
 
+- (void)setDataTransferItemsEnabled:(BOOL)flag;
+- (BOOL)dataTransferItemsEnabled;
+
+- (BOOL)cacheAPIEnabled;
+- (void)setCacheAPIEnabled:(BOOL)enabled;
+
 - (void)setFetchAPIEnabled:(BOOL)flag;
 - (BOOL)fetchAPIEnabled;
 
@@ -583,6 +585,7 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 @property (nonatomic) BOOL legacyEncryptedMediaAPIEnabled;
 @property (nonatomic) BOOL viewportFitEnabled;
 @property (nonatomic) BOOL constantPropertiesEnabled;
+@property (nonatomic) BOOL inspectorAdditionsEnabled;
 @property (nonatomic) BOOL allowMediaContentTypesRequiringHardwareSupportAsFallback;
 
 #if TARGET_OS_IPHONE

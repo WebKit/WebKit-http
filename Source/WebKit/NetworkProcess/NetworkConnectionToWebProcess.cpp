@@ -222,11 +222,11 @@ void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResource
     loader->start();
 }
 
-void NetworkConnectionToWebProcess::loadPing(const NetworkResourceLoadParameters& loadParameters)
+void NetworkConnectionToWebProcess::loadPing(NetworkResourceLoadParameters&& loadParameters)
 {
 #if USE(NETWORK_SESSION)
     // PingLoad manages its own lifetime, deleting itself when its purpose has been fulfilled.
-    new PingLoad(loadParameters);
+    new PingLoad(WTFMove(loadParameters));
 #else
     RefPtr<NetworkingContext> context = RemoteNetworkingContext::create(loadParameters.sessionID, loadParameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
 
@@ -409,7 +409,8 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
 
 void NetworkConnectionToWebProcess::storeDerivedDataToCache(const WebKit::NetworkCache::DataKey& dataKey, const IPC::DataReference& data)
 {
-    NetworkCache::singleton().storeData(dataKey, data.data(), data.size());
+    if (auto* cache = NetworkProcess::singleton().cache())
+        cache->storeData(dataKey, data.data(), data.size());
 }
 
 void NetworkConnectionToWebProcess::setCaptureExtraNetworkLoadMetricsEnabled(bool enabled)

@@ -52,7 +52,6 @@ my (
     $accelerated2DCanvasSupport,
     $allInOneBuild,
     $attachmentElementSupport,
-    $canvasPathSupport,
     $canvasProxySupport,
     $channelMessagingSupport,
     $css3TextSupport,
@@ -134,9 +133,6 @@ my (
     $webAssemblySupport,
     $webAudioSupport,
     $webRTCSupport,
-    $webReplaySupport,
-    $webSocketsSupport,
-    $webTimingSupport,
     $writableStreamAPISupport,
     $webglSupport,
     $webgl2Support,
@@ -157,9 +153,6 @@ my @features = (
 
     { option => "attachment-element", desc => "Toggle Attachment Element support",
       define => "ENABLE_ATTACHMENT_ELEMENT", default => 0, value => \$attachmentElementSupport },
-
-    { option => "canvas-path", desc => "Toggle Canvas Path support",
-      define => "ENABLE_CANVAS_PATH", default => 1, value => \$canvasPathSupport },
 
     { option => "canvas-proxy", desc => "Toggle CanvasProxy support",
       define => "ENABLE_CANVAS_PROXY", default => 0, value => \$canvasProxySupport },
@@ -385,9 +378,6 @@ my @features = (
 
     { option => "web-rtc", desc => "Toggle WebRTC support",
       define => "ENABLE_WEB_RTC", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
-
-    { option => "web-sockets", desc => "Toggle Web Sockets support",
-      define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },
 
     { option => "webassembly", desc => "Toggle WebAssembly support",
       define => "ENABLE_WEBASSEMBLY", default => ((isARM64() || isX86_64()) && (isGtk() || isJSCOnly() || isWPE())) , value => \$webAssemblySupport },

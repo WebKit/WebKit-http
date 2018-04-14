@@ -2,7 +2,7 @@
  * Copyright (C) 2000 Lars Knoll (knoll@kde.org)
  *           (C) 2000 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2003, 2005-2008, 2017 Apple Inc. All rights reserved.
  * Copyright (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *
  * This library is free software; you can redistribute it and/or
@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef TransformOperation_h
-#define TransformOperation_h
+#pragma once
 
 #include "FloatSize.h"
 #include "TransformationMatrix.h"
@@ -52,6 +51,10 @@ public:
         IDENTITY, NONE
     };
 
+    TransformOperation(OperationType type)
+        : m_type(type)
+    {
+    }
     virtual ~TransformOperation() { }
 
     virtual Ref<TransformOperation> clone() const = 0;
@@ -66,8 +69,8 @@ public:
 
     virtual Ref<TransformOperation> blend(const TransformOperation* from, double progress, bool blendToIdentity = false) = 0;
 
-    virtual OperationType type() const = 0;
-    virtual bool isSameType(const TransformOperation&) const { return false; }
+    OperationType type() const { return m_type; }
+    bool isSameType(const TransformOperation& other) const { return type() == other.type(); }
 
     virtual bool isAffectedByTransformOrigin() const { return false; }
     
@@ -105,11 +108,14 @@ public:
         return type() == TRANSLATE_X || type() == TRANSLATE_Y || type() == TRANSLATE_Z || type() == TRANSLATE || type() == TRANSLATE_3D;
     }
     
-    virtual void dump(TextStream&) const = 0;
+    virtual void dump(WTF::TextStream&) const = 0;
+
+private:
+    OperationType m_type;
 };
 
-TextStream& operator<<(TextStream&, TransformOperation::OperationType);
-TextStream& operator<<(TextStream&, const TransformOperation&);
+WTF::TextStream& operator<<(WTF::TextStream&, TransformOperation::OperationType);
+WTF::TextStream& operator<<(WTF::TextStream&, const TransformOperation&);
 
 } // namespace WebCore
 
@@ -117,5 +123,3 @@ TextStream& operator<<(TextStream&, const TransformOperation&);
 SPECIALIZE_TYPE_TRAITS_BEGIN(ToValueTypeName) \
     static bool isType(const WebCore::TransformOperation& operation) { return operation.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // TransformOperation_h

@@ -2499,13 +2499,13 @@ void FrameLoader::closeAndRemoveChild(Frame& child)
 // Called every time a resource is completely loaded or an error is received.
 void FrameLoader::checkLoadComplete()
 {
-    ASSERT(m_client.hasWebView());
-    
     m_shouldCallCheckLoadComplete = false;
 
     if (!m_frame.page())
         return;
 
+    ASSERT(m_client.hasWebView());
+    
     // FIXME: Always traversing the entire frame tree is a bit inefficient, but 
     // is currently needed in order to null out the previous history item for all frames.
     Vector<Ref<Frame>, 16> frames;
@@ -3236,39 +3236,38 @@ void FrameLoader::requestFromDelegate(ResourceRequest& request, unsigned long& i
     request = newRequest;
 }
 
-void FrameLoader::loadedResourceFromMemoryCache(CachedResource* resource, ResourceRequest& newRequest)
+void FrameLoader::loadedResourceFromMemoryCache(CachedResource& resource, ResourceRequest& newRequest, ResourceError& error)
 {
     Page* page = m_frame.page();
     if (!page)
         return;
 
-    if (!resource->shouldSendResourceLoadCallbacks() || m_documentLoader->haveToldClientAboutLoad(resource->url()))
+    if (!resource.shouldSendResourceLoadCallbacks() || m_documentLoader->haveToldClientAboutLoad(resource.url()))
         return;
 
     // Main resource delegate messages are synthesized in MainResourceLoader, so we must not send them here.
-    if (resource->type() == CachedResource::MainResource)
+    if (resource.type() == CachedResource::MainResource)
         return;
 
     if (!page->areMemoryCacheClientCallsEnabled()) {
-        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), resource);
-        m_documentLoader->recordMemoryCacheLoadForFutureClientNotification(resource->resourceRequest());
-        m_documentLoader->didTellClientAboutLoad(resource->url());
+        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), &resource);
+        m_documentLoader->recordMemoryCacheLoadForFutureClientNotification(resource.resourceRequest());
+        m_documentLoader->didTellClientAboutLoad(resource.url());
         return;
     }
 
-    if (m_client.dispatchDidLoadResourceFromMemoryCache(m_documentLoader.get(), newRequest, resource->response(), resource->encodedSize())) {
-        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), resource);
-        m_documentLoader->didTellClientAboutLoad(resource->url());
+    if (m_client.dispatchDidLoadResourceFromMemoryCache(m_documentLoader.get(), newRequest, resource.response(), resource.encodedSize())) {
+        InspectorInstrumentation::didLoadResourceFromMemoryCache(*page, m_documentLoader.get(), &resource);
+        m_documentLoader->didTellClientAboutLoad(resource.url());
         return;
     }
 
     unsigned long identifier;
-    ResourceError error;
     requestFromDelegate(newRequest, identifier, error);
 
-    ResourceResponse response = resource->response();
+    ResourceResponse response = resource.response();
     response.setSource(ResourceResponse::Source::MemoryCache);
-    notifier().sendRemainingDelegateMessages(m_documentLoader.get(), identifier, newRequest, response, 0, resource->encodedSize(), 0, error);
+    notifier().sendRemainingDelegateMessages(m_documentLoader.get(), identifier, newRequest, response, 0, resource.encodedSize(), 0, error);
 }
 
 void FrameLoader::applyUserAgent(ResourceRequest& request)

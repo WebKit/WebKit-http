@@ -151,7 +151,7 @@ const GDBusInterfaceVTable RemoteInspector::s_interfaceVTable = {
     // set_property
     nullptr,
     // padding
-    nullptr
+    { 0 }
 };
 
 void RemoteInspector::setupConnection(GRefPtr<GDBusConnection>&& connection)
@@ -355,6 +355,7 @@ void RemoteInspector::requestAutomationSession(const char* sessionID)
         return;
 
     m_client->requestAutomationSession(String::fromUTF8(sessionID));
+    updateClientCapabilities();
 }
 
 } // namespace Inspector

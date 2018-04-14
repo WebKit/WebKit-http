@@ -29,6 +29,7 @@
 #include "Base64Utilities.h"
 #include "EventTarget.h"
 #include "ScriptExecutionContext.h"
+#include "SessionID.h"
 #include "Supplementable.h"
 #include "URL.h"
 #include "WorkerEventQueue.h"
@@ -81,7 +82,7 @@ public:
     void close();
 
     virtual ExceptionOr<void> importScripts(const Vector<String>& urls);
-    WorkerNavigator& navigator() const;
+    WorkerNavigator& navigator();
 
     ExceptionOr<int> setTimeout(JSC::ExecState&, std::unique_ptr<ScheduledAction>, int timeout, Vector<JSC::Strong<JSC::Unknown>>&& arguments);
     void clearTimeout(int timeoutId);
@@ -107,7 +108,7 @@ public:
     void removeAllEventListeners() final;
 
 protected:
-    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*);
+    WorkerGlobalScope(const URL&, const String& identifier, const String& userAgent, WorkerThread&, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy*, SocketProvider*, SessionID);
 
     void applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders&);
 
@@ -129,16 +130,14 @@ private:
 
     ScriptExecutionContext* scriptExecutionContext() const final { return const_cast<WorkerGlobalScope*>(this); }
     URL completeURL(const String&) const final;
+    SessionID sessionID() const final { return m_sessionID; }
     String userAgent(const URL&) const final;
     void disableEval(const String& errorMessage) final;
     void disableWebAssembly(const String& errorMessage) final;
     EventTarget* errorEventTarget() final;
     WorkerEventQueue& eventQueue() const final;
     String resourceRequestIdentifier() const final { return m_identifier; }
-
-#if ENABLE(WEB_SOCKETS)
     SocketProvider* socketProvider() final;
-#endif
 
     bool shouldBypassMainWorldContentSecurityPolicy() const final { return m_shouldBypassMainWorldContentSecurityPolicy; }
     bool isJSExecutionForbidden() const final;
@@ -178,12 +177,12 @@ private:
     RefPtr<IDBClient::IDBConnectionProxy> m_connectionProxy;
 #endif
 
-#if ENABLE(WEB_SOCKETS)
     RefPtr<SocketProvider> m_socketProvider;
-#endif
 
     RefPtr<Performance> m_performance;
     mutable RefPtr<Crypto> m_crypto;
+
+    SessionID m_sessionID;
 };
 
 } // namespace WebCore

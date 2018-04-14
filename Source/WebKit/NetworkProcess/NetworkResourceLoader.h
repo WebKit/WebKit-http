@@ -151,6 +151,7 @@ private:
     std::unique_ptr<SynchronousLoadData> m_synchronousLoadData;
     Vector<RefPtr<WebCore::BlobDataFileReference>> m_fileReferences;
 
+    bool m_wasStarted { false };
     bool m_didConsumeSandboxExtensions { false };
     bool m_defersLoading { false };
     size_t m_numBytesReceived { 0 };
@@ -159,6 +160,7 @@ private:
 
     WebCore::Timer m_bufferingTimer;
 #if ENABLE(NETWORK_CACHE)
+    RefPtr<NetworkCache::Cache> m_cache;
     RefPtr<WebCore::SharedBuffer> m_bufferedDataForCache;
     std::unique_ptr<NetworkCache::Entry> m_cacheEntryForValidation;
     bool m_isWaitingContinueWillSendRequestForCachedRedirect { false };

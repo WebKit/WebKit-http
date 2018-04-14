@@ -452,9 +452,9 @@ bool RenderStyle::inheritedDataShared(const RenderStyle* other) const
 {
     // This is a fast check that only looks if the data structures are shared.
     return m_inheritedFlags == other->m_inheritedFlags
-        && m_inheritedData.get() == other->m_inheritedData.get()
-        && m_svgStyle.get() == other->m_svgStyle.get()
-        && m_rareInheritedData.get() == other->m_rareInheritedData.get();
+        && m_inheritedData.ptr() == other->m_inheritedData.ptr()
+        && m_svgStyle.ptr() == other->m_svgStyle.ptr()
+        && m_rareInheritedData.ptr() == other->m_rareInheritedData.ptr();
 }
 
 static bool positionChangeIsMovementOnly(const LengthBox& a, const LengthBox& b, const Length& width)
@@ -486,11 +486,11 @@ static bool positionChangeIsMovementOnly(const LengthBox& a, const LengthBox& b,
 
 inline bool RenderStyle::changeAffectsVisualOverflow(const RenderStyle& other) const
 {
-    if (m_rareNonInheritedData.get() != other.m_rareNonInheritedData.get()
+    if (m_rareNonInheritedData.ptr() != other.m_rareNonInheritedData.ptr()
         && !arePointingToEqualData(m_rareNonInheritedData->boxShadow, other.m_rareNonInheritedData->boxShadow))
         return true;
 
-    if (m_rareInheritedData.get() != other.m_rareInheritedData.get()
+    if (m_rareInheritedData.ptr() != other.m_rareInheritedData.ptr()
         && !arePointingToEqualData(m_rareInheritedData->textShadow, other.m_rareInheritedData->textShadow))
         return true;
 
@@ -536,7 +536,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
     if (changeAffectsVisualOverflow(other))
         return true;
 
-    if (m_rareNonInheritedData.get() != other.m_rareNonInheritedData.get()) {
+    if (m_rareNonInheritedData.ptr() != other.m_rareNonInheritedData.ptr()) {
         if (m_rareNonInheritedData->appearance != other.m_rareNonInheritedData->appearance
             || m_rareNonInheritedData->marginBeforeCollapse != other.m_rareNonInheritedData->marginBeforeCollapse
             || m_rareNonInheritedData->marginAfterCollapse != other.m_rareNonInheritedData->marginAfterCollapse
@@ -597,7 +597,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
         }
     }
 
-    if (m_rareInheritedData.get() != other.m_rareInheritedData.get()) {
+    if (m_rareInheritedData.ptr() != other.m_rareInheritedData.ptr()) {
         if (m_rareInheritedData->indent != other.m_rareInheritedData->indent
 #if ENABLE(CSS3_TEXT)
             || m_rareInheritedData->textAlignLast != other.m_rareInheritedData->textAlignLast
@@ -902,7 +902,8 @@ bool RenderStyle::changeRequiresRepaintIfTextOrBorderOrOutline(const RenderStyle
         || m_rareInheritedData->textStrokeColor != other.m_rareInheritedData->textStrokeColor
         || m_rareInheritedData->textEmphasisColor != other.m_rareInheritedData->textEmphasisColor
         || m_rareInheritedData->textEmphasisFill != other.m_rareInheritedData->textEmphasisFill
-        || m_rareInheritedData->strokeColor != other.m_rareInheritedData->strokeColor)
+        || m_rareInheritedData->strokeColor != other.m_rareInheritedData->strokeColor
+        || m_rareInheritedData->caretColor != other.m_rareInheritedData->caretColor)
         return true;
 
     return false;
@@ -910,7 +911,7 @@ bool RenderStyle::changeRequiresRepaintIfTextOrBorderOrOutline(const RenderStyle
 
 bool RenderStyle::changeRequiresRecompositeLayer(const RenderStyle& other, unsigned&) const
 {
-    if (m_rareNonInheritedData.get() != other.m_rareNonInheritedData.get()) {
+    if (m_rareNonInheritedData.ptr() != other.m_rareNonInheritedData.ptr()) {
         if (m_rareNonInheritedData->transformStyle3D != other.m_rareNonInheritedData->transformStyle3D
             || m_rareNonInheritedData->backfaceVisibility != other.m_rareNonInheritedData->backfaceVisibility
             || m_rareNonInheritedData->perspective != other.m_rareNonInheritedData->perspective
@@ -1196,7 +1197,10 @@ static RoundedRect::Radii calcRadiiFor(const BorderData& border, const LayoutSiz
     };
 }
 
-StyleImage* RenderStyle::listStyleImage() const { return m_rareInheritedData->listStyleImage.get(); }
+StyleImage* RenderStyle::listStyleImage() const
+{
+    return m_rareInheritedData->listStyleImage.get();
+}
 
 void RenderStyle::setListStyleImage(RefPtr<StyleImage>&& v)
 {
@@ -1745,6 +1749,9 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
     case CSSPropertyBorderBottomColor:
         result = visitedLink ? visitedLinkBorderBottomColor() : borderBottomColor();
         borderStyle = borderBottomStyle();
+        break;
+    case CSSPropertyCaretColor:
+        result = visitedLink ? visitedLinkCaretColor() : caretColor();
         break;
     case CSSPropertyColor:
         result = visitedLink ? visitedLinkColor() : color();

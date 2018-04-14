@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "FetchBodyOwner.h"
 #include "FetchHeaders.h"
 #include "ResourceResponse.h"
@@ -59,6 +57,8 @@ public:
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static ExceptionOr<Ref<FetchResponse>> redirect(ScriptExecutionContext&, const String& url, int status);
 
+    static Ref<FetchResponse> create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response) { return adoptRef(*new FetchResponse(context, WTFMove(body), WTFMove(headers), WTFMove(response))); }
+
     using FetchPromise = DOMPromiseDeferred<IDLInterface<FetchResponse>>;
     static void fetch(ScriptExecutionContext&, FetchRequest&, FetchPromise&&);
 
@@ -80,6 +80,7 @@ public:
     bool ok() const { return m_response.isSuccessful(); }
     const String& statusText() const { return m_response.httpStatusText(); }
 
+    const FetchHeaders& headers() const { return m_headers; }
     FetchHeaders& headers() { return m_headers; }
     Ref<FetchResponse> cloneForJS();
 
@@ -91,6 +92,8 @@ public:
 #endif
 
     bool isLoading() const { return !!m_bodyLoader; }
+
+    const ResourceResponse& resourceResponse() const { return m_response; }
 
 private:
     FetchResponse(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
@@ -120,7 +123,7 @@ private:
     private:
         // FetchLoaderClient API
         void didSucceed() final;
-        void didFail() final;
+        void didFail(const ResourceError&) final;
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char*, size_t) final;
 
@@ -132,10 +135,9 @@ private:
     ResourceResponse m_response;
     std::optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
+    bool m_shouldExposeBody { true };
 
     FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::ArrayBuffer  };
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

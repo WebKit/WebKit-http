@@ -88,6 +88,8 @@ ResourceLoadPriority CachedResource::defaultPriorityForResourceType(Type type)
 #endif
     case CachedResource::SVGDocumentResource:
         return ResourceLoadPriority::Low;
+    case CachedResource::Beacon:
+        return ResourceLoadPriority::VeryLow;
 #if ENABLE(LINK_PREFETCH)
     case CachedResource::LinkPrefetch:
         return ResourceLoadPriority::VeryLow;
@@ -126,6 +128,7 @@ CachedResource::CachedResource(CachedResourceRequest&& request, Type type, Sessi
     , m_isLinkPreload(request.isLinkPreload())
     , m_hasUnknownEncoding(request.isLinkPreload())
     , m_type(type)
+    , m_ignoreForRequestCount(request.ignoreForRequestCount())
 {
     ASSERT(sessionID.isValid());
 
@@ -257,6 +260,25 @@ void CachedResource::load(CachedResourceLoader& cachedResourceLoader)
         m_fragmentIdentifierForRequest = String();
     }
 
+    if (m_options.keepAlive) {
+        if (!cachedResourceLoader.keepaliveRequestTracker().tryRegisterRequest(*this)) {
+            setResourceError({ errorDomainWebKitInternal, 0, request.url(), ASCIILiteral("Reached maximum amount of queued data of 64Kb for keepalive requests") });
+            failBeforeStarting();
+            return;
+        }
+        // FIXME: We should not special-case Beacon here.
+        if (type() == CachedResource::Beacon) {
+        ASSERT(m_origin);
+            // Beacon is not exposed to workers so it is safe to rely on the document here.
+            auto* document = cachedResourceLoader.document();
+            auto* contentSecurityPolicy = document && !document->shouldBypassMainWorldContentSecurityPolicy() ? document->contentSecurityPolicy() : nullptr;
+            platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, *m_origin, contentSecurityPolicy, m_options);
+            // FIXME: We currently do not get notified when ping loads finish so we treat them as finishing right away.
+            finishLoading(nullptr);
+            return;
+        }
+    }
+
     m_loader = platformStrategies()->loaderStrategy()->loadResource(frame, *this, request, m_options);
     if (!m_loader) {
         RELEASE_LOG_IF_ALLOWED("load: Unable to create SubresourceLoader (frame = %p)", &frame);
@@ -291,6 +313,7 @@ void CachedResource::setBodyDataFrom(const CachedResource& resource)
 {
     m_data = resource.m_data;
     m_response = resource.m_response;
+    m_response.setTainting(m_responseTainting);
     setDecodedSize(resource.decodedSize());
     setEncodedSize(resource.encodedSize());
 }
@@ -428,6 +451,8 @@ void CachedResource::setResponse(const ResourceResponse& response)
     ASSERT(m_response.type() == ResourceResponse::Type::Default);
     m_response = response;
     m_response.setRedirected(m_redirectChainCacheStatus.status != RedirectChainCacheStatus::NoRedirection);
+    if (m_response.tainting() == ResourceResponse::Tainting::Basic || m_response.tainting() == ResourceResponse::Tainting::Cors)
+        m_response.setTainting(m_responseTainting);
 
     m_varyingHeaderValues = collectVaryingRequestHeaders(m_resourceRequest, m_response, m_sessionID);
 }

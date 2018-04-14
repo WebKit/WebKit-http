@@ -105,6 +105,7 @@ public:
     void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
     void setWebGPUEnabled(bool);
+    void setCacheAPIEnabled(bool);
     void setWritableStreamAPIEnabled(bool);
     void setReadableByteStreamAPIEnabled(bool);
 
@@ -212,7 +213,10 @@ public:
     bool waitToDump() const { return m_waitToDump; }
     void waitToDumpWatchdogTimerFired();
     void invalidateWaitToDumpWatchdogTimer();
+
+    // Downloads
     bool shouldFinishAfterDownload() const { return m_shouldFinishAfterDownload; }
+    void setShouldLogDownloadCallbacks(bool);
 
     bool shouldAllowEditing() const { return m_shouldAllowEditing; }
 
@@ -381,6 +385,8 @@ public:
     void setStatisticsPruneEntriesDownTo(unsigned);
     void statisticsClearInMemoryAndPersistentStore();
     void statisticsClearInMemoryAndPersistentStoreModifiedSinceHours(unsigned hours);
+    void statisticsClearThroughWebsiteDataRemoval(JSValueRef callback);
+    void statisticsCallClearThroughWebsiteDataRemovalCallback();
     void statisticsResetToConsistentState();
 
     // Open panel

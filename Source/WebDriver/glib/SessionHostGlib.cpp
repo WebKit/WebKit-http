@@ -26,6 +26,7 @@
 #include "config.h"
 #include "SessionHost.h"
 
+#include "WebDriverService.h"
 #include <gio/gio.h>
 #include <wtf/RunLoop.h>
 #include <wtf/glib/GUniquePtr.h>
@@ -61,7 +62,7 @@ static const char introspectionXML[] =
 
 const GDBusInterfaceVTable SessionHost::s_interfaceVTable = {
     // method_call
-    [](GDBusConnection* connection, const gchar* sender, const gchar* objectPath, const gchar* interfaceName, const gchar* methodName, GVariant* parameters, GDBusMethodInvocation* invocation, gpointer userData) {
+    [](GDBusConnection*, const gchar*, const gchar*, const gchar*, const gchar* methodName, GVariant* parameters, GDBusMethodInvocation* invocation, gpointer userData) {
         auto* sessionHost = static_cast<SessionHost*>(userData);
         if (!g_strcmp0(methodName, "SetTargetList")) {
             guint64 connectionID;
@@ -93,11 +94,18 @@ const GDBusInterfaceVTable SessionHost::s_interfaceVTable = {
     nullptr,
     // set_property
     nullptr,
+    // padding
+    { 0 }
 };
 
 void SessionHost::connectToBrowser(Function<void (Succeeded)>&& completionHandler)
 {
     launchBrowser(WTFMove(completionHandler));
+}
+
+bool SessionHost::isConnected() const
+{
+    return !!m_browser;
 }
 
 struct ConnectToBrowserAsyncData {
@@ -135,13 +143,14 @@ void SessionHost::launchBrowser(Function<void (Succeeded)>&& completionHandler)
     GUniquePtr<char> inspectorAddress(g_strdup_printf("127.0.0.1:%u", port));
     g_subprocess_launcher_setenv(launcher.get(), "WEBKIT_INSPECTOR_SERVER", inspectorAddress.get(), TRUE);
 #if PLATFORM(GTK)
-    g_subprocess_launcher_setenv(launcher.get(), "GTK_OVERLAY_SCROLLING", m_capabilities.useOverlayScrollbars ? "1" : "0", TRUE);
+    g_subprocess_launcher_setenv(launcher.get(), "GTK_OVERLAY_SCROLLING", m_capabilities.useOverlayScrollbars.value() ? "1" : "0", TRUE);
 #endif
 
-    GUniquePtr<char*> args(g_new0(char*, m_capabilities.browserArguments.size() + 2));
-    args.get()[0] = g_strdup(m_capabilities.browserBinary.utf8().data());
-    for (unsigned i = 0; i < m_capabilities.browserArguments.size(); ++i)
-        args.get()[i + 1] = g_strdup(m_capabilities.browserArguments[i].utf8().data());
+    const auto& browserArguments = m_capabilities.browserArguments.value();
+    GUniquePtr<char*> args(g_new0(char*, browserArguments.size() + 2));
+    args.get()[0] = g_strdup(m_capabilities.browserBinary.value().utf8().data());
+    for (unsigned i = 0; i < browserArguments.size(); ++i)
+        args.get()[i + 1] = g_strdup(browserArguments[i].utf8().data());
 
     m_browser = adoptGRef(g_subprocess_launcher_spawnv(launcher.get(), args.get(), nullptr));
     g_subprocess_wait_async(m_browser.get(), m_cancellable.get(), [](GObject* browser, GAsyncResult* result, gpointer userData) {
@@ -191,6 +200,7 @@ void SessionHost::connectToBrowser(std::unique_ptr<ConnectToBrowserAsyncData>&& 
 
 void SessionHost::dbusConnectionClosedCallback(SessionHost* sessionHost)
 {
+    sessionHost->m_browser = nullptr;
     sessionHost->inspectorDisconnected();
 }
 
@@ -219,7 +229,28 @@ void SessionHost::setupConnection(GRefPtr<GDBusConnection>&& connection, Functio
     completionHandler(Succeeded::Yes);
 }
 
-void SessionHost::startAutomationSession(const String& sessionID, Function<void ()>&& completionHandler)
+std::optional<String> SessionHost::matchCapabilities(GVariant* capabilities)
+{
+    const char* browserName;
+    const char* browserVersion;
+    g_variant_get(capabilities, "(&s&s)", &browserName, &browserVersion);
+
+    if (m_capabilities.browserName) {
+        if (m_capabilities.browserName.value() != browserName)
+            return makeString("expected browserName ", m_capabilities.browserName.value(), " but got ", browserName);
+    } else
+        m_capabilities.browserName = String(browserName);
+
+    if (m_capabilities.browserVersion) {
+        if (!WebDriverService::platformCompareBrowserVersions(m_capabilities.browserVersion.value(), browserVersion))
+            return makeString("requested browserVersion is ", m_capabilities.browserVersion.value(), " but actual version is ", browserVersion);
+    } else
+        m_capabilities.browserVersion = String(browserVersion);
+
+    return std::nullopt;
+}
+
+void SessionHost::startAutomationSession(const String& sessionID, Function<void (std::optional<String>)>&& completionHandler)
 {
     ASSERT(m_dbusConnection);
     ASSERT(!m_startSessionCompletionHandler);
@@ -230,7 +261,27 @@ void SessionHost::startAutomationSession(const String& sessionID, Function<void 
         "StartAutomationSession",
         g_variant_new("(s)", sessionID.utf8().data()),
         nullptr, G_DBUS_CALL_FLAGS_NO_AUTO_START,
-        -1, m_cancellable.get(), dbusConnectionCallAsyncReadyCallback, nullptr);
+        -1, m_cancellable.get(), [](GObject* source, GAsyncResult* result, gpointer userData) {
+            GUniqueOutPtr<GError> error;
+            GRefPtr<GVariant> resultVariant = adoptGRef(g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &error.outPtr()));
+            if (!resultVariant && g_error_matches(error.get(), G_IO_ERROR, G_IO_ERROR_CANCELLED))
+                return;
+
+            auto sessionHost = static_cast<SessionHost*>(userData);
+            if (!resultVariant) {
+                auto completionHandler = std::exchange(sessionHost->m_startSessionCompletionHandler, nullptr);
+                completionHandler(String("Failed to start automation session"));
+                return;
+            }
+
+            auto errorString = sessionHost->matchCapabilities(resultVariant.get());
+            if (errorString) {
+                auto completionHandler = std::exchange(sessionHost->m_startSessionCompletionHandler, nullptr);
+                completionHandler(errorString);
+                return;
+            }
+        }, this
+    );
 }
 
 void SessionHost::setTargetList(uint64_t connectionID, Vector<Target>&& targetList)
@@ -253,6 +304,11 @@ void SessionHost::setTargetList(uint64_t connectionID, Vector<Target>&& targetLi
         return;
     }
 
+    if (!m_startSessionCompletionHandler) {
+        // Session creation was already rejected.
+        return;
+    }
+
     m_connectionID = connectionID;
     g_dbus_connection_call(m_dbusConnection.get(), nullptr,
         INSPECTOR_DBUS_OBJECT_PATH,
@@ -263,7 +319,7 @@ void SessionHost::setTargetList(uint64_t connectionID, Vector<Target>&& targetLi
         -1, m_cancellable.get(), dbusConnectionCallAsyncReadyCallback, nullptr);
 
     auto startSessionCompletionHandler = std::exchange(m_startSessionCompletionHandler, nullptr);
-    startSessionCompletionHandler();
+    startSessionCompletionHandler(std::nullopt);
 }
 
 void SessionHost::sendMessageToFrontend(uint64_t connectionID, uint64_t targetID, const char* message)

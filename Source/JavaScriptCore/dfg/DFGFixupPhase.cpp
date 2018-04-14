@@ -1573,7 +1573,7 @@ private:
             // fixup rules for them.
             DFG_CRASH(m_graph, node, "Unexpected node during fixup");
             break;
-        
+
         case PutGlobalVariable: {
             fixEdge<CellUse>(node->child1());
             speculateForBarrier(node->child2());
@@ -1710,6 +1710,7 @@ private:
 
         case CreateScopedArguments:
         case CreateActivation:
+        case PushWithScope:
         case NewFunction:
         case NewGeneratorFunction:
         case NewAsyncFunction: {
@@ -1920,6 +1921,11 @@ private:
             if (node->child2())
                 fixEdge<Int32Use>(node->child2());
 
+            break;
+        }
+
+        case IdentityWithProfile: {
+            node->clearFlags(NodeMustGenerate);
             break;
         }
 

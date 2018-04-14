@@ -38,7 +38,7 @@ class InspectorObject;
 
 namespace WebDriver {
 
-class Capabilities;
+struct Capabilities;
 class CommandResult;
 class Session;
 
@@ -48,7 +48,8 @@ public:
     ~WebDriverService() = default;
 
     int run(int argc, char** argv);
-    void quit();
+
+    static bool platformCompareBrowserVersions(const String&, const String&);
 
 private:
     enum class HTTPMethod { Get, Post, Delete };
@@ -99,9 +100,20 @@ private:
     void elementSubmit(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
     void executeScript(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
     void executeAsyncScript(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void dismissAlert(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void acceptAlert(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void getAlertText(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
+    void sendAlertText(RefPtr<Inspector::InspectorObject>&&, Function<void (CommandResult&&)>&&);
 
-    bool parseCapabilities(Inspector::InspectorObject& desiredCapabilities, Capabilities&, Function<void (CommandResult&&)>&);
-    bool platformParseCapabilities(Inspector::InspectorObject& desiredCapabilities, Capabilities&, Function<void (CommandResult&&)>&);
+    static Capabilities platformCapabilities();
+    RefPtr<Inspector::InspectorObject> processCapabilities(const Inspector::InspectorObject&, Function<void (CommandResult&&)>&) const;
+    RefPtr<Inspector::InspectorObject> validatedCapabilities(const Inspector::InspectorObject&) const;
+    RefPtr<Inspector::InspectorObject> mergeCapabilities(const Inspector::InspectorObject&, const Inspector::InspectorObject&) const;
+    std::optional<String> matchCapabilities(const Inspector::InspectorObject&) const;
+    bool platformValidateCapability(const String&, const RefPtr<Inspector::InspectorValue>&) const;
+    std::optional<String> platformMatchCapability(const String&, const RefPtr<Inspector::InspectorValue>&) const;
+    void parseCapabilities(const Inspector::InspectorObject& desiredCapabilities, Capabilities&) const;
+    void platformParseCapabilities(const Inspector::InspectorObject& desiredCapabilities, Capabilities&) const;
     RefPtr<Session> findSessionOrCompleteWithError(Inspector::InspectorObject&, Function<void (CommandResult&&)>&);
 
     void handleRequest(HTTPRequestHandler::Request&&, Function<void (HTTPRequestHandler::Response&&)>&& replyHandler) override;

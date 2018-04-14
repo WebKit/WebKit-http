@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -30,30 +31,38 @@
 
 #pragma once
 
-#if ENABLE(DATA_TRANSFER_ITEMS)
-
+#include "DataTransfer.h"
+#include "ScriptWrappable.h"
 #include <wtf/Forward.h>
 #include <wtf/RefCounted.h>
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class Blob;
+class File;
+class ScriptExecutionContext;
 class StringCallback;
 
-class DataTransferItem : public RefCounted<DataTransferItem> {
+class DataTransferItem : public ScriptWrappable {
+    WTF_MAKE_NONCOPYABLE(DataTransferItem); WTF_MAKE_FAST_ALLOCATED;
 public:
-    virtual ~DataTransferItem() { }
+    DataTransferItem(DataTransfer&, const String&);
+    DataTransferItem(DataTransfer&, const String&, Ref<File>&&);
+    ~DataTransferItem();
 
-    static const char kindString[];
-    static const char kindFile[];
+    // DataTransfer owns DataTransferItem, and DataTransfer is kept alive as long as DataTransferItem is alive.
+    void ref() { m_dataTransfer.ref(); }
+    void deref() { m_dataTransfer.deref(); }
 
-    virtual String kind() const = 0;
-    virtual String type() const = 0;
+    String kind() const;
+    const String& type() const { return m_type; }
+    void getAsString(ScriptExecutionContext&, RefPtr<StringCallback>&&) const;
+    RefPtr<File> getAsFile() const;
 
-    virtual void getAsString(RefPtr<StringCallback>&&) const = 0;
-    virtual RefPtr<Blob> getAsFile() const = 0;
+private:
+    DataTransfer& m_dataTransfer;
+    const String m_type;
+    RefPtr<File> m_file;
 };
 
-} // namespace WebCore
-
-#endif // ENABLE(DATA_TRANSFER_ITEMS)
+}

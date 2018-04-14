@@ -85,11 +85,11 @@
 #include "SessionID.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "SleepDisabler.h"
 #include "TimeRanges.h"
 #include "UserContentController.h"
 #include "UserGestureIndicator.h"
 #include <limits>
+#include <pal/system/SleepDisabler.h>
 #include <runtime/Uint8Array.h>
 #include <wtf/Algorithms.h>
 #include <wtf/CurrentTime.h>
@@ -1855,6 +1855,15 @@ bool HTMLMediaElement::textTracksAreReady() const
 
 void HTMLMediaElement::textTrackReadyStateChanged(TextTrack* track)
 {
+    if (track->readinessState() != TextTrack::Loading
+        && track->mode() != TextTrack::Mode::Disabled) {
+        // The display trees exist as long as the track is active, in this case,
+        // and if the same track is loaded again (for example if the src attribute was changed),
+        // cues can be accumulated with the old ones, that's why they needs to be flushed
+        if (hasMediaControls())
+            mediaControls()->clearTextDisplayContainer();
+        updateTextTrackDisplay();
+    }
     if (m_player && m_textTracksWhenResourceSelectionBegan.contains(track)) {
         if (track->readinessState() != TextTrack::Loading)
             setReadyState(m_player->readyState());
@@ -2507,6 +2516,10 @@ bool HTMLMediaElement::mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array* initData)
 
 String HTMLMediaElement::mediaPlayerMediaKeysStorageDirectory() const
 {
+    auto* page = document().page();
+    if (!page || page->usesEphemeralSession())
+        return emptyString();
+
     String storageDirectory = document().settings().mediaKeysStorageDirectory();
     if (storageDirectory.isEmpty())
         return emptyString();
@@ -2626,11 +2639,10 @@ void HTMLMediaElement::fastSeek(const MediaTime& time)
     // position. Similarly, if the new playback position before this step is after current playback position,
     // then the adjusted new playback position must also be after the current playback position.
     refreshCachedTime();
-    MediaTime delta = time - currentMediaTime();
-    MediaTime negativeTolerance = delta >= MediaTime::zeroTime() ? delta : MediaTime::positiveInfiniteTime();
-    MediaTime positiveTolerance = delta < MediaTime::zeroTime() ? -delta : MediaTime::positiveInfiniteTime();
 
-    seekWithTolerance(time, negativeTolerance, positiveTolerance, true);
+    MediaTime delta = time - currentMediaTime();
+    MediaTime negativeTolerance = delta < MediaTime::zeroTime() ? MediaTime::positiveInfiniteTime() : delta;
+    seekWithTolerance(time, negativeTolerance, MediaTime::zeroTime(), true);
 }
 
 void HTMLMediaElement::seek(const MediaTime& time)
@@ -6356,9 +6368,9 @@ void HTMLMediaElement::updateSleepDisabling()
     if (shouldDisableSleep == SleepType::None && m_sleepDisabler)
         m_sleepDisabler = nullptr;
     else if (shouldDisableSleep != SleepType::None) {
-        auto type = shouldDisableSleep == SleepType::Display ? SleepDisabler::Type::Display : SleepDisabler::Type::System;
+        auto type = shouldDisableSleep == SleepType::Display ? PAL::SleepDisabler::Type::Display : PAL::SleepDisabler::Type::System;
         if (!m_sleepDisabler || m_sleepDisabler->type() != type)
-            m_sleepDisabler = SleepDisabler::create("com.apple.WebCore: HTMLMediaElement playback", type);
+            m_sleepDisabler = PAL::SleepDisabler::create("com.apple.WebCore: HTMLMediaElement playback", type);
     }
 
     if (m_player)

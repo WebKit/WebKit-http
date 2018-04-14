@@ -34,10 +34,9 @@
 #include <wtf/PrintStream.h>
 #include <wtf/RandomNumberSeed.h>
 #include <wtf/ThreadGroup.h>
-#include <wtf/ThreadHolder.h>
 #include <wtf/ThreadMessage.h>
 #include <wtf/ThreadingPrimitives.h>
-#include <wtf/WTFThreadData.h>
+#include <wtf/text/AtomicStringTable.h>
 #include <wtf/text/StringView.h>
 
 #if HAVE(QOS_CLASSES)
@@ -94,6 +93,15 @@ const char* Thread::normalizeThreadName(const char* threadName)
 #endif
 }
 
+void Thread::initializeInThread()
+{
+    if (m_stack.isEmpty())
+        m_stack = StackBounds::currentThreadStackBounds();
+    m_savedLastStackTop = stack().origin();
+    AtomicStringTable::create(*this);
+    m_currentAtomicStringTable = m_defaultAtomicStringTable;
+}
+
 void Thread::entryPoint(NewThreadContext* newThreadContext)
 {
     Function<void()> function;
@@ -104,14 +112,13 @@ void Thread::entryPoint(NewThreadContext* newThreadContext)
         MutexLocker locker(context->mutex);
         ASSERT(context->stage == NewThreadContext::Stage::EstablishedHandle);
 
-        // Initialize thread holder with established ID.
-        ThreadHolder::initialize(context->thread.get());
-
         Thread::initializeCurrentThreadInternal(context->name);
         function = WTFMove(context->entryPoint);
+        context->thread->initializeInThread();
+
+        Thread::initializeTLS(WTFMove(context->thread));
 
 #if !HAVE(STACK_BOUNDS_FOR_NEW_THREAD)
-        context->thread->m_stack = StackBounds::currentThreadStackBounds();
         // Ack completion of initialization to the creating thread.
         context->stage = NewThreadContext::Stage::Initialized;
         context->condition.signal();
@@ -124,6 +131,7 @@ void Thread::entryPoint(NewThreadContext* newThreadContext)
 
 RefPtr<Thread> Thread::create(const char* name, Function<void()>&& entryPoint)
 {
+    WTF::initializeThreading();
     Ref<Thread> thread = adoptRef(*new Thread());
     Ref<NewThreadContext> context = adoptRef(*new NewThreadContext { name, WTFMove(entryPoint), thread.copyRef() });
     // Increment the context ref on behalf of the created thread. We do not just use a unique_ptr and leak it to the created thread because both the creator and created thread has a need to keep the context alive:
@@ -153,14 +161,6 @@ RefPtr<Thread> Thread::create(const char* name, Function<void()>&& entryPoint)
 
     ASSERT(!thread->stack().isEmpty());
     return WTFMove(thread);
-}
-
-Thread* Thread::currentMayBeNull()
-{
-    ThreadHolder* data = ThreadHolder::current();
-    if (data)
-        return &data->thread();
-    return nullptr;
 }
 
 static bool shouldRemoveThreadFromThreadGroup()
@@ -197,6 +197,9 @@ void Thread::didExit()
             threadGroup->m_threads.remove(*this);
         }
     }
+    if (m_atomicStringTableDestructor)
+        m_atomicStringTableDestructor(m_defaultAtomicStringTable);
+
     // We would like to say "thread is exited" after unregistering threads from thread groups.
     // So we need to separate m_isShuttingDown from m_didExit.
     std::lock_guard<std::mutex> locker(m_mutex);
@@ -273,13 +276,18 @@ void Thread::dump(PrintStream& out) const
     out.print(m_id);
 }
 
+#if !HAVE(FAST_TLS)
+ThreadSpecificKey Thread::s_key = InvalidThreadSpecificKey;
+#endif
+
 void initializeThreading()
 {
-    static std::once_flag initializeKey;
-    std::call_once(initializeKey, [] {
-        ThreadHolder::initializeOnce();
+    static std::once_flag onceKey;
+    std::call_once(onceKey, [] {
         initializeRandomNumberGenerator();
-        wtfThreadData();
+#if !HAVE(FAST_TLS)
+        Thread::initializeTLSKey();
+#endif
         initializeDates();
         Thread::initializePlatformThreading();
     });

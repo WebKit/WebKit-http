@@ -30,7 +30,6 @@
 #import "LegacyCustomProtocolManager.h"
 #import "Logging.h"
 #import "ObjCObjectGraph.h"
-#import <runtime/ConfigFile.h>
 #import "SandboxExtension.h"
 #import "SandboxInitializationParameters.h"
 #import "SecItemShim.h"
@@ -48,23 +47,25 @@
 #import "WebsiteDataStoreParameters.h"
 #import <JavaScriptCore/Options.h>
 #import <WebCore/AXObjectCache.h>
-#import <WebCore/CFNetworkSPI.h>
 #import <WebCore/CPUMonitor.h>
 #import <WebCore/FileSystem.h>
 #import <WebCore/FontCache.h>
 #import <WebCore/FontCascade.h>
 #import <WebCore/LocalizedStrings.h>
+#import <WebCore/LogInitialization.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSAccessibilitySPI.h>
 #import <WebCore/PerformanceLogging.h>
-#import <WebCore/QuartzCoreSPI.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/WebCoreNSURLExtras.h>
-#import <WebCore/pthreadSPI.h>
 #import <WebKitSystemInterface.h>
 #import <algorithm>
 #import <dispatch/dispatch.h>
 #import <objc/runtime.h>
+#import <pal/spi/cf/CFNetworkSPI.h>
+#import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <pal/spi/cocoa/pthreadSPI.h>
+#import <runtime/ConfigFile.h>
 #import <stdio.h>
 
 #if PLATFORM(IOS)
@@ -112,6 +113,10 @@ static id NSApplicationAccessibilityFocusedUIElement(NSApplication*, SEL)
 
 void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& parameters)
 {
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
+    WebCore::initializeLogChannelsIfNecessary(parameters.webCoreLoggingChannels);
+#endif
+
     WebCore::setApplicationBundleIdentifier(parameters.uiProcessBundleIdentifier);
     SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
 

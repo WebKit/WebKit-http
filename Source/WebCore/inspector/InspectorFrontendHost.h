@@ -36,6 +36,7 @@
 
 namespace WebCore {
 
+class DOMWrapperWorld;
 class Event;
 class FrontendMenuProvider;
 class InspectorFrontendClient;
@@ -50,6 +51,8 @@ public:
 
     WEBCORE_EXPORT ~InspectorFrontendHost();
     WEBCORE_EXPORT void disconnectClient();
+
+    WEBCORE_EXPORT void addSelfToGlobalObjectInWorld(DOMWrapperWorld&);
 
     void loaded();
     void requestSetDockSide(const String&);
@@ -101,6 +104,7 @@ public:
     void unbufferedLog(const String& message);
 
     void beep();
+    void inspectInspector();
 
 private:
 #if ENABLE(CONTEXT_MENUS)

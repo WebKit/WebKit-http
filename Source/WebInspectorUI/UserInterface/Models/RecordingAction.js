@@ -25,25 +25,27 @@
 
 WI.RecordingAction = class RecordingAction
 {
-    constructor(name, parameters)
+    constructor(name, parameters, trace)
     {
         this._payloadName = name;
         this._payloadParameters = parameters;
+        this._payloadTrace = trace;
 
         this._name = "";
         this._parameters = [];
+        this._trace = [];
 
         this._valid = true;
 
         this._isFunction = false;
         this._isGetter = false;
         this._isVisual = false;
-        this._stateModifiers = [];
+        this._stateModifiers = new Set;
     }
 
     // Static
 
-    // Payload format: [name, parameters]
+    // Payload format: [name, parameters, trace]
     static fromPayload(payload)
     {
         if (!Array.isArray(payload))
@@ -55,6 +57,9 @@ WI.RecordingAction = class RecordingAction
         if (!Array.isArray(payload[1]))
             payload[1] = [];
 
+        if (!Array.isArray(payload[2]))
+            payload[2] = [];
+
         return new WI.RecordingAction(...payload);
     }
 
@@ -64,13 +69,14 @@ WI.RecordingAction = class RecordingAction
         if (!functionNames)
             return false;
 
-        return functionNames.includes(name);
+        return functionNames.has(name);
     }
 
     // Public
 
     get name() { return this._name; }
     get parameters() { return this._parameters; }
+    get trace() { return this._trace; }
 
     get valid() { return this._valid; }
     set valid(valid) { this._valid = !!valid; }
@@ -96,18 +102,31 @@ WI.RecordingAction = class RecordingAction
             return swizzled;
         });
 
+        for (let item of this._payloadTrace) {
+            try {
+                let array = recording.swizzle(item, WI.Recording.Swizzle.Array);
+                let callFrame = WI.CallFrame.fromPayload(WI.mainTarget, {
+                    functionName: recording.swizzle(array[0], WI.Recording.Swizzle.String),
+                    url: recording.swizzle(array[1], WI.Recording.Swizzle.String),
+                    lineNumber: array[2],
+                    columnNumber: array[3],
+                });
+                this._trace.push(callFrame);
+            } catch { }
+        }
+
         this._isFunction = WI.RecordingAction.isFunctionForType(recording.type, this._name);
         this._isGetter = !this._isFunction && !this._parameters.length;
 
         let visualNames = WI.RecordingAction._visualNames[recording.type];
-        this._isVisual = visualNames ? visualNames.includes(this._name) : false;
+        this._isVisual = visualNames ? visualNames.has(this._name) : false;
 
-        this._stateModifiers = [this._name];
+        this._stateModifiers = new Set([this._name]);
         let stateModifiers = WI.RecordingAction._stateModifiers[recording.type];
         if (stateModifiers) {
-            let modifiedByAction = stateModifiers[this._name];
-            if (modifiedByAction)
-                this._stateModifiers = this._stateModifiers.concat(modifiedByAction);
+            let modifiedByAction = stateModifiers[this._name] || [];
+            for (let item of modifiedByAction)
+                this._stateModifiers.add(item);
         }
     }
 
@@ -130,7 +149,7 @@ WI.RecordingAction = class RecordingAction
 
     toJSON()
     {
-        return [this._payloadName, this._payloadParameters];
+        return [this._payloadName, this._payloadParameters, this._payloadTrace];
     }
 };
 
@@ -277,7 +296,7 @@ WI.RecordingAction = class RecordingAction
 }
 
 WI.RecordingAction._functionNames = {
-    [WI.Recording.Type.Canvas2D]: [
+    [WI.Recording.Type.Canvas2D]: new Set([
         "arc",
         "arcTo",
         "beginPath",
@@ -336,11 +355,11 @@ WI.RecordingAction._functionNames = {
         "translate",
         "webkitGetImageDataHD",
         "webkitPutImageDataHD",
-    ],
+    ]),
 };
 
 WI.RecordingAction._visualNames = {
-    [WI.Recording.Type.Canvas2D]: [
+    [WI.Recording.Type.Canvas2D]: new Set([
         "clearRect",
         "drawFocusIfNeeded",
         "drawImage",
@@ -353,7 +372,7 @@ WI.RecordingAction._visualNames = {
         "strokeRect",
         "strokeText",
         "webkitPutImageDataHD",
-    ],
+    ]),
 };
 
 WI.RecordingAction._stateModifiers = {

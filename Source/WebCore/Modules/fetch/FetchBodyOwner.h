@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "ActiveDOMObject.h"
 #include "FetchBody.h"
 #include "FetchHeaders.h"
@@ -59,6 +57,8 @@ public:
 
     bool isActive() const { return !!m_blobLoader; }
 
+    bool isReadableStreamBody() const { return m_body && m_body->isReadableStream(); }
+
 protected:
     const FetchBody& body() const { return *m_body; }
     FetchBody& body() { return *m_body; }
@@ -68,6 +68,7 @@ protected:
     void extractBody(ScriptExecutionContext&, FetchBody::Init&&);
     void updateContentType();
     void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&);
+    void consumeNullBody(FetchBodyConsumer::Type, Ref<DeferredPromise>&&);
 
     void setBody(FetchBody&& body) { m_body = WTFMove(body); }
 
@@ -89,7 +90,7 @@ private:
         // FetchLoaderClient API
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char* data, size_t size) final { owner.blobChunk(data, size); }
-        void didFail() final;
+        void didFail(const ResourceError&) final;
         void didSucceed() final { owner.blobLoadingSucceeded(); }
 
         FetchBodyOwner& owner;
@@ -110,5 +111,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)

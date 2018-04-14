@@ -28,12 +28,12 @@
 
 #include "AnimationUtilities.h"
 #include "HashTools.h"
-#include "TextStream.h"
 #include <wtf/Assertions.h>
 #include <wtf/DecimalNumber.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MathExtras.h>
 #include <wtf/text/StringBuilder.h>
+#include <wtf/text/TextStream.h>
 
 namespace WebCore {
 
@@ -305,12 +305,6 @@ Color::Color(float r, float g, float b, float a, ColorSpace colorSpace)
     auto extendedColorRef = ExtendedColor::create(r, g, b, a, colorSpace);
     m_colorData.extendedColor = &extendedColorRef.leakRef();
     ASSERT(isExtended());
-}
-
-Color::~Color()
-{
-    if (isExtended())
-        m_colorData.extendedColor->deref();
 }
 
 Color& Color::operator=(const Color& other)
@@ -663,11 +657,6 @@ TextStream& operator<<(TextStream& ts, const Color& color)
 void Color::tagAsValid()
 {
     m_colorData.rgbaAndFlags |= validRGBAColor;
-}
-
-bool Color::isExtended() const
-{
-    return !(m_colorData.rgbaAndFlags & invalidRGBAColor);
 }
 
 ExtendedColor& Color::asExtended() const

@@ -13,6 +13,8 @@ set(WTF_HEADERS
     BumpPointerAllocator.h
     ByteOrder.h
     CPUTime.h
+    CagedPtr.h
+    CagedUniquePtr.h
     ClockType.h
     CompilationThread.h
     Compiler.h
@@ -109,6 +111,7 @@ set(WTF_HEADERS
     Range.h
     RangeSet.h
     RawPointer.h
+    ReadWriteLock.h
     RecursiveLockAdapter.h
     RedBlackTree.h
     Ref.h
@@ -136,7 +139,6 @@ set(WTF_HEADERS
     SystemFree.h
     SystemTracing.h
     ThreadGroup.h
-    ThreadHolder.cpp
     ThreadMessage.h
     ThreadSafeRefCounted.h
     ThreadSpecific.h
@@ -151,7 +153,6 @@ set(WTF_HEADERS
     Variant.h
     Vector.h
     VectorTraits.h
-    WTFThreadData.h
     WallTime.h
     WeakPtr.h
     WordLock.h
@@ -186,7 +187,9 @@ set(WTF_HEADERS
     text/SymbolRegistry.h
     text/TextBreakIterator.h
     text/TextBreakIteratorInternalICU.h
+    text/TextStream.h
     text/UniquedStringImpl.h
+    text/ValueToString.h
     text/WTFString.h
 
     text/icu/UTextProvider.h
@@ -242,6 +245,7 @@ set(WTF_SOURCES
     RAMSize.cpp
     RandomDevice.cpp
     RandomNumber.cpp
+    ReadWriteLock.cpp
     RefCountedLeakCounter.cpp
     RunLoop.cpp
     SHA1.cpp
@@ -256,7 +260,6 @@ set(WTF_SOURCES
     Threading.cpp
     TimeWithDynamicClockType.cpp
     UUID.cpp
-    WTFThreadData.cpp
     WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
@@ -271,9 +274,9 @@ set(WTF_SOURCES
     dtoa/fixed-dtoa.cc
     dtoa/strtod.cc
 
-    persistence/Coders.cpp
-    persistence/Decoder.cpp
-    persistence/Encoder.cpp
+    persistence/PersistentCoders.cpp
+    persistence/PersistentDecoder.cpp
+    persistence/PersistentEncoder.cpp
 
     text/AtomicString.cpp
     text/AtomicStringImpl.cpp
@@ -286,6 +289,7 @@ set(WTF_SOURCES
     text/SymbolImpl.cpp
     text/SymbolRegistry.cpp
     text/TextBreakIterator.cpp
+    text/TextStream.cpp
     text/WTFString.cpp
 
     text/icu/UTextProvider.cpp
@@ -353,7 +357,6 @@ list(APPEND WTF_LIBRARIES
 if (WIN32)
     list(APPEND WTF_SOURCES
         OSAllocatorWin.cpp
-        ThreadHolderWin.cpp
         ThreadSpecificWin.cpp
         ThreadingWin.cpp
     )
@@ -363,7 +366,6 @@ if (WIN32)
 else ()
     list(APPEND WTF_SOURCES
         OSAllocatorPosix.cpp
-        ThreadHolderPthreads.cpp
         ThreadingPthreads.cpp
     )
 endif ()

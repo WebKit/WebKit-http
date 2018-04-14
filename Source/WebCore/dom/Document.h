@@ -45,6 +45,7 @@
 #include "Region.h"
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
+#include "SessionID.h"
 #include "StringWithDirection.h"
 #include "Supplementable.h"
 #include "TextResourceDecoder.h"
@@ -206,15 +207,7 @@ class DeviceOrientationController;
 #endif
 
 #if ENABLE(TEXT_AUTOSIZING)
-struct TextAutoSizingHash;
-class TextAutoSizingKey;
-class TextAutoSizingValue;
-
-struct TextAutoSizingTraits : WTF::GenericHashTraits<TextAutoSizingKey> {
-    static const bool emptyValueIsZero = true;
-    static void constructDeletedValue(TextAutoSizingKey& slot);
-    static bool isDeletedValue(const TextAutoSizingKey& value);
-};
+class TextAutoSizing;
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -649,6 +642,7 @@ public:
 
     WEBCORE_EXPORT URL completeURL(const String&) const final;
     URL completeURL(const String&, const URL& baseURLOverride) const;
+    SessionID sessionID() const final;
 
     String userAgent(const URL&) const final;
 
@@ -658,9 +652,7 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* idbConnectionProxy() final;
 #endif
-#if ENABLE(WEB_SOCKETS)
     SocketProvider* socketProvider() final;
-#endif
 
     bool canNavigate(Frame* targetFrame);
     Frame* findUnsafeParentScrollPropagationBoundary();
@@ -1239,6 +1231,8 @@ public:
     bool inStyleRecalc() const { return m_inStyleRecalc; }
     bool inRenderTreeUpdate() const { return m_inRenderTreeUpdate; }
 
+    void updateTextRenderer(Text&, unsigned offsetOfReplacedText, unsigned lengthOfReplacedText);
+
     // Return a Locale for the default locale if the argument is null or empty.
     Locale& getCachedLocale(const AtomicString& locale = nullAtom());
 
@@ -1360,6 +1354,10 @@ public:
     // Per https://html.spec.whatwg.org/multipage/obsolete.html#dom-document-releaseevents, this method does nothing.
     void releaseEvents() { }
 
+#if ENABLE(TEXT_AUTOSIZING)
+    TextAutoSizing& textAutoSizing();
+#endif
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1469,6 +1467,8 @@ private:
     bool shouldEnforceHTTP09Sandbox() const;
 
     void platformSuspendOrStopActiveDOMObjects();
+
+    bool domainIsRegisterable(const String&) const;
 
     const Ref<Settings> m_settings;
 
@@ -1661,14 +1661,7 @@ private:
     Vector<Task> m_pendingTasks;
 
 #if ENABLE(TEXT_AUTOSIZING)
-public:
-    void addAutoSizedNode(Text&, float size);
-    void updateAutoSizedNodes();
-    void clearAutoSizedNodes();
-
-private:
-    using TextAutoSizingMap = HashMap<TextAutoSizingKey, std::unique_ptr<TextAutoSizingValue>, TextAutoSizingHash, TextAutoSizingTraits>;
-    TextAutoSizingMap m_textAutoSizedNodes;
+    std::unique_ptr<TextAutoSizing> m_textAutoSizing;
 #endif
 
     Timer m_visualUpdatesSuppressionTimer;
@@ -1710,9 +1703,7 @@ private:
     Timer m_didAssociateFormControlsTimer;
     Timer m_cookieCacheExpiryTimer;
 
-#if ENABLE(WEB_SOCKETS)
     RefPtr<SocketProvider> m_socketProvider;
-#endif
 
     String m_cachedDOMCookies;
 
@@ -1739,7 +1730,7 @@ private:
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     bool m_userHasInteractedWithMediaElement { false };
     PageCacheState m_pageCacheState { NotInPageCache };
-    ReferrerPolicy m_referrerPolicy { ReferrerPolicy::Default };
+    ReferrerPolicy m_referrerPolicy { ReferrerPolicy::NoReferrerWhenDowngrade };
     ReadyState m_readyState { Complete };
     SelectionRestorationMode m_updateFocusAppearanceRestoresSelection { SelectionRestorationMode::SetDefault };
 
@@ -1819,6 +1810,7 @@ private:
 #endif
 
     OrientationNotifier m_orientationNotifier;
+    mutable SessionID m_sessionID;
 
     static bool hasEverCreatedAnAXObjectCache;
 };

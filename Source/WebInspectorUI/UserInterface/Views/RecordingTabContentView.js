@@ -31,7 +31,7 @@ WI.RecordingTabContentView = class RecordingTabContentView extends WI.ContentBro
         let tabBarItem = new WI.GeneralTabBarItem(image, title);
 
         const navigationSidebarPanelConstructor = WI.RecordingNavigationSidebarPanel;
-        const detailsSidebarPanelConstructors = [WI.RecordingStateDetailsSidebarPanel, WI.CanvasDetailsSidebarPanel];
+        const detailsSidebarPanelConstructors = [WI.RecordingStateDetailsSidebarPanel, WI.RecordingTraceDetailsSidebarPanel, WI.CanvasDetailsSidebarPanel];
         const disableBackForward = true;
         let flexibleNavigationItem = new WI.ScrubberNavigationItem;
         super("recording", "recording", tabBarItem, navigationSidebarPanelConstructor, detailsSidebarPanelConstructors, disableBackForward, flexibleNavigationItem);
@@ -57,6 +57,11 @@ WI.RecordingTabContentView = class RecordingTabContentView extends WI.ContentBro
             image: "Images/Recording.svg",
             title: WI.UIString("Recording"),
         };
+    }
+
+    static isTabAllowed()
+    {
+        return !!window.CanvasAgent;
     }
 
     // Public

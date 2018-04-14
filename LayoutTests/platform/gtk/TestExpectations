@@ -71,12 +71,12 @@ editing/pasteboard/gtk [ Pass ]
 # Tests that are now failing because of the switch to ThreadedCompositor.
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests that require new results.
+# 1. TESTS THAT REQUIRE NEW RESULTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Expected failures
+# 2. EXPECTED FAILURES
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # This test assumes we cannot play RTSP, but we can.
@@ -231,7 +231,8 @@ webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/SourceBuffer-ab
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/URL-createObjectURL-revoke.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/interfaces.html [ Failure ]
-webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-activesourcebuffers.html [ Failure ]
+# See also bug #175578 
+webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-activesourcebuffers.html [ Crash Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer-mode.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-addsourcebuffer.html [ Failure ]
 webkit.org/b/167108 imported/w3c/web-platform-tests/media-source/mediasource-append-buffer.html [ Failure ]
@@ -431,8 +432,10 @@ webkit.org/b/169918 compositing/tiling/tiled-layer-resize.html [ Failure ]
 webkit.org/b/169918 compositing/tiling/tiled-mask-inwindow.html [ Failure ]
 webkit.org/b/169918 compositing/tiling/tiled-reflection-inwindow.html [ Failure ]
 webkit.org/b/169918 compositing/tiling/transform-origin-tiled.html [ Failure ]
-webkit.org/b/169918 compositing/video/video-object-fit.html [ Failure ]
-webkit.org/b/169918 compositing/video/video-object-position.html [ Failure ]
+# See also bug #175574
+webkit.org/b/169918 compositing/video/video-object-fit.html [ Failure Crash ]
+# See also bug #175575
+webkit.org/b/169918 compositing/video/video-object-position.html [ Failure Crash ]
 webkit.org/b/169918 compositing/visibility/visibility-on-distant-descendant.html [ Failure Pass ]
 webkit.org/b/169918 compositing/visibility/visibility-image-layers.html [ Failure Pass ]
 webkit.org/b/169918 compositing/visibility/visibility-image-layers-dynamic.html [ Failure ]
@@ -591,6 +594,7 @@ webkit.org/b/166536 fast/canvas/webgl/webgl2-texture-upload-enums.html [ Skip ]
 webkit.org/b/166536 inspector/canvas/create-context-webgl2.html [ Skip ]
 webkit.org/b/166536 inspector/canvas/requestContent-webgl2.html [ Skip ]
 webkit.org/b/166536 inspector/canvas/resolveCanvasContext-webgl2.html [ Skip ]
+webkit.org/b/166536 inspector/canvas/shaderProgram-add-remove-webgl2.html [ Skip ]
 
 # These tests reference specific fonts on Mac port.
 Bug(GTK) fast/text/font-weights.html [ WontFix ]
@@ -621,6 +625,8 @@ webrtc [ Pass ]
 webrtc/libwebrtc [ Skip ]
 # Some WebRTC features like datachannel are still not implemented
 webrtc/audio-replace-track.html [ Failure ]
+webrtc/audio-muted-stats.html [ Failure ]
+webrtc/audio-muted-stats2.html [ Failure ]
 webrtc/captureCanvas-webrtc.html [ Failure ]
 webrtc/clone-audio-track.html [ Failure ]
 webrtc/closing-peerconnection.html [ Timeout ]
@@ -689,6 +695,7 @@ webkit.org/b/79203 fast/mediastream/RTCPeerConnection-setRemoteDescription-offer
 webkit.org/b/79203 fast/mediastream/RTCRtpSender-replaceTrack.html [ Failure ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-addIceCandidate.html [ Failure Pass ]
 webkit.org/b/79203 fast/mediastream/RTCPeerConnection-closed-state.html [ Crash ]
+webkit.org/b/79203 fast/mediastream/media-stream-track-source-failure.html [ Failure ]
 webkit.org/b/79203 webaudio/mediastreamaudiosourcenode.html [ Failure ]
 webkit.org/b/151344 fast/mediastream/MediaStream-add-ended-tracks.html [ Timeout ]
 webkit.org/b/160996 fast/mediastream/MediaStream-video-element-video-tracks-disabled-then-enabled.html [ Timeout ]
@@ -700,12 +707,6 @@ webkit.org/b/173257 fast/mediastream/getUserMedia-grant-persistency3.html [ Pass
 
 # Canvas captureStream support is not implemented
 webkit.org/b/169811 fast/mediacapturefromelement [ Skip ]
-
-# Proximity Events is not supported.
-webkit.org/b/99060 proximity [ Failure ]
-webkit.org/b/99060 proximity/event-after-navigation.html [ Timeout ]
-webkit.org/b/99060 proximity/no-page-cache.html [ Timeout ]
-webkit.org/b/99060 fast/events/constructors/device-proximity-event-constructor.html [ Failure ]
 
 # Requires Resolution Media Query support
 webkit.org/b/100137 fast/media/mq-resolution.html [ Failure ]
@@ -723,7 +724,6 @@ webkit.org/b/131546 media/track/track-in-band-mode.html [ Skip ]
 
 # DataCue.value not enabled
 Bug(GTK) http/tests/media/track-in-band-hls-metadata.html [ Skip ]
-Bug(GTK) media/track/track-datacue-value.html [ Skip ]
 
 # Snapshotted plugins not enabled
 webkit.org/b/98696 plugins/snapshotting [ Skip ]
@@ -738,10 +738,6 @@ Bug(GTK) [ Debug ] perf [ Skip ]
 Bug(GTK) editing/secure-input [ Failure ]
 
 # These are the crypo tests that are still failing.
-webkit.org/b/133122 crypto/subtle/aes-cbc-import-key-unwrap-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cbc-import-key-unwrap-spki-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cbc-import-key-wrap-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/aes-cbc-import-key-wrap-spki-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-128.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-192.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-generate-export-key-jwk-length-256.html [ Skip ]
@@ -758,39 +754,23 @@ webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-unwrap-raw-key.html [ Skip 
 webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-jwk-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-import-key-wrap-raw-key.html [ Skip ]
 webkit.org/b/133122 crypto/subtle/aes-cfb-import-raw-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdh-derive-bits-malformed-parametrs.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdh-import-pkcs8-key-p256.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdh-import-pkcs8-key-p384.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ecdsa-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-jwk-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p256.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/ec-import-pkcs8-key-export-pkcs8-key-p384.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-export-key-malformed-parameters.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-import-pkcs8-key-export-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-import-spki-key-export-spki-key.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-indexeddb-non-exportable.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-indexeddb-private.html [ Skip ]
-webkit.org/b/133122 crypto/subtle/rsa-indexeddb.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-decrypt.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-encrypt.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-unwrap-key.html [ Skip ]
 webkit.org/b/133122 crypto/workers/subtle/aes-cfb-import-key-wrap-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/aes-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/ec-import-pkcs8-key.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/ec-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/hmac-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/hrsa-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/multiple-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/raw-postMessage-worker.html [ Skip ]
-webkit.org/b/133122 crypto/workers/subtle/rsa-postMessage-worker.html [ Skip ]
 
 # RSA-PSS tests are for now skipped on all ports, so we for now explicitly enable the passing ones here.
+crypto/subtle/ecdh-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Pass ]
+crypto/subtle/ecdh-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Pass ]
+crypto/subtle/ecdsa-import-pkcs8-key-p256-validate-ecprivatekey-parameters-publickey.html [ Pass ]
+crypto/subtle/ecdsa-import-pkcs8-key-p384-validate-ecprivatekey-parameters-publickey.html [ Pass ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha1.html [ Pass ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha224.html [ Pass ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha256.html [ Pass ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha384.html [ Pass ]
 crypto/subtle/rsa-pss-generate-export-key-jwk-sha512.html [ Pass ]
+crypto/subtle/rsa-pss-generate-export-key-pkcs8.html [ Pass ]
+crypto/subtle/rsa-pss-generate-export-key-spki.html [ Pass ]
 crypto/subtle/rsa-pss-generate-key.html [ Pass ]
 crypto/subtle/rsa-pss-import-jwk-private-key.html [ Pass ]
 crypto/subtle/rsa-pss-import-jwk-public-key-empty-usages.html [ Pass ]
@@ -799,8 +779,12 @@ crypto/subtle/rsa-pss-import-jwk-public-key-sha224.html [ Pass ]
 crypto/subtle/rsa-pss-import-jwk-public-key-sha256.html [ Pass ]
 crypto/subtle/rsa-pss-import-jwk-public-key-sha384.html [ Pass ]
 crypto/subtle/rsa-pss-import-jwk-public-key-sha512.html [ Pass ]
+crypto/subtle/rsa-pss-import-key-sign-large-salt.html [ Failure ]
 crypto/subtle/rsa-pss-import-key-sign.html [ Pass ]
 crypto/subtle/rsa-pss-import-key-verify.html [ Pass ]
+crypto/subtle/rsa-pss-import-pkcs8-key.html [ Pass ]
+crypto/subtle/rsa-pss-import-spki-key-empty-usages.html [ Pass ]
+crypto/subtle/rsa-pss-import-spki-key.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-sign.html [ Pass ]
 crypto/workers/subtle/rsa-pss-import-key-verify.html [ Pass ]
 
@@ -823,24 +807,6 @@ webkit.org/b/133320 crypto/webkitSubtle/hmac-sign-verify.html [ Pass ]
 
 # These are the imported web-platform-tests covering crypto sections we haven't implemented yet.
 imported/w3c/web-platform-tests/WebCryptoAPI/ [ Slow ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/aes_cbc.worker.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/rsa.worker.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_aes_cbc.https.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/encrypt_decrypt/test_rsa_oaep.https.html [ Failure ]
-webkit.org/b/169272 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/ec_importKey.worker.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/rsa_importKey.worker.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_ec_importKey.https.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/import_export/test_rsa_importKey.https.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/ecdsa.worker.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pkcs.worker.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/rsa_pss.worker.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_ecdsa.https.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pkcs.https.html [ Failure ]
-webkit.org/b/172594 imported/w3c/web-platform-tests/WebCryptoAPI/sign_verify/test_rsa_pss.https.html [ Failure ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/test_wrapKey_unwrapKey.https.html [ Skip ]
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/wrapKey_unwrapKey/wrapKey_unwrapKey.worker.html [ Skip ]
-# This test times out, potentially because of the numerous key generations (>1000) that are performed.
-webkit.org/b/133122 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Failure ]
 
 # GTK does not implement setAutomaticLinkDetectionEnabled
 editing/inserting/typing-space-to-trigger-smart-link.html [ Skip ]
@@ -951,6 +917,7 @@ webkit.org/b/141467 fast/multicol/pagination/RightToLeft-rl-hittest.html [ Failu
 webkit.org/b/141698 editing/pasteboard/5761530-1.html [ Failure ]
 webkit.org/b/141699 fast/attachment/attachment-disabled-rendering.html [ Failure ]
 webkit.org/b/141699 fast/attachment/attachment-rendering.html [ Failure ]
+webkit.org/b/141699 fast/attachment/attachment-respects-css-size.html [ ImageOnlyFailure ]
 
 webkit.org/b/141705 media/video-fullscreeen-only-controls.html [ Failure ]
 
@@ -1229,14 +1196,51 @@ http/tests/ssl/applepay [ Skip ]
 fast/scrolling/scrolling-tree-includes-frame.html [ Skip ]
 
 # This test assumes that color on sliders is not reversed for RTL, so failing is good.
-fast/forms/range/input-appearance-range-rtl.html [ Failure ]
+fast/forms/range/input-appearance-range-rtl.html [ ImageOnlyFailure ]
+
+# Service-workers implementation is not complete yet
+webkit.org/b/175419 http/tests/workers/service [ Skip ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/service-workers/cache-storage [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/background-fetch/interfaces-worker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/background-fetch/interfaces.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/count-queuing-strategy.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/flow-control.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/multiple-propagation.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/pipe-through.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/piping/transform-streams.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/cancel.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/default-reader.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/general.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/pipe-through.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/tee.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-streams/templated.serviceworker.https.html [ Failure ]
+webkit.org/b/175419 imported/w3c/web-platform-tests/streams/readable-byte-streams/general.serviceworker.https.html [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Expected failures
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Crashing tests
+# 3. TESTS CRASHING
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/86443 [ Debug ] plugins/npruntime/delete-plugin-within-invoke.html [ Crash ]
@@ -1328,12 +1332,14 @@ webkit.org/b/172955 media/video-preload.html [ Crash Pass ]
 
 webkit.org/b/173916 webaudio/silent-audio-interrupted-in-background.html [ Skip ]
 
+webkit.org/b/175577 fast/css/tagname-and-namespace-case-sensitivity-xml-in-html.html [ Crash Pass ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Crashing tests
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Flaky tests
+# 4. FLAKY TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/55126 media/video-aspect-ratio.html [ Failure Crash Timeout Pass ]
@@ -1884,6 +1890,8 @@ webkit.org/b/173412 fast/scrolling/overflow-scrollable-after-back.html [ Pass Fa
 webkit.org/b/168373 media/video-multiple-concurrent-playback.html [ Failure Crash ]
 webkit.org/b/168373 media/video-seek-past-end-paused.html [ Failure Pass ]
 
+webkit.org/b/172255 imported/w3c/web-platform-tests/html/browsers/windows/browsing-context.html [ Pass Failure ]
+
 webkit.org/b/174353 media/video-restricted-invisible-autoplay-not-allowed.html [ Crash Pass ]
 
 webkit.org/b/174354 imported/w3c/IndexedDB-private-browsing/idbfactory_open.html [ Crash Pass ]
@@ -1893,7 +1901,7 @@ webkit.org/b/174354 imported/w3c/IndexedDB-private-browsing/idbfactory_open.html
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Slow tests
+# 5. SLOW TESTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # These tests are slow due to the implementation of EventSender.leapForward.
@@ -2009,7 +2017,7 @@ webkit.org/b/111647 [ Debug ] sputnik/Unicode/Unicode_218/S7.6_A5.3_T2.html [ Sl
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests timing out
+# 6. TESTS TIMING OUT
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/46644 fast/text/large-text-composed-char-dos.html [ Timeout ]
@@ -2056,8 +2064,6 @@ webkit.org/b/122571 inspector/css/getSupportedCSSProperties.html [ Timeout Pass 
 webkit.org/b/122571 [ Debug ] inspector/unit-tests/test-harness-trivially-works.html [ Timeout Crash ]
 
 Bug(GTK) plugins/reloadplugins-and-pages.html [ Timeout ]
-
-Bug(GTK) fast/media/media-query-list-04.html [ Timeout ]
 
 webkit.org/b/132128 fast/text/international/embed-bidi-style-in-isolate-crash.html [ Timeout Pass ]
 
@@ -2214,16 +2220,14 @@ webkit.org/b/174242 media/media-fullscreen-pause-inline.html [ Timeout ]
 
 webkit.org/b/174243 fast/images/low-memory-decode.html [ Timeout ]
 
-webkit.org/b/174459 fast/images/async-image-background-image.html [ Timeout ]
-webkit.org/b/174459 fast/images/async-image-body-background-image.html [ Timeout ]
-webkit.org/b/174459 fast/images/async-image-multiple-clients-repaint.html [ Timeout ]
+webkit.org/b/174459 fast/images/async-image-body-background-image.html [ ImageOnlyFailure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of Tests timing out
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests with architecture-specific results
+# 7. TESTS WITH ARCHITECTURE-SPECIFIC RESULTS
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # Fail on 32-bit release builders
@@ -2276,7 +2280,7 @@ webkit.org/b/168466 http/tests/security/bypassing-cors-checks-for-extension-urls
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests that regressed after WebKit2 switch
+# 8. WEBKIT2 REGRESSIONS
 #////////////////////////////////////////////////////////////////////////////////////////
 #
 # [GTK] Drag and drop can't be tested with WebKitTestRunner
@@ -2452,13 +2456,6 @@ Bug(GTK) fast/forms/search-event-delay.html [ Failure ]
 
 Bug(GTK) fast/forms/select/popup-closes-on-blur.html [ Failure ]
 
-Bug(GTK) fast/media/media-query-list-02.html [ Failure ]
-Bug(GTK) fast/media/media-query-list-03.html [ Failure ]
-Bug(GTK) fast/media/media-query-list-05.html [ Failure ]
-Bug(GTK) fast/media/media-query-list-06.html [ Failure ]
-
-Bug(GTK) fast/media/view-mode-media-feature.html [ ImageOnlyFailure ]
-
 # Shared workers disabled with the Network Process
 webkit.org/b/139357 fast/workers/worker-crash-with-invalid-location.html [ Skip ]
 webkit.org/b/139357 http/tests/media/video-accept-encoding.html [ Failure ]
@@ -2474,7 +2471,7 @@ webkit.org/b/123431 http/tests/local/link-stylesheet-load-order.html [ Failure P
 webkit.org/b/145253 http/tests/appcache/different-https-origin-resource-main.html  [ Failure ]
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests failing
+# 9. TESTS FAILING
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/73766 css3/unicode-bidi-isolate-aharon-failing.html [ ImageOnlyFailure ]
@@ -2563,14 +2560,6 @@ Bug(GTK) http/tests/misc/bubble-drag-events.html [ Failure Timeout ]
 
 # Dragging images and links results in a DataTransfer object containing a non-empty files array
 webkit.org/b/52094 editing/pasteboard/files-during-page-drags.html [ Failure ]
-
-# The following Sputnik tests fail on the 32bit release bot
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T1.html [ Failure ]
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T2.html [ Failure ]
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T3.html [ Failure ]
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T4.html [ Failure ]
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T5.html [ Failure ]
-Bug(GTK) sputnik/Conformance/15_Native_Objects/15.9_Date/15.9.3/S15.9.3.1_A5_T6.html [ Failure ]
 
 # Expose title direction in WebKit API
 webkit.org/b/58845 fast/dom/title-directionality.html [ Failure ]
@@ -2671,7 +2660,7 @@ webkit.org/b/107118 fast/canvas/canvas-quadratic-same-endpoint.html [ Failure ]
 
 webkit.org/b/108973 fast/css/negative-text-indent-in-inline-block.html [ ImageOnlyFailure ]
 
-webkit.org/b/109469 fast/css/cursor-parsing-image-set.html [ Failure ]
+webkit.org/b/109469 fast/events/mouse-cursor-image-set.html [ Failure ]
 
 webkit.org/b/110446 svg/as-background-image/svg-transformed-background.html [ ImageOnlyFailure ]
 
@@ -2951,8 +2940,6 @@ webkit.org/b/139361 fast/css/type-attribute-style-sharing-7.html [ ImageOnlyFail
 webkit.org/b/139479 fast/regions/overflow/overflow-region-inline.html [ ImageOnlyFailure ]
 
 webkit.org/b/139492 fast/text/space-width.html [ ImageOnlyFailure ]
-
-webkit.org/b/139493 fast/text/narrow-non-breaking-space.html [ ImageOnlyFailure ]
 
 # Missing glyph symbol is not rendered properly.
 webkit.org/b/140252 fast/css/line-height-determined-by-primary-font.html [ Failure ]
@@ -3327,8 +3314,8 @@ webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-see
 webkit.org/b/171726 imported/w3c/web-platform-tests/media-source/mediasource-seek-during-pending-seek.html [ Failure ]
 webkit.org/b/171726 media/media-source/media-source-init-segment-duration.html [ Failure ]
 
-webkit.org/b/171972 fast/images/async-image-background-image-repeated.html [ ImageOnlyFailure Timeout ]
-webkit.org/b/171972 fast/images/sprite-sheet-image-draw.html [ ImageOnlyFailure Timeout ]
+webkit.org/b/174459 fast/images/async-image-background-image-repeated.html [ ImageOnlyFailure ]
+webkit.org/b/174459 fast/images/sprite-sheet-image-draw.html [ ImageOnlyFailure ]
 
 webkit.org/b/172270 fast/text/font-interstitial-invisible-width-while-loading.html [ Failure ]
 webkit.org/b/172270 fast/text/web-font-load-invisible-during-loading.html [ Failure ]
@@ -3400,12 +3387,31 @@ webkit.org/b/174461 inspector/canvas/requestContent-webgl.html [ Failure ]
 
 webkit.org/b/174609 accessibility/presentation-role-iframe.html [ Failure ]
 
+webkit.org/b/175134 fast/text/line-height-minimumFontSize-autosize.html [ Failure ]
+webkit.org/b/175134 fast/text/line-height-minimumFontSize.html [ Failure ]
+webkit.org/b/175134 fast/text/line-height-minimumFontSize-text-zoom.html [ ImageOnlyFailure ]
+webkit.org/b/175134 fast/text/line-height-minimumFontSize-visual.html [ ImageOnlyFailure ]
+webkit.org/b/175134 fast/text/line-height-minimumFontSize-zoom.html [ ImageOnlyFailure ]
+
+webkit.org/b/175418 accessibility/add-children-pseudo-element.html [ Failure ]
+
+webkit.org/b/175420 fullscreen/requestFullscreen-escape-key.html [ Failure ]
+
+webkit.org/b/175421 printing/width-overflow.html [ Failure ]
+
+webkit.org/b/175422 http/tests/blink/sendbeacon/beacon-same-origin.html [ Failure ]
+webkit.org/b/175422 imported/w3c/web-platform-tests/beacon/headers/header-content-type.html [ Failure ]
+
+webkit.org/b/175582 imported/w3c/web-platform-tests/WebCryptoAPI/generateKey/successes.worker.html [ Failure ]
+
+webkit.org/b/175586 imported/w3c/web-platform-tests/XMLHttpRequest/send-network-error-sync-events.sub.htm [ Failure ]
+
 #////////////////////////////////////////////////////////////////////////////////////////
 # End of non-crashing, non-flaky tests failing
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests passing
+# 10. TESTS PASSING
 #////////////////////////////////////////////////////////////////////////////////////////
 
 # These tests are passing on GTK+ but they do not in the Apple ports
@@ -3474,7 +3480,7 @@ fast/text/emoji-gender.html [ Pass ]
 #////////////////////////////////////////////////////////////////////////////////////////
 
 #////////////////////////////////////////////////////////////////////////////////////////
-# Tests failing due to switch to THREADED COMPOSITOR
+# 11. THREADED COMPOSITOR FAILURES
 #////////////////////////////////////////////////////////////////////////////////////////
 
 webkit.org/b/160119 accessibility/media-element.html [ Timeout Crash Pass Failure ]

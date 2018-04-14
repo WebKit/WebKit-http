@@ -263,8 +263,6 @@ public:
     LayoutUnit collapsedMarginBeforeForChild(const RenderBox& child) const;
     LayoutUnit collapsedMarginAfterForChild(const RenderBox& child) const;
 
-    enum class RenderTreeMutationIsAllowed { Yes, No };
-    virtual void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes);
     void getFirstLetter(RenderObject*& firstLetter, RenderElement*& firstLetterContainer, RenderObject* skipObject = nullptr);
 
     virtual void scrollbarsChanged(bool /*horizontalScrollbarChanged*/, bool /*verticalScrollbarChanged*/) { }
@@ -455,9 +453,6 @@ private:
     bool isSelfCollapsingBlock() const override;
     virtual bool childrenPreventSelfCollapsing() const;
     
-    void createFirstLetterRenderer(RenderElement* firstLetterBlock, RenderText* currentTextChild);
-    void updateFirstLetterStyle(RenderElement* firstLetterBlock, RenderObject* firstLetterContainer);
-
     Node* nodeForHitTest() const;
 
     // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow

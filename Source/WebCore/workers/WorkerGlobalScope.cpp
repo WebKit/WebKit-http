@@ -52,7 +52,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, SessionID sessionID)
     : m_url(url)
     , m_identifier(identifier)
     , m_userAgent(userAgent)
@@ -65,16 +65,12 @@ WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, c
 #if ENABLE(INDEXED_DATABASE)
     , m_connectionProxy(connectionProxy)
 #endif
-#if ENABLE(WEB_SOCKETS)
     , m_socketProvider(socketProvider)
-#endif
     , m_performance(Performance::create(*this, timeOrigin))
+    , m_sessionID(sessionID)
 {
 #if !ENABLE(INDEXED_DATABASE)
     UNUSED_PARAM(connectionProxy);
-#endif
-#if !ENABLE(WEB_SOCKETS)
-    UNUSED_PARAM(socketProvider);
 #endif
 
     auto origin = SecurityOrigin::create(url);
@@ -145,14 +141,10 @@ void WorkerGlobalScope::disableWebAssembly(const String& errorMessage)
     m_script->disableWebAssembly(errorMessage);
 }
 
-#if ENABLE(WEB_SOCKETS)
-
 SocketProvider* WorkerGlobalScope::socketProvider()
 {
     return m_socketProvider.get();
 }
-
-#endif
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -199,10 +191,10 @@ void WorkerGlobalScope::close()
     } });
 }
 
-WorkerNavigator& WorkerGlobalScope::navigator() const
+WorkerNavigator& WorkerGlobalScope::navigator()
 {
     if (!m_navigator)
-        m_navigator = WorkerNavigator::create(m_userAgent);
+        m_navigator = WorkerNavigator::create(*this, m_userAgent);
     return *m_navigator;
 }
 

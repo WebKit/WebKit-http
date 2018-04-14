@@ -39,7 +39,7 @@
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
-#include <WebCore/CFNetworkSPI.h>
+#include <pal/spi/cf/CFNetworkSPI.h>
 #endif
 
 namespace WebCore {
@@ -92,6 +92,7 @@ public:
     bool resourceLoadStatisticsEnabled() const;
     void setResourceLoadStatisticsEnabled(bool);
     WebResourceLoadStatisticsStore* resourceLoadStatistics() const { return m_resourceLoadStatistics.get(); }
+    void clearResourceLoadStatisticsInWebProcesses();
 
     static void cloneSessionData(WebPageProxy& sourcePage, WebPageProxy& newPage);
 

@@ -44,13 +44,11 @@ static bool parseBooleanTestHeaderValue(const std::string& value)
 TestOptions::TestOptions(NSURL *testURL, const TestCommand& command)
 {
     std::string path = command.absolutePath;
-    if (path.empty() && [testURL isFileURL])
-        path = [testURL fileSystemRepresentation];
-    else
-        path = command.pathOrURL;
-
-    if (path.empty())
-        return;
+    if (path.empty()) {
+        path = [testURL isFileURL] ? [testURL fileSystemRepresentation] : command.pathOrURL;
+        if (path.empty())
+            return;
+    }
 
     std::string options;
     std::ifstream testFile(path.data());
@@ -94,6 +92,8 @@ TestOptions::TestOptions(NSURL *testURL, const TestCommand& command)
             this->layerBackedWebView = parseBooleanTestHeaderValue(value);
         else if (key == "enableIsSecureContextAttribute")
             this->enableIsSecureContextAttribute = parseBooleanTestHeaderValue(value);
+        else if (key == "enableInspectorAdditions")
+            this->enableInspectorAdditions = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }

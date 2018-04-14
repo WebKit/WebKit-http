@@ -28,8 +28,6 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API)
-
 #include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
 #include "FetchOptions.h"
@@ -53,14 +51,21 @@ public:
     using Destination = FetchOptions::Destination;
     using Mode = FetchOptions::Mode;
     using Redirect = FetchOptions::Redirect;
-    using ReferrerPolicy = FetchOptions::ReferrerPolicy;
     using Type = FetchOptions::Type;
 
+    struct InternalRequest {
+        ResourceRequest request;
+        FetchOptions options;
+        String referrer;
+    };
+
     static ExceptionOr<Ref<FetchRequest>> create(ScriptExecutionContext&, Info&&, Init&&);
+    static Ref<FetchRequest> create(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, InternalRequest&& request) { return adoptRef(*new FetchRequest(context, WTFMove(body), WTFMove(headers), WTFMove(request))); }
 
     const String& method() const { return m_internalRequest.request.httpMethod(); }
-    const String& url() const;
+    const String& urlString() const;
     FetchHeaders& headers() { return m_headers.get(); }
+    const FetchHeaders& headers() const { return m_headers.get(); }
 
     Type type() const;
     Destination destination() const;
@@ -70,22 +75,19 @@ public:
     Credentials credentials() const;
     Cache cache() const;
     Redirect redirect() const;
+    bool keepalive() const { return m_internalRequest.options.keepAlive; };
 
     const String& integrity() const { return m_internalRequest.options.integrity; }
 
     ExceptionOr<Ref<FetchRequest>> clone(ScriptExecutionContext&);
 
-    struct InternalRequest {
-        ResourceRequest request;
-        FetchOptions options;
-        String referrer;
-    };
-
     const FetchOptions& fetchOptions() const { return m_internalRequest.options; }
-    ResourceRequest internalRequest() const;
+    const ResourceRequest& internalRequest() const { return m_internalRequest.request; }
+    const String& internalRequestReferrer() const { return m_internalRequest.referrer; }
+    const URL& url() const { return m_internalRequest.request.url(); }
     bool isBodyReadableStream() const { return !isBodyNull() && body().isReadableStream(); }
 
-    const String& internalRequestReferrer() const { return m_internalRequest.referrer; }
+    ResourceRequest resourceRequest() const;
 
 private:
     FetchRequest(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
@@ -145,5 +147,3 @@ inline auto FetchRequest::type() const -> Type
 }
 
 } // namespace WebCore
-
-#endif // ENABLE(FETCH_API)
