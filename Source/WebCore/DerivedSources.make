@@ -35,6 +35,7 @@ VPATH = \
     $(WebCore)/Modules/credentials \
     $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/encryptedmedia/legacy \
+    $(WebCore)/Modules/entriesapi \
     $(WebCore)/Modules/fetch \
     $(WebCore)/Modules/gamepad \
     $(WebCore)/Modules/geolocation \
@@ -45,6 +46,7 @@ VPATH = \
     $(WebCore)/Modules/mediasource \
     $(WebCore)/Modules/mediastream \
     $(WebCore)/Modules/notifications \
+    $(WebCore)/Modules/paymentrequest \
     $(WebCore)/Modules/plugins \
     $(WebCore)/Modules/quota \
     $(WebCore)/Modules/speech \
@@ -132,6 +134,15 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeys.idl \
+    $(WebCore)/Modules/entriesapi/DOMFileSystem.idl \
+    $(WebCore)/Modules/entriesapi/ErrorCallback.idl \
+    $(WebCore)/Modules/entriesapi/FileCallback.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemDirectoryEntry.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemDirectoryReader.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemEntriesCallback.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemEntry.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemEntryCallback.idl \
+    $(WebCore)/Modules/entriesapi/FileSystemFileEntry.idl \
     $(WebCore)/Modules/fetch/DOMWindowFetch.idl \
     $(WebCore)/Modules/fetch/FetchBody.idl \
     $(WebCore)/Modules/fetch/FetchHeaders.idl \
@@ -227,6 +238,22 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/notifications/Notification.idl \
     $(WebCore)/Modules/notifications/NotificationPermission.idl \
     $(WebCore)/Modules/notifications/NotificationPermissionCallback.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentAddress.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentComplete.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentCurrencyAmount.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentDetailsBase.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentDetailsInit.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentDetailsModifier.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentDetailsUpdate.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentItem.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentMethodData.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentOptions.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentRequest.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentRequestUpdateEvent.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentRequestUpdateEventInit.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentResponse.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentShippingOption.idl \
+    $(WebCore)/Modules/paymentrequest/PaymentShippingType.idl \
     $(WebCore)/Modules/plugins/QuickTimePluginReplacement.idl \
     $(WebCore)/Modules/quota/DOMWindowQuota.idl \
     $(WebCore)/Modules/quota/NavigatorStorageQuota.idl \
@@ -306,7 +333,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/crypto/JsonWebKey.idl \
     $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
-    $(WebCore)/crypto/WebKitSubtleCrypto.idl \
     $(WebCore)/crypto/keys/CryptoAesKeyAlgorithm.idl \
     $(WebCore)/crypto/keys/CryptoEcKeyAlgorithm.idl \
     $(WebCore)/crypto/keys/CryptoHmacKeyAlgorithm.idl \

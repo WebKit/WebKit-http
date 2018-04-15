@@ -313,6 +313,46 @@ bool Editor::canEditRichly() const
     return m_frame.selection().selection().isContentRichlyEditable();
 }
 
+// Returns whether caller should continue with "the default processing", which is the same as
+// the event handler NOT setting the return value to false
+// https://w3c.github.io/clipboard-apis/#fire-a-clipboard-event
+static bool dispatchClipboardEvent(RefPtr<Element>&& target, const AtomicString& eventType)
+{
+    // FIXME: Move the target selection code here.
+    if (!target)
+        return true;
+
+    DataTransfer::StoreMode storeMode;
+    if (eventType == eventNames().pasteEvent)
+        storeMode = DataTransfer::StoreMode::Readonly;
+    else if (eventType == eventNames().copyEvent || eventType == eventNames().cutEvent)
+        storeMode = DataTransfer::StoreMode::ReadWrite;
+    else {
+        ASSERT(eventType == eventNames().beforecutEvent || eventType == eventNames().beforecopyEvent || eventType == eventNames().beforepasteEvent);
+        storeMode = DataTransfer::StoreMode::Invalid;
+    }
+
+    auto dataTransfer = DataTransfer::createForCopyAndPaste(storeMode);
+
+    ClipboardEvent::Init init;
+    init.bubbles = true;
+    init.cancelable = true;
+    init.clipboardData = dataTransfer.ptr();
+    auto event = ClipboardEvent::create(eventType, init, Event::IsTrusted::Yes);
+
+    target->dispatchEvent(event);
+    bool noDefaultProcessing = event->defaultPrevented();
+    if (noDefaultProcessing && storeMode == DataTransfer::StoreMode::ReadWrite) {
+        auto pasteboard = Pasteboard::createForCopyAndPaste();
+        pasteboard->clear();
+        pasteboard->writePasteboard(dataTransfer->pasteboard());
+    }
+
+    dataTransfer->makeInvalidForSecurity();
+
+    return !noDefaultProcessing;
+}
+
 // WinIE uses onbeforecut and onbeforepaste to enables the cut and paste menu items.  They
 // also send onbeforecopy, apparently for symmetry, but it doesn't affect the menu items.
 // We need to use onbeforecopy as a real menu enabler because we allow elements that are not
@@ -320,17 +360,22 @@ bool Editor::canEditRichly() const
 
 bool Editor::canDHTMLCut()
 {
-    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecutEvent, DataTransferAccessPolicy::Numb);
+    if (m_frame.selection().selection().isInPasswordField())
+        return false;
+
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().beforecutEvent);
 }
 
 bool Editor::canDHTMLCopy()
 {
-    return !m_frame.selection().selection().isInPasswordField() && !dispatchCPPEvent(eventNames().beforecopyEvent, DataTransferAccessPolicy::Numb);
+    if (m_frame.selection().selection().isInPasswordField())
+        return false;
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().beforecopyEvent);
 }
 
 bool Editor::canDHTMLPaste()
 {
-    return !dispatchCPPEvent(eventNames().beforepasteEvent, DataTransferAccessPolicy::Numb);
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().beforepasteEvent);
 }
 
 bool Editor::canCut() const
@@ -598,7 +643,7 @@ bool Editor::tryDHTMLCopy()
     if (m_frame.selection().selection().isInPasswordField())
         return false;
 
-    return !dispatchCPPEvent(eventNames().copyEvent, DataTransferAccessPolicy::Writable);
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().copyEvent);
 }
 
 bool Editor::tryDHTMLCut()
@@ -606,12 +651,12 @@ bool Editor::tryDHTMLCut()
     if (m_frame.selection().selection().isInPasswordField())
         return false;
     
-    return !dispatchCPPEvent(eventNames().cutEvent, DataTransferAccessPolicy::Writable);
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().cutEvent);
 }
 
 bool Editor::tryDHTMLPaste()
 {
-    return !dispatchCPPEvent(eventNames().pasteEvent, DataTransferAccessPolicy::Readable);
+    return !dispatchClipboardEvent(findEventTargetFromSelection(), eventNames().pasteEvent);
 }
 
 bool Editor::shouldInsertText(const String& text, Range* range, EditorInsertAction action) const
@@ -775,35 +820,6 @@ void Editor::clearLastEditCommand()
     m_lastEditCommand = nullptr;
 }
 
-// Returns whether caller should continue with "the default processing", which is the same as 
-// the event handler NOT setting the return value to false
-bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessPolicy policy)
-{
-    Element* target = findEventTargetFromSelection();
-    if (!target)
-        return true;
-
-    auto dataTransfer = DataTransfer::createForCopyAndPaste(policy);
-
-    ClipboardEvent::Init init;
-    init.bubbles = true;
-    init.cancelable = true;
-    init.clipboardData = dataTransfer.ptr();
-    auto event = ClipboardEvent::create(eventType, init, Event::IsTrusted::Yes);
-    target->dispatchEvent(event);
-    bool noDefaultProcessing = event->defaultPrevented();
-    if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
-        auto pasteboard = Pasteboard::createForCopyAndPaste();
-        pasteboard->clear();
-        pasteboard->writePasteboard(dataTransfer->pasteboard());
-    }
-
-    // invalidate dataTransfer here for security
-    dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb);
-    
-    return !noDefaultProcessing;
-}
-
 Element* Editor::findEventTargetFrom(const VisibleSelection& selection) const
 {
     Element* target = selection.start().element();
@@ -916,8 +932,9 @@ void Editor::applyParagraphStyleToSelection(StyleProperties* style, EditAction e
 
 bool Editor::selectionStartHasStyle(CSSPropertyID propertyID, const String& value) const
 {
-    return EditingStyle::create(propertyID, value)->triStateOfStyle(
-        EditingStyle::styleAtSelectionStart(m_frame.selection().selection(), propertyID == CSSPropertyBackgroundColor).get());
+    if (auto editingStyle = EditingStyle::styleAtSelectionStart(m_frame.selection().selection(), propertyID == CSSPropertyBackgroundColor))
+        return editingStyle->hasStyle(propertyID, value);
+    return false;
 }
 
 TriState Editor::selectionHasStyle(CSSPropertyID propertyID, const String& value) const
@@ -1733,12 +1750,30 @@ void Editor::confirmComposition(const String& text)
     setComposition(text, ConfirmComposition);
 }
 
+class SetCompositionScope {
+public:
+    SetCompositionScope(Frame& frame)
+        : m_frame(frame)
+        , m_typingGestureIndicator(frame)
+    {
+        m_frame->editor().setIgnoreSelectionChanges(true);
+    }
+
+    ~SetCompositionScope()
+    {
+        m_frame->editor().setIgnoreSelectionChanges(false);
+        if (auto* editorClient = m_frame->editor().client())
+            editorClient->didUpdateComposition();
+    }
+
+    Ref<Frame> m_frame;
+    UserTypingGestureIndicator m_typingGestureIndicator;
+};
+
 void Editor::setComposition(const String& text, SetCompositionMode mode)
 {
     ASSERT(mode == ConfirmComposition || mode == CancelComposition);
-    UserTypingGestureIndicator typingGestureIndicator(m_frame);
-
-    setIgnoreSelectionChanges(true);
+    SetCompositionScope setCompositionScope(m_frame);
 
     if (mode == CancelComposition)
         ASSERT(text == emptyString());
@@ -1748,10 +1783,8 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
     m_compositionNode = nullptr;
     m_customCompositionUnderlines.clear();
 
-    if (m_frame.selection().isNone()) {
-        setIgnoreSelectionChanges(false);
+    if (m_frame.selection().isNone())
         return;
-    }
 
     // Always delete the current composition before inserting the finalized composition text if we're confirming our composition.
     // Our default behavior (if the beforeinput event is not prevented) is to insert the finalized composition text back in.
@@ -1768,17 +1801,11 @@ void Editor::setComposition(const String& text, SetCompositionMode mode)
         // An open typing command that disagrees about current selection would cause issues with typing later on.
         TypingCommand::closeTyping(&m_frame);
     }
-
-    setIgnoreSelectionChanges(false);
 }
 
 void Editor::setComposition(const String& text, const Vector<CompositionUnderline>& underlines, unsigned selectionStart, unsigned selectionEnd)
 {
-    Ref<Frame> protection(m_frame);
-
-    UserTypingGestureIndicator typingGestureIndicator(m_frame);
-
-    setIgnoreSelectionChanges(true);
+    SetCompositionScope setCompositionScope(m_frame);
 
     // Updates styles before setting selection for composition to prevent
     // inserting the previous composition text into text nodes oddly.
@@ -1787,10 +1814,8 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
 
     selectComposition();
 
-    if (m_frame.selection().isNone()) {
-        setIgnoreSelectionChanges(false);
+    if (m_frame.selection().isNone())
         return;
-    }
 
     String originalText = selectedText();
     bool isStartingToRecomposeExistingRange = !text.isEmpty() && selectionStart < selectionEnd && !hasComposition();
@@ -1880,8 +1905,6 @@ void Editor::setComposition(const String& text, const Vector<CompositionUnderlin
             m_frame.selection().setSelectedRange(selectedRange.get(), DOWNSTREAM, false);
         }
     }
-
-    setIgnoreSelectionChanges(false);
 
 #if PLATFORM(IOS)        
     client()->stopDelayingAndCoalescingContentChangeNotifications();

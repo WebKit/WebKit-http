@@ -1,3 +1,511 @@
+2017-08-28  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use table based approach for JSON.stringify's Quote
+        https://bugs.webkit.org/show_bug.cgi?id=176044
+
+        Reviewed by Darin Adler.
+
+        We change escape operation of JSON Quote from branch-based to table-based.
+        This patch partially adopts SpiderMonkey's change to StringBuilderJSON.cpp
+        to optimize this escaping operation. We separate changes from StringBuilder.cpp
+        to apply MPL to StringBuilderJSON.cpp file. Since WebKit already adopts MPL in
+        some files (like, DateMath.h), it is acceptable.
+
+        Kraken json-stringify-tinderbox shows 7.2% improvement.
+
+                                           baseline                  patched
+
+        json-stringify-tinderbox        40.429+-0.771      ^      37.693+-0.862         ^ definitely 1.0726x faster
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/text/StringBuilder.cpp:
+        (WTF::appendQuotedJSONStringInternalSlow): Deleted.
+        (WTF::appendQuotedJSONStringInternal): Deleted.
+        (WTF::StringBuilder::appendQuotedJSONString): Deleted.
+        * wtf/text/StringBuilderJSON.cpp: Added.
+        (WTF::appendQuotedJSONStringInternal):
+        (WTF::StringBuilder::appendQuotedJSONString):
+
+2017-08-29  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Crash under WorkQueue::performWorkOnRegisteredWorkThread in layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=176064
+
+        Reviewed by Saam Barati.
+
+        The crash log indicates that the function pointer is null in this case.
+
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::dispatch):
+
+2017-08-28  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream WKGetWebDefaultCFStringEncoding()
+        https://bugs.webkit.org/show_bug.cgi?id=176039
+
+        Reviewed by Alex Christensen.
+
+        * wtf/spi/cf/CFStringSPI.h:
+
+2017-08-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, suppress warnings in GTK port
+
+        Add printf format attribute.
+
+        * wtf/text/WTFString.cpp:
+
+2017-08-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Add Logger::logAlways
+        https://bugs.webkit.org/show_bug.cgi?id=175996
+
+        Reviewed by Jer Noble.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+
+2017-08-25  Daniel Bates  <dabates@apple.com>
+
+        Demarcate code added due to lack of NSDMI for aggregates
+        https://bugs.webkit.org/show_bug.cgi?id=175990
+
+        Reviewed by Andy Estes.
+
+        * wtf/Compiler.h:
+
+2017-08-25  Don Olmstead  <don.olmstead@sony.com>
+
+        Define *_GIGACAGE_MASK when Gigacage is not supported
+        https://bugs.webkit.org/show_bug.cgi?id=175994
+
+        Reviewed by Mark Lam.
+
+        * wtf/Gigacage.h:
+
+2017-08-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Add String::format variant that takes va_args
+        https://bugs.webkit.org/show_bug.cgi?id=175988
+
+        Reviewed by Jer Noble.
+
+        * wtf/text/WTFString.cpp:
+        (WTF::createWithFormatAndArguments): Created with the guts of String::format.
+        (WTF::String::formatWithArguments): New, call createWithFormatAndArguments.
+        (WTF::String::format): Move logic to createWithFormatAndArguments, use it.
+        * wtf/text/WTFString.h:
+
+2017-08-25  Saam Barati  <sbarati@apple.com>
+
+        Support compiling catch in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        <rdar://problem/34047845>
+
+        Reviewed by Filip Pizlo.
+
+        This patch generalizes the BackwardsGraph fake root into a more generalizable
+        class called SingleRootGraph. SingleRootGraph exposes the general graph interface
+        used in Dominators and NaturalLoops. SingleRootGraph takes as input a graph with
+        the normal graph interface, but also allows the input graph to contain more than
+        one root. SingleRootGraph then exposes a single root, which it creates, that has
+        an outgoing edge to all the roots in the original graph.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BackwardsGraph.h:
+        (WTF::BackwardsGraph::dump const):
+        (WTF::BackwardsGraph::rootName): Deleted.
+        (WTF::BackwardsGraph::Node::Node): Deleted.
+        (WTF::BackwardsGraph::Node::root): Deleted.
+        (WTF::BackwardsGraph::Node::operator== const): Deleted.
+        (WTF::BackwardsGraph::Node::operator!= const): Deleted.
+        (WTF::BackwardsGraph::Node::operator bool const): Deleted.
+        (WTF::BackwardsGraph::Node::isRoot const): Deleted.
+        (WTF::BackwardsGraph::Node::node const): Deleted.
+        (): Deleted.
+        (WTF::BackwardsGraph::Set::Set): Deleted.
+        (WTF::BackwardsGraph::Set::add): Deleted.
+        (WTF::BackwardsGraph::Set::remove): Deleted.
+        (WTF::BackwardsGraph::Set::contains): Deleted.
+        (WTF::BackwardsGraph::Set::dump const): Deleted.
+        (WTF::BackwardsGraph::Map::Map): Deleted.
+        (WTF::BackwardsGraph::Map::clear): Deleted.
+        (WTF::BackwardsGraph::Map::size const): Deleted.
+        (WTF::BackwardsGraph::Map::operator[]): Deleted.
+        (WTF::BackwardsGraph::Map::operator[] const): Deleted.
+        * wtf/Dominators.h:
+        (WTF::Dominators::Dominators):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOf):
+        (WTF::Dominators::forAllBlocksInPrunedIteratedDominanceFrontierOf):
+        (WTF::Dominators::iteratedDominanceFrontierOf const):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOfImpl const):
+        * wtf/SingleRootGraph.h: Added.
+        (WTF::SingleRootGraphNode::rootName):
+        (WTF::SingleRootGraphNode::SingleRootGraphNode):
+        (WTF::SingleRootGraphNode::root):
+        (WTF::SingleRootGraphNode::operator== const):
+        (WTF::SingleRootGraphNode::operator!= const):
+        (WTF::SingleRootGraphNode::operator bool const):
+        (WTF::SingleRootGraphNode::isRoot const):
+        (WTF::SingleRootGraphNode::node const):
+        (WTF::SingleRootGraphSet::add):
+        (WTF::SingleRootGraphSet::remove):
+        (WTF::SingleRootGraphSet::contains):
+        (WTF::SingleRootGraphSet::dump const):
+        (WTF::SingleRootMap::SingleRootMap):
+        (WTF::SingleRootMap::clear):
+        (WTF::SingleRootMap::size const):
+        (WTF::SingleRootMap::operator[]):
+        (WTF::SingleRootMap::operator[] const):
+        (WTF::SingleRootGraph::SingleRootGraph):
+        (WTF::SingleRootGraph::root const):
+        (WTF::SingleRootGraph::newMap):
+        (WTF::SingleRootGraph::successors const):
+        (WTF::SingleRootGraph::predecessors const):
+        (WTF::SingleRootGraph::index const):
+        (WTF::SingleRootGraph::node const):
+        (WTF::SingleRootGraph::numNodes const):
+        (WTF::SingleRootGraph::dump const):
+        (WTF::SingleRootGraph::assertIsConsistent const):
+
+2017-08-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221119, r221124, and r221143.
+        https://bugs.webkit.org/show_bug.cgi?id=175973
+
+        "I think it regressed JSBench by 20%" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changesets:
+
+        "Support compiling catch in the DFG"
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        http://trac.webkit.org/changeset/221119
+
+        "Unreviewed, build fix in GTK port"
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        http://trac.webkit.org/changeset/221124
+
+        "DFG::JITCode::osrEntry should get sorted since we perform a
+        binary search on it"
+        https://bugs.webkit.org/show_bug.cgi?id=175893
+        http://trac.webkit.org/changeset/221143
+
+2017-08-23  Filip Pizlo  <fpizlo@apple.com>
+
+        Reduce Gigacage sizes
+        https://bugs.webkit.org/show_bug.cgi?id=175920
+
+        Reviewed by Mark Lam.
+
+        Provide filler API for the no-bmalloc/no-Gigacage case.
+
+        * wtf/Gigacage.h:
+        (Gigacage::mask):
+
+2017-08-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, build fix in GTK port
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+
+        * wtf/SingleRootGraph.h:
+        (WTF::SingleRootGraph::successors const):
+        (WTF::SingleRootGraph::predecessors const):
+
+2017-08-23  Saam Barati  <sbarati@apple.com>
+
+        Support compiling catch in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+
+        Reviewed by Filip Pizlo.
+
+        This patch generalizes the BackwardsGraph fake root into a more generalizable
+        class called SingleRootGraph. SingleRootGraph exposes the general graph interface
+        used in Dominators and NaturalLoops. SingleRootGraph takes as input a graph with
+        the normal graph interface, but also allows the input graph to contain more than
+        one root. SingleRootGraph then exposes a single root, which it creates, that has
+        an outgoing edge to all the roots in the original graph.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/BackwardsGraph.h:
+        (WTF::BackwardsGraph::dump const):
+        (WTF::BackwardsGraph::rootName): Deleted.
+        (WTF::BackwardsGraph::Node::Node): Deleted.
+        (WTF::BackwardsGraph::Node::root): Deleted.
+        (WTF::BackwardsGraph::Node::operator== const): Deleted.
+        (WTF::BackwardsGraph::Node::operator!= const): Deleted.
+        (WTF::BackwardsGraph::Node::operator bool const): Deleted.
+        (WTF::BackwardsGraph::Node::isRoot const): Deleted.
+        (WTF::BackwardsGraph::Node::node const): Deleted.
+        (): Deleted.
+        (WTF::BackwardsGraph::Set::Set): Deleted.
+        (WTF::BackwardsGraph::Set::add): Deleted.
+        (WTF::BackwardsGraph::Set::remove): Deleted.
+        (WTF::BackwardsGraph::Set::contains): Deleted.
+        (WTF::BackwardsGraph::Set::dump const): Deleted.
+        (WTF::BackwardsGraph::Map::Map): Deleted.
+        (WTF::BackwardsGraph::Map::clear): Deleted.
+        (WTF::BackwardsGraph::Map::size const): Deleted.
+        (WTF::BackwardsGraph::Map::operator[]): Deleted.
+        (WTF::BackwardsGraph::Map::operator[] const): Deleted.
+        * wtf/Dominators.h:
+        (WTF::Dominators::Dominators):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOf):
+        (WTF::Dominators::forAllBlocksInPrunedIteratedDominanceFrontierOf):
+        (WTF::Dominators::iteratedDominanceFrontierOf const):
+        (WTF::Dominators::forAllBlocksInIteratedDominanceFrontierOfImpl const):
+        * wtf/SingleRootGraph.h: Added.
+        (WTF::SingleRootGraphNode::rootName):
+        (WTF::SingleRootGraphNode::SingleRootGraphNode):
+        (WTF::SingleRootGraphNode::root):
+        (WTF::SingleRootGraphNode::operator== const):
+        (WTF::SingleRootGraphNode::operator!= const):
+        (WTF::SingleRootGraphNode::operator bool const):
+        (WTF::SingleRootGraphNode::isRoot const):
+        (WTF::SingleRootGraphNode::node const):
+        (WTF::SingleRootGraphSet::add):
+        (WTF::SingleRootGraphSet::remove):
+        (WTF::SingleRootGraphSet::contains):
+        (WTF::SingleRootGraphSet::dump const):
+        (WTF::SingleRootMap::SingleRootMap):
+        (WTF::SingleRootMap::clear):
+        (WTF::SingleRootMap::size const):
+        (WTF::SingleRootMap::operator[]):
+        (WTF::SingleRootMap::operator[] const):
+        (WTF::SingleRootGraph::SingleRootGraph):
+        (WTF::SingleRootGraph::root const):
+        (WTF::SingleRootGraph::newMap):
+        (WTF::SingleRootGraph::successors const):
+        (WTF::SingleRootGraph::predecessors const):
+        (WTF::SingleRootGraph::index const):
+        (WTF::SingleRootGraph::node const):
+        (WTF::SingleRootGraph::numNodes const):
+        (WTF::SingleRootGraph::dump const):
+        (WTF::SingleRootGraph::assertIsConsistent const):
+
+2017-08-23  Youenn Fablet  <youenn@apple.com>
+
+        [Cache API] Enable persistent coder to encode FetchOptions
+        https://bugs.webkit.org/show_bug.cgi?id=175883
+
+        Reviewed by Alex Christensen.
+
+        Enabling encoding/decoding of enums with EnumTraits.
+        This code is similar to the one of IPC encoder/decoder.
+
+        * wtf/persistence/PersistentDecoder.h:
+        (WTF::Persistence::Decoder::decode):
+        * wtf/persistence/PersistentEncoder.h:
+        (WTF::Persistence::Encoder::encode):
+
+2017-08-23  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Compile error, include file <wtf/AVFoundationHeaderDetection.h> is not found.
+        https://bugs.webkit.org/show_bug.cgi?id=175853
+
+        Reviewed by Brent Fulgham.
+
+        Copy generated WTF header files to the same place as we copy forwarding headers.
+ 
+        * WTF.vcxproj/WTF.proj:
+
+2017-08-22  Chris Dumez  <cdumez@apple.com>
+
+        Introduce a new CompletionHandler type and use it for NetworkDataTaskClient's completion handlers to help catch bugs
+        https://bugs.webkit.org/show_bug.cgi?id=175832
+
+        Reviewed by Alex Christensen.
+
+        Introduce a new CompletionHandler type which wraps a WTF::Function and ensures via assertions
+        that the function is always called once and only once.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CompletionHandler.h: Added.
+        (WTF::CompletionHandler<Out):
+
+2017-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r221017.
+        https://bugs.webkit.org/show_bug.cgi?id=157053
+
+        * wtf/PlatformWin.cmake:
+
+2017-08-22  Per Arne Vollan  <pvollan@apple.com>
+
+        Implement 64-bit MacroAssembler::probe support for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=175724
+
+        Reviewed by Mark Lam.
+
+        Enable masm probe and DFG.
+
+        * wtf/Platform.h:
+
+2017-08-21  Mark Lam  <mark.lam@apple.com>
+
+        [Follow up]: Add back the ability to disable MASM_PROBE from the build.
+        https://bugs.webkit.org/show_bug.cgi?id=175656
+        <rdar://problem/33933720>
+
+        Not reviewed.
+
+        Fixed a typo: should be "OS(WINDOWS)", not "OS(WINDOW)".
+
+        * wtf/Platform.h:
+
+2017-08-21  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] ARMv7 build fails to build MacroAssemblerARMv7.cpp.
+        https://bugs.webkit.org/show_bug.cgi?id=175514
+
+        Reviewed by Keith Miller.
+
+        * wtf/Platform.h: Enable DFG and MASM_PROBE back for GTK ARM_THUMB2.
+
+2017-08-20  Sam Weinig  <sam@webkit.org>
+
+        StringView could use a function to strip leading/trailing characters without allocation
+        https://bugs.webkit.org/show_bug.cgi?id=175757
+
+        Reviewed by Darin Adler.
+
+        There are many places in WebCore/WebKit that we call functions like, 
+        WebCore::stripLeadingAndTrailingHTMLSpaces,  or String::stripWhiteSpace() only to use 
+        the allocated String as a temporary for either another transformation or a comparison.
+        Now that we have StringView, we can avoid that extra allocation, by having returning a
+        StringView  substring in these scenarios.
+
+        For instance, the check (from ScriptElement.cpp:287):
+
+        if (!stripLeadingAndTrailingHTMLSpaces(sourceURL).isEmpty()) {
+            ...
+        }
+
+        currently allocates a string just to make this check. With a new 
+        stripLeadingAndTrailingHTMLSpaces such as:
+
+        StringView stripLeadingAndTrailingHTMLSpaces(StringView stringView)
+        {
+            return stringView.stripLeadingAndTrailingMatchedCharacters([] (auto c) {
+                return isHTMLSpace(c);
+            });
+        }
+
+        We could instead have exact same code from ScriptElement.cpp now avoid an allocation.
+
+        * wtf/text/StringView.h:
+        (WTF::StringView::stripLeadingAndTrailingMatchedCharacters):
+
+2017-08-21  Eric Carlson  <eric.carlson@apple.com>
+
+        Add WTFLogChannel level to allow runtime log filtering
+        https://bugs.webkit.org/show_bug.cgi?id=175731
+        <rdar://problem/33967234>
+
+        Reviewed by Jer Noble.
+        
+        Add WTFLog*, LOG, and RELEASE_LOG variants that take a "log level" parameter so code
+        can include logging statements that are only conditionally emitted.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2017-08-20  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix CLoop build.
+        https://bugs.webkit.org/show_bug.cgi?id=175688
+        <rdar://problem/33436870>
+
+        Not reviewed.
+
+        Disable MASM_PROBE if !ENABLE(JIT).
+
+        * wtf/Platform.h:
+
+2017-08-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r220938.
+
+        The API tests added with this change are failing.
+
+        Reverted changeset:
+
+        "Add WTFLogChannel level to allow runtime log filtering"
+        https://bugs.webkit.org/show_bug.cgi?id=175731
+        http://trac.webkit.org/changeset/220938
+
+2017-08-18  Eric Carlson  <eric.carlson@apple.com>
+
+        Add WTFLogChannel level to allow runtime log filtering
+        https://bugs.webkit.org/show_bug.cgi?id=175731
+        <rdar://problem/33967234>
+
+        Reviewed by Jer Noble.
+        
+        Add WTFLog*, LOG, and RELEASE_LOG variants that take a "log level" parameter so code
+        can include logging statements that are only conditionally emitted.
+
+        * wtf/Assertions.cpp:
+        * wtf/Assertions.h:
+        * wtf/MemoryPressureHandler.cpp:
+        * wtf/RefCountedLeakCounter.cpp:
+
+2017-08-18  Per Arne Vollan  <pvollan@apple.com>
+
+        Implement 32-bit MacroAssembler::probe support for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=175449
+
+        Reviewed by Mark Lam.
+
+        Enable the DFG on Win32. 
+
+        * wtf/Platform.h:
+
+2017-08-17  Mark Lam  <mark.lam@apple.com>
+
+        Only use 16 VFP registers if !CPU(ARM_NEON).
+        https://bugs.webkit.org/show_bug.cgi?id=175514
+
+        Reviewed by JF Bastien.
+
+        If CPU(ARM_NEON) is not enabled, we'll conservatively assume only VFP2 support is
+        available. Hence, we'll only the first 16 FPDoubleRegisterIDs are available.
+
+        For reference, see:
+        NEON registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJACABEJ.html
+        VFP2 and VFP3 registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CIHDIBDG.html
+        NEON to VFP register mapping: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJAIJHFC.html
+
+        This is mostly for GTK toolchains which may target older ARM CPUs which only have
+        VFP2 support.
+
+        * wtf/Platform.h:
+
+2017-08-16  Mark Lam  <mark.lam@apple.com>
+
+        Add back the ability to disable MASM_PROBE from the build.
+        https://bugs.webkit.org/show_bug.cgi?id=175656
+        <rdar://problem/33933720>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Platform.h:
+
+2017-08-16  Mark Lam  <mark.lam@apple.com>
+
+        Gardening: fix GTK ARM_THUMB2 build.
+        https://bugs.webkit.org/show_bug.cgi?id=175446
+
+        Not reviewed.
+
+        Disable the use of the DFG for GTK ARM_THUMB2 builds until
+        https://bugs.webkit.org/show_bug.cgi?id=175514 is fixed.
+
+        * wtf/Platform.h:
+
 2017-08-16  Andy Estes  <aestes@apple.com>
 
         [Payment Request] Add an ENABLE flag and an experimental feature preference

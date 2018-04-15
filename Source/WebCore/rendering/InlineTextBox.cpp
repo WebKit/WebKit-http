@@ -547,11 +547,12 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
 
     TextPainter textPainter(context);
     textPainter.setFont(font);
-    textPainter.setTextPaintStyle(textPaintStyle);
-    textPainter.setSelectionPaintStyle(selectionPaintStyle);
+    textPainter.setStyle(textPaintStyle);
+    textPainter.setSelectionStyle(selectionPaintStyle);
     textPainter.setIsHorizontal(isHorizontal());
-    textPainter.addTextShadow(textShadow, selectionShadow);
-    textPainter.addEmphasis(emphasisMark, emphasisMarkOffset, combinedText);
+    textPainter.setShadow(textShadow);
+    textPainter.setSelectionShadow(selectionShadow);
+    textPainter.setEmphasisMark(emphasisMark, emphasisMarkOffset, combinedText);
 
     auto draggedContentRanges = renderer().draggedContentRangesBetweenOffsets(m_start, m_start + m_len);
     if (!draggedContentRanges.isEmpty() && !paintSelectedTextOnly && !paintNonSelectedTextOnly) {
@@ -564,19 +565,19 @@ void InlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, 
             currentEnd = std::min(draggedContentRanges[index].second - m_start, length);
 
             if (previousEnd < currentStart)
-                textPainter.paintTextInRange(textRun, boxRect, textOrigin, previousEnd, currentStart);
+                textPainter.paintRange(textRun, boxRect, textOrigin, previousEnd, currentStart);
 
             if (currentStart < currentEnd) {
                 context.save();
                 context.setAlpha(0.25);
-                textPainter.paintTextInRange(textRun, boxRect, textOrigin, currentStart, currentEnd);
+                textPainter.paintRange(textRun, boxRect, textOrigin, currentStart, currentEnd);
                 context.restore();
             }
         }
         if (currentEnd < length)
-            textPainter.paintTextInRange(textRun, boxRect, textOrigin, currentEnd, length);
+            textPainter.paintRange(textRun, boxRect, textOrigin, currentEnd, length);
     } else
-        textPainter.paintText(textRun, length, boxRect, textOrigin, selectionStart, selectionEnd, paintSelectedTextOnly, paintSelectedTextSeparately, paintNonSelectedTextOnly);
+        textPainter.paint(textRun, length, boxRect, textOrigin, selectionStart, selectionEnd, paintSelectedTextOnly, paintSelectedTextSeparately, paintNonSelectedTextOnly);
 
     // Paint decorations
     TextDecoration textDecorations = lineStyle.textDecorationsInEffect();
@@ -803,7 +804,7 @@ static GraphicsContext::DocumentMarkerLineStyle lineStyleForMarkerType(DocumentM
     }
 }
 
-void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoint& boxOrigin, RenderedDocumentMarker& marker, const RenderStyle& style, const FontCascade& font, bool grammar)
+void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoint& boxOrigin, RenderedDocumentMarker& marker, const RenderStyle& style, const FontCascade& font)
 {
     // Never print spelling/grammar markers (5327887)
     if (renderer().document().printing())
@@ -824,8 +825,7 @@ void InlineTextBox::paintDocumentMarker(GraphicsContext& context, const FloatPoi
     if (m_truncation != cNoTruncation)
         markerSpansWholeBox = false;
 
-    bool isDictationMarker = marker.type() == DocumentMarker::DictationAlternatives;
-    if (!markerSpansWholeBox || grammar || isDictationMarker) {
+    if (!markerSpansWholeBox) {
         unsigned startPosition = clampedOffset(marker.startOffset());
         unsigned endPosition = clampedOffset(marker.endOffset());
         
@@ -939,15 +939,15 @@ void InlineTextBox::paintDocumentMarkers(GraphicsContext& context, const FloatPo
             case DocumentMarker::Spelling:
             case DocumentMarker::CorrectionIndicator:
             case DocumentMarker::DictationAlternatives:
-                paintDocumentMarker(context, boxOrigin, *marker, style, font, false);
+                paintDocumentMarker(context, boxOrigin, *marker, style, font);
                 break;
             case DocumentMarker::Grammar:
-                paintDocumentMarker(context, boxOrigin, *marker, style, font, true);
+                paintDocumentMarker(context, boxOrigin, *marker, style, font);
                 break;
 #if PLATFORM(IOS)
             // FIXME: See <rdar://problem/8933352>. Also, remove the PLATFORM(IOS)-guard.
             case DocumentMarker::DictationPhraseWithAlternatives:
-                paintDocumentMarker(context, boxOrigin, *marker, style, font, true);
+                paintDocumentMarker(context, boxOrigin, *marker, style, font);
                 break;
 #endif
             case DocumentMarker::TextMatch:

@@ -47,6 +47,7 @@
 #import "RenderImage.h"
 #import "Text.h"
 #import "URL.h"
+#import "UTIUtilities.h"
 #import "WebCoreNSStringExtras.h"
 #import "WebCoreSystemInterface.h"
 #import "WebNSAttributedStringExtras.h"
@@ -462,33 +463,26 @@ bool Pasteboard::hasData()
 
 static String cocoaTypeFromHTMLClipboardType(const String& type)
 {
-    // http://www.whatwg.org/specs/web-apps/current-work/multipage/dnd.html#dom-datatransfer-setdata
-    String lowercasedType = type.convertToASCIILowercase();
-
-    if (lowercasedType == "text")
-        lowercasedType = ASCIILiteral("text/plain");
-    if (lowercasedType == "url")
-        lowercasedType = ASCIILiteral("text/uri-list");
-
     // Ignore any trailing charset - strings are already UTF-16, and the charset issue has already been dealt with.
-    if (lowercasedType == "text/plain" || lowercasedType.startsWith("text/plain;"))
+    if (type == "text/plain")
         return NSStringPboardType;
-    if (lowercasedType == "text/uri-list") {
+    if (type == "text/uri-list") {
         // Special case because UTI doesn't work with Cocoa's URL type.
         return NSURLPboardType;
     }
 
     // Blacklist types that might contain subframe information.
-    if (lowercasedType == "text/rtf" || lowercasedType == "public.rtf" || lowercasedType == "com.apple.traditional-mac-plain-text")
+    if (type == "text/rtf" || type == "public.rtf" || type == "com.apple.traditional-mac-plain-text")
         return String();
 
-    if (auto utiType = adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, lowercasedType.createCFString().get(), NULL))) {
-        if (auto pbType = adoptCF(UTTypeCopyPreferredTagWithClass(utiType.get(), kUTTagClassNSPboardType)))
+    auto utiType = UTIFromMIMEType(type);
+    if (!utiType.isEmpty()) {
+        if (auto pbType = adoptCF(UTTypeCopyPreferredTagWithClass(utiType.createCFString().get(), kUTTagClassNSPboardType)))
             return pbType.get();
     }
 
     // No mapping, just pass the whole string though
-    return lowercasedType;
+    return type;
 }
 
 void Pasteboard::clear(const String& type)

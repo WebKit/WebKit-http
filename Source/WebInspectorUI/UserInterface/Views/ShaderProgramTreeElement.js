@@ -31,5 +31,30 @@ WI.ShaderProgramTreeElement = class ShaderProgramTreeElement extends WI.GeneralT
 
         const subtitle = null;
         super("shader-program", shaderProgram.displayName, subtitle, shaderProgram);
+
+        this._disabledImageElement = document.createElement("img");
+        this._disabledImageElement.title = WI.UIString("Disable Program");
+        this._disabledImageElement.addEventListener("click", this._disabledImageElementClicked.bind(this));
+        this.status = this._disabledImageElement;
+    }
+
+    // Protected
+
+    selectOnMouseDown(event)
+    {
+        if (event.target.isSelfOrDescendant(this._statusElement))
+            return;
+
+        super.selectOnMouseDown(event);
+    }
+
+    // Private
+
+    _disabledImageElementClicked(event)
+    {
+        this.representedObject.toggleDisabled(() => {
+            this._listItemNode.classList.toggle("disabled", !!this.representedObject.disabled);
+            this._disabledImageElement.title = this.representedObject.disabled ? WI.UIString("Enable Program") : WI.UIString("Disable Program");
+        });
     }
 };

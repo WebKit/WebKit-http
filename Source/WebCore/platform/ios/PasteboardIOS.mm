@@ -48,6 +48,7 @@
 #import "SharedBuffer.h"
 #import "Text.h"
 #import "URL.h"
+#import "UTIUtilities.h"
 #import "WebNSAttributedStringExtras.h"
 #import "markup.h"
 #import <MobileCoreServices/MobileCoreServices.h>
@@ -142,9 +143,9 @@ void Pasteboard::write(const PasteboardWebContent& content)
     platformStrategies()->pasteboardStrategy()->writeToPasteboard(content, m_pasteboardName);
 }
 
-String Pasteboard::resourceMIMEType(const NSString *mimeType)
+String Pasteboard::resourceMIMEType(NSString *mimeType)
 {
-    return String(adoptCF(UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (CFStringRef)mimeType, NULL)).get());
+    return UTIFromMIMEType(mimeType);
 }
 
 void Pasteboard::write(const PasteboardImage& pasteboardImage)
@@ -323,27 +324,20 @@ static String utiTypeFromCocoaType(NSString *type)
 
 static RetainPtr<NSString> cocoaTypeFromHTMLClipboardType(const String& type)
 {
-    String strippedType = type.stripWhiteSpace();
-
-    if (strippedType == "Text")
-        return (NSString *)kUTTypeText;
-    if (strippedType == "URL")
-        return (NSString *)kUTTypeURL;
-
     // Ignore any trailing charset - JS strings are Unicode, which encapsulates the charset issue.
-    if (strippedType.startsWith("text/plain"))
+    if (type == "text/plain")
         return (NSString *)kUTTypeText;
 
     // Special case because UTI doesn't work with Cocoa's URL type.
-    if (strippedType == "text/uri-list")
+    if (type == "text/uri-list")
         return (NSString *)kUTTypeURL;
 
     // Try UTI now.
-    if (NSString *utiType = utiTypeFromCocoaType(strippedType))
+    if (NSString *utiType = utiTypeFromCocoaType(type))
         return utiType;
 
     // No mapping, just pass the whole string though.
-    return (NSString *)strippedType;
+    return (NSString *)type;
 }
 
 void Pasteboard::clear(const String& type)

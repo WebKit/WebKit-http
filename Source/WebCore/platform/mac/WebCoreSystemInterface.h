@@ -129,7 +129,6 @@ typedef enum {
 extern bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
 #endif
 extern CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
-extern CFStringEncoding (*wkGetWebDefaultCFStringEncoding)(void);
 #if !PLATFORM(IOS)
 extern void (*wkDrawBezeledTextArea)(NSRect, BOOL enabled);
 extern void (*wkDrawFocusRing)(CGContextRef, CGColorRef, int);
@@ -196,17 +195,6 @@ extern NSCursor *(*wkCursor)(const char*);
 #if !PLATFORM(IOS)
 extern NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
 extern NSString *(*wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale)(NSLocale *);
-
-extern void (*wkUnregisterUniqueIdForElement)(id element);
-extern void (*wkAccessibilityHandleFocusChanged)(void);    
-extern CFTypeID (*wkGetAXTextMarkerTypeID)(void);
-extern CFTypeID (*wkGetAXTextMarkerRangeTypeID)(void);
-extern CFTypeRef (*wkCreateAXTextMarkerRange)(CFTypeRef start, CFTypeRef end);
-extern CFTypeRef (*wkCopyAXTextMarkerRangeStart)(CFTypeRef range);
-extern CFTypeRef (*wkCopyAXTextMarkerRangeEnd)(CFTypeRef range);
-extern CFTypeRef (*wkCreateAXTextMarker)(const void *bytes, size_t len);
-extern BOOL (*wkGetBytesFromAXTextMarker)(CFTypeRef textMarker, void *bytes, size_t length);
-extern AXUIElementRef (*wkCreateAXUIElementRef)(id element);
 #endif // !PLATFORM(IOS)
 
 #if PLATFORM(IOS)
@@ -214,18 +202,8 @@ extern void (*wkSetLayerContentsScale)(CALayer *);
 #endif
 
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
-extern CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
-extern NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);
-
-typedef struct OpaqueCFHTTPCookieStorage* CFHTTPCookieStorageRef;
-extern unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
-extern NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-extern void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
-extern void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
-extern void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
 
 #if !PLATFORM(IOS)
-extern void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSString *path);
 extern CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);
 extern CGFloat (*wkNSElasticDeltaForReboundDelta)(CGFloat delta);
 extern CGFloat (*wkNSReboundDeltaForElasticDelta)(CGFloat delta);

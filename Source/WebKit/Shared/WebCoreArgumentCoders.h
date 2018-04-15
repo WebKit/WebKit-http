@@ -27,6 +27,7 @@
 
 #include "ArgumentCoders.h"
 #include <WebCore/AutoplayEvent.h>
+#include <WebCore/CacheStorageConnection.h>
 #include <WebCore/CaptureDevice.h>
 #include <WebCore/ColorSpace.h>
 #include <WebCore/DiagnosticLoggingClient.h>
@@ -42,6 +43,10 @@
 namespace WTF {
 class MonotonicTime;
 class Seconds;
+}
+
+namespace PAL {
+class SessionID;
 }
 
 namespace WebCore {
@@ -78,7 +83,6 @@ class Region;
 class ResourceError;
 class ResourceRequest;
 class ResourceResponse;
-class SessionID;
 class SpringTimingFunction;
 class StepsTimingFunction;
 class StickyPositionViewportConstraints;
@@ -86,6 +90,8 @@ class TextCheckingRequestData;
 class TransformationMatrix;
 class UserStyleSheet;
 class URL;
+
+struct CacheQueryOptions;
 struct CompositionUnderline;
 struct DictationAlternative;
 struct DictionaryPopupInfo;
@@ -187,6 +193,21 @@ template<> struct ArgumentCoder<WTF::Seconds> {
 template<> struct ArgumentCoder<WebCore::AffineTransform> {
     static void encode(Encoder&, const WebCore::AffineTransform&);
     static bool decode(Decoder&, WebCore::AffineTransform&);
+};
+
+template<> struct ArgumentCoder<WebCore::CacheQueryOptions> {
+    static void encode(Encoder&, const WebCore::CacheQueryOptions&);
+    static bool decode(Decoder&, WebCore::CacheQueryOptions&);
+};
+
+template<> struct ArgumentCoder<WebCore::DOMCache::CacheInfo> {
+    static void encode(Encoder&, const WebCore::DOMCache::CacheInfo&);
+    static bool decode(Decoder&, WebCore::DOMCache::CacheInfo&);
+};
+
+template<> struct ArgumentCoder<WebCore::DOMCache::Record> {
+    static void encode(Encoder&, const WebCore::DOMCache::Record&);
+    static bool decode(Decoder&, WebCore::DOMCache::Record&);
 };
 
 template<> struct ArgumentCoder<WebCore::EventTrackingRegions> {
@@ -464,11 +485,6 @@ template<> struct ArgumentCoder<WebCore::TextCheckingResult> {
     static void encode(Encoder&, const WebCore::TextCheckingResult&);
     static bool decode(Decoder&, WebCore::TextCheckingResult&);
 };
-    
-template<> struct ArgumentCoder<WebCore::URL> {
-    static void encode(Encoder&, const WebCore::URL&);
-    static bool decode(Decoder&, WebCore::URL&);
-};
 
 template<> struct ArgumentCoder<WebCore::UserStyleSheet> {
     static void encode(Encoder&, const WebCore::UserStyleSheet&);
@@ -592,34 +608,34 @@ template<> struct ArgumentCoder<WebCore::PaymentMethodUpdate> {
     static bool decode(Decoder&, WebCore::PaymentMethodUpdate&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest> {
-    static void encode(Encoder&, const WebCore::PaymentRequest&);
-    static bool decode(Decoder&, WebCore::PaymentRequest&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::ContactFields> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::ContactFields&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::ContactFields&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::ContactFields> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::ContactFields&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::ContactFields&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::LineItem> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::LineItem&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::LineItem&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::LineItem> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::LineItem&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::LineItem&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::MerchantCapabilities> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::MerchantCapabilities&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::MerchantCapabilities&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::MerchantCapabilities&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::ShippingMethod> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::ShippingMethod&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::ShippingMethod&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::ShippingMethod> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::ShippingMethod&);
 };
 
-template<> struct ArgumentCoder<WebCore::PaymentRequest::TotalAndLineItems> {
-    static void encode(Encoder&, const WebCore::PaymentRequest::TotalAndLineItems&);
-    static bool decode(Decoder&, WebCore::PaymentRequest::TotalAndLineItems&);
+template<> struct ArgumentCoder<WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems> {
+    static void encode(Encoder&, const WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems&);
+    static bool decode(Decoder&, WebCore::ApplePaySessionPaymentRequest::TotalAndLineItems&);
 };
 
 template<> struct ArgumentCoder<WebCore::ShippingContactUpdate> {
@@ -748,10 +764,10 @@ template<> struct EnumTraits<WebCore::CaptureDevice::DeviceType> {
 };
 template<> struct EnumTraits<WebCore::RealtimeMediaSource::Type> {
     using values = EnumValues<
-    WebCore::RealtimeMediaSource::Type,
-    WebCore::RealtimeMediaSource::Type::None,
-    WebCore::RealtimeMediaSource::Type::Audio,
-    WebCore::RealtimeMediaSource::Type::Video
+        WebCore::RealtimeMediaSource::Type,
+        WebCore::RealtimeMediaSource::Type::None,
+        WebCore::RealtimeMediaSource::Type::Audio,
+        WebCore::RealtimeMediaSource::Type::Video
     >;
 };
 #endif

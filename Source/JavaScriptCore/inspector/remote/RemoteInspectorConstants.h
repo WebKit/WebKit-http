@@ -84,7 +84,14 @@
 
 #define WIRAutomationTargetIsPairedKey             @"WIRAutomationTargetIsPairedKey"
 #define WIRSessionIdentifierKey                    @"WIRSessionIdentifierKey"
+#define WIRSessionCapabilitiesKey                  @"WIRSessionCapabilitiesKey"
 #define WIRAutomationSessionRequestMessage         @"WIRAutomationSessionRequestMessage"
+
+// These definitions are shared between WebDriver.framework and WebKit.
+// The value for WIRSessionCapabilitiesKey is a dictionary that holds these capability key-value pairs.
+
+#define WIRAllowInsecureMediaCaptureCapabilityKey      @"org.webkit.webdriver.webrtc.allow-insecure-media-capture"
+#define WIRSuppressICECandidateFilteringCapabilityKey  @"org.webkit.webdriver.webrtc.suppress-ice-candidate-filtering"
 
 // These definitions are shared with a Simulator webinspectord and
 // OS X process communicating with it.

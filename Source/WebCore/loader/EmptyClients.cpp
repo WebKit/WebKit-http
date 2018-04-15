@@ -110,7 +110,7 @@ class EmptyContextMenuClient final : public ContextMenuClient {
 
 class EmptyDatabaseProvider final : public DatabaseProvider {
 #if ENABLE(INDEXED_DATABASE)
-    IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const SessionID&) final
+    IDBClient::IDBConnectionToServer& idbConnectionToServerForSession(const PAL::SessionID&) final
     {
         static auto& sharedConnection = InProcessIDBServer::create().leakRef();
         return sharedConnection.connectionToServer();
@@ -166,11 +166,12 @@ private:
     void didBeginEditing() final { }
     void respondToChangedContents() final { }
     void respondToChangedSelection(Frame*) final { }
-    void didChangeSelectionAndUpdateLayout() final { }
     void updateEditorStateAfterLayoutIfEditabilityChanged() final { }
     void discardedComposition(Frame*) final { }
     void canceledComposition() final { }
+    void didUpdateComposition() final { }
     void didEndEditing() final { }
+    void didEndUserTriggeredSelectionChanges() final { }
     void willWriteSelectionToPasteboard(Range*) final { }
     void didWriteSelectionToPasteboard() final { }
     void getClientPasteboardDataForRange(Range*, Vector<String>&, Vector<RefPtr<SharedBuffer>>&) final { }
@@ -293,7 +294,7 @@ class EmptyFrameLoaderClient final : public FrameLoaderClient {
     void detachedFromParent2() final { }
     void detachedFromParent3() final { }
 
-    void convertMainResourceLoadToDownload(DocumentLoader*, SessionID, const ResourceRequest&, const ResourceResponse&) final { }
+    void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID, const ResourceRequest&, const ResourceResponse&) final { }
 
     void assignIdentifierToInitialRequest(unsigned long, DocumentLoader*, const ResourceRequest&) final { }
     bool shouldUseCredentialStorage(DocumentLoader*, unsigned long) final { return false; }
@@ -484,7 +485,7 @@ class EmptyPaymentCoordinatorClient final : public PaymentCoordinatorClient {
     bool canMakePayments() final { return false; }
     void canMakePaymentsWithActiveCard(const String&, const String&, WTF::Function<void(bool)>&& completionHandler) final { callOnMainThread([completionHandler = WTFMove(completionHandler)] { completionHandler(false); }); }
     void openPaymentSetup(const String&, const String&, WTF::Function<void(bool)>&& completionHandler) final { callOnMainThread([completionHandler = WTFMove(completionHandler)] { completionHandler(false); }); }
-    bool showPaymentUI(const URL&, const Vector<URL>&, const PaymentRequest&) final { return false; }
+    bool showPaymentUI(const URL&, const Vector<URL>&, const ApplePaySessionPaymentRequest&) final { return false; }
     void completeMerchantValidation(const PaymentMerchantSession&) final { }
     void completeShippingMethodSelection(std::optional<ShippingMethodUpdate>&&) final { }
     void completeShippingContactSelection(std::optional<ShippingContactUpdate>&&) final { }

@@ -334,7 +334,7 @@ namespace JSC {
 
         // This assumes that the value to profile is in regT0 and that regT3 is available for
         // scratch.
-        void emitValueProfilingSite(ValueProfile*);
+        void emitValueProfilingSite(ValueProfile&);
         void emitValueProfilingSite(unsigned bytecodeOffset);
         void emitValueProfilingSite();
         void emitArrayProfilingSiteWithCell(RegisterID cell, RegisterID indexingType, ArrayProfile*);
@@ -551,6 +551,8 @@ namespace JSC {
         void emit_op_new_generator_func_exp(Instruction*);
         void emit_op_new_async_func(Instruction*);
         void emit_op_new_async_func_exp(Instruction*);
+        void emit_op_new_async_generator_func(Instruction*);
+        void emit_op_new_async_generator_func_exp(Instruction*);
         void emit_op_new_object(Instruction*);
         void emit_op_new_regexp(Instruction*);
         void emit_op_not(Instruction*);
@@ -796,6 +798,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(J_JITOperation_EZZ, int, int32_t, int32_t);
         MacroAssembler::Call callOperation(P_JITOperation_E);
         MacroAssembler::Call callOperation(P_JITOperation_EJS, GPRReg, size_t);
+        MacroAssembler::Call callOperation(P_JITOperation_EUi, uint32_t);
         MacroAssembler::Call callOperation(S_JITOperation_ECC, RegisterID, RegisterID);
         MacroAssembler::Call callOperation(S_JITOperation_EJ, RegisterID);
         MacroAssembler::Call callOperation(S_JITOperation_EJI, GPRReg, UniquedStringImpl*);

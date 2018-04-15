@@ -42,6 +42,7 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
+OBJC_CLASS NSAccessibilityRemoteUIElement;
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
@@ -86,6 +87,7 @@ OBJC_CLASS WebPlaybackControlsManager;
 
 - (void)_web_dismissContentRelativeChildWindows;
 - (void)_web_dismissContentRelativeChildWindowsWithAnimation:(BOOL)animate;
+- (void)_web_editorStateDidChange;
 
 - (void)_web_gestureEventWasNotHandledByWebCore:(NSEvent *)event;
 
@@ -693,7 +695,7 @@ private:
     bool m_allowsBackForwardNavigationGestures { false };
     bool m_allowsMagnification { false };
 
-    RetainPtr<id> m_remoteAccessibilityChild;
+    RetainPtr<NSAccessibilityRemoteUIElement> m_remoteAccessibilityChild;
 
     RefPtr<WebCore::Image> m_promisedImage;
     String m_promisedFilename;

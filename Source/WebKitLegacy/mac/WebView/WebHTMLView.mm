@@ -107,8 +107,6 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
-#import <WebCore/NSSpellCheckerSPI.h>
-#import <WebCore/NSViewSPI.h>
 #import <WebCore/Page.h>
 #import <WebCore/PrintContext.h>
 #import <WebCore/Range.h>
@@ -132,6 +130,8 @@
 #import <dlfcn.h>
 #import <limits>
 #import <pal/spi/cocoa/NSURLFileTypeMappingsSPI.h>
+#import <pal/spi/mac/NSSpellCheckerSPI.h>
+#import <pal/spi/mac/NSViewSPI.h>
 #import <runtime/InitializeThreading.h>
 #import <wtf/BlockObjCExceptions.h>
 #import <wtf/MainThread.h>
@@ -145,8 +145,8 @@
 #import "WebNSPasteboardExtras.h"
 #import <AppKit/NSAccessibility.h>
 #import <ApplicationServices/ApplicationServices.h>
-#import <WebCore/NSMenuSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
+#import <pal/spi/mac/NSMenuSPI.h>
 #endif
 
 #import <QuartzCore/QuartzCore.h>
@@ -7154,11 +7154,13 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
     _private->softSpaceRange = NSMakeRange(NSNotFound, 0);
 #endif
 
+    bool replacesText = false;
     if (replacementRange.location != NSNotFound) {
         WebRangeIsRelativeTo rangeIsRelativeTo = needToRemoveSoftSpace ? WebRangeIsRelativeTo::Paragraph : WebRangeIsRelativeTo::EditableRoot;
-        RefPtr<Range> domRange = [[self _frame] _convertToDOMRange:replacementRange rangeIsRelativeTo:rangeIsRelativeTo];
-        if (domRange)
+        if (auto domRange = [[self _frame] _convertToDOMRange:replacementRange rangeIsRelativeTo:rangeIsRelativeTo]) {
             coreFrame->selection().setSelection(VisibleSelection(*domRange, SEL_DEFAULT_AFFINITY));
+            replacesText = replacementRange.length;
+        }
     }
 
     bool eventHandled = false;
@@ -7171,7 +7173,7 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
         if (!dictationAlternativeLocations.isEmpty())
             eventHandled = coreFrame->editor().insertDictatedText(eventText, dictationAlternativeLocations, event);
         else
-            eventHandled = coreFrame->editor().insertText(eventText, event);
+            eventHandled = coreFrame->editor().insertText(eventText, event, replacesText ? TextEventInputAutocompletion : TextEventInputKeyboard);
         
 #if USE(INSERTION_UNDO_GROUPING)
         if (registerUndoGroup)

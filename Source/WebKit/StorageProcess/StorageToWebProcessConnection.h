@@ -28,12 +28,14 @@
 #include "Connection.h"
 #include "MessageSender.h"
 
-#include <WebCore/SessionID.h>
+#include <WebCore/SWServer.h>
+#include <pal/SessionID.h>
 #include <wtf/HashMap.h>
 
 namespace WebKit {
 
 class WebIDBConnectionToClient;
+class WebSWServerConnection;
 
 class StorageToWebProcessConnection : public RefCounted<StorageToWebProcessConnection>, public IPC::Connection::Client, public IPC::MessageSender {
 public:
@@ -59,11 +61,18 @@ private:
 
 #if ENABLE(INDEXED_DATABASE)
     // Messages handlers (Modern IDB)
-    void establishIDBConnectionToServer(WebCore::SessionID, uint64_t& serverConnectionIdentifier);
+    void establishIDBConnectionToServer(PAL::SessionID, uint64_t& serverConnectionIdentifier);
     void removeIDBConnectionToServer(uint64_t serverConnectionIdentifier);
 
     HashMap<uint64_t, RefPtr<WebIDBConnectionToClient>> m_webIDBConnections;
 #endif // ENABLE(INDEXED_DATABASE)
+
+#if ENABLE(SERVICE_WORKER)
+    void establishSWServerConnection(PAL::SessionID, uint64_t& serverConnectionIdentifier);
+    void removeSWServerConnection(uint64_t serverConnectionIdentifier);
+    HashMap<PAL::SessionID, std::unique_ptr<WebCore::SWServer>> m_swServers;
+    HashMap<uint64_t, std::unique_ptr<WebSWServerConnection>> m_swConnections;
+#endif
 
     Ref<IPC::Connection> m_connection;
 };

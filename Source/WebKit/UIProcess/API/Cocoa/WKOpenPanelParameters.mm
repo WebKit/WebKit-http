@@ -35,6 +35,11 @@
     return _openPanelParameters->allowMultipleFiles();
 }
 
+- (BOOL)allowsDirectories
+{
+    return _openPanelParameters->allowDirectories();
+}
+
 #pragma mark WKObject protocol implementation
 
 - (API::Object&)_apiObject

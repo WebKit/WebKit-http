@@ -717,16 +717,17 @@ private:
         case GetGlobalLexicalVariable:
         case GetClosureVar:
         case GetFromArguments:
-        case LoadFromJSMapBucket:
+        case LoadKeyFromMapBucket:
+        case LoadValueFromMapBucket:
         case ToNumber:
         case GetArgument:
-        case CallDOMGetter: {
+        case CallDOMGetter:
+        case GetDynamicVar: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
 
-        case ResolveScopeForHoistingFuncDeclInEval:
-        case GetDynamicVar: {
+        case ResolveScopeForHoistingFuncDeclInEval: {
             setPrediction(SpecBytecodeTop);
             break;
         }
@@ -742,6 +743,7 @@ private:
         case GetCallee:
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncGeneratorFunction:
         case NewAsyncFunction: {
             setPrediction(SpecFunction);
             break;
@@ -755,11 +757,11 @@ private:
         case MapHash:
             setPrediction(SpecInt32Only);
             break;
+
         case GetMapBucket:
+        case GetMapBucketHead:
+        case GetMapBucketNext:
             setPrediction(SpecCellOther);
-            break;
-        case IsNonEmptyMapBucket:
-            setPrediction(SpecBoolean);
             break;
 
         case GetRestLength:
@@ -993,6 +995,11 @@ private:
             break;
         }
 
+        case ExtractCatchLocal: {
+            setPrediction(m_currentNode->catchLocalPrediction());
+            break;
+        }
+
         case GetLocal:
         case SetLocal:
         case UInt32ToNumber:
@@ -1049,6 +1056,7 @@ private:
         case PhantomNewObject:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncGeneratorFunction:
         case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:

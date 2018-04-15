@@ -166,7 +166,36 @@ Suites.push({
 
 Suites.push({
     name: 'EmberJS-TodoMVC',
-    url: 'todomvc/architecture-examples/emberjs/index.html',
+    url: 'todomvc/architecture-examples/emberjs/dist/index.html',
+    prepare: function (runner, contentWindow, contentDocument) {
+        return runner.waitForElement('#new-todo').then(function (element) {
+            element.focus();
+            return element;
+        });
+    },
+    tests: [
+        new BenchmarkTestStep('Adding' + numberOfItemsToAdd + 'Items', function (newTodo, contentWindow, contentDocument) {
+            for (var i = 0; i < numberOfItemsToAdd; i++) {
+                newTodo.value = 'Something to do ' + i;
+                triggerEnter(newTodo, 'keydown');
+            }
+        }),
+        new BenchmarkTestStep('CompletingAllItems', function (params, contentWindow, contentDocument) {
+            var checkboxes = contentDocument.querySelectorAll('.toggle');
+            for (var i = 0; i < checkboxes.length; i++)
+                checkboxes[i].click();
+        }),
+        new BenchmarkTestStep('DeletingItems', function (params, contentWindow, contentDocument) {
+            var deleteButtons = contentDocument.querySelectorAll('.destroy');
+            for (var i = 0; i < deleteButtons.length; i++)
+                deleteButtons[i].click();
+        }),
+    ]
+});
+
+Suites.push({
+    name: 'EmberJS-Debug-TodoMVC',
+    url: 'todomvc/architecture-examples/emberjs-debug/index.html',
     prepare: function (runner, contentWindow, contentDocument) {
         return runner.waitForElement('#new-todo').then(function (element) {
             element.focus();

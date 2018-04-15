@@ -46,6 +46,10 @@ OBJC_CLASS NSURL;
 class BUrl;
 #endif
 
+namespace WTF {
+class TextStream;
+}
+
 namespace WebCore {
 
 class TextEncoding;
@@ -449,6 +453,8 @@ inline unsigned URL::pathAfterLastSlash() const
 {
     return m_pathAfterLastSlash;
 }
+
+WTF::TextStream& operator<<(WTF::TextStream&, const URL&);
 
 } // namespace WebCore
 

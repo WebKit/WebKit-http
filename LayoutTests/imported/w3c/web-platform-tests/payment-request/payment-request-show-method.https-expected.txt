@@ -1,4 +1,5 @@
+CONSOLE MESSAGE: Unhandled Promise Rejection: NotSupportedError: The operation is not supported.
 
-FAIL Throws if the promise [[state]] is not "created" promise_test: Unhandled rejection with value: object "ReferenceError: Can't find variable: PaymentRequest"
-FAIL If the user agent's "payment request is showing" boolean is true, then return a promise rejected with an "AbortError" DOMException. promise_test: Unhandled rejection with value: object "ReferenceError: Can't find variable: PaymentRequest"
+FAIL Throws if the promise [[state]] is not "created" assert_throws: function "function () { throw e }" threw object "NotSupportedError: The operation is not supported." that is not a DOMException AbortError: property "code" is equal to 9, expected 20
+FAIL If the user agent's "payment request is showing" boolean is true, then return a promise rejected with an "AbortError" DOMException. assert_throws: function "function () { throw e }" threw object "NotSupportedError: The operation is not supported." that is not a DOMException AbortError: property "code" is equal to 9, expected 20
 

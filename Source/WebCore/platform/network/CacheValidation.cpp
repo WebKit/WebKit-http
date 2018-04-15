@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -339,24 +339,25 @@ CacheControlDirectives parseCacheControlDirectives(const HTTPHeaderMap& headers)
     return result;
 }
 
-static String headerValueForVary(const ResourceRequest& request, const String& headerName, SessionID sessionID)
+static String headerValueForVary(const ResourceRequest& request, const String& headerName, PAL::SessionID sessionID)
 {
     // Explicit handling for cookies is needed because they are added magically by the networking layer.
     // FIXME: The value might have changed between making the request and retrieving the cookie here.
     // We could fetch the cookie when making the request but that seems overkill as the case is very rare and it
     // is a blocking operation. This should be sufficient to cover reasonable cases.
     if (headerName == httpHeaderNameString(HTTPHeaderName::Cookie)) {
+        auto includeSecureCookies = request.url().protocolIs("https") ? IncludeSecureCookies::Yes : IncludeSecureCookies::No;
         auto* cookieStrategy = platformStrategies() ? platformStrategies()->cookiesStrategy() : nullptr;
         if (!cookieStrategy) {
-            ASSERT(sessionID == SessionID::defaultSessionID());
-            return cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), request.firstPartyForCookies(), request.url());
+            ASSERT(sessionID == PAL::SessionID::defaultSessionID());
+            return cookieRequestHeaderFieldValue(NetworkStorageSession::defaultStorageSession(), request.firstPartyForCookies(), request.url(), includeSecureCookies).first;
         }
-        return cookieStrategy->cookieRequestHeaderFieldValue(sessionID, request.firstPartyForCookies(), request.url());
+        return cookieStrategy->cookieRequestHeaderFieldValue(sessionID, request.firstPartyForCookies(), request.url(), includeSecureCookies).first;
     }
     return request.httpHeaderField(headerName);
 }
 
-Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, SessionID sessionID)
+Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::ResourceRequest& request, const WebCore::ResourceResponse& response, PAL::SessionID sessionID)
 {
     String varyValue = response.httpHeaderField(WebCore::HTTPHeaderName::Vary);
     if (varyValue.isEmpty())
@@ -373,7 +374,7 @@ Vector<std::pair<String, String>> collectVaryingRequestHeaders(const WebCore::Re
     return varyingRequestHeaders;
 }
 
-bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const WebCore::ResourceRequest& request, SessionID sessionID)
+bool verifyVaryingRequestHeaders(const Vector<std::pair<String, String>>& varyingRequestHeaders, const WebCore::ResourceRequest& request, PAL::SessionID sessionID)
 {
     for (auto& varyingRequestHeader : varyingRequestHeaders) {
         // FIXME: Vary: * in response would ideally trigger a cache delete instead of a store.

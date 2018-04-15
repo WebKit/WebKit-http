@@ -437,23 +437,13 @@ public:
         unsigned parameterCount,
         SourceParseMode mode, bool isArrowFunctionBodyExpression)
     {
-        SourceParseMode bodySourceParseMode = mode;
-        if (mode == SourceParseMode::AsyncGeneratorBodyMode) {
-            ASSERT(Options::useAsyncIterator());
-            bodySourceParseMode = SourceParseMode::AsyncFunctionBodyMode;
-        } else if (mode == SourceParseMode::AsyncGeneratorWrapperFunctionMode) {
-            ASSERT(Options::useAsyncIterator());
-            bodySourceParseMode = SourceParseMode::ArrowFunctionMode;
-        } else if (mode == SourceParseMode::AsyncGeneratorWrapperMethodMode) {
-            ASSERT(Options::useAsyncIterator());
-            bodySourceParseMode = SourceParseMode::AsyncMethodMode;
-        }
+        ASSERT(Options::useAsyncIterator() || (mode != SourceParseMode::AsyncGeneratorBodyMode && mode != SourceParseMode::AsyncGeneratorWrapperFunctionMode && mode != SourceParseMode::AsyncGeneratorWrapperMethodMode));
 
         return new (m_parserArena) FunctionMetadataNode(
             m_parserArena, startLocation, endLocation, startColumn, endColumn, 
             functionKeywordStart, functionNameStart, parametersStart, 
             inStrictContext, constructorKind, superBinding,
-            parameterCount, bodySourceParseMode, isArrowFunctionBodyExpression);
+            parameterCount, mode, isArrowFunctionBodyExpression);
     }
 
     ExpressionNode* createArrowFunctionExpr(const JSTokenLocation& location, const ParserFunctionInfo<ASTBuilder>& functionInfo)
@@ -612,18 +602,18 @@ public:
         return createForInLoop(location, lexpr, iter, statements, declLocation, eStart, eDivot, eEnd, start, end, lexicalVariables);
     }
     
-    StatementNode* createForOfLoop(const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation&, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForOfLoop(bool isForAwait, const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation&, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
-        ForOfNode* result = new (m_parserArena) ForOfNode(location, lhs, iter, statements, lexicalVariables);
+        ForOfNode* result = new (m_parserArena) ForOfNode(isForAwait, location, lhs, iter, statements, lexicalVariables);
         result->setLoc(start, end, location.startOffset, location.lineStartOffset);
         setExceptionLocation(result, eStart, eDivot, eEnd);
         return result;
     }
     
-    StatementNode* createForOfLoop(const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation& declLocation, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForOfLoop(bool isForAwait, const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation& declLocation, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
         auto lexpr = new (m_parserArena) DestructuringAssignmentNode(declLocation, pattern, nullptr);
-        return createForOfLoop(location, lexpr, iter, statements, declLocation, eStart, eDivot, eEnd, start, end, lexicalVariables);
+        return createForOfLoop(isForAwait, location, lexpr, iter, statements, declLocation, eStart, eDivot, eEnd, start, end, lexicalVariables);
     }
 
     bool isBindingNode(const DestructuringPattern& pattern)

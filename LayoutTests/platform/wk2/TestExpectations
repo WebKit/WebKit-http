@@ -563,6 +563,7 @@ platform/mac/fast/events/objc-event-api.html
 
 # WebKitTestRunner needs an implementation of eventSender.beginDragWithFiles
 # https://bugs.webkit.org/show_bug.cgi?id=64285
+editing/pasteboard/datatransfer-items-drop-getAsEntry.html
 editing/pasteboard/datatransfer-items-drop-plaintext-file.html
 editing/pasteboard/file-drag-to-editable.html [ Skip ]
 editing/pasteboard/file-input-files-access.html
@@ -603,6 +604,7 @@ fast/forms/file/input-file-re-render.html
 fast/forms/file/input-file-write-files.html
 fast/forms/file/recover-file-input-in-unposted-form.html
 fast/forms/file/selected-files-from-history-state.html
+fast/forms/file/webkitdirectory-drag-folder.html
 fast/history/page-cache-createObjectURL.html
 fast/workers/worker-copy-shared-blob-url.html
 http/tests/local/blob/send-hybrid-blob.html
@@ -699,6 +701,8 @@ http/tests/loading/resourceLoadStatistics/prune-statistics.html [ Pass ]
 
 webkit.org/b/168092 media/track/track-cues-sorted-before-dispatch.html [ Pass Failure ]
 
-webkit.org/b/172662 http/tests/cache/disk-cache/disk-cache-vary-cookie.html [ Pass Failure ]
-webkit.org/b/172662 http/tests/cache/disk-cache/redirect-chain-limits.html [ Pass Failure ]
+webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/disk-cache-vary-cookie.html [ Pass Failure ]
+webkit.org/b/172662 [ Debug ] http/tests/cache/disk-cache/redirect-chain-limits.html [ Pass Failure ]
+
+webkit.org/b/174471 webrtc/filtering-ice-candidate-after-reload.html [ Pass Timeout ]
 

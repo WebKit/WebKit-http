@@ -21,6 +21,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/Modules/credentials"
     "${WEBCORE_DIR}/Modules/encryptedmedia"
     "${WEBCORE_DIR}/Modules/encryptedmedia/legacy"
+    "${WEBCORE_DIR}/Modules/entriesapi"
     "${WEBCORE_DIR}/Modules/fetch"
     "${WEBCORE_DIR}/Modules/geolocation"
     "${WEBCORE_DIR}/Modules/indexeddb"
@@ -114,6 +115,7 @@ set(WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/websockets"
     "${WEBCORE_DIR}/workers"
     "${WEBCORE_DIR}/workers/service"
+    "${WEBCORE_DIR}/workers/service/server"
     "${WEBCORE_DIR}/xml"
     "${WEBCORE_DIR}/xml/parser"
     "${DERIVED_SOURCES_WEBCORE_DIR}"
@@ -123,6 +125,10 @@ set(WebCore_INCLUDE_DIRECTORIES
 
 set(WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
+    ${LIBXML2_INCLUDE_DIR}
+    ${LIBXSLT_INCLUDE_DIR}
+    ${SQLITE_INCLUDE_DIRS}
+    ${ZLIB_INCLUDE_DIRS}
 )
 
 SET(WebCore_LOCAL_INCLUDE_DIRECTORIES
@@ -157,6 +163,7 @@ set(WebCore_IDL_INCLUDES
     Modules/cache
     Modules/credentials
     Modules/encryptedmedia/legacy
+    Modules/entriesapi
     Modules/fetch
     Modules/geolocation
     Modules/indexeddb
@@ -202,6 +209,16 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/credentials/NavigatorCredentials.idl
     Modules/credentials/PasswordCredential.idl
     Modules/credentials/PasswordCredentialData.idl
+
+    Modules/entriesapi/DOMFileSystem.idl
+    Modules/entriesapi/ErrorCallback.idl
+    Modules/entriesapi/FileCallback.idl
+    Modules/entriesapi/FileSystemDirectoryEntry.idl
+    Modules/entriesapi/FileSystemDirectoryReader.idl
+    Modules/entriesapi/FileSystemEntriesCallback.idl
+    Modules/entriesapi/FileSystemEntry.idl
+    Modules/entriesapi/FileSystemEntryCallback.idl
+    Modules/entriesapi/FileSystemFileEntry.idl
 
     Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
@@ -378,7 +395,6 @@ set(WebCore_NON_SVG_IDL_FILES
     crypto/JsonWebKey.idl
     crypto/RsaOtherPrimesInfo.idl
     crypto/SubtleCrypto.idl
-    crypto/WebKitSubtleCrypto.idl
 
     crypto/keys/CryptoAesKeyAlgorithm.idl
     crypto/keys/CryptoEcKeyAlgorithm.idl
@@ -904,7 +920,9 @@ set(WebCore_SOURCES
     Modules/cache/Cache.cpp
     Modules/cache/CacheStorage.cpp
     Modules/cache/CacheStorageConnection.cpp
+    Modules/cache/DOMCache.cpp
     Modules/cache/DOMWindowCaches.cpp
+    Modules/cache/WorkerCacheStorageConnection.cpp
     Modules/cache/WorkerGlobalScopeCaches.cpp
 
     Modules/credentials/BasicCredential.cpp
@@ -912,6 +930,14 @@ set(WebCore_SOURCES
     Modules/credentials/FederatedCredential.cpp
     Modules/credentials/NavigatorCredentials.cpp
     Modules/credentials/PasswordCredential.cpp
+
+    Modules/entriesapi/ErrorCallback.cpp
+    Modules/entriesapi/DOMFileSystem.cpp
+    Modules/entriesapi/FileSystemDirectoryEntry.cpp
+    Modules/entriesapi/FileSystemDirectoryReader.cpp
+    Modules/entriesapi/FileSystemEntriesCallback.cpp
+    Modules/entriesapi/FileSystemEntry.cpp
+    Modules/entriesapi/FileSystemFileEntry.cpp
 
     Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
@@ -1191,9 +1217,6 @@ set(WebCore_SOURCES
     bindings/js/JSDeprecatedCSSOMValueCustom.cpp
     bindings/js/JSCallbackData.cpp
     bindings/js/JSCanvasRenderingContext2DCustom.cpp
-    bindings/js/JSCryptoAlgorithmDictionary.cpp
-    bindings/js/JSCryptoKeySerializationJWK.cpp
-    bindings/js/JSCryptoOperationData.cpp
     bindings/js/JSCustomElementInterface.cpp
     bindings/js/JSCustomElementRegistryCustom.cpp
     bindings/js/JSCustomEventCustom.cpp
@@ -1222,6 +1245,7 @@ set(WebCore_SOURCES
     bindings/js/JSEventCustom.cpp
     bindings/js/JSEventListener.cpp
     bindings/js/JSEventTargetCustom.cpp
+    bindings/js/JSFileSystemEntryCustom.cpp
     bindings/js/JSHTMLCollectionCustom.cpp
     bindings/js/JSHTMLDocumentCustom.cpp
     bindings/js/JSHTMLElementCustom.cpp
@@ -1251,7 +1275,6 @@ set(WebCore_SOURCES
     bindings/js/JSReadableStreamSourceCustom.cpp
     bindings/js/JSSVGPathSegCustom.cpp
     bindings/js/JSStyleSheetCustom.cpp
-    bindings/js/JSSubtleCryptoCustom.cpp
     bindings/js/JSTextCustom.cpp
     bindings/js/JSTextTrackCueCustom.cpp
     bindings/js/JSTextTrackCustom.cpp
@@ -1264,13 +1287,13 @@ set(WebCore_SOURCES
     bindings/js/JSWebGLRenderingContextCustom.cpp
     bindings/js/JSWebGPURenderPassAttachmentDescriptorCustom.cpp
     bindings/js/JSWebGPURenderingContextCustom.cpp
-    bindings/js/JSWebKitSubtleCryptoCustom.cpp
     bindings/js/JSWorkerGlobalScopeBase.cpp
     bindings/js/JSWorkerGlobalScopeCustom.cpp
     bindings/js/JSXMLDocumentCustom.cpp
     bindings/js/JSXMLHttpRequestCustom.cpp
     bindings/js/JSXPathNSResolverCustom.cpp
     bindings/js/JSXPathResultCustom.cpp
+    bindings/js/ReadableStream.cpp
     bindings/js/ReadableStreamDefaultController.cpp
     bindings/js/ScheduledAction.cpp
     bindings/js/ScriptCachedFrameData.cpp
@@ -1323,7 +1346,6 @@ set(WebCore_SOURCES
     crypto/CryptoAlgorithmRegistry.cpp
     crypto/CryptoKey.cpp
     crypto/SubtleCrypto.cpp
-    crypto/WebKitSubtleCrypto.cpp
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
     crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
@@ -1346,13 +1368,11 @@ set(WebCore_SOURCES
     crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
     crypto/keys/CryptoKeyAES.cpp
-    crypto/keys/CryptoKeyDataOctetSequence.cpp
-    crypto/keys/CryptoKeyDataRSAComponents.cpp
     crypto/keys/CryptoKeyEC.cpp
     crypto/keys/CryptoKeyHMAC.cpp
     crypto/keys/CryptoKeyRSA.cpp
+    crypto/keys/CryptoKeyRSAComponents.cpp
     crypto/keys/CryptoKeyRaw.cpp
-    crypto/keys/CryptoKeySerializationRaw.cpp
 
     css/BasicShapeFunctions.cpp
     css/CSSAspectRatioValue.cpp
@@ -1557,6 +1577,7 @@ set(WebCore_SOURCES
     dom/EventNames.cpp
     dom/EventPath.cpp
     dom/EventTarget.cpp
+    dom/ExceptionData.cpp
     dom/ExtensionStyleSheets.cpp
     dom/FocusEvent.cpp
     dom/GenericEventQueue.cpp
@@ -1751,6 +1772,7 @@ set(WebCore_SOURCES
     html/DateTimeLocalInputType.cpp
     html/EmailInputType.cpp
     html/FTPDirectoryDocument.cpp
+    html/FileListCreator.cpp
     html/FileInputType.cpp
     html/FormAssociatedElement.cpp
     html/FormController.cpp
@@ -2165,7 +2187,6 @@ set(WebCore_SOURCES
     page/SecurityOrigin.cpp
     page/SecurityOriginData.cpp
     page/SecurityPolicy.cpp
-    page/SessionID.cpp
     page/Settings.cpp
     page/SocketProvider.cpp
     page/SpatialNavigation.cpp
@@ -2804,6 +2825,8 @@ set(WebCore_SOURCES
     style/RenderTreePosition.cpp
     style/RenderTreeUpdater.cpp
     style/RenderTreeUpdaterFirstLetter.cpp
+    style/RenderTreeUpdaterGeneratedContent.cpp
+    style/RenderTreeUpdaterListItem.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleInvalidator.cpp
@@ -3000,9 +3023,15 @@ set(WebCore_SOURCES
     workers/service/ServiceWorkerContainer.cpp
     workers/service/ServiceWorkerGlobalScope.cpp
     workers/service/ServiceWorkerJob.cpp
+    workers/service/ServiceWorkerJobData.cpp
     workers/service/ServiceWorkerProvider.cpp
     workers/service/ServiceWorkerRegistration.cpp
-    workers/service/ServiceWorkerRegistrationParameters.cpp
+    workers/service/ServiceWorkerRegistrationKey.cpp
+    workers/service/ServiceWorkerRegistrationOptions.cpp
+
+    workers/service/server/SWClientConnection.cpp
+    workers/service/server/SWServer.cpp
+    workers/service/server/SWServerRegistration.cpp
 
     xml/DOMParser.cpp
     xml/NativeXPathNSResolver.cpp
@@ -3137,6 +3166,10 @@ set(WebCore_PLUG_INS_RESOURCES
 
 set(WebCore_LIBRARIES
     ${ICU_LIBRARIES}
+    ${LIBXML2_LIBRARIES}
+    ${LIBXSLT_LIBRARIES}
+    ${SQLITE_LIBRARIES}
+    ${ZLIB_LIBRARIES}
     JavaScriptCore${DEBUG_SUFFIX}
     PAL${DEBUG_SUFFIX}
 )

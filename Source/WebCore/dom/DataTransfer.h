@@ -24,7 +24,6 @@
 #pragma once
 
 #include "CachedResourceHandle.h"
-#include "DataTransferAccessPolicy.h"
 #include "DragActions.h"
 #include "DragImage.h"
 #include <wtf/text/WTFString.h>
@@ -41,7 +40,10 @@ class Pasteboard;
 
 class DataTransfer : public RefCounted<DataTransfer> {
 public:
-    static Ref<DataTransfer> createForCopyAndPaste(DataTransferAccessPolicy);
+    // https://html.spec.whatwg.org/multipage/dnd.html#drag-data-store-mode
+    enum class StoreMode { Invalid, ReadWrite, Readonly, Protected };
+
+    static Ref<DataTransfer> createForCopyAndPaste(StoreMode);
     static Ref<DataTransfer> createForInputEvent(const String& plainText, const String& htmlText);
 
     WEBCORE_EXPORT ~DataTransfer();
@@ -65,7 +67,8 @@ public:
 
     void setDragImage(Element*, int x, int y);
 
-    void setAccessPolicy(DataTransferAccessPolicy);
+    void makeInvalidForSecurity() { m_storeMode = StoreMode::Invalid; }
+
     bool canReadTypes() const;
     bool canReadData() const;
     bool canWriteData() const;
@@ -77,7 +80,7 @@ public:
 
 #if ENABLE(DRAG_SUPPORT)
     static Ref<DataTransfer> createForDrag();
-    static Ref<DataTransfer> createForDrop(DataTransferAccessPolicy, const DragData&);
+    static Ref<DataTransfer> createForDrop(StoreMode, const DragData&);
 
     bool dropEffectIsUninitialized() const { return m_dropEffect == "uninitialized"; }
 
@@ -92,22 +95,22 @@ public:
 #endif
 
 private:
-    enum Type { CopyAndPaste, DragAndDrop, InputEvent };
-    DataTransfer(DataTransferAccessPolicy, std::unique_ptr<Pasteboard>, Type = CopyAndPaste, bool forFileDrag = false);
+    enum class Type { CopyAndPaste, DragAndDropData, DragAndDropFiles, InputEvent };
+    DataTransfer(StoreMode, std::unique_ptr<Pasteboard>, Type = Type::CopyAndPaste);
 
 #if ENABLE(DRAG_SUPPORT)
-    bool canSetDragImage() const;
+    bool forDrag() const { return m_type == Type::DragAndDropData || m_type == Type::DragAndDropFiles; }
+    bool forFileDrag() const { return m_type == Type::DragAndDropFiles; }
 #endif
 
-    DataTransferAccessPolicy m_policy;
+    StoreMode m_storeMode;
     std::unique_ptr<Pasteboard> m_pasteboard;
     std::unique_ptr<DataTransferItemList> m_itemList;
 
     mutable RefPtr<FileList> m_fileList;
 
 #if ENABLE(DRAG_SUPPORT)
-    bool m_forDrag;
-    bool m_forFileDrag;
+    Type m_type;
     String m_dropEffect;
     String m_effectAllowed;
     bool m_shouldUpdateDragImage;

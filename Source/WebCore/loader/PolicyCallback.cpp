@@ -45,48 +45,12 @@ void PolicyCallback::set(const ResourceRequest& request, FormState* formState, N
     m_frameName = String();
 
     m_navigationFunction = WTFMove(function);
-    m_newWindowFunction = nullptr;
-    m_contentFunction = nullptr;
-}
-
-void PolicyCallback::set(const ResourceRequest& request, FormState* formState, const String& frameName, const NavigationAction& navigationAction, NewWindowPolicyDecisionFunction&& function)
-{
-    m_request = request;
-    m_formState = formState;
-    m_frameName = frameName;
-    m_navigationAction = navigationAction;
-
-    m_navigationFunction = nullptr;
-    m_newWindowFunction = WTFMove(function);
-    m_contentFunction = nullptr;
-}
-
-void PolicyCallback::set(ContentPolicyDecisionFunction&& function)
-{
-    m_request = ResourceRequest();
-    m_formState = nullptr;
-    m_frameName = String();
-
-    m_navigationFunction = nullptr;
-    m_newWindowFunction = nullptr;
-    m_contentFunction = WTFMove(function);
 }
 
 void PolicyCallback::call(bool shouldContinue)
 {
     if (m_navigationFunction)
         m_navigationFunction(m_request, m_formState.get(), shouldContinue);
-    if (m_newWindowFunction)
-        m_newWindowFunction(m_request, m_formState.get(), m_frameName, m_navigationAction, shouldContinue);
-    ASSERT(!m_contentFunction);
-}
-
-void PolicyCallback::call(PolicyAction action)
-{
-    ASSERT(!m_navigationFunction);
-    ASSERT(!m_newWindowFunction);
-    ASSERT(m_contentFunction);
-    m_contentFunction(action);
 }
 
 void PolicyCallback::clearRequest()
@@ -101,10 +65,6 @@ void PolicyCallback::cancel()
     clearRequest();
     if (m_navigationFunction)
         m_navigationFunction(m_request, m_formState.get(), false);
-    if (m_newWindowFunction)
-        m_newWindowFunction(m_request, m_formState.get(), m_frameName, m_navigationAction, false);
-    if (m_contentFunction)
-        m_contentFunction(PolicyIgnore);
 }
 
 } // namespace WebCore

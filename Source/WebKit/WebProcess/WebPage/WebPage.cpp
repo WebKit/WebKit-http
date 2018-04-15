@@ -177,7 +177,6 @@
 #include <WebCore/SchemeRegistry.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SerializedScriptValue.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/Settings.h>
 #include <WebCore/ShadowRoot.h>
 #include <WebCore/SharedBuffer.h>
@@ -193,6 +192,7 @@
 #include <WebCore/WebGLStateTracker.h>
 #include <WebCore/markup.h>
 #include <bindings/ScriptValue.h>
+#include <pal/SessionID.h>
 #include <profiler/ProfilerDatabase.h>
 #include <runtime/JSCInlines.h>
 #include <runtime/JSCJSValue.h>
@@ -856,66 +856,59 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     result.shouldIgnoreSelectionChanges = frame.editor().ignoreSelectionChanges();
 
 #if PLATFORM(COCOA)
-    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::Yes && result.isContentEditable) {
+    bool canIncludePostLayoutData = frame.view() && !frame.view()->needsLayout();
+    if (shouldIncludePostLayoutData == IncludePostLayoutDataHint::Yes && canIncludePostLayoutData && result.isContentEditable) {
         auto& postLayoutData = result.postLayoutData();
         if (!selection.isNone()) {
-            Node* nodeToRemove;
-            if (auto* style = Editor::styleForSelectionStart(&frame, nodeToRemove)) {
-                if (isFontWeightBold(style->fontCascade().weight()))
+            if (auto editingStyle = EditingStyle::styleAtSelectionStart(selection)) {
+                if (editingStyle->hasStyle(CSSPropertyFontWeight, "bold"))
                     postLayoutData.typingAttributes |= AttributeBold;
-                if (isItalic(style->fontCascade().italic()))
+
+                if (editingStyle->hasStyle(CSSPropertyFontStyle, "italic") || editingStyle->hasStyle(CSSPropertyFontStyle, "oblique"))
                     postLayoutData.typingAttributes |= AttributeItalics;
 
-                RefPtr<EditingStyle> typingStyle = frame.selection().typingStyle();
-                if (typingStyle && typingStyle->style()) {
-                    String value = typingStyle->style()->getPropertyValue(CSSPropertyWebkitTextDecorationsInEffect);
-                if (value.contains("underline"))
+                if (editingStyle->hasStyle(CSSPropertyWebkitTextDecorationsInEffect, "underline"))
                     postLayoutData.typingAttributes |= AttributeUnderline;
-                } else {
-                    if (style->textDecorationsInEffect() & TextDecorationUnderline)
-                        postLayoutData.typingAttributes |= AttributeUnderline;
+
+                if (auto* styleProperties = editingStyle->style()) {
+                    bool isLeftToRight = styleProperties->propertyAsValueID(CSSPropertyDirection) == CSSValueLtr;
+                    switch (styleProperties->propertyAsValueID(CSSPropertyTextAlign)) {
+                    case CSSValueRight:
+                    case CSSValueWebkitRight:
+                        postLayoutData.textAlignment = RightAlignment;
+                        break;
+                    case CSSValueLeft:
+                    case CSSValueWebkitLeft:
+                        postLayoutData.textAlignment = LeftAlignment;
+                        break;
+                    case CSSValueCenter:
+                    case CSSValueWebkitCenter:
+                        postLayoutData.textAlignment = CenterAlignment;
+                        break;
+                    case CSSValueJustify:
+                        postLayoutData.textAlignment = JustifiedAlignment;
+                        break;
+                    case CSSValueStart:
+                        postLayoutData.textAlignment = isLeftToRight ? LeftAlignment : RightAlignment;
+                        break;
+                    case CSSValueEnd:
+                        postLayoutData.textAlignment = isLeftToRight ? RightAlignment : LeftAlignment;
+                        break;
+                    default:
+                        break;
+                    }
+                    if (auto textColor = styleProperties->propertyAsColor(CSSPropertyColor))
+                        postLayoutData.textColor = *textColor;
                 }
+            }
 
-                if (style->visitedDependentColor(CSSPropertyColor).isValid())
-                    postLayoutData.textColor = style->visitedDependentColor(CSSPropertyColor);
-
-                switch (style->textAlign()) {
-                case RIGHT:
-                case WEBKIT_RIGHT:
-                    postLayoutData.textAlignment = RightAlignment;
-                    break;
-                case LEFT:
-                case WEBKIT_LEFT:
-                    postLayoutData.textAlignment = LeftAlignment;
-                    break;
-                case CENTER:
-                case WEBKIT_CENTER:
-                    postLayoutData.textAlignment = CenterAlignment;
-                    break;
-                case JUSTIFY:
-                    postLayoutData.textAlignment = JustifiedAlignment;
-                    break;
-                case TASTART:
-                    postLayoutData.textAlignment = style->isLeftToRightDirection() ? LeftAlignment : RightAlignment;
-                    break;
-                case TAEND:
-                    postLayoutData.textAlignment = style->isLeftToRightDirection() ? RightAlignment : LeftAlignment;
-                    break;
-                }
-                
-                HTMLElement* enclosingListElement = enclosingList(selection.start().deprecatedNode());
-                if (enclosingListElement) {
-                    if (is<HTMLUListElement>(*enclosingListElement))
-                        postLayoutData.enclosingListType = UnorderedList;
-                    else if (is<HTMLOListElement>(*enclosingListElement))
-                        postLayoutData.enclosingListType = OrderedList;
-                    else
-                        ASSERT_NOT_REACHED();
-                } else
-                    postLayoutData.enclosingListType = NoList;
-
-                if (nodeToRemove)
-                    nodeToRemove->remove();
+            if (auto* enclosingListElement = enclosingList(selection.start().containerNode())) {
+                if (is<HTMLUListElement>(*enclosingListElement))
+                    postLayoutData.enclosingListType = UnorderedList;
+                else if (is<HTMLOListElement>(*enclosingListElement))
+                    postLayoutData.enclosingListType = OrderedList;
+                else
+                    ASSERT_NOT_REACHED();
             }
         }
     }
@@ -928,6 +921,12 @@ EditorState WebPage::editorState(IncludePostLayoutDataHint shouldIncludePostLayo
     return result;
 }
 
+void WebPage::executeEditCommandWithCallback(const String& commandName, const String& argument, CallbackID callbackID)
+{
+    executeEditCommand(commandName, argument);
+    send(Messages::WebPageProxy::VoidCallback(callbackID));
+}
+
 void WebPage::updateEditorStateAfterLayoutIfEditabilityChanged()
 {
     // FIXME: We should update EditorStateIsContentEditable to track whether the state is richly
@@ -938,7 +937,7 @@ void WebPage::updateEditorStateAfterLayoutIfEditabilityChanged()
     Frame& frame = m_page->focusController().focusedOrMainFrame();
     EditorStateIsContentEditable editorStateIsContentEditable = frame.selection().selection().isContentEditable() ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
     if (m_lastEditorStateWasContentEditable != editorStateIsContentEditable)
-        send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+        sendPartialEditorStateAndSchedulePostLayoutUpdate();
 }
 
 String WebPage::renderTreeExternalRepresentation() const
@@ -1989,6 +1988,16 @@ static void paintSnapshotAtSize(const IntRect& rect, const IntSize& bitmapSize, 
     }
 }
 
+static ShareableBitmap::Configuration snapshotOptionsToBitmapConfiguration(SnapshotOptions options, WebPage& page)
+{
+    ShareableBitmap::Configuration configuration;
+#if USE(CG)
+    if (options & SnapshotOptionsUseScreenColorSpace)
+        configuration.colorSpace.cgColorSpace = screenColorSpace(page.corePage()->mainFrame().view());
+#endif
+    return configuration;
+}
+
 RefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize& bitmapSize, SnapshotOptions options)
 {
     Frame* coreFrame = m_mainFrame->coreFrame();
@@ -1999,7 +2008,9 @@ RefPtr<WebImage> WebPage::snapshotAtSize(const IntRect& rect, const IntSize& bit
     if (!frameView)
         return nullptr;
 
-    auto snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options));
+    auto snapshot = WebImage::create(bitmapSize, snapshotOptionsToImageOptions(options), snapshotOptionsToBitmapConfiguration(options, *this));
+    if (!snapshot)
+        return nullptr;
     auto graphicsContext = snapshot->bitmap().createGraphicsContext();
 
     paintSnapshotAtSize(rect, bitmapSize, options, *coreFrame, *frameView, *graphicsContext);
@@ -2066,8 +2077,9 @@ RefPtr<WebImage> WebPage::snapshotNode(WebCore::Node& node, SnapshotOptions opti
         snapshotSize = IntSize(snapshotSize.width() * scaleFactor, maximumHeight);
     }
 
-    auto snapshot = WebImage::create(snapshotSize, snapshotOptionsToImageOptions(options));
-
+    auto snapshot = WebImage::create(snapshotSize, snapshotOptionsToImageOptions(options), snapshotOptionsToBitmapConfiguration(options, *this));
+    if (!snapshot)
+        return nullptr;
     auto graphicsContext = snapshot->bitmap().createGraphicsContext();
 
     if (!(options & SnapshotOptionsExcludeDeviceScaleFactor)) {
@@ -2714,7 +2726,7 @@ void WebPage::setLayerHostingMode(LayerHostingMode layerHostingMode)
         pluginView->setLayerHostingMode(m_layerHostingMode);
 }
 
-void WebPage::setSessionID(SessionID sessionID)
+void WebPage::setSessionID(PAL::SessionID sessionID)
 {
     if (sessionID.isEphemeral())
         WebProcess::singleton().ensurePrivateBrowsingSession(sessionID);
@@ -3049,9 +3061,9 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setFrameFlattening(static_cast<WebCore::FrameFlattening>(store.getUInt32ValueForKey(WebPreferencesKey::frameFlatteningKey())));
     settings.setAsyncFrameScrollingEnabled(store.getBoolValueForKey(WebPreferencesKey::asyncFrameScrollingEnabledKey()));
     if (store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && !usesEphemeralSession())
-        setSessionID(SessionID::legacyPrivateSessionID());
-    else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == SessionID::legacyPrivateSessionID())
-        setSessionID(SessionID::defaultSessionID());
+        setSessionID(PAL::SessionID::legacyPrivateSessionID());
+    else if (!store.getBoolValueForKey(WebPreferencesKey::privateBrowsingEnabledKey()) && sessionID() == PAL::SessionID::legacyPrivateSessionID())
+        setSessionID(PAL::SessionID::defaultSessionID());
     settings.setDeveloperExtrasEnabled(store.getBoolValueForKey(WebPreferencesKey::developerExtrasEnabledKey()));
     settings.setJavaScriptRuntimeFlags(RuntimeFlags(store.getUInt32ValueForKey(WebPreferencesKey::javaScriptRuntimeFlagsKey())));
     settings.setTextAreasAreResizable(store.getBoolValueForKey(WebPreferencesKey::textAreasAreResizableKey()));
@@ -3355,6 +3367,7 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     RuntimeEnabledFeatures::sharedFeatures().setMediaPreloadingEnabled(store.getBoolValueForKey(WebPreferencesKey::mediaPreloadingEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setCredentialManagementEnabled(store.getBoolValueForKey(WebPreferencesKey::credentialManagementEnabledKey()));
     RuntimeEnabledFeatures::sharedFeatures().setIsSecureContextAttributeEnabled(store.getBoolValueForKey(WebPreferencesKey::isSecureContextAttributeEnabledKey()));
+    RuntimeEnabledFeatures::sharedFeatures().setDirectoryUploadEnabled(store.getBoolValueForKey(WebPreferencesKey::directoryUploadEnabledKey()));
 
     bool processSuppressionEnabled = store.getBoolValueForKey(WebPreferencesKey::pageVisibilityBasedProcessSuppressionEnabledKey());
     if (m_processSuppressionEnabled != processSuppressionEnabled) {
@@ -3437,6 +3450,11 @@ void WebPage::willCommitLayerTree(RemoteLayerTreeTransaction& layerTransaction)
 #if PLATFORM(MAC)
     layerTransaction.setScrollPosition(frameView->scrollPosition());
 #endif
+
+    if (m_hasPendingEditorStateUpdate) {
+        layerTransaction.setEditorState(editorState());
+        m_hasPendingEditorStateUpdate = false;
+    }
 }
 
 void WebPage::didFlushLayerTreeAtTime(MonotonicTime timestamp)
@@ -4434,7 +4452,7 @@ void WebPage::drawRectToImage(uint64_t frameID, const PrintInfo& printInfo, cons
         ASSERT(coreFrame->document()->printing());
 #endif
 
-        auto bitmap = ShareableBitmap::createShareable(imageSize, ShareableBitmap::SupportsAlpha);
+        auto bitmap = ShareableBitmap::createShareable(imageSize, { });
         if (!bitmap) {
             ASSERT_NOT_REACHED();
             return;
@@ -4544,9 +4562,9 @@ void WebPage::didFinishPrintOperation(const WebCore::ResourceError& error, Callb
 }
 #endif
 
-void WebPage::savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size)
+void WebPage::savePDFToFileInDownloadsFolder(const String& suggestedFilename, const URL& originatingURL, const uint8_t* data, unsigned long size)
 {
-    send(Messages::WebPageProxy::SavePDFToFileInDownloadsFolder(suggestedFilename, originatingURLString, IPC::DataReference(data, size)));
+    send(Messages::WebPageProxy::SavePDFToFileInDownloadsFolder(suggestedFilename, originatingURL, IPC::DataReference(data, size)));
 }
 
 #if PLATFORM(COCOA)
@@ -4825,11 +4843,10 @@ void WebPage::insertTextAsync(const String& text, const EditingRange& replacemen
 
     bool replacesText = false;
     if (replacementEditingRange.location != notFound) {
-        RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo));
-        if (replacementRange) {
+        if (auto replacementRange = rangeFromEditingRange(frame, replacementEditingRange, static_cast<EditingRangeIsRelativeTo>(editingRangeIsRelativeTo))) {
             SetForScope<bool> isSelectingTextWhileInsertingAsynchronously(m_isSelectingTextWhileInsertingAsynchronously, suppressSelectionUpdate);
             frame.selection().setSelection(VisibleSelection(*replacementRange, SEL_DEFAULT_AFFINITY));
-            replacesText = true;
+            replacesText = replacementEditingRange.length;
         }
     }
     
@@ -5049,6 +5066,16 @@ static bool needsPlainTextQuirk(bool needsQuirks, const URL& url)
 }
 #endif
 
+void WebPage::didApplyStyle()
+{
+    sendEditorStateUpdate();
+}
+
+void WebPage::didChangeContents()
+{
+    sendEditorStateUpdate();
+}
+
 void WebPage::didChangeSelection()
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
@@ -5062,14 +5089,6 @@ void WebPage::didChangeSelection()
     // end up with a range selection very briefly right before inserting the text.
     if (m_isSelectingTextWhileInsertingAsynchronously)
         return;
-
-    FrameView* view = frame.view();
-
-    // If there is a layout pending, we should avoid populating EditorState that require layout to be done or it will
-    // trigger a synchronous layout every time the selection changes. sendPostLayoutEditorStateIfNeeded() will be called
-    // to send the full editor state after layout is done if we send a partial editor state here.
-    auto editorState = this->editorState(view && view->needsLayout() ? IncludePostLayoutDataHint::No : IncludePostLayoutDataHint::Yes);
-    m_isEditorStateMissingPostLayoutData = editorState.isMissingPostLayoutData;
 
 #if PLATFORM(MAC)
     bool hasPreviouslyFocusedDueToUserInteraction = m_hasEverFocusedElementDueToUserInteractionSincePageTransition;
@@ -5096,15 +5115,11 @@ void WebPage::didChangeSelection()
     if (frame.editor().hasComposition() && !frame.editor().ignoreSelectionChanges() && !frame.selection().isNone()) {
         frame.editor().cancelComposition();
         discardedComposition();
-    } else
-        send(Messages::WebPageProxy::EditorStateChanged(editorState));
-#else
-    send(Messages::WebPageProxy::EditorStateChanged(editorState), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+        return;
+    }
 #endif
 
-#if PLATFORM(IOS)
-    m_drawingArea->scheduleCompositingLayerFlush();
-#endif
+    sendPartialEditorStateAndSchedulePostLayoutUpdate();
 }
 
 void WebPage::resetAssistedNodeForFrame(WebFrame* frame)
@@ -5169,24 +5184,28 @@ void WebPage::elementDidBlur(WebCore::Node* node)
     }
 }
 
-void WebPage::sendPostLayoutEditorStateIfNeeded()
+void WebPage::didUpdateComposition()
 {
-    if (!m_isEditorStateMissingPostLayoutData)
-        return;
+    sendEditorStateUpdate();
+}
 
-    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::Yes)), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
-    m_isEditorStateMissingPostLayoutData = false;
+void WebPage::didEndUserTriggeredSelectionChanges()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (!frame.editor().ignoreSelectionChanges())
+        sendEditorStateUpdate();
 }
 
 void WebPage::discardedComposition()
 {
     send(Messages::WebPageProxy::CompositionWasCanceled());
-    send(Messages::WebPageProxy::EditorStateChanged(editorState()));
+    sendEditorStateUpdate();
 }
 
 void WebPage::canceledComposition()
 {
     send(Messages::WebPageProxy::CompositionWasCanceled());
+    sendEditorStateUpdate();
 }
 
 void WebPage::setMinimumLayoutSize(const IntSize& minimumLayoutSize)
@@ -5604,6 +5623,54 @@ void WebPage::reportUsedFeatures()
     m_loaderClient->featuresUsedInPage(*this, namedFeatures);
 }
 
+void WebPage::sendEditorStateUpdate()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.editor().ignoreSelectionChanges())
+        return;
+
+    m_hasPendingEditorStateUpdate = false;
+
+    // If we immediately dispatch an EditorState update to the UI process, layout may not be up to date yet.
+    // If that is the case, just send what we have (i.e. don't include post-layout data) and wait until the
+    // next layer tree commit to compute and send the complete EditorState over.
+    auto state = editorState();
+    send(Messages::WebPageProxy::EditorStateChanged(state), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+
+    if (state.isMissingPostLayoutData) {
+        m_hasPendingEditorStateUpdate = true;
+        m_drawingArea->scheduleCompositingLayerFlush();
+    }
+}
+
+void WebPage::sendPartialEditorStateAndSchedulePostLayoutUpdate()
+{
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.editor().ignoreSelectionChanges())
+        return;
+
+    send(Messages::WebPageProxy::EditorStateChanged(editorState(IncludePostLayoutDataHint::No)), pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
+
+    if (m_hasPendingEditorStateUpdate)
+        return;
+
+    // Flag the next layer flush to compute and propagate an EditorState to the UI process.
+    m_hasPendingEditorStateUpdate = true;
+    m_drawingArea->scheduleCompositingLayerFlush();
+}
+
+void WebPage::flushPendingEditorStateUpdate()
+{
+    if (!m_hasPendingEditorStateUpdate)
+        return;
+
+    Frame& frame = m_page->focusController().focusedOrMainFrame();
+    if (frame.editor().ignoreSelectionChanges())
+        return;
+
+    sendEditorStateUpdate();
+}
+
 void WebPage::updateWebsitePolicies(const WebsitePolicies& websitePolicies)
 {
     if (!m_page)
@@ -5932,10 +5999,7 @@ void WebPage::stopAllURLSchemeTasks()
 void WebPage::registerURLSchemeHandler(uint64_t handlerIdentifier, const String& scheme)
 {
     auto schemeResult = m_schemeToURLSchemeHandlerProxyMap.add(scheme, WebURLSchemeHandlerProxy::create(*this, handlerIdentifier));
-    ASSERT(schemeResult.isNewEntry);
-
-    auto identifierResult = m_identifierToURLSchemeHandlerProxyMap.add(handlerIdentifier, schemeResult.iterator->value.get());
-    ASSERT_UNUSED(identifierResult, identifierResult.isNewEntry);
+    m_identifierToURLSchemeHandlerProxyMap.add(handlerIdentifier, schemeResult.iterator->value.get());
 }
 
 void WebPage::urlSchemeTaskDidPerformRedirection(uint64_t handlerIdentifier, uint64_t taskIdentifier, ResourceResponse&& response, ResourceRequest&& request)

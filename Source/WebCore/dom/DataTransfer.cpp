@@ -57,26 +57,24 @@ private:
 
 #endif
 
-DataTransfer::DataTransfer(DataTransferAccessPolicy policy, std::unique_ptr<Pasteboard> pasteboard, Type type, bool forFileDrag)
-    : m_policy(policy)
+DataTransfer::DataTransfer(StoreMode mode, std::unique_ptr<Pasteboard> pasteboard, Type type)
+    : m_storeMode(mode)
     , m_pasteboard(WTFMove(pasteboard))
 #if ENABLE(DRAG_SUPPORT)
-    , m_forDrag(type == DragAndDrop)
-    , m_forFileDrag(forFileDrag)
+    , m_type(type)
     , m_dropEffect(ASCIILiteral("uninitialized"))
     , m_effectAllowed(ASCIILiteral("uninitialized"))
     , m_shouldUpdateDragImage(false)
 #endif
 {
 #if !ENABLE(DRAG_SUPPORT)
-    ASSERT_UNUSED(type, type != DragAndDrop);
-    ASSERT_UNUSED(forFileDrag, !forFileDrag);
+    ASSERT_UNUSED(type, type != Type::DragAndDropData && type != Type::DragAndDropFiles);
 #endif
 }
 
-Ref<DataTransfer> DataTransfer::createForCopyAndPaste(DataTransferAccessPolicy policy)
+Ref<DataTransfer> DataTransfer::createForCopyAndPaste(StoreMode mode)
 {
-    return adoptRef(*new DataTransfer(policy, policy == DataTransferAccessPolicy::Writable ? Pasteboard::createPrivate() : Pasteboard::createForCopyAndPaste()));
+    return adoptRef(*new DataTransfer(mode, mode == StoreMode::ReadWrite ? Pasteboard::createPrivate() : Pasteboard::createForCopyAndPaste()));
 }
 
 DataTransfer::~DataTransfer()
@@ -86,27 +84,36 @@ DataTransfer::~DataTransfer()
         m_dragImageLoader->stopLoading(m_dragImage);
 #endif
 }
-    
-void DataTransfer::setAccessPolicy(DataTransferAccessPolicy policy)
-{
-    // Once the dataTransfer goes numb, it can never go back.
-    ASSERT(m_policy != DataTransferAccessPolicy::Numb || policy == DataTransferAccessPolicy::Numb);
-    m_policy = policy;
-}
 
 bool DataTransfer::canReadTypes() const
 {
-    return m_policy == DataTransferAccessPolicy::Readable || m_policy == DataTransferAccessPolicy::TypesReadable || m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::Readonly || m_storeMode == StoreMode::Protected || m_storeMode == StoreMode::ReadWrite;
 }
 
 bool DataTransfer::canReadData() const
 {
-    return m_policy == DataTransferAccessPolicy::Readable || m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::Readonly || m_storeMode == StoreMode::ReadWrite;
 }
 
 bool DataTransfer::canWriteData() const
 {
-    return m_policy == DataTransferAccessPolicy::Writable;
+    return m_storeMode == StoreMode::ReadWrite;
+}
+
+static String normalizeType(const String& type)
+{
+    if (type.isNull())
+        return type;
+
+    String lowercaseType = type.stripWhiteSpace().convertToASCIILowercase();
+    if (lowercaseType == "text" || lowercaseType.startsWithIgnoringASCIICase("text/plain;"))
+        return "text/plain";
+    if (lowercaseType == "url" || lowercaseType.startsWithIgnoringASCIICase("text/uri-list;"))
+        return "text/uri-list";
+    if (lowercaseType.startsWithIgnoringASCIICase("text/html;"))
+        return "text/html";
+
+    return lowercaseType;
 }
 
 void DataTransfer::clearData(const String& type)
@@ -114,10 +121,13 @@ void DataTransfer::clearData(const String& type)
     if (!canWriteData())
         return;
 
-    if (type.isNull())
+    String normalizedType = normalizeType(type);
+    if (normalizedType.isNull())
         m_pasteboard->clear();
     else
-        m_pasteboard->clear(type);
+        m_pasteboard->clear(normalizedType);
+    if (m_itemList)
+        m_itemList->didClearStringData(normalizedType);
 }
 
 String DataTransfer::getData(const String& type) const
@@ -126,11 +136,11 @@ String DataTransfer::getData(const String& type) const
         return String();
 
 #if ENABLE(DRAG_SUPPORT)
-    if (m_forFileDrag)
-        return String();
+    if (forFileDrag() && m_pasteboard->readFilenames().size())
+        return { };
 #endif
 
-    return m_pasteboard->readString(type);
+    return m_pasteboard->readString(normalizeType(type));
 }
 
 void DataTransfer::setData(const String& type, const String& data)
@@ -139,11 +149,14 @@ void DataTransfer::setData(const String& type, const String& data)
         return;
 
 #if ENABLE(DRAG_SUPPORT)
-    if (m_forFileDrag)
+    if (forFileDrag() && m_pasteboard->readFilenames().size())
         return;
 #endif
 
-    m_pasteboard->writeString(type, data);
+    String normalizedType = normalizeType(type);
+    m_pasteboard->writeString(normalizedType, data);
+    if (m_itemList)
+        m_itemList->didSetStringData(normalizedType);
 }
 
 DataTransferItemList& DataTransfer::items()
@@ -173,7 +186,7 @@ FileList& DataTransfer::files() const
     }
 
 #if ENABLE(DRAG_SUPPORT)
-    if (m_forDrag && !m_forFileDrag) {
+    if (forDrag() && !forFileDrag()) {
         ASSERT(m_fileList->isEmpty());
         return *m_fileList;
     }
@@ -210,7 +223,7 @@ Ref<DataTransfer> DataTransfer::createForInputEvent(const String& plainText, con
     TypeToStringMap typeToStringMap;
     typeToStringMap.set(ASCIILiteral("text/plain"), plainText);
     typeToStringMap.set(ASCIILiteral("text/html"), htmlText);
-    return adoptRef(*new DataTransfer(DataTransferAccessPolicy::Readable, StaticPasteboard::create(WTFMove(typeToStringMap)), InputEvent));
+    return adoptRef(*new DataTransfer(StoreMode::Readonly, StaticPasteboard::create(WTFMove(typeToStringMap)), Type::InputEvent));
 }
 
 #if !ENABLE(DRAG_SUPPORT)
@@ -241,26 +254,18 @@ void DataTransfer::setDragImage(Element*, int, int)
 
 Ref<DataTransfer> DataTransfer::createForDrag()
 {
-    return adoptRef(*new DataTransfer(DataTransferAccessPolicy::Writable, Pasteboard::createForDragAndDrop(), DragAndDrop));
+    return adoptRef(*new DataTransfer(StoreMode::ReadWrite, Pasteboard::createForDragAndDrop(), Type::DragAndDropData));
 }
 
-Ref<DataTransfer> DataTransfer::createForDrop(DataTransferAccessPolicy policy, const DragData& dragData)
+Ref<DataTransfer> DataTransfer::createForDrop(StoreMode accessMode, const DragData& dragData)
 {
-    return adoptRef(*new DataTransfer(policy, Pasteboard::createForDragAndDrop(dragData), DragAndDrop, dragData.containsFiles()));
-}
-
-bool DataTransfer::canSetDragImage() const
-{
-    // Note that the spec doesn't actually allow drag image modification outside the dragstart
-    // event. This capability is maintained for backwards compatiblity for ports that have
-    // supported this in the past. On many ports, attempting to set a drag image outside the
-    // dragstart operation is a no-op anyway.
-    return m_forDrag && (m_policy == DataTransferAccessPolicy::ImageWritable || m_policy == DataTransferAccessPolicy::Writable);
+    auto type = dragData.containsFiles() ? Type::DragAndDropFiles : Type::DragAndDropData;
+    return adoptRef(*new DataTransfer(accessMode, Pasteboard::createForDragAndDrop(dragData), type));
 }
 
 void DataTransfer::setDragImage(Element* element, int x, int y)
 {
-    if (!canSetDragImage())
+    if (!forDrag() || !canWriteData())
         return;
 
     CachedImage* image = nullptr;
@@ -416,7 +421,7 @@ String DataTransfer::dropEffect() const
 
 void DataTransfer::setDropEffect(const String& effect)
 {
-    if (!m_forDrag)
+    if (!forDrag())
         return;
 
     if (effect != "none" && effect != "copy" && effect != "link" && effect != "move")
@@ -437,7 +442,7 @@ String DataTransfer::effectAllowed() const
 
 void DataTransfer::setEffectAllowed(const String& effect)
 {
-    if (!m_forDrag)
+    if (!forDrag())
         return;
 
     // Ignore any attempts to set it to an unknown value.

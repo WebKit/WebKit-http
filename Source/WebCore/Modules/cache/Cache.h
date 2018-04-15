@@ -43,7 +43,9 @@ public:
     using KeysPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<FetchRequest>>>;
 
     void match(RequestInfo&&, CacheQueryOptions&&, Ref<DeferredPromise>&&);
-    void matchAll(std::optional<RequestInfo>&&, CacheQueryOptions&&, Ref<DeferredPromise>&&);
+
+    using MatchAllPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<FetchResponse>>>;
+    void matchAll(std::optional<RequestInfo>&&, CacheQueryOptions&&, MatchAllPromise&&);
     void add(RequestInfo&&, DOMPromiseDeferred<void>&&);
 
     void addAll(Vector<RequestInfo>&&, DOMPromiseDeferred<void>&&);
@@ -54,11 +56,13 @@ public:
     const String& name() const { return m_name; }
     uint64_t identifier() const { return m_identifier; }
 
+    using MatchCallback = WTF::Function<void(FetchResponse*)>;
+    void doMatch(RequestInfo&&, CacheQueryOptions&&, MatchCallback&&);
+
 private:
     Cache(ScriptExecutionContext&, String&& name, uint64_t identifier, Ref<CacheStorageConnection>&&);
 
-    enum class MatchType { All, OnlyFirst };
-    void doMatch(std::optional<RequestInfo>&&, CacheQueryOptions&&, Ref<DeferredPromise>&&, MatchType);
+    ExceptionOr<Ref<FetchRequest>> requestFromInfo(RequestInfo&&, bool ignoreMethod);
 
     // ActiveDOMObject
     void stop() final;
@@ -68,10 +72,11 @@ private:
     void retrieveRecords(WTF::Function<void()>&&);
     Vector<CacheStorageRecord> queryCacheWithTargetStorage(const FetchRequest&, const CacheQueryOptions&, const Vector<CacheStorageRecord>&);
     void queryCache(Ref<FetchRequest>&&, CacheQueryOptions&&, WTF::Function<void(const Vector<CacheStorageRecord>&)>&&);
-    void batchDeleteOperation(const FetchRequest&, CacheQueryOptions&&, WTF::Function<void(bool didRemoval, CacheStorageConnection::Error)>&&);
-    void batchPutOperation(const FetchRequest&, FetchResponse&, WTF::Function<void(CacheStorageConnection::Error)>&&);
+    void batchDeleteOperation(const FetchRequest&, CacheQueryOptions&&, WTF::Function<void(ExceptionOr<bool>&&)>&&);
+    void batchPutOperation(const FetchRequest&, FetchResponse&, DOMCache::ResponseBody&&, WTF::Function<void(ExceptionOr<void>&&)>&&);
+    void batchPutOperation(Vector<DOMCache::Record>&&, WTF::Function<void(ExceptionOr<void>&&)>&&);
 
-    void updateRecords(Vector<CacheStorageConnection::Record>&&);
+    void updateRecords(Vector<DOMCache::Record>&&);
 
     String m_name;
     uint64_t m_identifier;

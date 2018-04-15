@@ -1,3 +1,363 @@
+2017-08-29  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Critical content browser toolbar buttons are hidden at narrow widths
+        https://bugs.webkit.org/show_bug.cgi?id=175999
+
+        Reviewed by Devin Rousso.
+
+        This patch adds a VisibilityPriority concept to NavigationItems. If a
+        NavigationBar cannot fit all of its items in the available space, items
+        are hidden to make room, starting with the lowest priority item. Consecutive
+        dividers are then collapsed, as well as leading and trailing dividers.
+
+        * UserInterface/Main.html:
+        New file.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+        * UserInterface/Views/ConsoleDrawer.js:
+        (WI.ConsoleDrawer):
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser):
+        * UserInterface/Views/ContentBrowserTabContentView.js:
+        (WI.ContentBrowserTabContentView):
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        Set `High` and `Low` priorities, and group the back/forward buttons.
+
+        * UserInterface/Views/GroupNavigationItem.js: Added.
+        (WI.GroupNavigationItem):
+        (WI.GroupNavigationItem.prototype.get navigationItems):
+        (WI.GroupNavigationItem.prototype.get minimumWidth):
+        (WI.GroupNavigationItem.prototype.updateLayout):
+        (WI.GroupNavigationItem.prototype.didAttach):
+        (WI.GroupNavigationItem.prototype.didDetach):
+        NavigationItem groups. Grouped items are shown/hidden together.
+
+        * UserInterface/Views/HierarchicalPathNavigationItem.js:
+        (WI.HierarchicalPathNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/ImageResourceContentView.js:
+        (WI.ImageResourceContentView):
+        * UserInterface/Views/IndexedDatabaseObjectStoreContentView.js:
+        (WI.IndexedDatabaseObjectStoreContentView):
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView):
+        Set `High` and `Low` priorities.
+
+        * UserInterface/Views/NavigationBar.css:
+        (.navigation-bar .item.force-hidden):
+        New hidden class, which must be tracked separately from ".hidden".
+        The former is an implementation detail of NavigationBar, while the
+        latter is set by the client.
+
+        * UserInterface/Views/NavigationBar.js:
+        (WI.NavigationBar.prototype.insertNavigationItem):
+        (WI.NavigationBar.prototype.removeNavigationItem):
+        (WI.NavigationBar.prototype.findNavigationItem.matchingSelfOrChild):
+        (WI.NavigationBar.prototype.findNavigationItem):
+        (WI.NavigationBar.prototype.layout.forceItemHidden):
+        (WI.NavigationBar.prototype.layout.isDivider):
+        (WI.NavigationBar.prototype.layout.calculateVisibleItemWidth):
+        (WI.NavigationBar.prototype.layout):
+        (WI.NavigationBar.prototype._calculateMinimumWidth):
+        (WI.NavigationBar.prototype.get _visibleNavigationItems):
+        (WI.NavigationBar):
+
+        * UserInterface/Views/NavigationItem.js:
+        Add support for visibility priority, an integer value that determines the
+        order in which items are hidden when the NavigationBar becomes too narrow
+        to fit all of items child items. NavigationIte3m defines constants for
+        Low, Normal (the default), and High priority.
+
+        (WI.NavigationItem):
+        (WI.NavigationItem.prototype.get minimumWidth):
+        (WI.NavigationItem.prototype.get width):
+        (WI.NavigationItem.prototype.get visibilityPriority):
+        (WI.NavigationItem.prototype.set visibilityPriority):
+        (WI.NavigationItem.prototype.updateLayout):
+        (WI.NavigationItem.prototype.didAttach):
+        (WI.NavigationItem.prototype.didDetach):
+        Encapsulate the setting of the parent NavigationBar. Needed so that
+        GroupNavigationItem can forward this action to its children.
+
+        * UserInterface/Views/NetworkGridContentView.js:
+        (WI.NetworkGridContentView):
+        * UserInterface/Views/RadioButtonNavigationItem.js:
+        (WI.RadioButtonNavigationItem.prototype.updateLayout):
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        * UserInterface/Views/ScriptContentView.js:
+        (WI.ScriptContentView):
+        * UserInterface/Views/TextContentView.js:
+        (WI.TextContentView):
+        * UserInterface/Views/TextResourceContentView.js:
+        (WI.TextResourceContentView):
+        * UserInterface/Views/TimelineRecordingContentView.js:
+        (WI.TimelineRecordingContentView):
+        * UserInterface/Views/TimelineTabContentView.js:
+        (WI.TimelineTabContentView):
+        Set `High` and `Low` priorities, and group Timeline view mode buttons.
+
+2017-08-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        REGRESSION(r220235): Web Inspector: Global search should not happen incrementally
+        https://bugs.webkit.org/show_bug.cgi?id=176063
+
+        Reviewed by Devin Rousso.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        * UserInterface/Views/SearchBar.js:
+        (WI.SearchBar):
+        (WI.SearchBar.prototype._handleKeydownEvent):
+        Remove delegate and simplify setting incremental.
+
+2017-08-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Convert all methods in Utilities.js to ECMAScript 2015 shorthand syntax
+        https://bugs.webkit.org/show_bug.cgi?id=176067
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Utilities.js:
+        (get return):
+        (addStringToken):
+        (prettyFunctionName):
+        (warn):
+        (error):
+        (isEmptyObject):
+        (isEnterKey):
+        (resolveDotsInPath):
+        (parseMIMEType):
+        (simpleGlobStringToRegExp):
+        (defaultComparator):
+        (get Object):
+        (appendWebInspectorSourceURL):
+        (appendWebInspectorConsoleEvaluationSourceURL):
+        (isWebInspectorInternalScript):
+        (isWebInspectorConsoleEvaluationScript):
+        (isWebKitInjectedScript):
+        (isWebKitInternalScript):
+        (isFunctionStringNativeCode):
+        (isTextLikelyMinified):
+        (doubleQuotedString):
+        (insertionIndexForObjectInListSortedByFunction):
+        (insertObjectIntoSortedArray):
+        (decodeBase64ToBlob):
+
+2017-08-29  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Optimize View.prototype.removeSubview
+        https://bugs.webkit.org/show_bug.cgi?id=176041
+
+        Reviewed by Matt Baker.
+
+        Look up a subview in an array only once, not twice.
+
+        * UserInterface/Base/Utilities.js:
+        (Array.prototype.removeAll):
+        (Array.prototype.remove):
+        Split Array.propotype.remove(value, onlyFirst) into Array.propotype.removeAll(value) and
+        Array.propotype.remove(value).
+
+        * UserInterface/Controllers/DebuggerManager.js:
+        (WI.DebuggerManager.prototype._debuggerBreakpointOptions):
+        * UserInterface/Views/ContentViewContainer.js:
+        (WI.ContentViewContainer.prototype._clearTombstonesForContentView):
+        (WI.ContentViewContainer.prototype._disassociateFromContentView):
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.removeSubview):
+
+2017-08-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: Remove some unused DataGrid code
+        https://bugs.webkit.org/show_bug.cgi?id=176029
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.js:
+        (WI.DataGrid.prototype.get copyTextDelimiter):
+        (WI.DataGrid.prototype.set copyTextDelimiter):
+        (WI.DataGrid.prototype.resizerDragging):
+        (WI.DataGrid.prototype.columnWidthsMap): Deleted.
+        (WI.DataGrid.prototype.applyColumnWidthsMap): Deleted.
+        (WI.DataGrid.prototype.get resizeMethod): Deleted.
+        (WI.DataGrid.prototype.set resizeMethod): Deleted.
+
+2017-08-27  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Record actions performed on WebGLRenderingContext
+        https://bugs.webkit.org/show_bug.cgi?id=174483
+        <rdar://problem/34040722>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording):
+        (WI.Recording.fromPayload):
+        (WI.Recording.prototype.swizzle):
+        Add swizzle types for WebGL parameters.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.get snapshot):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+        Include an optional fourth parameter `snapshot` that will be sent for visual actions when
+        recording WebGL canvas contexts.
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+        (WI.RecordingContentView.prototype.get navigationItems):
+        (WI.RecordingContentView.prototype.updateActionIndex):
+        (WI.RecordingContentView.prototype.shown):
+        (WI.RecordingContentView.prototype._generateContentCanvasWebGL):
+        * UserInterface/Views/RecordingContentView.css:
+        (.content-view:not(.tab).recording :matches(img, canvas)):
+        (.content-view:not(.tab).recording canvas): Deleted.
+        Instead of regenerating the canvas context in the WebInspector frontend, just display the
+        snapshot image for the last visual action.
+
+        * UserInterface/Views/CanvasContentView.js:
+        (WI.CanvasContentView):
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+
+2017-08-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: add filter for draw actions in Recordings
+        https://bugs.webkit.org/show_bug.cgi?id=175448
+        <rdar://problem/34040764>
+
+        Reviewed by Matt Baker.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        
+        * UserInterface/Views/RecordingNavigationSidebarPanel.js:
+        (WI.RecordingNavigationSidebarPanel.prototype.initialLayout):
+        (WI.RecordingNavigationSidebarPanel.prototype.matchTreeElementAgainstCustomFilters):
+        Add button to filter visual actions.
+        Drive-by fix: ensure that frame folders are still visible when filtering.
+
+        * UserInterface/Images/Paint.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/PaintFlashing.svg.
+        * UserInterface/Images/gtk/Paint.svg: Renamed from Source/WebInspectorUI/UserInterface/Images/gtk/PaintFlashing.svg.
+        * UserInterface/Views/DOMTreeContentView.js:
+        (WI.DOMTreeContentView):
+        Rename PaintFlashing.svg to Paint.svg.
+
+2017-08-24  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Create experimental Layers tab
+        https://bugs.webkit.org/show_bug.cgi?id=175728
+
+        Reviewed by Devin Rousso.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Base/Main.js:
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Images/Layers.svg: Added.
+        * UserInterface/Main.html:
+        * UserInterface/Views/Layers3DContentView.js: Added.
+        * UserInterface/Views/LayersTabContentView.js: Added.
+        * UserInterface/Views/SettingsTabContentView.js:
+
+2017-08-24  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Table grid shouldn't show behind empty state
+        https://bugs.webkit.org/show_bug.cgi?id=175943
+
+        Reviewed by Brian Burg.
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline):
+        (.sidebar > .panel.navigation.recording > .content > .tree-outline:not(:empty)):
+        Only apply the background when the TreeOutline has children.
+
+2017-08-23  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Make lock icon crispier
+        https://bugs.webkit.org/show_bug.cgi?id=175868
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Images/Locked.svg:
+
+2017-08-22  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: provide way for ShaderPrograms to be enabled/disabled
+        https://bugs.webkit.org/show_bug.cgi?id=175400
+
+        Reviewed by Matt Baker.
+
+        Adds a status element to ShaderProgramTreeElement that, when clicked, will toggle the
+        disabled state of the corresponding ShaderProgram. Disabled shader programs will not draw
+        anything to the context.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Main.html:
+
+        * UserInterface/Models/ShaderProgram.js:
+        (WI.ShaderProgram):
+        (WI.ShaderProgram.prototype.get disabled):
+        (WI.ShaderProgram.prototype.toggleDisabled):
+
+        * UserInterface/Views/ShaderProgramTreeElement.js:
+        (WI.ShaderProgramTreeElement):
+        (WI.ShaderProgramTreeElement.prototype.selectOnMouseDown):
+        (WI.ShaderProgramTreeElement.prototype._disabledImageElementClicked):
+        * UserInterface/Views/ShaderProgramTreeElement.css: Added.
+        (.item.shader-program .status > img):
+        (.item.shader-program:not(:hover, .selected, .disabled) .status > img):
+        (.tree-outline:matches(:focus, .force-focus) .item.shader-program.selected .status > img):
+        (.item.shader-program.disabled > *):
+
+2017-08-21  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Can't copy text from "View variable value" popover in Styles sidebar
+        https://bugs.webkit.org/show_bug.cgi?id=175758
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/InlineSwatch.js:
+        (WI.InlineSwatch.prototype._swatchElementClicked):
+        Change CodeMirror readOnly from "nocursor" to true. The former prevents the editor from
+        being focused during selection, therefore preventing the content from being copied.
+
+2017-08-17  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: create better icon for Canvas Path navigation item
+        https://bugs.webkit.org/show_bug.cgi?id=175274
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Images/Path.svg: Added.
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView):
+
+2017-08-17  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles: replace "Enter Class Name" with "Add New Class"
+        https://bugs.webkit.org/show_bug.cgi?id=175686
+
+        Reviewed by Matt Baker.
+
+        "Enter Class Name" isn't very descriptive. It doesn't suggest what's going to happen after you enter a class name.
+
+        * Localizations/en.lproj/localizedStrings.js:
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WI.CSSStyleDetailsSidebarPanel.prototype.initialLayout):
+
+2017-08-17  Ross Kirsling  <ross.kirsling@sony.com>
+
+        Web Inspector: Ensure three.js gets minified properly for production builds.
+        https://bugs.webkit.org/show_bug.cgi?id=175452
+
+        Reviewed by Brian Burg.
+
+        * Scripts/copy-user-interface-resources.pl:
+
 2017-08-14  Simon Fraser  <simon.fraser@apple.com>
 
         Remove Proximity Events and related code

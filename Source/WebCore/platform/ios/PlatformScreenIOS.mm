@@ -30,13 +30,14 @@
 #import "FloatRect.h"
 #import "FloatSize.h"
 #import "FrameView.h"
+#import "GraphicsContextCG.h"
 #import "HostWindow.h"
 #import "IntRect.h"
-#import "MobileGestaltSPI.h"
-#import "UIKitSPI.h"
 #import "WAKWindow.h"
 #import "WebCoreSystemInterface.h"
 #import "Widget.h"
+#import <pal/spi/ios/MobileGestaltSPI.h>
+#import <pal/spi/ios/UIKitSPI.h>
 #import <wtf/SoftLinking.h>
 
 SOFT_LINK_FRAMEWORK_FOR_SOURCE(WebCore, UIKit)
@@ -72,6 +73,11 @@ bool screenHasInvertedColors()
 bool screenSupportsExtendedColor(Widget*)
 {
     return MGGetBoolAnswer(kMGQHasExtendedColorDisplay);
+}
+
+CGColorSpaceRef screenColorSpace(Widget* widget)
+{
+    return screenSupportsExtendedColor(widget) ? extendedSRGBColorSpaceRef() : sRGBColorSpaceRef();
 }
 
 // These functions scale between screen and page coordinates because JavaScript/DOM operations
@@ -144,14 +150,7 @@ float screenScaleFactor(UIScreen *screen)
     if (!screen)
         screen = [get_UIKit_UIScreenClass() mainScreen];
 
-    CGFloat scale = screen.scale;
-
-    // We can remove this clamping once <rdar://problem/16395475> is fixed.
-    const CGFloat maximumClassicScreenScaleFactor = 2;
-    if ([[get_UIKit_UIApplicationClass() sharedApplication] _isClassic])
-        return std::min(scale, maximumClassicScreenScaleFactor);
-
-    return scale;
+    return screen.scale;
 }
 
 } // namespace WebCore

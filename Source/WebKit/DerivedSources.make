@@ -23,6 +23,7 @@
 VPATH = \
     $(WebKit2) \
     $(WebKit2)/NetworkProcess \
+    $(WebKit2)/NetworkProcess/cache \
     $(WebKit2)/NetworkProcess/CustomProtocols \
     $(WebKit2)/NetworkProcess/mac \
     $(WebKit2)/NetworkProcess/webrtc \
@@ -35,10 +36,12 @@ VPATH = \
     $(WebKit2)/Shared/mac \
     $(WebKit2)/StorageProcess \
     $(WebKit2)/StorageProcess/IndexedDB \
+    $(WebKit2)/StorageProcess/ServiceWorker \
     $(WebKit2)/StorageProcess/mac \
     $(WebKit2)/WebProcess/ApplePay \
     $(WebKit2)/WebProcess/ApplicationCache \
     $(WebKit2)/WebProcess/Automation \
+    $(WebKit2)/WebProcess/Cache \
     $(WebKit2)/WebProcess/Cookies \
     $(WebKit2)/WebProcess/Databases/IndexedDB \
     $(WebKit2)/WebProcess/FullScreen \
@@ -91,6 +94,7 @@ endif
 
 MESSAGE_RECEIVERS = \
     AuthenticationManager \
+    CacheStorageEngineConnection \
     ChildProcess \
     DownloadProxy \
     DrawingArea \
@@ -135,6 +139,7 @@ MESSAGE_RECEIVERS = \
     VisitedLinkTableController \
     WebAutomationSession \
     WebAutomationSessionProxy \
+    WebCacheStorageConnection \
     WebConnection \
     WebCookieManager \
     WebCookieManagerProxy \
@@ -154,6 +159,8 @@ MESSAGE_RECEIVERS = \
     WebPasteboardProxy \
     WebPaymentCoordinator \
     WebPaymentCoordinatorProxy \
+    WebSWClientConnection \
+    WebSWServerConnection \
     PlaybackSessionManager \
     PlaybackSessionManagerProxy \
     WebProcess \

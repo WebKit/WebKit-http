@@ -1,3 +1,262 @@
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Accessibility-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176093
+
+        Reviewed by Eric Carlson.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Carbon-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176087
+
+        Reviewed by Alex Christensen.
+
+        * Carbon/CarbonUtils.m:
+        (getNSAutoreleasePoolCount):
+        (WebInitForCarbon):
+        (PoolCleaner):
+        * Carbon/CarbonWindowAdapter.mm:
+        (+[CarbonWindowAdapter frameViewClassForStyleMask:]):
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:disableOrdering:carbon:]):
+        (-[CarbonWindowAdapter _oldPlaceWindow:]):
+        (-[CarbonWindowAdapter _windowMovedToRect:]):
+        * Carbon/HIViewAdapter.m:
+        * Carbon/HIWebView.mm:
+        (Draw):
+        (CreateNSEventAdoptingCGEvent):
+        (CopyEventCGEvent):
+        (CreateNSEventWithCarbonClickEvent):
+        (Click):
+        (CreateNSEventWithCarbonEvent):
+        (MouseUp):
+        (CreateNSEventWithCarbonMouseMoveEvent):
+        (MouseMoved):
+        (MouseDragged):
+        (MouseWheelMoved):
+        (WindowHandler):
+        (HIWebViewEventHandler):
+        * Misc/QuickDrawCompatibility.h: Removed.
+        * Plugins/WebNetscapePluginEventHandlerCarbon.mm:
+        (getCarbonEvent):
+        (WebNetscapePluginEventHandlerCarbon::keyDown):
+        (WebNetscapePluginEventHandlerCarbon::keyUp):
+        * Plugins/WebNetscapePluginEventHandlerCocoa.mm:
+        (WebNetscapePluginEventHandlerCocoa::keyDown):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView tellQuickTimeToChill]):
+
+2017-08-29  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream WKSetMetadataURL() from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=176046
+
+        Reviewed by Alex Christensen.
+
+        Removed the pthread logic from -_webkit_setMetadataURL:referrer:atPath: and replaced with
+        WebCore::setMetadataURL(), which uses dispatch_async() for the same purpose as the pthread.
+
+        * Misc/WebNSFileManagerExtras.mm:
+        (-[NSFileManager _webkit_setMetadataURL:referrer:atPath:]):
+        (setMetaData): Deleted.
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+
+2017-08-28  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream WKGetWebDefaultCFStringEncoding()
+        https://bugs.webkit.org/show_bug.cgi?id=176039
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _systemCFStringEncoding]):
+
+2017-08-28  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream CFNetwork-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176032
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebSystemInterface.mm:
+        (InitWebCoreSystemInterface):
+        * WebView/WebView.mm:
+        (-[WebView _cachedResponseForURL:]):
+
+2017-08-28  Brent Fulgham  <bfulgham@apple.com>
+
+        Disable access to secure cookies if an HTTPS site loads mixed content (Part 2: Header Requests)
+        https://bugs.webkit.org/show_bug.cgi?id=175992
+        <rdar://problem/34086613>
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue): Modify to accept a flag indicating if secure
+        cookies should be included, and return a pair containing the resulting cookie string and a boolean
+        indicating if secure cookies were accessed.
+
+2017-08-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Picking an emoji via the emoji dialog (Ctrl+Cmd+Space) fires inconsistent beforeinput events.
+        https://bugs.webkit.org/show_bug.cgi?id=170955
+        <rdar://problem/31697653>
+
+        Reviewed by Ryosuke Niwa.
+
+        Tweak -insertText: to pass TextEventInputAutocompletion to Editor::insertText when inserting text, if existing
+        text is being replaced.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView insertText:]):
+
+2017-08-24  Chris Dumez  <cdumez@apple.com>
+
+        [Directory Upload] Add basic support for input.webkitdirectory
+        https://bugs.webkit.org/show_bug.cgi?id=175950
+        <rdar://problem/33951915>
+
+        Reviewed by Geoffrey Garen.
+
+        Add private API to toggle Directory Upload support on Mac WebKit1.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences setDirectoryUploadEnabled:]):
+        (-[WebPreferences directoryUploadEnabled]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-08-22  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] EditorState updates should be rolled into the layer update lifecycle when possible
+        https://bugs.webkit.org/show_bug.cgi?id=175370
+        <rdar://problem/33799806>
+
+        Reviewed by Ryosuke Niwa.
+
+        Adjust WebEditorClient for interface changes.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2017-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ChromeClient::scrollbarsModeDidChange
+        https://bugs.webkit.org/show_bug.cgi?id=175805
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2017-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Remove ChromeClient::hasOpenedPopup
+        https://bugs.webkit.org/show_bug.cgi?id=175804
+
+        Reviewed by Sam Weinig.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::hasOpenedPopup const): Deleted.
+
+2017-08-22  Brent Fulgham  <bfulgham@apple.com> and Pranjal Jumde  <pjumde@apple.com>
+
+        Disable access to secure cookies if an HTTPS site loads mixed content
+        https://bugs.webkit.org/show_bug.cgi?id=157053
+        <rdar://problem/11290808>
+
+        Reviewed by Dan Bates.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookiesForDOM): Check and return whether secure cookies were accessed. Accept a new argument
+        indicating whether secure cookies should be included in the response.
+
+2017-08-21  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/mac directory into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175649
+
+        Reviewed by Myles C. Maxfield.
+
+        * Misc/WebSharingServicePickerController.h:
+        * WebCoreSupport/WebContextMenuClient.mm:
+        * WebCoreSupport/WebEditorClient.mm:
+        * WebCoreSupport/WebSelectionServiceController.mm:
+        * WebView/WebHTMLView.mm:
+        * WebView/WebImmediateActionController.h:
+        * WebView/WebImmediateActionController.mm:
+        * WebView/WebView.mm:
+
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Relocate SessionID to root
+        https://bugs.webkit.org/show_bug.cgi?id=175684
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+
+2017-08-17  Andreas Kling  <akling@apple.com>
+
+        Disable CSS regions at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=175630
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Move SessionID into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=174192
+
+        Reviewed by Antti Koivisto.
+
+        * Misc/WebCache.mm:
+        (+[WebCache imageForURL:]):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+        * WebCoreSupport/WebFrameNetworkingContext.mm:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebFrameNetworkingContext::storageSession const):
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPlatformStrategies.mm:
+        (WebPlatformStrategies::cookieRequestHeaderFieldValue):
+        * WebKitPrefix.h:
+
+2017-08-16  Andy Estes  <aestes@apple.com>
+
+        [Apple Pay] Rename PaymentRequest to ApplePaySessionPaymentRequest
+        https://bugs.webkit.org/show_bug.cgi?id=175648
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebPaymentCoordinatorClient.h:
+        * WebCoreSupport/WebPaymentCoordinatorClient.mm:
+        (WebPaymentCoordinatorClient::showPaymentUI):
+
+2017-08-16  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/ios and spi/win directories into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175171
+
+        Reviewed by Antti Koivisto.
+
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebView.mm:
+
 2017-08-16  Andy Estes  <aestes@apple.com>
 
         [Payment Request] Add an ENABLE flag and an experimental feature preference

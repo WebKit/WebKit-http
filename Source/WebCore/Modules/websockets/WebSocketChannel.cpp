@@ -120,7 +120,7 @@ void WebSocketChannel::connect(const URL& requestedURL, const String& protocol)
     if (Frame* frame = m_document->frame()) {
         ref();
         Page* page = frame->page();
-        SessionID sessionID = page ? page->sessionID() : SessionID::defaultSessionID();
+        PAL::SessionID sessionID = page ? page->sessionID() : PAL::SessionID::defaultSessionID();
         String partition = m_document->topDocument().securityOrigin().domainForCachePartition();
         m_handle = m_socketProvider->createSocketStreamHandle(m_handshake->url(), *this, sessionID, partition);
     }
@@ -828,7 +828,7 @@ void WebSocketChannel::sendFrame(WebSocketFrame::OpCode opCode, const char* data
     m_handle->sendData(frameData.data(), frameData.size(), WTFMove(completionHandler));
 }
 
-ResourceRequest WebSocketChannel::clientHandshakeRequest() const
+ResourceRequest WebSocketChannel::clientHandshakeRequest()
 {
     return m_handshake->clientHandshakeRequest();
 }

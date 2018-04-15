@@ -52,7 +52,7 @@ using namespace Inspector;
 
 namespace WebCore {
 
-WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, SessionID sessionID)
+WorkerGlobalScope::WorkerGlobalScope(const URL& url, const String& identifier, const String& userAgent, WorkerThread& thread, bool shouldBypassMainWorldContentSecurityPolicy, Ref<SecurityOrigin>&& topOrigin, MonotonicTime timeOrigin, IDBClient::IDBConnectionProxy* connectionProxy, SocketProvider* socketProvider, PAL::SessionID sessionID)
     : m_url(url)
     , m_identifier(identifier)
     , m_userAgent(userAgent)
@@ -108,7 +108,7 @@ void WorkerGlobalScope::removeAllEventListeners()
 
 bool WorkerGlobalScope::isSecureContext() const
 {
-    return securityOrigin() && securityOrigin()->isPotentionallyTrustworthy();
+    return securityOrigin() && securityOrigin()->isPotentiallyTrustworthy();
 }
 
 void WorkerGlobalScope::applyContentSecurityPolicyResponseHeaders(const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders)
@@ -384,6 +384,13 @@ Crypto& WorkerGlobalScope::crypto()
 Performance& WorkerGlobalScope::performance() const
 {
     return *m_performance;
+}
+
+CacheStorageConnection& WorkerGlobalScope::cacheStorageConnection()
+{
+    if (!m_cacheStorageConnection)
+        m_cacheStorageConnection = WorkerCacheStorageConnection::create(*this);
+    return *m_cacheStorageConnection;
 }
 
 } // namespace WebCore

@@ -230,10 +230,10 @@ public:
 
     WebCore::Page* corePage() const { return m_page.get(); }
     uint64_t pageID() const { return m_pageID; }
-    WebCore::SessionID sessionID() const { return m_page->sessionID(); }
+    PAL::SessionID sessionID() const { return m_page->sessionID(); }
     bool usesEphemeralSession() const { return m_page->usesEphemeralSession(); }
 
-    void setSessionID(WebCore::SessionID);
+    void setSessionID(PAL::SessionID);
 
     void setSize(const WebCore::IntSize&);
     const WebCore::IntSize& size() const { return m_viewSize; }
@@ -373,7 +373,6 @@ public:
     
     enum class IncludePostLayoutDataHint { No, Yes };
     EditorState editorState(IncludePostLayoutDataHint = IncludePostLayoutDataHint::Yes) const;
-    void sendPostLayoutEditorStateIfNeeded();
     void updateEditorStateAfterLayoutIfEditabilityChanged();
 
     String renderTreeExternalRepresentation() const;
@@ -516,6 +515,7 @@ public:
     void resetAssistedNodeForFrame(WebFrame*);
 
     void viewportPropertiesDidChange(const WebCore::ViewportArguments&);
+    void executeEditCommandWithCallback(const String&, const String& argument, CallbackID);
 
 #if PLATFORM(IOS)
     WebCore::FloatSize screenSize() const;
@@ -587,7 +587,6 @@ public:
 #endif
 
     void contentSizeCategoryDidChange(const String&);
-    void executeEditCommandWithCallback(const String&, CallbackID);
 
     Seconds eventThrottlingDelay() const;
 
@@ -663,8 +662,11 @@ public:
 
     void didApplyStyle();
     void didChangeSelection();
+    void didChangeContents();
     void discardedComposition();
     void canceledComposition();
+    void didUpdateComposition();
+    void didEndUserTriggeredSelectionChanges();
 
 #if PLATFORM(COCOA)
     void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
@@ -869,7 +871,7 @@ public:
     NSDictionary *dataDetectionContext() const { return m_dataDetectionContext.get(); }
 #endif
 
-    void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size);
+    void savePDFToFileInDownloadsFolder(const String& suggestedFilename, const WebCore::URL& originatingURL, const uint8_t* data, unsigned long size);
 #if PLATFORM(COCOA)
     void savePDFToTemporaryFolderAndOpenWithNativeApplication(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID);
 #endif
@@ -985,6 +987,9 @@ public:
 
     static PluginView* pluginViewForFrame(WebCore::Frame*);
 
+    void sendPartialEditorStateAndSchedulePostLayoutUpdate();
+    void flushPendingEditorStateUpdate();
+
 private:
     WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
@@ -998,6 +1003,7 @@ private:
     void platformInitialize();
     void platformDetach();
     void platformEditorState(WebCore::Frame&, EditorState& result, IncludePostLayoutDataHint) const;
+    void sendEditorStateUpdate();
 
     void didReceiveWebPageMessage(IPC::Connection&, IPC::Decoder&);
     void didReceiveSyncWebPageMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
@@ -1479,6 +1485,7 @@ private:
 
     RefPtr<WebCore::Node> m_assistedNode;
     bool m_hasPendingBlurNotification { false };
+    bool m_hasPendingEditorStateUpdate { false };
     
 #if PLATFORM(IOS)
     RefPtr<WebCore::Range> m_currentWordRange;

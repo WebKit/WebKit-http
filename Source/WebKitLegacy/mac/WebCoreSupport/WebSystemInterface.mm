@@ -55,9 +55,6 @@ void InitWebCoreSystemInterface(void)
     INIT(DrawCellFocusRingWithFrameAtTime);
     INIT(DrawMediaUIPart);
     INIT(DrawMediaSliderTrack);
-#endif
-    INIT(GetWebDefaultCFStringEncoding);
-#if !PLATFORM(IOS)
     INIT(GetWheelEventDeltas);
     INIT(GetNSEventKeyChar);
     INIT(HitTestMediaUIPart);
@@ -94,27 +91,9 @@ void InitWebCoreSystemInterface(void)
     INIT(Cursor);
     INIT(SpeechSynthesisGetVoiceIdentifiers);
     INIT(SpeechSynthesisGetDefaultVoiceIdentifierForLocale);
-    INIT(GetAXTextMarkerTypeID);
-    INIT(GetAXTextMarkerRangeTypeID);
-    INIT(CreateAXTextMarker);
-    INIT(GetBytesFromAXTextMarker);
-    INIT(CreateAXTextMarkerRange);
-    INIT(CopyAXTextMarkerRangeStart);
-    INIT(CopyAXTextMarkerRangeEnd);
-    INIT(AccessibilityHandleFocusChanged);
-    INIT(CreateAXUIElementRef);
-    INIT(UnregisterUniqueIdForElement);
 #endif
-    INIT(CreatePrivateStorageSession);
-    INIT(CopyRequestWithStorageSession);
-    INIT(GetHTTPCookieAcceptPolicy);
-    INIT(HTTPCookies);
-    INIT(SetHTTPCookiesForURL);
-    INIT(DeleteAllHTTPCookies);
-    INIT(DeleteHTTPCookie);
 
 #if !PLATFORM(IOS)
-    INIT(SetMetadataURL);
     INIT(NSElasticDeltaForTimeDelta);
     INIT(NSElasticDeltaForReboundDelta);
     INIT(NSReboundDeltaForElasticDelta);

@@ -264,11 +264,11 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
     m_policyDownloadID = { };
 
     auto& webProcess = WebProcess::singleton();
-    SessionID sessionID = page() ? page()->sessionID() : SessionID::defaultSessionID();
+    PAL::SessionID sessionID = page() ? page()->sessionID() : PAL::SessionID::defaultSessionID();
     webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
 }
 
-void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
+void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, PAL::SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
 {
     ASSERT(m_policyDownloadID.downloadID());
 
@@ -392,16 +392,16 @@ String WebFrame::name() const
     return m_coreFrame->tree().uniqueName();
 }
 
-String WebFrame::url() const
+URL WebFrame::url() const
 {
     if (!m_coreFrame)
-        return String();
+        return { };
 
-    DocumentLoader* documentLoader = m_coreFrame->loader().documentLoader();
+    auto* documentLoader = m_coreFrame->loader().documentLoader();
     if (!documentLoader)
-        return String();
+        return { };
 
-    return documentLoader->url().string();
+    return documentLoader->url();
 }
 
 CertificateInfo WebFrame::certificateInfo() const
@@ -824,7 +824,7 @@ RefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     if (!snapshot)
         return nullptr;
 
-    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->internalSize(), ShareableBitmap::SupportsAlpha);
+    auto sharedSnapshot = ShareableBitmap::createShareable(snapshot->internalSize(), { });
     if (!sharedSnapshot)
         return nullptr;
 

@@ -27,10 +27,12 @@
 
 #include "MacroAssembler.h"
 #include "Printer.h"
+#include "ProbeContext.h"
 
 namespace JSC {
 
 #if ENABLE(ASSEMBLER)
+#if ENABLE(MASM_PROBE)
 
 // What is MacroAssembler::print()?
 // ===============================
@@ -222,7 +224,7 @@ struct Printer<MemWord<IntType>> : public Printer<Memory> {
     { }
 };
 
-void printCallback(ProbeContext*);
+void printCallback(Probe::Context&);
 
 } // namespace Printer
 
@@ -238,6 +240,7 @@ inline void MacroAssembler::print(Printer::PrintRecordList* printRecordList)
     probe(Printer::printCallback, printRecordList);
 }
 
+#endif // ENABLE(MASM_PROBE)
 #endif // ENABLE(ASSEMBLER)
 
 } // namespace JSC

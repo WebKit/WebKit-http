@@ -29,19 +29,10 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoKeyData.h"
 #include "JsonWebKey.h"
 #include <wtf/text/Base64.h>
 
 namespace WebCore {
-
-CryptoEcKeyAlgorithm EcKeyAlgorithm::dictionary() const
-{
-    CryptoEcKeyAlgorithm result;
-    result.name = this->name();
-    result.namedCurve = this->namedCurve();
-    return result;
-}
 
 static const char* const P256 = "P-256";
 static const char* const P384 = "P-384";
@@ -143,10 +134,13 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportRaw() const
     if (type() != CryptoKey::Type::Public)
         return Exception { InvalidAccessError };
 
-    return platformExportRaw();
+    auto&& result = platformExportRaw();
+    if (result.isEmpty())
+        return Exception { OperationError };
+    return WTFMove(result);
 }
 
-JsonWebKey CryptoKeyEC::exportJwk() const
+ExceptionOr<JsonWebKey> CryptoKeyEC::exportJwk() const
 {
     JsonWebKey result;
     result.kty = "EC";
@@ -160,8 +154,9 @@ JsonWebKey CryptoKeyEC::exportJwk() const
     }
     result.key_ops = usages();
     result.ext = extractable();
-    platformAddFieldElements(result);
-    return result;
+    if (!platformAddFieldElements(result))
+        return Exception { OperationError };
+    return WTFMove(result);
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
@@ -169,7 +164,10 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportSpki() const
     if (type() != CryptoKey::Type::Public)
         return Exception { InvalidAccessError };
 
-    return platformExportSpki();
+    auto&& result = platformExportSpki();
+    if (result.isEmpty())
+        return Exception { OperationError };
+    return WTFMove(result);
 }
 
 ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportPkcs8() const
@@ -177,7 +175,10 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyEC::exportPkcs8() const
     if (type() != CryptoKey::Type::Private)
         return Exception { InvalidAccessError };
 
-    return platformExportPkcs8();
+    auto&& result = platformExportPkcs8();
+    if (result.isEmpty())
+        return Exception { OperationError };
+    return WTFMove(result);
 }
 
 String CryptoKeyEC::namedCurveString() const
@@ -198,24 +199,21 @@ bool CryptoKeyEC::isValidECAlgorithm(CryptoAlgorithmIdentifier algorithm)
     return algorithm == CryptoAlgorithmIdentifier::ECDSA || algorithm == CryptoAlgorithmIdentifier::ECDH;
 }
 
-std::unique_ptr<KeyAlgorithm> CryptoKeyEC::buildAlgorithm() const
+auto CryptoKeyEC::algorithm() const -> KeyAlgorithm
 {
-    String name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    CryptoEcKeyAlgorithm result;
+    result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+
     switch (m_curve) {
     case NamedCurve::P256:
-        return std::make_unique<EcKeyAlgorithm>(name, String(P256));
+        result.namedCurve = ASCIILiteral(P256);
+        break;
     case NamedCurve::P384:
-        return std::make_unique<EcKeyAlgorithm>(name, String(P384));
+        result.namedCurve = ASCIILiteral(P384);
+        break;
     }
 
-    ASSERT_NOT_REACHED();
-    return nullptr;
-}
-
-std::unique_ptr<CryptoKeyData> CryptoKeyEC::exportData() const
-{
-    // A dummy implementation for now.
-    return std::make_unique<CryptoKeyData>(CryptoKeyData::Format::OctetSequence);
+    return result;
 }
 
 } // namespace WebCore

@@ -132,7 +132,7 @@ list(APPEND WebCore_SOURCES
 list(APPEND WebCorePlatformWPE_SOURCES
     editing/wpe/EditorWPE.cpp
 
-    page/wpe/EventHandlerWPE.cpp
+    platform/glib/EventHandlerGLib.cpp
 
     platform/graphics/egl/GLContextEGLWPE.cpp
 
@@ -172,9 +172,6 @@ list(APPEND WebCore_LIBRARIES
     ${ICU_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBTASN1_LIBRARIES}
-    ${LIBXML2_LIBRARIES}
-    ${LIBXSLT_LIBRARIES}
-    ${SQLITE_LIBRARIES}
     ${WPE_LIBRARIES}
 )
 
@@ -186,9 +183,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
     ${LIBSOUP_INCLUDE_DIRS}
     ${LIBTASN1_INCLUDE_DIRS}
-    ${LIBXML2_INCLUDE_DIR}
-    ${LIBXSLT_INCLUDE_DIR}
-    ${SQLITE_INCLUDE_DIR}
     ${WPE_INCLUDE_DIRS}
 )
 

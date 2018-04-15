@@ -805,10 +805,11 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             m_numberOfArgumentsToSkip = numberOfArgumentsToSkip;
             break;
         }
-
+        
         default:
             break;
         }
+
         i += opLength;
     }
 
@@ -830,10 +831,10 @@ bool CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
     if (Options::dumpGeneratedBytecodes())
         dumpBytecode();
-    
+
     heap()->m_codeBlocks->add(this);
     heap()->reportExtraMemoryAllocated(m_instructions.size() * sizeof(Instruction));
-    
+
     return true;
 }
 
@@ -1703,6 +1704,37 @@ CallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteIndex origina
 #endif
 }
 
+void CodeBlock::ensureCatchLivenessIsComputedForBytecodeOffsetSlow(unsigned bytecodeOffset)
+{
+    ASSERT(Interpreter::getOpcodeID(m_instructions[bytecodeOffset]) == op_catch);
+    BytecodeLivenessAnalysis& bytecodeLiveness = livenessAnalysis();
+
+    // We get the live-out set of variables at op_catch, not the live-in. This
+    // is because the variables that the op_catch defines might be dead, and
+    // we can avoid profiling them and extracting them when doing OSR entry
+    // into the DFG.
+    FastBitVector liveLocals = bytecodeLiveness.getLivenessInfoAtBytecodeOffset(bytecodeOffset + OPCODE_LENGTH(op_catch));
+    Vector<VirtualRegister> liveOperands;
+    liveOperands.reserveInitialCapacity(liveLocals.bitCount());
+    liveLocals.forEachSetBit([&] (unsigned liveLocal) {
+        liveOperands.append(virtualRegisterForLocal(liveLocal));
+    });
+
+    for (int i = 0; i < numParameters(); ++i)
+        liveOperands.append(virtualRegisterForArgument(i));
+
+    auto profiles = std::make_unique<ValueProfileAndOperandBuffer>(liveOperands.size());
+    RELEASE_ASSERT(profiles->m_size == liveOperands.size());
+    for (unsigned i = 0; i < profiles->m_size; ++i)
+        profiles->m_buffer.get()[i].m_operand = liveOperands[i].offset();
+    m_instructions[bytecodeOffset + 3].u.pointer = profiles.get();
+
+    {
+        ConcurrentJSLocker locker(m_lock);
+        m_catchProfiles.append(WTFMove(profiles));
+    }
+}
+
 void CodeBlock::removeExceptionHandlerForCallSite(CallSiteIndex callSiteIndex)
 {
     RELEASE_ASSERT(m_rareData);
@@ -2486,22 +2518,29 @@ const Identifier& CodeBlock::identifier(int index) const
 void CodeBlock::updateAllPredictionsAndCountLiveness(unsigned& numberOfLiveNonArgumentValueProfiles, unsigned& numberOfSamplesInProfiles)
 {
     ConcurrentJSLocker locker(m_lock);
-    
+
     numberOfLiveNonArgumentValueProfiles = 0;
     numberOfSamplesInProfiles = 0; // If this divided by ValueProfile::numberOfBuckets equals numberOfValueProfiles() then value profiles are full.
+
     for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile* profile = getFromAllValueProfiles(i);
-        unsigned numSamples = profile->totalNumberOfSamples();
+        ValueProfile& profile = getFromAllValueProfiles(i);
+        unsigned numSamples = profile.totalNumberOfSamples();
         if (numSamples > ValueProfile::numberOfBuckets)
             numSamples = ValueProfile::numberOfBuckets; // We don't want profiles that are extremely hot to be given more weight.
         numberOfSamplesInProfiles += numSamples;
-        if (profile->m_bytecodeOffset < 0) {
-            profile->computeUpdatedPrediction(locker);
+        if (profile.m_bytecodeOffset < 0) {
+            profile.computeUpdatedPrediction(locker);
             continue;
         }
-        if (profile->numberOfSamples() || profile->m_prediction != SpecNone)
+        if (profile.numberOfSamples() || profile.m_prediction != SpecNone)
             numberOfLiveNonArgumentValueProfiles++;
-        profile->computeUpdatedPrediction(locker);
+        profile.computeUpdatedPrediction(locker);
+    }
+
+    for (auto& profileBucket : m_catchProfiles) {
+        profileBucket->forEach([&] (ValueProfileAndOperand& profile) {
+            profile.m_profile.computeUpdatedPrediction(locker);
+        });
     }
     
 #if ENABLE(DFG_JIT)
@@ -2609,17 +2648,17 @@ void CodeBlock::dumpValueProfiles()
 {
     dataLog("ValueProfile for ", *this, ":\n");
     for (unsigned i = 0; i < totalNumberOfValueProfiles(); ++i) {
-        ValueProfile* profile = getFromAllValueProfiles(i);
-        if (profile->m_bytecodeOffset < 0) {
-            ASSERT(profile->m_bytecodeOffset == -1);
+        ValueProfile& profile = getFromAllValueProfiles(i);
+        if (profile.m_bytecodeOffset < 0) {
+            ASSERT(profile.m_bytecodeOffset == -1);
             dataLogF("   arg = %u: ", i);
         } else
-            dataLogF("   bc = %d: ", profile->m_bytecodeOffset);
-        if (!profile->numberOfSamples() && profile->m_prediction == SpecNone) {
+            dataLogF("   bc = %d: ", profile.m_bytecodeOffset);
+        if (!profile.numberOfSamples() && profile.m_prediction == SpecNone) {
             dataLogF("<empty>\n");
             continue;
         }
-        profile->dump(WTF::dataFile());
+        profile.dump(WTF::dataFile());
         dataLogF("\n");
     }
     dataLog("RareCaseProfile for ", *this, ":\n");
@@ -2739,11 +2778,19 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
     return "";
 }
 
-ValueProfile* CodeBlock::valueProfileForBytecodeOffset(int bytecodeOffset)
+ValueProfile* CodeBlock::tryGetValueProfileForBytecodeOffset(int bytecodeOffset)
+{
+    return tryBinarySearch<ValueProfile, int>(
+        m_valueProfiles, m_valueProfiles.size(), bytecodeOffset,
+        getValueProfileBytecodeOffset<ValueProfile>);
+}
+
+ValueProfile& CodeBlock::valueProfileForBytecodeOffset(int bytecodeOffset)
 {
     OpcodeID opcodeID = Interpreter::getOpcodeID(instructions()[bytecodeOffset]);
     unsigned length = opcodeLength(opcodeID);
-    return instructions()[bytecodeOffset + length - 1].u.profile;
+    ASSERT(!!tryGetValueProfileForBytecodeOffset(bytecodeOffset));
+    return *instructions()[bytecodeOffset + length - 1].u.profile;
 }
 
 void CodeBlock::validate()
@@ -2769,6 +2816,31 @@ void CodeBlock::validate()
             dataLog("    Result: ", liveAtHead, "\n");
             endValidationDidFail();
         }
+    }
+
+    for (unsigned i = 0; i + 1 < numberOfValueProfiles(); ++i) {
+        if (valueProfile(i).m_bytecodeOffset > valueProfile(i + 1).m_bytecodeOffset) {
+            beginValidationDidFail();
+            dataLog("    Value profiles are not sorted.\n");
+            endValidationDidFail();
+        }
+    }
+     
+    for (unsigned bytecodeOffset = 0; bytecodeOffset < m_instructions.size(); ) {
+        OpcodeID opcode = Interpreter::getOpcodeID(m_instructions[bytecodeOffset]);
+        if (!!baselineAlternative()->handlerForBytecodeOffset(bytecodeOffset)) {
+            if (opcode == op_catch || opcode == op_enter) {
+                // op_catch/op_enter logically represent an entrypoint. Entrypoints are not allowed to be
+                // inside of a try block because they are responsible for bootstrapping state. And they
+                // are never allowed throw an exception because of this. We rely on this when compiling
+                // in the DFG. Because an entrypoint never throws, the bytecode generator will never
+                // allow once inside a try block.
+                beginValidationDidFail();
+                dataLog("    entrypoint not allowed inside a try block.");
+                endValidationDidFail();
+            }
+        }
+        bytecodeOffset += opcodeLength(opcode);
     }
 }
 

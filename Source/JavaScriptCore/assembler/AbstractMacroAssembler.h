@@ -43,9 +43,6 @@ namespace JSC {
 
 #if ENABLE(ASSEMBLER)
 
-struct ProbeContext;
-typedef void (*ProbeFunction)(struct ProbeContext*);
-    
 class AllowMacroScratchRegisterUsage;
 class DisallowMacroScratchRegisterUsage;
 class LinkBuffer;

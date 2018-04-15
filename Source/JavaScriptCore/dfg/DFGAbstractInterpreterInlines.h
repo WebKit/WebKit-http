@@ -208,6 +208,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
         
+    case ExtractCatchLocal:
     case ExtractOSREntryLocal: {
         forNode(node).makeBytecodeTop();
         break;
@@ -1048,16 +1049,28 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case LoadFromJSMapBucket:
+    case LoadKeyFromMapBucket:
+    case LoadValueFromMapBucket:
         forNode(node).makeHeapTop();
         break;
 
     case GetMapBucket:
-        forNode(node).setType(m_graph, SpecCellOther);
+    case GetMapBucketHead:
+        if (node->child1().useKind() == MapObjectUse)
+            forNode(node).set(m_graph, m_vm.hashMapBucketMapStructure.get());
+        else {
+            ASSERT(node->child1().useKind() == SetObjectUse);
+            forNode(node).set(m_graph, m_vm.hashMapBucketSetStructure.get());
+        }
         break;
 
-    case IsNonEmptyMapBucket:
-        forNode(node).setType(SpecBoolean);
+    case GetMapBucketNext:
+        if (node->bucketOwnerType() == BucketOwnerType::Map)
+            forNode(node).set(m_graph, m_vm.hashMapBucketMapStructure.get());
+        else {
+            ASSERT(node->bucketOwnerType() == BucketOwnerType::Set);
+            forNode(node).set(m_graph, m_vm.hashMapBucketSetStructure.get());
+        }
         break;
 
     case IsEmpty:
@@ -1486,6 +1499,19 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
         }
+
+        if (node->isBinaryUseKind(UntypedUse)) {
+            // FIXME: Revisit this condition when introducing BigInt to JSC.
+            auto isNonStringCellConstant = [] (JSValue value) {
+                return value && value.isCell() && !value.isString();
+            };
+
+            if (isNonStringCellConstant(left) || isNonStringCellConstant(right)) {
+                m_state.setFoundConstants(true);
+                forNode(node).setType(SpecBoolean);
+                break;
+            }
+        }
         
         SpeculatedType leftLUB = leastUpperBoundOfStrictlyEquivalentSpeculations(forNode(leftNode).m_type);
         SpeculatedType rightLUB = leastUpperBoundOfStrictlyEquivalentSpeculations(forNode(rightNode).m_type);
@@ -1839,7 +1865,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // FIXME: Do sparse conditional things.
         break;
     }
-            
+
     case Return:
         m_state.setIsValid(false);
         break;
@@ -2043,6 +2069,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
@@ -2093,6 +2120,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case NewGeneratorFunction:
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->generatorFunctionStructure());
+        break;
+
+    case NewAsyncGeneratorFunction:
+        forNode(node).set(
+            m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->asyncGeneratorFunctionStructure());
         break;
 
     case NewAsyncFunction:

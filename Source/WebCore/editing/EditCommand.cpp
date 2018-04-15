@@ -43,6 +43,7 @@ String inputTypeNameForEditingAction(EditAction action)
 {
     switch (action) {
     case EditActionJustify:
+        return ASCIILiteral("formatJustifyFull");
     case EditActionAlignLeft:
         return ASCIILiteral("formatJustifyLeft");
     case EditActionAlignRight:
@@ -56,7 +57,7 @@ String inputTypeNameForEditingAction(EditAction action)
     case EditActionUnderline:
         return ASCIILiteral("formatUnderline");
     case EditActionSetColor:
-        return ASCIILiteral("formatForeColor");
+        return ASCIILiteral("formatFontColor");
     case EditActionDeleteByDrag:
         return ASCIILiteral("deleteByDrag");
     case EditActionCut:

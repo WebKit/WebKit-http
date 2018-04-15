@@ -36,6 +36,7 @@ namespace WebCore {
 class CachedResource;
 class ContentSecurityPolicy;
 class Frame;
+class HTTPHeaderMap;
 class NetscapePlugInStreamLoader;
 class NetscapePlugInStreamLoaderClient;
 class NetworkingContext;
@@ -63,7 +64,8 @@ public:
     virtual void suspendPendingRequests() = 0;
     virtual void resumePendingRequests() = 0;
 
-    virtual void createPingHandle(NetworkingContext*, ResourceRequest&, Ref<SecurityOrigin>&& sourceOrigin, ContentSecurityPolicy*, const FetchOptions&) = 0;
+    using PingLoadCompletionHandler = WTF::Function<void(const ResourceError&)>;
+    virtual void startPingLoad(Frame&, ResourceRequest&, const HTTPHeaderMap& originalRequestHeaders, const FetchOptions&, PingLoadCompletionHandler&& = { }) = 0;
 
     virtual void storeDerivedDataToCache(const SHA1::Digest& bodyKey, const String& type, const String& partition, WebCore::SharedBuffer&) = 0;
 

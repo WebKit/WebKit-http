@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2013 Apple Inc.  All rights reserved.
  * Copyright (C) 2017 Sony Interactive Entertainment Inc.
+ * Copyright (C) 2017 NAVER Corp.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,19 +27,12 @@
 
 #pragma once
 
+#include "CurlJobManager.h"
 #include "FileSystem.h"
 #include "ResourceHandle.h"
 #include "ResourceResponse.h"
 #include <wtf/Lock.h>
 #include <wtf/Threading.h>
-
-#if PLATFORM(WIN)
-#include <windows.h>
-#include <winsock2.h>
-#endif
-
-#include "CurlContext.h"
-#include "CurlJobManager.h"
 
 namespace WebCore {
 
@@ -50,12 +44,12 @@ public:
     virtual void didFail() { }
 };
 
-class CurlDownload : public ThreadSafeRefCounted<CurlDownload> {
+class CurlDownload : public ThreadSafeRefCounted<CurlDownload>, public CurlJobClient {
 public:
     CurlDownload();
     ~CurlDownload();
 
-    void init(CurlDownloadListener*, const WebCore::URL&);
+    void init(CurlDownloadListener*, const URL&);
     void init(CurlDownloadListener*, ResourceHandle*, const ResourceRequest&, const ResourceResponse&);
 
     void setListener(CurlDownloadListener* listener) { m_listener = listener; }
@@ -63,9 +57,7 @@ public:
     bool start();
     bool cancel();
 
-    String getTempPath() const;
-    String getUrl() const;
-    WebCore::ResourceResponse getResponse() const;
+    ResourceResponse getResponse() const;
 
     bool deletesFileUponFailure() const { return m_deletesFileUponFailure; }
     void setDeletesFileUponFailure(bool deletesFileUponFailure) { m_deletesFileUponFailure = deletesFileUponFailure; }
@@ -73,6 +65,13 @@ public:
     void setDestination(const String& destination) { m_destination = destination; }
 
 private:
+    void retain() override;
+    void release() override;
+
+    void setupRequest() override;
+    void notifyFinish() override;
+    void notifyFail() override;
+
     void closeFile();
     void moveFileToDestination();
     void writeDataToFile(const char* data, int size);
@@ -92,17 +91,17 @@ private:
     static size_t writeCallback(char* ptr, size_t, size_t nmemb, void* data);
     static size_t headerCallback(char* ptr, size_t, size_t nmemb, void* data);
 
-    static void downloadFinishedCallback(CurlDownload*);
-    static void downloadFailedCallback(CurlDownload*);
-    static void receivedDataCallback(CurlDownload*, int size);
-    static void receivedResponseCallback(CurlDownload*);
-
     CurlHandle m_curlHandle;
+    URL m_url;
     CurlJobTicket m_job;
     String m_tempPath;
     String m_destination;
-    WebCore::PlatformFileHandle m_tempHandle { invalidPlatformFileHandle };
-    WebCore::ResourceResponse m_response;
+    PlatformFileHandle m_tempHandle { invalidPlatformFileHandle };
+    URL m_responseUrl;
+    String m_responseMIMEType;
+    String m_responseTextEncodingName;
+    String m_httpHeaderFieldName;
+    String m_httpHeaderFieldValue;
     bool m_deletesFileUponFailure { false };
     mutable Lock m_mutex;
     CurlDownloadListener* m_listener { nullptr };

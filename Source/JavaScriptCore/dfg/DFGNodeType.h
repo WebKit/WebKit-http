@@ -92,6 +92,7 @@ namespace JSC { namespace DFG {
     /* Special node for OSR entry into the FTL. Indicates that we're loading a local */\
     /* variable from the scratch buffer. */\
     macro(ExtractOSREntryLocal, NodeResultJS) \
+    macro(ExtractCatchLocal, NodeResultJS) \
     \
     /* Tier-up checks from the DFG to the FTL. */\
     macro(CheckTierUpInLoop, NodeMustGenerate) \
@@ -327,6 +328,7 @@ namespace JSC { namespace DFG {
     macro(PhantomNewFunction, NodeResultJS | NodeMustGenerate) \
     macro(PhantomNewGeneratorFunction, NodeResultJS | NodeMustGenerate) \
     macro(PhantomNewAsyncFunction, NodeResultJS | NodeMustGenerate) \
+    macro(PhantomNewAsyncGeneratorFunction, NodeResultJS | NodeMustGenerate) \
     macro(PhantomCreateActivation, NodeResultJS | NodeMustGenerate) \
     macro(MaterializeCreateActivation, NodeResultJS | NodeHasVarArgs) \
     \
@@ -379,6 +381,8 @@ namespace JSC { namespace DFG {
     \
     macro(NewGeneratorFunction, NodeResultJS) \
     \
+    macro(NewAsyncGeneratorFunction, NodeResultJS) \
+    \
     macro(NewAsyncFunction, NodeResultJS) \
     \
     /* These aren't terminals but always exit */ \
@@ -428,8 +432,10 @@ namespace JSC { namespace DFG {
     /* Nodes for JSMap and JSSet */ \
     macro(MapHash, NodeResultInt32) \
     macro(GetMapBucket, NodeResultJS) \
-    macro(LoadFromJSMapBucket, NodeResultJS) \
-    macro(IsNonEmptyMapBucket, NodeResultBoolean) \
+    macro(GetMapBucketHead, NodeResultJS) \
+    macro(GetMapBucketNext, NodeResultJS) \
+    macro(LoadKeyFromMapBucket, NodeResultJS) \
+    macro(LoadValueFromMapBucket, NodeResultJS) \
     \
     macro(ToLowerCase, NodeResultJS) \
     /* Nodes for DOM JIT */\

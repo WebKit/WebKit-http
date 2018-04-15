@@ -31,9 +31,12 @@
 #include "CommonCryptoDERUtilities.h"
 #include "CommonCryptoUtilities.h"
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
+#include "CryptoKeyRSAComponents.h"
 #include "ScriptExecutionContext.h"
+#include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
+#include <heap/HeapInlines.h>
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -66,7 +69,7 @@ static CCCryptorStatus getPublicKeyComponents(CCRSACryptorRef rsaKey, Vector<uin
     return status;
 }
 
-static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<uint8_t>& privateExponent, CryptoKeyDataRSAComponents::PrimeInfo& firstPrimeInfo, CryptoKeyDataRSAComponents::PrimeInfo& secondPrimeInfo)
+static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<uint8_t>& privateExponent, CryptoKeyRSAComponents::PrimeInfo& firstPrimeInfo, CryptoKeyRSAComponents::PrimeInfo& secondPrimeInfo)
 {
     ASSERT(CCRSAGetKeyType(rsaKey) == ccRSAKeyPrivate);
 
@@ -110,9 +113,9 @@ CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithm
 {
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyDataRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usage)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usage)
 {
-    if (keyData.type() == CryptoKeyDataRSAComponents::Type::Private && !keyData.hasAdditionalPrivateKeyParameters()) {
+    if (keyData.type() == CryptoKeyRSAComponents::Type::Private && !keyData.hasAdditionalPrivateKeyParameters()) {
         // <rdar://problem/15452324> tracks adding support.
         WTFLogAlways("Private keys without additional data are not supported");
         return nullptr;
@@ -124,7 +127,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
     }
     // When an empty vector p is provided to CCRSACryptorCreateFromData to create a private key, it crashes.
     // <rdar://problem/30550228> tracks the issue.
-    if (keyData.type() == CryptoKeyDataRSAComponents::Type::Private && keyData.firstPrimeInfo().primeFactor.isEmpty())
+    if (keyData.type() == CryptoKeyRSAComponents::Type::Private && keyData.firstPrimeInfo().primeFactor.isEmpty())
         return nullptr;
 
     CCRSACryptorRef cryptor;
@@ -132,7 +135,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
     // given the fact that we have already had it. Also, the re-caculated private exponent may not match the given one.
     // See <rdar://problem/15452324>.
     CCCryptorStatus status = CCRSACryptorCreateFromData(
-        keyData.type() == CryptoKeyDataRSAComponents::Type::Public ? ccRSAKeyPublic : ccRSAKeyPrivate,
+        keyData.type() == CryptoKeyRSAComponents::Type::Public ? ccRSAKeyPublic : ccRSAKeyPrivate,
         (uint8_t*)keyData.modulus().data(), keyData.modulus().size(),
         (uint8_t*)keyData.exponent().data(), keyData.exponent().size(),
         (uint8_t*)keyData.firstPrimeInfo().primeFactor.data(), keyData.firstPrimeInfo().primeFactor.size(),
@@ -144,7 +147,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
         return nullptr;
     }
 
-    return adoptRef(new CryptoKeyRSA(identifier, hash, hasHash, keyData.type() == CryptoKeyDataRSAComponents::Type::Public ? CryptoKeyType::Public : CryptoKeyType::Private, cryptor, extractable, usage));
+    return adoptRef(new CryptoKeyRSA(identifier, hash, hasHash, keyData.type() == CryptoKeyRSAComponents::Type::Public ? CryptoKeyType::Public : CryptoKeyType::Private, cryptor, extractable, usage));
 }
 
 CryptoKeyRSA::~CryptoKeyRSA()
@@ -174,25 +177,44 @@ size_t CryptoKeyRSA::keySizeInBits() const
     return modulus.size() * 8;
 }
 
-std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
+auto CryptoKeyRSA::algorithm() const -> KeyAlgorithm
 {
-    String name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    // FIXME: Add a version of getPublicKeyComponents that returns Uint8Array, rather
+    // than Vector<uint8_t>, to avoid a copy of the data.
+
     Vector<uint8_t> modulus;
     Vector<uint8_t> publicExponent;
     CCCryptorStatus status = getPublicKeyComponents(m_platformKey, modulus, publicExponent);
     if (status) {
         WTFLogAlways("Couldn't get RSA key components, status %d", status);
         publicExponent.clear();
-        return std::make_unique<RsaKeyAlgorithm>(name, 0, WTFMove(publicExponent));
+
+        CryptoRsaKeyAlgorithm result;
+        result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+        result.modulusLength = 0;
+        result.publicExponent = Uint8Array::create(0);
+        return result;
     }
 
     size_t modulusLength = modulus.size() * 8;
-    if (m_restrictedToSpecificHash)
-        return std::make_unique<RsaHashedKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent), CryptoAlgorithmRegistry::singleton().name(m_hash));
-    return std::make_unique<RsaKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent));
+
+    if (m_restrictedToSpecificHash) {
+        CryptoRsaHashedKeyAlgorithm result;
+        result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+        result.modulusLength = modulusLength;
+        result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+        result.hash.name = CryptoAlgorithmRegistry::singleton().name(m_hash);
+        return result;
+    }
+    
+    CryptoRsaKeyAlgorithm result;
+    result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    result.modulusLength = modulusLength;
+    result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+    return result;
 }
 
-std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
+std::unique_ptr<CryptoKeyRSAComponents> CryptoKeyRSA::exportData() const
 {
     switch (CCRSAGetKeyType(m_platformKey)) {
     case ccRSAKeyPublic: {
@@ -203,7 +225,7 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
             WTFLogAlways("Couldn't get RSA key components, status %d", status);
             return nullptr;
         }
-        return CryptoKeyDataRSAComponents::createPublic(modulus, publicExponent);
+        return CryptoKeyRSAComponents::createPublic(modulus, publicExponent);
     }
     case ccRSAKeyPrivate: {
         Vector<uint8_t> modulus;
@@ -214,15 +236,15 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
             return nullptr;
         }
         Vector<uint8_t> privateExponent;
-        CryptoKeyDataRSAComponents::PrimeInfo firstPrimeInfo;
-        CryptoKeyDataRSAComponents::PrimeInfo secondPrimeInfo;
-        Vector<CryptoKeyDataRSAComponents::PrimeInfo> otherPrimeInfos; // Always empty, CommonCrypto only supports two primes (cf. <rdar://problem/15444074>).
+        CryptoKeyRSAComponents::PrimeInfo firstPrimeInfo;
+        CryptoKeyRSAComponents::PrimeInfo secondPrimeInfo;
+        Vector<CryptoKeyRSAComponents::PrimeInfo> otherPrimeInfos; // Always empty, CommonCrypto only supports two primes (cf. <rdar://problem/15444074>).
         status = getPrivateKeyComponents(m_platformKey, privateExponent, firstPrimeInfo, secondPrimeInfo);
         if (status) {
             WTFLogAlways("Couldn't get RSA key components, status %d", status);
             return nullptr;
         }
-        return CryptoKeyDataRSAComponents::createPrivateWithAdditionalData(modulus, publicExponent, privateExponent, firstPrimeInfo, secondPrimeInfo, otherPrimeInfos);
+        return CryptoKeyRSAComponents::createPrivateWithAdditionalData(modulus, publicExponent, privateExponent, firstPrimeInfo, secondPrimeInfo, otherPrimeInfos);
     }
     default:
         return nullptr;

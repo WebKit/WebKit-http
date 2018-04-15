@@ -339,6 +339,19 @@
 #define WTF_CPU_ARM_VFP 1
 #endif
 
+/* If CPU(ARM_NEON) is not enabled, we'll conservatively assume only VFP2 or VFPv3D16
+   support is available. Hence, only the first 16 64-bit floating point registers
+   are available. See:
+   NEON registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJACABEJ.html
+   VFP2 and VFP3 registers: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CIHDIBDG.html
+   NEON to VFP register mapping: http://infocenter.arm.com/help/index.jsp?topic=/com.arm.doc.dui0473c/CJAIJHFC.html
+*/
+#if CPU(ARM_NEON)
+#define WTF_CPU_ARM_VFP_V3_D32 1
+#else
+#define WTF_CPU_ARM_VFP_V2 1
+#endif
+
 #if defined(__ARM_ARCH_7K__)
 #define WTF_CPU_APPLE_ARMV7K 1
 #endif
@@ -805,10 +818,10 @@
 
 #if !defined(ENABLE_DFG_JIT) && ENABLE(JIT)
 /* Enable the DFG JIT on X86 and X86_64. */
-#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HAIKU) || OS(HURD))
+#if (CPU(X86) || CPU(X86_64)) && (OS(DARWIN) || OS(LINUX) || OS(FREEBSD) || OS(HAIKU) || OS(HURD) || OS(WINDOWS))
 #define ENABLE_DFG_JIT 1
 #endif
-/* Enable the DFG JIT on ARMv7.  Only tested on iOS and Qt/GTK+ Linux. */
+/* Enable the DFG JIT on ARMv7.  Only tested on iOS and GTK+/WPE Linux. */
 #if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(WPE))
 #define ENABLE_DFG_JIT 1
 #endif
@@ -818,9 +831,6 @@
 #endif
 /* FIXME: MIPS cannot enable the DFG until it has support for MacroAssembler::probe().
    https://bugs.webkit.org/show_bug.cgi?id=175447
-*/
-/* FIXME: Windows cannot enable the DFG until it has support for MacroAssembler::probe().
-   https://bugs.webkit.org/show_bug.cgi?id=175449
 */
 #endif
 
@@ -840,8 +850,20 @@
 #define ENABLE_FAST_TLS_JIT 1
 #endif
 
-/* If the baseline jit is not available, then disable upper tiers as well: */
+#if CPU(X86) || CPU(X86_64) || CPU(ARM_THUMB2) || CPU(ARM64) || CPU(ARM_TRADITIONAL)
+#define ENABLE_MASM_PROBE 1
+#else
+#define ENABLE_MASM_PROBE 0
+#endif
+
 #if !ENABLE(JIT)
+#undef ENABLE_MASM_PROBE
+#define ENABLE_MASM_PROBE 0
+#endif
+
+/* If the baseline jit is not available, then disable upper tiers as well.
+   The MacroAssembler::probe() is also required for supporting the upper tiers. */
+#if !ENABLE(JIT) || !ENABLE(MASM_PROBE)
 #undef ENABLE_DFG_JIT
 #undef ENABLE_FTL_JIT
 #define ENABLE_DFG_JIT 0

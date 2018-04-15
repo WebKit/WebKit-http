@@ -54,7 +54,6 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/LogInitialization.h>
 #import <WebCore/MemoryRelease.h>
-#import <WebCore/NSAccessibilitySPI.h>
 #import <WebCore/PerformanceLogging.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/WebCoreNSURLExtras.h>
@@ -65,12 +64,13 @@
 #import <pal/spi/cf/CFNetworkSPI.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
 #import <pal/spi/cocoa/pthreadSPI.h>
+#import <pal/spi/mac/NSAccessibilitySPI.h>
 #import <runtime/ConfigFile.h>
 #import <stdio.h>
 
 #if PLATFORM(IOS)
 #import "CelestialSPI.h"
-#import <WebCore/GraphicsServicesSPI.h>
+#import <pal/spi/ios/GraphicsServicesSPI.h>
 #import <wtf/SoftLinking.h>
 #endif
 

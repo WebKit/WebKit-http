@@ -45,9 +45,6 @@
 
 namespace WebCore {
 
-class CryptoAlgorithmDescriptionBuilder;
-class CryptoKeyData;
-
 enum class CryptoKeyClass {
     AES,
     EC,
@@ -56,57 +53,25 @@ enum class CryptoKeyClass {
     Raw,
 };
 
-enum class KeyAlgorithmClass {
-    AES,
-    EC,
-    HMAC,
-    HRSA,
-    RSA,
-    Raw,
-};
-
-class KeyAlgorithm {
-public:
-    virtual ~KeyAlgorithm()
-    {
-    }
-
-    virtual KeyAlgorithmClass keyAlgorithmClass() const = 0;
-
-    const String& name() const { return m_name; }
-
-protected:
-    explicit KeyAlgorithm(const String& name)
-        : m_name(name)
-    {
-    }
-
-private:
-    String m_name;
-};
-
 class CryptoKey : public ThreadSafeRefCounted<CryptoKey> {
 public:
     using Type = CryptoKeyType;
-    using AlgorithmVariant = Variant<CryptoKeyAlgorithm, CryptoAesKeyAlgorithm, CryptoEcKeyAlgorithm, CryptoHmacKeyAlgorithm, CryptoRsaHashedKeyAlgorithm, CryptoRsaKeyAlgorithm>;
+    using KeyAlgorithm = Variant<CryptoKeyAlgorithm, CryptoAesKeyAlgorithm, CryptoEcKeyAlgorithm, CryptoHmacKeyAlgorithm, CryptoRsaHashedKeyAlgorithm, CryptoRsaKeyAlgorithm>;
 
     CryptoKey(CryptoAlgorithmIdentifier, Type, bool extractable, CryptoKeyUsageBitmap);
     virtual ~CryptoKey();
 
     Type type() const;
     bool extractable() const { return m_extractable; }
-    AlgorithmVariant algorithm() const;
     Vector<CryptoKeyUsage> usages() const;
+    virtual KeyAlgorithm algorithm() const = 0;
 
     virtual CryptoKeyClass keyClass() const = 0;
-    virtual std::unique_ptr<KeyAlgorithm> buildAlgorithm() const = 0;
 
     CryptoAlgorithmIdentifier algorithmIdentifier() const { return m_algorithmIdentifier; }
     CryptoKeyUsageBitmap usagesBitmap() const { return m_usages; }
     void setUsagesBitmap(CryptoKeyUsageBitmap usage) { m_usages = usage; };
     bool allows(CryptoKeyUsageBitmap usage) const { return usage == (m_usages & usage); }
-
-    virtual std::unique_ptr<CryptoKeyData> exportData() const = 0;
 
     static Vector<uint8_t> randomData(size_t);
 
@@ -127,11 +92,6 @@ inline auto CryptoKey::type() const -> Type
 #define SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(ToClassName, KeyClass) \
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToClassName) \
     static bool isType(const WebCore::CryptoKey& key) { return key.keyClass() == WebCore::KeyClass; } \
-SPECIALIZE_TYPE_TRAITS_END()
-
-#define SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(ToClassName, KeyAlgorithmClass) \
-SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToClassName) \
-    static bool isType(const WebCore::KeyAlgorithm& algorithm) { return algorithm.keyAlgorithmClass() == WebCore::KeyAlgorithmClass; } \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(SUBTLE_CRYPTO)

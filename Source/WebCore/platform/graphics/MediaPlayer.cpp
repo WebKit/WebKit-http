@@ -589,6 +589,23 @@ void MediaPlayer::keyAdded()
 }
 #endif
     
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayer::cdmInstanceAttached(const CDMInstance& instance)
+{
+    m_private->cdmInstanceAttached(instance);
+}
+
+void MediaPlayer::cdmInstanceDetached(const CDMInstance& instance)
+{
+    m_private->cdmInstanceDetached(instance);
+}
+
+void MediaPlayer::attemptToDecryptWithInstance(const CDMInstance& instance)
+{
+    m_private->attemptToDecryptWithInstance(instance);
+}
+#endif
+
 MediaTime MediaPlayer::duration() const
 {
     return m_private->durationMediaTime();
@@ -1236,6 +1253,13 @@ String MediaPlayer::mediaKeysStorageDirectory() const
 }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayer::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+{
+    client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
+}
+#endif
+
 String MediaPlayer::referrer() const
 {
     return client().mediaPlayerReferrer();
@@ -1396,36 +1420,12 @@ bool MediaPlayer::ended() const
 }
 
 #if ENABLE(MEDIA_SOURCE)
-unsigned long MediaPlayer::totalVideoFrames()
+std::optional<PlatformVideoPlaybackQualityMetrics> MediaPlayer::videoPlaybackQualityMetrics()
 {
     if (!m_private)
-        return 0;
+        return std::nullopt;
 
-    return m_private->totalVideoFrames();
-}
-
-unsigned long MediaPlayer::droppedVideoFrames()
-{
-    if (!m_private)
-        return 0;
-
-    return m_private->droppedVideoFrames();
-}
-
-unsigned long MediaPlayer::corruptedVideoFrames()
-{
-    if (!m_private)
-        return 0;
-
-    return m_private->corruptedVideoFrames();
-}
-
-MediaTime MediaPlayer::totalFrameDelay()
-{
-    if (!m_private)
-        return MediaTime::zeroTime();
-
-    return m_private->totalFrameDelay();
+    return m_private->videoPlaybackQualityMetrics();
 }
 #endif
 

@@ -32,6 +32,7 @@
 #import <WebKit/WKWebViewPrivate.h>
 #import <WebKit/_WKActivatedElementInfo.h>
 
+@class NSData;
 @class UIScrollView;
 @class UIViewController;
 @class WKFrameInfo;
@@ -45,6 +46,28 @@
 @class UITargetedDragPreview;
 @protocol UIDragSession;
 @protocol UIDropSession;
+#else
+typedef NS_ENUM(NSInteger, _WKFocusDirection) {
+    _WKFocusDirectionBackward,
+    _WKFocusDirectionForward,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+typedef NS_ENUM(NSInteger, _WKAutoplayEvent) {
+    _WKAutoplayEventDidPreventFromAutoplaying,
+    _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying,
+    _WKAutoplayEventDidAutoplayMediaPastThresholdWithoutUserInterference,
+    _WKAutoplayEventUserDidInterfereWithPlayback,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+typedef NS_ENUM(NSInteger, _WKResourceLimit) {
+    _WKResourceLimitMemory,
+    _WKResourceLimitCPU,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
+typedef NS_OPTIONS(NSInteger, _WKAutoplayEventFlags) {
+    _WKAutoplayEventFlagsNone = 0,
+    _WKAutoplayEventFlagsHasAudio = 1 << 0,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 #endif
 
 @protocol WKUIDelegatePrivate <WKUIDelegate>
@@ -78,6 +101,7 @@ struct UIEdgeInsets;
 - (void)_webView:(WKWebView *)webView createWebViewWithConfiguration:(WKWebViewConfiguration *)configuration forNavigationAction:(WKNavigationAction *)navigationAction windowFeatures:(WKWindowFeatures *)windowFeatures completionHandler:(void (^)(WKWebView *webView))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 - (void)_webView:(WKWebView *)webView runBeforeUnloadConfirmPanelWithMessage:(NSString *)message initiatedByFrame:(WKFrameInfo *)frame completionHandler:(void (^)(BOOL result))completionHandler WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+- (void)_webView:(WKWebView *)webView editorStateDidChange:(NSDictionary *)editorState WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 #if TARGET_OS_IPHONE
 - (BOOL)_webView:(WKWebView *)webView shouldIncludeAppLinkActionsForElement:(_WKActivatedElementInfo *)element WK_API_AVAILABLE(ios(9.0));
@@ -119,6 +143,14 @@ struct UIEdgeInsets;
 #endif
 - (void)_webView:(WKWebView *)webView didChangeSafeAreaShouldAffectObscuredInsets:(BOOL)safeAreaShouldAffectObscuredInsets WK_API_AVAILABLE(ios(WK_IOS_TBA));
 #else
+- (void)_showWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_focusWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_unfocusWebView:(WKWebView *)webView WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView takeFocus:(_WKFocusDirection)direction WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView didNotHandleWheelEvent:(NSEvent *)event WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView handleAutoplayEvent:(_WKAutoplayEvent)event withFlags:(_WKAutoplayEventFlags)flags WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView saveDataToFile:(NSData *)data suggestedFilename:(NSString *)suggestedFilename mimeType:(NSString *)mimeType originatingURL:(NSURL *)url WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+- (void)_webView:(WKWebView *)webView didExceedBackgroundResourceLimitWhileInForeground:(_WKResourceLimit)limit WK_API_AVAILABLE(macosx(WK_MAC_TBA));
 - (NSMenu *)_webView:(WKWebView *)webView contextMenu:(NSMenu *)menu forElement:(_WKContextMenuElementInfo *)element WK_API_AVAILABLE(macosx(10.12));
 - (NSMenu *)_webView:(WKWebView *)webView contextMenu:(NSMenu *)menu forElement:(_WKContextMenuElementInfo *)element userInfo:(id <NSSecureCoding>)userInfo WK_API_AVAILABLE(macosx(10.12));
 #endif

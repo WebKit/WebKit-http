@@ -1,3 +1,551 @@
+2017-08-30  Oleksandr Skachkov  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - Implement async iteration statement: for-await-of
+        https://bugs.webkit.org/show_bug.cgi?id=166698
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-iteration-for-await-of-syntax.js: Added.
+        (assert):
+        (checkSyntax):
+        (checkSyntaxError):
+        (checkSimpleAsyncGeneratorSloppyMode):
+        (checkSimpleAsyncGeneratorStrictMode):
+        (checkNestedAsyncGenerators):
+        (checkSimpleAsyncGeneratorSyntaxErrorInStrictMode):
+        * stress/async-iteration-for-await-of.js: Added.
+        (assert):
+        (async.foo):
+        (async.boo):
+        (const.boo.async):
+
+2017-08-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use reifying system for "name" property of builtin JSFunction
+        https://bugs.webkit.org/show_bug.cgi?id=175260
+
+        Reviewed by Saam Barati.
+
+        * stress/accessors-get-set-prefix.js:
+        * stress/builtin-function-name.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyDescriptor):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyNames.Array.prototype.filter.sort):
+
+2017-08-25  Saam Barati  <sbarati@apple.com>
+
+        Support compiling catch in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        <rdar://problem/34047845>
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/delta-blue-try-catch.js: Added.
+        (exception):
+        (value):
+        (OrderedCollection):
+        (OrderedCollection.prototype.add):
+        (OrderedCollection.prototype.at):
+        (OrderedCollection.prototype.size):
+        (OrderedCollection.prototype.removeFirst):
+        (OrderedCollection.prototype.remove):
+        (Strength):
+        (Strength.stronger):
+        (Strength.weaker):
+        (Strength.weakestOf):
+        (Strength.strongest):
+        (Strength.prototype.nextWeaker):
+        (Constraint):
+        (Constraint.prototype.addConstraint):
+        (Constraint.prototype.satisfy):
+        (Constraint.prototype.destroyConstraint):
+        (Constraint.prototype.isInput):
+        (UnaryConstraint):
+        (UnaryConstraint.prototype.addToGraph):
+        (UnaryConstraint.prototype.chooseMethod):
+        (UnaryConstraint.prototype.isSatisfied):
+        (UnaryConstraint.prototype.markInputs):
+        (UnaryConstraint.prototype.output):
+        (UnaryConstraint.prototype.recalculate):
+        (UnaryConstraint.prototype.markUnsatisfied):
+        (UnaryConstraint.prototype.inputsKnown):
+        (UnaryConstraint.prototype.removeFromGraph):
+        (StayConstraint):
+        (StayConstraint.prototype.execute):
+        (EditConstraint.prototype.isInput):
+        (EditConstraint.prototype.execute):
+        (BinaryConstraint):
+        (BinaryConstraint.prototype.chooseMethod):
+        (BinaryConstraint.prototype.addToGraph):
+        (BinaryConstraint.prototype.isSatisfied):
+        (BinaryConstraint.prototype.markInputs):
+        (BinaryConstraint.prototype.input):
+        (BinaryConstraint.prototype.output):
+        (BinaryConstraint.prototype.recalculate):
+        (BinaryConstraint.prototype.markUnsatisfied):
+        (BinaryConstraint.prototype.inputsKnown):
+        (BinaryConstraint.prototype.removeFromGraph):
+        (ScaleConstraint):
+        (ScaleConstraint.prototype.addToGraph):
+        (ScaleConstraint.prototype.removeFromGraph):
+        (ScaleConstraint.prototype.markInputs):
+        (ScaleConstraint.prototype.execute):
+        (ScaleConstraint.prototype.recalculate):
+        (EqualityConstraint):
+        (EqualityConstraint.prototype.execute):
+        (Variable):
+        (Variable.prototype.addConstraint):
+        (Variable.prototype.removeConstraint):
+        (Planner):
+        (Planner.prototype.incrementalAdd):
+        (Planner.prototype.incrementalRemove):
+        (Planner.prototype.newMark):
+        (Planner.prototype.makePlan):
+        (Planner.prototype.extractPlanFromConstraints):
+        (Planner.prototype.addPropagate):
+        (Planner.prototype.removePropagateFrom):
+        (Planner.prototype.addConstraintsConsumingTo):
+        (Plan):
+        (Plan.prototype.addConstraint):
+        (Plan.prototype.size):
+        (Plan.prototype.constraintAt):
+        (Plan.prototype.execute):
+        (chainTest):
+        (projectionTest):
+        (change):
+        (deltaBlue):
+        * microbenchmarks/fake-iterators-that-throw-when-finished.js: Added.
+        (assert):
+        (Numbers):
+        (Numbers.prototype.next):
+        (return.Transpose):
+        (return.Transpose.prototype.next):
+        (transpose):
+        (verifyEven):
+        (verifyString):
+        (foo):
+        (runIterators):
+        * microbenchmarks/try-catch-word-count.js: Added.
+        (let.assert):
+        (EOF):
+        (let.texts):
+        (let.o.apply):
+        (foo):
+        (bar):
+        (f):
+        (run):
+        (test1):
+        (test2):
+        (test3):
+        (fn):
+        (A):
+        (B):
+        (A.prototype.getValue):
+        (B.prototype.getParentValue):
+        (strlen):
+        (sum.0):
+        (test):
+        (result.test.o):
+        (set add.set add):
+        (set forEach):
+        (stringHash):
+        (set if):
+        (testFunction):
+        (set delete.set has.set add):
+        * stress/catch-set-argument-speculation-failure.js: Added.
+        (o):
+        (e):
+        (e2):
+        (escape):
+        (baz):
+        (noInline.run):
+        (noInline):
+        * stress/osr-enter-to-catch-with-set-local-type-check-failure.js: Added.
+        (foo):
+        (e):
+        (baz):
+        (bar):
+
+2017-08-24  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221119, r221124, and r221143.
+        https://bugs.webkit.org/show_bug.cgi?id=175973
+
+        "I think it regressed JSBench by 20%" (Requested by saamyjoon
+        on #webkit).
+
+        Reverted changesets:
+
+        "Support compiling catch in the DFG"
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        http://trac.webkit.org/changeset/221119
+
+        "Unreviewed, build fix in GTK port"
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+        http://trac.webkit.org/changeset/221124
+
+        "DFG::JITCode::osrEntry should get sorted since we perform a
+        binary search on it"
+        https://bugs.webkit.org/show_bug.cgi?id=175893
+        http://trac.webkit.org/changeset/221143
+
+2017-08-24  Michael Saboff  <msaboff@apple.com>
+
+        Add support for RegExp "dotAll" flag
+        https://bugs.webkit.org/show_bug.cgi?id=175924
+
+        Reviewed by Keith Miller.
+
+        Updated tests for new dotAll ('s' flag) changes.
+
+        * es6/Proxy_internal_get_calls_RegExp.prototype.flags.js:
+        * stress/static-getter-in-names.js:
+
+2017-08-24  Mark Lam  <mark.lam@apple.com>
+
+        Land regression test for https://bugs.webkit.org/show_bug.cgi?id=164081.
+        https://bugs.webkit.org/show_bug.cgi?id=175940
+        <rdar://problem/29003921>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-164081.js: Added.
+        (shouldEqual):
+        (testcase):
+
+2017-08-24  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test stress/test-finally.js.
+        https://bugs.webkit.org/show_bug.cgi?id=160283
+
+        Unreviewed test gardening.
+
+        * stress/test-finally.js:
+
+2017-08-23  Saam Barati  <sbarati@apple.com>
+
+        Support compiling catch in the DFG
+        https://bugs.webkit.org/show_bug.cgi?id=174590
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/delta-blue-try-catch.js: Added.
+        (exception):
+        (value):
+        (OrderedCollection):
+        (OrderedCollection.prototype.add):
+        (OrderedCollection.prototype.at):
+        (OrderedCollection.prototype.size):
+        (OrderedCollection.prototype.removeFirst):
+        (OrderedCollection.prototype.remove):
+        (Strength):
+        (Strength.stronger):
+        (Strength.weaker):
+        (Strength.weakestOf):
+        (Strength.strongest):
+        (Strength.prototype.nextWeaker):
+        (Constraint):
+        (Constraint.prototype.addConstraint):
+        (Constraint.prototype.satisfy):
+        (Constraint.prototype.destroyConstraint):
+        (Constraint.prototype.isInput):
+        (UnaryConstraint):
+        (UnaryConstraint.prototype.addToGraph):
+        (UnaryConstraint.prototype.chooseMethod):
+        (UnaryConstraint.prototype.isSatisfied):
+        (UnaryConstraint.prototype.markInputs):
+        (UnaryConstraint.prototype.output):
+        (UnaryConstraint.prototype.recalculate):
+        (UnaryConstraint.prototype.markUnsatisfied):
+        (UnaryConstraint.prototype.inputsKnown):
+        (UnaryConstraint.prototype.removeFromGraph):
+        (StayConstraint):
+        (StayConstraint.prototype.execute):
+        (EditConstraint.prototype.isInput):
+        (EditConstraint.prototype.execute):
+        (BinaryConstraint):
+        (BinaryConstraint.prototype.chooseMethod):
+        (BinaryConstraint.prototype.addToGraph):
+        (BinaryConstraint.prototype.isSatisfied):
+        (BinaryConstraint.prototype.markInputs):
+        (BinaryConstraint.prototype.input):
+        (BinaryConstraint.prototype.output):
+        (BinaryConstraint.prototype.recalculate):
+        (BinaryConstraint.prototype.markUnsatisfied):
+        (BinaryConstraint.prototype.inputsKnown):
+        (BinaryConstraint.prototype.removeFromGraph):
+        (ScaleConstraint):
+        (ScaleConstraint.prototype.addToGraph):
+        (ScaleConstraint.prototype.removeFromGraph):
+        (ScaleConstraint.prototype.markInputs):
+        (ScaleConstraint.prototype.execute):
+        (ScaleConstraint.prototype.recalculate):
+        (EqualityConstraint):
+        (EqualityConstraint.prototype.execute):
+        (Variable):
+        (Variable.prototype.addConstraint):
+        (Variable.prototype.removeConstraint):
+        (Planner):
+        (Planner.prototype.incrementalAdd):
+        (Planner.prototype.incrementalRemove):
+        (Planner.prototype.newMark):
+        (Planner.prototype.makePlan):
+        (Planner.prototype.extractPlanFromConstraints):
+        (Planner.prototype.addPropagate):
+        (Planner.prototype.removePropagateFrom):
+        (Planner.prototype.addConstraintsConsumingTo):
+        (Plan):
+        (Plan.prototype.addConstraint):
+        (Plan.prototype.size):
+        (Plan.prototype.constraintAt):
+        (Plan.prototype.execute):
+        (chainTest):
+        (projectionTest):
+        (change):
+        (deltaBlue):
+        * microbenchmarks/fake-iterators-that-throw-when-finished.js: Added.
+        (assert):
+        (Numbers):
+        (Numbers.prototype.next):
+        (return.Transpose):
+        (return.Transpose.prototype.next):
+        (transpose):
+        (verifyEven):
+        (verifyString):
+        (foo):
+        (runIterators):
+        * microbenchmarks/try-catch-word-count.js: Added.
+        (let.assert):
+        (EOF):
+        (let.texts):
+        (let.o.apply):
+        (foo):
+        (bar):
+        (f):
+        (run):
+        (test1):
+        (test2):
+        (test3):
+        (fn):
+        (A):
+        (B):
+        (A.prototype.getValue):
+        (B.prototype.getParentValue):
+        (strlen):
+        (sum.0):
+        (test):
+        (result.test.o):
+        (set add.set add):
+        (set forEach):
+        (stringHash):
+        (set if):
+        (testFunction):
+        (set delete.set has.set add):
+        * stress/catch-set-argument-speculation-failure.js: Added.
+        (o):
+        (e):
+        (e2):
+        (escape):
+        (baz):
+        (noInline.run):
+        (noInline):
+        * stress/osr-enter-to-catch-with-set-local-type-check-failure.js: Added.
+        (foo):
+        (e):
+        (baz):
+        (bar):
+
+2017-08-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Map iteration with intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=174355
+
+        Reviewed by Saam Barati.
+
+        * stress/map-iterator-result-should-have-expected-shape.js: Added.
+        (shouldBe):
+        (throw.new.Error):
+        * stress/set-iterator-result-should-have-expected-shape.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.iterator.set Symbol):
+        (throw.new.Error.set add):
+        (let.iterator.set Symbol):
+
+2017-08-23  Robin Morisset  <rmorisset@apple.com>
+
+        Add a micro-benchmark for checking that accessing a variable within a 'with'
+        block does not automatically prevent type prediction.
+        https://bugs.webkit.org/show_bug.cgi?id=175738
+
+        Reviewed by Saam Barati.
+
+        * stress/with_and_arith.js: Added.
+        (with):
+
+2017-08-23  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ESNext] Async iteration - Implement Async Generator - runtime
+        https://bugs.webkit.org/show_bug.cgi?id=175240
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-iteration-async-from-sync.js: Added.
+        (assert):
+        (const.Logger):
+        (this.fullfilled):
+        (this.fullfilledDone):
+        (this.rejected):
+        (this.catched):
+        (this.isFinal):
+        (_assertLogger):
+        (const.assertLogger):
+        (const.getPromise.promiseHolder.return.new.Promise):
+        (foo):
+        (async.boo):
+        (bar):
+        (async.baz):
+        (async.goo):
+        * stress/async-iteration-basic.js: Added.
+        (assert):
+        (const.Logger):
+        (this.fullfilled):
+        (this.fullfilledDone):
+        (this.rejected):
+        (this.catched):
+        (this.isFinal):
+        (_assertLogger):
+        (const.assertLogger):
+        (const.getPromise.promiseHolder.return.new.Promise):
+        (async.generator):
+        (iterator.next.then):
+        (async.baz):
+        (async.boo):
+        (async.foo):
+        (async.goo):
+        (A.prototype.async.foo):
+        (A.prototype.async.boo):
+        (A):
+        (asyncGenExp.async):
+        (async.joo):
+        (j.next.then):
+        (then):
+        (async.koo):
+        (async.loo):
+        (async.moo):
+        (async.noo):
+        (async.ooo):
+        (async.roo):
+        (async.poo):
+        (async.soo):
+        (async.too):
+        * stress/async-iteration-evaluation.js: Added.
+        (assert):
+        (async.foo):
+        (catch):
+        * stress/async-iteration-syntax.js:
+        * stress/async-iteration-yield-promise.js: Added.
+        (assert):
+        (const.Logger):
+        (this.fullfilled):
+        (this.fullfilledDone):
+        (this.rejected):
+        (this.catched):
+        (this.isFinal):
+        (_assertLogger):
+        (const.assertLogger):
+        (const.getPromise.promiseHolder.return.new.Promise):
+        (async.foo):
+        (async.boo):
+        (async.bar):
+        * stress/async-iteration-yield-star-interface.js: Added.
+        (assert):
+        (const.getPromise.promiseHolder.return.new.Promise):
+        (const.Logger):
+        (this.fullfilled):
+        (this.fullfilledDone):
+        (this.rejected):
+        (this.catched):
+        (this.custom):
+        (this.isFinal):
+        (_assertLogger):
+        (const.assertLogger):
+        (let.asyncIter.Symbol.asyncIterator):
+        (let.asyncIter.next):
+        (let.asyncIter.throw):
+        (let.asyncIter.return):
+        (async.foo):
+        (asyncIter.Symbol.asyncIterator):
+        (asyncIter.next):
+        (async.boo):
+        (asyncIter.return):
+        (async.bar):
+        (async.baz):
+        (async.foobar):
+        * stress/async-iteration-yield-star.js: Added.
+        (assert):
+        (const.Logger):
+        (this.fullfilled):
+        (this.fullfilledDone):
+        (this.rejected):
+        (this.catched):
+        (this.custom):
+        (this.isFinal):
+        (_assertLogger):
+        (const.assertLogger):
+        (const.getPromise.promiseHolder.return.new.Promise):
+        (async.foo):
+        (async.boo):
+        (async.bar):
+        (async.baz):
+        (async.joo):
+        (async.goo):
+        (async.koo):
+        (async.loo):
+        (let.asyncIter.Symbol.asyncIterator):
+        (let.asyncIter.next):
+        (let.asyncIter.throw):
+        (let.asyncIter.return):
+        (async.moo):
+        (async.noo):
+        * test262.yaml:
+
+2017-08-23  JF Bastien  <jfbastien@apple.com>
+
+        Fix printing in test
+
+        Unreviewed: fixing verbosity, shouldn't have been there.
+
+        * wasm/regress/175693.js:
+        (else.else):
+        (catch):
+
+2017-08-18  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip flaky JSC test microbenchmarks/generator-with-several-types.js.
+        https://bugs.webkit.org/show_bug.cgi?id=172543
+
+        Unreviewed test gardening.
+
+        * microbenchmarks/generator-with-several-types.js:
+
+2017-08-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: const in unreachable code decoded incorrectly, erroneously rejects binary as invalid
+        https://bugs.webkit.org/show_bug.cgi?id=175693
+        <rdar://problem/33952443>
+
+        Reviewed by Saam Barati.
+
+        Add a regression directory for WebAssembly tests.
+
+        * wasm.yaml:
+        * wasm/regress/175693.js: Added.
+        (else.else):
+        (instance.new.WebAssembly.Instance.new.WebAssembly.Module):
+        (catch):
+        * wasm/regress/175693.wasm: Added.
+
 2017-08-15  Robin Morisset  <rmorisset@apple.com>
 
         Support the 'with' keyword in FTL.

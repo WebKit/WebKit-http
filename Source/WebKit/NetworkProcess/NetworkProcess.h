@@ -30,8 +30,8 @@
 #include "DownloadManager.h"
 #include "MessageReceiverMap.h"
 #include <WebCore/DiagnosticLoggingClient.h>
-#include <WebCore/SessionID.h>
 #include <memory>
+#include <pal/SessionID.h>
 #include <wtf/Forward.h>
 #include <wtf/Function.h>
 #include <wtf/MemoryPressureHandler.h>
@@ -42,13 +42,16 @@
 #include "WebSQLiteDatabaseTracker.h"
 #endif
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 class DownloadID;
 class CertificateInfo;
 class NetworkStorageSession;
 class ProtectionSpace;
 class SecurityOrigin;
-class SessionID;
 struct SecurityOriginData;
 struct SoupNetworkProxySettings;
 }
@@ -91,7 +94,9 @@ public:
     AuthenticationManager& authenticationManager();
     DownloadManager& downloadManager();
 
+#if ENABLE(NETWORK_CACHE)
     NetworkCache::Cache* cache() { return m_cache.get(); }
+#endif
 
     bool canHandleHTTPSServerTrustEvaluation() const { return m_canHandleHTTPSServerTrustEvaluation; }
 
@@ -125,10 +130,11 @@ public:
     void grantSandboxExtensionsToStorageProcessForBlobs(const Vector<String>& filenames, Function<void ()>&& completionHandler);
 
 #if HAVE(CFNETWORK_STORAGE_PARTITIONING)
-    void updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool shouldClearFirst);
+    void updateCookiePartitioningForTopPrivatelyOwnedDomains(PAL::SessionID, const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, bool shouldClearFirst);
 #endif
 
     Seconds loadThrottleLatency() const { return m_loadThrottleLatency; }
+    String cacheStorageDirectory(PAL::SessionID) const;
 
 private:
     NetworkProcess();
@@ -171,19 +177,19 @@ private:
     void initializeNetworkProcess(NetworkProcessCreationParameters&&);
     void createNetworkConnectionToWebProcess();
     void addWebsiteDataStore(WebsiteDataStoreParameters&&);
-    void destroySession(WebCore::SessionID);
+    void destroySession(PAL::SessionID);
 
-    void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
-    void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
-    void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID);
+    void fetchWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, OptionSet<WebsiteDataFetchOption>, uint64_t callbackID);
+    void deleteWebsiteData(PAL::SessionID, OptionSet<WebsiteDataType>, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
+    void deleteWebsiteDataForOrigins(PAL::SessionID, OptionSet<WebsiteDataType>, const Vector<WebCore::SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID);
 
     void clearCachedCredentials();
 
     // FIXME: This should take a session ID so we can identify which disk cache to delete.
     void clearDiskCache(std::chrono::system_clock::time_point modifiedSince, Function<void ()>&& completionHandler);
 
-    void downloadRequest(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
-    void resumeDownload(WebCore::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
+    void downloadRequest(PAL::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedFilename);
+    void resumeDownload(PAL::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
     void cancelDownload(DownloadID);
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(uint64_t resourceLoadIdentifier, bool canAuthenticate);
@@ -218,6 +224,7 @@ private:
     // Connections to WebProcesses.
     Vector<RefPtr<NetworkConnectionToWebProcess>> m_webProcessConnections;
 
+    String m_cacheStorageDirectory;
     String m_diskCacheDirectory;
     bool m_hasSetCacheModel;
     CacheModel m_cacheModel;
@@ -227,7 +234,9 @@ private:
     bool m_canHandleHTTPSServerTrustEvaluation;
     Seconds m_loadThrottleLatency;
 
+#if ENABLE(NETWORK_CACHE)
     RefPtr<NetworkCache::Cache> m_cache;
+#endif
 
     typedef HashMap<const char*, std::unique_ptr<NetworkProcessSupplement>, PtrHash<const char*>> NetworkProcessSupplementMap;
     NetworkProcessSupplementMap m_supplements;

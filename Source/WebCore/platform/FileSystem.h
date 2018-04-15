@@ -99,6 +99,7 @@ WEBCORE_EXPORT bool getFileSize(PlatformFileHandle, long long& result);
 WEBCORE_EXPORT bool getFileModificationTime(const String&, time_t& result);
 WEBCORE_EXPORT bool getFileCreationTime(const String&, time_t& result); // Not all platforms store file creation time.
 bool getFileMetadata(const String&, FileMetadata&);
+bool fileIsDirectory(const String&);
 WEBCORE_EXPORT String pathByAppendingComponent(const String& path, const String& component);
 String lastComponentOfPathIgnoringTrailingSlash(const String& path);
 WEBCORE_EXPORT bool makeAllDirectories(const String& path);
@@ -108,7 +109,7 @@ WEBCORE_EXPORT String directoryName(const String&);
 WEBCORE_EXPORT bool getVolumeFreeSpace(const String&, uint64_t&);
 WEBCORE_EXPORT std::optional<int32_t> getFileDeviceId(const CString&);
 
-WEBCORE_EXPORT void setMetadataURL(const String& path, const String& urlString);
+WEBCORE_EXPORT void setMetadataURL(const String& path, const String& urlString, const String& referrer = { });
 
 bool canExcludeFromBackup(); // Returns true if any file can ever be excluded from backup.
 bool excludeFromBackup(const String&); // Returns true if successful.

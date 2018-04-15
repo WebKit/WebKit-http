@@ -45,6 +45,7 @@ class CharacterClassConstructor {
 public:
     CharacterClassConstructor(bool isCaseInsensitive, CanonicalMode canonicalMode)
         : m_isCaseInsensitive(isCaseInsensitive)
+        , m_hasNonBMPCharacters(false)
         , m_canonicalMode(canonicalMode)
     {
     }
@@ -55,6 +56,7 @@ public:
         m_ranges.clear();
         m_matchesUnicode.clear();
         m_rangesUnicode.clear();
+        m_hasNonBMPCharacters = false;
     }
 
     void append(const CharacterClass* other)
@@ -185,6 +187,7 @@ public:
         characterClass->m_ranges.swap(m_ranges);
         characterClass->m_matchesUnicode.swap(m_matchesUnicode);
         characterClass->m_rangesUnicode.swap(m_rangesUnicode);
+        characterClass->m_hasNonBMPCharacters = hasNonBMPCharacters();
 
         return characterClass;
     }
@@ -199,6 +202,9 @@ private:
     {
         unsigned pos = 0;
         unsigned range = matches.size();
+
+        if (!U_IS_BMP(ch))
+            m_hasNonBMPCharacters = true;
 
         // binary chop, find position to insert char.
         while (range) {
@@ -224,7 +230,10 @@ private:
     void addSortedRange(Vector<CharacterRange>& ranges, UChar32 lo, UChar32 hi)
     {
         unsigned end = ranges.size();
-        
+
+        if (!U_IS_BMP(hi))
+            m_hasNonBMPCharacters = true;
+
         // Simple linear scan - I doubt there are that many ranges anyway...
         // feel free to fix this with something faster (eg binary chop).
         for (unsigned i = 0; i < end; ++i) {
@@ -266,7 +275,13 @@ private:
         ranges.append(CharacterRange(lo, hi));
     }
 
+    bool hasNonBMPCharacters()
+    {
+        return m_hasNonBMPCharacters;
+    }
+
     bool m_isCaseInsensitive;
+    bool m_hasNonBMPCharacters;
     CanonicalMode m_canonicalMode;
 
     Vector<UChar32> m_matches;
@@ -358,8 +373,12 @@ public:
             else
                 m_alternative->m_terms.append(PatternTerm(m_pattern.wordcharCharacterClass(), invert));
             break;
-        case NewlineClassID:
-            m_alternative->m_terms.append(PatternTerm(m_pattern.newlineCharacterClass(), invert));
+        case DotClassID:
+            ASSERT(!invert);
+            if (m_pattern.dotAll())
+                m_alternative->m_terms.append(PatternTerm(m_pattern.anyCharacterClass(), false));
+            else
+                m_alternative->m_terms.append(PatternTerm(m_pattern.newlineCharacterClass(), true));
             break;
         }
     }
@@ -381,7 +400,7 @@ public:
 
     void atomCharacterClassBuiltIn(BuiltInCharacterClassID classID, bool invert)
     {
-        ASSERT(classID != NewlineClassID);
+        ASSERT(classID != DotClassID);
 
         switch (classID) {
         case DigitClassID:
@@ -617,7 +636,11 @@ public:
                     currentCallFrameSize += YarrStackSpaceForBackTrackInfoPatternCharacter;
                     alternative->m_hasFixedSize = false;
                 } else if (m_pattern.unicode()) {
-                    currentInputPosition += U16_LENGTH(term.patternCharacter) * term.quantityMaxCount;
+                    Checked<unsigned, RecordOverflow> tempCount = term.quantityMaxCount;
+                    tempCount *= U16_LENGTH(term.patternCharacter);
+                    if (tempCount.hasOverflowed())
+                        return YarrPattern::OffsetTooLarge;
+                    currentInputPosition += tempCount;
                 } else
                     currentInputPosition += term.quantityMaxCount;
                 break;
@@ -830,6 +853,7 @@ public:
         if (alternatives.size() != 1)
             return;
 
+        CharacterClass* dotCharacterClass = m_pattern.dotAll() ? m_pattern.anyCharacterClass() : m_pattern.newlineCharacterClass();
         PatternAlternative* alternative = alternatives[0].get();
         Vector<PatternTerm>& terms = alternative->m_terms;
         if (terms.size() >= 3) {
@@ -844,7 +868,10 @@ public:
             }
             
             PatternTerm& firstNonAnchorTerm = terms[termIndex];
-            if ((firstNonAnchorTerm.type != PatternTerm::TypeCharacterClass) || (firstNonAnchorTerm.characterClass != m_pattern.newlineCharacterClass()) || !((firstNonAnchorTerm.quantityType == QuantifierGreedy) || (firstNonAnchorTerm.quantityType == QuantifierNonGreedy)))
+            if ((firstNonAnchorTerm.type != PatternTerm::TypeCharacterClass)
+                || (firstNonAnchorTerm.characterClass != dotCharacterClass)
+                || !((firstNonAnchorTerm.quantityType == QuantifierGreedy)
+                    || (firstNonAnchorTerm.quantityType == QuantifierNonGreedy)))
                 return;
             
             firstExpressionTerm = termIndex + 1;
@@ -856,7 +883,9 @@ public:
             }
             
             PatternTerm& lastNonAnchorTerm = terms[termIndex];
-            if ((lastNonAnchorTerm.type != PatternTerm::TypeCharacterClass) || (lastNonAnchorTerm.characterClass != m_pattern.newlineCharacterClass()) || (lastNonAnchorTerm.quantityType != QuantifierGreedy))
+            if ((lastNonAnchorTerm.type != PatternTerm::TypeCharacterClass)
+                || (lastNonAnchorTerm.characterClass != dotCharacterClass)
+                || (lastNonAnchorTerm.quantityType != QuantifierGreedy))
                 return;
 
             size_t endIndex = termIndex;
@@ -975,6 +1004,7 @@ YarrPattern::YarrPattern(const String& pattern, RegExpFlags flags, const char** 
     , m_flags(flags)
     , m_numSubpatterns(0)
     , m_maxBackReference(0)
+    , anycharCached(0)
     , newlineCached(0)
     , digitsCached(0)
     , spacesCached(0)
@@ -1070,7 +1100,9 @@ void PatternTerm::dump(PrintStream& out, YarrPattern* thisPattern, unsigned nest
         break;
     case TypeCharacterClass:
         out.print("character class ");
-        if (characterClass == thisPattern->newlineCharacterClass())
+        if (characterClass == thisPattern->anyCharacterClass())
+            out.print("<any character>");
+        else if (characterClass == thisPattern->newlineCharacterClass())
             out.print("<newline>");
         else if (characterClass == thisPattern->digitsCharacterClass())
             out.print("<digits>");
@@ -1263,6 +1295,15 @@ void YarrPattern::dumpPattern(PrintStream& out, const String& patternString)
     }
     out.print(":\n");
     m_body->dump(out, this);
+}
+
+std::unique_ptr<CharacterClass> anycharCreate()
+{
+    auto characterClass = std::make_unique<CharacterClass>();
+    characterClass->m_ranges.append(CharacterRange(0x00, 0x7f));
+    characterClass->m_rangesUnicode.append(CharacterRange(0x0080, 0x10ffff));
+    characterClass->m_hasNonBMPCharacters = true;
+    return characterClass;
 }
 
 } }

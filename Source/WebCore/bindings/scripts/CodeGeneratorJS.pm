@@ -4063,6 +4063,7 @@ sub GenerateImplementation
         my @settingsEnabledProperties = @settingsEnabledOperations;
         push(@settingsEnabledProperties, @settingsEnabledAttributes);
         if (scalar(@settingsEnabledProperties)) {
+            AddToImplIncludes("Document.h");
             AddToImplIncludes("Settings.h");
             push(@implContent, "    auto* context = jsCast<JSDOMGlobalObject*>(globalObject())->scriptExecutionContext();\n");
             push(@implContent, "    ASSERT(!context || context->isDocument());\n");
@@ -4691,10 +4692,12 @@ sub GenerateAttributeGetterBodyDefinition
         my $toJSExpression = NativeToJSValueUsingReferences($attribute, $interface, "${functionName}(" . join(", ", @arguments) . ")", "*thisObject.globalObject()");
         push(@$outputArray, "    auto& impl = thisObject.wrapped();\n") unless $attribute->isStatic or $attribute->isMapLike;
 
-        my $callTracingCallback = $attribute->extendedAttributes->{CallTracingCallback} || $interface->extendedAttributes->{CallTracingCallback};
-        if ($callTracingCallback) {
-            my @callTracerArguments = ();
-            GenerateCallTracer($outputArray, $callTracingCallback, $attribute->name, \@callTracerArguments, "    ");
+        if (!IsReadonly($attribute)) {
+            my $callTracingCallback = $attribute->extendedAttributes->{CallTracingCallback} || $interface->extendedAttributes->{CallTracingCallback};
+            if ($callTracingCallback) {
+                my @callTracerArguments = ();
+                GenerateCallTracer($outputArray, $callTracingCallback, $attribute->name, \@callTracerArguments, "    ");
+            }
         }
 
         push(@$outputArray, "    JSValue result = ${toJSExpression};\n");
@@ -4883,7 +4886,7 @@ sub GenerateAttributeSetterBodyDefinition
         if ($callTracingCallback) {
             my $indent = "    ";
             my @callTracerArguments = ();
-            push(@callTracerArguments, GenerateCallTracerParameter("nativeValue", $attribute->type, $indent));
+            push(@callTracerArguments, GenerateCallTracerParameter("nativeValue", $attribute->type, 0, $indent));
             GenerateCallTracer($outputArray, $callTracingCallback, $attribute->name, \@callTracerArguments, $indent);
         }
 
@@ -6055,7 +6058,7 @@ sub GenerateImplementationFunctionCall
     if ($callTracingCallback) {
         my @callTracerArguments = ();
         foreach my $argument (@{$operation->arguments}) {
-            push(@callTracerArguments, GenerateCallTracerParameter($argument->name, $argument->type, $indent));
+            push(@callTracerArguments, GenerateCallTracerParameter($argument->name, $argument->type, $argument->isOptional && !defined($argument->default), $indent));
         }
         GenerateCallTracer($outputArray, $callTracingCallback, $operation->name, \@callTracerArguments, $indent);
     }
@@ -7248,13 +7251,30 @@ sub AddJSBuiltinIncludesIfNeeded()
 
 sub GenerateCallTracerParameter()
 {
-    my ($name, $type, $indent) = @_;
+    my ($name, $type, $optional, $indent) = @_;
 
-    if ($type->isUnion) {
-        return $indent . "    WTF::visit([&] (auto& value) { callTracerParameters.append(value); }, " . $name . ");";
+    my $result = "";
+
+    if ($optional || $type->isNullable) {
+        $result .= $indent . "    if (" . $name . ")\n";
+        $result .= "    ";
     }
 
-    return $indent . "    callTracerParameters.append(" . $name . ");";
+    $result .= $indent . "    ";
+
+    if ($type->isUnion) {
+        $result .= "WTF::visit([&] (auto& value) { callTracerParameters.append(value); }, ";
+    } else {
+        $result .= "callTracerParameters.append(";
+    }
+
+    if ($optional || ($type->isUnion && $type->isNullable)) {
+        $result .= "*";
+    }
+
+    $result .= $name . ");";
+
+    return $result;
 }
 
 sub GenerateCallTracer()

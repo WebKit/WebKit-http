@@ -30,7 +30,6 @@
 
 #import "AVAssetTrackUtilities.h"
 #import "AVFoundationMIMETypeCache.h"
-#import "AVFoundationSPI.h"
 #import "AVTrackPrivateAVFObjCImpl.h"
 #import "AudioSourceProviderAVFObjC.h"
 #import "AudioTrackPrivateAVFObjC.h"
@@ -70,6 +69,7 @@
 #import <map>
 #import <objc/runtime.h>
 #import <pal/spi/cocoa/QuartzCoreSPI.h>
+#import <pal/spi/mac/AVFoundationSPI.h>
 #import <runtime/DataView.h>
 #import <runtime/JSCInlines.h>
 #import <runtime/TypedArrayInlines.h>
@@ -1843,7 +1843,7 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
         CString utf8EncodedKeyId = UTF8Encoding().encode(keyIDView, URLEncodedEntitiesForUnencodables);
 
         RefPtr<Uint8Array> initData = Uint8Array::create(utf8EncodedKeyId.length());
-        initData->setRange((JSC::Uint8Adaptor::Type*)utf8EncodedKeyId.data(), utf8EncodedKeyId.length(), 0);
+        initData->setRange(reinterpret_cast<const JSC::Uint8Adaptor::Type*>(utf8EncodedKeyId.data()), utf8EncodedKeyId.length(), 0);
 
         auto keyData = player()->cachedKeyForKeyId(keyID);
         if (keyData) {

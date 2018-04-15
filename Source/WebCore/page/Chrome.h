@@ -81,7 +81,6 @@ public:
     IntRect rootViewToAccessibilityScreen(const IntRect&) const override;
 #endif
     PlatformPageClient platformPageClient() const override;
-    void scrollbarsModeDidChange() const override;
     void setCursor(const Cursor&) override;
     void setCursorHiddenUntilMouseMoves(bool) override;
 
@@ -145,7 +144,7 @@ public:
 
     void setToolTip(const HitTestResult&);
 
-    WEBCORE_EXPORT void print(Frame&);
+    WEBCORE_EXPORT bool print(Frame&);
 
     WEBCORE_EXPORT void enableSuddenTermination();
     WEBCORE_EXPORT void disableSuddenTermination();
@@ -167,7 +166,6 @@ public:
 
     bool selectItemWritingDirectionIsNatural();
     bool selectItemAlignmentFollowsMenuWritingDirection();
-    bool hasOpenedPopup() const;
     RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const;
     RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const;
 

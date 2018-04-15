@@ -704,7 +704,7 @@ void DocumentLoader::responseReceived(const ResourceResponse& response)
     }
 #endif
 
-    frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
+    frameLoader()->checkContentPolicy(m_response, [this](PolicyAction policy) {
         continueAfterContentPolicy(policy);
     });
 }
@@ -769,7 +769,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
         frameLoader()->setOriginalURLForDownloadRequest(m_request);
 
-        SessionID sessionID = SessionID::defaultSessionID();
+        PAL::SessionID sessionID = PAL::SessionID::defaultSessionID();
         if (frame() && frame()->page())
             sessionID = frame()->page()->sessionID();
 
@@ -1538,7 +1538,7 @@ void DocumentLoader::cancelPolicyCheckIfNeeded()
     RELEASE_ASSERT(frameLoader());
 
     if (m_waitingForContentPolicy || m_waitingForNavigationPolicy) {
-        frameLoader()->policyChecker().cancelCheck();
+        frameLoader()->policyChecker().stopCheck();
         m_waitingForContentPolicy = false;
         m_waitingForNavigationPolicy = false;
     }

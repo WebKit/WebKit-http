@@ -50,13 +50,13 @@
 #import <WebCore/DictionaryLookup.h>
 #import <WebCore/DragItem.h>
 #import <WebCore/GraphicsLayer.h>
-#import <WebCore/NSApplicationSPI.h>
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/UserAgent.h>
 #import <WebCore/ValidationBubble.h>
 #import <mach-o/dyld.h>
+#import <pal/spi/mac/NSApplicationSPI.h>
 #import <wtf/text/StringConcatenate.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process().connection())
@@ -487,7 +487,7 @@ static NSString *pathToPDFOnDisk(const String& suggestedFilename)
 
 void WebPageProxy::savePDFToTemporaryFolderAndOpenWithNativeApplicationRaw(const String& suggestedFilename, const String& originatingURLString, const uint8_t* data, unsigned long size, const String& pdfUUID)
 {
-    // FIXME: Write originatingURLString to the file's originating URL metadata (perhaps WKSetMetadataURL?).
+    // FIXME: Write originatingURLString to the file's originating URL metadata (perhaps WebCore::setMetadataURL()?).
     UNUSED_PARAM(originatingURLString);
 
     if (!suggestedFilename.endsWith(".pdf", false)) {

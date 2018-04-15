@@ -41,8 +41,8 @@
 #include <WebCore/MediaProducer.h>
 #include <WebCore/Pagination.h>
 #include <WebCore/ScrollTypes.h>
-#include <WebCore/SessionID.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
+#include <pal/SessionID.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/WTFString.h>
 
@@ -59,7 +59,7 @@ namespace WebKit {
 
 struct WebPageCreationParameters {
     void encode(IPC::Encoder&) const;
-    static bool decode(IPC::Decoder&, WebPageCreationParameters&);
+    static std::optional<WebPageCreationParameters> decode(IPC::Decoder&);
 
     WebCore::IntSize viewSize;
 
@@ -88,7 +88,7 @@ struct WebPageCreationParameters {
     String userAgent;
 
     Vector<BackForwardListItemState> itemStates;
-    WebCore::SessionID sessionID;
+    PAL::SessionID sessionID;
     uint64_t highestUsedBackForwardItemID;
 
     uint64_t userContentControllerID;

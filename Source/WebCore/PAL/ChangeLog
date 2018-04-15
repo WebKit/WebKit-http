@@ -1,3 +1,230 @@
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Accessibility-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176093
+
+        Reviewed by Eric Carlson.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/HIServicesSPI.h: Added.
+        * pal/spi/mac/NSAccessibilitySPI.h:
+
+2017-08-30  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream Carbon-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176087
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/cocoa/FoundationSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/HIToolboxSPI.h: Copied from Source/WebCore/PAL/pal/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/NSEventSPI.h:
+        * pal/spi/mac/NSWindowSPI.h:
+        * pal/spi/mac/QuickDrawSPI.h: Added.
+
+2017-08-29  Andy Estes  <aestes@apple.com>
+
+        [Xcode] Fix up file and group paths in PAL.xcodeproj
+        https://bugs.webkit.org/show_bug.cgi?id=176073
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+
+2017-08-29  Andy Estes  <aestes@apple.com>
+
+        [Mac] Upstream WKSetMetadataURL() from WebKitSystemInterface
+        https://bugs.webkit.org/show_bug.cgi?id=176046
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/MetadataSPI.h: Added.
+
+2017-08-28  Eric Carlson  <eric.carlson@apple.com>
+
+        Logger should use makeString instead of String::format
+        https://bugs.webkit.org/show_bug.cgi?id=176035
+
+        Reviewed by Jer Noble.
+
+        * pal/Logger.h:
+        (PAL::LogArgument::toString):
+        (PAL::Logger::logAlways):
+        (PAL::Logger::error):
+        (PAL::Logger::warning):
+        (PAL::Logger::notice):
+        (PAL::Logger::info):
+        (PAL::Logger::debug):
+        (PAL::Logger::MethodAndPointer::MethodAndPointer):
+        (PAL::Logger::log):
+        (PAL::LogArgument<Logger::MethodAndPointer>::toString):
+
+2017-08-28  Andy Estes  <aestes@apple.com>
+
+        [Cocoa] Upstream CFNetwork-related WebKitSystemInterface functions
+        https://bugs.webkit.org/show_bug.cgi?id=176032
+
+        Reviewed by Alex Christensen.
+
+        * pal/spi/cf/CFNetworkSPI.h:
+
+2017-08-25  Eric Carlson  <eric.carlson@apple.com>
+
+        Add Logger::logAlways
+        https://bugs.webkit.org/show_bug.cgi?id=175996
+
+        Reviewed by Jer Noble.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/Logger.h:
+        (PAL::Logger::willLog const):
+        (PAL::Logger::willLog const):
+        (PAL::Logger::logAlways): Added.
+        (PAL::Logger::error const): Add missing WTF_ATTRIBUTE_PRINTF.
+        (PAL::Logger::warning const): Ditto.
+        (PAL::Logger::notice const): Ditto.
+        (PAL::Logger::info const): Ditto.
+        (PAL::Logger::debug const): Use String::formatWithArguments.
+
+2017-08-25  Jonathan Bedard  <jbedard@apple.com>
+
+        Fix build breakage with Public iOS 11 SDK
+        https://bugs.webkit.org/show_bug.cgi?id=175960
+        <rdar://problem/34069264>
+
+        Reviewed by Wenson Hsieh.
+
+        * pal/spi/ios/UIKitSPI.h: Use NSItemProvider definition of preferredPresentationSize
+        instead of re-declaring it.
+
+2017-08-23  Eric Carlson  <eric.carlson@apple.com>
+
+        Platform code should be able to safely log in release builds
+        https://bugs.webkit.org/show_bug.cgi?id=175854
+        <rdar://problem/34022930>
+
+        Reviewed by Jer Noble.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/Logger.h: Added.
+        (PAL::Logger::create):
+        (PAL::Logger::error const):
+        (PAL::Logger::warning const):
+        (PAL::Logger::notice const):
+        (PAL::Logger::info const):
+        (PAL::Logger::debug const):
+        (PAL::Logger::willLog const):
+        (PAL::Logger::enabled const):
+        (PAL::Logger::setEnabled):
+        (PAL::Logger::Logger):
+        (PAL::Logger::log):
+
+2017-08-21  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/mac directory into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175649
+
+        Reviewed by Myles C. Maxfield.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/mac/AVFoundationSPI.h: Renamed from Source/WebCore/platform/spi/mac/AVFoundationSPI.h.
+        * pal/spi/mac/DataDetectorsSPI.h: Renamed from Source/WebCore/platform/spi/mac/DataDetectorsSPI.h.
+        * pal/spi/mac/LookupSPI.h: Renamed from Source/WebCore/platform/spi/mac/LookupSPI.h.
+        * pal/spi/mac/MediaRemoteSPI.h: Renamed from Source/WebCore/platform/spi/mac/MediaRemoteSPI.h.
+        * pal/spi/mac/NSAccessibilitySPI.h: Renamed from Source/WebCore/platform/spi/mac/NSAccessibilitySPI.h.
+        * pal/spi/mac/NSApplicationSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSApplicationSPI.h.
+        * pal/spi/mac/NSEventSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSEventSPI.h.
+        * pal/spi/mac/NSFontSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSFontSPI.h.
+        * pal/spi/mac/NSImmediateActionGestureRecognizerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSImmediateActionGestureRecognizerSPI.h.
+        * pal/spi/mac/NSMenuSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSMenuSPI.h.
+        * pal/spi/mac/NSPasteboardSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSPasteboardSPI.h.
+        * pal/spi/mac/NSPopoverSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSPopoverSPI.h.
+        * pal/spi/mac/NSScrollerImpSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollerImpSPI.h.
+        * pal/spi/mac/NSScrollingInputFilterSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollingInputFilterSPI.h.
+        * pal/spi/mac/NSScrollingMomentumCalculatorSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSScrollingMomentumCalculatorSPI.h.
+        * pal/spi/mac/NSSharingServicePickerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSharingServicePickerSPI.h.
+        * pal/spi/mac/NSSharingServiceSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSharingServiceSPI.h.
+        * pal/spi/mac/NSSpellCheckerSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSSpellCheckerSPI.h.
+        * pal/spi/mac/NSTextFinderSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSTextFinderSPI.h.
+        * pal/spi/mac/NSViewSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSViewSPI.h.
+        * pal/spi/mac/NSWindowSPI.h: Renamed from Source/WebCore/platform/spi/mac/NSWindowSPI.h.
+        * pal/spi/mac/PIPSPI.h: Renamed from Source/WebCore/platform/spi/mac/PIPSPI.h.
+        * pal/spi/mac/QTKitSPI.h: Renamed from Source/WebCore/platform/spi/mac/QTKitSPI.h.
+        * pal/spi/mac/QuickLookMacSPI.h: Renamed from Source/WebCore/platform/spi/mac/QuickLookMacSPI.h.
+        * pal/spi/mac/TUCallSPI.h: Renamed from Source/WebCore/platform/spi/mac/TUCallSPI.h.
+
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Relocate SessionID to root
+        https://bugs.webkit.org/show_bug.cgi?id=175684
+
+        Reviewed by Alex Christensen.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/SessionID.cpp: Renamed from Source/WebCore/PAL/pal/identifier/SessionID.cpp.
+        * pal/SessionID.h: Renamed from Source/WebCore/PAL/pal/identifier/SessionID.h.
+
+2017-08-17  Andreas Kling  <akling@apple.com>
+
+        Disable CSS regions at compile time
+        https://bugs.webkit.org/show_bug.cgi?id=175630
+
+        Reviewed by Antti Koivisto.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-08-17  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [iOS] Respect type fidelities when copying image elements to the pasteboard
+        https://bugs.webkit.org/show_bug.cgi?id=175638
+        <rdar://problem/26556043>
+
+        Reviewed by Ryosuke Niwa.
+
+        Replace -estimatedDisplayedSize with its non-deprecated counterpart, -preferredPresentationSize.
+
+        * pal/spi/ios/UIKitSPI.h:
+
+2017-08-17  Don Olmstead  <don.olmstead@sony.com>
+
+        [PAL] Move SessionID into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=174192
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/CMakeLists.txt:
+        * pal/identifier/SessionID.cpp: Renamed from Source/WebCore/page/SessionID.cpp.
+        * pal/identifier/SessionID.h: Renamed from Source/WebCore/page/SessionID.h.
+        (WTF::SessionIDHash::hash):
+        (WTF::SessionIDHash::equal):
+        (WTF::HashTraits<PAL::SessionID>::emptyValue):
+        (WTF::HashTraits<PAL::SessionID>::constructDeletedValue):
+        (WTF::HashTraits<PAL::SessionID>::isDeletedValue):
+
+2017-08-16  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [PAL] Move spi/ios and spi/win directories into PAL
+        https://bugs.webkit.org/show_bug.cgi?id=175171
+
+        Reviewed by Antti Koivisto.
+
+        * PAL.xcodeproj/project.pbxproj:
+        * pal/spi/ios/CoreUISPI.h: Renamed from Source/WebCore/platform/spi/ios/CoreUISPI.h.
+        * pal/spi/ios/DataDetectorsUISPI.h: Renamed from Source/WebCore/platform/spi/ios/DataDetectorsUISPI.h.
+        * pal/spi/ios/GraphicsServicesSPI.h: Renamed from Source/WebCore/platform/spi/ios/GraphicsServicesSPI.h.
+        * pal/spi/ios/LaunchServicesSPI.h: Renamed from Source/WebCore/platform/spi/ios/LaunchServicesSPI.h.
+        * pal/spi/ios/MediaPlayerSPI.h: Renamed from Source/WebCore/platform/spi/ios/MediaPlayerSPI.h.
+        * pal/spi/ios/MobileGestaltSPI.h: Renamed from Source/WebCore/platform/spi/ios/MobileGestaltSPI.h.
+        * pal/spi/ios/OpenGLESSPI.h: Renamed from Source/WebCore/platform/spi/ios/OpenGLESSPI.h.
+        * pal/spi/ios/QuickLookSPI.h: Renamed from Source/WebCore/platform/spi/ios/QuickLookSPI.h.
+        * pal/spi/ios/SQLite3SPI.h: Renamed from Source/WebCore/platform/spi/ios/SQLite3SPI.h.
+        * pal/spi/ios/UIKitSPI.h: Renamed from Source/WebCore/platform/spi/ios/UIKitSPI.h.
+        * pal/spi/win/CoreTextSPIWin.h: Renamed from Source/WebCore/platform/spi/win/CoreTextSPIWin.h.
+
 2017-08-16  Andy Estes  <aestes@apple.com>
 
         [Payment Request] Add an ENABLE flag and an experimental feature preference

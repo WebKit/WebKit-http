@@ -101,6 +101,7 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
 
 static bool isLoopbackIPAddress(const URL& url)
 {
+    // The IPv6 loopback address is 0:0:0:0:0:0:0:1, which compresses to ::1.
     ASSERT(url.isValid());
     auto host = url.host();
     if (host == "[::1]")
@@ -122,7 +123,7 @@ static bool isLoopbackIPAddress(const URL& url)
 }
 
 // https://w3c.github.io/webappsec-secure-contexts/#is-origin-trustworthy (Editor's Draft, 17 November 2016)
-static bool shouldTreatAsPotentionallyTrustworthy(const URL& url)
+static bool shouldTreatAsPotentiallyTrustworthy(const URL& url)
 {
     if (!url.isValid())
         return false;
@@ -130,11 +131,7 @@ static bool shouldTreatAsPotentionallyTrustworthy(const URL& url)
     if (SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol().toStringWithoutCopying()))
         return true;
 
-    if (isLoopbackIPAddress(url))
-        return true;
-
-    // FIXME: Ensure that localhost resolves to the loopback address.
-    if (equalLettersIgnoringASCIICase(url.host(), "localhost"))
+    if (SecurityOrigin::isLocalHostOrLoopbackIPAddress(url))
         return true;
 
     if (SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol().toStringWithoutCopying()))
@@ -160,7 +157,7 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     if (m_canLoadLocalResources)
         m_filePath = url.fileSystemPath(); // In case enforceFilePathSeparation() is called.
 
-    m_isPotentionallyTrustworthy = shouldTreatAsPotentionallyTrustworthy(url);
+    m_isPotentiallyTrustworthy = shouldTreatAsPotentiallyTrustworthy(url);
 }
 
 SecurityOrigin::SecurityOrigin()
@@ -168,7 +165,7 @@ SecurityOrigin::SecurityOrigin()
     , m_host { emptyString() }
     , m_domain { emptyString() }
     , m_isUnique { true }
-    , m_isPotentionallyTrustworthy { true }
+    , m_isPotentiallyTrustworthy { true }
 {
 }
 
@@ -185,7 +182,7 @@ SecurityOrigin::SecurityOrigin(const SecurityOrigin* other)
     , m_storageBlockingPolicy { other->m_storageBlockingPolicy }
     , m_enforceFilePathSeparation { other->m_enforceFilePathSeparation }
     , m_needsStorageAccessFromFileURLsQuirk { other->m_needsStorageAccessFromFileURLsQuirk }
-    , m_isPotentionallyTrustworthy { other->m_isPotentionallyTrustworthy }
+    , m_isPotentiallyTrustworthy { other->m_isPotentiallyTrustworthy }
 {
 }
 
@@ -585,6 +582,18 @@ URL SecurityOrigin::urlWithUniqueSecurityOrigin()
     ASSERT(isMainThread());
     static NeverDestroyed<URL> uniqueSecurityOriginURL(ParsedURLString, MAKE_STATIC_STRING_IMPL("data:,"));
     return uniqueSecurityOriginURL;
+}
+
+bool SecurityOrigin::isLocalHostOrLoopbackIPAddress(const URL& url)
+{
+    if (isLoopbackIPAddress(url))
+        return true;
+
+    // FIXME: Ensure that localhost resolves to the loopback address.
+    if (equalLettersIgnoringASCIICase(url.host(), "localhost"))
+        return true;
+
+    return false;
 }
 
 } // namespace WebCore

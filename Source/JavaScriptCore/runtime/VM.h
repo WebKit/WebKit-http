@@ -369,7 +369,6 @@ public:
     Strong<Structure> unlinkedFunctionCodeBlockStructure;
     Strong<Structure> unlinkedModuleProgramCodeBlockStructure;
     Strong<Structure> propertyTableStructure;
-    Strong<Structure> weakMapDataStructure;
     Strong<Structure> inferredValueStructure;
     Strong<Structure> inferredTypeStructure;
     Strong<Structure> inferredTypeTableStructure;
@@ -384,8 +383,12 @@ public:
     Strong<Structure> functionCodeBlockStructure;
     Strong<Structure> hashMapBucketSetStructure;
     Strong<Structure> hashMapBucketMapStructure;
+    Strong<Structure> setIteratorStructure;
+    Strong<Structure> mapIteratorStructure;
 
     Strong<JSCell> emptyPropertyNameEnumerator;
+    Strong<JSCell> sentinelSetBucket;
+    Strong<JSCell> sentinelMapBucket;
 
     std::unique_ptr<PromiseDeferredTimer> promiseDeferredTimer;
     

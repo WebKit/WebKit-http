@@ -29,18 +29,18 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "JSDOMPromiseDeferred.h"
-#include "ServiceWorkerRegistrationParameters.h"
+#include "ServiceWorkerJobData.h"
 
 namespace WebCore {
 
 static std::atomic<uint64_t> currentIdentifier;
 
-ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, Ref<DeferredPromise>&& promise, ServiceWorkerRegistrationParameters&& parameters)
+ServiceWorkerJob::ServiceWorkerJob(ServiceWorkerJobClient& client, Ref<DeferredPromise>&& promise, ServiceWorkerJobData&& jobData)
     : m_client(client)
+    , m_jobData(WTFMove(jobData))
     , m_promise(WTFMove(promise))
     , m_identifier(++currentIdentifier)
 {
-    m_registrationParameters = std::make_unique<ServiceWorkerRegistrationParameters>(WTFMove(parameters));
 }
 
 ServiceWorkerJob::~ServiceWorkerJob()
@@ -48,12 +48,12 @@ ServiceWorkerJob::~ServiceWorkerJob()
     ASSERT(currentThread() == m_creationThread);
 }
 
-void ServiceWorkerJob::failedWithException(Exception&& exception)
+void ServiceWorkerJob::failedWithException(const Exception& exception)
 {
     ASSERT(currentThread() == m_creationThread);
 
     ASSERT(!m_completed);
-    m_promise->reject(WTFMove(exception));
+    m_promise->reject(exception);
     m_completed = true;
 
     // Can cause this to be deleted.

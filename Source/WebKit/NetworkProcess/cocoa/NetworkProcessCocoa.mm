@@ -30,6 +30,7 @@
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkResourceLoader.h"
 #import "NetworkSessionCocoa.h"
+#import "RemoteNetworkingContext.h"
 #import "SandboxExtension.h"
 #import "SessionTracker.h"
 #import <WebCore/NetworkStorageSession.h>
@@ -104,6 +105,11 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     // One non-obvious constraint is that we need to use -setSharedURLCache: even in testing mode, to prevent creating a default one on disk later, when some other code touches the cache.
 
     ASSERT(!m_diskCacheIsDisabledForTesting || !parameters.nsURLCacheDiskCapacity);
+
+    if (!parameters.cacheStorageDirectory.isNull()) {
+        m_cacheStorageDirectory = parameters.cacheStorageDirectory;
+        SandboxExtension::consumePermanently(parameters.cacheStorageDirectoryExtensionHandle);
+    }
 
     if (!m_diskCacheDirectory.isNull()) {
         SandboxExtension::consumePermanently(parameters.diskCacheDirectoryExtensionHandle);

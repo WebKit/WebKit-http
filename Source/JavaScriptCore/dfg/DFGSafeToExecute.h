@@ -305,6 +305,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PutToArguments:
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncGeneratorFunction:
     case NewAsyncFunction:
     case Jump:
     case Branch:
@@ -325,6 +326,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case NewTypedArray:
     case Unreachable:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
     case CheckTierUpInLoop:
     case CheckTierUpAtReturn:
     case CheckTierUpAndOSREnter:
@@ -354,6 +356,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncGeneratorFunction:
     case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PutHint:
@@ -381,8 +384,10 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MapHash:
     case ToLowerCase:
     case GetMapBucket:
-    case LoadFromJSMapBucket:
-    case IsNonEmptyMapBucket:
+    case GetMapBucketHead:
+    case GetMapBucketNext:
+    case LoadKeyFromMapBucket:
+    case LoadValueFromMapBucket:
     case AtomicsAdd:
     case AtomicsAnd:
     case AtomicsCompareExchange:

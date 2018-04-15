@@ -33,7 +33,6 @@
 void (*wkCALayerEnumerateRectsBeingDrawnWithBlock)(CALayer *, CGContextRef context, void (^block)(CGRect rect));
 bool (*wkCGContextDrawsWithCorrectShadowOffsets)(CGContextRef);
 CGPatternRef (*wkCGPatternCreateWithImageAndTransform)(CGImageRef, CGAffineTransform, int);
-CFStringEncoding (*wkGetWebDefaultCFStringEncoding)(void);
 void (*wkDrawBezeledTextArea)(NSRect, BOOL enabled);
 void (*wkDrawFocusRing)(CGContextRef, CGColorRef, int);
 bool (*wkDrawFocusRingAtTime)(CGContextRef, NSTimeInterval);
@@ -82,26 +81,6 @@ NSCursor *(*wkCursor)(const char*);
 NSArray *(*wkSpeechSynthesisGetVoiceIdentifiers)(void);
 NSString *(*wkSpeechSynthesisGetDefaultVoiceIdentifierForLocale)(NSLocale *);
 
-void (*wkUnregisterUniqueIdForElement)(id element);
-void (*wkAccessibilityHandleFocusChanged)(void);
-CFTypeID (*wkGetAXTextMarkerTypeID)(void);
-CFTypeID (*wkGetAXTextMarkerRangeTypeID)(void);
-CFTypeRef (*wkCreateAXTextMarkerRange)(CFTypeRef start, CFTypeRef end);
-CFTypeRef (*wkCopyAXTextMarkerRangeStart)(CFTypeRef range);
-CFTypeRef (*wkCopyAXTextMarkerRangeEnd)(CFTypeRef range);
-CFTypeRef (*wkCreateAXTextMarker)(const void *bytes, size_t len);
-BOOL (*wkGetBytesFromAXTextMarker)(CFTypeRef textMarker, void *bytes, size_t length);
-AXUIElementRef (*wkCreateAXUIElementRef)(id element);
-
-CFURLStorageSessionRef (*wkCreatePrivateStorageSession)(CFStringRef);
-NSURLRequest* (*wkCopyRequestWithStorageSession)(CFURLStorageSessionRef, NSURLRequest*);
-unsigned (*wkGetHTTPCookieAcceptPolicy)(CFHTTPCookieStorageRef);
-NSArray *(*wkHTTPCookies)(CFHTTPCookieStorageRef);
-void (*wkSetHTTPCookiesForURL)(CFHTTPCookieStorageRef, NSArray *, NSURL *, NSURL *);
-void (*wkDeleteAllHTTPCookies)(CFHTTPCookieStorageRef);
-void (*wkDeleteHTTPCookie)(CFHTTPCookieStorageRef, NSHTTPCookie *);
-
-void (*wkSetMetadataURL)(NSString *urlString, NSString *referrer, NSString *path);
 
 #if !PLATFORM(IOS)
 CGFloat (*wkNSElasticDeltaForTimeDelta)(CGFloat initialPosition, CGFloat initialVelocity, CGFloat elapsedTime);

@@ -63,15 +63,15 @@ static uint64_t generateIdentifier()
 
 Ref<WebsiteDataStore> WebsiteDataStore::createNonPersistent()
 {
-    return adoptRef(*new WebsiteDataStore(WebCore::SessionID::generateEphemeralSessionID()));
+    return adoptRef(*new WebsiteDataStore(PAL::SessionID::generateEphemeralSessionID()));
 }
 
-Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, WebCore::SessionID sessionID)
+Ref<WebsiteDataStore> WebsiteDataStore::create(Configuration configuration, PAL::SessionID sessionID)
 {
     return adoptRef(*new WebsiteDataStore(WTFMove(configuration), sessionID));
 }
 
-WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(Configuration configuration, PAL::SessionID sessionID)
     : m_identifier(generateIdentifier())
     , m_sessionID(sessionID)
     , m_configuration(WTFMove(configuration))
@@ -81,7 +81,7 @@ WebsiteDataStore::WebsiteDataStore(Configuration configuration, WebCore::Session
     platformInitialize();
 }
 
-WebsiteDataStore::WebsiteDataStore(WebCore::SessionID sessionID)
+WebsiteDataStore::WebsiteDataStore(PAL::SessionID sessionID)
     : m_identifier(generateIdentifier())
     , m_sessionID(sessionID)
     , m_configuration()
@@ -94,7 +94,7 @@ WebsiteDataStore::~WebsiteDataStore()
 {
     platformDestroy();
 
-    if (m_sessionID.isValid() && m_sessionID != WebCore::SessionID::defaultSessionID()) {
+    if (m_sessionID.isValid() && m_sessionID != PAL::SessionID::defaultSessionID()) {
         for (auto& processPool : WebProcessPool::allProcessPools())
             processPool->sendToNetworkingProcess(Messages::NetworkProcess::DestroySession(m_sessionID));
     }
@@ -1126,7 +1126,7 @@ void WebsiteDataStore::removeDataForTopPrivatelyControlledDomains(OptionSet<Webs
 void WebsiteDataStore::updateCookiePartitioningForTopPrivatelyOwnedDomains(const Vector<String>& domainsToRemove, const Vector<String>& domainsToAdd, ShouldClearFirst shouldClearFirst)
 {
     for (auto& processPool : processPools())
-        processPool->sendToNetworkingProcess(Messages::NetworkProcess::UpdateCookiePartitioningForTopPrivatelyOwnedDomains(domainsToRemove, domainsToAdd, shouldClearFirst == ShouldClearFirst::Yes));
+        processPool->sendToNetworkingProcess(Messages::NetworkProcess::UpdateCookiePartitioningForTopPrivatelyOwnedDomains(m_sessionID, domainsToRemove, domainsToAdd, shouldClearFirst == ShouldClearFirst::Yes));
 }
 #endif
 

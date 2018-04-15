@@ -27,8 +27,13 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+namespace PAL {
+class SessionID;
+}
+
 namespace WebCore {
 
+class SWClientConnection;
 class ServiceWorkerJob;
 
 class WEBCORE_EXPORT ServiceWorkerProvider {
@@ -38,7 +43,7 @@ public:
     WEBCORE_EXPORT static ServiceWorkerProvider& singleton();
     WEBCORE_EXPORT static void setSharedProvider(ServiceWorkerProvider&);
 
-    virtual void scheduleJob(ServiceWorkerJob&) = 0;
+    virtual SWClientConnection& serviceWorkerConnectionForSession(const PAL::SessionID&) = 0;
 };
 
 } // namespace WebCore

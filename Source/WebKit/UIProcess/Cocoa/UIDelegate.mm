@@ -30,10 +30,12 @@
 
 #import "APIFrameInfo.h"
 #import "CompletionHandlerCallChecker.h"
+#import "NativeWebWheelEvent.h"
 #import "NavigationActionData.h"
 #import "UserMediaPermissionCheckProxy.h"
 #import "UserMediaPermissionRequestProxy.h"
 #import "WKFrameInfoInternal.h"
+#import "WKNSData.h"
 #import "WKNavigationActionInternal.h"
 #import "WKOpenPanelParametersInternal.h"
 #import "WKSecurityOriginInternal.h"
@@ -100,9 +102,16 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.webViewRunBeforeUnloadConfirmPanelWithMessageInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(_webView:runBeforeUnloadConfirmPanelWithMessage:initiatedByFrame:completionHandler:)];
 
 #if PLATFORM(MAC)
+    m_delegateMethods.showWebView = [delegate respondsToSelector:@selector(_showWebView:)];
+    m_delegateMethods.focusWebView = [delegate respondsToSelector:@selector(_focusWebView:)];
+    m_delegateMethods.unfocusWebView = [delegate respondsToSelector:@selector(_unfocusWebView:)];
+    m_delegateMethods.webViewTakeFocus = [delegate respondsToSelector:@selector(_webView:takeFocus:)];
+    m_delegateMethods.webViewDidNotHandleWheelEvent = [delegate respondsToSelector:@selector(_webView:didNotHandleWheelEvent:)];
+    m_delegateMethods.webViewHandleAutoplayEventWithFlags = [delegate respondsToSelector:@selector(_webView:handleAutoplayEvent:withFlags:)];
+    m_delegateMethods.webViewDidExceedBackgroundResourceLimitWhileInForeground = [delegate respondsToSelector:@selector(_webView:didExceedBackgroundResourceLimitWhileInForeground:)];
+    m_delegateMethods.webViewSaveDataToFileSuggestedFilenameMimeTypeOriginatingURL = [delegate respondsToSelector:@selector(_webView:saveDataToFile:suggestedFilename:mimeType:originatingURL:)];
     m_delegateMethods.webViewRunOpenPanelWithParametersInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:)];
 #endif
-
     m_delegateMethods.webViewDecideDatabaseQuotaForSecurityOriginCurrentQuotaCurrentOriginUsageCurrentDatabaseUsageExpectedUsageDecisionHandler = [delegate respondsToSelector:@selector(_webView:decideDatabaseQuotaForSecurityOrigin:currentQuota:currentOriginUsage:currentDatabaseUsage:expectedUsage:decisionHandler:)];
     m_delegateMethods.webViewDecideWebApplicationCacheQuotaForSecurityOriginCurrentQuotaTotalBytesNeeded = [delegate respondsToSelector:@selector(_webView:decideWebApplicationCacheQuotaForSecurityOrigin:currentQuota:totalBytesNeeded:decisionHandler:)];
     m_delegateMethods.webViewPrintFrame = [delegate respondsToSelector:@selector(_webView:printFrame:)];
@@ -371,6 +380,151 @@ void UIDelegate::UIClient::exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, 
 }
 
 #if PLATFORM(MAC)
+static inline _WKFocusDirection toWKFocusDirection(WKFocusDirection direction)
+{
+    switch (direction) {
+    case kWKFocusDirectionBackward:
+        return _WKFocusDirectionBackward;
+    case kWKFocusDirectionForward:
+        return _WKFocusDirectionForward;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKFocusDirectionForward;
+}
+
+void UIDelegate::UIClient::takeFocus(WebKit::WebPageProxy*, WKFocusDirection direction)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewTakeFocus)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView takeFocus:toWKFocusDirection(direction)];
+}
+
+void UIDelegate::UIClient::focus(WebKit::WebPageProxy*)
+{
+    if (!m_uiDelegate.m_delegateMethods.focusWebView)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _focusWebView:m_uiDelegate.m_webView];
+}
+
+void UIDelegate::UIClient::unfocus(WebKit::WebPageProxy*)
+{
+    if (!m_uiDelegate.m_delegateMethods.unfocusWebView)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _unfocusWebView:m_uiDelegate.m_webView];
+}
+
+static _WKResourceLimit toWKResourceLimit(WKResourceLimit limit)
+{
+    switch (limit) {
+    case kWKResourceLimitMemory:
+        return _WKResourceLimitMemory;
+    case kWKResourceLimitCPU:
+        return _WKResourceLimitCPU;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKResourceLimitMemory;
+}
+
+void UIDelegate::UIClient::didExceedBackgroundResourceLimitWhileInForeground(WebKit::WebPageProxy&, WKResourceLimit limit)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDidExceedBackgroundResourceLimitWhileInForeground)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [static_cast<id <WKUIDelegatePrivate>>(delegate) _webView:m_uiDelegate.m_webView didExceedBackgroundResourceLimitWhileInForeground:toWKResourceLimit(limit)];
+}
+
+void UIDelegate::UIClient::didNotHandleWheelEvent(WebKit::WebPageProxy*, const WebKit::NativeWebWheelEvent& event)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDidNotHandleWheelEvent)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didNotHandleWheelEvent:event.nativeEvent()];
+}
+
+static _WKAutoplayEventFlags toWKAutoplayEventFlags(OptionSet<WebCore::AutoplayEventFlags> flags)
+{
+    _WKAutoplayEventFlags wkFlags = _WKAutoplayEventFlagsNone;
+    if (flags.contains(WebCore::AutoplayEventFlags::HasAudio))
+        wkFlags |= _WKAutoplayEventFlagsHasAudio;
+    
+    return wkFlags;
+}
+
+static _WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
+{
+    switch (event) {
+    case WebCore::AutoplayEvent::DidPreventMediaFromPlaying:
+        return _WKAutoplayEventDidPreventFromAutoplaying;
+    case WebCore::AutoplayEvent::DidPlayMediaPreventedFromPlaying:
+        return _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+    case WebCore::AutoplayEvent::DidAutoplayMediaPastThresholdWithoutUserInterference:
+        return _WKAutoplayEventDidAutoplayMediaPastThresholdWithoutUserInterference;
+    case WebCore::AutoplayEvent::UserDidInterfereWithPlayback:
+        return _WKAutoplayEventUserDidInterfereWithPlayback;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
+}
+
+void UIDelegate::UIClient::handleAutoplayEvent(WebKit::WebPageProxy&, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewHandleAutoplayEventWithFlags)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView handleAutoplayEvent:toWKAutoplayEvent(event) withFlags:toWKAutoplayEventFlags(flags)];
+}
+
+void UIDelegate::UIClient::showPage(WebPageProxy*)
+{
+    if (!m_uiDelegate.m_delegateMethods.showWebView)
+        return;
+
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _showWebView:m_uiDelegate.m_webView];
+}
+    
+void UIDelegate::UIClient::saveDataToFileInDownloadsFolder(WebPageProxy*, const WTF::String& suggestedFilename, const WTF::String& mimeType, const WebCore::URL& originatingURL, API::Data& data)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewSaveDataToFileSuggestedFilenameMimeTypeOriginatingURL)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView saveDataToFile:wrapper(data) suggestedFilename:suggestedFilename mimeType:mimeType originatingURL:originatingURL];
+}
+    
 bool UIDelegate::UIClient::runOpenPanel(WebPageProxy*, WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, API::OpenPanelParameters* openPanelParameters, WebOpenPanelResultListenerProxy* listener)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRunOpenPanelWithParametersInitiatedByFrameCompletionHandler)

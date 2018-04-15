@@ -1133,7 +1133,7 @@ RenderListMarker::~RenderListMarker()
 
 void RenderListMarker::willBeDestroyed()
 {
-    m_listItem.didDestroyListMarker();
+    m_listItem.setMarkerRenderer(nullptr);
     if (m_image)
         m_image->removeClient(this);
 
@@ -1443,7 +1443,7 @@ void RenderListMarker::updateContent()
         LayoutUnit bulletWidth = style().fontMetrics().ascent() / LayoutUnit(2);
         LayoutSize defaultBulletSize(bulletWidth, bulletWidth);
         LayoutSize imageSize = calculateImageIntrinsicDimensions(m_image.get(), defaultBulletSize, DoNotScaleByEffectiveZoom);
-        m_image->setContainerSizeForRenderer(this, imageSize, style().effectiveZoom());
+        m_image->setContainerContextForRenderer(*this, imageSize, style().effectiveZoom());
         return;
     }
 

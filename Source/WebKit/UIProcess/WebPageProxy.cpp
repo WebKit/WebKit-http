@@ -1642,6 +1642,17 @@ void WebPageProxy::setMaintainsInactiveSelection(bool newValue)
 {
     m_maintainsInactiveSelection = newValue;
 }
+
+void WebPageProxy::executeEditCommand(const String& commandName, const String& argument, WTF::Function<void(CallbackBase::Error)>&& callbackFunction)
+{
+    if (!isValid()) {
+        callbackFunction(CallbackBase::Error::Unknown);
+        return;
+    }
+
+    auto callbackID = m_callbacks.put(WTFMove(callbackFunction), m_process->throttler().backgroundActivityToken());
+    m_process->send(Messages::WebPage::ExecuteEditCommandWithCallback(commandName, argument, callbackID), m_pageID);
+}
     
 void WebPageProxy::executeEditCommand(const String& commandName, const String& argument)
 {
@@ -4978,8 +4989,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
 
         // FIXME: Dispatch additional events to the didNotHandleWheelEvent client function.
         if (!handled) {
-            if (m_uiClient->implementsDidNotHandleWheelEvent())
-                m_uiClient->didNotHandleWheelEvent(this, oldestCoalescedEvent->last());
+            m_uiClient->didNotHandleWheelEvent(this, oldestCoalescedEvent->last());
             m_pageClient.wheelEventWasNotHandledByWebCore(oldestCoalescedEvent->last());
         }
 
@@ -5015,8 +5025,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         if (handled)
             break;
 
-        if (m_uiClient->implementsDidNotHandleKeyEvent())
-            m_uiClient->didNotHandleKeyEvent(this, event);
+        m_uiClient->didNotHandleKeyEvent(this, event);
         break;
     }
 #if ENABLE(MAC_GESTURE_EVENTS)
@@ -6104,18 +6113,18 @@ void WebPageProxy::updateBackingStoreDiscardableState()
     m_drawingArea->setBackingStoreIsDiscardable(isDiscardable);
 }
 
-void WebPageProxy::saveDataToFileInDownloadsFolder(const String& suggestedFilename, const String& mimeType, const String& originatingURLString, API::Data* data)
+void WebPageProxy::saveDataToFileInDownloadsFolder(String&& suggestedFilename, String&& mimeType, URL&& originatingURLString, API::Data& data)
 {
     m_uiClient->saveDataToFileInDownloadsFolder(this, suggestedFilename, mimeType, originatingURLString, data);
 }
 
-void WebPageProxy::savePDFToFileInDownloadsFolder(const String& suggestedFilename, const String& originatingURLString, const IPC::DataReference& dataReference)
+void WebPageProxy::savePDFToFileInDownloadsFolder(String&& suggestedFilename, URL&& originatingURL, const IPC::DataReference& dataReference)
 {
     if (!suggestedFilename.endsWith(".pdf", false))
         return;
 
-    saveDataToFileInDownloadsFolder(suggestedFilename, "application/pdf", originatingURLString,
-        API::Data::create(dataReference.data(), dataReference.size()).ptr());
+    saveDataToFileInDownloadsFolder(WTFMove(suggestedFilename), ASCIILiteral("application/pdf"), WTFMove(originatingURL),
+        API::Data::create(dataReference.data(), dataReference.size()).get());
 }
 
 void WebPageProxy::setMinimumLayoutSize(const IntSize& minimumLayoutSize)

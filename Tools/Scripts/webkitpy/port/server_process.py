@@ -348,25 +348,29 @@ class ServerProcess(object):
         if self.poll() is None:
             self._port.check_for_leaks(self.process_name(), self.pid())
 
-        now = time.time()
         if self._proc.stdin:
             self._proc.stdin.close()
             self._proc.stdin = None
+
+        return self._wait_for_stop(timeout_secs)
+
+    def _wait_for_stop(self, timeout_secs=3.0):
+        now = time.time()
         killed = False
         if timeout_secs:
             deadline = now + timeout_secs
-            while self._proc.poll() is None and time.time() < deadline:
+            while self._proc and self._proc.poll() is None and time.time() < deadline:
                 time.sleep(0.01)
-            if self._proc.poll() is None:
+            if self._proc and self._proc.poll() is None:
                 _log.warning('stopping %s(pid %d) timed out, killing it' % (self._name, self._proc.pid))
 
-        if self._proc.poll() is None:
+        if self._proc and self._proc.poll() is None:
             self._kill()
             killed = True
             _log.debug('killed pid %d' % self._proc.pid)
 
         # read any remaining data on the pipes and return it.
-        if not killed:
+        if self._proc and not killed:
             if self._use_win32_apis:
                 self._wait_for_data_and_update_buffers_using_win32_apis(now)
             else:

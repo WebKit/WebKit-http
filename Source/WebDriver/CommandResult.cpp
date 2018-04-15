@@ -108,6 +108,8 @@ CommandResult::CommandResult(RefPtr<InspectorValue>&& result, std::optional<Erro
             m_errorCode = ErrorCode::NoSuchAlert;
         else if (errorName == "ElementNotSelectable")
             m_errorCode = ErrorCode::ElementNotSelectable;
+        else if (errorName == "ScreenshotError")
+            m_errorCode = ErrorCode::UnableToCaptureScreen;
 
         break;
     }
@@ -135,11 +137,12 @@ unsigned CommandResult::httpStatusCode() const
     case ErrorCode::InvalidElementState:
     case ErrorCode::InvalidSelector:
     case ErrorCode::NoSuchAlert:
-    case ErrorCode::NoSuchElement:
     case ErrorCode::NoSuchFrame:
     case ErrorCode::NoSuchWindow:
     case ErrorCode::StaleElementReference:
         return 400;
+    case ErrorCode::NoSuchCookie:
+    case ErrorCode::NoSuchElement:
     case ErrorCode::InvalidSessionID:
     case ErrorCode::UnknownCommand:
         return 404;
@@ -148,6 +151,7 @@ unsigned CommandResult::httpStatusCode() const
         return 408;
     case ErrorCode::JavascriptError:
     case ErrorCode::SessionNotCreated:
+    case ErrorCode::UnableToCaptureScreen:
     case ErrorCode::UnexpectedAlertOpen:
     case ErrorCode::UnknownError:
     case ErrorCode::UnsupportedOperation:
@@ -181,6 +185,8 @@ String CommandResult::errorString() const
         return ASCIILiteral("javascript error");
     case ErrorCode::NoSuchAlert:
         return ASCIILiteral("no such alert");
+    case ErrorCode::NoSuchCookie:
+        return ASCIILiteral("no such cookie");
     case ErrorCode::NoSuchElement:
         return ASCIILiteral("no such element");
     case ErrorCode::NoSuchFrame:
@@ -195,6 +201,8 @@ String CommandResult::errorString() const
         return ASCIILiteral("stale element reference");
     case ErrorCode::Timeout:
         return ASCIILiteral("timeout");
+    case ErrorCode::UnableToCaptureScreen:
+        return ASCIILiteral("unable to capture screen");
     case ErrorCode::UnexpectedAlertOpen:
         return ASCIILiteral("unexpected alert open");
     case ErrorCode::UnknownCommand:

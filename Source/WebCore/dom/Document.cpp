@@ -3606,6 +3606,15 @@ void Document::removeAudioProducer(MediaProducer* audioProducer)
     updateIsPlayingMedia();
 }
 
+void Document::noteUserInteractionWithMediaElement()
+{
+    if (m_userHasInteractedWithMediaElement)
+        return;
+
+    m_userHasInteractedWithMediaElement = true;
+    updateIsPlayingMedia();
+}
+
 void Document::updateIsPlayingMedia(uint64_t sourceElementID)
 {
     MediaProducer::MediaStateFlags state = MediaProducer::IsNotPlaying;
@@ -4671,7 +4680,7 @@ URL Document::completeURL(const String& url) const
     return completeURL(url, m_baseURL);
 }
 
-SessionID Document::sessionID() const
+PAL::SessionID Document::sessionID() const
 {
     if (m_sessionID.isValid())
         return m_sessionID;
@@ -5435,10 +5444,10 @@ bool Document::isSecureContext() const
 {
     if (!m_frame)
         return true;
-    if (!securityOrigin().isPotentionallyTrustworthy())
+    if (!securityOrigin().isPotentiallyTrustworthy())
         return false;
     for (Frame* frame = m_frame->tree().parent(); frame; frame = frame->tree().parent()) {
-        if (!frame->document()->securityOrigin().isPotentionallyTrustworthy())
+        if (!frame->document()->securityOrigin().isPotentiallyTrustworthy())
             return false;
     }
     return true;

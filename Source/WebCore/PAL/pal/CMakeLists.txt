@@ -1,4 +1,6 @@
 set(PAL_SOURCES
+    SessionID.cpp
+
     system/SleepDisabler.cpp
     system/SystemSleepListener.cpp
 )

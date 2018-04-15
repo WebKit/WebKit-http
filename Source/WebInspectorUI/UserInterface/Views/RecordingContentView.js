@@ -37,16 +37,19 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
         this.element.classList.add("recording", this.representedObject.type);
 
-        if (this.representedObject.type === WI.Recording.Type.Canvas2D) {
-            if (WI.RecordingContentView.supportsCanvasPathDebugging()) {
+        let isCanvas2D = this.representedObject.type === WI.Recording.Type.Canvas2D;
+        let isCanvasWebGL = this.representedObject.type === WI.Recording.Type.CanvasWebGL;
+        if (isCanvas2D || isCanvasWebGL) {
+            if (isCanvas2D && WI.RecordingContentView.supportsCanvasPathDebugging()) {
                 this._pathContext = null;
 
-                this._showPathButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-path", WI.UIString("Show Path"), WI.UIString("Hide Path"), "Images/PaintFlashing.svg", 13, 13);
+                this._showPathButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-path", WI.UIString("Show Path"), WI.UIString("Hide Path"), "Images/Path.svg", 16, 16);
                 this._showPathButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showPathButtonClicked, this);
                 this._showPathButtonNavigationItem.activated = !!WI.settings.showCanvasPath.value;
             }
 
             this._showGridButtonNavigationItem = new WI.ActivateButtonNavigationItem("show-grid", WI.UIString("Show Grid"), WI.UIString("Hide Grid"), "Images/NavigationItemCheckers.svg", 13, 13);
+            this._showGridButtonNavigationItem.visibilityPriority = WI.NavigationItem.VisibilityPriority.Low;
             this._showGridButtonNavigationItem.addEventListener(WI.ButtonNavigationItem.Event.Clicked, this._showGridButtonClicked, this);
             this._showGridButtonNavigationItem.activated = !!WI.settings.showImageGrid.value;
         }
@@ -85,9 +88,11 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
     get navigationItems()
     {
-        if (this.representedObject.type === WI.Recording.Type.Canvas2D) {
+        let isCanvas2D = this.representedObject.type === WI.Recording.Type.Canvas2D;
+        let isCanvasWebGL = this.representedObject.type === WI.Recording.Type.CanvasWebGL;
+        if (isCanvas2D || isCanvasWebGL) {
             let navigationItems = [this._showGridButtonNavigationItem];
-            if (WI.RecordingContentView.supportsCanvasPathDebugging())
+            if (isCanvas2D && WI.RecordingContentView.supportsCanvasPathDebugging())
                 navigationItems.unshift(this._showPathButtonNavigationItem);
             return navigationItems;
         }
@@ -104,6 +109,8 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
 
         if (this.representedObject.type === WI.Recording.Type.Canvas2D)
             this._generateContentCanvas2D(index, options);
+        else if (this.representedObject.type === WI.Recording.Type.CanvasWebGL)
+            this._generateContentCanvasWebGL(index, options);
     }
 
     // Protected
@@ -112,8 +119,11 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
     {
         super.shown();
 
-        if (this.representedObject.type === WI.Recording.Type.Canvas2D) {
-            this._updateCanvasPath();
+        let isCanvas2D = this.representedObject.type === WI.Recording.Type.Canvas2D;
+        let isCanvasWebGL = this.representedObject.type === WI.Recording.Type.CanvasWebGL;
+        if (isCanvas2D || isCanvasWebGL) {
+            if (isCanvas2D)
+                this._updateCanvasPath();
             this._updateImageGrid();
         }
     }
@@ -358,12 +368,60 @@ WI.RecordingContentView = class RecordingContentView extends WI.ContentView
         }
 
         applyActions(snapshot.index, this._index, () => {
-            if (options.onCompleteCallback)
-                options.onCompleteCallback(snapshot.context);
+            if (options.actionCompletedCallback)
+                options.actionCompletedCallback(snapshot.context);
         });
 
         this._previewContainer.appendChild(snapshot.element);
         this._updateImageGrid();
+    }
+
+    _generateContentCanvasWebGL(index, options = {})
+    {
+        let imageLoad = (event) => {
+            // Loading took too long and the current action index has already changed.
+            if (index !== this._index)
+                return;
+
+            this._generateContentCanvasWebGL(index, options);
+        };
+
+        let initialState = this.representedObject.initialState;
+        if (initialState.content && !this._initialContent) {
+            this._initialContent = new Image;
+            this._initialContent.src = initialState.content;
+            this._initialContent.addEventListener("load", imageLoad);
+            return;
+        }
+
+        let actions = this.representedObject.actions;
+
+        let visualIndex = index;
+        while (!actions[visualIndex].isVisual && !(actions[visualIndex] instanceof WI.RecordingInitialStateAction))
+            visualIndex--;
+
+        let snapshot = this._snapshots[visualIndex];
+        if (!snapshot) {
+            if (actions[visualIndex].snapshot) {
+                snapshot = this._snapshots[visualIndex] = {element: new Image};
+                snapshot.element.src = actions[visualIndex].snapshot;
+                snapshot.element.addEventListener("load", imageLoad);
+                return;
+            }
+
+            if (actions[visualIndex] instanceof WI.RecordingInitialStateAction)
+                snapshot = this._snapshots[visualIndex] = {element: this._initialContent};
+        }
+
+        if (snapshot) {
+            this._previewContainer.removeChildren();
+            this._previewContainer.appendChild(snapshot.element);
+
+            this._updateImageGrid();
+        }
+
+        if (options.actionCompletedCallback)
+            options.actionCompletedCallback();
     }
 
     _applyAction(context, action, options = {})

@@ -52,6 +52,7 @@
 #include "JITExceptions.h"
 #include "JITToDFGDeferredCompilationCallback.h"
 #include "JSAsyncFunction.h"
+#include "JSAsyncGeneratorFunction.h"
 #include "JSCInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
@@ -1212,6 +1213,16 @@ EncodedJSValue JIT_OPERATION operationNewAsyncFunctionWithInvalidatedReallocatio
     return operationNewFunctionCommon<JSAsyncFunction>(exec, scope, functionExecutable, true);
 }
 
+EncodedJSValue JIT_OPERATION operationNewAsyncGeneratorFunction(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncGeneratorFunction>(exec, scope, functionExecutable, false);
+}
+    
+EncodedJSValue JIT_OPERATION operationNewAsyncGeneratorFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncGeneratorFunction>(exec, scope, functionExecutable, true);
+}
+    
 void JIT_OPERATION operationSetFunctionName(ExecState* exec, JSCell* funcCell, EncodedJSValue encodedName)
 {
     VM* vm = &exec->vm();
@@ -1515,6 +1526,38 @@ SlowPathReturnType JIT_OPERATION operationOptimize(ExecState* exec, int32_t byte
     CODEBLOCK_LOG_EVENT(codeBlock, "delayOptimizeToDFG", ("OSR failed"));
     return encodeResult(0, 0);
 }
+
+char* JIT_OPERATION operationTryOSREnterAtCatch(ExecState* exec, uint32_t bytecodeIndex)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    CodeBlock* optimizedReplacement = exec->codeBlock()->replacement();
+    if (optimizedReplacement->jitType() != JITCode::DFGJIT)
+        return nullptr;
+
+    return static_cast<char*>(DFG::prepareCatchOSREntry(exec, optimizedReplacement, bytecodeIndex));
+}
+
+char* JIT_OPERATION operationTryOSREnterAtCatchAndValueProfile(ExecState* exec, uint32_t bytecodeIndex)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+
+    CodeBlock* codeBlock = exec->codeBlock();
+    CodeBlock* optimizedReplacement = codeBlock->replacement();
+    if (optimizedReplacement->jitType() == JITCode::DFGJIT)
+        return static_cast<char*>(DFG::prepareCatchOSREntry(exec, optimizedReplacement, bytecodeIndex));
+
+    codeBlock->ensureCatchLivenessIsComputedForBytecodeOffset(bytecodeIndex);
+    ValueProfileAndOperandBuffer* buffer = static_cast<ValueProfileAndOperandBuffer*>(codeBlock->instructions()[bytecodeIndex + 3].u.pointer);
+    buffer->forEach([&] (ValueProfileAndOperand& profile) {
+        profile.m_profile.m_buckets[0] = JSValue::encode(exec->uncheckedR(profile.m_operand).jsValue());
+    });
+
+    return nullptr;
+}
+
 #endif
 
 void JIT_OPERATION operationPutByIndex(ExecState* exec, EncodedJSValue encodedArrayValue, int32_t index, EncodedJSValue encodedValue)
@@ -2007,6 +2050,14 @@ JSCell* JIT_OPERATION operationPushWithScope(ExecState* exec, JSCell* currentSco
 
     JSScope* currentScope = jsCast<JSScope*>(currentScopeCell);
 
+    return JSWithScope::create(vm, exec->lexicalGlobalObject(), currentScope, object);
+}
+
+JSCell* JIT_OPERATION operationPushWithScopeObject(ExecState* exec, JSCell* currentScopeCell, JSObject* object)
+{
+    VM& vm = exec->vm();
+    NativeCallFrameTracer tracer(&vm, exec);
+    JSScope* currentScope = jsCast<JSScope*>(currentScopeCell);
     return JSWithScope::create(vm, exec->lexicalGlobalObject(), currentScope, object);
 }
 

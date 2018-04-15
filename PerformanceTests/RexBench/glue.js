@@ -39,7 +39,7 @@ function reportResult(...args) {
 }
 
 {
-    const title = "RexBench 0.92";
+    const title = "RexBench 0.93";
     if (isInBrowser) {
         document.title = title;
     } else {
@@ -51,6 +51,7 @@ driver.addBenchmark(RegexDNABenchmarkRunner);
 driver.addBenchmark(Octane2RegExpBenchmarkRunner);
 driver.addBenchmark(BasicBenchmarkRunner);
 driver.addBenchmark(OfflineAssemblerBenchmarkRunner);
+driver.addBenchmark(UniPokerBenchmarkRunner);
 driver.addBenchmark(FlightPlannerBenchmarkRunner);
 driver.addBenchmark(FlightPlannerUnicodeBenchmarkRunner);
 driver.readyTrigger();

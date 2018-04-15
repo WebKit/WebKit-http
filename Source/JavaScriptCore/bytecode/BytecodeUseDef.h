@@ -32,7 +32,7 @@ namespace JSC {
 template<typename Block, typename Functor, typename Instruction>
 void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instruction* instruction, const Functor& functor)
 {
-    if (opcodeID != op_enter && codeBlock->wasCompiledWithDebuggingOpcodes() && codeBlock->scopeRegister().isValid())
+    if (opcodeID != op_enter && (codeBlock->wasCompiledWithDebuggingOpcodes() || codeBlock->usesEval()) && codeBlock->scopeRegister().isValid())
         functor(codeBlock, instruction, opcodeID, codeBlock->scopeRegister().offset());
 
     switch (opcodeID) {
@@ -201,6 +201,8 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_del_by_id:
     case op_unsigned:
     case op_new_func:
+    case op_new_async_generator_func:
+    case op_new_async_generator_func_exp:
     case op_new_generator_func:
     case op_new_async_func:
     case op_get_parent_scope:
@@ -401,6 +403,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_new_func_exp:
     case op_new_generator_func:
     case op_new_generator_func_exp:
+    case op_new_async_generator_func:
+    case op_new_async_generator_func_exp:
     case op_new_async_func:
     case op_new_async_func_exp:
     case op_call_varargs:

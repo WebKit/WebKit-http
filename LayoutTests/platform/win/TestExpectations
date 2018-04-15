@@ -257,10 +257,6 @@ http/tests/security/cross-origin-indexeddb.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb-allowed.html [ Skip ]
 http/tests/security/cross-origin-worker-indexeddb.html [ Skip ]
 http/tests/security/no-indexeddb-from-sandbox.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-non-exportable-private.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-non-exportable.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb-private.html [ Skip ]
-crypto/webkitSubtle/rsa-indexeddb.html [ Skip ]
 fast/history/page-cache-indexed-closed-db.html [ Skip ]
 fast/history/page-cache-indexed-opened-db.html [ Skip ]
 
@@ -582,7 +578,6 @@ webkit.org/b/98696 plugins/snapshotting [ Skip ]
 webkit.org/b/116559 storage/websql/ [ Skip ]
 
 # TODO crypto.subtle is not yet enabled
-crypto/webkitSubtle/ [ Skip ]
 crypto/subtle/ [ Skip ]
 crypto/workers/subtle/ [ Skip ]
 
@@ -824,20 +819,11 @@ webkit.org/b/103926 media/track/opera/idl/media-idl-tests.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLMediaElement/crossOrigin.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/kind.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/HTMLElement/HTMLTrackElement/src.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrack/activeCues.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/constructor.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TrackEvent/createEvent.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/getCueAsHTML.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/line.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onenter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/onexit.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/snapToLines.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/text.html [ Skip ]
 webkit.org/b/103926 media/track/opera/interfaces/TextTrackCue/vertical.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackCueList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/interfaces/TextTrackList/getter.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/cloneNode.html [ Skip ]
-webkit.org/b/103926 media/track/opera/track/track-element/src-clear-cues.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing/001.html [ Skip ]
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/entities.html [ Skip ] 
 webkit.org/b/103926 media/track/opera/track/webvtt/parsing-cue-data/tests/tags.html [ Skip ]
@@ -1049,7 +1035,6 @@ media/track/track-cues-missed.html [ Skip ] # Timeout
 media/track/track-cues-pause-on-exit.html [ Skip ] # Timeout
 media/track/track-cues-seeking.html [ Skip ] # Timeout
 media/track/track-cues-sorted-before-dispatch.html [ Skip ] # Timeout
-media/track/track-datacue.html [ Skip ] # Timeout
 media/track/track-forced-subtitles-in-band.html [ Skip ] # Timeout
 media/track/track-in-band-style.html [ Skip ] # Timeout
 media/track/track-language-preference.html [ Skip ] # Timeout
@@ -1193,6 +1178,7 @@ editing/pasteboard/emacs-ctrl-k-y-001.html [ Failure ]
 editing/pasteboard/emacs-cntl-y-001.html [ Failure ]
 # Assertion failure in replaySavedEvents
 webkit.org/b/21796 editing/pasteboard/drop-text-events.html [ Skip ]
+editing/pasteboard/paste-empty-startcontainer.html [ Skip ]
 
 http/tests/images/hidpi-srcset-copy.html [ Skip ]
 
@@ -3494,10 +3480,6 @@ http/tests/security/http-0.9/worker-importScripts-blocked.html [ Failure ]
 http/tests/security/http-0.9/xhr-asynchronous-blocked.html [ Failure ]
 http/tests/security/http-0.9/xhr-blocked.html [ Failure ]
 http/tests/security/module-no-mime-type.html [ Failure ]
-http/tests/ssl/iframe-upgrade.https.html [ Failure ]
-http/tests/ssl/media-stream/get-user-media-different-host.html [ Failure ]
-http/tests/ssl/media-stream/get-user-media-nested.html [ Failure ]
-http/tests/ssl/media-stream/get-user-media-secure-connection.html [ Failure ]
 http/tests/ssl/mixedContent/insecure-websocket.html [ Failure ]
 http/tests/ssl/upgrade-origin-usage.html [ Failure ]
 http/tests/xmlhttprequest/auth-reject-protection-space.html [ Failure ]
@@ -3697,6 +3679,10 @@ http/tests/security/mixedcontent-geolocation-block-insecure-content.html [ Skip 
 http/tests/security/mixedcontent-geolocation.html [ Skip ]
 http/tests/security/sandboxed-iframe-geolocation-getCurrentPosition.html [ Skip ]
 http/tests/security/sandboxed-iframe-geolocation-watchPosition.html [ Skip ]
+http/tests/ssl/iframe-upgrade.https.html [ Skip ]
+http/tests/ssl/media-stream/get-user-media-different-host.html [ Skip ]
+http/tests/ssl/media-stream/get-user-media-nested.html [ Skip ]
+http/tests/ssl/media-stream/get-user-media-secure-connection.html [ Skip ]
 http/tests/websocket/tests/hybi/simple-stress.html [ Skip ]
 http/tests/xmlhttprequest/on-network-timeout-error-during-preflight.html [ Skip ]
 http/tests/xmlhttprequest/resetting-timeout-to-zero.html [ Skip ]
@@ -4058,7 +4044,11 @@ webkit.org/b/93589 svg/dom/SVGScriptElement/script-change-externalResourcesRequi
 
 imported/w3c/web-platform-tests/cors/allow-headers.htm [ Slow ]
 imported/w3c/web-platform-tests/cors/simple-requests.htm [ Slow ]
+imported/w3c/web-platform-tests/dom/traversal/NodeFilter-constants.html [ Slow ]
+imported/w3c/web-platform-tests/encoding/api-basics.html [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/basic/accept-header.any.html [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Slow ]
 
+# No service worker implementation for WK1
 http/tests/workers/service [ Skip ]
+imported/w3c/web-platform-tests/service-workers [ Skip ]

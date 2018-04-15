@@ -324,6 +324,21 @@ void InspectorCanvasAgent::updateShader(ErrorString& errorString, const String& 
 #endif
 }
 
+void InspectorCanvasAgent::setShaderProgramDisabled(ErrorString& errorString, const String& programId, bool disabled)
+{
+#if ENABLE(WEBGL)
+    auto* inspectorProgram = assertInspectorProgram(errorString, programId);
+    if (!inspectorProgram)
+        return;
+
+    inspectorProgram->setDisabled(disabled);
+#else
+    UNUSED_PARAM(programId);
+    UNUSED_PARAM(disabled);
+    errorString = ASCIILiteral("WebGL is not supported.");
+#endif
+}
+
 void InspectorCanvasAgent::frameNavigated(Frame& frame)
 {
     if (frame.isMainFrame()) {
@@ -456,11 +471,15 @@ void InspectorCanvasAgent::didFinishRecordingCanvasFrame(HTMLCanvasElement& canv
     if (forceDispatch)
         inspectorCanvas->markCurrentFrameIncomplete();
 
-    // <https://webkit.org/b/174483> Web Inspector: Record actions performed on WebGLRenderingContext
+    // FIXME: <https://webkit.org/b/176008> Web Inspector: Record actions performed on WebGL2RenderingContext
 
     Inspector::Protocol::Recording::Type type;
     if (is<CanvasRenderingContext2D>(canvasRenderingContext))
         type = Inspector::Protocol::Recording::Type::Canvas2D;
+#if ENABLE(WEBGL)
+    else if (is<WebGLRenderingContext>(canvasRenderingContext))
+        type = Inspector::Protocol::Recording::Type::CanvasWebGL;
+#endif
     else {
         ASSERT_NOT_REACHED();
         type = Inspector::Protocol::Recording::Type::Canvas2D;
@@ -504,6 +523,15 @@ void InspectorCanvasAgent::willDeleteProgram(WebGLProgram& program)
     String identifier = unbindProgram(*inspectorProgram);
     if (m_enabled)
         m_frontendDispatcher->programDeleted(identifier);
+}
+
+bool InspectorCanvasAgent::isShaderProgramDisabled(WebGLProgram& program)
+{
+    auto* inspectorProgram = findInspectorProgram(program);
+    if (!inspectorProgram)
+        return false;
+
+    return inspectorProgram->disabled();
 }
 #endif
 

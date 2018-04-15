@@ -28,6 +28,7 @@
 #if ENABLE(DATA_INTERACTION)
 
 #import "TestWKWebView.h"
+#import <UIKit/NSItemProvider+UIKitAdditions.h>
 
 #if USE(APPLE_INTERNAL_SDK)
 #import <UIKit/NSString+UIItemProvider.h>
@@ -39,10 +40,6 @@
 
 @interface NSURL ()
 @property (nonatomic, copy, setter=_setTitle:) NSString *_title;
-@end
-
-@interface UIItemProvider : NSItemProvider
-@property (nonatomic) CGSize estimatedDisplayedSize;
 @end
 
 #define UIItemProviderRepresentationOptionsVisibilityAll NSItemProviderRepresentationVisibilityAll
@@ -68,6 +65,9 @@
 @interface NSURL () <UIItemProviderReading, UIItemProviderWriting>
 @end
 @interface UIImage () <UIItemProviderReading, UIItemProviderWriting>
+@end
+
+@interface UIItemProvider : NSItemProvider
 @end
 
 #endif

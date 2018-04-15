@@ -28,6 +28,8 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
+#include "ScriptExecutionContext.h"
+
 namespace WebCore {
 
 void CryptoAlgorithm::encrypt(std::unique_ptr<CryptoAlgorithmParameters>&&, Ref<CryptoKey>&&, Vector<uint8_t>&&, VectorCallback&&, ExceptionCallback&& exceptionCallback, ScriptExecutionContext&, WorkQueue&)
@@ -65,12 +67,12 @@ void CryptoAlgorithm::deriveBits(std::unique_ptr<CryptoAlgorithmParameters>&&, R
     exceptionCallback(NotSupportedError);
 }
 
-void CryptoAlgorithm::importKey(SubtleCrypto::KeyFormat, KeyData&&, const std::unique_ptr<CryptoAlgorithmParameters>&&, bool, CryptoKeyUsageBitmap, KeyCallback&&, ExceptionCallback&& exceptionCallback)
+void CryptoAlgorithm::importKey(CryptoKeyFormat, KeyData&&, const std::unique_ptr<CryptoAlgorithmParameters>&&, bool, CryptoKeyUsageBitmap, KeyCallback&&, ExceptionCallback&& exceptionCallback)
 {
     exceptionCallback(NotSupportedError);
 }
 
-void CryptoAlgorithm::exportKey(SubtleCrypto::KeyFormat, Ref<CryptoKey>&&, KeyDataCallback&&, ExceptionCallback&& exceptionCallback)
+void CryptoAlgorithm::exportKey(CryptoKeyFormat, Ref<CryptoKey>&&, KeyDataCallback&&, ExceptionCallback&& exceptionCallback)
 {
     exceptionCallback(NotSupportedError);
 }
@@ -90,59 +92,40 @@ ExceptionOr<size_t> CryptoAlgorithm::getKeyLength(const CryptoAlgorithmParameter
     return Exception { NotSupportedError };
 }
 
-ExceptionOr<void> CryptoAlgorithm::encrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
+template<typename ResultCallbackType, typename OperationType>
+static void dispatchAlgorithmOperation(WorkQueue& workQueue, ScriptExecutionContext& context, ResultCallbackType&& callback, CryptoAlgorithm::ExceptionCallback&& exceptionCallback, OperationType&& operation)
 {
-    return Exception { NotSupportedError };
+    context.ref();
+    workQueue.dispatch(
+        [operation = WTFMove(operation), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback), &context]() mutable {
+            auto result = operation();
+            if (result.hasException()) {
+                // We should only dereference callbacks after being back to the Document/Worker threads.
+                context.postTask(
+                    [ec = result.releaseException().code(), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
+                        exceptionCallback(ec);
+                        context.deref();
+                    });
+                return;
+            }
+
+            // We should only dereference callbacks after being back to the Document/Worker threads.
+            context.postTask(
+                [result = result.releaseReturnValue(), callback = WTFMove(callback), exceptionCallback = WTFMove(exceptionCallback)](ScriptExecutionContext& context) {
+                    callback(result);
+                    context.deref();
+                });
+        });
 }
 
-ExceptionOr<void> CryptoAlgorithm::decrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
+void CryptoAlgorithm::dispatchOperation(WorkQueue& workQueue, ScriptExecutionContext& context, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, WTF::Function<ExceptionOr<Vector<uint8_t>>()>&& operation)
 {
-    return Exception { NotSupportedError };
+    dispatchAlgorithmOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback), WTFMove(operation));
 }
 
-ExceptionOr<void> CryptoAlgorithm::sign(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
+void CryptoAlgorithm::dispatchOperation(WorkQueue& workQueue, ScriptExecutionContext& context, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, WTF::Function<ExceptionOr<bool>()>&& operation)
 {
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::verify(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, const CryptoOperationData&, BoolCallback&&, VoidCallback&&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData&, VectorCallback&&, VoidCallback&&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::generateKey(const CryptoAlgorithmParametersDeprecated&, bool, CryptoKeyUsageBitmap, KeyOrKeyPairCallback&&, VoidCallback&&, ScriptExecutionContext&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::deriveKey(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, CryptoAlgorithm*, bool, CryptoKeyUsageBitmap, KeyCallback&&, VoidCallback&&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::deriveBits(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, size_t, VectorCallback&&, VoidCallback&&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::importKey(const CryptoAlgorithmParametersDeprecated&, const CryptoKeyData&, bool, CryptoKeyUsageBitmap, KeyCallback&&, VoidCallback&&)
-{
-    return Exception { NotSupportedError };
-}
-
-ExceptionOr<void> CryptoAlgorithm::encryptForWrapKey(const CryptoAlgorithmParametersDeprecated& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
-{
-    return encrypt(parameters, key, data, WTFMove(callback), WTFMove(failureCallback));
-}
-
-ExceptionOr<void> CryptoAlgorithm::decryptForUnwrapKey(const CryptoAlgorithmParametersDeprecated& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
-{
-    return decrypt(parameters, key, data, WTFMove(callback), WTFMove(failureCallback));
+    dispatchAlgorithmOperation(workQueue, context, WTFMove(callback), WTFMove(exceptionCallback), WTFMove(operation));
 }
 
 }

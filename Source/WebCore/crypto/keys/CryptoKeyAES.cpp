@@ -30,21 +30,12 @@
 
 #include "CryptoAlgorithmAesKeyParams.h"
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoKeyDataOctetSequence.h"
 #include "ExceptionOr.h"
 #include "JsonWebKey.h"
 #include <wtf/text/Base64.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-CryptoAesKeyAlgorithm AesKeyAlgorithm::dictionary() const
-{
-    CryptoAesKeyAlgorithm result;
-    result.name = this->name();
-    result.length = this->length();
-    return result;
-}
 
 static inline bool lengthIsValid(size_t length)
 {
@@ -131,14 +122,12 @@ ExceptionOr<size_t> CryptoKeyAES::getKeyLength(const CryptoAlgorithmParameters& 
     return aesParameters.length;
 }
 
-std::unique_ptr<KeyAlgorithm> CryptoKeyAES::buildAlgorithm() const
+auto CryptoKeyAES::algorithm() const -> KeyAlgorithm
 {
-    return std::make_unique<AesKeyAlgorithm>(CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier()), m_key.size() * 8);
-}
-
-std::unique_ptr<CryptoKeyData> CryptoKeyAES::exportData() const
-{
-    return std::make_unique<CryptoKeyDataOctetSequence>(m_key);
+    CryptoAesKeyAlgorithm result;
+    result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    result.length = m_key.size() * 8;
+    return result;
 }
 
 } // namespace WebCore

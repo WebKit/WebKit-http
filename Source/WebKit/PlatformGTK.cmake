@@ -99,7 +99,7 @@ list(APPEND WebKit2_SOURCES
 
     Shared/unix/ChildProcessMain.cpp
 
-    StorageProcess/gtk/StorageProcessMainGtk.cpp
+    StorageProcess/glib/StorageProcessMainGLib.cpp
 
     UIProcess/AcceleratedDrawingAreaProxy.cpp
     UIProcess/BackingStore.cpp
@@ -190,6 +190,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/gtk/WebKitWebViewBase.cpp
     UIProcess/API/gtk/WebKitWebViewBaseAccessible.cpp
     UIProcess/API/gtk/WebKitWebViewGtk.cpp
+
+    UIProcess/Automation/cairo/WebAutomationSessionCairo.cpp
 
     UIProcess/Automation/gtk/WebAutomationSessionGtk.cpp
 

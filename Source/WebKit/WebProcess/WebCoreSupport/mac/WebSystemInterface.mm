@@ -50,7 +50,6 @@ void InitWebCoreSystemInterface(void)
         INIT(DrawMediaSliderTrack);
         INIT(DrawMediaUIPart);
 #endif
-        INIT(GetWebDefaultCFStringEncoding);
         INIT(CGContextIsPDFContext);
 #if !PLATFORM(IOS)
         INIT(GetWheelEventDeltas);
@@ -75,16 +74,8 @@ void InitWebCoreSystemInterface(void)
 #if !PLATFORM(IOS)
         INIT(SetDragImage);
 #endif
-        INIT(CreatePrivateStorageSession);
-        INIT(CopyRequestWithStorageSession);
-        INIT(GetHTTPCookieAcceptPolicy);
-        INIT(HTTPCookies);
-        INIT(SetHTTPCookiesForURL);
-        INIT(DeleteAllHTTPCookies);
-        INIT(DeleteHTTPCookie);
 
 #if !PLATFORM(IOS)
-        INIT(SetMetadataURL);
         INIT(ExecutableWasLinkedOnOrBeforeSnowLeopard);
         INIT(CopyDefaultSearchProviderDisplayName);
         INIT(Cursor);
@@ -92,16 +83,6 @@ void InitWebCoreSystemInterface(void)
         INIT(WindowSetAlpha);
         INIT(SpeechSynthesisGetVoiceIdentifiers);
         INIT(SpeechSynthesisGetDefaultVoiceIdentifierForLocale);
-        INIT(GetAXTextMarkerTypeID);
-        INIT(GetAXTextMarkerRangeTypeID);
-        INIT(CreateAXTextMarker);
-        INIT(GetBytesFromAXTextMarker);
-        INIT(CreateAXTextMarkerRange);
-        INIT(CopyAXTextMarkerRangeStart);
-        INIT(CopyAXTextMarkerRangeEnd);
-        INIT(AccessibilityHandleFocusChanged);
-        INIT(CreateAXUIElementRef);
-        INIT(UnregisterUniqueIdForElement);
         INIT(NSElasticDeltaForTimeDelta);
         INIT(NSElasticDeltaForReboundDelta);
         INIT(NSReboundDeltaForElasticDelta);

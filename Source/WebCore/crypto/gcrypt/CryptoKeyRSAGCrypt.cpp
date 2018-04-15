@@ -29,10 +29,13 @@
 #if ENABLE(SUBTLE_CRYPTO)
 
 #include "CryptoAlgorithmRegistry.h"
-#include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
+#include "CryptoKeyRSAComponents.h"
 #include "GCryptUtilities.h"
 #include "ScriptExecutionContext.h"
+#include <JavaScriptCore/GenericTypedArrayViewInlines.h>
+#include <JavaScriptCore/JSGenericTypedArrayViewInlines.h>
+#include <heap/HeapInlines.h>
 #include <pal/crypto/gcrypt/Handle.h>
 #include <pal/crypto/gcrypt/Utilities.h>
 #include <pal/crypto/tasn1/Utilities.h>
@@ -69,10 +72,10 @@ static Vector<uint8_t> getRSAKeyParameter(gcry_sexp_t keySexp, const char* name)
     return WTFMove(data.value());
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyDataRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usages)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usages)
 {
     // When creating a private key, we require the p and q prime information.
-    if (keyData.type() == CryptoKeyDataRSAComponents::Type::Private && !keyData.hasAdditionalPrivateKeyParameters())
+    if (keyData.type() == CryptoKeyRSAComponents::Type::Private && !keyData.hasAdditionalPrivateKeyParameters())
         return nullptr;
 
     // But we don't currently support creating keys with any additional prime information.
@@ -87,7 +90,7 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
         valid &= !keyData.modulus().isEmpty() && !keyData.exponent().isEmpty();
 
         // For private keys, we require the private exponent, as well as p and q prime information.
-        if (keyData.type() == CryptoKeyDataRSAComponents::Type::Private)
+        if (keyData.type() == CryptoKeyRSAComponents::Type::Private)
             valid &= !keyData.privateExponent().isEmpty() && !keyData.firstPrimeInfo().primeFactor.isEmpty() && !keyData.secondPrimeInfo().primeFactor.isEmpty();
 
         if (!valid)
@@ -96,10 +99,10 @@ RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, 
 
     CryptoKeyType keyType;
     switch (keyData.type()) {
-    case CryptoKeyDataRSAComponents::Type::Public:
+    case CryptoKeyRSAComponents::Type::Public:
         keyType = CryptoKeyType::Public;
         break;
-    case CryptoKeyDataRSAComponents::Type::Private:
+    case CryptoKeyRSAComponents::Type::Private:
         keyType = CryptoKeyType::Private;
         break;
     }
@@ -619,24 +622,34 @@ ExceptionOr<Vector<uint8_t>> CryptoKeyRSA::exportPkcs8() const
     return WTFMove(result.value());
 }
 
-std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
+auto CryptoKeyRSA::algorithm() const -> KeyAlgorithm
 {
-    String name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
-    size_t modulusLength = getRSAModulusLength(m_platformKey);
-    Vector<uint8_t> publicExponent = getRSAKeyParameter(m_platformKey, "e");
+    auto modulusLength = getRSAModulusLength(m_platformKey);
+    auto publicExponent = getRSAKeyParameter(m_platformKey, "e");
 
-    if (m_restrictedToSpecificHash)
-        return std::make_unique<RsaHashedKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent), CryptoAlgorithmRegistry::singleton().name(m_hash));
-    return std::make_unique<RsaKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent));
+    if (m_restrictedToSpecificHash) {
+        CryptoRsaHashedKeyAlgorithm result;
+        result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+        result.modulusLength = modulusLength;
+        result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+        result.hash.name = CryptoAlgorithmRegistry::singleton().name(m_hash);
+        return result;
+    }
+
+    CryptoRsaKeyAlgorithm result;
+    result.name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
+    result.modulusLength = modulusLength;
+    result.publicExponent = Uint8Array::create(publicExponent.data(), publicExponent.size());
+    return result;
 }
 
-std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
+std::unique_ptr<CryptoKeyRSAComponents> CryptoKeyRSA::exportData() const
 {
     ASSERT(extractable());
 
     switch (type()) {
     case CryptoKeyType::Public:
-        return CryptoKeyDataRSAComponents::createPublic(getRSAKeyParameter(m_platformKey, "n"), getRSAKeyParameter(m_platformKey, "e"));
+        return CryptoKeyRSAComponents::createPublic(getRSAKeyParameter(m_platformKey, "n"), getRSAKeyParameter(m_platformKey, "e"));
     case CryptoKeyType::Private: {
         auto parameterMPI =
             [](gcry_sexp_t sexp, const char* name) -> gcry_mpi_t {
@@ -654,11 +667,11 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
         if (!dMPI || !pMPI || !qMPI)
             return nullptr;
 
-        CryptoKeyDataRSAComponents::PrimeInfo firstPrimeInfo;
+        CryptoKeyRSAComponents::PrimeInfo firstPrimeInfo;
         if (auto data = mpiData(pMPI))
             firstPrimeInfo.primeFactor = WTFMove(data.value());
 
-        CryptoKeyDataRSAComponents::PrimeInfo secondPrimeInfo;
+        CryptoKeyRSAComponents::PrimeInfo secondPrimeInfo;
         if (auto data = mpiData(qMPI))
             secondPrimeInfo.primeFactor = WTFMove(data.value());
 
@@ -697,9 +710,9 @@ std::unique_ptr<CryptoKeyData> CryptoKeyRSA::exportData() const
         if (auto data = mpiData(dMPI))
             privateExponent = WTFMove(data.value());
 
-        return CryptoKeyDataRSAComponents::createPrivateWithAdditionalData(
+        return CryptoKeyRSAComponents::createPrivateWithAdditionalData(
             getRSAKeyParameter(m_platformKey, "n"), getRSAKeyParameter(m_platformKey, "e"), WTFMove(privateExponent),
-            WTFMove(firstPrimeInfo), WTFMove(secondPrimeInfo), Vector<CryptoKeyDataRSAComponents::PrimeInfo> { });
+            WTFMove(firstPrimeInfo), WTFMove(secondPrimeInfo), Vector<CryptoKeyRSAComponents::PrimeInfo> { });
     }
     default:
         ASSERT_NOT_REACHED();

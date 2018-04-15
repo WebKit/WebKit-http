@@ -217,6 +217,9 @@ ExceptionOr<void> FetchRequest::setBody(FetchBody::Init&& body)
 
     ASSERT(scriptExecutionContext());
     extractBody(*scriptExecutionContext(), WTFMove(body));
+
+    if (m_internalRequest.options.keepAlive && hasReadableStreamBody())
+        return Exception { TypeError, ASCIILiteral("Request cannot have a ReadableStream body and keepalive set to true") };
     return { };
 }
 
@@ -225,9 +228,13 @@ ExceptionOr<void> FetchRequest::setBody(FetchRequest& request)
     if (!request.isBodyNull()) {
         if (!methodCanHaveBody(m_internalRequest))
             return Exception { TypeError };
+        // FIXME: If body has a readable stream, we should pipe it to this new body stream.
         m_body = WTFMove(request.m_body);
         request.setDisturbed();
     }
+
+    if (m_internalRequest.options.keepAlive && hasReadableStreamBody())
+        return Exception { TypeError, ASCIILiteral("Request cannot have a ReadableStream body and keepalive set to true") };
     return { };
 }
 
@@ -272,7 +279,7 @@ ResourceRequest FetchRequest::resourceRequest() const
     request.setHTTPHeaderFields(m_headers->internalHeaders());
 
     if (!isBodyNull())
-        request.setHTTPBody(body().bodyForInternalRequest(*scriptExecutionContext()));
+        request.setHTTPBody(body().bodyAsFormData(*scriptExecutionContext()));
 
     return request;
 }

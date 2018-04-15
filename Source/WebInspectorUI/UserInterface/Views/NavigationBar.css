@@ -47,3 +47,7 @@
     height: auto;
     outline: none;
 }
+
+.navigation-bar .item.force-hidden {
+    display: none;
+}

@@ -71,6 +71,9 @@ namespace WebCore {
 
 class AudioSourceProvider;
 class AuthenticationChallenge;
+#if ENABLE(ENCRYPTED_MEDIA)
+class CDMInstance;
+#endif
 class MediaPlaybackTarget;
 #if ENABLE(MEDIA_SOURCE)
 class MediaSourcePrivateClient;
@@ -116,6 +119,21 @@ struct MediaEngineSupportParameters {
     bool isMediaSource { false };
     bool isMediaStream { false };
     Vector<ContentType> contentTypesRequiringHardwareSupport;
+};
+
+struct PlatformVideoPlaybackQualityMetrics {
+    PlatformVideoPlaybackQualityMetrics(unsigned long totalVideoFrames, unsigned long droppedVideoFrames, unsigned long corruptedVideoFrames, double totalFrameDelay)
+        : totalVideoFrames(totalVideoFrames)
+        , droppedVideoFrames(droppedVideoFrames)
+        , corruptedVideoFrames(corruptedVideoFrames)
+        , totalFrameDelay(totalFrameDelay)
+    {
+    }
+
+    unsigned long totalVideoFrames;
+    unsigned long droppedVideoFrames;
+    unsigned long corruptedVideoFrames;
+    double totalFrameDelay;
 };
 
 extern const PlatformMedia NoPlatformMedia;
@@ -212,6 +230,10 @@ public:
     virtual RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String&) const { return nullptr; }
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) { return false; }
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    virtual void mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { }
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -363,6 +385,12 @@ public:
     std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*);
     void setCDMSession(CDMSession*);
     void keyAdded();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void cdmInstanceAttached(const CDMInstance&);
+    void cdmInstanceDetached(const CDMInstance&);
+    void attemptToDecryptWithInstance(const CDMInstance&);
 #endif
 
     bool paused() const;
@@ -529,6 +557,10 @@ public:
     String mediaKeysStorageDirectory() const;
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    void initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
+#endif
+
     String referrer() const;
     String userAgent() const;
 
@@ -574,10 +606,7 @@ public:
     unsigned long long fileSize() const;
 
 #if ENABLE(MEDIA_SOURCE)
-    unsigned long totalVideoFrames();
-    unsigned long droppedVideoFrames();
-    unsigned long corruptedVideoFrames();
-    MediaTime totalFrameDelay();
+    std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics();
 #endif
 
     bool shouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&);

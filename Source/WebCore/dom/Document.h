@@ -45,7 +45,6 @@
 #include "Region.h"
 #include "RenderPtr.h"
 #include "ScriptExecutionContext.h"
-#include "SessionID.h"
 #include "StringWithDirection.h"
 #include "Supplementable.h"
 #include "TextResourceDecoder.h"
@@ -54,6 +53,7 @@
 #include "UserActionElementSet.h"
 #include "ViewportArguments.h"
 #include <memory>
+#include <pal/SessionID.h>
 #include <wtf/Deque.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashSet.h>
@@ -576,7 +576,7 @@ public:
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
-    bool shouldBypassMainWorldContentSecurityPolicy() const final;
+    WEBCORE_EXPORT bool shouldBypassMainWorldContentSecurityPolicy() const final;
     void suspendActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) final;
     void resumeActiveDOMObjects(ActiveDOMObject::ReasonForSuspension) final;
     void stopActiveDOMObjects() final;
@@ -642,7 +642,7 @@ public:
 
     WEBCORE_EXPORT URL completeURL(const String&) const final;
     URL completeURL(const String&, const URL& baseURLOverride) const;
-    SessionID sessionID() const final;
+    PAL::SessionID sessionID() const final;
 
     String userAgent(const URL&) const final;
 
@@ -1273,7 +1273,7 @@ public:
     WEBCORE_EXPORT void addAudioProducer(MediaProducer*);
     WEBCORE_EXPORT void removeAudioProducer(MediaProducer*);
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
-    void noteUserInteractionWithMediaElement() { m_userHasInteractedWithMediaElement = true; }
+    void noteUserInteractionWithMediaElement();
     bool isCapturing() const { return MediaProducer::isCapturing(m_mediaState); }
     WEBCORE_EXPORT void updateIsPlayingMedia(uint64_t = HTMLMediaElementInvalidID);
     void pageMutedStateDidChange();
@@ -1810,7 +1810,7 @@ private:
 #endif
 
     OrientationNotifier m_orientationNotifier;
-    mutable SessionID m_sessionID;
+    mutable PAL::SessionID m_sessionID;
 
     static bool hasEverCreatedAnAXObjectCache;
 };

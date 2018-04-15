@@ -62,6 +62,7 @@ namespace WebCore {
     M(Loading) \
     M(Media) \
     M(MediaCaptureSamples) \
+    M(MediaQueries) \
     M(MediaSource) \
     M(MediaStream) \
     M(MediaSourceSamples) \
@@ -80,6 +81,7 @@ namespace WebCore {
     M(ResourceLoadStatistics) \
     M(Scrolling) \
     M(Services) \
+    M(ServiceWorker) \
     M(SpellingAndGrammar) \
     M(SQLDatabase) \
     M(StorageAPI) \

@@ -236,6 +236,12 @@ public:
     virtual void keyAdded() { }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    virtual void cdmInstanceAttached(const CDMInstance&) { }
+    virtual void cdmInstanceDetached(const CDMInstance&) { }
+    virtual void attemptToDecryptWithInstance(const CDMInstance&) { }
+#endif
+
 #if ENABLE(VIDEO_TRACK)
     virtual bool requiresTextTrackRepresentation() const { return false; }
     virtual void setTextTrackRepresentation(TextTrackRepresentation*) { }
@@ -264,10 +270,7 @@ public:
     virtual bool ended() const { return false; }
 
 #if ENABLE(MEDIA_SOURCE)
-    virtual unsigned long totalVideoFrames() { return 0; }
-    virtual unsigned long droppedVideoFrames() { return 0; }
-    virtual unsigned long corruptedVideoFrames() { return 0; }
-    virtual MediaTime totalFrameDelay() { return MediaTime::zeroTime(); }
+    virtual std::optional<PlatformVideoPlaybackQualityMetrics> videoPlaybackQualityMetrics() { return std::nullopt; }
 #endif
 
 #if ENABLE(AVF_CAPTIONS)

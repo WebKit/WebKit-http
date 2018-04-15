@@ -47,7 +47,6 @@
 #import "LocalCurrentGraphicsContext.h"
 #import "LocalizedStrings.h"
 #import "MediaControlElements.h"
-#import "NSSharingServicePickerSPI.h"
 #import "Page.h"
 #import "PaintInfo.h"
 #import "PathUtilities.h"
@@ -75,6 +74,7 @@
 #import <math.h>
 #import <pal/spi/cg/CoreGraphicsSPI.h>
 #import <pal/spi/cocoa/NSColorSPI.h>
+#import <pal/spi/mac/NSSharingServicePickerSPI.h>
 #import <wtf/MathExtras.h>
 #import <wtf/RetainPtr.h>
 #import <wtf/StdLibExtras.h>
@@ -2420,14 +2420,13 @@ static RefPtr<Icon> iconForAttachment(const RenderAttachment& attachment)
             if (auto icon = Icon::createIconForUTI("public.directory"))
                 return icon;
         } else {
-            auto attachmentTypeCF = attachmentType.createCFString();
-            RetainPtr<CFStringRef> UTI;
-            if (isDeclaredUTI(attachmentTypeCF.get()))
-                UTI = attachmentTypeCF;
+            String UTI;
+            if (isDeclaredUTI(attachmentType))
+                UTI = attachmentType;
             else
-                UTI = UTIFromMIMEType(attachmentTypeCF.get());
+                UTI = UTIFromMIMEType(attachmentType);
 
-            if (auto icon = Icon::createIconForUTI(UTI.get()))
+            if (auto icon = Icon::createIconForUTI(UTI))
                 return icon;
         }
     }

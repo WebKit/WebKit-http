@@ -889,7 +889,7 @@ void FrameView::updateCompositingLayersAfterLayout()
 
     // This call will make sure the cached hasAcceleratedCompositing is updated from the pref
     renderView->compositor().cacheAcceleratedCompositingFlags();
-    renderView->compositor().updateCompositingLayers(CompositingUpdateAfterLayout);
+    renderView->compositor().updateCompositingLayers(CompositingUpdateType::AfterLayout);
 }
 
 void FrameView::clearBackingStores()
@@ -1316,8 +1316,10 @@ void FrameView::layout(bool allowSubtree)
     bool inChildFrameLayoutWithFrameFlattening = isInChildFrameWithFrameFlattening();
 
     if (inChildFrameLayoutWithFrameFlattening) {
-        if (!m_frameFlatteningViewSizeForMediaQuery)
+        if (!m_frameFlatteningViewSizeForMediaQuery) {
+            LOG_WITH_STREAM(MediaQueries, stream << "FrameView " << this << " snapshotting size " <<  ScrollView::layoutSize() << " for media queries");
             m_frameFlatteningViewSizeForMediaQuery = ScrollView::layoutSize();
+        }
         startLayoutAtMainFrameViewIfNeeded(allowSubtree);
         RenderElement* root = m_layoutRoot ? m_layoutRoot : frame().document()->renderView();
         if (!root || !root->needsLayout())
@@ -2689,7 +2691,7 @@ void FrameView::updateCompositingLayersAfterScrolling()
 
     if (m_nestedLayoutCount <= 1 && hasViewportConstrainedObjects()) {
         if (RenderView* renderView = this->renderView())
-            renderView->compositor().updateCompositingLayers(CompositingUpdateOnScroll);
+            renderView->compositor().updateCompositingLayers(CompositingUpdateType::OnScroll);
     }
 }
 

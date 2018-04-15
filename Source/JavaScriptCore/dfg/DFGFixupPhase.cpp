@@ -1546,6 +1546,7 @@ private:
         case PhantomNewObject:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncGeneratorFunction:
         case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
@@ -1710,11 +1711,22 @@ private:
 
         case CreateScopedArguments:
         case CreateActivation:
-        case PushWithScope:
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncGeneratorFunction:
         case NewAsyncFunction: {
-            fixEdge<CellUse>(node->child1());
+            // Child 1 is always the current scope, which is guaranteed to be an object
+            // FIXME: should be KnownObjectUse once that exists (https://bugs.webkit.org/show_bug.cgi?id=175689)
+            fixEdge<KnownCellUse>(node->child1());
+            break;
+        }
+
+        case PushWithScope: {
+            // Child 1 is always the current scope, which is guaranteed to be an object
+            // FIXME: should be KnownObjectUse once that exists (https://bugs.webkit.org/show_bug.cgi?id=175689)
+            fixEdge<KnownCellUse>(node->child1());
+            if (node->child2()->shouldSpeculateObject())
+                fixEdge<ObjectUse>(node->child2());
             break;
         }
 
@@ -1783,12 +1795,19 @@ private:
             fixEdge<Int32Use>(node->child3());
             break;
 
-        case LoadFromJSMapBucket:
-            fixEdge<KnownCellUse>(node->child1());
+        case GetMapBucketHead:
+            if (node->child1().useKind() == MapObjectUse)
+                fixEdge<MapObjectUse>(node->child1());
+            else if (node->child1().useKind() == SetObjectUse)
+                fixEdge<SetObjectUse>(node->child1());
+            else
+                RELEASE_ASSERT_NOT_REACHED();
             break;
 
-        case IsNonEmptyMapBucket:
-            fixEdge<KnownCellUse>(node->child1());
+        case GetMapBucketNext:
+        case LoadKeyFromMapBucket:
+        case LoadValueFromMapBucket:
+            fixEdge<CellUse>(node->child1());
             break;
 
         case MapHash: {
@@ -1989,6 +2008,7 @@ private:
         case CheckTraps:
         case Unreachable:
         case ExtractOSREntryLocal:
+        case ExtractCatchLocal:
         case LoopHint:
         case MovHint:
         case ZombieHint:
@@ -3184,6 +3204,7 @@ private:
                         if (edge->hasDoubleResult())
                             break;
             
+                        ASSERT(indexForChecks != UINT_MAX);
                         if (edge->isNumberConstant()) {
                             result = m_insertionSet.insertNode(
                                 indexForChecks, SpecBytecodeDouble, DoubleConstant, originForChecks,
@@ -3214,6 +3235,7 @@ private:
                         if (edge->hasInt52Result())
                             break;
             
+                        ASSERT(indexForChecks != UINT_MAX);
                         if (edge->isAnyIntConstant()) {
                             result = m_insertionSet.insertNode(
                                 indexForChecks, SpecAnyInt, Int52Constant, originForChecks,
@@ -3240,6 +3262,7 @@ private:
                         if (!edge->hasDoubleResult() && !edge->hasInt52Result())
                             break;
             
+                        ASSERT(indexForChecks != UINT_MAX);
                         if (edge->hasDoubleResult()) {
                             result = m_insertionSet.insertNode(
                                 indexForChecks, SpecBytecodeDouble, ValueRep, originForChecks,
@@ -3281,6 +3304,7 @@ private:
                             break;
                         }
 
+                        ASSERT(indexForChecks != UINT_MAX);
                         m_insertionSet.insertNode(
                             indexForChecks, SpecNone, Check, originForChecks, edge);
 

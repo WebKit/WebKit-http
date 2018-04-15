@@ -30,10 +30,12 @@
 #include "ActiveDOMObject.h"
 #include "DOMPromiseProxy.h"
 #include "EventTarget.h"
+#include "SWClientConnection.h"
+#include "SWServer.h"
 #include "ServiceWorkerJobClient.h"
 #include "ServiceWorkerRegistration.h"
 #include "ServiceWorkerRegistrationOptions.h"
-#include "SessionID.h"
+#include <pal/SessionID.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -69,6 +71,7 @@ public:
 private:
     void scheduleJob(Ref<ServiceWorkerJob>&&);
     void jobDidFinish(ServiceWorkerJob&) final;
+    uint64_t connectionIdentifier() final;
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -81,6 +84,7 @@ private:
 
     NavigatorBase& m_navigator;
 
+    RefPtr<SWClientConnection> m_swConnection;
     HashMap<uint64_t, RefPtr<ServiceWorkerJob>> m_jobMap;
 
 #ifndef NDEBUG

@@ -65,9 +65,13 @@ public:
         return adoptRef(*new File(path, nameOverride));
     }
 
+    static Ref<File> createWithRelativePath(const String& path, const String& relativePath);
+
     bool isFile() const override { return true; }
 
     const String& path() const { return m_path; }
+    const String& relativePath() const { return m_relativePath; }
+    void setRelativePath(const String& relativePath) { m_relativePath = relativePath; }
     const String& name() const { return m_name; }
     WEBCORE_EXPORT double lastModified() const;
 
@@ -76,6 +80,8 @@ public:
 #if ENABLE(FILE_REPLACEMENT)
     static bool shouldReplaceFile(const String& path);
 #endif
+
+    bool isDirectory() const;
 
 private:
     WEBCORE_EXPORT explicit File(const String& path);
@@ -90,9 +96,11 @@ private:
 #endif
 
     String m_path;
+    String m_relativePath;
     String m_name;
 
     std::optional<int64_t> m_overrideLastModifiedDate;
+    mutable std::optional<bool> m_isDirectory;
 };
 
 } // namespace WebCore

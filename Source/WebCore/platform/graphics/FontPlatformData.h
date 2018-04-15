@@ -322,7 +322,7 @@ private:
 #endif
 };
 
-#if USE(APPKIT)
+#if USE(APPKIT) && defined(__OBJC__)
 
 // NSFonts and CTFontRefs are toll-free-bridged.
 inline CTFontRef toCTFont(NSFont *font)

@@ -28,6 +28,7 @@
 #include "Decoder.h"
 #include "Encoder.h"
 #include <utility>
+#include <wtf/Expected.h>
 #include <wtf/Forward.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
@@ -132,10 +133,22 @@ struct TupleCoder {
         TupleCoder<index - 1, Elements...>::encode(encoder, tuple);
     }
 
+    template<typename U = typename std::remove_reference<typename std::tuple_element<sizeof...(Elements) - index, std::tuple<Elements...>>::type>::type, std::enable_if_t<!UsesModernDecoder<U>::value>* = nullptr>
     static bool decode(Decoder& decoder, std::tuple<Elements...>& tuple)
     {
         if (!decoder.decode(std::get<sizeof...(Elements) - index>(tuple)))
             return false;
+        return TupleCoder<index - 1, Elements...>::decode(decoder, tuple);
+    }
+    
+    template<typename U = typename std::remove_reference<typename std::tuple_element<sizeof...(Elements) - index, std::tuple<Elements...>>::type>::type, std::enable_if_t<UsesModernDecoder<U>::value>* = nullptr>
+    static bool decode(Decoder& decoder, std::tuple<Elements...>& tuple)
+    {
+        std::optional<U> optional;
+        decoder >> optional;
+        if (!optional)
+            return false;
+        std::get<sizeof...(Elements) - index>(tuple) = WTFMove(*optional);
         return TupleCoder<index - 1, Elements...>::decode(decoder, tuple);
     }
 };
@@ -379,6 +392,41 @@ template<typename KeyArg, typename HashArg, typename KeyTraitsArg> struct Argume
         return true;
     }
 };
+
+template<typename ValueType, typename ErrorType> struct ArgumentCoder<WTF::Expected<ValueType, ErrorType>> {
+    static void encode(Encoder& encoder, const WTF::Expected<ValueType, ErrorType>& expected)
+    {
+        if (!expected.hasValue()) {
+            encoder << false;
+            encoder << expected.error();
+            return;
+        }
+        encoder << true;
+        encoder << expected.value();
+    }
+
+    static bool decode(Decoder& decoder, WTF::Expected<ValueType, ErrorType>& expected)
+    {
+        bool hasValue;
+        if (!decoder.decode(hasValue))
+            return false;
+
+        if (!hasValue) {
+            ErrorType error;
+            if (!decoder.decode(error))
+                return false;
+            expected = WTF::UnexpectedType<ErrorType> { WTFMove(error) };
+            return true;
+        }
+        ValueType value;
+        if (!decoder.decode(value))
+            return false;
+
+        expected = WTFMove(value);
+        return true;
+    }
+};
+
 
 template<> struct ArgumentCoder<std::chrono::system_clock::time_point> {
     static void encode(Encoder&, const std::chrono::system_clock::time_point&);

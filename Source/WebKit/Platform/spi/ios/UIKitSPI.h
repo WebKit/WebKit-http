@@ -102,6 +102,10 @@
 
 #else
 
+#if ENABLE(DRAG_SUPPORT)
+#import <UIKit/NSItemProvider+UIKitAdditions.h>
+#endif
+
 #if HAVE(LINK_PREVIEW)
 typedef NS_ENUM(NSInteger, UIPreviewItemType) {
     UIPreviewItemTypeNone,
@@ -397,6 +401,7 @@ typedef enum {
 
 @interface UIViewController (ViewService)
 - (pid_t)_hostProcessIdentifier;
+@property (readonly) NSString *_hostApplicationBundleIdentifier;
 @end
 
 @protocol UIViewControllerContextTransitioningEx <UIViewControllerContextTransitioning>
@@ -572,6 +577,7 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 @interface UIWKTextInteractionAssistant ()
 - (void)selectionChangedWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState withFlags:(UIWKSelectionFlags)flags;
 - (void)showDictionaryFor:(NSString *)selectedTerm fromRect:(CGRect)presentationRect;
+- (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch withFlags:(UIWKSelectionFlags)flags;
 - (void)selectionChangedWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch;
 - (void)showTextStyleOptions;
 - (void)hideTextStyleOptions;
@@ -588,7 +594,7 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 @protocol UIWKInteractionViewProtocol
 - (void)changeSelectionWithGestureAt:(CGPoint)point withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)state;
 
-- (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart;
+- (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart withFlags:(UIWKSelectionFlags)flags;
 - (void)changeSelectionWithTouchesFrom:(CGPoint)from to:(CGPoint)to withGesture:(UIWKGestureType)gestureType withState:(UIGestureRecognizerState)gestureState;
 - (CGRect)textFirstRect;
 - (CGRect)textLastRect;
@@ -610,7 +616,7 @@ typedef NS_ENUM(NSInteger, UIWKHandlePosition) {
 - (void)_cancelLongPressGestureRecognizer;
 
 @optional
-- (void)changeSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch baseIsStart:(BOOL)baseIsStart withFlags:(UIWKSelectionFlags)flags;
+
 - (void)changeBlockSelectionWithTouchAt:(CGPoint)point withSelectionTouch:(UIWKSelectionTouch)touch forHandle:(UIWKHandlePosition)handle;
 - (void)clearSelection;
 - (void)replaceDictatedText:(NSString *)oldText withText:(NSString *)newText;
@@ -876,7 +882,6 @@ typedef enum {
 #if ENABLE(DRAG_SUPPORT)
 
 @interface UIItemProvider : NSItemProvider
-@property (nonatomic) CGSize estimatedDisplayedSize;
 @end
 
 WTF_EXTERN_C_BEGIN
@@ -914,6 +919,10 @@ typedef NS_OPTIONS(NSUInteger, UIDragOperation)
 
 @interface UITextEffectsWindow : UIAutoRotatingWindow
 + (UITextEffectsWindow *)sharedTextEffectsWindow;
+@end
+
+@interface UIURLDragPreviewView : UIView
++ (instancetype)viewWithTitle:(NSString *)title URL:(NSURL *)url;
 @end
 
 #endif

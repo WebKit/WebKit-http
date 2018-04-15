@@ -59,6 +59,16 @@ public:
     enum class ExecuteScriptMode { Sync, Async };
     enum class Timeout { Script, PageLoad, Implicit };
 
+    struct Cookie {
+        String name;
+        String value;
+        std::optional<String> path;
+        std::optional<String> domain;
+        std::optional<bool> secure;
+        std::optional<bool> httpOnly;
+        std::optional<unsigned> expiry;
+    };
+
     void waitForNavigationToComplete(Function<void (CommandResult&&)>&&);
     void createTopLevelBrowsingContext(Function<void (CommandResult&&)>&&);
     void close(Function<void (CommandResult&&)>&&);
@@ -94,10 +104,16 @@ public:
     void elementSendKeys(const String& elementID, Vector<String>&& keys, Function<void (CommandResult&&)>&&);
     void elementSubmit(const String& elementID, Function<void (CommandResult&&)>&&);
     void executeScript(const String& script, RefPtr<Inspector::InspectorArray>&& arguments, ExecuteScriptMode, Function<void (CommandResult&&)>&&);
+    void getAllCookies(Function<void (CommandResult&&)>&&);
+    void getNamedCookie(const String& name, Function<void (CommandResult&&)>&&);
+    void addCookie(const Cookie&, Function<void (CommandResult&&)>&&);
+    void deleteCookie(const String& name, Function<void (CommandResult&&)>&&);
+    void deleteAllCookies(Function<void (CommandResult&&)>&&);
     void dismissAlert(Function<void (CommandResult&&)>&&);
     void acceptAlert(Function<void (CommandResult&&)>&&);
     void getAlertText(Function<void (CommandResult&&)>&&);
     void sendAlertText(const String&, Function<void (CommandResult&&)>&&);
+    void takeScreenshot(std::optional<String> elementID, std::optional<bool> scrollIntoView, Function<void (CommandResult&&)>&&);
 
 private:
     Session(std::unique_ptr<SessionHost>&&);

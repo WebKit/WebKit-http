@@ -37,6 +37,13 @@
 
 namespace WebCore {
 
+Ref<File> File::createWithRelativePath(const String& path, const String& relativePath)
+{
+    auto file = File::create(path);
+    file->setRelativePath(relativePath);
+    return file;
+}
+
 File::File(const String& path)
     : Blob(uninitializedContructor)
     , m_path(path)
@@ -118,6 +125,13 @@ String File::contentTypeForFile(const String& path)
     computeNameAndContentType(path, String(), name, type);
 
     return type;
+}
+
+bool File::isDirectory() const
+{
+    if (!m_isDirectory)
+        m_isDirectory = fileIsDirectory(m_path);
+    return *m_isDirectory;
 }
 
 } // namespace WebCore
