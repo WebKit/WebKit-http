@@ -32,6 +32,7 @@
 
 
 #include "BackForwardController.h"
+#include "CacheStorageProvider.h"
 #include "Chrome.h"
 #include "ChromeClientHaiku.h"
 #include "ContextMenu.h"
@@ -241,7 +242,8 @@ BWebPage::BWebPage(BWebView* webView, BUrlContext* context)
     PageConfiguration pageClients(
 	makeUniqueRef<EditorClientHaiku>(this),
 	SocketProvider::create(),
-        makeUniqueRef<LibWebRTCProvider>());
+        makeUniqueRef<LibWebRTCProvider>(),
+		CacheStorageProvider::create());
     fillWithEmptyClients(pageClients);
 	//pageClients.backForwardClient = this;
     // pluginClient

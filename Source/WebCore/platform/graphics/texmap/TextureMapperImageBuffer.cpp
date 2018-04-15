@@ -40,6 +40,14 @@ IntSize TextureMapperImageBuffer::maxTextureSize() const
     return IntSize(s_maximumAllowedImageBufferDimension, s_maximumAllowedImageBufferDimension);
 }
 
+
+void TextureMapperImageBuffer::clearColor(const WebCore::Color& color)
+{
+	GraphicsContext* context = currentContext();
+	context->setFillColor(color);
+	context->fillRect(context->clipBounds());
+}
+
 void TextureMapperImageBuffer::beginClip(const TransformationMatrix& matrix, const FloatRect& rect)
 {
     GraphicsContext* context = currentContext();

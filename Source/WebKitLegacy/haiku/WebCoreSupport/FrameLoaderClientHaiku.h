@@ -119,7 +119,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     void dispatchDecidePolicyForNewWindowAction(const NavigationAction&,
         const ResourceRequest&, FormState*, const String&, FramePolicyFunction&&) override;
     void dispatchDecidePolicyForNavigationAction(const NavigationAction&,
-                                                         const ResourceRequest&, FormState*, FramePolicyFunction&&) override;
+                                                 const ResourceRequest&, bool didReceiveRedirectResponse, FormState*, FramePolicyFunction&&) override;
     void cancelPolicyCheck() override;
 
     void dispatchUnableToImplementPolicy(const ResourceError&) override;

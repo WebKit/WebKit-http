@@ -227,15 +227,6 @@ void TestRunner::setValueForUser(JSContextRef context, JSValueRef nodeObject, JS
     WebCore::DumpRenderTreeClient::setValueForUser(context, nodeObject, value->string());
 }
 
-void TestRunner::setViewModeMediaFeature(JSStringRef mode)
-{
-#if ENABLE(VIEW_MODE_CSS_MEDIA)
-    notImplemented();
-#else
-    UNUSED_PARAM(mode);
-#endif
-}
-
 void TestRunner::setWindowIsKey(bool)
 {
     notImplemented();
