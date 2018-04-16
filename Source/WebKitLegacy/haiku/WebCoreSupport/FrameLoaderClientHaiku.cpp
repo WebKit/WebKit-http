@@ -670,7 +670,7 @@ void FrameLoaderClientHaiku::didDetectXSS(const URL&, bool)
 }
 
 void FrameLoaderClientHaiku::convertMainResourceLoadToDownload(DocumentLoader*,
-    WebCore::SessionID, const ResourceRequest& request, const ResourceResponse&)
+    PAL::SessionID, const ResourceRequest& request, const ResourceResponse&)
 {
     startDownload(request);
 }

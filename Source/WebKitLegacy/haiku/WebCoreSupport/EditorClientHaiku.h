@@ -80,7 +80,6 @@ public:
 
     void respondToChangedContents() override;
     void respondToChangedSelection(Frame*) override;
-    void didChangeSelectionAndUpdateLayout() override { }
     void discardedComposition(Frame*) override;
     void canceledComposition() override;
 
@@ -107,6 +106,8 @@ public:
     void textDidChangeInTextArea(Element*) override;
     void overflowScrollPositionChanged() override;
     void updateEditorStateAfterLayoutIfEditabilityChanged() override {};
+	void didEndUserTriggeredSelectionChanges() override {};
+	void didUpdateComposition() override {};
 
     TextCheckerClient* textChecker() override { return this; }
 

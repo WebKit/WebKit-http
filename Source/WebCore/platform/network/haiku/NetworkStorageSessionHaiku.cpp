@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-NetworkStorageSession::NetworkStorageSession(SessionID sessionID, BUrlContext* context)
+NetworkStorageSession::NetworkStorageSession(PAL::SessionID sessionID, BUrlContext* context)
     : m_sessionID(sessionID)
     , m_context(context)
 {
@@ -57,13 +57,13 @@ static std::unique_ptr<NetworkStorageSession>& defaultSession()
 NetworkStorageSession& NetworkStorageSession::defaultStorageSession()
 {
     if (!defaultSession())
-        defaultSession() = std::make_unique<NetworkStorageSession>(SessionID::defaultSessionID(), nullptr);
+        defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), nullptr);
     return *defaultSession();
 }
 
 void NetworkStorageSession::switchToNewTestingSession()
 {
-    defaultSession() = std::make_unique<NetworkStorageSession>(SessionID::defaultSessionID(), new BUrlContext());
+    defaultSession() = std::make_unique<NetworkStorageSession>(PAL::SessionID::defaultSessionID(), new BUrlContext());
 }
 
 BUrlContext& NetworkStorageSession::platformSession() const

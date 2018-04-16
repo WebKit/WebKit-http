@@ -35,7 +35,7 @@
 #include "SocketStreamHandle.h"
 
 #include "NetworkingContext.h"
-#include "SessionID.h"
+#include <pal/SessionID.h>
 
 #include <support/Locker.h>
 #include <Socket.h>
@@ -51,7 +51,7 @@ namespace WebCore {
 
     class SocketStreamHandleImpl : public SocketStreamHandle {
     public:
-        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, SessionID id, const String&, SourceApplicationAuditToken&&)
+        static 				Ref<SocketStreamHandleImpl> create(const URL& url, SocketStreamHandleClient& client, PAL::SessionID id, const String&, SourceApplicationAuditToken&&)
 								{ return adoptRef(*new SocketStreamHandleImpl(url, client)); }
         virtual 			~SocketStreamHandleImpl();
 

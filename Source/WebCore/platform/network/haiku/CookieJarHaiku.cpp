@@ -30,6 +30,7 @@
 
 #include "Cookie.h"
 #include "CookieStorage.h"
+#include "CookiesStrategy.h"
 
 #include "URL.h"
 #include "NetworkingContext.h"
@@ -62,8 +63,8 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL&, const U
     session.platformSession().GetCookieJar().AddCookie(heapCookie);
 }
 
-String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
-    const URL& url)
+std::pair<String, bool> cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty,
+    const URL& url, IncludeSecureCookies includeSecure)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: Request for %s\n", url.string().utf8().data());
@@ -71,6 +72,7 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 
 	BString result;
 	BUrl hUrl(url);
+	bool secure = false;
 
 	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
@@ -78,15 +80,26 @@ String cookiesForDOM(const NetworkStorageSession& session, const URL& firstParty
 		    (c = it.Next()); ) {
         // filter out httpOnly cookies,as this method is used to get cookies
         // from JS code and these shouldn't be visible there.
-        if(!c->HttpOnly())
-		    result << "; " << c->RawCookie(false);
+        if(c->HttpOnly())
+			continue;
+
+		// filter out secure cookies if they should be
+		if (c->Secure())
+		{
+			secure = true;
+            if (includeSecure == IncludeSecureCookies::No)
+				continue;
+		}
+		
+		result << "; " << c->RawCookie(false);
 	}
 	result.Remove(0, 2);
 
-    return result;
+    return {result, secure};
 }
 
-String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url)
+std::pair<String, bool> cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const URL&, const URL& url,
+	IncludeSecureCookies includeSecure)
 {
 #if TRACE_COOKIE_JAR
 	printf("CookieJar: RequestHeaderField for %s\n", url.string().utf8().data());
@@ -94,16 +107,25 @@ String cookieRequestHeaderFieldValue(const NetworkStorageSession& session, const
 
 	BString result;
 	BUrl hUrl(url);
+	bool secure = false;
 
 	const BNetworkCookie* c;
 	for (BNetworkCookieJar::UrlIterator it(
             session.platformSession().GetCookieJar().GetUrlIterator(hUrl));
 		    (c = it.Next()); ) {
+		// filter out secure cookies if they should be
+		if (c->Secure())
+		{
+			secure = true;
+            if (includeSecure == IncludeSecureCookies::No)
+				continue;
+		}
+		
 		result << "; " << c->RawCookie(false);
 	}
 	result.Remove(0, 2);
 
-    return result;
+    return {result, secure};
 }
 
 bool cookiesEnabled(const NetworkStorageSession&, const URL&, const URL&)

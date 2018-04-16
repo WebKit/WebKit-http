@@ -465,12 +465,6 @@ bool ChromeClientHaiku::selectItemAlignmentFollowsMenuWritingDirection()
     return false;
 }
 
-bool ChromeClientHaiku::hasOpenedPopup() const
-{
-    notImplemented();
-    return false;
-}
-
 RefPtr<PopupMenu> ChromeClientHaiku::createPopupMenu(PopupMenuClient& client) const
 {
     return adoptRef(new PopupMenuHaiku(&client));

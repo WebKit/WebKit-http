@@ -117,7 +117,6 @@ namespace WebCore {
         void scrollRectIntoView(const IntRect&) const override;
         void attachViewOverlayGraphicsLayer(WebCore::Frame& frame, WebCore::GraphicsLayer* layer) override;
 
-        void scrollbarsModeDidChange() const override { }
         void setCursor(const Cursor&) override ;
         void setCursorHiddenUntilMouseMoves(bool) override { }
 
@@ -153,7 +152,6 @@ namespace WebCore {
 
         bool selectItemWritingDirectionIsNatural() override;
         bool selectItemAlignmentFollowsMenuWritingDirection() override;
-        bool hasOpenedPopup() const override;
         RefPtr<PopupMenu> createPopupMenu(PopupMenuClient&) const override;
         RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient&) const override;
 

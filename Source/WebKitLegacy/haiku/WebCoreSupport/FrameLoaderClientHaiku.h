@@ -151,7 +151,7 @@ class FrameLoaderClientHaiku : public FrameLoaderClient {
     bool shouldGoToHistoryItem(HistoryItem*) const override;
 
     bool canCachePage() const override;
-    void convertMainResourceLoadToDownload(DocumentLoader*, WebCore::SessionID,
+    void convertMainResourceLoadToDownload(DocumentLoader*, PAL::SessionID,
         const ResourceRequest&, const ResourceResponse&) override;
 
     void didDisplayInsecureContent() override;

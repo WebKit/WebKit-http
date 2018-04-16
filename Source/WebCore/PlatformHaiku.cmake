@@ -144,7 +144,6 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/CryptoAlgorithmRegistry.cpp
         crypto/CryptoKey.cpp
         crypto/SubtleCrypto.cpp
-        crypto/WebKitSubtleCrypto.cpp
 
         crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
         crypto/algorithms/CryptoAlgorithmAES_CFB.cpp
@@ -186,13 +185,10 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/gcrypt/SerializedCryptoKeyWrapGCrypt.cpp
 
         crypto/keys/CryptoKeyAES.cpp
-        crypto/keys/CryptoKeyDataOctetSequence.cpp
-        crypto/keys/CryptoKeyDataRSAComponents.cpp
         crypto/keys/CryptoKeyEC.cpp
         crypto/keys/CryptoKeyHMAC.cpp
         crypto/keys/CryptoKeyRSA.cpp
         crypto/keys/CryptoKeyRaw.cpp
-        crypto/keys/CryptoKeySerializationRaw.cpp
     )
 endif ()
 

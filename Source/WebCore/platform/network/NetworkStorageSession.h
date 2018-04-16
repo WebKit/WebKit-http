@@ -108,7 +108,7 @@ public:
     void getCredentialFromPersistentStorage(const ProtectionSpace&, Function<void (Credential&&)> completionHandler);
     void saveCredentialToPersistentStorage(const ProtectionSpace&, const Credential&);
 #elif USE(HAIKU)
-    NetworkStorageSession(SessionID, BUrlContext*);
+    NetworkStorageSession(PAL::SessionID, BUrlContext*);
     ~NetworkStorageSession();
 
     BUrlContext& platformSession() const;
