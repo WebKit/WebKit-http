@@ -71,14 +71,15 @@ private:
         const std::string& url() const { return m_url; }
         const std::string& message() const { return m_message; }
         bool needsIndividualization() const { return m_needsIndividualization; }
-        Ref<WebCore::SharedBuffer>& initData() { return m_initData; }
+        const Ref<WebCore::SharedBuffer>& initData() const { return m_initData; }
         media::OpenCdm::KeyStatus update(const uint8_t* data, const uint16_t length, std::string& response) { m_lastStatus = m_session.Update(data, length, response); return m_lastStatus; }
         int load(std::string& response) { return m_session.Load(response); }
         int remove(std::string& response) { return m_session.Remove(response); }
         int close() { return m_session.Close(); }
         media::OpenCdm::KeyStatus lastStatus() const { return m_lastStatus; }
-        bool operator==(const String& initData) const { return m_initData->size() == initData.sizeInBytes() && !memcmp(m_initData->data(), initData.characters8(), m_initData->size()); }
-        bool operator!=(const String& initData) const { return !operator==(initData); }
+        bool containsInitData(const String& initData) const {
+            return m_initData->size() >= initData.sizeInBytes() && memmem(m_initData->data(), m_initData->size(), initData.characters8(), initData.sizeInBytes());
+        }
 
     private:
         media::OpenCdm m_session;

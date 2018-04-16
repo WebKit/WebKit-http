@@ -413,28 +413,49 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         if (!m_cdmInstance || m_cdmInstance->keySystem().isEmpty()) {
             std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = GStreamerEMEUtilities::extractEventsAndSystemsFromMessage(message);
             GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
-            bool didReportSomething = false;
+            InitData concatenatedInitDataChunks;
+            unsigned concatenatedInitDataChunksNumber = 0;
 
             for (auto& event : streamEncryptionInformation.first) {
                 GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
                 const char* eventKeySystemUUID = nullptr;
-                gst_event_parse_protection(event.get(), &eventKeySystemUUID, nullptr, nullptr);
+                GstBuffer* data = nullptr;
+                gst_event_parse_protection(event.get(), &eventKeySystemUUID, &data, nullptr);
 
                 if (!streamEncryptionInformation.second.contains(eventKeySystemUUID)) {
                     GST_DEBUG("%s not supported", eventKeySystemUUID);
                     continue;
                 }
 
-                initializationDataEncountered(event.get());
+                GstMapInfo mapInfo;
+                if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+                    GST_WARNING("cannot map %s protection data", eventKeySystemUUID);
+                    continue;
+                }
+
+                GST_TRACE("appending concatenated init data for %s of size %" G_GSIZE_FORMAT "(MD5: %s)", eventKeySystemUUID, mapInfo.size, GStreamerEMEUtilities::initDataMD5(InitData(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size)).utf8().data());
+                GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
+                concatenatedInitDataChunks.append(reinterpret_cast<const uint8_t*>(mapInfo.data), mapInfo.size);
+                concatenatedInitDataChunksNumber++;
+
+                gst_buffer_unmap(data, &mapInfo);
 
                 ASSERT(!m_reportedProtectionEvents.contains(GST_EVENT_SEQNUM(event.get())));
                 m_reportedProtectionEvents.append(GST_EVENT_SEQNUM(event.get()));
-
-                didReportSomething = true;
             }
 
-            if (!didReportSomething)
+            if (!concatenatedInitDataChunksNumber)
                 return false;
+
+            RunLoop::main().dispatch([weakThis = m_weakPtrFactory.createWeakPtr(*this), initData = concatenatedInitDataChunks] {
+                if (!weakThis)
+                    return;
+
+                GST_DEBUG("scheduling initializationDataEncountered event with concatenated init data size of %" G_GSIZE_FORMAT, initData.sizeInBytes());
+                GST_TRACE("concatenated init data MD5 %s", GStreamerEMEUtilities::initDataMD5(initData).utf8().data());
+                GST_MEMDUMP("concatenated init datas", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes());
+                weakThis->m_player->initializationDataEncountered(ASCIILiteral("cenc"), ArrayBuffer::create(reinterpret_cast<const uint8_t*>(initData.characters8()), initData.sizeInBytes()));
+            });
 
             GST_INFO("waiting for a CDM instance");
             m_protectionCondition.waitFor(m_protectionMutex, WEBCORE_GSTREAMER_EME_LICENSE_KEY_RESPONSE_TIMEOUT, [this] {

@@ -403,9 +403,14 @@ String CDMInstanceOpenCDM::sessionIdByInitData(const InitData& initData, bool fi
     GST_MEMDUMP("init data", reinterpret_cast<const uint8_t*>(initData.characters8()), initData.length());
 
     String result;
-    for (auto iterator = m_sessionsMap.begin(); iterator != m_sessionsMap.end() && result.isEmpty(); ++iterator)
-        if (iterator->second == initData)
-            result = String::fromUTF8(iterator->first.c_str());
+    for (const auto& pair : m_sessionsMap) {
+        const std::string& sessionId = pair.first;
+        const Session& session = pair.second;
+        if (session.containsInitData(initData)) {
+            result = String::fromUTF8(sessionId.c_str());
+            break;
+        }
+    }
 
     if (result.isEmpty()) {
         if (firstInLine) {
