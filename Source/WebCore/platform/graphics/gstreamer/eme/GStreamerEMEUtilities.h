@@ -23,7 +23,7 @@
 
 #if ENABLE(ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
-#include "GRefPtrGStreamer.h"
+#include "GStreamerCommon.h"
 #include <gst/gst.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/Seconds.h>
