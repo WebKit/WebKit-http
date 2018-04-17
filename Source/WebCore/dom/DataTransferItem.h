@@ -61,7 +61,7 @@ public:
     String type() const;
     void getAsString(ScriptExecutionContext&, RefPtr<StringCallback>&&) const;
     RefPtr<File> getAsFile() const;
-    RefPtr<FileSystemEntry> getAsEntry() const;
+    RefPtr<FileSystemEntry> getAsEntry(ScriptExecutionContext&) const;
 
 private:
     DataTransferItem(WeakPtr<DataTransferItemList>&&, const String&);
@@ -72,7 +72,6 @@ private:
     WeakPtr<DataTransferItemList> m_list;
     const String m_type;
     RefPtr<File> m_file;
-    mutable RefPtr<DOMFileSystem> m_fileSystem;
 };
 
 }

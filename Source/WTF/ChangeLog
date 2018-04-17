@@ -1,3 +1,607 @@
+2017-09-06  Eric Carlson  <eric.carlson@apple.com>
+
+        Require LoggingHelper overrides to provide identifier
+        https://bugs.webkit.org/show_bug.cgi?id=176477
+
+        Reviewed by Jer Noble.
+
+        * wtf/Assertions.cpp: No more WTFLogLevelNotice.
+        * wtf/Assertions.h: Ditto.
+
+2017-09-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] WebCore failed to build, InbandTextTrackPrivateAVF: base class undefined.
+        https://bugs.webkit.org/show_bug.cgi?id=176431
+
+        Reviewed by Alex Christensen.
+
+        AVFoundation header detection should be done in WebCore because of build dependencies. 
+
+        * AVFoundationSupport.py: Removed.
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+
+2017-09-05  Yoshiaki Jitsukawa  <Yoshiaki.Jitsukawa@sony.com>
+
+        [Win] Fix the wincairo build after r221558 and r221583
+        https://bugs.webkit.org/show_bug.cgi?id=176353
+
+        Reviewed by Yusuke Suzuki.
+
+        * wtf/Assertions.cpp:
+
+2017-09-04  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch HTMLMediaElement to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+
+        Reviewed by Jer Noble.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::dump const): Use toString.
+        (WTF::MediaTime::toString const): New.
+
+2017-09-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove OS(SOLARIS) support
+        https://bugs.webkit.org/show_bug.cgi?id=176341
+
+        Reviewed by Sam Weinig.
+
+        WebKit project does not have stake holders supporting Solaris right now.
+        And Solaris + SPARC in 64bit environment does not work well since its
+        address space includes non-48bit area. It breaks our JSVALUE64 in JSC.
+        In addition, Solaris a bit complicates our threading implementation
+        because of its special threading stack.
+
+        This patch removes OS(SOLARIS) and COMPILER(SUNCC) support from WebKit.
+
+        * wtf/Compiler.h:
+        * wtf/InlineASM.h:
+        * wtf/MathExtras.h:
+        (std::isfinite): Deleted.
+        (std::signbit): Deleted.
+        (std::isinf): Deleted.
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores):
+        * wtf/Platform.h:
+        * wtf/StackBounds.cpp:
+        * wtf/ThreadingPthreads.cpp:
+
+2017-09-04  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r221494 and r221500.
+        https://bugs.webkit.org/show_bug.cgi?id=176258
+
+        This caused the windows build to fail. (Requested by mlewis13
+        on #webkit).
+
+        Reverted changesets:
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221494
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221500
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove "malloc" and "free" use
+        https://bugs.webkit.org/show_bug.cgi?id=176310
+
+        Reviewed by Darin Adler.
+
+        Use Vector instead.
+
+        * wtf/Assertions.cpp:
+
+2017-09-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, support libstdc++ use with clang
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+
+        * wtf/FastMalloc.h:
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add C++03 allocator interface for GCC < 6
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+
+        Reviewed by Darin Adler.
+
+        Unfortunately, std::list in GCC < 6 does not support C++11 allocator interface.
+        This patch adds C++03 allocator interface to FastAllocator to make it usable
+        for std::list. It also allows us to use FastAllocator for data structures that
+        only support C++03 interface.
+
+        * wtf/FastMalloc.h:
+        (WTF::FastAllocator::allocate):
+        (WTF::FastAllocator::construct):
+        (WTF::FastAllocator::destroy):
+        (WTF::FastAllocator::max_size const):
+        (WTF::FastAllocator::select_on_container_copy_construction const):
+
+2017-09-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r221552.
+
+        Broke the build
+
+        Reverted changeset:
+
+        "[WTF] Add C++03 allocator interface for GCC < 6"
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+        http://trac.webkit.org/changeset/221552
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add C++03 allocator interface for GCC < 6
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+
+        Reviewed by Darin Adler.
+
+        Unfortunately, std::list in GCC < 6 does not support C++11 allocator interface.
+        This patch adds C++03 allocator interface to FastAllocator to make it usable
+        for std::list. It also allows us to use FastAllocator for data structures that
+        only support C++03 interface.
+
+        * wtf/FastMalloc.h:
+        (WTF::FastAllocator::allocate):
+        (WTF::FastAllocator::construct):
+        (WTF::FastAllocator::destroy):
+        (WTF::FastAllocator::max_size const):
+        (WTF::FastAllocator::select_on_container_copy_construction const):
+
+2017-09-03  Sam Weinig  <sam@webkit.org>
+
+        Remove CanvasProxy
+        https://bugs.webkit.org/show_bug.cgi?id=176288
+
+        Reviewed by Yusuke Suzuki.
+
+        CanvasProxy does not appear to be in any current HTML spec
+        and was disabled and unimplemented in our tree. Time to 
+        get rid of it.
+
+        * wtf/FeatureDefines.h:
+
+2017-09-01  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch HTMLMediaElement to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+
+        Reviewed by Jer Noble.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::dump const): Use toString.
+        (WTF::MediaTime::toString const): New.
+        * wtf/MediaTime.h:
+        (PAL::LogArgument<WTF::MediaTime>::toString): Logger template.
+
+2017-08-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make USE_CF conditional within Windows
+        https://bugs.webkit.org/show_bug.cgi?id=176173
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+        * wtf/PlatformWin.cmake:
+
+2017-08-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221445.
+
+        This change broke Sierra Release builds.
+
+        Reverted changeset:
+
+        "Switch HTMLMediaElement to release logging"
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+        http://trac.webkit.org/changeset/221445
+
+2017-08-31  Eric Carlson  <eric.carlson@apple.com>
+
+        Switch HTMLMediaElement to release logging
+        https://bugs.webkit.org/show_bug.cgi?id=176065
+
+        Reviewed by Jer Noble.
+
+        * wtf/MediaTime.cpp:
+        (WTF::MediaTime::dump const): Use toString.
+        (WTF::MediaTime::toString const): New.
+        * wtf/MediaTime.h:
+        (PAL::LogArgument<WTF::MediaTime>::toString): Logger template.
+
+2017-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        All of the different ArrayBuffer::data's should be CagedPtr<>
+        https://bugs.webkit.org/show_bug.cgi?id=175515
+
+        Reviewed by Michael Saboff.
+        
+        Added a specialization so that CagedPtr<void> is valid.
+
+        * wtf/CagedPtr.h:
+
+2017-08-31  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Crash under WorkQueue::performWorkOnRegisteredWorkThread in layout tests.
+        https://bugs.webkit.org/show_bug.cgi?id=176163
+
+        Reviewed by Alex Christensen.
+
+        My previous attempt at fixing this crash in <http://trac.webkit.org/changeset/221323>
+        was incorrect, since it is still crashing on the bot(s). The current theory of why this
+        is failing is that the WorkQueue object deletes itself in the middle of the
+        performWorkOnRegisteredWorkThread method when calling deref(). There is no need to
+        increase the reference count of the work queue for each function we want to call on the
+        work thread. It is sufficient to increase it for every work thread we start, and then
+        dereference it when the thread ends. We should also not attempt to access members after
+        the deref() call, which can potentially be unsafe.
+ 
+        * wtf/win/WorkQueueWin.cpp:
+        (WTF::WorkQueue::workThreadCallback):
+        (WTF::WorkQueue::performWorkOnRegisteredWorkThread):
+        (WTF::WorkQueue::dispatch):
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+        
+        This makes all strings allocations come from the string gigacage. Because we expect string allocation
+        to be a hot path, I created specialized allocation paths for the string gigacage. These paths are
+        accessible via <wtf/text/StringMalloc.h>. However, those paths are equivalent to saying
+        Gigacage::malloc and friends with the Gigacage::String kind.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Deque.h:
+        * wtf/FastMalloc.cpp:
+        (WTF::fastFree):
+        * wtf/FastMalloc.h:
+        (WTF::FastMalloc::malloc):
+        (WTF::FastMalloc::tryMalloc):
+        (WTF::FastMalloc::realloc):
+        (WTF::FastMalloc::free):
+        * wtf/Forward.h:
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryMalloc):
+        * wtf/Gigacage.h:
+        (Gigacage::name):
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::deallocateBuffer):
+        (WTF::Malloc>::Vector):
+        (WTF::=):
+        (WTF::Malloc>::contains const):
+        (WTF::Malloc>::findMatching const):
+        (WTF::Malloc>::find const):
+        (WTF::Malloc>::reverseFind const):
+        (WTF::Malloc>::appendIfNotContains):
+        (WTF::Malloc>::fill):
+        (WTF::Malloc>::appendRange):
+        (WTF::Malloc>::expandCapacity):
+        (WTF::Malloc>::tryExpandCapacity):
+        (WTF::Malloc>::resize):
+        (WTF::Malloc>::resizeToFit):
+        (WTF::Malloc>::shrink):
+        (WTF::Malloc>::grow):
+        (WTF::Malloc>::asanSetInitialBufferSizeTo):
+        (WTF::Malloc>::asanSetBufferSizeToFullCapacity):
+        (WTF::Malloc>::asanBufferSizeWillChangeTo):
+        (WTF::Malloc>::reserveCapacity):
+        (WTF::Malloc>::tryReserveCapacity):
+        (WTF::Malloc>::reserveInitialCapacity):
+        (WTF::Malloc>::shrinkCapacity):
+        (WTF::Malloc>::append):
+        (WTF::Malloc>::tryAppend):
+        (WTF::Malloc>::constructAndAppend):
+        (WTF::Malloc>::tryConstructAndAppend):
+        (WTF::Malloc>::appendSlowCase):
+        (WTF::Malloc>::constructAndAppendSlowCase):
+        (WTF::Malloc>::tryConstructAndAppendSlowCase):
+        (WTF::Malloc>::uncheckedAppend):
+        (WTF::Malloc>::appendVector):
+        (WTF::Malloc>::insert):
+        (WTF::Malloc>::insertVector):
+        (WTF::Malloc>::remove):
+        (WTF::Malloc>::removeFirst):
+        (WTF::Malloc>::removeFirstMatching):
+        (WTF::Malloc>::removeAll):
+        (WTF::Malloc>::removeAllMatching):
+        (WTF::Malloc>::reverse):
+        (WTF::Malloc>::map const):
+        (WTF::Malloc>::releaseBuffer):
+        (WTF::Malloc>::checkConsistency):
+        (WTF::swap):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::removeRepeatedElements):
+        (WTF::minCapacity>::Vector): Deleted.
+        (WTF::minCapacity>::contains const): Deleted.
+        (WTF::minCapacity>::findMatching const): Deleted.
+        (WTF::minCapacity>::find const): Deleted.
+        (WTF::minCapacity>::reverseFind const): Deleted.
+        (WTF::minCapacity>::appendIfNotContains): Deleted.
+        (WTF::minCapacity>::fill): Deleted.
+        (WTF::minCapacity>::appendRange): Deleted.
+        (WTF::minCapacity>::expandCapacity): Deleted.
+        (WTF::minCapacity>::tryExpandCapacity): Deleted.
+        (WTF::minCapacity>::resize): Deleted.
+        (WTF::minCapacity>::resizeToFit): Deleted.
+        (WTF::minCapacity>::shrink): Deleted.
+        (WTF::minCapacity>::grow): Deleted.
+        (WTF::minCapacity>::asanSetInitialBufferSizeTo): Deleted.
+        (WTF::minCapacity>::asanSetBufferSizeToFullCapacity): Deleted.
+        (WTF::minCapacity>::asanBufferSizeWillChangeTo): Deleted.
+        (WTF::minCapacity>::reserveCapacity): Deleted.
+        (WTF::minCapacity>::tryReserveCapacity): Deleted.
+        (WTF::minCapacity>::reserveInitialCapacity): Deleted.
+        (WTF::minCapacity>::shrinkCapacity): Deleted.
+        (WTF::minCapacity>::append): Deleted.
+        (WTF::minCapacity>::tryAppend): Deleted.
+        (WTF::minCapacity>::constructAndAppend): Deleted.
+        (WTF::minCapacity>::tryConstructAndAppend): Deleted.
+        (WTF::minCapacity>::appendSlowCase): Deleted.
+        (WTF::minCapacity>::constructAndAppendSlowCase): Deleted.
+        (WTF::minCapacity>::tryConstructAndAppendSlowCase): Deleted.
+        (WTF::minCapacity>::uncheckedAppend): Deleted.
+        (WTF::minCapacity>::appendVector): Deleted.
+        (WTF::minCapacity>::insert): Deleted.
+        (WTF::minCapacity>::insertVector): Deleted.
+        (WTF::minCapacity>::remove): Deleted.
+        (WTF::minCapacity>::removeFirst): Deleted.
+        (WTF::minCapacity>::removeFirstMatching): Deleted.
+        (WTF::minCapacity>::removeAll): Deleted.
+        (WTF::minCapacity>::removeAllMatching): Deleted.
+        (WTF::minCapacity>::reverse): Deleted.
+        (WTF::minCapacity>::map const): Deleted.
+        (WTF::minCapacity>::releaseBuffer): Deleted.
+        (WTF::minCapacity>::checkConsistency): Deleted.
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/CString.cpp:
+        (WTF::CStringBuffer::createUninitialized):
+        * wtf/text/CString.h:
+        * wtf/text/StringBuffer.h:
+        (WTF::StringBuffer::StringBuffer):
+        (WTF::StringBuffer::~StringBuffer):
+        (WTF::StringBuffer::resize):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::destroy):
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::releaseAssertCaged const):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::adopt):
+        (WTF::StringImpl::bufferOwnership const):
+        (WTF::StringImpl::assertCaged const):
+        * wtf/text/StringMalloc.cpp: Added.
+        (WTF::tryStringMalloc):
+        (WTF::stringMalloc):
+        (WTF::stringRealloc):
+        (WTF::stringFree):
+        * wtf/text/StringMalloc.h: Added.
+        (WTF::StringMalloc::malloc):
+        (WTF::StringMalloc::tryMalloc):
+        (WTF::StringMalloc::realloc):
+        (WTF::StringMalloc::free):
+        * wtf/text/StringVector.h: Added.
+        * wtf/text/SymbolImpl.h:
+        * wtf/text/UniquedStringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::adopt):
+        (WTF::String::assertCaged const):
+        (WTF::String::releaseAssertCaged const):
+
+2017-08-30  Chris Dumez  <cdumez@apple.com>
+
+        Implement FileSystemDirectoryReader.readEntries()
+        https://bugs.webkit.org/show_bug.cgi?id=176091
+        <rdar://problem/34168015>
+
+        Reviewed by Andreas Kling.
+
+        * wtf/CrossThreadCopier.h:
+        (WTF::crossThreadCopy):
+        * wtf/CrossThreadTask.h:
+        Move crossThreadCopy() from CrossThreadTask.h to CrossThreadCopier.h and
+        add "using WTF::crossThreadCopy" statement to make it more easily usable
+        from WebCore.
+
+2017-08-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r221384.
+
+        This patch caused multiple 32-bit JSC test failures.
+
+        Reverted changeset:
+
+        "Strings need to be in some kind of gigacage"
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+        http://trac.webkit.org/changeset/221384
+
+2017-08-30  Brady Eidson  <beidson@apple.com>
+
+        Add "Identified" base class to replace a whole bunch of custom identifier generators.
+        https://bugs.webkit.org/show_bug.cgi?id=176120
+
+        Reviewed by Alex Christensen.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Identified.h: Added.
+        (WTF::IdentifiedBase::identifier const):
+        (WTF::IdentifiedBase::IdentifiedBase):
+        (WTF::Identified::Identified):
+        (WTF::ThreadSafeIdentified::ThreadSafeIdentified):
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+        
+        This makes all strings allocations come from the string gigacage. Because we expect string allocation
+        to be a hot path, I created specialized allocation paths for the string gigacage. These paths are
+        accessible via <wtf/text/StringMalloc.h>. However, those paths are equivalent to saying
+        Gigacage::malloc and friends with the Gigacage::String kind.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/Deque.h:
+        * wtf/FastMalloc.cpp:
+        (WTF::fastFree):
+        * wtf/FastMalloc.h:
+        (WTF::FastMalloc::malloc):
+        (WTF::FastMalloc::tryMalloc):
+        (WTF::FastMalloc::realloc):
+        (WTF::FastMalloc::free):
+        * wtf/Forward.h:
+        * wtf/Gigacage.cpp:
+        (Gigacage::tryMalloc):
+        * wtf/Gigacage.h:
+        (Gigacage::name):
+        * wtf/Vector.h:
+        (WTF::VectorBufferBase::allocateBuffer):
+        (WTF::VectorBufferBase::tryAllocateBuffer):
+        (WTF::VectorBufferBase::reallocateBuffer):
+        (WTF::VectorBufferBase::deallocateBuffer):
+        (WTF::Malloc>::Vector):
+        (WTF::=):
+        (WTF::Malloc>::contains const):
+        (WTF::Malloc>::findMatching const):
+        (WTF::Malloc>::find const):
+        (WTF::Malloc>::reverseFind const):
+        (WTF::Malloc>::appendIfNotContains):
+        (WTF::Malloc>::fill):
+        (WTF::Malloc>::appendRange):
+        (WTF::Malloc>::expandCapacity):
+        (WTF::Malloc>::tryExpandCapacity):
+        (WTF::Malloc>::resize):
+        (WTF::Malloc>::resizeToFit):
+        (WTF::Malloc>::shrink):
+        (WTF::Malloc>::grow):
+        (WTF::Malloc>::asanSetInitialBufferSizeTo):
+        (WTF::Malloc>::asanSetBufferSizeToFullCapacity):
+        (WTF::Malloc>::asanBufferSizeWillChangeTo):
+        (WTF::Malloc>::reserveCapacity):
+        (WTF::Malloc>::tryReserveCapacity):
+        (WTF::Malloc>::reserveInitialCapacity):
+        (WTF::Malloc>::shrinkCapacity):
+        (WTF::Malloc>::append):
+        (WTF::Malloc>::tryAppend):
+        (WTF::Malloc>::constructAndAppend):
+        (WTF::Malloc>::tryConstructAndAppend):
+        (WTF::Malloc>::appendSlowCase):
+        (WTF::Malloc>::constructAndAppendSlowCase):
+        (WTF::Malloc>::tryConstructAndAppendSlowCase):
+        (WTF::Malloc>::uncheckedAppend):
+        (WTF::Malloc>::appendVector):
+        (WTF::Malloc>::insert):
+        (WTF::Malloc>::insertVector):
+        (WTF::Malloc>::remove):
+        (WTF::Malloc>::removeFirst):
+        (WTF::Malloc>::removeFirstMatching):
+        (WTF::Malloc>::removeAll):
+        (WTF::Malloc>::removeAllMatching):
+        (WTF::Malloc>::reverse):
+        (WTF::Malloc>::map const):
+        (WTF::Malloc>::releaseBuffer):
+        (WTF::Malloc>::checkConsistency):
+        (WTF::swap):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::removeRepeatedElements):
+        (WTF::minCapacity>::Vector): Deleted.
+        (WTF::minCapacity>::contains const): Deleted.
+        (WTF::minCapacity>::findMatching const): Deleted.
+        (WTF::minCapacity>::find const): Deleted.
+        (WTF::minCapacity>::reverseFind const): Deleted.
+        (WTF::minCapacity>::appendIfNotContains): Deleted.
+        (WTF::minCapacity>::fill): Deleted.
+        (WTF::minCapacity>::appendRange): Deleted.
+        (WTF::minCapacity>::expandCapacity): Deleted.
+        (WTF::minCapacity>::tryExpandCapacity): Deleted.
+        (WTF::minCapacity>::resize): Deleted.
+        (WTF::minCapacity>::resizeToFit): Deleted.
+        (WTF::minCapacity>::shrink): Deleted.
+        (WTF::minCapacity>::grow): Deleted.
+        (WTF::minCapacity>::asanSetInitialBufferSizeTo): Deleted.
+        (WTF::minCapacity>::asanSetBufferSizeToFullCapacity): Deleted.
+        (WTF::minCapacity>::asanBufferSizeWillChangeTo): Deleted.
+        (WTF::minCapacity>::reserveCapacity): Deleted.
+        (WTF::minCapacity>::tryReserveCapacity): Deleted.
+        (WTF::minCapacity>::reserveInitialCapacity): Deleted.
+        (WTF::minCapacity>::shrinkCapacity): Deleted.
+        (WTF::minCapacity>::append): Deleted.
+        (WTF::minCapacity>::tryAppend): Deleted.
+        (WTF::minCapacity>::constructAndAppend): Deleted.
+        (WTF::minCapacity>::tryConstructAndAppend): Deleted.
+        (WTF::minCapacity>::appendSlowCase): Deleted.
+        (WTF::minCapacity>::constructAndAppendSlowCase): Deleted.
+        (WTF::minCapacity>::tryConstructAndAppendSlowCase): Deleted.
+        (WTF::minCapacity>::uncheckedAppend): Deleted.
+        (WTF::minCapacity>::appendVector): Deleted.
+        (WTF::minCapacity>::insert): Deleted.
+        (WTF::minCapacity>::insertVector): Deleted.
+        (WTF::minCapacity>::remove): Deleted.
+        (WTF::minCapacity>::removeFirst): Deleted.
+        (WTF::minCapacity>::removeFirstMatching): Deleted.
+        (WTF::minCapacity>::removeAll): Deleted.
+        (WTF::minCapacity>::removeAllMatching): Deleted.
+        (WTF::minCapacity>::reverse): Deleted.
+        (WTF::minCapacity>::map const): Deleted.
+        (WTF::minCapacity>::releaseBuffer): Deleted.
+        (WTF::minCapacity>::checkConsistency): Deleted.
+        * wtf/text/AtomicStringImpl.h:
+        * wtf/text/CString.cpp:
+        (WTF::CStringBuffer::createUninitialized):
+        * wtf/text/CString.h:
+        * wtf/text/StringBuffer.h:
+        (WTF::StringBuffer::StringBuffer):
+        (WTF::StringBuffer::~StringBuffer):
+        (WTF::StringBuffer::resize):
+        * wtf/text/StringImpl.cpp:
+        (WTF::StringImpl::~StringImpl):
+        (WTF::StringImpl::destroy):
+        (WTF::StringImpl::createUninitializedInternalNonEmpty):
+        (WTF::StringImpl::reallocateInternal):
+        (WTF::StringImpl::releaseAssertCaged const):
+        * wtf/text/StringImpl.h:
+        (WTF::StringImpl::createSubstringSharingImpl):
+        (WTF::StringImpl::tryCreateUninitialized):
+        (WTF::StringImpl::adopt):
+        (WTF::StringImpl::bufferOwnership const):
+        (WTF::StringImpl::assertCaged const):
+        * wtf/text/StringMalloc.cpp: Added.
+        (WTF::tryStringMalloc):
+        (WTF::stringMalloc):
+        (WTF::stringRealloc):
+        (WTF::stringFree):
+        * wtf/text/StringMalloc.h: Added.
+        (WTF::StringMalloc::malloc):
+        (WTF::StringMalloc::tryMalloc):
+        (WTF::StringMalloc::realloc):
+        (WTF::StringMalloc::free):
+        * wtf/text/StringVector.h: Added.
+        * wtf/text/SymbolImpl.h:
+        * wtf/text/UniquedStringImpl.h:
+        * wtf/text/WTFString.h:
+        (WTF::String::adopt):
+        (WTF::String::assertCaged const):
+        (WTF::String::releaseAssertCaged const):
+
 2017-08-28  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [JSC] Use table based approach for JSON.stringify's Quote

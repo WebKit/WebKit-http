@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2017 Apple Inc. All rights reserved.
  *
@@ -26,75 +25,67 @@
 
 #pragma once
 
-#include "FetchHeaders.h"
-#include "FetchOptions.h"
-#include "ResourceRequest.h"
-#include "ResourceResponse.h"
-#include "SharedBuffer.h"
+#include "ActiveDOMObject.h"
+#include "CacheStorageConnection.h"
+#include "CacheStorageRecord.h"
 
 namespace WebCore {
 
-struct CacheQueryOptions;
+class ScriptExecutionContext;
 
-namespace DOMCache {
+class DOMCache final : public RefCounted<DOMCache>, public ActiveDOMObject {
+public:
+    static Ref<DOMCache> create(ScriptExecutionContext& context, String&& name, uint64_t identifier, Ref<CacheStorageConnection>&& connection) { return adoptRef(*new DOMCache(context, WTFMove(name), identifier, WTFMove(connection))); }
+    ~DOMCache();
 
-enum class Error {
-    NotImplemented,
-    Internal
+    using RequestInfo = FetchRequest::Info;
+
+    using KeysPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<FetchRequest>>>;
+
+    void match(RequestInfo&&, CacheQueryOptions&&, Ref<DeferredPromise>&&);
+
+    using MatchAllPromise = DOMPromiseDeferred<IDLSequence<IDLInterface<FetchResponse>>>;
+    void matchAll(std::optional<RequestInfo>&&, CacheQueryOptions&&, MatchAllPromise&&);
+    void add(RequestInfo&&, DOMPromiseDeferred<void>&&);
+
+    void addAll(Vector<RequestInfo>&&, DOMPromiseDeferred<void>&&);
+    void put(RequestInfo&&, Ref<FetchResponse>&&, DOMPromiseDeferred<void>&&);
+    void remove(RequestInfo&&, CacheQueryOptions&&, DOMPromiseDeferred<IDLBoolean>&&);
+    void keys(std::optional<RequestInfo>&&, CacheQueryOptions&&, KeysPromise&&);
+
+    const String& name() const { return m_name; }
+    uint64_t identifier() const { return m_identifier; }
+
+    using MatchCallback = WTF::Function<void(ExceptionOr<FetchResponse*>)>;
+    void doMatch(RequestInfo&&, CacheQueryOptions&&, MatchCallback&&);
+
+private:
+    DOMCache(ScriptExecutionContext&, String&& name, uint64_t identifier, Ref<CacheStorageConnection>&&);
+
+    ExceptionOr<Ref<FetchRequest>> requestFromInfo(RequestInfo&&, bool ignoreMethod);
+
+    // ActiveDOMObject
+    void stop() final;
+    const char* activeDOMObjectName() const final;
+    bool canSuspendForDocumentSuspension() const final;
+
+    void putWithResponseData(DOMPromiseDeferred<void>&&, Ref<FetchRequest>&&, Ref<FetchResponse>&&, ExceptionOr<RefPtr<SharedBuffer>>&&);
+
+    void retrieveRecords(const URL&, WTF::Function<void(std::optional<Exception>&&)>&&);
+    Vector<CacheStorageRecord> queryCacheWithTargetStorage(const FetchRequest&, const CacheQueryOptions&, const Vector<CacheStorageRecord>&);
+    void queryCache(Ref<FetchRequest>&&, CacheQueryOptions&&, WTF::Function<void(ExceptionOr<Vector<CacheStorageRecord>>&&)>&&);
+    void batchDeleteOperation(const FetchRequest&, CacheQueryOptions&&, WTF::Function<void(ExceptionOr<bool>&&)>&&);
+    void batchPutOperation(const FetchRequest&, FetchResponse&, DOMCacheEngine::ResponseBody&&, WTF::Function<void(ExceptionOr<void>&&)>&&);
+    void batchPutOperation(Vector<DOMCacheEngine::Record>&&, WTF::Function<void(ExceptionOr<void>&&)>&&);
+
+    void updateRecords(Vector<DOMCacheEngine::Record>&&);
+
+    String m_name;
+    uint64_t m_identifier;
+    Ref<CacheStorageConnection> m_connection;
+
+    Vector<CacheStorageRecord> m_records;
+    bool m_isStopped { false };
 };
-
-Exception errorToException(Error);
-
-WEBCORE_EXPORT bool queryCacheMatch(const ResourceRequest& request, const ResourceRequest& cachedRequest, const ResourceResponse&, const CacheQueryOptions&);
-
-using ResponseBody = Variant<std::nullptr_t, Ref<FormData>, Ref<SharedBuffer>>;
-ResponseBody isolatedResponseBody(const ResponseBody&);
-
-struct Record {
-    WEBCORE_EXPORT Record copy() const;
-
-    uint64_t identifier;
-    uint64_t updateResponseCounter;
-
-    FetchHeaders::Guard requestHeadersGuard;
-    ResourceRequest request;
-    FetchOptions options;
-    String referrer;
-
-    FetchHeaders::Guard responseHeadersGuard;
-    ResourceResponse response;
-    ResponseBody responseBody;
-};
-
-struct CacheInfo {
-    uint64_t identifier;
-    String name;
-};
-
-using CacheIdentifierOrError = Expected<uint64_t, Error>;
-using CacheIdentifierCallback = WTF::Function<void(const CacheIdentifierOrError&)>;
-
-using RecordIdentifiersOrError = Expected<Vector<uint64_t>, Error>;
-using RecordIdentifiersCallback = WTF::Function<void(RecordIdentifiersOrError&&)>;
-
-using CacheInfosOrError = Expected<Vector<WebCore::DOMCache::CacheInfo>, Error>;
-using CacheInfosCallback = WTF::Function<void(CacheInfosOrError&&)>;
-
-using RecordsOrError = Expected<Vector<Record>, Error>;
-using RecordsCallback = WTF::Function<void(RecordsOrError&&)>;
-
-using CompletionCallback = WTF::Function<void(std::optional<Error>&&)>;
-
-} // namespace DOMCache
 
 } // namespace WebCore
-
-namespace WTF {
-template<> struct EnumTraits<WebCore::DOMCache::Error> {
-    using values = EnumValues<
-        WebCore::DOMCache::Error,
-        WebCore::DOMCache::Error::NotImplemented,
-        WebCore::DOMCache::Error::Internal
-    >;
-};
-}

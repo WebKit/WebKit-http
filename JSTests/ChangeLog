@@ -1,3 +1,205 @@
+2017-09-06  Mark Lam  <mark.lam@apple.com>
+
+        constructGenericTypedArrayViewWithArguments() is missing an exception check.
+        https://bugs.webkit.org/show_bug.cgi?id=176485
+        <rdar://problem/33898874>
+
+        Reviewed by Keith Miller.
+
+        * stress/regress-176485.js: Added.
+
+2017-09-05  Saam Barati  <sbarati@apple.com>
+
+        isNotCellSpeculation is wrong with respect to SpecEmpty
+        https://bugs.webkit.org/show_bug.cgi?id=176429
+
+        Reviewed by Michael Saboff.
+
+        * microbenchmarks/is-not-cell-speculation-for-empty-value.js: Added.
+        (Foo):
+
+2017-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Completion values for control flow do not match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+
+        Reviewed by Saam Barati.
+
+        * stress/completion-value.js:
+        Condensed test for completion values in top level statements.
+
+        * stress/super-get-by-id.js:
+        ClassDeclaration when evaled no longer produce values. Convert
+        these to ClassExpressions so they produce the class value.
+        
+        * ChakraCore/test/GlobalFunctions/evalreturns3.baseline-jsc:
+        This is a progression for currect spec behavior.
+
+        * mozilla/mozilla-tests.yaml:
+        This test is now outdated, so mark it as failing for that reason.
+
+        * test262.yaml:
+        Passing all "cptn" completion value tests.
+
+2017-09-04  Saam Barati  <sbarati@apple.com>
+
+        typeCheckHoistingPhase may emit a CheckStructure on the empty value which leads to a dereference of zero on 64 bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=176317
+
+        Reviewed by Keith Miller.
+
+        * stress/dont-crash-when-hoist-check-structure-on-tdz.js: Added.
+        (Foo):
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Efficiently execute number#toString()
+        https://bugs.webkit.org/show_bug.cgi?id=170007
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/number-to-string-strength-reduction.js: Added.
+        (test):
+        * microbenchmarks/number-to-string-with-radix-10.js: Added.
+        (test):
+        * microbenchmarks/number-to-string-with-radix-cse.js: Added.
+        (test):
+        * microbenchmarks/number-to-string-with-radix.js: Added.
+        (test):
+        * stress/number-to-string-strength-reduction.js: Added.
+        (shouldBe):
+        (test):
+        * stress/number-to-string-with-radix-10.js: Added.
+        (shouldBe):
+        (test):
+        * stress/number-to-string-with-radix-cse.js: Added.
+        (shouldBe):
+        (test):
+        * stress/number-to-string-with-radix-invalid.js: Added.
+        (shouldThrow):
+        * stress/number-to-string-with-radix-watchpoint.js: Added.
+        (shouldBe):
+        (test):
+        (i.i.1e3.Number.prototype.toString):
+        * stress/number-to-string-with-radix.js: Added.
+        (shouldBe):
+        (test):
+
+2017-09-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Relax arity requirement
+        https://bugs.webkit.org/show_bug.cgi?id=175523
+
+        Reviewed by Saam Barati.
+
+        * stress/arity-mismatch-arguments-length.js: Added.
+        (shouldBe):
+        (test1):
+        (test):
+        * stress/arity-mismatch-get-argument.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        (test):
+        * stress/arity-mismatch-inlining-extra-slots.js: Added.
+        (shouldBe):
+        (inlineTarget):
+        (test):
+        * stress/arity-mismatch-inlining.js: Added.
+        (shouldBe):
+        (inlineTarget):
+        (test):
+        * stress/arity-mismatch-rest.js: Added.
+        (shouldBe):
+        (test2):
+        (test1):
+        (test):
+
+2017-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Fix "name" and "length" of Proxy revoke function
+        https://bugs.webkit.org/show_bug.cgi?id=176155
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2017-08-31  Saam Barati  <sbarati@apple.com>
+
+        Graph::methodOfGettingAValueProfileFor compares NodeOrigin instead of the semantic CodeOrigin
+        https://bugs.webkit.org/show_bug.cgi?id=176206
+
+        Reviewed by Keith Miller.
+
+        * stress/compare-semantic-origin-op-negate-method-of-getting-a-value-profile.js: Added.
+        (a):
+        (b):
+        (foo):
+
+2017-08-31  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip two slow JSC tests after r221422.
+
+        Unreviewed test gardening.
+
+        * stress/regexp-prototype-match-on-too-long-rope.js:
+        * stress/regexp-prototype-test-on-too-long-rope.js:
+
+2017-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, skipping slow tests.
+        
+        These tests are now timing out. They would have always been slow. The timeouts are probably because OOMs
+        work differently now.
+
+        * stress/regexp-prototype-exec-on-too-long-rope.js:
+        * stress/string-prototype-charCodeAt-on-too-long-rope.js:
+
+2017-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use reifying system for "name" property of builtin JSFunction
+        https://bugs.webkit.org/show_bug.cgi?id=175260
+
+        Reviewed by Saam Barati.
+
+        * stress/accessors-get-set-prefix.js:
+        * stress/builtin-function-name.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyDescriptor):
+        (shouldBe.JSON.stringify.Object.getOwnPropertyNames.Array.prototype.filter.sort):
+        * stress/private-name-as-anonymous-builtin.js: Added.
+        (shouldBe):
+        (NotPromise):
+
+2017-08-30  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed. Make test stop printing.
+
+        * microbenchmarks/fake-iterators-that-throw-when-finished.js:
+
+2017-08-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221327.
+
+        This change caused test262 failures.
+
+        Reverted changeset:
+
+        "[JSC] Use reifying system for "name" property of builtin
+        JSFunction"
+        https://bugs.webkit.org/show_bug.cgi?id=175260
+        http://trac.webkit.org/changeset/221327
+
+2017-08-30  Saam Barati  <sbarati@apple.com>
+
+        semicolon is being interpreted as an = in the LiteralParser
+        https://bugs.webkit.org/show_bug.cgi?id=176114
+
+        Reviewed by Oliver Hunt.
+
+        * stress/jsonp-literal-parser-semicolon-is-not-assignment.js: Added.
+        * stress/resources/literal-parser-test-case.js: Added.
+
 2017-08-30  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         [ESNext] Async iteration - Implement async iteration statement: for-await-of

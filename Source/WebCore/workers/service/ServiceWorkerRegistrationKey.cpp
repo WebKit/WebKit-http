@@ -51,6 +51,14 @@ bool ServiceWorkerRegistrationKey::operator==(const ServiceWorkerRegistrationKey
     return clientCreationURL == other.clientCreationURL && topOrigin == other.topOrigin;
 }
 
+ServiceWorkerRegistrationKey ServiceWorkerRegistrationKey::isolatedCopy() const
+{
+    ServiceWorkerRegistrationKey result;
+    result.clientCreationURL = clientCreationURL.isolatedCopy();
+    result.topOrigin = topOrigin.isolatedCopy();
+    return result;
+}
+
 } // namespace WebCore
 
 #endif // ENABLE(SERVICE_WORKER)

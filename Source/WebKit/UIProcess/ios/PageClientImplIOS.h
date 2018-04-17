@@ -27,17 +27,16 @@
 
 #if PLATFORM(IOS)
 
-#import "PageClient.h"
+#import "PageClientImplCocoa.h"
 #import "WebFullScreenManagerProxy.h"
 #import <wtf/RetainPtr.h>
 
 OBJC_CLASS WKContentView;
-OBJC_CLASS WKWebView;
 OBJC_CLASS WKEditorUndoTargetObjC;
 
 namespace WebKit {
     
-class PageClientImpl : public PageClient
+class PageClientImpl : public PageClientImplCocoa
 #if ENABLE(FULLSCREEN_API)
     , public WebFullScreenManagerProxyClient
 #endif
@@ -206,13 +205,13 @@ private:
 #if ENABLE(DATA_INTERACTION)
     void didPerformDataInteractionControllerOperation(bool handled) override;
     void didHandleStartDataInteractionRequest(bool started) override;
+    void didHandleAdditionalDragItemsRequest(bool added) override;
     void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) override;
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) override;
     void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) override;
 #endif
 
     WKContentView *m_contentView;
-    WKWebView *m_webView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
 };
 } // namespace WebKit

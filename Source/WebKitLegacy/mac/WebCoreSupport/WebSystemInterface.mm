@@ -1,5 +1,5 @@
 /*
- * Copyright 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc. All rights reserved.
+ * Copyright 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,34 +42,18 @@ void InitWebCoreSystemInterface(void)
     if (didInit)
         return;
 
-    INIT(CALayerEnumerateRectsBeingDrawnWithBlock);
-    INIT(CGPatternCreateWithImageAndTransform);
-#if !PLATFORM(IOS)
-    INIT(CGContextDrawsWithCorrectShadowOffsets);
-#endif
     INIT(CopyCONNECTProxyResponse);
 #if !PLATFORM(IOS)
     INIT(DrawBezeledTextArea);
-    INIT(DrawFocusRing);
-    INIT(DrawFocusRingAtTime);
-    INIT(DrawCellFocusRingWithFrameAtTime);
     INIT(DrawMediaUIPart);
     INIT(DrawMediaSliderTrack);
-    INIT(GetWheelEventDeltas);
-    INIT(GetNSEventKeyChar);
     INIT(HitTestMediaUIPart);
     INIT(MeasureMediaUIPart);
     INIT(CreateMediaUIBackgroundView);
     INIT(CreateMediaUIControl);
-    INIT(WindowSetAlpha);
-    INIT(WindowSetScaledFrame);
 #endif
     INIT(SetCONNECTProxyAuthorizationForStream);
     INIT(SetCONNECTProxyForStream);
-#if !PLATFORM(IOS)
-    INIT(SetDragImage);
-#endif
-    INIT(CGContextIsPDFContext);
 #if ENABLE(VIDEO) && !PLATFORM(IOS)
     INIT(QTIncludeOnlyModernMediaFileTypes);
     INIT(QTMovieDisableComponent);

@@ -60,6 +60,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             0
           ],
           [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          [
             13,
             15,
             16,
@@ -80,6 +88,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             9,
             10,
             1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
           ],
           [
             30,
@@ -245,6 +261,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             0
           ],
           [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          [
             13,
             15,
             16,
@@ -265,6 +289,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             9,
             10,
             1
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
           ],
           [
             30,
@@ -292,6 +324,13 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             5
           ],
           [
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             33,
             15,
             34,
@@ -304,6 +343,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           35,
+          [],
           [],
           [
             36,
@@ -325,6 +365,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             6
           ],
           [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             38,
             18
           ]
@@ -342,6 +390,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             4
           ],
           [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             40,
             18
           ]
@@ -352,6 +406,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           41,
+          [],
           [],
           [
             42,
@@ -368,6 +423,9 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             44
           ],
           [
+            3
+          ],
+          [
             45,
             18
           ]
@@ -376,6 +434,9 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           43,
           [
             46
+          ],
+          [
+            3
           ],
           [
             47,
@@ -389,6 +450,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             44
           ],
           [
+            9,
+            3
+          ],
+          [
             49,
             18
           ]
@@ -398,6 +463,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           [
             50,
             46
+          ],
+          [
+            9,
+            3
           ],
           [
             51,
@@ -411,6 +480,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           52,
           [],
+          [],
           [
             53,
             18
@@ -422,6 +492,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           54,
+          [],
           [],
           [
             55,
@@ -438,6 +509,9 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             57
           ],
           [
+            7
+          ],
+          [
             58,
             15,
             59,
@@ -449,6 +523,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           [
             2,
             3
+          ],
+          [
+            1,
+            1
           ],
           [
             60,
@@ -470,6 +548,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             4
           ],
           [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             63,
             15,
             64,
@@ -487,6 +571,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             67
           ],
           [
+            6,
+            3
+          ],
+          [
             68,
             15,
             69,
@@ -500,6 +588,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             71
           ],
           [
+            6,
+            3
+          ],
+          [
             72,
             15,
             73,
@@ -511,6 +603,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           [
             74,
             75
+          ],
+          [
+            6,
+            3
           ],
           [
             76,
@@ -534,6 +630,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             6
           ],
           [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
             79,
             15,
             80,
@@ -547,43 +651,41 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           81,
           [],
+          [],
           [
             82,
             18
           ]
-        ],
+        ]
+      ]
+    },
+    {
+      "actions": [
         [
-          81,
+          83,
           [
-            83
+            0
+          ],
+          [
+            0
           ],
           [
             84,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          85,
-          [
-            86
-          ],
-          [
-            87,
-            18
-          ]
         ],
         [
-          85,
+          83,
           [
             48,
-            86
+            0
           ],
           [
-            88,
+            9,
+            0
+          ],
+          [
+            85,
             18
           ]
         ]
@@ -592,49 +694,64 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          89,
+          86,
           [
             66,
             1,
             2
           ],
           [
-            90,
+            6,
+            1,
+            1
+          ],
+          [
+            87,
             15,
-            91,
+            88,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             70,
             3,
             4
           ],
           [
-            92,
+            6,
+            1,
+            1
+          ],
+          [
+            89,
             15,
-            93,
+            90,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             74,
             5,
             6
           ],
           [
-            94,
+            6,
+            1,
+            1
+          ],
+          [
+            91,
             15,
-            95,
+            92,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             66,
             7,
@@ -643,14 +760,21 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             10
           ],
           [
-            96,
+            6,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            93,
             15,
-            97,
+            94,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             70,
             11,
@@ -659,14 +783,21 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             14
           ],
           [
-            98,
+            6,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            95,
             15,
-            99,
+            96,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             74,
             15,
@@ -675,14 +806,21 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             18
           ],
           [
-            100,
+            6,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            97,
             15,
-            101,
+            98,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             66,
             19,
@@ -695,14 +833,25 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             26
           ],
           [
-            102,
+            6,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            99,
             15,
-            103,
+            100,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             70,
             27,
@@ -715,14 +864,25 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             34
           ],
           [
-            104,
+            6,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            101,
             15,
-            105,
+            102,
             18
           ]
         ],
         [
-          89,
+          86,
           [
             74,
             35,
@@ -735,9 +895,20 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             42
           ],
           [
-            106,
+            6,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            103,
             15,
-            107,
+            104,
             18
           ]
         ]
@@ -746,7 +917,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          108,
+          105,
           [
             66,
             1,
@@ -760,12 +931,24 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             10
           ],
           [
-            109,
+            6,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            106,
             18
           ]
         ],
         [
-          108,
+          105,
           [
             66,
             9,
@@ -776,10 +959,22 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             14,
             15,
             16,
-            83
+            107
           ],
           [
-            110,
+            6,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            3
+          ],
+          [
+            108,
             18
           ]
         ]
@@ -788,7 +983,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          111,
+          109,
           [
             1,
             2,
@@ -800,14 +995,24 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             0
           ],
           [
-            112,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          [
+            110,
             15,
-            113,
+            111,
             18
           ]
         ],
         [
-          111,
+          109,
           [
             8,
             9,
@@ -819,9 +1024,19 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             1
           ],
           [
-            114,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
+          ],
+          [
+            112,
             15,
-            115,
+            113,
             18
           ]
         ]
@@ -830,9 +1045,40 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          116,
+          114,
           [
             44
+          ],
+          [
+            3
+          ],
+          [
+            115,
+            18
+          ]
+        ],
+        [
+          114,
+          [
+            46
+          ],
+          [
+            3
+          ],
+          [
+            116,
+            18
+          ]
+        ],
+        [
+          114,
+          [
+            48,
+            44
+          ],
+          [
+            9,
+            3
           ],
           [
             117,
@@ -840,31 +1086,37 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           ]
         ],
         [
-          116,
+          114,
           [
+            50,
             46
+          ],
+          [
+            9,
+            3
           ],
           [
             118,
             18
           ]
-        ],
+        ]
+      ]
+    },
+    {
+      "actions": [
         [
-          116,
+          119,
           [
-            48,
-            44
+            1,
+            2,
+            3,
+            4
           ],
           [
-            119,
-            18
-          ]
-        ],
-        [
-          116,
-          [
-            50,
-            46
+            1,
+            1,
+            1,
+            1
           ],
           [
             120,
@@ -877,87 +1129,88 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           121,
-          [
-            1,
-            2,
-            3,
-            4
-          ],
+          [],
+          [],
           [
             122,
             18
           ]
+        ],
+        [
+          121,
+          [
+            107
+          ],
+          [
+            3
+          ],
+          [
+            123,
+            18
+          ]
+        ],
+        [
+          121,
+          [
+            125
+          ],
+          [
+            10
+          ],
+          [
+            126,
+            18
+          ]
+        ],
+        [
+          121,
+          [
+            128
+          ],
+          [
+            10
+          ],
+          [
+            129,
+            18
+          ]
+        ],
+        [
+          121,
+          [
+            133
+          ],
+          [
+            11
+          ],
+          [
+            134,
+            18
+          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          123,
-          [],
-          [
-            124,
-            18
-          ]
-        ],
-        [
-          123,
-          [
-            83
-          ],
-          [
-            125,
-            18
-          ]
-        ],
-        [
-          123,
-          [
-            127
-          ],
-          [
-            128,
-            18
-          ]
-        ],
-        [
-          123,
-          [
-            130
-          ],
-          [
-            131,
-            18
-          ]
-        ],
-        [
-          123,
-          [
-            135
-          ],
-          [
-            136,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          137,
+          135,
           [
             67,
             1,
             2
           ],
           [
-            138,
+            3,
+            1,
+            1
+          ],
+          [
+            136,
             18
           ]
         ],
         [
-          137,
+          135,
           [
             71,
             3,
@@ -965,7 +1218,13 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             5
           ],
           [
-            139,
+            3,
+            1,
+            1,
+            1
+          ],
+          [
+            137,
             18
           ]
         ]
@@ -974,20 +1233,24 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          140,
+          138,
+          [],
           [],
           [
-            141,
+            139,
             18
           ]
         ],
         [
-          140,
+          138,
           [
-            83
+            107
           ],
           [
-            142,
+            3
+          ],
+          [
+            140,
             18
           ]
         ]
@@ -996,7 +1259,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          143,
+          141,
           [
             1,
             2,
@@ -1004,8 +1267,27 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             4
           ],
           [
-            144,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            142,
             15,
+            143,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          144,
+          [],
+          [],
+          [
             145,
             18
           ]
@@ -1016,6 +1298,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           146,
+          [],
           [],
           [
             147,
@@ -1029,30 +1312,22 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           148,
           [],
+          [],
           [
             149,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          150,
-          [],
-          [
-            151,
-            18
-          ]
         ],
         [
-          150,
+          148,
           [
             0
           ],
           [
-            152,
+            1
+          ],
+          [
+            150,
             18
           ]
         ]
@@ -1061,42 +1336,50 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          153,
+          151,
+          [],
           [],
           [
-            154,
+            152,
             18
           ]
         ],
         [
-          153,
+          151,
           [
-            83
+            107
           ],
+          [
+            3
+          ],
+          [
+            153,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          154,
+          [],
+          [],
           [
             155,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          156,
-          [],
-          [
-            157,
-            18
-          ]
         ],
         [
-          156,
+          154,
           [
             1
           ],
           [
-            158,
+            2
+          ],
+          [
+            156,
             18
           ]
         ]
@@ -1105,20 +1388,24 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          159,
+          157,
+          [],
           [],
           [
-            160,
+            158,
             18
           ]
         ],
         [
-          159,
+          157,
           [
             9
           ],
           [
-            161,
+            3
+          ],
+          [
+            159,
             18
           ]
         ]
@@ -1127,7 +1414,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          162,
+          160,
           [
             48,
             5,
@@ -1135,12 +1422,18 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             44
           ],
           [
-            163,
+            9,
+            1,
+            1,
+            3
+          ],
+          [
+            161,
             18
           ]
         ],
         [
-          162,
+          160,
           [
             50,
             7,
@@ -1148,31 +1441,47 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             46
           ],
           [
-            164,
+            9,
+            1,
+            1,
+            3
+          ],
+          [
+            162,
             18
           ]
         ],
         [
-          162,
+          160,
           [
             9,
             10,
             44
           ],
           [
-            165,
+            1,
+            1,
+            3
+          ],
+          [
+            163,
             18
           ]
         ],
         [
-          162,
+          160,
           [
             11,
             12,
             46
           ],
           [
-            166,
+            1,
+            1,
+            3
+          ],
+          [
+            164,
             18
           ]
         ]
@@ -1181,23 +1490,45 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          167,
+          165,
           [
             48,
             3,
             4
           ],
           [
-            168,
+            9,
+            1,
+            1
+          ],
+          [
+            166,
             18
           ]
         ],
         [
-          167,
+          165,
           [
             5,
             6
           ],
+          [
+            1,
+            1
+          ],
+          [
+            167,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          168,
+          [],
+          [],
           [
             169,
             18
@@ -1210,6 +1541,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           170,
           [],
+          [],
           [
             171,
             18
@@ -1218,7 +1550,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           170,
           [
-            83
+            1
+          ],
+          [
+            1
           ],
           [
             172,
@@ -1232,55 +1567,28 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           173,
           [],
+          [],
           [
             174,
             18
           ]
-        ],
-        [
-          173,
-          [
-            1
-          ],
-          [
-            175,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          176,
-          [],
-          [
-            177,
-            18
-          ]
-        ],
-        [
-          176,
-          [
-            83
-          ],
-          [
-            178,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          179,
+          175,
           [
             1,
             2
           ],
           [
-            180,
+            1,
+            1
+          ],
+          [
+            176,
             18
           ]
         ]
@@ -1289,34 +1597,24 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          181,
+          177,
+          [],
           [],
           [
-            182,
+            178,
             18
           ]
         ],
         [
-          181,
+          177,
           [
             1
           ],
           [
-            183,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          184,
-          [
-            83
+            1
           ],
           [
-            185,
+            179,
             18
           ]
         ]
@@ -1325,32 +1623,103 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          186,
+          180,
+          [
+            107
+          ],
+          [
+            3
+          ],
+          [
+            181,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          182,
+          [],
           [],
           [
-            187,
+            183,
             18
           ]
         ],
         [
-          186,
+          182,
           [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            184,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          185,
+          [
+            1,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            186,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          187,
+          [
+            57,
+            5,
+            6
+          ],
+          [
+            7,
+            1,
             1
           ],
           [
             188,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
+        ],
         [
-          189,
+          187,
           [
+            189,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          [
+            7,
             1,
-            2
+            1,
+            1,
+            1,
+            1,
+            1
           ],
           [
             190,
@@ -1364,25 +1733,39 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           191,
           [
-            57,
-            5,
-            6
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            1,
+            1,
+            1,
+            1
           ],
           [
             192,
             18
           ]
-        ],
+        ]
+      ]
+    },
+    {
+      "actions": [
         [
-          191,
+          193,
           [
-            193,
-            7,
-            8,
-            9,
-            10,
-            11,
-            12
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            1,
+            1,
+            1,
+            1
           ],
           [
             194,
@@ -1395,12 +1778,8 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           195,
-          [
-            1,
-            2,
-            3,
-            4
-          ],
+          [],
+          [],
           [
             196,
             18
@@ -1412,12 +1791,8 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           197,
-          [
-            1,
-            2,
-            3,
-            4
-          ],
+          [],
+          [],
           [
             198,
             18
@@ -1429,7 +1804,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           199,
-          [],
+          [
+            1
+          ],
+          [
+            1
+          ],
           [
             200,
             18
@@ -1441,6 +1821,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           201,
+          [],
           [],
           [
             202,
@@ -1454,6 +1835,11 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           203,
           [
+            1,
+            2
+          ],
+          [
+            1,
             1
           ],
           [
@@ -1467,24 +1853,27 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           205,
-          [],
+          [
+            null
+          ],
+          [
+            1
+          ],
           [
             206,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
+        ],
         [
-          207,
+          205,
           [
-            1,
-            2
+            1
           ],
           [
-            208,
+            1
+          ],
+          [
+            207,
             18
           ]
         ]
@@ -1493,9 +1882,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          209,
+          208,
           [
-            null
+            209
+          ],
+          [
+            3
           ],
           [
             210,
@@ -1503,9 +1895,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           ]
         ],
         [
-          209,
+          208,
           [
-            1
+            107
+          ],
+          [
+            3
           ],
           [
             211,
@@ -1519,7 +1914,25 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           212,
           [
-            213
+            67
+          ],
+          [
+            3
+          ],
+          [
+            213,
+            18
+          ]
+        ],
+        [
+          212,
+          [
+            71,
+            1
+          ],
+          [
+            3,
+            1
           ],
           [
             214,
@@ -1529,62 +1942,35 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           212,
           [
-            83
+            2,
+            1
+          ],
+          [
+            1,
+            1
           ],
           [
             215,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          216,
-          [
-            67
-          ],
-          [
-            217,
-            18
-          ]
         ],
         [
-          216,
-          [
-            71,
-            1
-          ],
-          [
-            218,
-            18
-          ]
-        ],
-        [
-          216,
-          [
-            2,
-            1
-          ],
-          [
-            219,
-            18
-          ]
-        ],
-        [
-          216,
+          212,
           [
             3,
             4
           ],
           [
-            220,
+            1,
+            1
+          ],
+          [
+            216,
             18
           ]
         ],
         [
-          216,
+          212,
           [
             5,
             6,
@@ -1592,12 +1978,18 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             8
           ],
           [
-            221,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            217,
             18
           ]
         ],
         [
-          216,
+          212,
           [
             9,
             10,
@@ -1606,7 +1998,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             13
           ],
           [
-            222,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            218,
             18
           ]
         ]
@@ -1615,22 +2014,28 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          223,
+          219,
           [
-            213
+            209
           ],
           [
-            224,
+            3
+          ],
+          [
+            220,
             18
           ]
         ],
         [
-          223,
+          219,
           [
-            83
+            107
           ],
           [
-            225,
+            3
+          ],
+          [
+            221,
             18
           ]
         ]
@@ -1639,7 +2044,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          226,
+          222,
           [
             [
               1,
@@ -1647,7 +2052,10 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             ]
           ],
           [
-            227,
+            4
+          ],
+          [
+            223,
             18
           ]
         ]
@@ -1656,57 +2064,108 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          228,
+          224,
           [
-            213
+            209
+          ],
+          [
+            3
+          ],
+          [
+            225,
+            18
+          ]
+        ],
+        [
+          224,
+          [
+            107
+          ],
+          [
+            3
+          ],
+          [
+            226,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          227,
+          [
+            null
+          ],
+          [
+            1
+          ],
+          [
+            228,
+            18
+          ]
+        ],
+        [
+          227,
+          [
+            1
+          ],
+          [
+            1
           ],
           [
             229,
             18
           ]
-        ],
-        [
-          228,
-          [
-            83
-          ],
-          [
-            230,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          231,
+          230,
           [
             null
+          ],
+          [
+            1
+          ],
+          [
+            231,
+            18
+          ]
+        ],
+        [
+          230,
+          [
+            1
+          ],
+          [
+            1
           ],
           [
             232,
             18
           ]
-        ],
-        [
-          231,
-          [
-            1
-          ],
-          [
-            233,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          234,
+          233,
           [
-            null
+            1,
+            2,
+            3,
+            234
+          ],
+          [
+            1,
+            1,
+            1,
+            3
           ],
           [
             235,
@@ -1714,48 +2173,28 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           ]
         ],
         [
-          234,
+          233,
           [
+            4,
+            5,
+            6,
+            107,
+            7
+          ],
+          [
+            1,
+            1,
+            1,
+            3,
             1
           ],
           [
             236,
             18
           ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          237,
-          [
-            1,
-            2,
-            3,
-            238
-          ],
-          [
-            239,
-            18
-          ]
         ],
         [
-          237,
-          [
-            4,
-            5,
-            6,
-            83,
-            7
-          ],
-          [
-            240,
-            18
-          ]
-        ],
-        [
-          237,
+          233,
           [
             8,
             9,
@@ -1764,12 +2203,19 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             1
           ],
           [
-            241,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            237,
             18
           ]
         ],
         [
-          237,
+          233,
           [
             12,
             13,
@@ -1778,12 +2224,19 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             16
           ],
           [
-            242,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            238,
             18
           ]
         ],
         [
-          237,
+          233,
           [
             17,
             18,
@@ -1794,12 +2247,21 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             23
           ],
           [
-            243,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            239,
             18
           ]
         ],
         [
-          237,
+          233,
           [
             24,
             25,
@@ -1811,7 +2273,17 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             31
           ],
           [
-            244,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            240,
             18
           ]
         ]
@@ -1820,50 +2292,65 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          245,
+          241,
           [
             67
           ],
           [
-            246,
+            3
+          ],
+          [
+            242,
             18
           ]
         ],
         [
-          245,
+          241,
           [
             71,
             1
           ],
           [
-            247,
+            3,
+            1
+          ],
+          [
+            243,
             18
           ]
         ],
         [
-          245,
+          241,
           [
             2,
             1
           ],
           [
-            248,
+            1,
+            1
+          ],
+          [
+            244,
             18
           ]
         ],
         [
-          245,
+          241,
           [
             3,
             4
           ],
           [
-            249,
+            1,
+            1
+          ],
+          [
+            245,
             18
           ]
         ],
         [
-          245,
+          241,
           [
             5,
             6,
@@ -1871,12 +2358,18 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             8
           ],
           [
-            250,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            246,
             18
           ]
         ],
         [
-          245,
+          241,
           [
             9,
             10,
@@ -1885,7 +2378,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             13
           ],
           [
-            251,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            247,
             18
           ]
         ]
@@ -1894,7 +2394,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          252,
+          248,
           [
             1,
             2,
@@ -1904,12 +2404,20 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             6
           ],
           [
-            253,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            249,
             18
           ]
         ],
         [
-          252,
+          248,
           [
             [
               1,
@@ -1921,14 +2429,17 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             ]
           ],
           [
-            254,
+            8
+          ],
+          [
+            250,
             15,
-            255,
+            251,
             18
           ]
         ],
         [
-          252,
+          248,
           [
             [
               7,
@@ -1940,9 +2451,12 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             ]
           ],
           [
-            256,
+            8
+          ],
+          [
+            252,
             15,
-            257,
+            253,
             18
           ]
         ]
@@ -1951,108 +2465,128 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          258,
+          254,
           [],
+          [],
+          [
+            255,
+            18
+          ]
+        ],
+        [
+          254,
+          [
+            1
+          ],
+          [
+            1
+          ],
+          [
+            256,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          257,
+          [],
+          [],
+          [
+            258,
+            18
+          ]
+        ],
+        [
+          257,
+          [
+            107
+          ],
+          [
+            3
+          ],
           [
             259,
             18
           ]
-        ],
-        [
-          258,
-          [
-            1
-          ],
-          [
-            260,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          261,
+          260,
           [],
+          [],
+          [
+            261,
+            18
+          ]
+        ],
+        [
+          260,
+          [
+            1
+          ],
+          [
+            1
+          ],
           [
             262,
             18
           ]
-        ],
-        [
-          261,
-          [
-            83
-          ],
-          [
-            263,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          264,
+          263,
           [],
+          [],
+          [
+            264,
+            18
+          ]
+        ],
+        [
+          263,
+          [
+            1
+          ],
+          [
+            1
+          ],
           [
             265,
             18
           ]
-        ],
-        [
-          264,
-          [
-            1
-          ],
-          [
-            266,
-            18
-          ]
         ]
       ]
     },
     {
       "actions": [
         [
-          267,
+          266,
+          [],
           [],
           [
-            268,
+            267,
             18
           ]
         ],
         [
-          267,
-          [
-            1
-          ],
-          [
-            269,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          270,
-          [],
-          [
-            271,
-            18
-          ]
-        ],
-        [
-          270,
+          266,
           [
             48
           ],
           [
-            272,
+            9
+          ],
+          [
+            268,
             18
           ]
         ]
@@ -2061,7 +2595,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          273,
+          269,
           [
             1,
             2,
@@ -2069,7 +2603,13 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             4
           ],
           [
-            274,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            270,
             18
           ]
         ]
@@ -2078,27 +2618,81 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          275,
+          271,
           [],
+          [],
+          [
+            272,
+            18
+          ]
+        ],
+        [
+          271,
+          [
+            107
+          ],
+          [
+            3
+          ],
+          [
+            273,
+            18
+          ]
+        ],
+        [
+          271,
+          [
+            125
+          ],
+          [
+            10
+          ],
+          [
+            274,
+            18
+          ]
+        ],
+        [
+          271,
+          [
+            128
+          ],
+          [
+            10
+          ],
+          [
+            275,
+            18
+          ]
+        ],
+        [
+          271,
+          [
+            133
+          ],
+          [
+            11
+          ],
           [
             276,
             18
           ]
-        ],
+        ]
+      ]
+    },
+    {
+      "actions": [
         [
-          275,
+          277,
           [
-            83
+            67,
+            1,
+            2
           ],
           [
-            277,
-            18
-          ]
-        ],
-        [
-          275,
-          [
-            127
+            3,
+            1,
+            1
           ],
           [
             278,
@@ -2106,22 +2700,21 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
           ]
         ],
         [
-          275,
+          277,
           [
-            130
+            71,
+            3,
+            4,
+            5
+          ],
+          [
+            3,
+            1,
+            1,
+            1
           ],
           [
             279,
-            18
-          ]
-        ],
-        [
-          275,
-          [
-            135
-          ],
-          [
-            280,
             18
           ]
         ]
@@ -2130,25 +2723,22 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          281,
+          280,
+          [],
+          [],
           [
-            67,
-            1,
-            2
-          ],
-          [
-            282,
+            281,
             18
           ]
-        ],
+        ]
+      ]
+    },
+    {
+      "actions": [
         [
-          281,
-          [
-            71,
-            3,
-            4,
-            5
-          ],
+          282,
+          [],
+          [],
           [
             283,
             18
@@ -2160,50 +2750,6 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           284,
-          [],
-          [
-            285,
-            18
-          ]
-        ],
-        [
-          284,
-          [
-            83
-          ],
-          [
-            286,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          287,
-          [],
-          [
-            288,
-            18
-          ]
-        ],
-        [
-          287,
-          [
-            83
-          ],
-          [
-            289,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          290,
           [
             1,
             2,
@@ -2213,7 +2759,15 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             6
           ],
           [
-            291,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            285,
             18
           ]
         ]
@@ -2222,9 +2776,64 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     {
       "actions": [
         [
-          292,
+          286,
           [
             1,
+            2
+          ],
+          [
+            1,
+            1
+          ],
+          [
+            287,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          288,
+          [
+            1,
+            2,
+            3,
+            4
+          ],
+          [
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            289,
+            15,
+            290,
+            18
+          ]
+        ]
+      ]
+    },
+    {
+      "actions": [
+        [
+          291,
+          [],
+          [],
+          [
+            292,
+            18
+          ]
+        ],
+        [
+          291,
+          [
+            1
+          ],
+          [
             2
           ],
           [
@@ -2238,15 +2847,25 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           294,
+          [],
+          [],
           [
-            1,
-            2,
-            3,
+            295,
+            18
+          ]
+        ],
+        [
+          294,
+          [
+            [
+              1,
+              2
+            ]
+          ],
+          [
             4
           ],
           [
-            295,
-            15,
             296,
             18
           ]
@@ -2258,6 +2877,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           297,
           [],
+          [],
           [
             298,
             18
@@ -2265,6 +2885,9 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         ],
         [
           297,
+          [
+            1
+          ],
           [
             1
           ],
@@ -2279,7 +2902,16 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       "actions": [
         [
           300,
-          [],
+          [
+            57,
+            5,
+            6
+          ],
+          [
+            7,
+            1,
+            1
+          ],
           [
             301,
             18
@@ -2288,58 +2920,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
         [
           300,
           [
-            [
-              1,
-              2
-            ]
-          ],
-          [
-            302,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          303,
-          [],
-          [
-            304,
-            18
-          ]
-        ],
-        [
-          303,
-          [
-            1
-          ],
-          [
-            305,
-            18
-          ]
-        ]
-      ]
-    },
-    {
-      "actions": [
-        [
-          306,
-          [
-            57,
-            5,
-            6
-          ],
-          [
-            307,
-            18
-          ]
-        ],
-        [
-          306,
-          [
-            193,
+            189,
             7,
             8,
             9,
@@ -2348,7 +2929,16 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             12
           ],
           [
-            308,
+            7,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ],
+          [
+            302,
             18
           ]
         ]
@@ -2650,15 +3240,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       123,
       16
     ],
-    "test",
-    [
-      10,
-      12,
-      124,
-      16
-    ],
     "drawFocusIfNeeded",
-    "element",
     [
       10,
       12,
@@ -2787,6 +3369,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       142,
       34
     ],
+    "test",
     [
       10,
       12,
@@ -2865,7 +3448,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     ],
     "linear-gradient",
     [
-      126,
+      124,
       [
         1,
         2,
@@ -2882,7 +3465,7 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     ],
     "radial-gradient",
     [
-      129,
+      127,
       [
         1,
         2,
@@ -2903,9 +3486,9 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAAXNSR0IArs4c6QAAABNJREFUCB1j/M/AAEQMDEwgAgQAHxcCAmtAm/sAAAAASUVORK5CYII=",
     "no-repeat",
     [
-      132,
-      133,
-      134
+      130,
+      131,
+      132
     ],
     [
       10,
@@ -3063,12 +3646,6 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       209,
       16
     ],
-    [
-      10,
-      12,
-      210,
-      16
-    ],
     "lineDashOffset",
     [
       10,
@@ -3087,12 +3664,6 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       10,
       12,
       217,
-      16
-    ],
-    [
-      10,
-      12,
-      218,
       16
     ],
     "lineTo",
@@ -3586,23 +4157,11 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
       355,
       16
     ],
-    [
-      10,
-      12,
-      356,
-      16
-    ],
     "textBaseline",
     [
       10,
       12,
       359,
-      16
-    ],
-    [
-      10,
-      12,
-      360,
       16
     ],
     "transform",
@@ -3743,6 +4302,14 @@ Test that CanvasManager is able to record actions made to 2D canvas contexts.
             4,
             5,
             0
+          ],
+          [
+            1,
+            1,
+            1,
+            1,
+            1,
+            2
           ],
           [
             13,

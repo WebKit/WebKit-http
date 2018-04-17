@@ -29,6 +29,7 @@
 #if WK_API_ENABLED
 
 #import "APIFrameInfo.h"
+#import "APIHitTestResult.h"
 #import "CompletionHandlerCallChecker.h"
 #import "NativeWebWheelEvent.h"
 #import "NavigationActionData.h"
@@ -36,6 +37,7 @@
 #import "UserMediaPermissionRequestProxy.h"
 #import "WKFrameInfoInternal.h"
 #import "WKNSData.h"
+#import "WKNSDictionary.h"
 #import "WKNavigationActionInternal.h"
 #import "WKOpenPanelParametersInternal.h"
 #import "WKSecurityOriginInternal.h"
@@ -47,6 +49,7 @@
 #import "WebProcessProxy.h"
 #import "_WKContextMenuElementInfo.h"
 #import "_WKFrameHandleInternal.h"
+#import "_WKHitTestResultInternal.h"
 #import <WebCore/SecurityOriginData.h>
 #import <WebCore/URL.h>
 #import <wtf/BlockPtr.h>
@@ -106,8 +109,13 @@ void UIDelegate::setDelegate(id <WKUIDelegate> delegate)
     m_delegateMethods.focusWebView = [delegate respondsToSelector:@selector(_focusWebView:)];
     m_delegateMethods.unfocusWebView = [delegate respondsToSelector:@selector(_unfocusWebView:)];
     m_delegateMethods.webViewTakeFocus = [delegate respondsToSelector:@selector(_webView:takeFocus:)];
+    m_delegateMethods.webViewDidScroll = [delegate respondsToSelector:@selector(_webViewDidScroll:)];
+    m_delegateMethods.webViewGetToolbarsAreVisibleWithCompletionHandler = [delegate respondsToSelector:@selector(_webView:getToolbarsAreVisibleWithCompletionHandler:)];
     m_delegateMethods.webViewDidNotHandleWheelEvent = [delegate respondsToSelector:@selector(_webView:didNotHandleWheelEvent:)];
+    m_delegateMethods.webViewUnavailablePlugInButtonClicked = [delegate respondsToSelector:@selector(_webView:unavailablePlugInButtonClickedWithReason:plugInInfo:)];
     m_delegateMethods.webViewHandleAutoplayEventWithFlags = [delegate respondsToSelector:@selector(_webView:handleAutoplayEvent:withFlags:)];
+    m_delegateMethods.webViewDidClickAutoFillButtonWithUserInfo = [delegate respondsToSelector:@selector(_webView:didClickAutoFillButtonWithUserInfo:)];
+    m_delegateMethods.webViewMouseDidMoveOverElementWithFlagsUserInfo = [delegate respondsToSelector:@selector(_webView:mouseDidMoveOverElement:withFlags:userInfo:)];
     m_delegateMethods.webViewDidExceedBackgroundResourceLimitWhileInForeground = [delegate respondsToSelector:@selector(_webView:didExceedBackgroundResourceLimitWhileInForeground:)];
     m_delegateMethods.webViewSaveDataToFileSuggestedFilenameMimeTypeOriginatingURL = [delegate respondsToSelector:@selector(_webView:saveDataToFile:suggestedFilename:mimeType:originatingURL:)];
     m_delegateMethods.webViewRunOpenPanelWithParametersInitiatedByFrameCompletionHandler = [delegate respondsToSelector:@selector(webView:runOpenPanelWithParameters:initiatedByFrame:completionHandler:)];
@@ -156,7 +164,7 @@ UIDelegate::ContextMenuClient::~ContextMenuClient()
 {
 }
 
-RetainPtr<NSMenu> UIDelegate::ContextMenuClient::menuFromProposedMenu(WebKit::WebPageProxy&, NSMenu *menu, const WebKit::WebHitTestResultData&, API::Object* userInfo)
+RetainPtr<NSMenu> UIDelegate::ContextMenuClient::menuFromProposedMenu(WebPageProxy&, NSMenu *menu, const WebHitTestResultData&, API::Object* userInfo)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewContextMenuForElement && !m_uiDelegate.m_delegateMethods.webViewContextMenuForElementUserInfo)
         return menu;
@@ -183,7 +191,7 @@ UIDelegate::UIClient::~UIClient()
 {
 }
 
-RefPtr<WebKit::WebPageProxy> UIDelegate::UIClient::createNewPageCommon(WebKit::WebPageProxy* page, API::FrameInfo& sourceFrameInfo, WebCore::ResourceRequest&& request, const WebCore::WindowFeatures& windowFeatures, WebKit::NavigationActionData&& navigationActionData, WTF::Function<void(RefPtr<WebKit::WebPageProxy>&&)>&& completionHandler)
+RefPtr<WebPageProxy> UIDelegate::UIClient::createNewPageCommon(WebPageProxy* page, API::FrameInfo& sourceFrameInfo, WebCore::ResourceRequest&& request, const WebCore::WindowFeatures& windowFeatures, NavigationActionData&& navigationActionData, WTF::Function<void(RefPtr<WebPageProxy>&&)>&& completionHandler)
 {
     auto delegate = m_uiDelegate.m_delegate.get();
     ASSERT(delegate);
@@ -259,7 +267,7 @@ void UIDelegate::UIClient::createNewPageAsync(WebPageProxy* page, API::FrameInfo
     createNewPageCommon(page, originatingFrameInfo, WTFMove(request), windowFeatures, WTFMove(navigationActionData), WTFMove(completionHandler));
 }
 
-void UIDelegate::UIClient::runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::String& message, WebKit::WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void ()>&& completionHandler)
+void UIDelegate::UIClient::runJavaScriptAlert(WebPageProxy*, const WTF::String& message, WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void()>&& completionHandler)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRunJavaScriptAlertPanelWithMessageInitiatedByFrameCompletionHandler) {
         completionHandler();
@@ -281,7 +289,7 @@ void UIDelegate::UIClient::runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::
     }).get()];
 }
 
-void UIDelegate::UIClient::runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF::String& message, WebKit::WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void (bool)>&& completionHandler)
+void UIDelegate::UIClient::runJavaScriptConfirm(WebPageProxy*, const WTF::String& message, WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void(bool)>&& completionHandler)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRunJavaScriptConfirmPanelWithMessageInitiatedByFrameCompletionHandler) {
         completionHandler(false);
@@ -303,7 +311,7 @@ void UIDelegate::UIClient::runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF
     }).get()];
 }
 
-void UIDelegate::UIClient::runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String& message, const WTF::String& defaultValue, WebKit::WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void (const WTF::String&)>&& completionHandler)
+void UIDelegate::UIClient::runJavaScriptPrompt(WebPageProxy*, const WTF::String& message, const WTF::String& defaultValue, WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void(const WTF::String&)>&& completionHandler)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRunJavaScriptTextInputPanelWithPromptDefaultTextInitiatedByFrameCompletionHandler) {
         completionHandler(String());
@@ -330,7 +338,7 @@ bool UIDelegate::UIClient::canRunBeforeUnloadConfirmPanel() const
     return m_uiDelegate.m_delegateMethods.webViewRunBeforeUnloadConfirmPanelWithMessageInitiatedByFrameCompletionHandler;
 }
 
-void UIDelegate::UIClient::runBeforeUnloadConfirmPanel(WebKit::WebPageProxy*, const WTF::String& message, WebKit::WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void (bool)>&& completionHandler)
+void UIDelegate::UIClient::runBeforeUnloadConfirmPanel(WebPageProxy*, const WTF::String& message, WebFrameProxy* webFrameProxy, const WebCore::SecurityOriginData& securityOriginData, Function<void(bool)>&& completionHandler)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRunBeforeUnloadConfirmPanelWithMessageInitiatedByFrameCompletionHandler) {
         completionHandler(false);
@@ -392,7 +400,7 @@ static inline _WKFocusDirection toWKFocusDirection(WKFocusDirection direction)
     return _WKFocusDirectionForward;
 }
 
-void UIDelegate::UIClient::takeFocus(WebKit::WebPageProxy*, WKFocusDirection direction)
+void UIDelegate::UIClient::takeFocus(WebPageProxy*, WKFocusDirection direction)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewTakeFocus)
         return;
@@ -404,7 +412,19 @@ void UIDelegate::UIClient::takeFocus(WebKit::WebPageProxy*, WKFocusDirection dir
     [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView takeFocus:toWKFocusDirection(direction)];
 }
 
-void UIDelegate::UIClient::focus(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::pageDidScroll(WebPageProxy*)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDidScroll)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _webViewDidScroll:m_uiDelegate.m_webView];
+}
+
+void UIDelegate::UIClient::focus(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.focusWebView)
         return;
@@ -416,7 +436,7 @@ void UIDelegate::UIClient::focus(WebKit::WebPageProxy*)
     [(id <WKUIDelegatePrivate>)delegate _focusWebView:m_uiDelegate.m_webView];
 }
 
-void UIDelegate::UIClient::unfocus(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::unfocus(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.unfocusWebView)
         return;
@@ -428,6 +448,32 @@ void UIDelegate::UIClient::unfocus(WebKit::WebPageProxy*)
     [(id <WKUIDelegatePrivate>)delegate _unfocusWebView:m_uiDelegate.m_webView];
 }
 
+static _WKPlugInUnavailabilityReason toWKPlugInUnavailabilityReason(WKPluginUnavailabilityReason reason)
+{
+    switch (reason) {
+    case kWKPluginUnavailabilityReasonPluginMissing:
+        return _WKPlugInUnavailabilityReasonPluginMissing;
+    case kWKPluginUnavailabilityReasonPluginCrashed:
+        return _WKPlugInUnavailabilityReasonPluginCrashed;
+    case kWKPluginUnavailabilityReasonInsecurePluginVersion:
+        return _WKPlugInUnavailabilityReasonInsecurePluginVersion;
+    }
+    ASSERT_NOT_REACHED();
+    return _WKPlugInUnavailabilityReasonPluginMissing;
+}
+    
+void UIDelegate::UIClient::unavailablePluginButtonClicked(WebPageProxy&, WKPluginUnavailabilityReason reason, API::Dictionary& plugInInfo)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewUnavailablePlugInButtonClicked)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView unavailablePlugInButtonClickedWithReason:toWKPlugInUnavailabilityReason(reason) plugInInfo:wrapper(plugInInfo)];
+}
+    
 static _WKResourceLimit toWKResourceLimit(WKResourceLimit limit)
 {
     switch (limit) {
@@ -440,7 +486,7 @@ static _WKResourceLimit toWKResourceLimit(WKResourceLimit limit)
     return _WKResourceLimitMemory;
 }
 
-void UIDelegate::UIClient::didExceedBackgroundResourceLimitWhileInForeground(WebKit::WebPageProxy&, WKResourceLimit limit)
+void UIDelegate::UIClient::didExceedBackgroundResourceLimitWhileInForeground(WebPageProxy&, WKResourceLimit limit)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewDidExceedBackgroundResourceLimitWhileInForeground)
         return;
@@ -452,7 +498,7 @@ void UIDelegate::UIClient::didExceedBackgroundResourceLimitWhileInForeground(Web
     [static_cast<id <WKUIDelegatePrivate>>(delegate) _webView:m_uiDelegate.m_webView didExceedBackgroundResourceLimitWhileInForeground:toWKResourceLimit(limit)];
 }
 
-void UIDelegate::UIClient::didNotHandleWheelEvent(WebKit::WebPageProxy*, const WebKit::NativeWebWheelEvent& event)
+void UIDelegate::UIClient::didNotHandleWheelEvent(WebPageProxy*, const NativeWebWheelEvent& event)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewDidNotHandleWheelEvent)
         return;
@@ -462,6 +508,35 @@ void UIDelegate::UIClient::didNotHandleWheelEvent(WebKit::WebPageProxy*, const W
         return;
     
     [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didNotHandleWheelEvent:event.nativeEvent()];
+}
+
+static NSEventModifierFlags toNSEventModifierFlags(WebEvent::Modifiers modifiers)
+{
+    NSEventModifierFlags flags = 0;
+    if (modifiers & WebEvent::ShiftKey)
+        flags |= NSEventModifierFlagShift;
+    if (modifiers & WebEvent::ControlKey)
+        flags |= NSEventModifierFlagControl;
+    if (modifiers & WebEvent::AltKey)
+        flags |= NSEventModifierFlagOption;
+    if (modifiers & WebEvent::MetaKey)
+        flags |= NSEventModifierFlagCommand;
+    if (modifiers & WebEvent::CapsLockKey)
+        flags |= NSEventModifierFlagCapsLock;
+    return flags;
+}
+
+void UIDelegate::UIClient::mouseDidMoveOverElement(WebPageProxy&, const WebHitTestResultData& data, WebEvent::Modifiers modifiers, API::Object* userInfo)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewMouseDidMoveOverElementWithFlagsUserInfo)
+        return;
+
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+
+    auto apiHitTestResult = API::HitTestResult::create(data);
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView mouseDidMoveOverElement:wrapper(apiHitTestResult.get()) withFlags:toNSEventModifierFlags(modifiers) userInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
 }
 
 static _WKAutoplayEventFlags toWKAutoplayEventFlags(OptionSet<WebCore::AutoplayEventFlags> flags)
@@ -489,7 +564,36 @@ static _WKAutoplayEvent toWKAutoplayEvent(WebCore::AutoplayEvent event)
     return _WKAutoplayEventDidPlayMediaPreventedFromAutoplaying;
 }
 
-void UIDelegate::UIClient::handleAutoplayEvent(WebKit::WebPageProxy&, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags)
+void UIDelegate::UIClient::toolbarsAreVisible(WebPageProxy&, Function<void(bool)>&& completionHandler)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewGetToolbarsAreVisibleWithCompletionHandler)
+        return completionHandler(true);
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return completionHandler(true);
+    
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView getToolbarsAreVisibleWithCompletionHandler:BlockPtr<void(BOOL)>::fromCallable([completionHandler = WTFMove(completionHandler), checker = CompletionHandlerCallChecker::create(delegate.get(), @selector(_webView:getToolbarsAreVisibleWithCompletionHandler:))](BOOL visible) {
+        if (checker->completionHandlerHasBeenCalled())
+            return;
+        checker->didCallCompletionHandler();
+        completionHandler(visible);
+    }).get()];
+}
+
+void UIDelegate::UIClient::didClickAutoFillButton(WebPageProxy&, API::Object* userInfo)
+{
+    if (!m_uiDelegate.m_delegateMethods.webViewDidClickAutoFillButtonWithUserInfo)
+        return;
+    
+    auto delegate = m_uiDelegate.m_delegate.get();
+    if (!delegate)
+        return;
+    
+    [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView didClickAutoFillButtonWithUserInfo:userInfo ? static_cast<id <NSSecureCoding>>(userInfo->wrapper()) : nil];
+}
+    
+void UIDelegate::UIClient::handleAutoplayEvent(WebPageProxy&, WebCore::AutoplayEvent event, OptionSet<WebCore::AutoplayEventFlags> flags)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewHandleAutoplayEventWithFlags)
         return;
@@ -560,7 +664,7 @@ bool UIDelegate::UIClient::runOpenPanel(WebPageProxy*, WebFrameProxy* webFramePr
 }
 #endif
 
-static void requestUserMediaAuthorizationForDevices(const WebKit::WebFrameProxy& frame, WebKit::UserMediaPermissionRequestProxy& request, id <WKUIDelegatePrivate> delegate, WKWebView& webView)
+static void requestUserMediaAuthorizationForDevices(const WebFrameProxy& frame, UserMediaPermissionRequestProxy& request, id <WKUIDelegatePrivate> delegate, WKWebView& webView)
 {
     auto decisionHandler = BlockPtr<void(BOOL)>::fromCallable([protectedRequest = makeRef(request)](BOOL authorized) {
         if (!authorized) {
@@ -586,7 +690,7 @@ static void requestUserMediaAuthorizationForDevices(const WebKit::WebFrameProxy&
     [delegate _webView:protectedWebView.get() requestUserMediaAuthorizationForDevices:devices url:requestFrameURL mainFrameURL:mainFrameURL decisionHandler:decisionHandler.get()];
 }
 
-bool UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebKit::WebPageProxy& page, WebKit::WebFrameProxy& frame, API::SecurityOrigin& userMediaOrigin, API::SecurityOrigin& topLevelOrigin, WebKit::UserMediaPermissionRequestProxy& request)
+bool UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& userMediaOrigin, API::SecurityOrigin& topLevelOrigin, UserMediaPermissionRequestProxy& request)
 {
     auto delegate = m_uiDelegate.m_delegate.get();
     if (!delegate || !m_uiDelegate.m_delegateMethods.webViewRequestUserMediaAuthorizationForDevicesURLMainFrameURLDecisionHandler) {
@@ -662,7 +766,7 @@ bool UIDelegate::UIClient::decidePolicyForUserMediaPermissionRequest(WebKit::Web
     return true;
 }
 
-bool UIDelegate::UIClient::checkUserMediaPermissionForOrigin(WebKit::WebPageProxy& page, WebKit::WebFrameProxy& frame, API::SecurityOrigin& userMediaOrigin, API::SecurityOrigin& topLevelOrigin, WebKit::UserMediaPermissionCheckProxy& request)
+bool UIDelegate::UIClient::checkUserMediaPermissionForOrigin(WebPageProxy& page, WebFrameProxy& frame, API::SecurityOrigin& userMediaOrigin, API::SecurityOrigin& topLevelOrigin, UserMediaPermissionCheckProxy& request)
 {
     auto delegate = m_uiDelegate.m_delegate.get();
     if (!delegate || !m_uiDelegate.m_delegateMethods.webViewCheckUserMediaPermissionForURLMainFrameURLFrameIdentifierDecisionHandler) {
@@ -728,7 +832,7 @@ void UIDelegate::UIClient::reachedApplicationCacheOriginQuota(WebPageProxy*, con
     }).get()];
 }
 
-void UIDelegate::UIClient::printFrame(WebKit::WebPageProxy*, WebKit::WebFrameProxy* webFrameProxy)
+void UIDelegate::UIClient::printFrame(WebPageProxy*, WebFrameProxy* webFrameProxy)
 {
     ASSERT_ARG(webFrameProxy, webFrameProxy);
 
@@ -742,7 +846,7 @@ void UIDelegate::UIClient::printFrame(WebKit::WebPageProxy*, WebKit::WebFramePro
     [(id <WKUIDelegatePrivate>)delegate _webView:m_uiDelegate.m_webView printFrame:wrapper(API::FrameHandle::create(webFrameProxy->frameID()))];
 }
 
-void UIDelegate::UIClient::close(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::close(WebPageProxy*)
 {
     if (m_uiDelegate.m_delegateMethods.webViewClose) {
         auto delegate = m_uiDelegate.m_delegate.get();
@@ -763,7 +867,7 @@ void UIDelegate::UIClient::close(WebKit::WebPageProxy*)
     [delegate webViewDidClose:m_uiDelegate.m_webView];
 }
 
-void UIDelegate::UIClient::fullscreenMayReturnToInline(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::fullscreenMayReturnToInline(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewFullscreenMayReturnToInline)
         return;
@@ -775,7 +879,7 @@ void UIDelegate::UIClient::fullscreenMayReturnToInline(WebKit::WebPageProxy*)
     [(id <WKUIDelegatePrivate>)delegate _webViewFullscreenMayReturnToInline:m_uiDelegate.m_webView];
 }
 
-void UIDelegate::UIClient::didEnterFullscreen(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::didEnterFullscreen(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewDidEnterFullscreen)
         return;
@@ -787,7 +891,7 @@ void UIDelegate::UIClient::didEnterFullscreen(WebKit::WebPageProxy*)
     [(id <WKUIDelegatePrivate>)delegate _webViewDidEnterFullscreen:m_uiDelegate.m_webView];
 }
 
-void UIDelegate::UIClient::didExitFullscreen(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::didExitFullscreen(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewDidExitFullscreen)
         return;
@@ -866,7 +970,7 @@ NSDictionary *UIDelegate::UIClient::dataDetectionContext()
 
 #if ENABLE(POINTER_LOCK)
 
-void UIDelegate::UIClient::requestPointerLock(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::requestPointerLock(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewRequestPointerLock)
         return;
@@ -878,7 +982,7 @@ void UIDelegate::UIClient::requestPointerLock(WebKit::WebPageProxy*)
     [static_cast<id <WKUIDelegatePrivate>>(delegate) _webViewRequestPointerLock:m_uiDelegate.m_webView];
 }
 
-void UIDelegate::UIClient::didLosePointerLock(WebKit::WebPageProxy*)
+void UIDelegate::UIClient::didLosePointerLock(WebPageProxy*)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewDidLosePointerLock)
         return;
@@ -892,7 +996,7 @@ void UIDelegate::UIClient::didLosePointerLock(WebKit::WebPageProxy*)
 
 #endif
     
-void UIDelegate::UIClient::hasVideoInPictureInPictureDidChange(WebKit::WebPageProxy*, bool hasVideoInPictureInPicture)
+void UIDelegate::UIClient::hasVideoInPictureInPictureDidChange(WebPageProxy*, bool hasVideoInPictureInPicture)
 {
     if (!m_uiDelegate.m_delegateMethods.webViewHasVideoInPictureInPictureDidChange)
         return;

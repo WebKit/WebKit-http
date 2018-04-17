@@ -34,8 +34,8 @@ messages -> WebPageProxy {
     UnavailablePluginButtonClicked(uint32_t pluginUnavailabilityReason, String mimeType, String pluginURLString, String pluginspageAttributeURLString, String frameURLString, String pageURLString)
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 #if ENABLE(WEBGL)
-    WebGLPolicyForURL(String url) -> (uint32_t loadPolicy)
-    ResolveWebGLPolicyForURL(String url) -> (uint32_t loadPolicy)
+    WebGLPolicyForURL(WebCore::URL url) -> (uint32_t loadPolicy) Delayed
+    ResolveWebGLPolicyForURL(WebCore::URL url) -> (uint32_t loadPolicy) Delayed
 #endif // ENABLE(WEBGL)
     DidChangeViewportProperties(struct WebCore::ViewportAttributes attributes)
     DidReceiveEvent(uint32_t type, bool handled)
@@ -51,7 +51,7 @@ messages -> WebPageProxy {
     FrameSetLargestFrameChanged(uint64_t frameID)
     SetRenderTreeSize(uint64_t treeSize)
     SetToolbarsAreVisible(bool toolbarsAreVisible)
-    GetToolbarsAreVisible() -> (bool toolbarsAreVisible)
+    GetToolbarsAreVisible() -> (bool toolbarsAreVisible) Delayed
     SetMenuBarIsVisible(bool menuBarIsVisible);
     GetMenuBarIsVisible() -> (bool menuBarIsVisible);
     SetStatusBarIsVisible(bool statusBarIsVisible)
@@ -118,7 +118,8 @@ messages -> WebPageProxy {
     # Frame load messages
     DidStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, String unreachableURL, WebKit::UserData userData)
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, WebKit::UserData userData)
-    DidPerformClientRedirectForLoadForFrame(uint64_t frameID, uint64_t navigationID)
+    WillPerformClientRedirectForFrame(uint64_t frameID, String url, double delay)
+    DidCancelClientRedirectForFrame(uint64_t frameID)
     DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, String url)
     DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
     DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
@@ -316,6 +317,7 @@ messages -> WebPageProxy {
 #if ENABLE(DATA_INTERACTION)
     DidPerformDataInteractionControllerOperation(bool handled)
     DidHandleStartDataInteractionRequest(bool started)
+    DidHandleAdditionalDragItemsRequest(bool added)
     DidConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData> textIndicator)
 #endif
 
@@ -372,7 +374,7 @@ messages -> WebPageProxy {
     DictationAlternatives(uint64_t dictationContext) -> (Vector<String> alternatives)
 #endif
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     # X11 windowed plugin messages
     CreatePluginContainer() -> (uint64_t windowID)
     WindowedPluginGeometryDidChange(WebCore::IntRect frameRect, WebCore::IntRect clipRect, uint64_t windowID)

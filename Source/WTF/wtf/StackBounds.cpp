@@ -35,10 +35,6 @@
 
 #include <windows.h>
 
-#elif OS(SOLARIS)
-
-#include <thread.h>
-
 #elif OS(UNIX)
 
 #include <pthread.h>
@@ -91,17 +87,6 @@ StackBounds StackBounds::currentThreadStackBoundsInternal()
 	return StackBounds { threadInfo.stack_end, threadInfo.stack_base };
 }
 
-
-#elif OS(SOLARIS)
-
-StackBounds StackBounds::currentThreadStackBoundsInternal()
-{
-    stack_t s;
-    thr_stksegment(&s);
-    void* origin = s.ss_sp;
-    void* bound = static_cast<char*>(origin) - s.ss_size;
-    return StackBounds { origin, bound };
-}
 
 #elif OS(UNIX)
 

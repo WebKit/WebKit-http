@@ -49,11 +49,9 @@ function initializeFetchResponse(body, init)
 
         // FIXME: Use @isReadableStream once it is no longer guarded by STREAMS_API compilation guard.
         let isBodyReadableStream = (@isObject(body) && !!body.@readableStreamController);
-        if (isBodyReadableStream) {
+        if (isBodyReadableStream)
             this.@body = body;
-            this.@setBodyAsReadableStream();
-        } else
-            this.@initializeWith(body);
+        this.@initializeWith(body);
     }
 
     return this;
@@ -77,15 +75,13 @@ function body()
     if (!(this instanceof @Response))
         throw @makeGetterTypeError("Response", "body");
 
-    if (!this.@body) {
+    if (this.@body === @undefined) {
         if (@Response.prototype.@isDisturbed.@call(this)) {
             this.@body = new @ReadableStream();
             // Get reader to lock it.
             new @ReadableStreamDefaultReader(this.@body);
-        } else {
-            var source = @Response.prototype.@createReadableStreamSource.@call(this);
-            this.@body = source ? new @ReadableStream(source) : null;
-        }
+        } else
+            this.@body = @Response.prototype.@createReadableStream.@call(this);
     }
     return this.@body;
 }
@@ -98,20 +94,15 @@ function clone()
     if (@Response.prototype.@isDisturbed.@call(this) || (this.@body && @isReadableStreamLocked(this.@body)))
         @throwTypeError("Cannot clone a disturbed Response");
 
+    // Let's create @body if response body is loading to provide data to both clones.
+    if (@Response.prototype.@isLoading.@call(this) && this.@body === @undefined)
+        this.@body = @Response.prototype.@createReadableStream.@call(this);
+
     var cloned = @Response.prototype.@cloneForJS.@call(this);
 
-    // Let's create @body if response body is loading to provide data to both clones.
-    if (@Response.prototype.@isLoading.@call(this) && !this.@body) {
-        var source = @Response.prototype.@createReadableStreamSource.@call(this);
-        @assert(!!source);
-        this.@body = new @ReadableStream(source);
-    }
+    // Let's refresh @body with the cloned stream.
+    this.@body = @Response.prototype.@createReadableStream.@call(this);
 
-    if (this.@body) {
-        var teedReadableStreams = @readableStreamTee(this.@body, true);
-        this.@body = teedReadableStreams[0];
-        cloned.@body = teedReadableStreams[1];
-    }
     return cloned;
 }
 

@@ -27,15 +27,17 @@
 
 #if ENABLE(SERVICE_WORKER)
 
+#include "ActiveDOMObject.h"
 #include "EventTarget.h"
 #include "JSDOMPromiseDeferred.h"
+#include "ServiceWorkerRegistrationData.h"
 
 namespace WebCore {
 
-class Frame;
+class ScriptExecutionContext;
 class ServiceWorker;
 
-class ServiceWorkerRegistration final : public EventTargetWithInlineData {
+class ServiceWorkerRegistration final : public EventTargetWithInlineData, public ActiveDOMObject {
 public:
     enum class UpdateViaCache {
         Imports,
@@ -43,7 +45,11 @@ public:
         None,
     };
 
-    static Ref<ServiceWorkerRegistration> create(Frame& frame) { return adoptRef(*new ServiceWorkerRegistration(frame)); }
+    static Ref<ServiceWorkerRegistration> create(ScriptExecutionContext& context, const ServiceWorkerRegistrationData& data)
+    {
+        return adoptRef(*new ServiceWorkerRegistration(context, data));
+    }
+
     virtual ~ServiceWorkerRegistration() = default;
 
     ServiceWorker* installing();
@@ -57,12 +63,17 @@ public:
     void unregister(Ref<DeferredPromise>&&);
 
 private:
-    explicit ServiceWorkerRegistration(Frame&);
+    ServiceWorkerRegistration(ScriptExecutionContext&, const ServiceWorkerRegistrationData&);
 
     virtual EventTargetInterface eventTargetInterface() const;
     virtual ScriptExecutionContext* scriptExecutionContext() const;
     void refEventTarget() final { ref(); }
     void derefEventTarget() final { deref(); }
+
+    const char* activeDOMObjectName() const { return "ServiceWorkerRegistration"; }
+    bool canSuspendForDocumentSuspension() const { return false; }
+
+    ServiceWorkerRegistrationData m_registrationData;
 };
 
 } // namespace WebCore

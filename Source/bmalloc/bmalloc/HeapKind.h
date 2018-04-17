@@ -34,10 +34,11 @@ namespace bmalloc {
 enum class HeapKind {
     Primary,
     PrimitiveGigacage,
-    JSValueGigacage
+    JSValueGigacage,
+    StringGigacage
 };
 
-static constexpr unsigned numHeaps = 3;
+static constexpr unsigned numHeaps = 4;
 
 BINLINE bool isGigacage(HeapKind heapKind)
 {
@@ -46,6 +47,7 @@ BINLINE bool isGigacage(HeapKind heapKind)
         return false;
     case HeapKind::PrimitiveGigacage:
     case HeapKind::JSValueGigacage:
+    case HeapKind::StringGigacage:
         return true;
     }
     BCRASH();
@@ -62,6 +64,8 @@ BINLINE Gigacage::Kind gigacageKind(HeapKind kind)
         return Gigacage::Primitive;
     case HeapKind::JSValueGigacage:
         return Gigacage::JSValue;
+    case HeapKind::StringGigacage:
+        return Gigacage::String;
     }
     BCRASH();
     return Gigacage::Primitive;
@@ -74,6 +78,8 @@ BINLINE HeapKind heapKind(Gigacage::Kind kind)
         return HeapKind::PrimitiveGigacage;
     case Gigacage::JSValue:
         return HeapKind::JSValueGigacage;
+    case Gigacage::String:
+        return HeapKind::StringGigacage;
     }
     BCRASH();
     return HeapKind::Primary;

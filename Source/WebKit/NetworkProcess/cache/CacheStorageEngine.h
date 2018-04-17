@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "CacheStorageEngineCache.h"
+#include "CacheStorageEngineCaches.h"
 #include "NetworkCacheData.h"
 #include <wtf/HashMap.h>
 #include <wtf/ThreadSafeRefCounted.h>
@@ -43,52 +43,65 @@ namespace WebKit {
 
 namespace CacheStorage {
 
+using CacheIdentifier = uint64_t;
+using LockCount = uint64_t;
+
 class Engine : public ThreadSafeRefCounted<Engine> {
 public:
+    ~Engine();
+
     static Engine& from(PAL::SessionID);
     static void destroyEngine(PAL::SessionID);
     static Ref<Engine> create(String&& rootPath) { return adoptRef(*new Engine(WTFMove(rootPath))); }
 
     bool shouldPersist() const { return !!m_ioQueue;}
 
-    void open(const String& origin, const String& cacheName, WebCore::DOMCache::CacheIdentifierCallback&&);
-    void remove(uint64_t cacheIdentifier, WebCore::DOMCache::CacheIdentifierCallback&&);
-    void retrieveCaches(const String& origin, WebCore::DOMCache::CacheInfosCallback&&);
+    void open(const String& origin, const String& cacheName, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
+    void remove(uint64_t cacheIdentifier, WebCore::DOMCacheEngine::CacheIdentifierCallback&&);
+    void retrieveCaches(const String& origin, uint64_t updateCounter, WebCore::DOMCacheEngine::CacheInfosCallback&&);
 
-    void retrieveRecords(uint64_t cacheIdentifier, WebCore::DOMCache::RecordsCallback&&);
-    void putRecords(uint64_t cacheIdentifier, Vector<WebCore::DOMCache::Record>&&, WebCore::DOMCache::RecordIdentifiersCallback&&);
-    void deleteMatchingRecords(uint64_t cacheIdentifier, WebCore::ResourceRequest&&, WebCore::CacheQueryOptions&&, WebCore::DOMCache::RecordIdentifiersCallback&&);
+    void retrieveRecords(uint64_t cacheIdentifier, WebCore::URL&&, WebCore::DOMCacheEngine::RecordsCallback&&);
+    void putRecords(uint64_t cacheIdentifier, Vector<WebCore::DOMCacheEngine::Record>&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
+    void deleteMatchingRecords(uint64_t cacheIdentifier, WebCore::ResourceRequest&&, WebCore::CacheQueryOptions&&, WebCore::DOMCacheEngine::RecordIdentifiersCallback&&);
 
-    void writeFile(const String& filename, NetworkCache::Data&&, WebCore::DOMCache::CompletionCallback&&);
+    void lock(uint64_t cacheIdentifier);
+    void unlock(uint64_t cacheIdentifier);
+
+    void writeFile(const String& filename, NetworkCache::Data&&, WebCore::DOMCacheEngine::CompletionCallback&&);
     void readFile(const String& filename, WTF::Function<void(const NetworkCache::Data&, int error)>&&);
     void removeFile(const String& filename);
+
+    const String& rootPath() const { return m_rootPath; }
+    const NetworkCache::Salt& salt() const { return m_salt.value(); }
+    uint64_t nextCacheIdentifier() { return ++m_nextCacheIdentifier; }
+
+    void removeCaches(const String& origin);
+
+    void clearMemoryRepresentation(const String& origin);
+    String representation();
 
 private:
     static Engine& defaultEngine();
     explicit Engine(String&& rootPath);
 
-    void writeCachesToDisk(WebCore::DOMCache::CompletionCallback&&);
+    void initialize(Function<void(std::optional<WebCore::DOMCacheEngine::Error>&&)>&&);
 
-    using CachesOrError = Expected<std::reference_wrapper<Vector<Cache>>, WebCore::DOMCache::Error>;
+    using CachesOrError = Expected<std::reference_wrapper<Caches>, WebCore::DOMCacheEngine::Error>;
     using CachesCallback = WTF::Function<void(CachesOrError&&)>;
     void readCachesFromDisk(const String& origin, CachesCallback&&);
 
-    using CacheOrError = Expected<std::reference_wrapper<Cache>, WebCore::DOMCache::Error>;
+    using CacheOrError = Expected<std::reference_wrapper<Cache>, WebCore::DOMCacheEngine::Error>;
     using CacheCallback = WTF::Function<void(CacheOrError&&)>;
     void readCache(uint64_t cacheIdentifier, CacheCallback&&);
 
-    void writeCacheRecords(uint64_t cacheIdentifier, Vector<uint64_t>&&, WebCore::DOMCache::RecordIdentifiersCallback&&);
-    void removeCacheRecords(uint64_t cacheIdentifier, Vector<uint64_t>&&, WebCore::DOMCache::RecordIdentifiersCallback&&);
-
-    Vector<uint64_t> queryCache(const Vector<WebCore::DOMCache::Record>&, const WebCore::ResourceRequest&, const WebCore::CacheQueryOptions&);
-
     Cache* cache(uint64_t cacheIdentifier);
 
-    HashMap<String, Vector<Cache>> m_caches;
-    Vector<Cache> m_removedCaches;
+    HashMap<String, Ref<Caches>> m_caches;
     uint64_t m_nextCacheIdentifier { 0 };
     String m_rootPath;
     RefPtr<WorkQueue> m_ioQueue;
+    std::optional<NetworkCache::Salt> m_salt;
+    HashMap<CacheIdentifier, LockCount> m_cacheLocks;
 };
 
 } // namespace CacheStorage

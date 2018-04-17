@@ -1770,7 +1770,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.setStatusText(toAPI(page), toAPI(text.impl()), m_client.base.clientInfo);
         }
 
-        void mouseDidMoveOverElement(WebPageProxy* page, const WebHitTestResultData& data, WebKit::WebEvent::Modifiers modifiers, API::Object* userData) final
+        void mouseDidMoveOverElement(WebPageProxy& page, const WebHitTestResultData& data, WebKit::WebEvent::Modifiers modifiers, API::Object* userData) final
         {
             if (!m_client.mouseDidMoveOverElement && !m_client.mouseDidMoveOverElement_deprecatedForUseWithV0)
                 return;
@@ -1779,41 +1779,41 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
                 return;
 
             if (!m_client.base.version) {
-                m_client.mouseDidMoveOverElement_deprecatedForUseWithV0(toAPI(page), toAPI(modifiers), toAPI(userData), m_client.base.clientInfo);
+                m_client.mouseDidMoveOverElement_deprecatedForUseWithV0(toAPI(&page), toAPI(modifiers), toAPI(userData), m_client.base.clientInfo);
                 return;
             }
 
-            RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(data);
-            m_client.mouseDidMoveOverElement(toAPI(page), toAPI(webHitTestResult.get()), toAPI(modifiers), toAPI(userData), m_client.base.clientInfo);
+            auto apiHitTestResult = API::HitTestResult::create(data);
+            m_client.mouseDidMoveOverElement(toAPI(&page), toAPI(apiHitTestResult.ptr()), toAPI(modifiers), toAPI(userData), m_client.base.clientInfo);
         }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-        void unavailablePluginButtonClicked(WebPageProxy* page, WKPluginUnavailabilityReason pluginUnavailabilityReason, API::Dictionary* pluginInformation) final
+        void unavailablePluginButtonClicked(WebPageProxy& page, WKPluginUnavailabilityReason pluginUnavailabilityReason, API::Dictionary& pluginInformation) final
         {
             if (pluginUnavailabilityReason == kWKPluginUnavailabilityReasonPluginMissing) {
                 if (m_client.missingPluginButtonClicked_deprecatedForUseWithV0)
                     m_client.missingPluginButtonClicked_deprecatedForUseWithV0(
-                        toAPI(page),
-                        toAPI(pluginInformation->get<API::String>(pluginInformationMIMETypeKey())),
-                        toAPI(pluginInformation->get<API::String>(pluginInformationPluginURLKey())),
-                        toAPI(pluginInformation->get<API::String>(pluginInformationPluginspageAttributeURLKey())),
+                        toAPI(&page),
+                        toAPI(pluginInformation.get<API::String>(pluginInformationMIMETypeKey())),
+                        toAPI(pluginInformation.get<API::String>(pluginInformationPluginURLKey())),
+                        toAPI(pluginInformation.get<API::String>(pluginInformationPluginspageAttributeURLKey())),
                         m_client.base.clientInfo);
             }
 
             if (m_client.unavailablePluginButtonClicked_deprecatedForUseWithV1)
                 m_client.unavailablePluginButtonClicked_deprecatedForUseWithV1(
-                    toAPI(page),
+                    toAPI(&page),
                     pluginUnavailabilityReason,
-                    toAPI(pluginInformation->get<API::String>(pluginInformationMIMETypeKey())),
-                    toAPI(pluginInformation->get<API::String>(pluginInformationPluginURLKey())),
-                    toAPI(pluginInformation->get<API::String>(pluginInformationPluginspageAttributeURLKey())),
+                    toAPI(pluginInformation.get<API::String>(pluginInformationMIMETypeKey())),
+                    toAPI(pluginInformation.get<API::String>(pluginInformationPluginURLKey())),
+                    toAPI(pluginInformation.get<API::String>(pluginInformationPluginspageAttributeURLKey())),
                     m_client.base.clientInfo);
 
             if (m_client.unavailablePluginButtonClicked)
                 m_client.unavailablePluginButtonClicked(
-                    toAPI(page),
+                    toAPI(&page),
                     pluginUnavailabilityReason,
-                    toAPI(pluginInformation),
+                    toAPI(&pluginInformation),
                     m_client.base.clientInfo);
         }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
@@ -1832,11 +1832,11 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.didNotHandleWheelEvent(toAPI(page), event.nativeEvent(), m_client.base.clientInfo);
         }
 
-        bool toolbarsAreVisible(WebPageProxy* page) final
+        void toolbarsAreVisible(WebPageProxy& page, Function<void(bool)>&& completionHandler) final
         {
             if (!m_client.toolbarsAreVisible)
-                return true;
-            return m_client.toolbarsAreVisible(toAPI(page), m_client.base.clientInfo);
+                return completionHandler(true);
+            completionHandler(m_client.toolbarsAreVisible(toAPI(&page), m_client.base.clientInfo));
         }
 
         void setToolbarsAreVisible(WebPageProxy* page, bool visible) final
@@ -2059,7 +2059,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.pinnedStateDidChange(toAPI(&page), m_client.base.clientInfo);
         }
 
-        void isPlayingAudioDidChange(WebPageProxy& page) final
+        void isPlayingMediaDidChange(WebPageProxy& page) final
         {
             if (!m_client.isPlayingAudioDidChange)
                 return;

@@ -36,12 +36,12 @@ class ScriptExecutionContext;
 
 class FileSystemDirectoryEntry final : public FileSystemEntry {
 public:
-    static Ref<FileSystemDirectoryEntry> create(DOMFileSystem& filesystem, const String& virtualPath)
+    static Ref<FileSystemDirectoryEntry> create(ScriptExecutionContext& context, DOMFileSystem& filesystem, const String& virtualPath)
     {
-        return adoptRef(*new FileSystemDirectoryEntry(filesystem, virtualPath));
+        return adoptRef(*new FileSystemDirectoryEntry(context, filesystem, virtualPath));
     }
 
-    Ref<FileSystemDirectoryReader> createReader();
+    Ref<FileSystemDirectoryReader> createReader(ScriptExecutionContext&);
 
     struct Flags {
         bool create { false };
@@ -53,8 +53,10 @@ public:
 
 private:
     bool isDirectory() const final { return true; }
+    using EntryMatchingFunction = WTF::Function<bool(const FileSystemEntry&)>;
+    void getEntry(ScriptExecutionContext&, const String& path, const Flags& options, EntryMatchingFunction&&, RefPtr<FileSystemEntryCallback>&&, RefPtr<ErrorCallback>&&);
 
-    FileSystemDirectoryEntry(DOMFileSystem&, const String& virtualPath);
+    FileSystemDirectoryEntry(ScriptExecutionContext&, DOMFileSystem&, const String& virtualPath);
 };
 
 } // namespace WebCore

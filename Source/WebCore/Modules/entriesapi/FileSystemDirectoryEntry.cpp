@@ -27,31 +27,55 @@
 #include "FileSystemDirectoryEntry.h"
 
 #include "DOMException.h"
+#include "DOMFileSystem.h"
 #include "ErrorCallback.h"
 #include "FileSystemDirectoryReader.h"
+#include "FileSystemEntryCallback.h"
+#include "FileSystemFileEntry.h"
+#include "ScriptExecutionContext.h"
 
 namespace WebCore {
 
-FileSystemDirectoryEntry::FileSystemDirectoryEntry(DOMFileSystem& filesystem, const String& virtualPath)
-    : FileSystemEntry(filesystem, virtualPath)
+FileSystemDirectoryEntry::FileSystemDirectoryEntry(ScriptExecutionContext& context, DOMFileSystem& filesystem, const String& virtualPath)
+    : FileSystemEntry(context, filesystem, virtualPath)
 {
 }
 
-Ref<FileSystemDirectoryReader> FileSystemDirectoryEntry::createReader()
+Ref<FileSystemDirectoryReader> FileSystemDirectoryEntry::createReader(ScriptExecutionContext& context)
 {
-    return FileSystemDirectoryReader::create(*this);
+    return FileSystemDirectoryReader::create(context, *this);
 }
 
-void FileSystemDirectoryEntry::getFile(ScriptExecutionContext& context, const String&, const Flags&, RefPtr<FileSystemEntryCallback>&&, RefPtr<ErrorCallback>&& errorCallback)
+void FileSystemDirectoryEntry::getEntry(ScriptExecutionContext& context, const String& path, const Flags& flags, EntryMatchingFunction&& matches, RefPtr<FileSystemEntryCallback>&& successCallback, RefPtr<ErrorCallback>&& errorCallback)
 {
-    if (errorCallback)
-        errorCallback->scheduleCallback(context, DOMException::create(NotSupportedError));
+    if (!successCallback && !errorCallback)
+        return;
+
+    filesystem().getEntry(context, *this, path, flags, [this, pendingActivity = makePendingActivity(*this), matches = WTFMove(matches), successCallback = WTFMove(successCallback), errorCallback = WTFMove(errorCallback)](auto&& result) {
+        if (result.hasException()) {
+            if (errorCallback)
+                errorCallback->handleEvent(DOMException::create(result.releaseException()));
+            return;
+        }
+        auto entry = result.releaseReturnValue();
+        if (!matches(entry)) {
+            if (errorCallback)
+                errorCallback->handleEvent(DOMException::create(Exception { TypeMismatchError, ASCIILiteral("Entry at given path does not match expected type") }));
+            return;
+        }
+        if (successCallback)
+            successCallback->handleEvent(WTFMove(entry));
+    });
 }
 
-void FileSystemDirectoryEntry::getDirectory(ScriptExecutionContext& context, const String&, const Flags&, RefPtr<FileSystemEntryCallback>&&, RefPtr<ErrorCallback>&& errorCallback)
+void FileSystemDirectoryEntry::getFile(ScriptExecutionContext& context, const String& path, const Flags& flags, RefPtr<FileSystemEntryCallback>&& successCallback, RefPtr<ErrorCallback>&& errorCallback)
 {
-    if (errorCallback)
-        errorCallback->scheduleCallback(context, DOMException::create(NotSupportedError));
+    getEntry(context, path, flags, [](auto& entry) { return entry.isFile(); }, WTFMove(successCallback), WTFMove(errorCallback));
+}
+
+void FileSystemDirectoryEntry::getDirectory(ScriptExecutionContext& context, const String& path, const Flags& flags, RefPtr<FileSystemEntryCallback>&& successCallback, RefPtr<ErrorCallback>&& errorCallback)
+{
+    getEntry(context, path, flags, [](auto& entry) { return entry.isDirectory(); }, WTFMove(successCallback), WTFMove(errorCallback));
 }
 
 } // namespace WebCore

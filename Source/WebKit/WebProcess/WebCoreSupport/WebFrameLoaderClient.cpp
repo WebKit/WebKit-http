@@ -289,18 +289,6 @@ void WebFrameLoaderClient::dispatchDidReceiveServerRedirectForProvisionalLoad()
     webPage->send(Messages::WebPageProxy::DidReceiveServerRedirectForProvisionalLoadForFrame(m_frame->frameID(), documentLoader.navigationID(), url, UserData(WebProcess::singleton().transformObjectsToHandles(userData.get()).get())));
 }
 
-void WebFrameLoaderClient::dispatchDidPerformClientRedirect()
-{
-    WebPage* webPage = m_frame->page();
-    if (!webPage)
-        return;
-
-    auto navigationID = static_cast<WebDocumentLoader&>(*m_frame->coreFrame()->loader().documentLoader()).navigationID();
-
-    // Notify the UIProcess.
-    webPage->send(Messages::WebPageProxy::DidPerformClientRedirectForLoadForFrame(m_frame->frameID(), navigationID));
-}
-
 void WebFrameLoaderClient::dispatchDidChangeProvisionalURL()
 {
     WebPage* webPage = m_frame->page();
@@ -319,6 +307,9 @@ void WebFrameLoaderClient::dispatchDidCancelClientRedirect()
 
     // Notify the bundle client.
     webPage->injectedBundleLoaderClient().didCancelClientRedirectForFrame(*webPage, *m_frame);
+
+    // Notify the UIProcess.
+    webPage->send(Messages::WebPageProxy::DidCancelClientRedirectForFrame(m_frame->frameID()));
 }
 
 void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, double interval, double fireDate)
@@ -329,6 +320,9 @@ void WebFrameLoaderClient::dispatchWillPerformClientRedirect(const URL& url, dou
 
     // Notify the bundle client.
     webPage->injectedBundleLoaderClient().willPerformClientRedirectForFrame(*webPage, *m_frame, url, interval, fireDate);
+
+    // Notify the UIProcess.
+    webPage->send(Messages::WebPageProxy::WillPerformClientRedirectForFrame(m_frame->frameID(), url.string(), interval));
 }
 
 void WebFrameLoaderClient::dispatchDidChangeLocationWithinPage()
@@ -1523,7 +1517,7 @@ void WebFrameLoaderClient::redirectDataToPlugin(Widget& pluginWidget)
 
 #if ENABLE(WEBGL)
 
-WebCore::WebGLLoadPolicy WebFrameLoaderClient::webGLPolicyForURL(const String& url) const
+WebCore::WebGLLoadPolicy WebFrameLoaderClient::webGLPolicyForURL(const URL& url) const
 {
     if (auto* webPage = m_frame->page())
         return webPage->webGLPolicyForURL(m_frame, url);
@@ -1531,7 +1525,7 @@ WebCore::WebGLLoadPolicy WebFrameLoaderClient::webGLPolicyForURL(const String& u
     return WebGLAllowCreation;
 }
 
-WebCore::WebGLLoadPolicy WebFrameLoaderClient::resolveWebGLPolicyForURL(const String& url) const
+WebCore::WebGLLoadPolicy WebFrameLoaderClient::resolveWebGLPolicyForURL(const URL& url) const
 {
     if (auto* webPage = m_frame->page())
         return webPage->resolveWebGLPolicyForURL(m_frame, url);

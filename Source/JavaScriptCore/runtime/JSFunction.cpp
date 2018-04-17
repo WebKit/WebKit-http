@@ -91,6 +91,17 @@ JSFunction::JSFunction(VM& vm, JSGlobalObject* globalObject, Structure* structur
 {
 }
 
+
+void JSFunction::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(vm, info()));
+    if (isBuiltinFunction() && jsExecutable()->name().isPrivateName()) {
+        // This is anonymous builtin function.
+        rareData(vm)->setHasReifiedName();
+    }
+}
+
 void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length, const String& name)
 {
     Base::finishCreation(vm);

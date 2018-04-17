@@ -42,9 +42,14 @@
 @end
 
 enum {
+    NSSideUtilityWindowMask = 1 << 9,
+    NSSmallWindowMask = 1 << 10,
     _NSCarbonWindowMask = 1 << 25,
 };
 
 #endif
+
+extern NSString *NSWindowWillOrderOnScreenNotification;
+extern NSString *NSWindowWillOrderOffScreenNotification;
 
 #endif // PLATFORM(MAC)

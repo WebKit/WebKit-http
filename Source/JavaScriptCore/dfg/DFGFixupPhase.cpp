@@ -1311,13 +1311,12 @@ private:
             // FIXME: This should be done in the ByteCodeParser based on reading the
             // PolymorphicAccess, which will surely tell us that this is a AccessCase::ArrayLength.
             // https://bugs.webkit.org/show_bug.cgi?id=154990
+            auto uid = m_graph.identifiers()[node->identifierNumber()];
             if (node->child1()->shouldSpeculateCellOrOther()
                 && !m_graph.hasExitSite(node->origin.semantic, BadType)
                 && !m_graph.hasExitSite(node->origin.semantic, BadCache)
                 && !m_graph.hasExitSite(node->origin.semantic, BadIndexingType)
                 && !m_graph.hasExitSite(node->origin.semantic, ExoticObjectMode)) {
-                
-                auto uid = m_graph.identifiers()[node->identifierNumber()];
                 
                 if (uid == vm().propertyNames->length.impl()) {
                     attemptToMakeGetArrayLength(node);
@@ -1330,6 +1329,30 @@ private:
                     node->clearFlags(NodeMustGenerate);
                     fixEdge<RegExpObjectUse>(node->child1());
                     break;
+                }
+            }
+
+            if (node->child1()->shouldSpeculateNumber()) {
+                if (uid == vm().propertyNames->toString.impl()) {
+                    if (m_graph.isWatchingNumberToStringWatchpoint(node)) {
+                        JSGlobalObject* globalObject = m_graph.globalObjectFor(node->origin.semantic);
+                        if (node->child1()->shouldSpeculateInt32()) {
+                            insertCheck<Int32Use>(node->child1().node());
+                            m_graph.convertToConstant(node, m_graph.freeze(globalObject->numberProtoToStringFunction()));
+                            break;
+                        }
+
+                        if (enableInt52() && node->child1()->shouldSpeculateAnyInt()) {
+                            insertCheck<Int52RepUse>(node->child1().node());
+                            m_graph.convertToConstant(node, m_graph.freeze(globalObject->numberProtoToStringFunction()));
+                            break;
+                        }
+
+                        ASSERT(node->child1()->shouldSpeculateNumber());
+                        insertCheck<DoubleRepUse>(node->child1().node());
+                        m_graph.convertToConstant(node, m_graph.freeze(globalObject->numberProtoToStringFunction()));
+                        break;
+                    }
                 }
             }
 
@@ -1526,6 +1549,7 @@ private:
 
         case Phi:
         case Upsilon:
+        case EntrySwitch:
         case GetIndexedPropertyStorage:
         case LastNodeType:
         case CheckTierUpInLoop:
@@ -1559,6 +1583,7 @@ private:
         case GetVectorLength:
         case PutHint:
         case CheckStructureImmediate:
+        case CheckStructureOrEmpty:
         case MaterializeNewObject:
         case MaterializeCreateActivation:
         case PutStack:
@@ -1948,6 +1973,10 @@ private:
             break;
         }
 
+        case ThrowStaticError:
+            fixEdge<StringUse>(node->child1());
+            break;
+
 #if !ASSERT_DISABLED
         // Have these no-op cases here to ensure that nobody forgets to add handlers for new opcodes.
         case SetArgument:
@@ -2000,7 +2029,6 @@ private:
         case DirectTailCall:
         case TailCallVarargs:
         case Throw:
-        case ThrowStaticError:
         case CountExecution:
         case ForceOSRExit:
         case CheckBadCell:
@@ -2011,6 +2039,7 @@ private:
         case ExtractCatchLocal:
         case LoopHint:
         case MovHint:
+        case InitializeEntrypointArguments:
         case ZombieHint:
         case ExitOK:
         case BottomValue:
@@ -2019,6 +2048,7 @@ private:
         case PutByValWithThis:
         case GetByValWithThis:
         case CompareEqPtr:
+        case NumberToStringWithValidRadixConstant:
             break;
 #else
         default:

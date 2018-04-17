@@ -79,14 +79,6 @@ void FetchResponse::initializeWith(FetchBody::Init&& body)
     updateContentType();
 }
 
-void FetchResponse::setBodyAsReadableStream()
-{
-    if (isBodyNull())
-        setBody(FetchBody::loadingBody());
-    m_isReadableStream = true;
-    updateContentType();
-}
-
 FetchResponse::FetchResponse(ScriptExecutionContext& context, std::optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, ResourceResponse&& response)
     : FetchBodyOwner(context, WTFMove(body), WTFMove(headers))
     , m_response(WTFMove(response))
@@ -277,11 +269,22 @@ FetchResponse::ResponseData FetchResponse::consumeBody()
     return body().take();
 }
 
+void FetchResponse::consumeBodyFromReadableStream(ConsumeDataCallback&& callback)
+{
+    ASSERT(m_body);
+    ASSERT(m_body->readableStream());
+
+    ASSERT(!isDisturbed());
+    m_isDisturbed = true;
+
+    m_body->consumer().extract(*m_body->readableStream(), WTFMove(callback));
+}
+
 void FetchResponse::consumeBodyWhenLoaded(ConsumeDataCallback&& callback)
 {
     ASSERT(isLoading());
 
-    ASSERT(!m_isDisturbed);
+    ASSERT(!isDisturbed());
     m_isDisturbed = true;
 
     m_bodyLoader->setConsumeDataCallback(WTFMove(callback));
@@ -317,24 +320,23 @@ void FetchResponse::consumeChunk(Ref<JSC::Uint8Array>&& chunk)
 
 void FetchResponse::finishConsumingStream(Ref<DeferredPromise>&& promise)
 {
-    m_consumer.resolve(WTFMove(promise));
+    m_consumer.resolve(WTFMove(promise), nullptr);
 }
 
 void FetchResponse::consumeBodyAsStream()
 {
     ASSERT(m_shouldExposeBody);
     ASSERT(m_readableStreamSource);
-    m_isDisturbed = true;
     if (!isLoading()) {
-        body().consumeAsStream(*this, *m_readableStreamSource);
-        if (!m_readableStreamSource->isPulling())
-            m_readableStreamSource = nullptr;
+        FetchBodyOwner::consumeBodyAsStream();
         return;
     }
 
     ASSERT(m_bodyLoader);
 
-    setBodyAsReadableStream();
+    if (isBodyNull())
+        setBody(FetchBody::loadingBody());
+    updateContentType();
 
     auto data = m_bodyLoader->startStreaming();
     if (data) {
@@ -373,16 +375,12 @@ void FetchResponse::feedStream()
     closeStream();
 }
 
-ReadableStreamSource* FetchResponse::createReadableStreamSource()
+RefPtr<ReadableStream> FetchResponse::createReadableStream(JSC::ExecState& state)
 {
-    ASSERT(!m_readableStreamSource);
-    ASSERT(!m_isDisturbed);
-
-    if (isBodyNull() || !m_shouldExposeBody)
+    if (!m_shouldExposeBody)
         return nullptr;
 
-    m_readableStreamSource = adoptRef(*new FetchResponseSource(*this));
-    return m_readableStreamSource.get();
+    return FetchBodyOwner::readableStream(state);
 }
 
 RefPtr<SharedBuffer> FetchResponse::BodyLoader::startStreaming()

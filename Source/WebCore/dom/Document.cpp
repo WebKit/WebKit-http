@@ -204,6 +204,7 @@
 #include <ctime>
 #include <inspector/ConsoleMessage.h>
 #include <inspector/ScriptCallStack.h>
+#include <pal/Logger.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/SetForScope.h>
@@ -287,7 +288,7 @@
 #include "WebGPURenderingContext.h"
 #endif
 
-
+using namespace PAL;
 using namespace WTF;
 using namespace Unicode;
 
@@ -460,8 +461,7 @@ Document::Document(Frame* frame, const URL& url, unsigned documentClasses, unsig
     , m_extensionStyleSheets(std::make_unique<ExtensionStyleSheets>(*this))
     , m_visitedLinkState(std::make_unique<VisitedLinkState>(*this))
     , m_markers(std::make_unique<DocumentMarkerController>(*this))
-    , m_styleRecalcTimer(*this, &Document::updateStyleIfNeeded)
-    , m_updateFocusAppearanceTimer(*this, &Document::updateFocusAppearanceTimerFired)
+    , m_styleRecalcTimer([this] { updateStyleIfNeeded(); })
     , m_documentCreationTime(MonotonicTime::now())
     , m_scriptRunner(std::make_unique<ScriptRunner>(*this))
     , m_moduleLoader(std::make_unique<ScriptModuleLoader>(*this))
@@ -1542,18 +1542,64 @@ void Document::setTitle(const String& title)
         updateTitle({ title, LTR });
 }
 
-void Document::updateTitleElement(Element* newTitleElement)
+static Element* findHTMLTitle(Document& document)
 {
-    if (is<SVGSVGElement>(documentElement()))
-        m_titleElement = childrenOfType<SVGTitleElement>(*documentElement()).first();
-    else {
-        if (m_titleElement) {
-            if (isHTMLDocument() || isXHTMLDocument())
-                m_titleElement = descendantsOfType<HTMLTitleElement>(*this).first();
-        } else
-            m_titleElement = newTitleElement;
+    return descendantsOfType<HTMLTitleElement>(document).first();
+};
+
+static bool isHTMLTitle(Element& element)
+{
+    return is<HTMLTitleElement>(element);
+};
+
+static bool isHTMLTitleEligible(Element& element)
+{
+    return element.isConnected() && !element.isInShadowTree();
+};
+
+static Element* findSVGTitle(Document& document)
+{
+    return childrenOfType<SVGTitleElement>(*document.documentElement()).first();
+};
+
+static bool isSVGTitle(Element& element)
+{
+    return is<SVGTitleElement>(element);
+};
+
+static bool isSVGTitleEligible(Element& element)
+{
+    return element.parentNode() == element.document().documentElement();
+};
+
+void Document::updateTitleElement(Element& changingTitleElement)
+{
+    // Most documents use HTML title rules.
+    // Documents with SVG document elements use SVG title rules.
+    bool useSVGTitle = is<SVGSVGElement>(documentElement());
+    auto findTitle = useSVGTitle ? findSVGTitle : findHTMLTitle;
+    auto isTitle = useSVGTitle ? isSVGTitle : isHTMLTitle;
+    auto isTitleEligible = useSVGTitle ? isSVGTitleEligible : isHTMLTitleEligible;
+
+    if (!isTitle(changingTitleElement)) {
+        ASSERT(m_titleElement == findTitle(*this));
+        return;
     }
 
+    Element* newTitleElement;
+    if (m_titleElement)
+        newTitleElement = findTitle(*this);
+    else {
+        // Optimized common case: We have no title element yet.
+        // We can figure out which title element should be used without searching.
+        newTitleElement = isTitleEligible(changingTitleElement) ? &changingTitleElement : nullptr;
+        ASSERT(newTitleElement == findTitle(*this));
+    }
+
+    if (m_titleElement == newTitleElement)
+        return;
+
+    m_titleElement = newTitleElement;
     updateTitleFromTitleElement();
 }
 
@@ -1562,7 +1608,7 @@ void Document::titleElementAdded(Element& titleElement)
     if (m_titleElement == &titleElement)
         return;
 
-    updateTitleElement(&titleElement);
+    updateTitleElement(titleElement);
 }
 
 void Document::titleElementRemoved(Element& titleElement)
@@ -1570,7 +1616,7 @@ void Document::titleElementRemoved(Element& titleElement)
     if (m_titleElement != &titleElement)
         return;
 
-    updateTitleElement(nullptr);
+    updateTitleElement(titleElement);
 }
 
 void Document::titleElementTextChanged(Element& titleElement)
@@ -1887,20 +1933,21 @@ bool Document::needsStyleRecalc() const
     return false;
 }
 
-void Document::updateStyleIfNeeded()
+bool Document::updateStyleIfNeeded()
 {
     ASSERT(isMainThread());
     ASSERT(!view() || !view()->isPainting());
 
     if (!view() || view()->isInRenderTreeLayout())
-        return;
+        return false;
 
     styleScope().flushPendingUpdate();
 
     if (!needsStyleRecalc())
-        return;
+        return false;
 
     resolveStyle();
+    return true;
 }
 
 void Document::updateLayout()
@@ -1948,16 +1995,22 @@ void Document::updateLayoutIgnorePendingStylesheets(Document::RunPostLayoutTasks
     m_ignorePendingStylesheets = oldIgnore;
 }
 
-std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, const RenderStyle* parentStyle)
+std::unique_ptr<RenderStyle> Document::styleForElementIgnoringPendingStylesheets(Element& element, const RenderStyle* parentStyle, PseudoId pseudoElementSpecifier)
 {
     ASSERT(&element.document() == this);
+    ASSERT(!element.isPseudoElement() || !pseudoElementSpecifier);
+    ASSERT(!pseudoElementSpecifier || parentStyle);
 
     // On iOS request delegates called during styleForElement may result in re-entering WebKit and killing the style resolver.
     Style::PostResolutionCallbackDisabler disabler(*this);
 
     SetForScope<bool> change(m_ignorePendingStylesheets, true);
-    auto elementStyle = element.resolveStyle(parentStyle);
+    auto& resolver = element.styleResolver();
 
+    if (pseudoElementSpecifier)
+        return resolver.pseudoStyleForElement(element, PseudoStyleRequest(pseudoElementSpecifier), *parentStyle);
+
+    auto elementStyle = resolver.styleForElement(element, parentStyle);
     if (elementStyle.relations) {
         Style::Update emptyUpdate(*this);
         Style::commitRelations(WTFMove(elementStyle.relations), emptyUpdate);
@@ -4863,6 +4916,10 @@ void Document::storageBlockingStateDidChange()
 
 void Document::privateBrowsingStateDidChange() 
 {
+    m_sessionID = SessionID::emptySessionID();
+    if (m_logger)
+        m_logger->setEnabled(this, sessionID().isAlwaysOnLoggingAllowed());
+
     for (auto* element : m_privateBrowsingStateChangedElements)
         element->privateBrowsingStateDidChange();
 }
@@ -5477,29 +5534,6 @@ void Document::statePopped(Ref<SerializedScriptValue>&& stateObject)
         dispatchPopstateEvent(WTFMove(stateObject));
     else
         m_pendingStateObject = WTFMove(stateObject);
-}
-
-void Document::updateFocusAppearanceSoon(SelectionRestorationMode mode)
-{
-    m_updateFocusAppearanceRestoresSelection = mode;
-    if (!m_updateFocusAppearanceTimer.isActive())
-        m_updateFocusAppearanceTimer.startOneShot(0_s);
-}
-
-void Document::cancelFocusAppearanceUpdate()
-{
-    m_updateFocusAppearanceTimer.stop();
-}
-
-void Document::updateFocusAppearanceTimerFired()
-{
-    Element* element = focusedElement();
-    if (!element)
-        return;
-
-    updateLayout();
-    if (element->isFocusable())
-        element->updateFocusAppearance(m_updateFocusAppearanceRestoresSelection);
 }
 
 void Document::attachRange(Range* range)
@@ -7252,6 +7286,16 @@ void Document::setVlinkColor(const String& value)
 {
     if (auto* bodyElement = body())
         bodyElement->setAttributeWithoutSynchronization(vlinkAttr, value);
+}
+
+Logger& Document::logger() const
+{
+    if (!m_logger) {
+        m_logger = Logger::create(this);
+        m_logger->setEnabled(this, sessionID().isAlwaysOnLoggingAllowed());
+    }
+
+    return *m_logger;
 }
 
 } // namespace WebCore

@@ -27,11 +27,11 @@
 #include "CacheStorage.h"
 
 #include "CacheQueryOptions.h"
-#include "JSCache.h"
+#include "JSDOMCache.h"
 #include "JSFetchResponse.h"
 #include "ScriptExecutionContext.h"
 
-using namespace WebCore::DOMCache;
+using namespace WebCore::DOMCacheEngine;
 
 namespace WebCore {
 
@@ -49,39 +49,48 @@ String CacheStorage::origin() const
     return origin ? origin->toString() : String();
 }
 
-static void doSequentialMatch(size_t index, Vector<Ref<Cache>>&& caches, Cache::RequestInfo&& info, CacheQueryOptions&& options, Cache::MatchCallback&& completionHandler)
+static void doSequentialMatch(size_t index, Vector<Ref<DOMCache>>&& caches, DOMCache::RequestInfo&& info, CacheQueryOptions&& options, DOMCache::MatchCallback&& completionHandler)
 {
     if (index >= caches.size()) {
         completionHandler(nullptr);
         return;
     }
 
-    caches[index]->doMatch(WTFMove(info), WTFMove(options), [caches = WTFMove(caches), info, options, completionHandler = WTFMove(completionHandler), index](FetchResponse* value) mutable {
-        if (value) {
-            completionHandler(value);
+    caches[index]->doMatch(WTFMove(info), WTFMove(options), [caches = WTFMove(caches), info, options, completionHandler = WTFMove(completionHandler), index](ExceptionOr<FetchResponse*>&& result) mutable {
+        if (result.hasException()) {
+            completionHandler(result.releaseException());
+            return;
+        }
+        if (result.returnValue()) {
+            completionHandler(result.returnValue());
             return;
         }
         doSequentialMatch(++index, WTFMove(caches), WTFMove(info), WTFMove(options), WTFMove(completionHandler));
     });
 }
 
-static inline void startSequentialMatch(Vector<Ref<Cache>>&& caches, Cache::RequestInfo&& info, CacheQueryOptions&& options, Cache::MatchCallback&& completionHandler)
+static inline void startSequentialMatch(Vector<Ref<DOMCache>>&& caches, DOMCache::RequestInfo&& info, CacheQueryOptions&& options, DOMCache::MatchCallback&& completionHandler)
 {
     doSequentialMatch(0, WTFMove(caches), WTFMove(info), WTFMove(options), WTFMove(completionHandler));
 }
 
-static inline Vector<Ref<Cache>> copyCaches(const Vector<Ref<Cache>>& caches)
+static inline Vector<Ref<DOMCache>> copyCaches(const Vector<Ref<DOMCache>>& caches)
 {
-    Vector<Ref<Cache>> copy;
+    Vector<Ref<DOMCache>> copy;
     copy.reserveInitialCapacity(caches.size());
     for (auto& cache : caches)
         copy.uncheckedAppend(cache.copyRef());
     return copy;
 }
 
-void CacheStorage::match(Cache::RequestInfo&& info, CacheQueryOptions&& options, Ref<DeferredPromise>&& promise)
+void CacheStorage::match(DOMCache::RequestInfo&& info, CacheQueryOptions&& options, Ref<DeferredPromise>&& promise)
 {
-    retrieveCaches([this, info = WTFMove(info), options = WTFMove(options), promise = WTFMove(promise)]() mutable {
+    retrieveCaches([this, info = WTFMove(info), options = WTFMove(options), promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+        if (exception) {
+            promise->reject(WTFMove(exception.value()));
+            return;
+        }
+
         if (!options.cacheName.isNull()) {
             auto position = m_caches.findMatching([&](auto& item) { return item->name() == options.cacheName; });
             if (position != notFound) {
@@ -93,12 +102,16 @@ void CacheStorage::match(Cache::RequestInfo&& info, CacheQueryOptions&& options,
         }
 
         setPendingActivity(this);
-        startSequentialMatch(copyCaches(m_caches), WTFMove(info), WTFMove(options), [this, promise = WTFMove(promise)](FetchResponse* result) mutable {
+        startSequentialMatch(copyCaches(m_caches), WTFMove(info), WTFMove(options), [this, promise = WTFMove(promise)](ExceptionOr<FetchResponse*>&& result) mutable {
             if (!m_isStopped) {
-                if (!result)
+                if (result.hasException()) {
+                    promise->reject(result.releaseException());
+                    return;
+                }
+                if (!result.returnValue())
                     promise->resolve();
                 else
-                    promise->resolve<IDLInterface<FetchResponse>>(*result);
+                    promise->resolve<IDLInterface<FetchResponse>>(*result.returnValue());
             }
             unsetPendingActivity(this);
         });
@@ -107,50 +120,71 @@ void CacheStorage::match(Cache::RequestInfo&& info, CacheQueryOptions&& options,
 
 void CacheStorage::has(const String& name, DOMPromiseDeferred<IDLBoolean>&& promise)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)]() mutable {
+    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+        if (exception) {
+            promise.reject(WTFMove(exception.value()));
+            return;
+        }
         promise.resolve(m_caches.findMatching([&](auto& item) { return item->name() == name; }) != notFound);
     });
 }
 
-void CacheStorage::retrieveCaches(WTF::Function<void()>&& callback)
+void CacheStorage::retrieveCaches(WTF::Function<void(std::optional<Exception>&&)>&& callback)
 {
     String origin = this->origin();
     if (origin.isNull())
         return;
 
     setPendingActivity(this);
-    m_connection->retrieveCaches(origin, [this, callback = WTFMove(callback)](CacheInfosOrError&& result) {
+    m_connection->retrieveCaches(origin, m_updateCounter, [this, callback = WTFMove(callback)](CacheInfosOrError&& result) mutable {
         if (!m_isStopped) {
-            // FIXME: We should probably propagate that error up to the promise based operation.
-            ASSERT(result.hasValue());
             if (!result.hasValue()) {
-                callback();
+                callback(DOMCacheEngine::errorToException(result.error()));
                 return;
             }
+
             auto& cachesInfo = result.value();
 
-            ASSERT(scriptExecutionContext());
-            m_caches.removeAllMatching([&](auto& cache) {
-                return cachesInfo.findMatching([&](const auto& info) { return info.identifier == cache->identifier(); }) == notFound;
-            });
-            for (auto& info : cachesInfo) {
-                if (m_caches.findMatching([&](const auto& cache) { return info.identifier == cache->identifier(); }) == notFound)
-                    m_caches.append(Cache::create(*scriptExecutionContext(), WTFMove(info.name), info.identifier, m_connection.copyRef()));
-            }
+            if (m_updateCounter != cachesInfo.updateCounter) {
+                m_updateCounter = cachesInfo.updateCounter;
 
-            callback();
+                ASSERT(scriptExecutionContext());
+
+                Vector<Ref<DOMCache>> caches;
+                caches.reserveInitialCapacity(cachesInfo.infos.size());
+                for (auto& info : cachesInfo.infos) {
+                    auto position = m_caches.findMatching([&](const auto& cache) { return info.identifier == cache->identifier(); });
+                    caches.uncheckedAppend(position != notFound ? m_caches[position].copyRef() : DOMCache::create(*scriptExecutionContext(), WTFMove(info.name), info.identifier, m_connection.copyRef()));
+                }
+                m_caches = WTFMove(caches);
+
+            }
+            callback(std::nullopt);
         }
         unsetPendingActivity(this);
     });
 }
 
-void CacheStorage::open(const String& name, DOMPromiseDeferred<IDLInterface<Cache>>&& promise)
+static void logConsolePersistencyError(ScriptExecutionContext* context, const String& cacheName)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)]() mutable {
+    if (!context)
+        return;
+
+    context->addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("There was an error making ", cacheName, " persistent on the filesystem"));
+}
+
+void CacheStorage::open(const String& name, DOMPromiseDeferred<IDLInterface<DOMCache>>&& promise)
+{
+    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+        if (exception) {
+            promise.reject(WTFMove(exception.value()));
+            return;
+        }
+
         auto position = m_caches.findMatching([&](auto& item) { return item->name() == name; });
         if (position != notFound) {
             auto& cache = m_caches[position];
-            promise.resolve(Cache::create(*scriptExecutionContext(), String { cache->name() }, cache->identifier(), m_connection.copyRef()));
+            promise.resolve(DOMCache::create(*scriptExecutionContext(), String { cache->name() }, cache->identifier(), m_connection.copyRef()));
             return;
         }
 
@@ -160,11 +194,13 @@ void CacheStorage::open(const String& name, DOMPromiseDeferred<IDLInterface<Cach
         setPendingActivity(this);
         m_connection->open(origin, name, [this, name, promise = WTFMove(promise)](const CacheIdentifierOrError& result) mutable {
             if (!m_isStopped) {
-
                 if (!result.hasValue())
-                    promise.reject(DOMCache::errorToException(result.error()));
+                    promise.reject(DOMCacheEngine::errorToException(result.error()));
                 else {
-                    auto cache = Cache::create(*scriptExecutionContext(), String { name }, result.value(), m_connection.copyRef());
+                    if (result.value().hadStorageError)
+                        logConsolePersistencyError(scriptExecutionContext(), name);
+
+                    auto cache = DOMCache::create(*scriptExecutionContext(), String { name }, result.value().identifier, m_connection.copyRef());
                     promise.resolve(cache);
                     m_caches.append(WTFMove(cache));
                 }
@@ -176,7 +212,12 @@ void CacheStorage::open(const String& name, DOMPromiseDeferred<IDLInterface<Cach
 
 void CacheStorage::remove(const String& name, DOMPromiseDeferred<IDLBoolean>&& promise)
 {
-    retrieveCaches([this, name, promise = WTFMove(promise)]() mutable {
+    retrieveCaches([this, name, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+        if (exception) {
+            promise.reject(WTFMove(exception.value()));
+            return;
+        }
+
         auto position = m_caches.findMatching([&](auto& item) { return item->name() == name; });
         if (position == notFound) {
             promise.resolve(false);
@@ -190,9 +231,12 @@ void CacheStorage::remove(const String& name, DOMPromiseDeferred<IDLBoolean>&& p
         m_connection->remove(m_caches[position]->identifier(), [this, name, promise = WTFMove(promise)](const CacheIdentifierOrError& result) mutable {
             if (!m_isStopped) {
                 if (!result.hasValue())
-                    promise.reject(DOMCache::errorToException(result.error()));
-                else
+                    promise.reject(DOMCacheEngine::errorToException(result.error()));
+                else {
+                    if (result.value().hadStorageError)
+                        logConsolePersistencyError(scriptExecutionContext(), name);
                     promise.resolve(true);
+                }
             }
             unsetPendingActivity(this);
         });
@@ -202,7 +246,12 @@ void CacheStorage::remove(const String& name, DOMPromiseDeferred<IDLBoolean>&& p
 
 void CacheStorage::keys(KeysPromise&& promise)
 {
-    retrieveCaches([this, promise = WTFMove(promise)]() mutable {
+    retrieveCaches([this, promise = WTFMove(promise)](std::optional<Exception>&& exception) mutable {
+        if (exception) {
+            promise.reject(WTFMove(exception.value()));
+            return;
+        }
+
         Vector<String> keys;
         keys.reserveInitialCapacity(m_caches.size());
         for (auto& cache : m_caches)

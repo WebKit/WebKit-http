@@ -203,6 +203,7 @@ namespace JSC { namespace DFG {
     macro(DeleteById, NodeResultBoolean | NodeMustGenerate) \
     macro(DeleteByVal, NodeResultBoolean | NodeMustGenerate) \
     macro(CheckStructure, NodeMustGenerate) \
+    macro(CheckStructureOrEmpty, NodeMustGenerate) \
     macro(GetExecutable, NodeResultJS) \
     macro(PutStructure, NodeMustGenerate) \
     macro(AllocatePropertyStorage, NodeMustGenerate | NodeResultStorage) \
@@ -354,6 +355,7 @@ namespace JSC { namespace DFG {
     macro(CallObjectConstructor, NodeResultJS) \
     macro(CallStringConstructor, NodeResultJS | NodeMustGenerate) \
     macro(NumberToStringWithRadix, NodeResultJS | NodeMustGenerate) \
+    macro(NumberToStringWithValidRadixConstant, NodeResultJS) \
     macro(NewStringObject, NodeResultJS) \
     macro(MakeRope, NodeResultJS) \
     macro(In, NodeResultBoolean | NodeMustGenerate) \
@@ -385,20 +387,19 @@ namespace JSC { namespace DFG {
     \
     macro(NewAsyncFunction, NodeResultJS) \
     \
-    /* These aren't terminals but always exit */ \
-    macro(Throw, NodeMustGenerate) \
-    macro(ThrowStaticError, NodeMustGenerate) \
-    \
     /* Block terminals. */\
     macro(Jump, NodeMustGenerate) \
     macro(Branch, NodeMustGenerate) \
     macro(Switch, NodeMustGenerate) \
+    macro(EntrySwitch, NodeMustGenerate) \
     macro(Return, NodeMustGenerate) \
     macro(TailCall, NodeMustGenerate | NodeHasVarArgs) \
     macro(DirectTailCall, NodeMustGenerate | NodeHasVarArgs) \
     macro(TailCallVarargs, NodeMustGenerate) \
     macro(TailCallForwardVarargs, NodeMustGenerate) \
     macro(Unreachable, NodeMustGenerate) \
+    macro(Throw, NodeMustGenerate) \
+    macro(ThrowStaticError, NodeMustGenerate) \
     \
     /* Count execution. */\
     macro(CountExecution, NodeMustGenerate) \
@@ -441,6 +442,10 @@ namespace JSC { namespace DFG {
     /* Nodes for DOM JIT */\
     macro(CallDOMGetter, NodeResultJS | NodeMustGenerate) \
     macro(CallDOM, NodeResultJS | NodeMustGenerate) \
+    /* Metadata node that initializes the state for flushed argument types at an entrypoint in the program. */ \
+    /* Currently, we only use this for the blocks an EntrySwitch branches to at the root of the program. */ \
+    /* This is only used in SSA. */ \
+    macro(InitializeEntrypointArguments, NodeMustGenerate)
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

@@ -344,6 +344,10 @@ public:
     virtual void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) = 0;
 
     virtual void didChangeBackgroundColor() = 0;
+    virtual void isPlayingAudioWillChange() = 0;
+    virtual void isPlayingAudioDidChange() = 0;
+    virtual void pinnedStateWillChange() { };
+    virtual void pinnedStateDidChange() { };
 
 #if PLATFORM(MAC)
     virtual void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object*) = 0;
@@ -379,6 +383,7 @@ public:
 #if ENABLE(DATA_INTERACTION)
     virtual void didPerformDataInteractionControllerOperation(bool handled) = 0;
     virtual void didHandleStartDataInteractionRequest(bool started) = 0;
+    virtual void didHandleAdditionalDragItemsRequest(bool added) = 0;
     virtual void startDrag(const WebCore::DragItem&, const ShareableBitmap::Handle& image) = 0;
     virtual void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>) = 0;
     virtual void didChangeDataInteractionCaretRect(const WebCore::IntRect& previousCaretRect, const WebCore::IntRect& caretRect) = 0;

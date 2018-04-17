@@ -367,8 +367,8 @@ public:
 #endif
 
 #if ENABLE(WEBGL)
-    WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const String&);
-    WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const String&);
+    WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const WebCore::URL&);
+    WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const WebCore::URL&);
 #endif
     
     enum class IncludePostLayoutDataHint { No, Yes };
@@ -1032,6 +1032,7 @@ private:
     RefPtr<WebCore::Range> switchToBlockSelectionAtPoint(const WebCore::IntPoint&, SelectionHandlePosition);
 #if ENABLE(DATA_INTERACTION)
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
 #endif
 #endif
 

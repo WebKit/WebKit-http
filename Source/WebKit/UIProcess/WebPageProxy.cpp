@@ -3208,21 +3208,29 @@ void WebPageProxy::didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t f
         m_loaderClient->didReceiveServerRedirectForProvisionalLoadForFrame(*this, *frame, navigation.get(), m_process->transformHandlesToObjects(userData.object()).get());
 }
 
-void WebPageProxy::didPerformClientRedirectForLoadForFrame(uint64_t frameID, uint64_t navigationID)
+void WebPageProxy::willPerformClientRedirectForFrame(uint64_t frameID, const String& url, double delay)
 {
     PageClientProtector protector(m_pageClient);
 
     WebFrameProxy* frame = m_process->webFrame(frameID);
     MESSAGE_CHECK(frame);
 
-    // FIXME: We should message check that navigationID is not zero here, but it's currently zero for some navigations through the page cache.
-    RefPtr<API::Navigation> navigation;
-    if (frame->isMainFrame() && navigationID)
-        navigation = &navigationState().navigation(navigationID);
+    if (m_navigationClient) {
+        if (frame->isMainFrame())
+            m_navigationClient->willPerformClientRedirect(*this, url, delay);
+    }
+}
+
+void WebPageProxy::didCancelClientRedirectForFrame(uint64_t frameID)
+{
+    PageClientProtector protector(m_pageClient);
+
+    WebFrameProxy* frame = m_process->webFrame(frameID);
+    MESSAGE_CHECK(frame);
 
     if (m_navigationClient) {
         if (frame->isMainFrame())
-            m_navigationClient->didPerformClientRedirectForNavigation(*this, navigation.get());
+            m_navigationClient->didCancelClientRedirect(*this);
     }
 }
 
@@ -3972,13 +3980,13 @@ void WebPageProxy::setStatusText(const String& text)
     m_uiClient->setStatusText(this, text);
 }
 
-void WebPageProxy::mouseDidMoveOverElement(const WebHitTestResultData& hitTestResultData, uint32_t opaqueModifiers, const UserData& userData)
+void WebPageProxy::mouseDidMoveOverElement(WebHitTestResultData&& hitTestResultData, uint32_t opaqueModifiers, UserData&& userData)
 {
     m_lastMouseMoveHitTestResult = API::HitTestResult::create(hitTestResultData);
 
     WebEvent::Modifiers modifiers = static_cast<WebEvent::Modifiers>(opaqueModifiers);
 
-    m_uiClient->mouseDidMoveOverElement(this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
+    m_uiClient->mouseDidMoveOverElement(*this, hitTestResultData, modifiers, m_process->transformHandlesToObjects(userData.object()).get());
 }
 
 void WebPageProxy::connectionWillOpen(IPC::Connection& connection)
@@ -4007,10 +4015,9 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
     MESSAGE_CHECK_URL(frameURLString);
     MESSAGE_CHECK_URL(pageURLString);
 
-    RefPtr<API::Dictionary> pluginInformation;
     String newMimeType = mimeType;
     PluginModuleInfo plugin = m_process->processPool().pluginInfoStore().findPlugin(newMimeType, URL(URL(), pluginURLString));
-    pluginInformation = createPluginInformationDictionary(plugin, frameURLString, mimeType, pageURLString, pluginspageAttributeURLString, pluginURLString);
+    auto pluginInformation = createPluginInformationDictionary(plugin, frameURLString, mimeType, pageURLString, pluginspageAttributeURLString, pluginURLString);
 
     WKPluginUnavailabilityReason pluginUnavailabilityReason = kWKPluginUnavailabilityReasonPluginMissing;
     switch (static_cast<RenderEmbeddedObject::PluginUnavailabilityReason>(opaquePluginUnavailabilityReason)) {
@@ -4027,19 +4034,29 @@ void WebPageProxy::unavailablePluginButtonClicked(uint32_t opaquePluginUnavailab
         ASSERT_NOT_REACHED();
     }
 
-    m_uiClient->unavailablePluginButtonClicked(this, pluginUnavailabilityReason, pluginInformation.get());
+    m_uiClient->unavailablePluginButtonClicked(*this, pluginUnavailabilityReason, pluginInformation.get());
 }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL)
-void WebPageProxy::webGLPolicyForURL(const String& url, uint32_t& loadPolicy)
+void WebPageProxy::webGLPolicyForURL(URL&& url, Ref<Messages::WebPageProxy::WebGLPolicyForURL::DelayedReply>&& reply)
 {
-    loadPolicy = static_cast<uint32_t>(m_loaderClient->webGLLoadPolicy(*this, url));
+    if (m_navigationClient) {
+        m_navigationClient->webGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
+            reply->send(static_cast<uint32_t>(policy));
+        });
+    } else
+        reply->send(static_cast<uint32_t>(m_loaderClient->webGLLoadPolicy(*this, url)));
 }
 
-void WebPageProxy::resolveWebGLPolicyForURL(const String& url, uint32_t& loadPolicy)
+void WebPageProxy::resolveWebGLPolicyForURL(URL&& url, Ref<Messages::WebPageProxy::ResolveWebGLPolicyForURL::DelayedReply>&& reply)
 {
-    loadPolicy = static_cast<uint32_t>(m_loaderClient->resolveWebGLLoadPolicy(*this, url));
+    if (m_navigationClient) {
+        m_navigationClient->resolveWebGLLoadPolicy(*this, url, [reply = WTFMove(reply)](WebGLLoadPolicy policy) {
+            reply->send(static_cast<uint32_t>(policy));
+        });
+    } else
+        reply->send(static_cast<uint32_t>(m_loaderClient->resolveWebGLLoadPolicy(*this, url)));
 }
 #endif // ENABLE(WEBGL)
 
@@ -4048,9 +4065,11 @@ void WebPageProxy::setToolbarsAreVisible(bool toolbarsAreVisible)
     m_uiClient->setToolbarsAreVisible(this, toolbarsAreVisible);
 }
 
-void WebPageProxy::getToolbarsAreVisible(bool& toolbarsAreVisible)
+void WebPageProxy::getToolbarsAreVisible(Ref<Messages::WebPageProxy::GetToolbarsAreVisible::DelayedReply>&& reply)
 {
-    toolbarsAreVisible = m_uiClient->toolbarsAreVisible(this);
+    m_uiClient->toolbarsAreVisible(*this, [reply = WTFMove(reply)](bool visible) {
+        reply->send(visible);
+    });
 }
 
 void WebPageProxy::setMenuBarIsVisible(bool menuBarIsVisible)
@@ -5947,10 +5966,12 @@ void WebPageProxy::didChangeScrollbarsForMainFrame(bool hasHorizontalScrollbar, 
 
 void WebPageProxy::didChangeScrollOffsetPinningForMainFrame(bool pinnedToLeftSide, bool pinnedToRightSide, bool pinnedToTopSide, bool pinnedToBottomSide)
 {
+    m_pageClient.pinnedStateWillChange();
     m_mainFrameIsPinnedToLeftSide = pinnedToLeftSide;
     m_mainFrameIsPinnedToRightSide = pinnedToRightSide;
     m_mainFrameIsPinnedToTopSide = pinnedToTopSide;
     m_mainFrameIsPinnedToBottomSide = pinnedToBottomSide;
+    m_pageClient.pinnedStateDidChange();
 
     m_uiClient->pinnedStateDidChange(*this);
 }
@@ -6531,25 +6552,31 @@ void WebPageProxy::navigationGestureSnapshotWasRemoved()
         m_navigationClient->didRemoveNavigationGestureSnapshot(*this);
 }
 
-void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state, uint64_t sourceElementID)
+void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags newState, uint64_t sourceElementID)
 {
 #if ENABLE(MEDIA_SESSION)
     WebMediaSessionFocusManager* focusManager = process().processPool().supplement<WebMediaSessionFocusManager>();
     ASSERT(focusManager);
-    focusManager->updatePlaybackAttributesFromMediaState(this, sourceElementID, state);
+    focusManager->updatePlaybackAttributesFromMediaState(this, sourceElementID, newState);
 #endif
 
-    if (state == m_mediaState)
+    if (newState == m_mediaState)
         return;
 
 #if ENABLE(MEDIA_STREAM)
     WebCore::MediaProducer::MediaStateFlags oldMediaCaptureState = m_mediaState & WebCore::MediaProducer::MediaCaptureMask;
-    WebCore::MediaProducer::MediaStateFlags newMediaCaptureState = state & WebCore::MediaProducer::MediaCaptureMask;
+    WebCore::MediaProducer::MediaStateFlags newMediaCaptureState = newState & WebCore::MediaProducer::MediaCaptureMask;
 #endif
 
     MediaProducer::MediaStateFlags playingMediaMask = MediaProducer::IsPlayingAudio | MediaProducer::IsPlayingVideo;
     MediaProducer::MediaStateFlags oldState = m_mediaState;
-    m_mediaState = state;
+
+    bool playingAudioChanges = (oldState & MediaProducer::IsPlayingAudio) != (newState & MediaProducer::IsPlayingAudio);
+    if (playingAudioChanges)
+        m_pageClient.isPlayingAudioWillChange();
+    m_mediaState = newState;
+    if (playingAudioChanges)
+        m_pageClient.isPlayingAudioDidChange();
 
 #if ENABLE(MEDIA_STREAM)
     if (oldMediaCaptureState != newMediaCaptureState) {
@@ -6562,7 +6589,7 @@ void WebPageProxy::isPlayingMediaDidChange(MediaProducer::MediaStateFlags state,
 
     playingMediaMask |= WebCore::MediaProducer::MediaCaptureMask;
     if ((oldState & playingMediaMask) != (m_mediaState & playingMediaMask))
-        m_uiClient->isPlayingAudioDidChange(*this);
+        m_uiClient->isPlayingMediaDidChange(*this);
 
 #if PLATFORM(MAC)
     if ((oldState & MediaProducer::HasAudioOrVideo) != (m_mediaState & MediaProducer::HasAudioOrVideo))

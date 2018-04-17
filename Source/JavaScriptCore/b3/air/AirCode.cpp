@@ -30,6 +30,7 @@
 
 #include "AirCCallSpecial.h"
 #include "AirCFG.h"
+#include "AllowMacroScratchRegisterUsageIf.h"
 #include "B3BasicBlockUtils.h"
 #include "B3Procedure.h"
 #include "B3StackSlot.h"
@@ -37,10 +38,22 @@
 
 namespace JSC { namespace B3 { namespace Air {
 
+static void defaultPrologueGenerator(CCallHelpers& jit, Code& code)
+{
+    jit.emitFunctionPrologue();
+    if (code.frameSize()) {
+        AllowMacroScratchRegisterUsageIf allowScratch(jit, isARM64());
+        jit.addPtr(CCallHelpers::TrustedImm32(-code.frameSize()), MacroAssembler::stackPointerRegister);
+    }
+    
+    jit.emitSave(code.calleeSaveRegisterAtOffsetList());
+}
+
 Code::Code(Procedure& proc)
     : m_proc(proc)
     , m_cfg(new CFG(*this))
     , m_lastPhaseName("initial")
+    , m_defaultPrologueGenerator(createSharedTask<PrologueGeneratorFunction>(&defaultPrologueGenerator))
 {
     // Come up with initial orderings of registers. The user may replace this with something else.
     forEachBank(
@@ -156,6 +169,8 @@ CCallSpecial* Code::cCallSpecial()
 
 bool Code::isEntrypoint(BasicBlock* block) const
 {
+    // Note: This function must work both before and after LowerEntrySwitch.
+
     if (m_entrypoints.isEmpty())
         return !block->index();
     
@@ -164,6 +179,16 @@ bool Code::isEntrypoint(BasicBlock* block) const
             return true;
     }
     return false;
+}
+
+std::optional<unsigned> Code::entrypointIndex(BasicBlock* block) const
+{
+    RELEASE_ASSERT(m_entrypoints.size());
+    for (unsigned i = 0; i < m_entrypoints.size(); ++i) {
+        if (m_entrypoints[i].block() == block)
+            return i;
+    }
+    return std::nullopt;
 }
 
 void Code::setCalleeSaveRegisterAtOffsetList(RegisterAtOffsetList&& registerAtOffsetList, StackSlot* slot)
@@ -280,6 +305,14 @@ unsigned Code::jsHash() const
     }
     
     return result;
+}
+
+void Code::setNumEntrypoints(unsigned numEntrypoints)
+{
+    m_prologueGenerators.clear();
+    m_prologueGenerators.reserveCapacity(numEntrypoints);
+    for (unsigned i = 0; i < numEntrypoints; ++i)
+        m_prologueGenerators.uncheckedAppend(m_defaultPrologueGenerator.copyRef());
 }
 
 } } } // namespace JSC::B3::Air

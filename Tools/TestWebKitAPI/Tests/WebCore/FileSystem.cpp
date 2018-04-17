@@ -27,6 +27,7 @@
 #include "config.h"
 
 #include "Test.h"
+#include <WebCore/FileMetadata.h>
 #include <WebCore/FileSystem.h>
 #include <wtf/MainThread.h>
 #include <wtf/StringExtras.h>
@@ -48,7 +49,10 @@ public:
         PlatformFileHandle handle;
         m_tempFilePath = openTemporaryFile("tempTestFile", handle);
         writeToFile(handle, FileSystemTestData, strlen(FileSystemTestData));
-        closeFile(handle); 
+        closeFile(handle);
+
+        m_tempFileSymlinkPath = m_tempFilePath + "-symlink";
+        createSymbolicLink(m_tempFilePath, m_tempFileSymlinkPath);
 
         m_tempEmptyFilePath = openTemporaryFile("tempEmptyTestFile", handle);
         closeFile(handle);
@@ -66,6 +70,7 @@ public:
     void TearDown() override
     {
         deleteFile(m_tempFilePath);
+        deleteFile(m_tempFileSymlinkPath);
         deleteFile(m_tempEmptyFilePath);
         deleteFile(m_spaceContainingFilePath);
         deleteFile(m_bangContainingFilePath);
@@ -73,6 +78,7 @@ public:
     }
 
     const String& tempFilePath() { return m_tempFilePath; }
+    const String& tempFileSymlinkPath() { return m_tempFileSymlinkPath; }
     const String& tempEmptyFilePath() { return m_tempEmptyFilePath; }
     const String& spaceContainingFilePath() { return m_spaceContainingFilePath; }
     const String& bangContainingFilePath() { return m_bangContainingFilePath; }
@@ -80,6 +86,7 @@ public:
 
 private:
     String m_tempFilePath;
+    String m_tempFileSymlinkPath;
     String m_tempEmptyFilePath;
     String m_spaceContainingFilePath;
     String m_bangContainingFilePath;
@@ -117,6 +124,19 @@ TEST_F(FileSystemTest, FilesHaveSameVolume)
     EXPECT_TRUE(filesHaveSameVolume(tempFilePath(), spaceContainingFilePath()));
     EXPECT_TRUE(filesHaveSameVolume(spaceContainingFilePath(), bangContainingFilePath()));
     EXPECT_TRUE(filesHaveSameVolume(bangContainingFilePath(), quoteContainingFilePath()));
+}
+
+TEST_F(FileSystemTest, GetFileMetadataSymlink)
+{
+    auto symlinkMetadata = fileMetadata(tempFileSymlinkPath());
+    ASSERT_TRUE(symlinkMetadata.has_value());
+    EXPECT_TRUE(symlinkMetadata.value().type == FileMetadata::Type::SymbolicLink);
+    EXPECT_FALSE(static_cast<size_t>(symlinkMetadata.value().length) == strlen(FileSystemTestData));
+
+    auto targetMetadata = fileMetadataFollowingSymlinks(tempFileSymlinkPath());
+    ASSERT_TRUE(targetMetadata.has_value());
+    EXPECT_TRUE(targetMetadata.value().type == FileMetadata::Type::File);
+    EXPECT_EQ(strlen(FileSystemTestData), static_cast<size_t>(targetMetadata.value().length));
 }
 
 }

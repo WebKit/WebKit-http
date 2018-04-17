@@ -26,6 +26,8 @@
 #include "config.h"
 #include "ReadableStream.h"
 
+#include "JSDOMConvertSequences.h"
+#include "JSReadableStreamSink.h"
 #include "JSReadableStreamSource.h"
 #include "WebCoreJSClientData.h"
 
@@ -51,6 +53,81 @@ Ref<ReadableStream> ReadableStream::create(JSC::ExecState& execState, RefPtr<Rea
     auto newReadableStream = jsDynamicDowncast<JSReadableStream*>(vm, JSC::construct(&execState, constructor, constructType, constructData, args));
 
     return create(globalObject, *newReadableStream);
+}
+
+static inline JSC::JSValue callFunction(JSC::ExecState& state, JSC::JSValue jsFunction, JSC::JSValue thisValue, const JSC::ArgList& arguments)
+{
+    auto scope = DECLARE_CATCH_SCOPE(state.vm());
+    JSC::CallData callData;
+    auto callType = JSC::getCallData(jsFunction, callData);
+    ASSERT(callType != JSC::CallType::None);
+    auto result = call(&state, jsFunction, callType, callData, thisValue, arguments);
+    scope.assertNoException();
+    return result;
+}
+
+void ReadableStream::pipeTo(ReadableStreamSink& sink)
+{
+    auto& state = *m_globalObject->globalExec();
+    JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
+    const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().readableStreamPipeToPrivateName();
+
+    auto readableStreamPipeTo = m_globalObject->get(&state, privateName);
+    ASSERT(readableStreamPipeTo.isFunction());
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(readableStream());
+    arguments.append(toJS(&state, m_globalObject.get(), sink));
+    callFunction(state, readableStreamPipeTo, JSC::jsUndefined(), arguments);
+}
+
+std::pair<Ref<ReadableStream>, Ref<ReadableStream>> ReadableStream::tee()
+{
+    auto& state = *m_globalObject->globalExec();
+    JSVMClientData* clientData = static_cast<JSVMClientData*>(state.vm().clientData);
+    const Identifier& privateName = clientData->builtinFunctions().readableStreamInternalsBuiltins().readableStreamTeePrivateName();
+
+    auto readableStreamTee = m_globalObject->get(&state, privateName);
+    ASSERT(readableStreamTee.isFunction());
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(readableStream());
+    arguments.append(JSC::jsBoolean(true));
+    auto returnedValue = callFunction(state, readableStreamTee, JSC::jsUndefined(), arguments);
+
+    auto results = Detail::SequenceConverter<IDLInterface<ReadableStream>>::convert(state, returnedValue);
+
+    ASSERT(results.size() == 2);
+    return std::make_pair(results[0].releaseNonNull(), results[1].releaseNonNull());
+}
+
+static inline bool checkReadableStream(JSDOMGlobalObject& globalObject, JSReadableStream* readableStream, JSC::JSValue function)
+{
+    auto& state = *globalObject.globalExec();
+
+    ASSERT(function);
+    JSC::MarkedArgumentBuffer arguments;
+    arguments.append(readableStream);
+    return callFunction(state, function, JSC::jsUndefined(), arguments).isTrue();
+}
+
+bool ReadableStream::isLocked() const
+{
+    return checkReadableStream(*globalObject(), readableStream(), globalObject()->builtinInternalFunctions().readableStreamInternals().m_isReadableStreamLockedFunction.get());
+}
+
+bool ReadableStream::isDisturbed() const
+{
+    return checkReadableStream(*globalObject(), readableStream(), globalObject()->builtinInternalFunctions().readableStreamInternals().m_isReadableStreamDisturbedFunction.get());
+}
+
+bool ReadableStream::isDisturbed(ExecState& state, JSValue value)
+{
+    auto& vm = state.vm();
+    auto& globalObject = *jsDynamicDowncast<JSDOMGlobalObject*>(vm, state.lexicalGlobalObject());
+    auto* readableStream = jsDynamicDowncast<JSReadableStream*>(vm, value);
+
+    return checkReadableStream(globalObject, readableStream, globalObject.builtinInternalFunctions().readableStreamInternals().m_isReadableStreamDisturbedFunction.get());
 }
 
 }

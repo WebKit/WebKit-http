@@ -1,3 +1,227 @@
+2017-09-06  Matt Baker  <mattbaker@apple.com>
+
+        Web Inspector: Relax the maximum sidebar width
+        https://bugs.webkit.org/show_bug.cgi?id=175808
+        <rdar://problem/34005339>
+
+        Reviewed by Devin Rousso.
+
+        This patch introduces a constant, `minimumContentBrowserWidth`, which
+        constrains the maximum width of either sidebar:
+
+        maxSidebarWidth = window.innerWidth - minimumContentBrowserWidth - otherSidebarWidth
+
+        A value of 100px for `minimumContentBrowserWidth` leaves enough space for
+        three NavigationItems at their minimum width (32px), with a few pixels
+        left over for good measure. For most tabs this will ensure that the buttons
+        for showing the sidebars will be visible, along with an addition button.
+
+        * UserInterface/Base/Main.js:
+        * UserInterface/Views/Sidebar.js:
+        (WI.Sidebar.prototype.get maximumWidth):
+
+2017-09-06  Devin Rousso  <webkit@devinrousso.com>
+
+        Web Inspector: Support overloaded CanvasRenderingContext2D actions with identical parameter counts
+        https://bugs.webkit.org/show_bug.cgi?id=176178
+        <rdar://problem/34192229>
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Models/Recording.js:
+        (WI.Recording.displayNameForSwizzleType):
+        (WI.Recording.prototype.swizzle):
+        Replace WI.Recording.Swizzle with an object of swizzle type keys to int values. This object
+        matches the values in WebCore::RecordingSwizzleTypes.h.
+
+        * UserInterface/Models/RecordingAction.js:
+        (WI.RecordingAction):
+        (WI.RecordingAction.fromPayload):
+        (WI.RecordingAction.prototype.get swizzleTypes):
+        (WI.RecordingAction.prototype.swizzle):
+        (WI.RecordingAction.prototype.toJSON):
+        (WI.RecordingAction.prototype.parameterSwizzleTypeForTypeAtIndex): Deleted.
+        Replace WI.RecordingAction._parameterSwizzleTypeForTypeAtIndex with an array of parameter
+        types sent in the payload. This gives more control over the swizzling to the JSON, but also
+        simplifies the way we regenerate the data in the frontend.
+
+        * UserInterface/Views/RecordingActionTreeElement.js:
+        (WI.RecordingActionTreeElement._generateDOM):
+
+        * UserInterface/Views/RecordingContentView.js:
+        (WI.RecordingContentView.prototype._generateContentCanvas2D):
+        (WI.RecordingContentView.prototype._applyAction):
+
+        * UserInterface/Views/RecordingNavigationSidebarPanel.css:
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles :matches(.name, .parameter.invalid)):
+        (.sidebar > .panel.navigation.recording > .content .action.invalid:not(.selected, .initial-state) > .titles .name,): Deleted.
+
+2017-09-06  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Web Inspector: ⌘E and ⌘G do not work in main content area when quick console drawer is open
+        https://bugs.webkit.org/show_bug.cgi?id=176433
+
+        Reviewed by Brian Burg.
+
+        Make the ⌘E and ⌘G keyboard shortcuts behave more like the global ⌘K clear shortcut.
+        Instead of keeping them inside of FindBanner, and enabling/disabling them when they
+        make sense to apply, we make a single global instance of the keyboard shortcut and
+        apply it to whatever content view / content browser is active. This avoids conflicts
+        in situations where there are two ContentViews that are visible and each can handle
+        the keyboard shortcut.
+
+        * UserInterface/Base/Main.js:
+        (WI.contentLoaded):
+        New keyboard shortcuts.
+
+        (WI._populateFind):
+        (WI._findNext):
+        (WI._findPrevious):
+        Perform the shortcut on the active content view or content browser.
+
+        * UserInterface/Views/ContentBrowser.js:
+        (WI.ContentBrowser.prototype.shown):
+        (WI.ContentBrowser.prototype.hidden):
+        (WI.ContentBrowser.prototype.handlePopulateFindShortcut):
+        (WI.ContentBrowser.prototype.handleFindNextShortcut):
+        (WI.ContentBrowser.prototype.handleFindPreviousShortcut):
+        (WI.ContentBrowser.prototype.findBannerSearchQueryForSelection): Deleted.
+        * UserInterface/Views/LogContentView.js:
+        (WI.LogContentView.prototype.handlePopulateFindShortcut):
+        (WI.LogContentView.prototype.handleFindNextShortcut):
+        (WI.LogContentView.prototype.handleFindPreviousShortcut):
+        ContentBrowser and LogContentView (the only content view with a custom find banner)
+        now each handle the global keyboard shortcut handlers to do the right thing for
+        their respective cases.
+
+        * UserInterface/Views/FindBanner.js:
+        (WI.FindBanner.prototype.enableKeyboardShortcuts): Deleted.
+        (WI.FindBanner.prototype.disableKeyboardShortcuts): Deleted.
+        (WI.FindBanner.prototype._populateSearchQueryFromSelection): Deleted.
+        Move keyboard shortcut handling up to Main.js to be global.
+
+        * UserInterface/Views/ContentView.js:
+        (WI.ContentView.prototype.searchQueryWithSelection):
+        Default implementation should grab the selected text from the selection.
+        Previously shortcut selections only worked for selections in text editors.
+
+2017-09-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: display "Inherited From" section headers
+        https://bugs.webkit.org/show_bug.cgi?id=176033
+        <rdar://problem/34116930>
+
+        Reviewed by Devin Rousso.
+
+        Compared to the old styles sidebar, the new "Inherited From" sections are more compact.
+        One of the goals of the styles redesign is to make it fit more data vertically.
+
+        The contrast is inceased. The text is darker while the background stayed the same.
+
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css:
+        (.spreadsheet-style-panel .section-inherited):
+        (.spreadsheet-style-panel .section-inherited .node-link):
+        (.spreadsheet-style-panel .section-inherited .node-link:hover):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js:
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        Don't show two identical "Inherited From" sections.
+
+2017-09-05  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Layout flashing for internal View.prototype.layout
+        https://bugs.webkit.org/show_bug.cgi?id=176389
+
+        Reviewed by Matt Baker.
+
+        Add a checkbox to Settings (Debug panel) to draw an orange outline around an element every time View.prototype.layout is called.
+        This is similar to paint flashing, except this is only for View.prototype.layout.
+
+        * UserInterface/Base/Setting.js:
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WI.SettingsTabContentView.prototype._createDebugSettingsView):
+        * UserInterface/Views/View.js:
+        (WI.View.prototype._layoutSubtree):
+        (WI.View.prototype._drawLayoutFlashingOutline):
+
+2017-09-04  Nikita Vasilyev  <nvasilyev@apple.com>
+
+        Web Inspector: Styles Redesign: hook up real data to spreadsheet style editor
+        https://bugs.webkit.org/show_bug.cgi?id=175343
+        <rdar://problem/33784793>
+
+        Reviewed by Devin Rousso.
+
+        Replace static HTML added in <https://webkit.org/b/174838> with actual data.
+
+        Addressed in this patch:
+        - CSS rules can be copied.
+        - Source links work as expected.
+        - Nonmatching selectors are grayed out.
+
+        Known limitations:
+        - Neither CSS selectors nor CSS properties are editable.
+        - "Inherited from" and media query section headers are missing.
+        - No syntax highlighting of complex CSS values, e.g. hsl(0, 0%, 70%).
+
+        * UserInterface/Main.html:
+        * UserInterface/Models/CSSStyleDeclaration.js:
+        * UserInterface/Views/CSSStyleDeclarationTextEditor.js:
+        (WI.CSSStyleDeclarationTextEditor):
+        * UserInterface/Views/CSSStyleDetailsSidebarPanel.js:
+        (WI.CSSStyleDetailsSidebarPanel):
+        * UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.js: Removed.
+        Rename RulesStyleSpreadsheetDetailsPanel to SpreadsheetRulesStyleDetailsPanel. All files related to the spreadsheet editor start with "Spreadsheet" now.
+
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.css: Added.
+        (.spreadsheet-style-declaration-editor):
+        (.spreadsheet-style-declaration-editor .name):
+        (.spreadsheet-style-declaration-editor .value):
+        (.spreadsheet-style-declaration-editor.no-properties):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationEditor.js: Added.
+        (WI.SpreadsheetCSSStyleDeclarationEditor):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get delegate):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set delegate):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.set style):
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype.get _propertiesToRender):
+        Similar condition is commonly used in CSSStyleDeclarationTextEditor. Abstact it out to its own method.
+
+        (WI.SpreadsheetCSSStyleDeclarationEditor.prototype._renderProperty):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.css: Copied from Source/WebInspectorUI/UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css.
+        (.spreadsheet-css-declaration):
+        (.spreadsheet-css-declaration .origin):
+        (.spreadsheet-css-declaration.locked .origin::after):
+        (.spreadsheet-css-declaration .origin .go-to-link):
+        (.spreadsheet-css-declaration .origin .go-to-link:hover):
+        (.spreadsheet-css-declaration .styles-source):
+        (.spreadsheet-css-declaration .selector.style-attribute):
+        (.spreadsheet-css-declaration .selector > span):
+        (.spreadsheet-css-declaration .selector > .matched):
+        (.spreadsheet-css-declaration .properties):
+        (.spreadsheet-css-declaration.locked):
+        (.spreadsheet-css-declaration .locked-icon):
+        * UserInterface/Views/SpreadsheetCSSStyleDeclarationSection.js: Added.
+        (WI.SpreadsheetCSSStyleDeclarationSection):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get element):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get style):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.initialLayout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.layout):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.cssStyleDeclarationTextEditorFocused):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get locked):
+        (WI.SpreadsheetCSSStyleDeclarationSection.prototype.get selectorEditable):
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.css: Renamed from Source/WebInspectorUI/UserInterface/Views/RulesStyleSpreadsheetDetailsPanel.css.
+        * UserInterface/Views/SpreadsheetRulesStyleDetailsPanel.js: Added.
+        (WI.SpreadsheetRulesStyleDetailsPanel):
+        (WI.SpreadsheetRulesStyleDetailsPanel.prototype.refresh):
+        * UserInterface/Views/StyleDetailsPanel.js:
+        (WI.StyleDetailsPanel.prototype.filterDidChange):
+
+        * UserInterface/Views/View.js:
+        (WI.View.prototype.removeAllSubviews):
+        Add a method to remove all subviews more efficiently.
+
 2017-08-29  Matt Baker  <mattbaker@apple.com>
 
         Web Inspector: Critical content browser toolbar buttons are hidden at narrow widths

@@ -179,9 +179,6 @@ http/tests/local/blob/send-sliced-data-blob.html [ Skip ]
 # TODO BlodBuilder is not enabled
 http/tests/local/blob/send-data-blob.html [ Skip ]
 
-# Directory upload is not enabled.
-fast/forms/file/input-file-directory-upload.html [ Skip ]
-
 # TODO A test that failed because eventSender cannot send function-key events.
 fast/events/keydown-function-keys.html [ Skip ]
 
@@ -583,6 +580,9 @@ crypto/workers/subtle/ [ Skip ]
 
 # TODO Missing WebSpeech implementation
 webkit.org/b/136224 fast/speechsynthesis [ Skip ]
+
+# Test is Posix-specific.
+editing/pasteboard/enties-api/datatransfer-items-drop-hidden-file.html [ Skip ]
 
 # TODO Impossible to test text-only-zoom from DRT on Windows
 webkit.org/b/35013 svg/zoom/text/ [ Skip ]
@@ -2762,13 +2762,13 @@ webkit.org/b/128855 fast/regions/selection/position-for-point-1.html [ Failure ]
 webkit.org/b/128855 fast/regions/selection/position-for-point-vert-lr.html [ Failure ] 
 webkit.org/b/128855 fast/regions/selection/position-for-point-vert-rl.html [ Failure ] 
 webkit.org/b/128855 fast/regions/selection/position-for-point.html [ Failure ]
-webkit.org/b/128855 fast/regions/selection/selection-direction.html [ Pass Timeout ]
+webkit.org/b/128855 fast/regions/selection/selection-direction.html [ ImageOnlyFailure ]
 webkit.org/b/128855 fast/regions/fullscreen/full-screen-video-in-region-crash.html [ Crash Failure Timeout ]
 webkit.org/b/128855 fast/regions/repaint/repaint-absolute-pushed-to-next-region.html [ Failure ]
-webkit.org/b/128855 fast/regions/clip-to-padding-box-vertical-lr.html [ Pass Timeout ] 
+webkit.org/b/128855 fast/regions/clip-to-padding-box-vertical-lr.html [ ImageOnlyFailure ]
 webkit.org/b/128855 fast/regions/hover-and-js-in-visual-overflow.html [ Timeout ImageOnlyFailure ]
-webkit.org/b/128855 fast/regions/overflow/overflow-scrollable-3.html [ Pass Timeout ]
-webkit.org/b/128855 fast/regions/region-styling/region-style-block-background-color.html [ Pass Timeout ]
+webkit.org/b/128855 fast/regions/overflow/overflow-scrollable-3.html [ ImageOnlyFailure ]
+webkit.org/b/128855 fast/regions/region-styling/region-style-block-background-color.html [ ImageOnlyFailure ]
 [ Debug ] fast/regions/subtree-with-vert-lr.html [ ImageOnlyFailure ]
 [ Debug ] fast/regions/subtree-with-vert-rl.html [ ImageOnlyFailure ]
 fast/regions/hover-single-flow-into-none.html [ Pass Timeout ]
@@ -3988,6 +3988,9 @@ webkit.org/b/162415 imported/w3c/web-platform-tests/html/syntax [ Skip ]
 # Only Mac has implemented DictionaryLookup
 fast/layers/prevent-hit-test-during-layout.html [ Skip ]
 
+# This test relies on Mac-specific quirks
+media/document-level-media-user-gesture-quirk.html [ Skip ]
+
 # webrtc not supported
 imported/w3c/web-platform-tests/webrtc [ Skip ]
 webrtc [ Skip ]
@@ -4048,7 +4051,56 @@ imported/w3c/web-platform-tests/dom/traversal/NodeFilter-constants.html [ Slow ]
 imported/w3c/web-platform-tests/encoding/api-basics.html [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/basic/accept-header.any.html [ Slow ]
 imported/w3c/web-platform-tests/fetch/api/cors/cors-basic.any.html [ Slow ]
+imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/joint_session_history/001.html [ Slow ]
 
 # No service worker implementation for WK1
 http/tests/workers/service [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/policies/referrer-no-referrer-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/policies/referrer-origin-when-cross-origin-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/policies/referrer-unsafe-url-service-worker.https.html [ Skip ]
+imported/w3c/web-platform-tests/html/webappapis/scripting/processing-model-2/integration-with-the-javascript-agent-formalism/canblock-serviceworker.https.html [ Skip ]
 imported/w3c/web-platform-tests/service-workers [ Skip ]
+imported/w3c/web-platform-tests/streams/byte-length-queuing-strategy.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/count-queuing-strategy.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/close-propagation-backward.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/close-propagation-forward.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/error-propagation-backward.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/error-propagation-forward.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/flow-control.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/general.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/multiple-propagation.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/pipe-through.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/piping/transform-streams.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-byte-streams/general.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/bad-strategies.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/bad-underlying-sources.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/brand-checks.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/cancel.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/default-reader.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/floating-point-total-queue-size.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/garbage-collection.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/general.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/pipe-through.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/readable-stream-reader.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/tee.serviceworker.https.html [ Skip ]
+imported/w3c/web-platform-tests/streams/readable-streams/templated.serviceworker.https.html [ Skip ]
+
+# Flaky tests on Windows:
+webkit.org/b/157916 http/tests/misc/slow-loading-animated-image.html [ Pass ImageOnlyFailure ]
+webkit.org/b/176465 http/tests/preload/single_download_preload.html [ Pass Failure Crash ]
+
+# DatatransferItem tests are timing out.
+webkit.org/b/176423 editing/pasteboard/datatransfer-items-copy-plaintext.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/datatransfer-items-paste-plaintext.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader-error.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader-root.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-directoryReader.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-fileEntry-file.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getAsEntry.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getDirectory.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getFile.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent-root.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent.html [ Skip ]
+webkit.org/b/176423 editing/pasteboard/enties-api/datatransfer-items-drop-getParent2.html [ Skip ]

@@ -48,7 +48,8 @@ enum TestConfidence { "high", "kinda-low" };
 [
     ConstructorCallWith=Document,
     Constructor(TestCallbackInterface testCallback, TestCallbackFunction testCallbackFunction),
-    InterfaceName=TestObject
+    InterfaceName=TestObject,
+    Exposed=(Window,Worker)
 ] interface TestObj {
     // Attributes
     readonly attribute long            readOnlyLongAttr;
@@ -57,7 +58,6 @@ enum TestConfidence { "high", "kinda-low" };
     static readonly attribute long     staticReadOnlyLongAttr;
     static attribute DOMString         staticStringAttr;
     static readonly attribute TestSubObjConstructor TestSubObj;
-    [EnabledBySetting=TestSetting] attribute TestSubObjConstructor TestSubObjEnabledBySetting;
     attribute TestEnumType enumAttr;
     attribute byte byteAttr;
     attribute octet octetAttr;
@@ -112,12 +112,7 @@ enum TestConfidence { "high", "kinda-low" };
     [Conditional=TEST_FEATURE, EnabledAtRuntime=TestFeature] void enabledAtRuntimeOperation(long testParam);
 
     [EnabledForWorld=someWorld, EnabledAtRuntime=TestFeature] void enabledInSpecificWorldWhenRuntimeFeatureEnabled(long testParam);
-
     [EnabledForWorld=someWorld] void worldSpecificMethod(long testParam);
-
-    // [EnabledBySetting] attributes and operations.
-    [Conditional=TEST_FEATURE, EnabledBySetting=TestSetting] attribute DOMString enabledBySettingAttribute;
-    [Conditional=TEST_FEATURE, EnabledBySetting=TestSetting] void enabledBySettingOperation(DOMString testParam);
 
     // [SecureContext] attributes and operations; will not be exposed to a non-secure context.
     // From <https://w3c.github.io/webappsec-secure-contexts/#integration-idl> (Editor's Draft, 17 November 2016)
@@ -454,6 +449,13 @@ enum TestConfidence { "high", "kinda-low" };
 
     [ConditionallyReadWrite=CONDITION] attribute Node conditionallyReadWriteAttribute;
     [Conditional=CONDITION2, ConditionallyReadWrite=CONDITION] attribute Node conditionalAndConditionallyReadWriteAttribute;
+
+    [Exposed=Window] attribute long conditionallyExposedToWindowAttribute;
+    [Exposed=Worker] attribute long conditionallyExposedToWorkerAttribute;
+    [Exposed=(Worker, Window)] attribute long conditionallyExposedToWindowAndWorkerAttribute;
+    [Exposed=Window] void conditionallyExposedToWindowFunction();
+    [Exposed=Worker] void conditionallyExposedToWorkerFunction();
+    [Exposed=(Window, Worker)] void conditionallyExposedToWindowAndWorkerFunction();
 };
 
 // The following comment should not generate any code.

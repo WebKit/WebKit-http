@@ -58,7 +58,7 @@ public:
     List roots()
     {
         List result;
-        for (BasicBlock* root : m_graph.m_entrypoints)
+        for (BasicBlock* root : m_graph.m_roots)
             result.append(root);
         return result;
     }
@@ -89,7 +89,7 @@ public:
     CPSCFG(Graph& graph)
         : SingleRootGraph<CFG>(*graph.m_ssaCFG)
     {
-        ASSERT(graph.m_entrypoints.size());
+        ASSERT(graph.m_roots.size());
     }
 };
 
@@ -98,8 +98,7 @@ using SSACFG = CFG;
 template <typename T, typename = typename std::enable_if<std::is_same<T, CPSCFG>::value>::type>
 CPSCFG& selectCFG(Graph& graph)
 {
-    RELEASE_ASSERT(graph.m_cpsCFG);
-    return *graph.m_cpsCFG;
+    return graph.ensureCPSCFG();
 }
 
 template <typename T, typename = typename std::enable_if<std::is_same<T, SSACFG>::value>::type>

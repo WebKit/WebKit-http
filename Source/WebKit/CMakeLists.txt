@@ -124,6 +124,8 @@ set(WebKit2_SOURCES
     NetworkProcess/PingLoad.cpp
 
     NetworkProcess/cache/CacheStorageEngine.cpp
+    NetworkProcess/cache/CacheStorageEngineCache.cpp
+    NetworkProcess/cache/CacheStorageEngineCaches.cpp
     NetworkProcess/cache/CacheStorageEngineConnection.cpp
     NetworkProcess/cache/NetworkCache.cpp
     NetworkProcess/cache/NetworkCacheBlobStorage.cpp

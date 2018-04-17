@@ -32,6 +32,7 @@
 
 namespace WebCore {
 
+class ReadableStreamSink;
 class ReadableStreamSource;
 
 class ReadableStream final : public DOMGuarded<JSReadableStream> {
@@ -40,7 +41,15 @@ public:
 
     static Ref<ReadableStream> create(JSC::ExecState&, RefPtr<ReadableStreamSource>&&);
 
-    JSReadableStream* readableStream() { return guarded(); }
+    WEBCORE_EXPORT static bool isDisturbed(JSC::ExecState&, JSC::JSValue);
+
+    std::pair<Ref<ReadableStream>, Ref<ReadableStream>> tee();
+
+    void pipeTo(ReadableStreamSink&);
+    bool isLocked() const;
+    bool isDisturbed() const;
+
+    JSReadableStream* readableStream() const { return guarded(); }
 
 protected:
     ReadableStream(JSDOMGlobalObject& globalObject, JSReadableStream& readableStream) : DOMGuarded<JSReadableStream>(globalObject, readableStream) { }
@@ -68,16 +77,9 @@ template<> struct JSDOMWrapperConverterTraits<ReadableStream> {
     static constexpr bool needsState = true;
 };
 
-template<> struct JSConverter<IDLInterface<ReadableStream>> {
-    static constexpr bool needsState = false;
-    static constexpr bool needsGlobalObject = false;
-
-    static JSC::JSValue convert(ReadableStream* value)
-    {
-        if (!value)
-            return JSC::jsNull();
-        return value->readableStream();
-    }
-};
+inline JSC::JSValue toJS(JSC::ExecState*, JSC::JSGlobalObject*, ReadableStream* stream)
+{
+    return stream ? stream->readableStream() : JSC::jsUndefined();
+}
 
 }

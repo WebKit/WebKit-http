@@ -1,3 +1,127 @@
+2017-08-19  Filip Pizlo  <fpizlo@apple.com>
+
+        We should have more tests of tail calls
+        https://bugs.webkit.org/show_bug.cgi?id=175754
+
+        Reviewed by Sam Weinig.
+        
+        This introduces a new test suite called TailBench9000, which will have benchmarks written in
+        JavaScript that avoid all looping except by tail call. As a warmup, I wrote a mergesort
+        benchmark and I proted n-body to use tail calls instead of for loops.
+
+        * TailBench9000: Added.
+        * TailBench9000/merge-sort-run.js: Added.
+        * TailBench9000/merge-sort.js: Added.
+        (TEST_mergeSort.createRNG):
+        (TEST_mergeSort.):
+        (TEST_mergeSort.merge):
+        (TEST_mergeSort.mergeSorted):
+        (TEST_mergeSort.checkSorted.check):
+        (TEST_mergeSort.checkSorted):
+        (TEST_mergeSort.add):
+        (TEST_mergeSort.build):
+        (TEST_mergeSort.compare):
+        (TEST_mergeSort.checkSpectrum):
+        (TEST_mergeSort.buildArray):
+        (TEST_mergeSort):
+        * TailBench9000/n-body-run.js: Added.
+        * TailBench9000/n-body.js: Added.
+        (TEST_nBody.Body):
+        (TEST_nBody.Body.prototype.offsetMomentum):
+        (TEST_nBody.Jupiter):
+        (TEST_nBody.Saturn):
+        (TEST_nBody.Uranus):
+        (TEST_nBody.Neptune):
+        (TEST_nBody.Sun):
+        (TEST_nBody.NBodySystem):
+        (TEST_nBody.NBodySystem.prototype.advance):
+        (TEST_nBody.NBodySystem.prototype.energy):
+        (TEST_nBody):
+
+2017-09-05  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Compute the final score using geometric mean in Speedometer 2.0
+        https://bugs.webkit.org/show_bug.cgi?id=172968
+
+        Reviewed by Saam Barati.
+
+        Make Speedometer 2.0 use the geometric mean of the subtotal of each test suite instead of the total..
+
+        In Speedometer 1.0, we used the total time to compute the final score because we wanted to make
+        the slowest framework and library faster. The fastest suite (FlightJS) still accounted for ~6% and
+        the slowest case (React) accounted for ~25% so we felt the total time, or the arithmetic mean with
+        a constant factor, was a good metric to track.
+
+        In the latest version of Speedometer 2.0, however, the fastest suite (Preact) runs in ~55ms whereas
+        the slowest suite (Inferno) takes 1.5s on Safari. Since the total time is 6.5s, Preact's suite only
+        accounts for ~0.8% of the total score while Inferno's suite accounts for ~23% of the total score.
+        Since the goal of Speedometer is to approximate different kinds of DOM API use patterns on the Web,
+        we want each framework & library to have some measurement impact on the overall benchmark score.
+
+        Furthermore, after r221205, we're testing both debug build of Ember.js as well as release build.
+        Since debug build is 4x slower, using the total time or the arithmetic mean thereof will effectively
+        give 4x as much weight to debug build of Ember.js relative to release build of Ember.js. Given only
+        ~5% of websites that deploy Ember.js use debug build, this weighting is clearly not right.
+
+        This patch, therefore, replaces the arithmetic mean by the geometric mean to compute the final score.
+        It also moves the code to compute the final score to BenchmarkRunner to be shared between main.js
+        and InteractiveRunner.html.
+
+        * Speedometer/InteractiveRunner.html:
+        (.didRunSuites): Show geometric mean, arithmetic mean, total, as well as the score for completeness
+        since this is a debugging page for developers.
+        * Speedometer/resources/benchmark-runner.js:
+        (BenchmarkRunner.prototype.step): Added mean, geomean, and score as measuredValues' properties.
+        (BenchmarkRunner.prototype._runTestAndRecordResults): Removed the dead code.
+        (BenchmarkRunner.prototype._finalize): Compute and add total, arithmetic mean (just mean in the code),
+        and geometric mean (geomean) to measuredValues.
+        * Speedometer/resources/main.js:
+        (window.benchmarkClient): Replaced testsCount by stepsCount and _timeValues by _measuredValuesList.
+        (window.benchmarkClient.willRunTest):
+        (window.benchmarkClient.didRunTest):
+        (window.benchmarkClient.didRunSuites): Store measuredValues object instead of just the total time.
+        (window.benchmarkClient.didFinishLastIteration):
+        (window.benchmarkClient._computeResults):
+        (window.benchmarkClient._computeResults.valueForUnit): Renamed from totalTimeInDisplayUnit. Now simply
+        retrieves the values computed by BenchmarkRunner's_finalize.
+        (startBenchmark):
+        (computeScore): Deleted.
+
+2017-09-05  JF Bastien  <jfbastien@apple.com>
+
+        StitchMarker build fix
+
+        Unreviewed
+
+        * StitchMarker/ck.sh: was missing `cd ck`
+
+2017-09-05  Shiyu Zhang  <shiyu.zhang@intel.com>
+
+        Speedometer 2.0: Add dummy node to notify app is ready for Backbone suite
+        https://bugs.webkit.org/show_bug.cgi?id=176142
+
+        Reviewed by Ryosuke Niwa.
+
+        Create a dummy node to notify that app is ready for Backbone suite. It prevents Speedometer injecting items before app.js is loaded.
+
+        * Speedometer/resources/tests.js:
+        (Suites.push.prepare):
+        * Speedometer/resources/todomvc/architecture-examples/backbone/js/app.js:
+
+2017-08-30  Shiyu Zhang  <shiyu.zhang@intel.com>
+
+        Speedometer 2.0: jQuery test fails occasionally
+        https://bugs.webkit.org/show_bug.cgi?id=176017
+
+        Reviewed by Ryosuke Niwa.
+
+        Create a dummy node to notify that app is ready for jQuery suite. It prevents Speedometer injecting items before app.js is loaded.
+
+        * Speedometer/resources/tests.js:
+        (Suites.push.prepare):
+        * Speedometer/resources/todomvc/architecture-examples/jquery/js/app.js:
+        (jQuery.App.init):
+
 2017-08-25  Mathias Bynens  <mathias@qiwi.be>
 
         Speedometer: Restructure Ember example

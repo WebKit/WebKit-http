@@ -426,7 +426,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case Jump:
     case Branch:
     case Switch:
-    case Throw:
+    case EntrySwitch:
     case ForceOSRExit:
     case CheckBadCell:
     case Return:
@@ -438,6 +438,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ProfileType:
     case ProfileControlFlow:
     case PutHint:
+    case InitializeEntrypointArguments:
         write(SideState);
         return;
         
@@ -648,6 +649,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(Heap);
         return;
 
+    case Throw:
+    case ThrowStaticError:
     case TailCall:
     case DirectTailCall:
     case TailCallVarargs:
@@ -955,6 +958,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
     }
         
+    case CheckStructureOrEmpty:
     case CheckStructure:
         read(JSCell_structureID);
         return;
@@ -1530,10 +1534,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
             return;
         }
         
-    case ThrowStaticError:
-        write(SideState);
-        return;
-        
     case CountExecution:
         read(InternalState);
         write(InternalState);
@@ -1587,8 +1587,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case NumberToStringWithRadix:
+        // If the radix is invalid, NumberToStringWithRadix can throw an error.
         read(World);
         write(Heap);
+        return;
+
+    case NumberToStringWithValidRadixConstant:
+        def(PureValue(node, node->validRadixConstant()));
         return;
         
     case LastNodeType:

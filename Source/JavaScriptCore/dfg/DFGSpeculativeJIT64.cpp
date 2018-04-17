@@ -3870,11 +3870,13 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case Throw:
+    case Throw: {
+        compileThrow(node);
+        break;
+    }
+
     case ThrowStaticError: {
-        // We expect that throw statements are rare and are intended to exit the code block
-        // anyway, so we just OSR back to the old JIT for now.
-        terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
+        compileThrowStaticError(node);
         break;
     }
         
@@ -4632,6 +4634,22 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
+    case CheckStructureOrEmpty: {
+        SpeculateCellOperand cell(this, node->child1());
+        GPRReg cellGPR = cell.gpr();
+        MacroAssembler::Jump isEmpty;
+        if (m_interpreter.forNode(node->child1()).m_type & SpecEmpty)
+            isEmpty = m_jit.branchTest64(MacroAssembler::Zero, cellGPR);
+
+        emitStructureCheck(node, cellGPR, InvalidGPRReg);
+
+        if (isEmpty.isSet())
+            isEmpty.link(&m_jit);
+
+        noResult(node);
+        break;
+    }
+
     case CheckStructure: {
         compileCheckStructure(node);
         break;
@@ -5298,6 +5316,11 @@ void SpeculativeJIT::compile(Node* node)
 
     case NumberToStringWithRadix: {
         compileNumberToStringWithRadix(node);
+        break;
+    }
+
+    case NumberToStringWithValidRadixConstant: {
+        compileNumberToStringWithValidRadixConstant(node);
         break;
     }
 
@@ -5999,7 +6022,7 @@ void SpeculativeJIT::compile(Node* node)
         break;
 
     case ExtractCatchLocal: {
-        JSValue* ptr = &reinterpret_cast<JSValue*>(m_jit.jitCode()->catchOSREntryBuffer->dataBuffer())[node->catchOSREntryIndex()];
+        JSValue* ptr = &reinterpret_cast<JSValue*>(m_jit.jitCode()->common.catchOSREntryBuffer->dataBuffer())[node->catchOSREntryIndex()];
         GPRTemporary temp(this);
         GPRReg tempGPR = temp.gpr();
         m_jit.move(CCallHelpers::TrustedImmPtr(ptr), tempGPR);
@@ -6106,6 +6129,8 @@ void SpeculativeJIT::compile(Node* node)
 #endif // ENABLE(FTL_JIT)
 
     case LastNodeType:
+    case EntrySwitch:
+    case InitializeEntrypointArguments:
     case Phi:
     case Upsilon:
     case ExtractOSREntryLocal:

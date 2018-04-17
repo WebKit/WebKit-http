@@ -40,8 +40,6 @@ function shouldThrow(func, errorMessage) {
         resolve = arg0;
         reject = arg1;
     });
-    shouldBe(resolve.name, "resolve");
-    shouldBe(JSON.stringify(Object.getOwnPropertyDescriptor(resolve, 'name')), `{"value":"resolve","writable":false,"enumerable":false,"configurable":true}`);
-    shouldBe(reject.name, "reject");
-    shouldBe(JSON.stringify(Object.getOwnPropertyDescriptor(reject, 'name')), `{"value":"reject","writable":false,"enumerable":false,"configurable":true}`);
+    shouldBe(Object.getOwnPropertyDescriptor(resolve, 'name'), undefined);
+    shouldBe(Object.getOwnPropertyDescriptor(reject, 'name'), undefined);
 }

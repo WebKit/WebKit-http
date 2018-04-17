@@ -65,6 +65,7 @@ inline CapabilityLevel canCompile(Node* node)
     case BitLShift:
     case BitURShift:
     case CheckStructure:
+    case CheckStructureOrEmpty:
     case DoubleAsInt32:
     case ArrayifyToStructure:
     case PutStructure:
@@ -111,6 +112,7 @@ inline CapabilityLevel canCompile(Node* node)
     case Phi:
     case Upsilon:
     case ExtractOSREntryLocal:
+    case ExtractCatchLocal:
     case LoopHint:
     case SkipScope:
     case GetGlobalObject:
@@ -245,6 +247,7 @@ inline CapabilityLevel canCompile(Node* node)
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:
     case ForwardVarargs:
+    case EntrySwitch:
     case Switch:
     case TypeOf:
     case PutById:
@@ -284,6 +287,7 @@ inline CapabilityLevel canCompile(Node* node)
     case DefineAccessorProperty:
     case ToLowerCase:
     case NumberToStringWithRadix:
+    case NumberToStringWithValidRadixConstant:
     case CheckSubClass:
     case CallDOM:
     case CallDOMGetter:
@@ -300,6 +304,7 @@ inline CapabilityLevel canCompile(Node* node)
     case AtomicsSub:
     case AtomicsXor:
     case AtomicsIsLockFree:
+    case InitializeEntrypointArguments:
         // These are OK.
         break;
 

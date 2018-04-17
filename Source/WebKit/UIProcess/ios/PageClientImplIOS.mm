@@ -113,8 +113,8 @@ using namespace WebKit;
 namespace WebKit {
 
 PageClientImpl::PageClientImpl(WKContentView *contentView, WKWebView *webView)
-    : m_contentView(contentView)
-    , m_webView(webView)
+    : PageClientImplCocoa(webView)
+    , m_contentView(contentView)
     , m_undoTarget(adoptNS([[WKEditorUndoTargetObjC alloc] init]))
 {
 }
@@ -784,6 +784,11 @@ void PageClientImpl::didPerformDataInteractionControllerOperation(bool handled)
 void PageClientImpl::didHandleStartDataInteractionRequest(bool started)
 {
     [m_contentView _didHandleStartDataInteractionRequest:started];
+}
+
+void PageClientImpl::didHandleAdditionalDragItemsRequest(bool added)
+{
+    [m_contentView _didHandleAdditionalDragItemsRequest:added];
 }
 
 void PageClientImpl::startDrag(const DragItem& item, const ShareableBitmap::Handle& image)

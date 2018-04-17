@@ -56,6 +56,7 @@ bool doesGC(Graph& graph, Node* node)
     case GetLocal:
     case SetLocal:
     case MovHint:
+    case InitializeEntrypointArguments:
     case ZombieHint:
     case ExitOK:
     case Phantom:
@@ -114,6 +115,8 @@ bool doesGC(Graph& graph, Node* node)
     case DeleteById:
     case DeleteByVal:
     case CheckStructure:
+    case CheckStructureOrEmpty:
+    case CheckStructureImmediate:
     case GetExecutable:
     case GetButterfly:
     case GetButterflyWithoutCaging:
@@ -178,11 +181,13 @@ bool doesGC(Graph& graph, Node* node)
     case ToString:
     case CallStringConstructor:
     case NumberToStringWithRadix:
+    case NumberToStringWithValidRadixConstant:
     case In:
     case HasOwnProperty:
     case Jump:
     case Branch:
     case Switch:
+    case EntrySwitch:
     case Return:
     case TailCall:
     case DirectTailCall:
@@ -260,7 +265,6 @@ bool doesGC(Graph& graph, Node* node)
     case GetMyArgumentByValOutOfBounds:
     case ForwardVarargs:
     case PutHint:
-    case CheckStructureImmediate:
     case PutStack:
     case KillStack:
     case GetStack:

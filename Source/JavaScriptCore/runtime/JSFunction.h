@@ -153,7 +153,7 @@ protected:
     JSFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
 
     void finishCreation(VM&, NativeExecutable*, int length, const String& name);
-    using Base::finishCreation;
+    void finishCreation(VM&);
 
     FunctionRareData* allocateRareData(VM&);
     FunctionRareData* allocateAndInitializeRareData(ExecState*, size_t inlineCapacity);

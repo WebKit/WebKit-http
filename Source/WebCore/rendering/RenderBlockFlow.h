@@ -392,9 +392,6 @@ public:
     void addChild(RenderObject* newChild, RenderObject* beforeChild = 0) override;
     void removeChild(RenderObject&) override;
 
-    void createMultiColumnFlowThread();
-    void destroyMultiColumnFlowThread();
-
     void updateColumnProgressionFromStyle(RenderStyle&);
     void updateStylesForColumnChildren();
 
@@ -595,7 +592,6 @@ private:
     // line, i.e., that it can't be re-used.
     bool lineWidthForPaginatedLineChanged(RootInlineBox*, LayoutUnit lineDelta, RenderFlowThread*) const;
     void updateLogicalWidthForAlignment(const ETextAlign&, const RootInlineBox*, BidiRun* trailingSpaceRun, float& logicalLeft, float& totalLogicalWidth, float& availableLogicalWidth, int expansionOpportunityCount);
-    void marginCollapseLinesFromStart(LineLayoutState&, RootInlineBox* stopLine);
 // END METHODS DEFINED IN RenderBlockLineLayout
 
     bool namedFlowFragmentNeedsUpdate() const;

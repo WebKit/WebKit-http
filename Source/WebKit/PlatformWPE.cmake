@@ -99,7 +99,7 @@ list(APPEND WebKit2_SOURCES
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp
     Shared/CoordinatedGraphics/threadedcompositor/ThreadedDisplayRefreshMonitor.cpp
 
-    Shared/Plugins/Netscape/x11/NetscapePluginModuleX11.cpp
+    Shared/Plugins/Netscape/unix/NetscapePluginModuleUnix.cpp
 
     Shared/cairo/ShareableBitmapCairo.cpp
 
@@ -279,7 +279,7 @@ list(APPEND WebKit2_DERIVED_SOURCES
 
 set(WPE_API_INSTALLED_HEADERS
     ${DERIVED_SOURCES_WPE_API_DIR}/WebKitEnumTypes.h
-    ${WEBKIT2_DIR}/UIProcess/API/gtk/WebKitApplicationInfo.h
+    ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitApplicationInfo.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitAuthenticationRequest.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitAutomationSession.h
     ${WEBKIT2_DIR}/UIProcess/API/wpe/WebKitBackForwardList.h

@@ -191,7 +191,7 @@ set(WebCore_NON_SVG_IDL_FILES
 
     Modules/beacon/NavigatorBeacon.idl
 
-    Modules/cache/Cache.idl
+    Modules/cache/DOMCache.idl
     Modules/cache/CacheQueryOptions.idl
     Modules/cache/CacheStorage.idl
     Modules/cache/DOMWindowCaches.idl
@@ -219,6 +219,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/entriesapi/FileSystemEntry.idl
     Modules/entriesapi/FileSystemEntryCallback.idl
     Modules/entriesapi/FileSystemFileEntry.idl
+    Modules/entriesapi/HTMLInputElementEntriesAPI.idl
 
     Modules/fetch/DOMWindowFetch.idl
     Modules/fetch/FetchBody.idl
@@ -332,6 +333,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/streams/ReadableStreamBYOBRequest.idl
     Modules/streams/ReadableStreamDefaultController.idl
     Modules/streams/ReadableStreamDefaultReader.idl
+    Modules/streams/ReadableStreamSink.idl
     Modules/streams/ReadableStreamSource.idl
     Modules/streams/WritableStream.idl
 
@@ -434,6 +436,7 @@ set(WebCore_NON_SVG_IDL_FILES
     css/CSSSupportsRule.idl
     css/CSSUnknownRule.idl
     css/DOMMatrix.idl
+    css/DOMMatrix2DInit.idl
     css/DOMMatrixInit.idl
     css/DOMMatrixReadOnly.idl
     css/DeprecatedCSSOMCounter.idl
@@ -655,12 +658,33 @@ set(WebCore_NON_SVG_IDL_FILES
     html/ValidityState.idl
     html/VoidCallback.idl
 
+    html/canvas/CanvasCompositing.idl
+    html/canvas/CanvasDirection.idl
+    html/canvas/CanvasDrawImage.idl
+    html/canvas/CanvasDrawPath.idl
+    html/canvas/CanvasFillRule.idl
+    html/canvas/CanvasFillStrokeStyles.idl
+    html/canvas/CanvasFilters.idl
     html/canvas/CanvasGradient.idl
+    html/canvas/CanvasImageData.idl
+    html/canvas/CanvasImageSmoothing.idl
+    html/canvas/CanvasLineCap.idl
+    html/canvas/CanvasLineJoin.idl
     html/canvas/CanvasPath.idl
+    html/canvas/CanvasPathDrawingStyles.idl
     html/canvas/CanvasPattern.idl
-    html/canvas/CanvasProxy.idl
+    html/canvas/CanvasRect.idl
     html/canvas/CanvasRenderingContext2D.idl
-    html/canvas/DOMPath.idl
+    html/canvas/CanvasShadowStyles.idl
+    html/canvas/CanvasState.idl
+    html/canvas/CanvasText.idl
+    html/canvas/CanvasTextAlign.idl
+    html/canvas/CanvasTextBaseline.idl
+    html/canvas/CanvasTextDrawingStyles.idl
+    html/canvas/CanvasTransform.idl
+    html/canvas/CanvasUserInterface.idl
+    html/canvas/ImageSmoothingQuality.idl
+    html/canvas/Path2D.idl
     html/canvas/WebGPUBuffer.idl
     html/canvas/WebGPUCommandBuffer.idl
     html/canvas/WebGPUCommandQueue.idl
@@ -917,10 +941,10 @@ set(WebCore_SOURCES
 
     Modules/beacon/NavigatorBeacon.cpp
 
-    Modules/cache/Cache.cpp
+    Modules/cache/DOMCache.cpp
     Modules/cache/CacheStorage.cpp
     Modules/cache/CacheStorageConnection.cpp
-    Modules/cache/DOMCache.cpp
+    Modules/cache/DOMCacheEngine.cpp
     Modules/cache/DOMWindowCaches.cpp
     Modules/cache/WorkerCacheStorageConnection.cpp
     Modules/cache/WorkerGlobalScopeCaches.cpp
@@ -938,16 +962,17 @@ set(WebCore_SOURCES
     Modules/entriesapi/FileSystemEntriesCallback.cpp
     Modules/entriesapi/FileSystemEntry.cpp
     Modules/entriesapi/FileSystemFileEntry.cpp
+    Modules/entriesapi/HTMLInputElementEntriesAPI.cpp
 
     Modules/fetch/DOMWindowFetch.cpp
     Modules/fetch/FetchBody.cpp
     Modules/fetch/FetchBodyConsumer.cpp
     Modules/fetch/FetchBodyOwner.cpp
+    Modules/fetch/FetchBodySource.cpp
     Modules/fetch/FetchHeaders.cpp
     Modules/fetch/FetchLoader.cpp
     Modules/fetch/FetchRequest.cpp
     Modules/fetch/FetchResponse.cpp
-    Modules/fetch/FetchResponseSource.cpp
     Modules/fetch/WorkerGlobalScopeFetch.cpp
 
     Modules/geolocation/Coordinates.cpp
@@ -1075,6 +1100,8 @@ set(WebCore_SOURCES
     Modules/speech/SpeechSynthesisEvent.cpp
     Modules/speech/SpeechSynthesisUtterance.cpp
     Modules/speech/SpeechSynthesisVoice.cpp
+
+    Modules/streams/ReadableStreamSink.cpp
 
     Modules/webaudio/AnalyserNode.cpp
     Modules/webaudio/AsyncAudioDecoder.cpp
@@ -1911,11 +1938,10 @@ set(WebCore_SOURCES
     html/canvas/CanvasGradient.cpp
     html/canvas/CanvasPath.cpp
     html/canvas/CanvasPattern.cpp
-    html/canvas/CanvasProxy.cpp
     html/canvas/CanvasRenderingContext.cpp
     html/canvas/CanvasRenderingContext2D.cpp
     html/canvas/CanvasStyle.cpp
-    html/canvas/DOMPath.cpp
+    html/canvas/Path2D.cpp
     html/canvas/WebGPUBuffer.cpp
     html/canvas/WebGPUCommandBuffer.cpp
     html/canvas/WebGPUCommandQueue.cpp
@@ -2827,6 +2853,7 @@ set(WebCore_SOURCES
     style/RenderTreeUpdaterFirstLetter.cpp
     style/RenderTreeUpdaterGeneratedContent.cpp
     style/RenderTreeUpdaterListItem.cpp
+    style/RenderTreeUpdaterMultiColumn.cpp
     style/StyleChange.cpp
     style/StyleFontSizeFunctions.cpp
     style/StyleInvalidator.cpp
@@ -3026,12 +3053,14 @@ set(WebCore_SOURCES
     workers/service/ServiceWorkerJobData.cpp
     workers/service/ServiceWorkerProvider.cpp
     workers/service/ServiceWorkerRegistration.cpp
+    workers/service/ServiceWorkerRegistrationData.cpp
     workers/service/ServiceWorkerRegistrationKey.cpp
     workers/service/ServiceWorkerRegistrationOptions.cpp
 
     workers/service/server/SWClientConnection.cpp
     workers/service/server/SWServer.cpp
     workers/service/server/SWServerRegistration.cpp
+    workers/service/server/SWServerWorker.cpp
 
     xml/DOMParser.cpp
     xml/NativeXPathNSResolver.cpp

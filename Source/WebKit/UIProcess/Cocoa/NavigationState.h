@@ -91,7 +91,8 @@ private:
     private:
         void didStartProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
         void didReceiveServerRedirectForProvisionalNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
-        void didPerformClientRedirectForNavigation(WebPageProxy&, API::Navigation*) override;
+        void willPerformClientRedirect(WebKit::WebPageProxy&, const WTF::String&, double) override;
+        void didCancelClientRedirect(WebKit::WebPageProxy&) override;
         void didFailProvisionalNavigationWithError(WebPageProxy&, WebFrameProxy&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
         void didFailProvisionalLoadInSubframeWithError(WebPageProxy&, WebFrameProxy&, const WebCore::SecurityOriginData&, API::Navigation*, const WebCore::ResourceError&, API::Object*) override;
         void didCommitNavigation(WebPageProxy&, API::Navigation*, API::Object*) override;
@@ -113,6 +114,11 @@ private:
 #if USE(QUICK_LOOK)
         void didStartLoadForQuickLookDocumentInMainFrame(const WTF::String& fileName, const WTF::String& uti) override;
         void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&) override;
+#endif
+
+#if ENABLE(WEBGL) && PLATFORM(MAC)
+        void webGLLoadPolicy(WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const final;
+        void resolveWebGLLoadPolicy(WebPageProxy&, const WebCore::URL&, WTF::Function<void(WebCore::WebGLLoadPolicy)>&& completionHandler) const final;
 #endif
 
         void decidePolicyForNavigationAction(WebPageProxy&, Ref<API::NavigationAction>&&, Ref<WebFramePolicyListenerProxy>&&, API::Object* userData) override;
@@ -173,7 +179,8 @@ private:
         bool webViewDidReceiveServerRedirectForProvisionalNavigation : 1;
         bool webViewDidFailProvisionalNavigationWithError : 1;
         bool webViewNavigationDidFailProvisionalLoadInSubframeWithError : 1;
-        bool webViewDidPerformClientRedirectForNavigation : 1;
+        bool webViewWillPerformClientRedirect : 1;
+        bool webViewDidCancelClientRedirect : 1;
         bool webViewDidCommitNavigation : 1;
         bool webViewNavigationDidFinishDocumentLoad : 1;
         bool webViewDidFinishNavigation : 1;
@@ -198,6 +205,11 @@ private:
         bool webViewDidStartLoadForQuickLookDocumentInMainFrame : 1;
         bool webViewDidFinishLoadForQuickLookDocumentInMainFrame : 1;
         bool webViewDidRequestPasswordForQuickLookDocument : 1;
+#endif
+
+#if ENABLE(WEBGL) && PLATFORM(MAC)
+        bool webViewWebGLLoadPolicyForURL : 1;
+        bool webViewResolveWebGLLoadPolicyForURL : 1;
 #endif
     } m_navigationDelegateMethods;
 

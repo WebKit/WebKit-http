@@ -730,10 +730,8 @@ public:
         return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
     }
 
-    bool isWatchingArrayIteratorProtocolWatchpoint(Node* node)
+    bool isWatchingGlobalObjectWatchpoint(JSGlobalObject* globalObject, InlineWatchpointSet& set)
     {
-        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
-        InlineWatchpointSet& set = globalObject->arrayIteratorProtocolWatchpoint();
         if (watchpoints().isWatched(set))
             return true;
 
@@ -748,6 +746,20 @@ public:
         }
 
         return false;
+    }
+
+    bool isWatchingArrayIteratorProtocolWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        InlineWatchpointSet& set = globalObject->arrayIteratorProtocolWatchpoint();
+        return isWatchingGlobalObjectWatchpoint(globalObject, set);
+    }
+
+    bool isWatchingNumberToStringWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        InlineWatchpointSet& set = globalObject->numberToStringWatchpoint();
+        return isWatchingGlobalObjectWatchpoint(globalObject, set);
     }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
@@ -839,7 +851,7 @@ public:
             // Arguments are always live. This would be redundant if it wasn't for our
             // op_call_varargs inlining. See the comment above.
             exclusionStart = stackOffset + CallFrame::argumentOffsetIncludingThis(0);
-            exclusionEnd = stackOffset + CallFrame::argumentOffsetIncludingThis(inlineCallFrame->arguments.size());
+            exclusionEnd = stackOffset + CallFrame::argumentOffsetIncludingThis(inlineCallFrame->argumentsWithFixup.size());
             
             // We will always have a "this" argument and exclusionStart should be a smaller stack
             // offset than exclusionEnd.
@@ -919,6 +931,7 @@ public:
     BackwardsCFG& ensureBackwardsCFG();
     BackwardsDominators& ensureBackwardsDominators();
     ControlEquivalenceAnalysis& ensureControlEquivalenceAnalysis();
+    CPSCFG& ensureCPSCFG();
 
     // These functions only makes sense to call after bytecode parsing
     // because it queries the m_hasExceptionHandlers boolean whose value
@@ -936,15 +949,23 @@ public:
 
     void clearCPSCFGData();
 
-    bool isEntrypoint(BasicBlock* block) const
+    bool isRoot(BasicBlock* block) const
     {
-        if (m_entrypoints.size() <= 4) {
-            bool result = m_entrypoints.contains(block);
-            ASSERT(result == m_entrypointToArguments.contains(block));
+        ASSERT_WITH_MESSAGE(!m_isInSSAConversion, "This is not written to work during SSA conversion.");
+
+        if (m_form == SSA) {
+            ASSERT(m_roots.size() == 1);
+            ASSERT(m_roots.contains(this->block(0)));
+            return block == this->block(0);
+        }
+
+        if (m_roots.size() <= 4) {
+            bool result = m_roots.contains(block);
+            ASSERT(result == m_rootToArguments.contains(block));
             return result;
         }
-        bool result = m_entrypointToArguments.contains(block);
-        ASSERT(result == m_entrypoints.contains(block));
+        bool result = m_rootToArguments.contains(block);
+        ASSERT(result == m_roots.contains(block));
         return result;
     }
 
@@ -954,7 +975,7 @@ public:
     CodeBlock* m_profiledBlock;
     
     Vector<RefPtr<BasicBlock>, 8> m_blocks;
-    Vector<BasicBlock*, 1> m_entrypoints;
+    Vector<BasicBlock*, 1> m_roots;
     Vector<Edge, 16> m_varArgChildren;
 
     HashMap<EncodedJSValue, FrozenValue*, EncodedJSValueHash, EncodedJSValueHashTraits> m_frozenValueMap;
@@ -966,12 +987,13 @@ public:
     
     // In CPS, this is all of the SetArgument nodes for the arguments in the machine code block
     // that survived DCE. All of them except maybe "this" will survive DCE, because of the Flush
-    // nodes.
+    // nodes. In SSA, this has no meaning. It's empty.
+    HashMap<BasicBlock*, ArgumentsVector> m_rootToArguments;
+
+    // In SSA, this is the argument speculation that we've locked in for an entrypoint block.
     //
-    // In SSA, this is all of the GetStack nodes for the arguments in the machine code block that
-    // may have some speculation in the prologue and survived DCE. Note that to get the speculation
-    // for an argument in SSA, you must use m_argumentFormats, since we still have to speculate
-    // even if the argument got killed. For example:
+    // We must speculate on the argument types at each entrypoint even if operations involving
+    // arguments get killed. For example:
     //
     //     function foo(x) {
     //        var tmp = x + 1;
@@ -989,10 +1011,20 @@ public:
     //
     // If we DCE the ArithAdd and we remove the int check on x, then this won't do the side
     // effects.
-    HashMap<BasicBlock*, ArgumentsVector> m_entrypointToArguments;
-    
-    // In CPS, this is meaningless. In SSA, this is the argument speculation that we've locked in.
-    Vector<FlushFormat> m_argumentFormats;
+    //
+    // By convention, entrypoint index 0 is used for the CodeBlock's op_enter entrypoint.
+    // So argumentFormats[0] are the argument formats for the normal call entrypoint.
+    Vector<Vector<FlushFormat>> m_argumentFormats;
+
+    // This maps an entrypoint index to a particular op_catch bytecode offset. By convention,
+    // it'll never have zero as a key because we use zero to mean the op_enter entrypoint.
+    HashMap<unsigned, unsigned> m_entrypointIndexToCatchBytecodeOffset;
+
+    // This is the number of logical entrypoints that we're compiling. This is only used
+    // in SSA. Each EntrySwitch node must have m_numberOfEntrypoints cases. Note, this is
+    // not the same as m_roots.size(). m_roots.size() represents the number of roots in
+    // the CFG. In SSA, m_roots.size() == 1 even if we're compiling more than one entrypoint.
+    unsigned m_numberOfEntrypoints { UINT_MAX };
 
     SegmentedVector<VariableAccessData, 16> m_variableAccessData;
     SegmentedVector<ArgumentPosition, 8> m_argumentPositions;
@@ -1048,6 +1080,7 @@ public:
     std::optional<uint32_t> m_maxLocalsForCatchOSREntry;
     std::unique_ptr<FlowIndexing> m_indexingCache;
     std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
+    Bag<EntrySwitchData> m_entrySwitchData;
 
     RegisteredStructure stringStructure;
     RegisteredStructure symbolStructure;

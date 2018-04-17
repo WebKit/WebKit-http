@@ -1,3 +1,88 @@
+2017-09-06  Youenn Fablet  <youenn@apple.com>
+
+        Support caching of Response with a ReadableStream body
+        https://bugs.webkit.org/show_bug.cgi?id=176462
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/service-workers/cache-storage/worker/cache-put.https-expected.txt:
+
+2017-09-06  Manuel Rego Casasnovas  <rego@igalia.com>
+
+        [css-grid] grid shorthand should not reset the gutter properties
+        https://bugs.webkit.org/show_bug.cgi?id=176375
+
+        Reviewed by Sergio Villar Senin.
+
+        Import new test from WPT.
+
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-shorthand-001-expected.txt: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/grid-shorthand-001.html: Added.
+        * web-platform-tests/css/css-grid-1/grid-definition/w3c-import.log:
+
+2017-09-02  Sam Weinig  <sam@webkit.org>
+
+        DOMMatrix/DOMMatrixReadOnly validation is incorrect for NaN values
+        https://bugs.webkit.org/show_bug.cgi?id=176287
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup-expected.txt:
+        Update test results.
+
+2017-09-02  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Wrong getComputedStyle result for pseudo-elements in display: none subtrees.
+        https://bugs.webkit.org/show_bug.cgi?id=176259
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+
+2017-09-01  Sam Weinig  <sam@webkit.org>
+
+        DOMMatrix and DOMMatrixReadOnly should be available in workers
+        https://bugs.webkit.org/show_bug.cgi?id=176255
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-css-string.worker-expected.txt:
+        * web-platform-tests/css/geometry-1/interfaces.worker-expected.txt:
+        Update test results.
+
+2017-09-01  Emilio Cobos Álvarez  <emilio@crisal.io>
+
+        Wrong getComputedStyle behavior for pseudo-elements for layout-dependent properties.
+        https://bugs.webkit.org/show_bug.cgi?id=175936
+
+        Reviewed by Antti Koivisto.
+
+        * web-platform-tests/cssom/getComputedStyle-pseudo-expected.txt:
+        * web-platform-tests/cssom/getComputedStyle-pseudo.html: Sync test with upstream.
+
+2017-08-31  Sam Weinig  <sam@webkit.org>
+
+        Implement DOMMatrix2DInit for setTransform()/addPath()
+        https://bugs.webkit.org/show_bug.cgi?id=176048
+
+        Reviewed by Simon Fraser.
+
+        * web-platform-tests/css/geometry-1/DOMMatrix-001.html:
+        * web-platform-tests/css/geometry-1/DOMMatrix-css-string.worker.js:
+        (string_appeared_here.forEach.constr.test):
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/DOMMatrixInit-validate-fixup.html: Added.
+        * web-platform-tests/css/geometry-1/historical.html:
+        * web-platform-tests/css/geometry-1/interfaces-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/interfaces.html: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker-expected.txt: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker.html: Added.
+        * web-platform-tests/css/geometry-1/interfaces.worker.js: Added.
+        * web-platform-tests/css/geometry-1/structured-serialization.html:
+        * web-platform-tests/css/geometry-1/w3c-import.log:
+
+            Pull latest web-platform-tests/css/geometry-1/ and rebase the results.
+
 2017-08-29  Youenn Fablet  <youenn@apple.com>
 
         [Fetch API] Request should throw when keep alive is true and body is a ReadableStream

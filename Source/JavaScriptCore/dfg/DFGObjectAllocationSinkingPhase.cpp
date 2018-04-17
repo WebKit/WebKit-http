@@ -892,6 +892,7 @@ private:
                 m_heap.escape(node->child1().node());
             break;
 
+        case CheckStructureOrEmpty:
         case CheckStructure: {
             Allocation* allocation = m_heap.onlyLocalAllocation(node->child1().node());
             if (allocation && allocation->isObjectAllocation()) {
@@ -1361,7 +1362,7 @@ private:
         // Nodes without remaining unmaterialized fields will be
         // materialized first - amongst the remaining unmaterialized
         // nodes
-        std::list<Allocation> toMaterialize;
+        std::list<Allocation, FastAllocator<Allocation>> toMaterialize;
         auto firstPos = toMaterialize.begin();
         auto materializeFirst = [&] (Allocation&& allocation) {
             materialize(allocation.identifier());

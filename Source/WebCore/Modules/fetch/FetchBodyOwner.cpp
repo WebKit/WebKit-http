@@ -48,7 +48,7 @@ FetchBodyOwner::FetchBodyOwner(ScriptExecutionContext& context, std::optional<Fe
 void FetchBodyOwner::stop()
 {
     if (m_body)
-        m_body->cleanConsumePromise();
+        m_body->cleanConsumer();
 
     if (m_blobLoader) {
         bool isUniqueReference = hasOneRef();
@@ -59,14 +59,33 @@ void FetchBodyOwner::stop()
     }
 }
 
-bool FetchBodyOwner::isDisturbedOrLocked() const
+bool FetchBodyOwner::isDisturbed() const
 {
+    if (isBodyNull())
+        return false;
+
     if (m_isDisturbed)
         return true;
 
 #if ENABLE(STREAMS_API)
-    if (m_readableStreamSource && m_readableStreamSource->isReadableStreamLocked())
+    if (body().readableStream())
+        return body().readableStream()->isDisturbed();
+#endif
+
+    return false;
+}
+
+bool FetchBodyOwner::isDisturbedOrLocked() const
+{
+    if (isBodyNull())
+        return false;
+
+    if (m_isDisturbed)
         return true;
+
+#if ENABLE(STREAMS_API)
+    if (body().readableStream())
+        return body().readableStream()->isDisturbed() || body().readableStream()->isLocked();
 #endif
 
     return false;
@@ -100,7 +119,7 @@ void FetchBodyOwner::blob(Ref<DeferredPromise>&& promise)
     m_body->blob(*this, WTFMove(promise), m_contentType);
 }
 
-void FetchBodyOwner::cloneBody(const FetchBodyOwner& owner)
+void FetchBodyOwner::cloneBody(FetchBodyOwner& owner)
 {
     m_contentType = owner.m_contentType;
     if (owner.isBodyNull())
@@ -200,7 +219,6 @@ void FetchBodyOwner::text(Ref<DeferredPromise>&& promise)
 void FetchBodyOwner::loadBlob(const Blob& blob, FetchBodyConsumer* consumer)
 {
     // Can only be called once for a body instance.
-    ASSERT(isDisturbed());
     ASSERT(!m_blobLoader);
     ASSERT(!isBodyNull());
 
@@ -288,15 +306,26 @@ void FetchBodyOwner::BlobLoader::didFail(const ResourceError&)
         owner.blobLoadingFailed();
 }
 
-ReadableStream* FetchBodyOwner::readableStream(JSC::ExecState& state)
+RefPtr<ReadableStream> FetchBodyOwner::readableStream(JSC::ExecState& state)
 {
     if (isBodyNull())
         return nullptr;
 
-    if (!m_body->hasReadableStream())
+    if (!m_body->hasReadableStream()) {
+        ASSERT(!m_readableStreamSource);
+        m_readableStreamSource = adoptRef(*new FetchBodySource(*this));
         m_body->setReadableStream(ReadableStream::create(state, m_readableStreamSource));
-
+    }
     return m_body->readableStream();
+}
+
+void FetchBodyOwner::consumeBodyAsStream()
+{
+    ASSERT(m_readableStreamSource);
+
+    body().consumeAsStream(*this, *m_readableStreamSource);
+    if (!m_readableStreamSource->isPulling())
+        m_readableStreamSource = nullptr;
 }
 
 } // namespace WebCore

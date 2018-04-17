@@ -819,12 +819,12 @@ RefPtr<Plugin> WebPage::createPlugin(WebFrame* frame, HTMLPlugInElement* pluginE
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(WEBGL) && !PLATFORM(COCOA)
-WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const String& /* url */)
+WebCore::WebGLLoadPolicy WebPage::webGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
 }
 
-WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const String& /* url */)
+WebCore::WebGLLoadPolicy WebPage::resolveWebGLPolicyForURL(WebFrame*, const URL&)
 {
     return WebGLAllowCreation;
 }
@@ -3254,7 +3254,6 @@ void WebPage::updatePreferences(const WebPreferencesStore& store)
     settings.setSimpleLineLayoutEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutEnabledKey()));
     settings.setSimpleLineLayoutDebugBordersEnabled(store.getBoolValueForKey(WebPreferencesKey::simpleLineLayoutDebugBordersEnabledKey()));
     
-    settings.setNewBlockInsideInlineModelEnabled(store.getBoolValueForKey(WebPreferencesKey::newBlockInsideInlineModelEnabledKey()));
     settings.setDeferredCSSParserEnabled(store.getBoolValueForKey(WebPreferencesKey::deferredCSSParserEnabledKey()));
 
     settings.setSubpixelCSSOMElementMetricsEnabled(store.getBoolValueForKey(WebPreferencesKey::subpixelCSSOMElementMetricsEnabledKey()));

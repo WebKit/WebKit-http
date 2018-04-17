@@ -1253,6 +1253,19 @@ FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_ACTION_TO_WKCONTENTVIEW)
     return [super canPerformAction:action withSender:sender];
 }
 
+- (id)targetForAction:(SEL)action withSender:(id)sender
+{
+    #define FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW(_action) \
+        if (action == @selector(_action:) && self.usesStandardContentView) \
+            return [_contentView targetForActionForWebView:action withSender:sender];
+
+    FOR_EACH_WKCONTENTVIEW_ACTION(FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW)
+
+    #undef FORWARD_TARGETFORACTION_TO_WKCONTENTVIEW
+
+    return [super targetForAction:action withSender:sender];
+}
+
 static inline CGFloat floorToDevicePixel(CGFloat input, float deviceScaleFactor)
 {
     return CGFloor(input * deviceScaleFactor) / deviceScaleFactor;
@@ -4499,6 +4512,11 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
     return NO;
 }
 
+- (BOOL)_isPlayingAudio
+{
+    return _page->isPlayingAudio();
+}
+
 - (BOOL)_isShowingNavigationGestureSnapshot
 {
     return _page->isShowingNavigationGestureSnapshot();
@@ -5263,6 +5281,21 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     return _impl->pageExtendedBackgroundColor();
 }
 
+- (_WKRectEdge)_pinnedState
+{
+    return _impl->pinnedState();
+}
+
+- (_WKRectEdge)_rubberBandingEnabled
+{
+    return _impl->rubberBandingEnabled();
+}
+
+- (void)_setRubberBandingEnabled:(_WKRectEdge)state
+{
+    _impl->setRubberBandingEnabled(state);
+}
+
 - (id)_immediateActionAnimationControllerForHitTestResult:(_WKHitTestResult *)hitTestResult withType:(_WKImmediateActionType)type userData:(id<NSSecureCoding>)userData
 {
     return nil;
@@ -5810,6 +5843,13 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
     return [_contentView _simulatedItemsForSession:session];
 #else
     return @[ ];
+#endif
+}
+
+- (void)_simulateItemsForAddingToSession:(id)session atLocation:(CGPoint)location completion:(void(^)(NSArray *))completion
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateItemsForAddingToSession:session atLocation:location completion:completion];
 #endif
 }
 

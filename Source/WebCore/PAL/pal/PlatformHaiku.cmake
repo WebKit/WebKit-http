@@ -5,5 +5,5 @@ list(APPEND PAL_SOURCES
 
 	system/haiku/SoundHaiku.cpp
 
-    text/KillRingNone.cpp
+    text/KillRing.cpp
 )

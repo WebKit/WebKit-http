@@ -32,9 +32,10 @@
 #include <pal/SessionID.h>
 #include <wtf/MainThread.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/StringHash.h>
 
-using namespace WebCore::DOMCache;
+using namespace WebCore::DOMCacheEngine;
 using namespace WebKit::NetworkCache;
 
 namespace WebKit {
@@ -46,6 +47,12 @@ static HashMap<PAL::SessionID, RefPtr<Engine>>& globalEngineMap()
     static NeverDestroyed<HashMap<PAL::SessionID, RefPtr<Engine>>> map;
 
     return map;
+}
+
+Engine::~Engine()
+{
+    for (auto& caches : m_caches.values())
+        caches->detach();
 }
 
 Engine& Engine::from(PAL::SessionID sessionID)
@@ -84,181 +91,128 @@ void Engine::open(const String& origin, const String& cacheName, CacheIdentifier
             return;
         }
 
-        auto& caches = cachesOrError.value().get();
-
-        auto position = caches.findMatching([&](const auto& item) { return item.name == cacheName; });
-        if (position == notFound) {
-            uint64_t cacheIdentifier = ++m_nextCacheIdentifier;
-            caches.append(Cache { cacheIdentifier, cacheName, Vector<Record>(), 0 });
-            writeCachesToDisk([cacheIdentifier, callback = WTFMove(callback)](std::optional<Error>&& error) {
-                if (error) {
-                    callback(makeUnexpected(error.value()));
-                    return;
-                }
-                callback(cacheIdentifier);
-            });
-        } else
-            callback(caches[position].identifier);
-
+        cachesOrError.value().get().open(cacheName, WTFMove(callback));
     });
 }
 
 void Engine::remove(uint64_t cacheIdentifier, CacheIdentifierCallback&& callback)
 {
-    std::optional<Cache> removedCache;
+    Caches* cachesToModify = nullptr;
     for (auto& caches : m_caches.values()) {
-        auto position = caches.findMatching([&](const auto& item) { return item.identifier == cacheIdentifier; });
-        if (position != notFound) {
-            removedCache = WTFMove(caches[position]);
-            caches.remove(position);
+        auto* cacheToRemove = caches->find(cacheIdentifier);
+        if (cacheToRemove) {
+            cachesToModify = caches.ptr();
             break;
         }
     }
-    if (!removedCache) {
+    if (!cachesToModify) {
         callback(makeUnexpected(Error::Internal));
         return;
     }
-    m_removedCaches.append(WTFMove(removedCache.value()));
-    writeCachesToDisk([cacheIdentifier, callback = WTFMove(callback)](std::optional<Error>&& error) {
-        if (error) {
-            callback(makeUnexpected(error.value()));
-            return;
-        }
-        callback(cacheIdentifier);
-    });
+
+    cachesToModify->remove(cacheIdentifier, WTFMove(callback));
 }
 
-void Engine::retrieveCaches(const String& origin, CacheInfosCallback&& callback)
+void Engine::retrieveCaches(const String& origin, uint64_t updateCounter, CacheInfosCallback&& callback)
 {
-    readCachesFromDisk(origin, [callback = WTFMove(callback)](CachesOrError&& cachesOrError) mutable {
+    readCachesFromDisk(origin, [updateCounter, callback = WTFMove(callback)](CachesOrError&& cachesOrError) mutable {
         if (!cachesOrError.hasValue()) {
             callback(makeUnexpected(cachesOrError.error()));
             return;
         }
 
-        auto& caches = cachesOrError.value().get();
-
-        Vector<CacheInfo> cachesInfo;
-        cachesInfo.reserveInitialCapacity(caches.size());
-        for (auto& cache : caches)
-            cachesInfo.uncheckedAppend(CacheInfo { cache.identifier, cache.name});
-
-        callback(WTFMove(cachesInfo));
+        callback(cachesOrError.value().get().cacheInfos(updateCounter));
     });
 }
 
-void Engine::retrieveRecords(uint64_t cacheIdentifier, RecordsCallback&& callback)
+void Engine::retrieveRecords(uint64_t cacheIdentifier, WebCore::URL&& url, RecordsCallback&& callback)
 {
-    readCache(cacheIdentifier, [callback = WTFMove(callback)](CacheOrError&& result) mutable {
+    readCache(cacheIdentifier, [url = WTFMove(url), callback = WTFMove(callback)](CacheOrError&& result) mutable {
         if (!result.hasValue()) {
             callback(makeUnexpected(result.error()));
             return;
         }
-        // FIXME: Pass records by reference.
-        auto& records = result.value().get().records;
 
-        Vector<Record> copy;
-        copy.reserveInitialCapacity(records.size());
-        for (auto& record : result.value().get().records)
-            copy.uncheckedAppend(record.copy());
-
-        callback(WTFMove(copy));
+        callback(result.value().get().retrieveRecords(url));
     });
 }
 
 void Engine::putRecords(uint64_t cacheIdentifier, Vector<Record>&& records, RecordIdentifiersCallback&& callback)
 {
-    readCache(cacheIdentifier, [this, cacheIdentifier, records = WTFMove(records), callback = WTFMove(callback)](CacheOrError&& result) mutable {
+    readCache(cacheIdentifier, [this, records = WTFMove(records), callback = WTFMove(callback)](CacheOrError&& result) mutable {
         if (!result.hasValue()) {
             callback(makeUnexpected(result.error()));
             return;
         }
 
-        Cache& cache = result.value();
-
-        WebCore::CacheQueryOptions options;
-        Vector<uint64_t> recordIdentifiers;
-        recordIdentifiers.reserveInitialCapacity(records.size());
-        for (auto& record : records) {
-            auto matchingRecords = Engine::queryCache(cache.records, record.request, options);
-            if (matchingRecords.isEmpty()) {
-                record.identifier = ++cache.nextRecordIdentifier;
-                recordIdentifiers.uncheckedAppend(record.identifier);
-                cache.records.append(WTFMove(record));
-            } else {
-                auto identifier = matchingRecords[0];
-                auto position = cache.records.findMatching([&](const auto& item) { return item.identifier == identifier; });
-                ASSERT(position != notFound);
-                if (position != notFound) {
-                    auto& existingRecord = cache.records[position];
-                    recordIdentifiers.uncheckedAppend(identifier);
-                    existingRecord.responseHeadersGuard = record.responseHeadersGuard;
-                    existingRecord.response = WTFMove(record.response);
-                    existingRecord.responseBody = WTFMove(record.responseBody);
-                    ++existingRecord.updateResponseCounter;
-                }
-            }
-        }
-        writeCacheRecords(cacheIdentifier, WTFMove(recordIdentifiers), [callback = WTFMove(callback)](RecordIdentifiersOrError&& result) mutable {
-            callback(WTFMove(result));
-        });
+        result.value().get().put(WTFMove(records), WTFMove(callback));
     });
 }
 
 void Engine::deleteMatchingRecords(uint64_t cacheIdentifier, WebCore::ResourceRequest&& request, WebCore::CacheQueryOptions&& options, RecordIdentifiersCallback&& callback)
 {
-    readCache(cacheIdentifier, [this, cacheIdentifier, request = WTFMove(request), options = WTFMove(options), callback = WTFMove(callback)](CacheOrError&& result) mutable {
+    readCache(cacheIdentifier, [this, request = WTFMove(request), options = WTFMove(options), callback = WTFMove(callback)](CacheOrError&& result) mutable {
         if (!result.hasValue()) {
             callback(makeUnexpected(result.error()));
             return;
         }
 
-        auto& currentRecords = result.value().get().records;
+        result.value().get().remove(WTFMove(request), WTFMove(options), WTFMove(callback));
+    });
+}
 
-        auto recordsToRemove = queryCache(currentRecords, request, options);
-        if (recordsToRemove.isEmpty()) {
-            callback({ });
-            return;
-        }
+void Engine::initialize(Function<void(std::optional<Error>&&)>&& callback)
+{
+    if (m_salt) {
+        callback(std::nullopt);
+        return;
+    }
 
-        Vector<Record> recordsToKeep;
-        for (auto& record : currentRecords) {
-            if (recordsToRemove.findMatching([&](auto item) { return item == record.identifier; }) == notFound)
-                recordsToKeep.append(record.copy());
-        }
-        removeCacheRecords(cacheIdentifier, WTFMove(recordsToRemove), [this, cacheIdentifier, recordsToKeep = WTFMove(recordsToKeep), callback = WTFMove(callback)](RecordIdentifiersOrError&& result) mutable {
-            if (!result.hasValue()) {
-                callback(makeUnexpected(result.error()));
+    if (!shouldPersist()) {
+        callback(std::nullopt);
+        return;
+    }
+
+    String saltPath = WebCore::pathByAppendingComponent(m_rootPath, ASCIILiteral("salt"));
+    m_ioQueue->dispatch([protectedThis = makeRef(*this), this, callback = WTFMove(callback), saltPath = WTFMove(saltPath)] () mutable {
+        WebCore::makeAllDirectories(m_rootPath);
+        RunLoop::main().dispatch([protectedThis = WTFMove(protectedThis), this, salt = readOrMakeSalt(saltPath), callback = WTFMove(callback)]() mutable {
+            if (!salt) {
+                callback(Error::WriteDisk);
                 return;
             }
-
-            auto* writtenCache = cache(cacheIdentifier);
-            if (!writtenCache) {
-                callback(makeUnexpected(Error::Internal));
-                return;
-            }
-            writtenCache->records = WTFMove(recordsToKeep);
-
-            callback(WTFMove(result.value()));
+            m_salt = WTFMove(salt);
+            callback(std::nullopt);
         });
     });
 }
 
-void Engine::writeCachesToDisk(Function<void(std::optional<Error>&&)>&& callback)
-{
-    // FIXME: Implement writing.
-    callback(std::nullopt);
-}
-
 void Engine::readCachesFromDisk(const String& origin, CachesCallback&& callback)
 {
-    // FIXME: Implement reading.
+    initialize([this, origin, callback = WTFMove(callback)](std::optional<Error>&& error) mutable {
+        auto& caches = m_caches.ensure(origin, [&origin, this] {
+            return Caches::create(*this, String { origin });
+        }).iterator->value;
 
-    auto& caches = m_caches.ensure(origin, [] {
-        return Vector<Cache>();
-    }).iterator->value;
+        if (caches->isInitialized()) {
+            callback(std::reference_wrapper<Caches> { caches.get() });
+            return;
+        }
 
-    callback(std::reference_wrapper<Vector<Cache>> { caches });
+        if (error) {
+            callback(makeUnexpected(error.value()));
+            return;
+        }
+
+        caches->initialize([callback = WTFMove(callback), caches = caches.copyRef()](std::optional<Error>&& error) mutable {
+            if (error) {
+                callback(makeUnexpected(error.value()));
+                return;
+            }
+
+            callback(std::reference_wrapper<Caches> { caches.get() });
+        });
+    });
 }
 
 void Engine::readCache(uint64_t cacheIdentifier, CacheCallback&& callback)
@@ -272,67 +226,32 @@ void Engine::readCache(uint64_t cacheIdentifier, CacheCallback&& callback)
     callback(std::reference_wrapper<Cache> { *cache });
 }
 
-void Engine::writeCacheRecords(uint64_t cacheIdentifier, Vector<uint64_t>&& recordsIdentifiers, RecordIdentifiersCallback&& callback)
-{
-    // FIXME: Implement writing.
-    callback(WTFMove(recordsIdentifiers));
-}
-
-void Engine::removeCacheRecords(uint64_t cacheIdentifier, Vector<uint64_t>&& recordsIdentifiers, RecordIdentifiersCallback&& callback)
-{
-    // FIXME: Implement writing.
-    callback(WTFMove(recordsIdentifiers));
-}
-
 Cache* Engine::cache(uint64_t cacheIdentifier)
 {
     Cache* result = nullptr;
     for (auto& caches : m_caches.values()) {
-        auto position = caches.findMatching([&](const auto& item) { return item.identifier == cacheIdentifier; });
-        if (position != notFound) {
-            result = &caches[position];
+        if ((result = caches->find(cacheIdentifier)))
             break;
-        }
-    }
-    if (!result) {
-        auto position = m_removedCaches.findMatching([&](const auto& item) { return item.identifier == cacheIdentifier; });
-        if (position != notFound)
-            result = &m_removedCaches[position];
     }
     return result;
 }
 
-Vector<uint64_t> Engine::queryCache(const Vector<Record>& records, const WebCore::ResourceRequest& request, const WebCore::CacheQueryOptions& options)
-{
-    if (!options.ignoreMethod && request.httpMethod() != "GET")
-        return { };
-
-    Vector<uint64_t> results;
-    for (const auto& record : records) {
-        if (WebCore::DOMCache::queryCacheMatch(request, record.request, record.response, options))
-            results.append(record.identifier);
-    }
-    return results;
-}
-
-void Engine::writeFile(const String& filename, NetworkCache::Data&& data, WebCore::DOMCache::CompletionCallback&& callback)
+void Engine::writeFile(const String& filename, NetworkCache::Data&& data, WebCore::DOMCacheEngine::CompletionCallback&& callback)
 {
     if (!shouldPersist()) {
         callback(std::nullopt);
         return;
     }
 
-    m_ioQueue->dispatch([this, protectedThis = makeRef(*this), callback = WTFMove(callback), data = WTFMove(data), filename = filename.isolatedCopy()] () mutable {
+    m_ioQueue->dispatch([callback = WTFMove(callback), data = WTFMove(data), filename = filename.isolatedCopy()] () mutable {
         auto channel = IOChannel::open(filename, IOChannel::Type::Create);
-        channel->write(0, data, m_ioQueue.get(), [callback = WTFMove(callback)](int error) mutable {
-            RunLoop::main().dispatch([callback = WTFMove(callback), error]() mutable {
-                if (error) {
-                    // FIXME: Use specific filesystem error.
-                    callback(Error::Internal);
-                    return;
-                }
-                callback(std::nullopt);
-            });
+        channel->write(0, data, nullptr, [callback = WTFMove(callback)](int error) mutable {
+            ASSERT(RunLoop::isMain());
+            if (error) {
+                callback(Error::WriteDisk);
+                return;
+            }
+            callback(std::nullopt);
         });
     });
 }
@@ -344,7 +263,7 @@ void Engine::readFile(const String& filename, WTF::Function<void(const NetworkCa
         return;
     }
 
-    m_ioQueue->dispatch([this, protectedThis = makeRef(*this), callback = WTFMove(callback), filename = filename.isolatedCopy()]() mutable {
+    m_ioQueue->dispatch([callback = WTFMove(callback), filename = filename.isolatedCopy()]() mutable {
         auto channel = IOChannel::open(filename, IOChannel::Type::Read);
         if (channel->fileDescriptor() < 0) {
             RunLoop::main().dispatch([callback = WTFMove(callback)]() mutable {
@@ -353,10 +272,10 @@ void Engine::readFile(const String& filename, WTF::Function<void(const NetworkCa
             return;
         }
 
-        channel->read(0, std::numeric_limits<size_t>::max(), m_ioQueue.get(), [callback = WTFMove(callback)](const Data& data, int error) mutable {
-            RunLoop::main().dispatch([callback = WTFMove(callback), data, error]() mutable {
-                callback(data, error);
-            });
+        channel->read(0, std::numeric_limits<size_t>::max(), nullptr, [callback = WTFMove(callback)](const Data& data, int error) mutable {
+            // FIXME: We should do the decoding in the background thread.
+            ASSERT(RunLoop::isMain());
+            callback(data, error);
         });
     });
 }
@@ -369,6 +288,69 @@ void Engine::removeFile(const String& filename)
     m_ioQueue->dispatch([filename = filename.isolatedCopy()]() mutable {
         WebCore::deleteFile(filename);
     });
+}
+
+void Engine::removeCaches(const String& origin)
+{
+    ASSERT(m_caches.contains(origin));
+    m_caches.remove(origin);
+}
+
+void Engine::clearMemoryRepresentation(const String& origin)
+{
+    readCachesFromDisk(origin, [](CachesOrError&& result) {
+        if (!result.hasValue())
+            return;
+        result.value().get().clearMemoryRepresentation();
+    });
+}
+
+void Engine::lock(uint64_t cacheIdentifier)
+{
+    auto& counter = m_cacheLocks.ensure(cacheIdentifier, []() {
+        return 0;
+    }).iterator->value;
+
+    ++counter;
+}
+
+void Engine::unlock(uint64_t cacheIdentifier)
+{
+    auto lockCount = m_cacheLocks.find(cacheIdentifier);
+    ASSERT(lockCount != m_cacheLocks.end());
+    if (lockCount == m_cacheLocks.end())
+        return;
+
+    ASSERT(lockCount->value);
+    if (--lockCount->value)
+        return;
+
+    readCache(cacheIdentifier, [this](CacheOrError&& result) mutable {
+        if (!result.hasValue())
+            return;
+
+        result.value().get().dispose();
+    });
+}
+
+String Engine::representation()
+{
+    bool isFirst = true;
+    StringBuilder builder;
+    builder.append("[");
+    for (auto& keyValue : m_caches) {
+        if (!isFirst)
+            builder.append(",");
+        isFirst = false;
+
+        builder.append("\n{ \"origin\" : \"");
+        builder.append(keyValue.key);
+        builder.append("\", \"caches\" : ");
+        keyValue.value->appendRepresentation(builder);
+        builder.append("}");
+    }
+    builder.append("\n]");
+    return builder.toString();
 }
 
 } // namespace CacheStorage

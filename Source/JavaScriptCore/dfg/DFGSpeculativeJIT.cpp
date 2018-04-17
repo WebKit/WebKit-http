@@ -172,7 +172,7 @@ void SpeculativeJIT::emitAllocateRawObject(GPRReg resultGPR, RegisteredStructure
 void SpeculativeJIT::emitGetLength(InlineCallFrame* inlineCallFrame, GPRReg lengthGPR, bool includeThis)
 {
     if (inlineCallFrame && !inlineCallFrame->isVarargs())
-        m_jit.move(TrustedImm32(inlineCallFrame->arguments.size() - !includeThis), lengthGPR);
+        m_jit.move(TrustedImm32(inlineCallFrame->argumentCountIncludingThis - !includeThis), lengthGPR);
     else {
         VirtualRegister argumentCountRegister = m_jit.argumentCount(inlineCallFrame);
         m_jit.load32(JITCompiler::payloadFor(argumentCountRegister), lengthGPR);
@@ -1808,7 +1808,7 @@ void SpeculativeJIT::checkArgumentTypes()
     ASSERT(!m_currentNode);
     m_origin = NodeOrigin(CodeOrigin(0), CodeOrigin(0), true);
 
-    auto& arguments = m_jit.graph().m_entrypointToArguments.find(m_jit.graph().block(0))->value;
+    auto& arguments = m_jit.graph().m_rootToArguments.find(m_jit.graph().block(0))->value;
     for (int i = 0; i < m_jit.codeBlock()->numParameters(); ++i) {
         Node* node = arguments[i];
         if (!node) {
@@ -1912,7 +1912,7 @@ void SpeculativeJIT::linkOSREntries(LinkBuffer& linkBuffer)
         if (!block->isOSRTarget && !block->isCatchEntrypoint)
             continue;
         if (block->isCatchEntrypoint) {
-            auto& argumentsVector = m_jit.graph().m_entrypointToArguments.find(block)->value;
+            auto& argumentsVector = m_jit.graph().m_rootToArguments.find(block)->value;
             Vector<FlushFormat> argumentFormats;
             argumentFormats.reserveInitialCapacity(argumentsVector.size());
             for (Node* setArgument : argumentsVector) {
@@ -1931,6 +1931,7 @@ void SpeculativeJIT::linkOSREntries(LinkBuffer& linkBuffer)
     }
 
     m_jit.jitCode()->finalizeOSREntrypoints();
+    m_jit.jitCode()->common.finalizeCatchEntrypoints();
 
     ASSERT(osrEntryIndex == m_osrEntryHeads.size());
     
@@ -6797,7 +6798,7 @@ void SpeculativeJIT::compileCreateDirectArguments(Node* node)
     bool lengthIsKnown; // if false, lengthGPR will have the length.
     if (node->origin.semantic.inlineCallFrame
         && !node->origin.semantic.inlineCallFrame->isVarargs()) {
-        knownLength = node->origin.semantic.inlineCallFrame->arguments.size() - 1;
+        knownLength = node->origin.semantic.inlineCallFrame->argumentCountIncludingThis - 1;
         lengthIsKnown = true;
     } else {
         knownLength = UINT_MAX;
@@ -7890,7 +7891,7 @@ void SpeculativeJIT::compileTypeOf(Node* node)
     cellResult(resultGPR, node);
 }
 
-void SpeculativeJIT::compileCheckStructure(Node* node, GPRReg cellGPR, GPRReg tempGPR)
+void SpeculativeJIT::emitStructureCheck(Node* node, GPRReg cellGPR, GPRReg tempGPR)
 {
     ASSERT(node->structureSet().size());
     
@@ -7935,7 +7936,7 @@ void SpeculativeJIT::compileCheckStructure(Node* node)
     case CellUse:
     case KnownCellUse: {
         SpeculateCellOperand cell(this, node->child1());
-        compileCheckStructure(node, cell.gpr(), InvalidGPRReg);
+        emitStructureCheck(node, cell.gpr(), InvalidGPRReg);
         noResult(node);
         return;
     }
@@ -7953,7 +7954,7 @@ void SpeculativeJIT::compileCheckStructure(Node* node)
             m_jit.branchIfNotOther(valueRegs, tempGPR));
         JITCompiler::Jump done = m_jit.jump();
         cell.link(&m_jit);
-        compileCheckStructure(node, valueRegs.payloadGPR(), tempGPR);
+        emitStructureCheck(node, valueRegs.payloadGPR(), tempGPR);
         done.link(&m_jit);
         noResult(node);
         return;
@@ -8353,7 +8354,7 @@ void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
     case Int32Use:
     case Int52RepUse:
     case DoubleRepUse:
-        compileToStringOrCallStringConstructorOnNumber(node);
+        compileNumberToStringWithValidRadixConstant(node, 10);
         return;
 
     default:
@@ -8434,11 +8435,16 @@ void SpeculativeJIT::compileToStringOrCallStringConstructor(Node* node)
     }
 }
 
-void SpeculativeJIT::compileToStringOrCallStringConstructorOnNumber(Node* node)
+void SpeculativeJIT::compileNumberToStringWithValidRadixConstant(Node* node)
+{
+    compileNumberToStringWithValidRadixConstant(node, node->validRadixConstant());
+}
+
+void SpeculativeJIT::compileNumberToStringWithValidRadixConstant(Node* node, int32_t radix)
 {
     auto callToString = [&] (auto operation, GPRReg resultGPR, auto valueReg) {
         flushRegisters();
-        callOperation(operation, resultGPR, valueReg, CCallHelpers::TrustedImm32(10));
+        callOperation(operation, resultGPR, valueReg, TrustedImm32(radix));
         m_jit.exceptionCheck();
         cellResult(resultGPR, node);
     };
@@ -10282,6 +10288,29 @@ void SpeculativeJIT::compileLoadValueFromMapBucket(Node* node)
 
     m_jit.loadValue(MacroAssembler::Address(bucketGPR, HashMapBucket<HashMapBucketDataKeyValue>::offsetOfValue()), resultRegs);
     jsValueResult(resultRegs, node);
+}
+
+void SpeculativeJIT::compileThrow(Node* node)
+{
+    JSValueOperand value(this, node->child1());
+    JSValueRegs valueRegs = value.jsValueRegs();
+    flushRegisters();
+    callOperation(operationThrowDFG, valueRegs);
+    m_jit.exceptionCheck();
+    m_jit.breakpoint();
+    noResult(node);
+}
+
+void SpeculativeJIT::compileThrowStaticError(Node* node)
+{
+    SpeculateCellOperand message(this, node->child1());
+    GPRReg messageGPR = message.gpr();
+    speculateString(node->child1(), messageGPR);
+    flushRegisters();
+    callOperation(operationThrowStaticError, messageGPR, node->errorType());
+    m_jit.exceptionCheck();
+    m_jit.breakpoint();
+    noResult(node);
 }
 
 } } // namespace JSC::DFG

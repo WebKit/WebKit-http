@@ -260,7 +260,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // DFG execution.
         break;
     }
-        
+
     case KillStack: {
         // This is just a hint telling us that the OSR state of the local is no longer inside the
         // flushed data.
@@ -273,7 +273,33 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         // non-clear value.
         ASSERT(!m_state.variables().operand(node->local()).isClear());
         break;
-        
+
+    case InitializeEntrypointArguments: {
+        unsigned entrypointIndex = node->entrypointIndex();
+        const Vector<FlushFormat>& argumentFormats = m_graph.m_argumentFormats[entrypointIndex];
+        for (unsigned argument = 0; argument < argumentFormats.size(); ++argument) {
+            AbstractValue& value = m_state.variables().argument(argument);
+            switch (argumentFormats[argument]) {
+            case FlushedInt32:
+                value.setType(SpecInt32Only);
+                break;
+            case FlushedBoolean:
+                value.setType(SpecBoolean);
+                break;
+            case FlushedCell:
+                value.setType(m_graph, SpecCell);
+                break;
+            case FlushedJSValue:
+                value.makeBytecodeTop();
+                break;
+            default:
+                DFG_CRASH(m_graph, node, "Bad flush format for argument");
+                break;
+            }
+        }
+        break;
+    }
+
     case LoadVarargs:
     case ForwardVarargs: {
         // FIXME: ForwardVarargs should check if the count becomes known, and if it does, it should turn
@@ -1758,7 +1784,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             
             unsigned argumentIndex = index.asUInt32() + node->numberOfArgumentsToSkip();
             if (inlineCallFrame) {
-                if (argumentIndex < inlineCallFrame->arguments.size() - 1) {
+                if (argumentIndex < inlineCallFrame->argumentCountIncludingThis - 1) {
                     forNode(node) = m_state.variables().operand(
                         virtualRegisterForArgument(argumentIndex + 1) + inlineCallFrame->stackOffset);
                     m_state.setFoundConstants(true);
@@ -1777,7 +1803,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             // We have a bound on the types even though it's random access. Take advantage of this.
             
             AbstractValue result;
-            for (unsigned i = 1 + node->numberOfArgumentsToSkip(); i < inlineCallFrame->arguments.size(); ++i) {
+            for (unsigned i = 1 + node->numberOfArgumentsToSkip(); i < inlineCallFrame->argumentCountIncludingThis; ++i) {
                 result.merge(
                     m_state.variables().operand(
                         virtualRegisterForArgument(i) + inlineCallFrame->stackOffset));
@@ -1866,10 +1892,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
+    case EntrySwitch:
+        break;
+
     case Return:
         m_state.setIsValid(false);
         break;
 
+    case Throw:
+    case ThrowStaticError:
     case TailCall:
     case DirectTailCall:
     case TailCallVarargs:
@@ -1878,11 +1909,6 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         m_state.setIsValid(false);
         break;
         
-    case Throw:
-    case ThrowStaticError:
-        m_state.setIsValid(false);
-        break;
-            
     case ToPrimitive: {
         JSValue childConst = forNode(node->child1()).value();
         if (childConst && childConst.isNumber()) {
@@ -1952,10 +1978,25 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
     }
 
-    case NumberToStringWithRadix:
+    case NumberToStringWithRadix: {
+        JSValue radixValue = forNode(node->child2()).m_value;
+        if (radixValue && radixValue.isInt32()) {
+            int32_t radix = radixValue.asInt32();
+            if (2 <= radix && radix <= 36) {
+                m_state.setFoundConstants(true);
+                forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
+                break;
+            }
+        }
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
         break;
+    }
+
+    case NumberToStringWithValidRadixConstant: {
+        forNode(node).set(m_graph, m_graph.m_vm.stringStructure.get());
+        break;
+    }
         
     case NewStringObject: {
         ASSERT(node->structure()->classInfo() == StringObject::info());
@@ -2363,6 +2404,18 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         }
         
         filter(value, set, admittedTypes);
+        break;
+    }
+
+    case CheckStructureOrEmpty: {
+        AbstractValue& value = forNode(node->child1());
+
+        bool mayBeEmpty = value.m_type & SpecEmpty;
+        if (!mayBeEmpty)
+            m_state.setFoundConstants(true);
+
+        SpeculatedType admittedTypes = mayBeEmpty ? SpecEmpty : SpecNone;
+        filter(value, node->structureSet(), admittedTypes);
         break;
     }
         

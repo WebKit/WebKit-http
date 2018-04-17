@@ -28,35 +28,55 @@
 #if ENABLE(SERVICE_WORKER)
 
 #include "ServiceWorkerJobData.h"
+#include "ServiceWorkerRegistrationData.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
+#include <wtf/Identified.h>
 
 namespace WebCore {
 
 class SWServer;
+class SWServerWorker;
 struct ExceptionData;
 
-class SWServerRegistration {
+class SWServerRegistration : public ThreadSafeIdentified<SWServerRegistration> {
 public:
-    explicit SWServerRegistration(SWServer&);
+    explicit SWServerRegistration(SWServer&, const ServiceWorkerRegistrationKey&);
     SWServerRegistration(const SWServerRegistration&) = delete;
     ~SWServerRegistration();
 
     void enqueueJob(const ServiceWorkerJobData&);
 
+    ServiceWorkerRegistrationData data() const;
+
 private:
     void jobTimerFired();
-    void performCurrentJob();
-    void rejectCurrentJob(const ExceptionData&);
-
     void startNextJob();
+    void rejectCurrentJob(const ExceptionData&);
+    void resolveCurrentJob(const ServiceWorkerRegistrationData&);
     void finishCurrentJob();
+
+    void runRegisterJob(const ServiceWorkerJobData&);
+    void runUpdateJob(const ServiceWorkerJobData&);
+
+    void rejectWithExceptionOnMainThread(const ExceptionData&);
+    void resolveWithRegistrationOnMainThread();
+    bool isEmpty();
+    SWServerWorker* getNewestWorker();
 
     Deque<ServiceWorkerJobData> m_jobQueue;
     std::unique_ptr<ServiceWorkerJobData> m_currentJob;
 
+    bool m_uninstalling { false };
+    std::unique_ptr<SWServerWorker> m_installingWorker;
+    std::unique_ptr<SWServerWorker> m_waitingWorker;
+    std::unique_ptr<SWServerWorker> m_activeWorker;
+    URL m_scopeURL;
+    std::optional<ServiceWorkerUpdateViaCache> m_updateViaCache;
+
     Timer m_jobTimer;
     SWServer& m_server;
+    ServiceWorkerRegistrationKey m_registrationKey;
 };
 
 } // namespace WebCore

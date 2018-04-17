@@ -2843,6 +2843,11 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
 
+    case NumberToStringWithValidRadixConstant: {
+        compileNumberToStringWithValidRadixConstant(node);
+        break;
+    }
+
     case GetByValWithThis: {
         JSValueOperand base(this, node->child1());
         JSValueRegs baseRegs = base.jsValueRegs();
@@ -3647,14 +3652,16 @@ void SpeculativeJIT::compile(Node* node)
         break;
     }
         
-    case Throw:
-    case ThrowStaticError: {
-        // We expect that throw statements are rare and are intended to exit the code block
-        // anyway, so we just OSR back to the old JIT for now.
-        terminateSpeculativeExecution(Uncountable, JSValueRegs(), 0);
+    case Throw: {
+        compileThrow(node);
         break;
     }
-        
+
+    case ThrowStaticError: {
+        compileThrowStaticError(node);
+        break;
+    }
+
     case BooleanToNumber: {
         switch (node->child1().useKind()) {
         case BooleanUse: {
@@ -5643,13 +5650,17 @@ void SpeculativeJIT::compile(Node* node)
         GPRReg tagGPR = tag.gpr();
         GPRReg payloadGPR = payload.gpr();
 
-        JSValue* ptr = &reinterpret_cast<JSValue*>(m_jit.jitCode()->catchOSREntryBuffer->dataBuffer())[node->catchOSREntryIndex()];
+        JSValue* ptr = &reinterpret_cast<JSValue*>(m_jit.jitCode()->common.catchOSREntryBuffer->dataBuffer())[node->catchOSREntryIndex()];
         m_jit.move(CCallHelpers::TrustedImmPtr(ptr), tempGPR);
         m_jit.load32(CCallHelpers::Address(tempGPR, TagOffset), tagGPR);
         m_jit.load32(CCallHelpers::Address(tempGPR, PayloadOffset), payloadGPR);
         jsValueResult(tagGPR, payloadGPR, node);
         break;
     }
+
+    case CheckStructureOrEmpty:
+        DFG_CRASH(m_jit.graph(), node, "CheckStructureOrEmpty only used in 64-bit DFG");
+        break;
 
     case LastNodeType:
     case Phi:
@@ -5696,6 +5707,8 @@ void SpeculativeJIT::compile(Node* node)
     case AtomicsSub:
     case AtomicsXor:
     case IdentityWithProfile:
+    case InitializeEntrypointArguments:
+    case EntrySwitch:
         DFG_CRASH(m_jit.graph(), node, "unexpected node in DFG backend");
         break;
     }

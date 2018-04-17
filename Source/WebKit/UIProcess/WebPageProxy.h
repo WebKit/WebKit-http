@@ -561,7 +561,9 @@ public:
 #if ENABLE(DATA_INTERACTION)
     void didPerformDataInteractionControllerOperation(bool handled);
     void didHandleStartDataInteractionRequest(bool started);
+    void didHandleAdditionalDragItemsRequest(bool added);
     void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+    void requestAdditionalItemsForDragSession(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
     void didConcludeEditDataInteraction(std::optional<WebCore::TextIndicatorData>);
 #endif
 #endif
@@ -1247,7 +1249,8 @@ private:
 
     void didStartProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& url, const String& unreachableURL, const UserData&);
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
-    void didPerformClientRedirectForLoadForFrame(uint64_t frameID, uint64_t navigationID);
+    void willPerformClientRedirectForFrame(uint64_t frameID, const String& url, double delay);
+    void didCancelClientRedirectForFrame(uint64_t frameID);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
     void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
@@ -1295,17 +1298,17 @@ private:
     void runJavaScriptConfirm(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, Ref<Messages::WebPageProxy::RunJavaScriptConfirm::DelayedReply>&&);
     void runJavaScriptPrompt(uint64_t frameID, const WebCore::SecurityOriginData&, const String&, const String&, RefPtr<Messages::WebPageProxy::RunJavaScriptPrompt::DelayedReply>);
     void setStatusText(const String&);
-    void mouseDidMoveOverElement(const WebHitTestResultData&, uint32_t modifiers, const UserData&);
+    void mouseDidMoveOverElement(WebHitTestResultData&&, uint32_t modifiers, UserData&&);
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
     void unavailablePluginButtonClicked(uint32_t opaquePluginUnavailabilityReason, const String& mimeType, const String& pluginURLString, const String& pluginsPageURLString, const String& frameURLString, const String& pageURLString);
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 #if ENABLE(WEBGL)
-    void webGLPolicyForURL(const String& url, uint32_t& loadPolicy);
-    void resolveWebGLPolicyForURL(const String& url, uint32_t& loadPolicy);
+    void webGLPolicyForURL(WebCore::URL&&, Ref<Messages::WebPageProxy::WebGLPolicyForURL::DelayedReply>&&);
+    void resolveWebGLPolicyForURL(WebCore::URL&&, Ref<Messages::WebPageProxy::ResolveWebGLPolicyForURL::DelayedReply>&&);
 #endif // ENABLE(WEBGL)
     void setToolbarsAreVisible(bool toolbarsAreVisible);
-    void getToolbarsAreVisible(bool& toolbarsAreVisible);
+    void getToolbarsAreVisible(Ref<Messages::WebPageProxy::GetToolbarsAreVisible::DelayedReply>&&);
     void setMenuBarIsVisible(bool menuBarIsVisible);
     void getMenuBarIsVisible(bool& menuBarIsVisible);
     void setStatusBarIsVisible(bool statusBarIsVisible);
@@ -1556,7 +1559,7 @@ private:
 
     void setRenderTreeSize(uint64_t treeSize) { m_renderTreeSize = treeSize; }
 
-#if PLUGIN_ARCHITECTURE(X11)
+#if PLATFORM(X11)
     void createPluginContainer(uint64_t& windowID);
     void windowedPluginGeometryDidChange(const WebCore::IntRect& frameRect, const WebCore::IntRect& clipRect, uint64_t windowID);
     void windowedPluginVisibilityDidChange(bool isVisible, uint64_t windowID);

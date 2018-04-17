@@ -80,6 +80,15 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
     _WKImmediateActionTelLink
 } WK_API_AVAILABLE(macosx(10.12));
 
+typedef NS_OPTIONS(NSInteger, _WKRectEdge) {
+    _WKRectEdgeNone = 0,
+    _WKRectEdgeLeft = 1 << CGRectMinXEdge,
+    _WKRectEdgeTop = 1 << CGRectMinYEdge,
+    _WKRectEdgeRight = 1 << CGRectMaxXEdge,
+    _WKRectEdgeBottom = 1 << CGRectMaxYEdge,
+    _WKRectEdgeAll = _WKRectEdgeLeft | _WKRectEdgeTop | _WKRectEdgeRight | _WKRectEdgeBottom,
+} WK_API_AVAILABLE(macosx(WK_MAC_TBA));
+
 #endif
 
 @class WKBrowsingContextHandle;
@@ -119,6 +128,8 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 @property (nonatomic, readonly) NSURL *_committedURL;
 @property (nonatomic, readonly) NSString *_MIMEType;
 @property (nonatomic, readonly) NSString *_userAgent WK_API_AVAILABLE(macosx(10.11), ios(9.0));
+
+@property (nonatomic, readonly, getter=_isPlayingAudio) BOOL _playingAudio WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 
 @property (copy, setter=_setApplicationNameForUserAgent:) NSString *_applicationNameForUserAgent;
 @property (copy, setter=_setCustomUserAgent:) NSString *_customUserAgent;
@@ -236,6 +247,10 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_accessibilityDidGetSpeakSelectionContent:(NSString *)content WK_API_AVAILABLE(ios(WK_IOS_TBA));
 
 #else
+
+@property (nonatomic, readonly) _WKRectEdge _pinnedState;
+@property (nonatomic, setter=_setRubberBandingEnabled:) _WKRectEdge _rubberBandingEnabled;
+
 @property (readonly) NSColor *_pageExtendedBackgroundColor;
 @property (nonatomic, setter=_setDrawsBackground:) BOOL _drawsBackground;
 @property (nonatomic, setter=_setTopContentInset:) CGFloat _topContentInset;
@@ -371,6 +386,7 @@ typedef NS_ENUM(NSInteger, _WKImmediateActionType) {
 - (void)_simulateDataInteractionSessionDidEnd:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateWillBeginDataInteractionWithSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (NSArray *)_simulatedItemsForSession:(id)session WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (void)_simulateItemsForAddingToSession:(id)session atLocation:(CGPoint)location completion:(void(^)(NSArray *))completion WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulatePrepareForDataInteractionSession:(id)session completion:(dispatch_block_t)completion WK_API_AVAILABLE(ios(WK_IOS_TBA));
 - (void)_simulateLongPressActionAtLocation:(CGPoint)location;
 

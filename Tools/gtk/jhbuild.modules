@@ -119,12 +119,9 @@
   </autotools>
 
   <autotools id="freetype6" autogen-sh="configure">
-    <branch module="freetype/freetype-2.4.11.tar.bz2" version="2.4.11"
+    <branch module="freetype/freetype-2.8.tar.bz2" version="2.8"
             repo="savannah.gnu.org"
-            hash="sha256:ef9d0bcb64647d9e5125dc7534d7ca371c98310fec87677c410f397f71ffbe3f"
-            md5sum="b93435488942486c8d0ca22e8f768034">
-      <patch file="freetype6-2.4.11-truetype-font-height-fix.patch" strip="1"/>
-    </branch>
+            hash="sha256:a3c603ed84c3c2495f9c9331fe6bba3bb0ee65e06ec331e0a0fb52158291b40b"/>
   </autotools>
 
   <autotools id="harfbuzz" autogen-sh="configure">
@@ -312,10 +309,9 @@
 
   <autotools id="libxml2" supports-non-srcdir-builds="no"
              autogen-sh="./autogen.sh; ./configure --with-python=no">
-    <branch module="/sources/libxml2-2.9.1.tar.gz" version="2.9.1"
+    <branch module="/sources/libxml2-2.9.5.tar.gz" version="2.9.5"
             repo="xmlsoft.org"
-            hash="sha256:fd3c64cb66f2c4ea27e934d275904d92cec494a8e8405613780cbc8a71680fdb"
-            md5sum="9c0cfef285d5c4a5c80d00904ddab380"/>
+            hash="sha256:4031c1ecee9ce7ba4f313e91ef6284164885cdb69937a123f6a83bb6a72dcd38"/>
   </autotools>
 
   <autotools id="xserver" autogenargs="--disable-xinerama --enable-glx --enable-composite --disable-xorg --disable-dmx --disable-xnest --disable-xquartz --disable-xwin --disable-xephyr --disable-xfake --disable-xfbdev --disable-install-setuid --disable-unit-tests --disable-present --enable-unix-transport --enable-tcp-transport --disable-local-transport --with-xkb-path=/usr/share/X11/xkb --with-xkb-output=/var/lib/xkb --with-xkb-bin-directory=/usr/bin --without-dtrace">

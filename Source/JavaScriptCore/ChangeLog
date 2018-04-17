@@ -1,3 +1,1115 @@
+2017-09-06  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Remove "malloc" and "free" from JSC/API
+        https://bugs.webkit.org/show_bug.cgi?id=176331
+
+        Reviewed by Keith Miller.
+
+        Remove "malloc" and "free" manual calls in JSC/API.
+
+        * API/JSValue.mm:
+        (createStructHandlerMap):
+        * API/JSWrapperMap.mm:
+        (parsePropertyAttributes):
+        (makeSetterName):
+        (copyPrototypeProperties):
+        Use RetainPtr<NSString> to keep NSString. We avoid repeated "char*" to "NSString" conversion.
+
+        * API/ObjcRuntimeExtras.h:
+        (adoptSystem):
+        Add adoptSystem to automate calling system free().
+
+        (protocolImplementsProtocol):
+        (forEachProtocolImplementingProtocol):
+        (forEachMethodInClass):
+        (forEachMethodInProtocol):
+        (forEachPropertyInProtocol):
+        (StringRange::StringRange):
+        (StringRange::operator const char* const):
+        (StringRange::get const):
+        Use CString for backend.
+
+        (StructBuffer::StructBuffer):
+        (StructBuffer::~StructBuffer):
+        (StringRange::~StringRange): Deleted.
+        Use fastAlignedMalloc/astAlignedFree to get aligned memory.
+
+2017-09-06  Mark Lam  <mark.lam@apple.com>
+
+        constructGenericTypedArrayViewWithArguments() is missing an exception check.
+        https://bugs.webkit.org/show_bug.cgi?id=176485
+        <rdar://problem/33898874>
+
+        Reviewed by Keith Miller.
+
+        * runtime/JSGenericTypedArrayViewConstructorInlines.h:
+        (JSC::constructGenericTypedArrayViewWithArguments):
+
+2017-09-06  Saam Barati  <sbarati@apple.com>
+
+        Air should have a Vector of prologue generators instead of a HashMap representing an optional prologue generator
+        https://bugs.webkit.org/show_bug.cgi?id=176346
+
+        Reviewed by Mark Lam.
+
+        * b3/B3Procedure.cpp:
+        (JSC::B3::Procedure::Procedure):
+        (JSC::B3::Procedure::setNumEntrypoints):
+        * b3/B3Procedure.h:
+        (JSC::B3::Procedure::setNumEntrypoints): Deleted.
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::defaultPrologueGenerator):
+        (JSC::B3::Air::Code::Code):
+        (JSC::B3::Air::Code::setNumEntrypoints):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setPrologueForEntrypoint):
+        (JSC::B3::Air::Code::prologueGeneratorForEntrypoint):
+        (JSC::B3::Air::Code::setEntrypoints):
+        (JSC::B3::Air::Code::setEntrypointLabels):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+
+2017-09-06  Saam Barati  <sbarati@apple.com>
+
+        ASSERTION FAILED: op() == CheckStructure in Source/JavaScriptCore/dfg/DFGNode.h(443)
+        https://bugs.webkit.org/show_bug.cgi?id=176470
+
+        Reviewed by Mark Lam.
+
+        Update Node::convertToCheckStructureImmediate's assertion to allow
+        the node to either be a CheckStructure or CheckStructureOrEmpty.
+
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToCheckStructureImmediate):
+
+2017-09-05  Saam Barati  <sbarati@apple.com>
+
+        isNotCellSpeculation is wrong with respect to SpecEmpty
+        https://bugs.webkit.org/show_bug.cgi?id=176429
+
+        Reviewed by Michael Saboff.
+
+        The isNotCellSpeculation(SpeculatedType t) function was not taking into account
+        SpecEmpty in the set for t. It should return false when SpecEmpty is present, since
+        the empty value will fail a NotCell check. This bug would cause us to erroneously
+        generate NotCellUse UseKinds for inputs that are the empty value, causing repeated OSR exits.
+
+        * bytecode/SpeculatedType.h:
+        (JSC::isNotCellSpeculation):
+
+2017-09-05  Saam Barati  <sbarati@apple.com>
+
+        Make the distinction between entrypoints and CFG roots more clear by naming things better
+        https://bugs.webkit.org/show_bug.cgi?id=176336
+
+        Reviewed by Mark Lam and Keith Miller and Michael Saboff.
+
+        This patch does renaming to make the distinction between Graph::m_entrypoints
+        and Graph::m_numberOfEntrypoints more clear. The source of confusion is that
+        Graph::m_entrypoints.size() is not equivalent to Graph::m_numberOfEntrypoints.
+        Graph::m_entrypoints is really just the CFG roots. In CPS, this vector has
+        size >= 1. In SSA, the size is always 1. This patch renames Graph::m_entrypoints
+        to Graph::m_roots. To be consistent, this patch also renames Graph's m_entrypointToArguments
+        field to m_rootToArguments.
+        
+        Graph::m_numberOfEntrypoints retains its name. This field is only used in SSA
+        when compiling with EntrySwitch. It represents the logical number of entrypoints
+        the compilation will end up with. Each EntrySwitch has m_numberOfEntrypoints
+        cases.
+
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parseCodeBlock):
+        * dfg/DFGCFG.h:
+        (JSC::DFG::CFG::roots):
+        (JSC::DFG::CPSCFG::CPSCFG):
+        * dfg/DFGCPSRethreadingPhase.cpp:
+        (JSC::DFG::CPSRethreadingPhase::specialCaseArguments):
+        * dfg/DFGDCEPhase.cpp:
+        (JSC::DFG::DCEPhase::run):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::determineReachability):
+        (JSC::DFG::Graph::blocksInPreOrder):
+        (JSC::DFG::Graph::blocksInPostOrder):
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::isRoot):
+        (JSC::DFG::Graph::isEntrypoint): Deleted.
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::initialize):
+        * dfg/DFGLoopPreHeaderCreationPhase.cpp:
+        (JSC::DFG::createPreHeader):
+        * dfg/DFGMaximalFlushInsertionPhase.cpp:
+        (JSC::DFG::MaximalFlushInsertionPhase::run):
+        (JSC::DFG::MaximalFlushInsertionPhase::treatRegularBlock):
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::OSREntrypointCreationPhase::run):
+        * dfg/DFGPredictionInjectionPhase.cpp:
+        (JSC::DFG::PredictionInjectionPhase::run):
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::checkArgumentTypes):
+        (JSC::DFG::SpeculativeJIT::linkOSREntries):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+        * dfg/DFGValidate.cpp:
+
+2017-09-05  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Completion values for control flow do not match the spec
+        https://bugs.webkit.org/show_bug.cgi?id=171265
+
+        Reviewed by Saam Barati.
+
+        * bytecompiler/BytecodeGenerator.h:
+        (JSC::BytecodeGenerator::shouldBeConcernedWithCompletionValue):
+        When we care about having proper completion values (global code
+        in programs, modules, and eval) insert undefined results for
+        control flow statements.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::SourceElements::emitBytecode):
+        Reduce writing a default `undefined` value to the completion result to
+        only once before the last statement we know will produce a value.
+
+        (JSC::IfElseNode::emitBytecode):
+        (JSC::WithNode::emitBytecode):
+        (JSC::WhileNode::emitBytecode):
+        (JSC::ForNode::emitBytecode):
+        (JSC::ForInNode::emitBytecode):
+        (JSC::ForOfNode::emitBytecode):
+        (JSC::SwitchNode::emitBytecode):
+        Insert an undefined to handle cases where code may break out of an
+        if/else or with statement (break/continue).
+
+        (JSC::TryNode::emitBytecode):
+        Same handling for break cases. Also, finally block statement completion
+        values are always ignored for the try statement result.
+
+        (JSC::ClassDeclNode::emitBytecode):
+        Class declarations, like function declarations, produce an empty result.
+
+        * parser/Nodes.cpp:
+        (JSC::SourceElements::lastStatement):
+        (JSC::SourceElements::hasCompletionValue):
+        (JSC::SourceElements::hasEarlyBreakOrContinue):
+        (JSC::BlockNode::lastStatement):
+        (JSC::BlockNode::singleStatement):
+        (JSC::BlockNode::hasCompletionValue):
+        (JSC::BlockNode::hasEarlyBreakOrContinue):
+        (JSC::ScopeNode::singleStatement):
+        (JSC::ScopeNode::hasCompletionValue):
+        (JSC::ScopeNode::hasEarlyBreakOrContinue):
+        The only non-trivial cases need to loop through their list of statements
+        to determine if this has a completion value or not. Likewise for
+        determining if there is an early break / continue, meaning a break or
+        continue statement with no preceding statement that has a completion value.
+
+        * parser/Nodes.h:
+        (JSC::StatementNode::next):
+        (JSC::StatementNode::hasCompletionValue):
+        Helper to check if a statement nodes produces a completion value or not.
+
+2017-09-04  Saam Barati  <sbarati@apple.com>
+
+        typeCheckHoistingPhase may emit a CheckStructure on the empty value which leads to a dereference of zero on 64 bit platforms
+        https://bugs.webkit.org/show_bug.cgi?id=176317
+
+        Reviewed by Keith Miller.
+
+        It turns out that TypeCheckHoistingPhase may hoist a CheckStructure up to 
+        the SetLocal of a particular value where the value is the empty JSValue.
+        On 64-bit platforms, the empty value is zero. This means that the empty value
+        passes a cell check. This will lead to a crash when we dereference null to load
+        the value's structure. This patch teaches TypeCheckHoistingPhase to be conservative
+        in the structure checks it hoists. On 64-bit platforms, instead of emitting a
+        CheckStructure node, we now emit a CheckStructureOrEmpty node. This node allows
+        the empty value to flow through. If the value isn't empty, it'll perform the normal
+        structure check that CheckStructure performs. For now, we only emit CheckStructureOrEmpty
+        on 64-bit platforms since a cell check on 32-bit platforms does not allow the empty
+        value to flow through.
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertCheckStructureOrEmptyToCheckStructure):
+        (JSC::DFG::Node::hasStructureSet):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::SafeToExecuteEdge::SafeToExecuteEdge):
+        (JSC::DFG::SafeToExecuteEdge::operator()):
+        (JSC::DFG::SafeToExecuteEdge::maySeeEmptyChild):
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitStructureCheck):
+        (JSC::DFG::SpeculativeJIT::compileCheckStructure):
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGTypeCheckHoistingPhase.cpp:
+        (JSC::DFG::TypeCheckHoistingPhase::run):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileCheckStructureOrEmpty):
+
+2017-09-04  Saam Barati  <sbarati@apple.com>
+
+        Support compiling catch in the FTL
+        https://bugs.webkit.org/show_bug.cgi?id=175396
+
+        Reviewed by Filip Pizlo.
+
+        This patch implements op_catch in the FTL. It extends the DFG implementation
+        by supporting multiple entrypoints in DFG-SSA. This patch implements this
+        by introducing an EntrySwitch node. When converting to SSA, we introduce a new
+        root block with an EntrySwitch that has the previous DFG entrypoints as its
+        successors. By convention, we pick the zeroth entry point index to be the
+        op_enter entrypoint. Like in B3, in DFG-SSA, EntrySwitch just acts like a
+        switch over the entrypoint index argument. DFG::EntrySwitch in the FTL
+        simply lowers to B3::EntrySwitch. The EntrySwitch in the root block that
+        SSAConversion creates can not exit because we would both not know where to exit
+        to in the program: we would not have valid OSR exit state. This design also
+        mandates that anything we hoist above EntrySwitch in the new root block
+        can not exit since they also do not have valid OSR exit state.
+        
+        This patch also adds a new metadata node named InitializeEntrypointArguments.
+        InitializeEntrypointArguments is a metadata node that initializes the flush format for
+        the arguments at a given entrypoint. For a given entrypoint index, this node
+        tells AI and OSRAvailabilityAnalysis what the flush format for each argument
+        is. This allows each individual entrypoint to have an independent set of
+        argument types. Currently, this won't happen in practice because ArgumentPosition
+        unifies flush formats, but this is an implementation detail we probably want
+        to modify in the future. SSAConversion will add InitializeEntrypointArguments
+        to the beginning of each of the original DFG entrypoint blocks.
+        
+        This patch also adds the ability to specify custom prologue code generators in Air.
+        This allows the FTL to specify a custom prologue for catch entrypoints that
+        matches the op_catch OSR entry calling convention that the DFG uses. This way,
+        the baseline JIT code OSR enters into op_catch the same way both in the DFG
+        and the FTL. In the future, we can use this same mechanism to perform stack
+        overflow checks instead of using a patchpoint.
+
+        * b3/air/AirCode.cpp:
+        (JSC::B3::Air::Code::isEntrypoint):
+        (JSC::B3::Air::Code::entrypointIndex):
+        * b3/air/AirCode.h:
+        (JSC::B3::Air::Code::setPrologueForEntrypoint):
+        (JSC::B3::Air::Code::prologueGeneratorForEntrypoint):
+        * b3/air/AirGenerate.cpp:
+        (JSC::B3::Air::generate):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGBasicBlock.h:
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::parse):
+        * dfg/DFGCFG.h:
+        (JSC::DFG::selectCFG):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGClobbersExitState.cpp:
+        (JSC::DFG::clobbersExitState):
+        * dfg/DFGCommonData.cpp:
+        (JSC::DFG::CommonData::shrinkToFit):
+        (JSC::DFG::CommonData::finalizeCatchEntrypoints):
+        * dfg/DFGCommonData.h:
+        (JSC::DFG::CommonData::catchOSREntryDataForBytecodeIndex):
+        (JSC::DFG::CommonData::appendCatchEntrypoint):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::dump):
+        (JSC::DFG::Graph::invalidateCFG):
+        (JSC::DFG::Graph::ensureCPSCFG):
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::isEntrypoint):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::initialize):
+        (JSC::DFG::InPlaceAbstractState::mergeToSuccessors):
+        * dfg/DFGJITCode.cpp:
+        (JSC::DFG::JITCode::shrinkToFit):
+        (JSC::DFG::JITCode::finalizeOSREntrypoints):
+        * dfg/DFGJITCode.h:
+        (JSC::DFG::JITCode::catchOSREntryDataForBytecodeIndex): Deleted.
+        (JSC::DFG::JITCode::appendCatchEntrypoint): Deleted.
+        * dfg/DFGJITCompiler.cpp:
+        (JSC::DFG::JITCompiler::noticeCatchEntrypoint):
+        (JSC::DFG::JITCompiler::makeCatchOSREntryBuffer):
+        * dfg/DFGMayExit.cpp:
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isEntrySwitch):
+        (JSC::DFG::Node::isTerminal):
+        (JSC::DFG::Node::entrySwitchData):
+        (JSC::DFG::Node::numSuccessors):
+        (JSC::DFG::Node::successor):
+        (JSC::DFG::Node::entrypointIndex):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::OSRAvailabilityAnalysisPhase::run):
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSREntry.cpp:
+        (JSC::DFG::prepareCatchOSREntry):
+        * dfg/DFGOSREntry.h:
+        * dfg/DFGOSREntrypointCreationPhase.cpp:
+        (JSC::DFG::OSREntrypointCreationPhase::run):
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSSAConversionPhase.cpp:
+        (JSC::DFG::SSAConversionPhase::SSAConversionPhase):
+        (JSC::DFG::SSAConversionPhase::run):
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::linkOSREntries):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStaticExecutionCountEstimationPhase.cpp:
+        (JSC::DFG::StaticExecutionCountEstimationPhase::run):
+        * dfg/DFGValidate.cpp:
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::lower):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileExtractCatchLocal):
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetStack):
+        (JSC::FTL::DFG::LowerDFGToB3::compileEntrySwitch):
+        (JSC::FTL::DFG::LowerDFGToB3::speculate):
+        (JSC::FTL::DFG::LowerDFGToB3::appendOSRExitDescriptor):
+        (JSC::FTL::DFG::LowerDFGToB3::appendOSRExit):
+        (JSC::FTL::DFG::LowerDFGToB3::blessSpeculation):
+        * ftl/FTLOutput.cpp:
+        (JSC::FTL::Output::entrySwitch):
+        * ftl/FTLOutput.h:
+        * jit/JITOperations.cpp:
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Efficiently execute number#toString()
+        https://bugs.webkit.org/show_bug.cgi?id=170007
+
+        Reviewed by Keith Miller.
+
+        In JS, the natural way to convert number to string with radix is `number.toString(radix)`.
+        However, our IC only cares about cells. If the base value is a number, it always goes to the slow path.
+
+        While extending our IC for number and boolean, the most meaningful use of this IC is calling `number.toString(radix)`.
+        So, in this patch, we first add a fast path for this in DFG by using watchpoint. We set up a watchpoint for
+        Number.prototype.toString. And if this watchpoint is kept alive and GetById(base, "toString")'s base should be
+        speculated as Number, we emit Number related Checks and convert GetById to Number.prototype.toString constant.
+        It removes costly GetById slow path, and makes it non-clobbering node (JSConstant).
+
+        In addition, we add NumberToStringWithValidRadixConstant node. We have NumberToStringWithRadix node, but it may
+        throw an error if the valid value is incorrect (for example, number.toString(2000)). So its clobbering rule is
+        conservatively use read(World)/write(Heap). But in reality, `number.toString` is mostly called with the constant
+        radix, and we can easily figure out this radix is valid (2 <= radix && radix < 32).
+        We add a rule to the constant folding phase to convert NumberToStringWithRadix to NumberToStringWithValidRadixConstant.
+        It ensures that it has valid constant radix. And we relax our clobbering rule for NumberToStringWithValidRadixConstant.
+
+        Added microbenchmarks show performance improvement.
+
+                                                      baseline                  patched
+
+        number-to-string-with-radix-cse           43.8312+-1.3017     ^      7.4930+-0.5105        ^ definitely 5.8496x faster
+        number-to-string-with-radix-10             7.2775+-0.5225     ^      2.1906+-0.1864        ^ definitely 3.3222x faster
+        number-to-string-with-radix               39.7378+-1.4921     ^     16.6137+-0.7776        ^ definitely 2.3919x faster
+        number-to-string-strength-reduction       94.9667+-2.7157     ^      9.3060+-0.7202        ^ definitely 10.2049x faster
+
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGDoesGC.cpp:
+        (JSC::DFG::doesGC):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::isWatchingGlobalObjectWatchpoint):
+        (JSC::DFG::Graph::isWatchingArrayIteratorProtocolWatchpoint):
+        (JSC::DFG::Graph::isWatchingNumberToStringWatchpoint):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::convertToNumberToStringWithValidRadixConstant):
+        (JSC::DFG::Node::hasValidRadixConstant):
+        (JSC::DFG::Node::validRadixConstant):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSafeToExecute.h:
+        (JSC::DFG::safeToExecute):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructor):
+        (JSC::DFG::SpeculativeJIT::compileNumberToStringWithValidRadixConstant):
+        (JSC::DFG::SpeculativeJIT::compileToStringOrCallStringConstructorOnNumber): Deleted.
+        * dfg/DFGSpeculativeJIT.h:
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGStrengthReductionPhase.cpp:
+        (JSC::DFG::StrengthReductionPhase::handleNode):
+        * ftl/FTLCapabilities.cpp:
+        (JSC::FTL::canCompile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileNumberToStringWithValidRadixConstant):
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::JSGlobalObject):
+        (JSC::JSGlobalObject::init):
+        (JSC::JSGlobalObject::visitChildren):
+        * runtime/JSGlobalObject.h:
+        (JSC::JSGlobalObject::numberToStringWatchpoint):
+        (JSC::JSGlobalObject::numberProtoToStringFunction const):
+        * runtime/NumberPrototype.cpp:
+        (JSC::NumberPrototype::finishCreation):
+        (JSC::toStringWithRadixInternal):
+        (JSC::toStringWithRadix):
+        (JSC::int32ToStringInternal):
+        (JSC::numberToStringInternal):
+        * runtime/NumberPrototype.h:
+
+2017-09-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Consider increasing the number of DFG worklist threads
+        https://bugs.webkit.org/show_bug.cgi?id=176222
+
+        Reviewed by Saam Barati.
+
+        Attempt to add one more thread to DFG worklist. DFG compiler sometimes takes
+        very long time if the target function is very large. However, DFG worklist
+        has only one thread before this patch. Therefore, one function that takes
+        too much time to be compiled can prevent the other functions from being
+        compiled in DFG or upper tiers.
+
+        One example is Octane/zlib. In zlib, compiling "a1" function in DFG takes
+        super long time (447 ms) because of its super large size of the function.
+        While this function never gets compiled in FTL due to its large size,
+        it can be compiled in DFG and takes super long time. Subsequent "a8" function
+        compilation in DFG is blocked by this "a1". As a consequence, the benchmark
+        takes very long time in a1/Baseline code, which is slower than DFG of course.
+
+        While FTL has a bit more threads, DFG worklist has only one thread. This patch
+        adds one more thread to DFG worklist to alleviate the above situation. This
+        change significantly improves Octane/zlib performance.
+
+                                    baseline                  patched
+
+        zlib           x2     482.32825+-6.07640    ^   408.66072+-14.03856      ^ definitely 1.1803x faster
+
+        * runtime/Options.h:
+
+2017-09-04  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Unify and simplify EnableBySettings with the rest of the runtime settings
+        https://bugs.webkit.org/show_bug.cgi?id=176312
+
+        Reviewed by Darin Adler.
+
+        * runtime/CommonIdentifiers.h:
+
+            Remove WebCore specific identifiers from CommonIdentifiers. They have been moved
+            to WebCoreBuiltinNames in WebCore.
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Remove "malloc" and "free" use
+        https://bugs.webkit.org/show_bug.cgi?id=176310
+
+        Reviewed by Darin Adler.
+
+        Use Vector instead.
+
+        * API/JSWrapperMap.mm:
+        (selectorToPropertyName):
+
+2017-09-03  Darin Adler  <darin@apple.com>
+
+        Try to fix Windows build.
+
+        * runtime/JSGlobalObjectFunctions.cpp: #include <unicode/utf8.h>.
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add C++03 allocator interface for GCC < 6
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-09-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r221555.
+
+        Did not fix Windows build
+
+        Reverted changeset:
+
+        "Unreviewed attempt to fix Windows build."
+        http://trac.webkit.org/changeset/221555
+
+2017-09-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed attempt to fix Windows build.
+
+        * runtime/JSGlobalObjectFunctions.cpp:
+
+2017-09-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rolling out r221552.
+
+        Broke the build
+
+        Reverted changeset:
+
+        "[WTF] Add C++03 allocator interface for GCC < 6"
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+        http://trac.webkit.org/changeset/221552
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Add C++03 allocator interface for GCC < 6
+        https://bugs.webkit.org/show_bug.cgi?id=176301
+
+        Reviewed by Darin Adler.
+
+        * dfg/DFGObjectAllocationSinkingPhase.cpp:
+
+2017-09-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Clean up BytecodeLivenessAnalysis
+        https://bugs.webkit.org/show_bug.cgi?id=176295
+
+        Reviewed by Saam Barati.
+
+        Previously, computeDefsForBytecodeOffset was a bit customizable.
+        This is used for try-catch handler's liveness analysis. But after
+        careful generatorification implementation, it is now not necessary.
+        This patch drops this customizability.
+
+        * bytecode/BytecodeGeneratorification.cpp:
+        (JSC::GeneratorLivenessAnalysis::computeDefsForBytecodeOffset): Deleted.
+        (JSC::GeneratorLivenessAnalysis::computeUsesForBytecodeOffset): Deleted.
+        * bytecode/BytecodeLivenessAnalysis.cpp:
+        (JSC::BytecodeLivenessAnalysis::computeKills):
+        (JSC::BytecodeLivenessAnalysis::computeDefsForBytecodeOffset): Deleted.
+        (JSC::BytecodeLivenessAnalysis::computeUsesForBytecodeOffset): Deleted.
+        * bytecode/BytecodeLivenessAnalysis.h:
+        * bytecode/BytecodeLivenessAnalysisInlines.h:
+        (JSC::BytecodeLivenessPropagation::stepOverInstruction):
+        (JSC::BytecodeLivenessPropagation::computeLocalLivenessForBytecodeOffset):
+        (JSC::BytecodeLivenessPropagation::computeLocalLivenessForBlock):
+        (JSC::BytecodeLivenessPropagation::getLivenessInfoAtBytecodeOffset):
+        (JSC::BytecodeLivenessPropagation::runLivenessFixpoint):
+        (JSC::BytecodeLivenessPropagation<DerivedAnalysis>::stepOverInstruction): Deleted.
+        (JSC::BytecodeLivenessPropagation<DerivedAnalysis>::computeLocalLivenessForBytecodeOffset): Deleted.
+        (JSC::BytecodeLivenessPropagation<DerivedAnalysis>::computeLocalLivenessForBlock): Deleted.
+        (JSC::BytecodeLivenessPropagation<DerivedAnalysis>::getLivenessInfoAtBytecodeOffset): Deleted.
+        (JSC::BytecodeLivenessPropagation<DerivedAnalysis>::runLivenessFixpoint): Deleted.
+
+2017-09-03  Sam Weinig  <sam@webkit.org>
+
+        Remove CanvasProxy
+        https://bugs.webkit.org/show_bug.cgi?id=176288
+
+        Reviewed by Yusuke Suzuki.
+
+        CanvasProxy does not appear to be in any current HTML spec
+        and was disabled and unimplemented in our tree. Time to 
+        get rid of it.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-09-02  Oliver Hunt  <oliver@apple.com>
+
+        Need an API to get the global context from JSObjectRef
+        https://bugs.webkit.org/show_bug.cgi?id=176291
+
+        Reviewed by Saam Barati.
+
+        Very simple additional API, starting off as SPI on principle.
+
+        * API/JSObjectRef.cpp:
+        (JSObjectGetGlobalContext):
+        * API/JSObjectRefPrivate.h:
+        * API/tests/testapi.c:
+        (main):
+
+2017-09-02  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Relax arity requirement
+        https://bugs.webkit.org/show_bug.cgi?id=175523
+
+        Reviewed by Saam Barati.
+
+        Our DFG pipeline gives up inlining when the arity of the target function is more than the number of the arguments.
+        It effectively prevents us from inlining and optimizing functions, which takes some optional arguments in the form
+        of the pre-ES6.
+
+        This patch removes the above restriction by performing the arity fixup in DFG.
+
+        SixSpeed shows improvement when we can inline arity-mismatched functions. (For example, calling generator.next()).
+
+                                       baseline                  patched
+
+        defaults.es5             1232.1226+-20.6775    ^    442.3326+-26.1883       ^ definitely 2.7855x faster
+        rest.es6                    5.3406+-0.8588     ^      3.5812+-0.5388        ^ definitely 1.4913x faster
+        spread-generator.es6      320.9107+-12.4808         310.4295+-12.0047         might be 1.0338x faster
+        generator.es6             318.3514+-9.6023     ^    286.4974+-12.6203       ^ definitely 1.1112x faster
+
+        * bytecode/InlineCallFrame.cpp:
+        (JSC::InlineCallFrame::dumpInContext const):
+        * bytecode/InlineCallFrame.h:
+        (JSC::InlineCallFrame::InlineCallFrame):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGArgumentsEliminationPhase.cpp:
+        * dfg/DFGArgumentsUtilities.cpp:
+        (JSC::DFG::argumentsInvolveStackSlot):
+        (JSC::DFG::emitCodeToGetArgumentsArrayLength):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::setLocal):
+        (JSC::DFG::ByteCodeParser::setArgument):
+        (JSC::DFG::ByteCodeParser::findArgumentPositionForLocal):
+        (JSC::DFG::ByteCodeParser::flush):
+        (JSC::DFG::ByteCodeParser::getArgumentCount):
+        (JSC::DFG::ByteCodeParser::inliningCost):
+        (JSC::DFG::ByteCodeParser::inlineCall):
+        (JSC::DFG::ByteCodeParser::attemptToInlineCall):
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        (JSC::DFG::ByteCodeParser::InlineStackEntry::InlineStackEntry):
+        * dfg/DFGCommonData.cpp:
+        (JSC::DFG::CommonData::validateReferences):
+        * dfg/DFGConstantFoldingPhase.cpp:
+        (JSC::DFG::ConstantFoldingPhase::foldConstants):
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::isLiveInBytecode):
+        * dfg/DFGGraph.h:
+        (JSC::DFG::Graph::forAllLocalsLiveInBytecode):
+        * dfg/DFGOSRAvailabilityAnalysisPhase.cpp:
+        (JSC::DFG::LocalOSRAvailabilityCalculator::executeNode):
+        * dfg/DFGOSRExit.cpp:
+        (JSC::DFG::OSRExit::emitRestoreArguments):
+        * dfg/DFGOSRExitCompilerCommon.cpp:
+        (JSC::DFG::reifyInlinedCallFrames):
+        * dfg/DFGPreciseLocalClobberize.h:
+        (JSC::DFG::PreciseLocalClobberizeAdaptor::readTop):
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::emitGetLength):
+        (JSC::DFG::SpeculativeJIT::compileCreateDirectArguments):
+        * dfg/DFGStackLayoutPhase.cpp:
+        (JSC::DFG::StackLayoutPhase::run):
+        * ftl/FTLCompile.cpp:
+        (JSC::FTL::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileGetMyArgumentByVal):
+        (JSC::FTL::DFG::LowerDFGToB3::getArgumentsLength):
+        * ftl/FTLOperations.cpp:
+        (JSC::FTL::operationMaterializeObjectInOSR):
+        * interpreter/StackVisitor.cpp:
+        (JSC::StackVisitor::readInlinedFrame):
+        * jit/AssemblyHelpers.h:
+        (JSC::AssemblyHelpers::argumentsStart):
+        * jit/SetupVarargsFrame.cpp:
+        (JSC::emitSetupVarargsFrameFastCase):
+        * runtime/ClonedArguments.cpp:
+        (JSC::ClonedArguments::createWithInlineFrame):
+        * runtime/CommonSlowPaths.h:
+        (JSC::CommonSlowPaths::numberOfExtraSlots):
+        (JSC::CommonSlowPaths::numberOfStackPaddingSlots):
+        (JSC::CommonSlowPaths::numberOfStackPaddingSlotsWithExtraSlots):
+        (JSC::CommonSlowPaths::arityCheckFor):
+        * runtime/StackAlignment.h:
+        (JSC::stackAlignmentBytes):
+        (JSC::stackAlignmentRegisters):
+
+2017-09-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [FTL] FTL allocation for async Function is incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=176214
+
+        Reviewed by Saam Barati.
+
+        In FTL, allocating async function / async generator function was incorrectly using
+        JSFunction logic. While it is not observable right now since sizeof(JSFunction) == sizeof(JSAsyncFunction),
+        but it is a bug.
+
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNewFunction):
+
+2017-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Fix "name" and "length" of Proxy revoke function
+        https://bugs.webkit.org/show_bug.cgi?id=176155
+
+        Reviewed by Mark Lam.
+
+        ProxyRevoke's length should be configurable. And it does not have
+        its own name. We add NameVisibility enum to InternalFunction to
+        control visibility of the name.
+
+        * runtime/InternalFunction.cpp:
+        (JSC::InternalFunction::finishCreation):
+        * runtime/InternalFunction.h:
+        * runtime/ProxyRevoke.cpp:
+        (JSC::ProxyRevoke::finishCreation):
+
+2017-08-31  Saam Barati  <sbarati@apple.com>
+
+        Throwing an exception in the DFG/FTL should not cause a jettison
+        https://bugs.webkit.org/show_bug.cgi?id=176060
+        <rdar://problem/34143348>
+
+        Reviewed by Keith Miller.
+
+        Throwing an exception is not something that should be a jettison-able
+        OSR exit. We used to count Throw/ThrowStaticError towards our OSR exit
+        counts which could cause a CodeBlock to jettison and recompile. This
+        was dumb. Throwing an exception is not a reason to jettison and
+        recompile in the way that a speculation failure is. This patch
+        treats Throw/ThrowStaticError as true terminals in DFG IR.
+
+        * bytecode/BytecodeUseDef.h:
+        (JSC::computeUsesForBytecodeOffset):
+        * dfg/DFGAbstractInterpreterInlines.h:
+        (JSC::DFG::AbstractInterpreter<AbstractStateType>::executeEffects):
+        * dfg/DFGByteCodeParser.cpp:
+        (JSC::DFG::ByteCodeParser::parseBlock):
+        * dfg/DFGClobberize.h:
+        (JSC::DFG::clobberize):
+        * dfg/DFGFixupPhase.cpp:
+        (JSC::DFG::FixupPhase::fixupNode):
+        * dfg/DFGInPlaceAbstractState.cpp:
+        (JSC::DFG::InPlaceAbstractState::mergeToSuccessors):
+        * dfg/DFGNode.h:
+        (JSC::DFG::Node::isTerminal):
+        (JSC::DFG::Node::isPseudoTerminal):
+        (JSC::DFG::Node::errorType):
+        * dfg/DFGNodeType.h:
+        * dfg/DFGOperations.cpp:
+        * dfg/DFGOperations.h:
+        * dfg/DFGPredictionPropagationPhase.cpp:
+        * dfg/DFGSpeculativeJIT.cpp:
+        (JSC::DFG::SpeculativeJIT::compileThrow):
+        (JSC::DFG::SpeculativeJIT::compileThrowStaticError):
+        * dfg/DFGSpeculativeJIT.h:
+        (JSC::DFG::SpeculativeJIT::callOperation):
+        * dfg/DFGSpeculativeJIT32_64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * dfg/DFGSpeculativeJIT64.cpp:
+        (JSC::DFG::SpeculativeJIT::compile):
+        * ftl/FTLLowerDFGToB3.cpp:
+        (JSC::FTL::DFG::LowerDFGToB3::compileNode):
+        (JSC::FTL::DFG::LowerDFGToB3::compileThrow):
+        (JSC::FTL::DFG::LowerDFGToB3::compileThrowStaticError):
+        * jit/JITOperations.h:
+
+2017-08-31  Saam Barati  <sbarati@apple.com>
+
+        Graph::methodOfGettingAValueProfileFor compares NodeOrigin instead of the semantic CodeOrigin
+        https://bugs.webkit.org/show_bug.cgi?id=176206
+
+        Reviewed by Keith Miller.
+
+        Mark fixed the main issue in Graph::methodOfGettingAValueProfileFor in r208560
+        when he fixed it from overwriting invalid parts of the ArithProfile when the
+        currentNode and the operandNode are from the same bytecode. However, the
+        mechanism used to determine same bytecode was comparing NodeOrigin. That's
+        slightly wrong. We need to compare semantic origin, since two NodeOrigins can
+        have the same semantic origin, but differ only in exitOK. For example,
+        in the below IR, the DoubleRep and the Phi have the same semantic
+        origin, but different NodeOrigins.
+
+        43 Phi(JS|PureInt, NonBoolInt32|NonIntAsdouble, W:SideState, bc#63, ExitInvalid)
+        58 ExitOK(MustGen, W:SideState, bc#63)
+        51 DoubleRep(Check:Number:Kill:@43, Double|PureInt, BytecodeDouble, Exits, bc#63)
+        54 ArithNegate(DoubleRep:Kill:@51<Double>, Double|UseAsOther|MayHaveDoubleResult, AnyIntAsDouble|NonIntAsdouble, NotSet, Exits, bc#63)
+
+        * dfg/DFGGraph.cpp:
+        (JSC::DFG::Graph::methodOfGettingAValueProfileFor):
+
+2017-08-31  Don Olmstead  <don.olmstead@sony.com>
+
+        [CMake] Make USE_CF conditional within Windows
+        https://bugs.webkit.org/show_bug.cgi?id=176173
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake:
+
+2017-08-31  Saam Barati  <sbarati@apple.com>
+
+        useSeparatedWXHeap should never be true when not on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=176190
+
+        Reviewed by JF Bastien.
+
+        If you set useSeparatedWXHeap to true on X86_64, and launch the jsc shell,
+        the process insta-crashes. Let's silently ignore that option and set it
+        to false when not on iOS.
+
+        * runtime/Options.cpp:
+        (JSC::recomputeDependentOptions):
+
+2017-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Fix debug crashes.
+
+        Rubber stamped by Mark Lam.
+
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+
+2017-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        All of the different ArrayBuffer::data's should be CagedPtr<>
+        https://bugs.webkit.org/show_bug.cgi?id=175515
+
+        Reviewed by Michael Saboff.
+        
+        This straightforwardly implements what the title says.
+
+        * runtime/ArrayBuffer.cpp:
+        (JSC::SharedArrayBufferContents::~SharedArrayBufferContents):
+        (JSC::ArrayBufferContents::destroy):
+        (JSC::ArrayBufferContents::tryAllocate):
+        (JSC::ArrayBufferContents::makeShared):
+        (JSC::ArrayBufferContents::copyTo):
+        (JSC::ArrayBuffer::createFromBytes):
+        (JSC::ArrayBuffer::transferTo):
+        * runtime/ArrayBuffer.h:
+        (JSC::SharedArrayBufferContents::data const):
+        (JSC::ArrayBufferContents::data const):
+        (JSC::ArrayBuffer::data):
+        (JSC::ArrayBuffer::data const):
+        * runtime/ArrayBufferView.h:
+        (JSC::ArrayBufferView::baseAddress const):
+        * runtime/CagedBarrierPtr.h: Added a specialization so that CagedBarrierPtr<Gigacage::Foo, void> is valid.
+        * runtime/DataView.h:
+        (JSC::DataView::get):
+        (JSC::DataView::set):
+        * runtime/JSArrayBufferView.cpp:
+        (JSC::JSArrayBufferView::ConstructionContext::ConstructionContext):
+        * runtime/JSArrayBufferView.h:
+        (JSC::JSArrayBufferView::ConstructionContext::vector const):
+        (JSC::JSArrayBufferView::vector const):
+        * runtime/JSGenericTypedArrayViewInlines.h:
+        (JSC::JSGenericTypedArrayView<Adaptor>::visitChildren):
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToAtomicString const):
+        (JSC::JSRopeString::resolveRope const):
+        * runtime/JSString.h:
+        (JSC::JSString::create):
+        (JSC::JSString::createHasOtherOwner):
+        * runtime/JSStringBuilder.h:
+        * runtime/VM.h:
+        (JSC::VM::gigacageAuxiliarySpace):
+
+2017-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Use reifying system for "name" property of builtin JSFunction
+        https://bugs.webkit.org/show_bug.cgi?id=175260
+
+        Reviewed by Saam Barati.
+
+        Currently builtin JSFunction uses direct property for "name", which is different
+        from usual JSFunction. Usual JSFunction uses reifying system for "name". We would like
+        to apply this reifying mechanism to builtin JSFunction to simplify code and drop
+        JSFunction::createBuiltinFunction.
+
+        We would like to store the "correct" name in FunctionExecutable. For example,
+        we would like to store the name like "get [Symbol.species]" to FunctionExecutable
+        instead of specifying name when creating JSFunction. To do so, we add a new
+        annotations, @getter and @overriddenName. When @getter is specified, the name of
+        the function becomes "get xxx". And when @overriddenName="xxx" is specified,
+        the name of the function becomes "xxx".
+
+        We also treat @xxx as anonymous builtin functions that cannot be achieved in
+        the current JS without privilege.
+
+        * Scripts/builtins/builtins_generate_combined_header.py:
+        (generate_section_for_code_table_macro):
+        * Scripts/builtins/builtins_generate_combined_implementation.py:
+        (BuiltinsCombinedImplementationGenerator.generate_secondary_header_includes):
+        * Scripts/builtins/builtins_generate_separate_header.py:
+        (generate_section_for_code_table_macro):
+        * Scripts/builtins/builtins_generate_separate_implementation.py:
+        (BuiltinsSeparateImplementationGenerator.generate_secondary_header_includes):
+        * Scripts/builtins/builtins_model.py:
+        (BuiltinFunction.__init__):
+        (BuiltinFunction.fromString):
+        * Scripts/builtins/builtins_templates.py:
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Combined.js:
+        (overriddenName.string_appeared_here.match):
+        (intrinsic.RegExpTestIntrinsic.test):
+        * Scripts/tests/builtins/JavaScriptCore-Builtin.prototype-Separate.js:
+        (overriddenName.string_appeared_here.match):
+        (intrinsic.RegExpTestIntrinsic.test):
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.Promise-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-Builtin.prototype-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Combined.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-BuiltinConstructor-Separate.js-result:
+        * Scripts/tests/builtins/expected/JavaScriptCore-InternalClashingNames-Combined.js-result:
+        * Scripts/tests/builtins/expected/WebCore-AnotherGuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-ArbitraryConditionalGuard-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-GuardedInternalBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-UnguardedBuiltin-Separate.js-result:
+        * Scripts/tests/builtins/expected/WebCore-xmlCasingTest-Separate.js-result:
+        * builtins/AsyncIteratorPrototype.js:
+        (symbolAsyncIteratorGetter): Deleted.
+        * builtins/BuiltinExecutables.cpp:
+        (JSC::BuiltinExecutables::BuiltinExecutables):
+        * builtins/BuiltinExecutables.h:
+        * builtins/BuiltinNames.h:
+        * builtins/FunctionPrototype.js:
+        (symbolHasInstance): Deleted.
+        * builtins/GlobalOperations.js:
+        (globalPrivate.speciesGetter): Deleted.
+        * builtins/IteratorPrototype.js:
+        (symbolIteratorGetter): Deleted.
+        * builtins/PromiseConstructor.js:
+        (all.newResolveElement.return.resolve):
+        (all.newResolveElement):
+        (all):
+        * builtins/PromiseOperations.js:
+        (globalPrivate.newPromiseCapability.executor):
+        (globalPrivate.newPromiseCapability):
+        (globalPrivate.createResolvingFunctions.resolve):
+        (globalPrivate.createResolvingFunctions.reject):
+        (globalPrivate.createResolvingFunctions):
+        * builtins/RegExpPrototype.js:
+        (match): Deleted.
+        (replace): Deleted.
+        (search): Deleted.
+        (split): Deleted.
+        * jsc.cpp:
+        (functionCreateBuiltin):
+        * runtime/AsyncIteratorPrototype.cpp:
+        (JSC::AsyncIteratorPrototype::finishCreation):
+        * runtime/FunctionPrototype.cpp:
+        (JSC::FunctionPrototype::addFunctionProperties):
+        * runtime/IteratorPrototype.cpp:
+        (JSC::IteratorPrototype::finishCreation):
+        * runtime/JSFunction.cpp:
+        (JSC::JSFunction::finishCreation):
+        (JSC::JSFunction::getOwnNonIndexPropertyNames):
+        (JSC::JSFunction::reifyLazyBoundNameIfNeeded):
+        (JSC::JSFunction::createBuiltinFunction): Deleted.
+        * runtime/JSFunction.h:
+        * runtime/JSGlobalObject.cpp:
+        (JSC::JSGlobalObject::init):
+        * runtime/JSObject.cpp:
+        (JSC::JSObject::putDirectBuiltinFunction):
+        (JSC::JSObject::putDirectBuiltinFunctionWithoutTransition):
+        * runtime/JSTypedArrayViewPrototype.cpp:
+        (JSC::JSTypedArrayViewPrototype::finishCreation):
+        * runtime/Lookup.cpp:
+        (JSC::reifyStaticAccessor):
+        * runtime/MapPrototype.cpp:
+        (JSC::MapPrototype::finishCreation):
+        * runtime/RegExpPrototype.cpp:
+        (JSC::RegExpPrototype::finishCreation):
+        * runtime/SetPrototype.cpp:
+        (JSC::SetPrototype::finishCreation):
+
+2017-08-30  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r221327.
+
+        This change caused test262 failures.
+
+        Reverted changeset:
+
+        "[JSC] Use reifying system for "name" property of builtin
+        JSFunction"
+        https://bugs.webkit.org/show_bug.cgi?id=175260
+        http://trac.webkit.org/changeset/221327
+
+2017-08-30  Matt Lewis  <jlewis3@apple.com>
+
+        Unreviewed, rolling out r221384.
+
+        This patch caused multiple 32-bit JSC test failures.
+
+        Reverted changeset:
+
+        "Strings need to be in some kind of gigacage"
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+        http://trac.webkit.org/changeset/221384
+
+2017-08-30  Saam Barati  <sbarati@apple.com>
+
+        semicolon is being interpreted as an = in the LiteralParser
+        https://bugs.webkit.org/show_bug.cgi?id=176114
+
+        Reviewed by Oliver Hunt.
+
+        When lexing a semicolon in the LiteralParser, we were properly
+        setting the TokenType on the current token, however, we were
+        *returning* the wrong TokenType. The lex function both returns
+        the TokenType and sets it on the current token. Semicolon was
+        setting the TokenType to semicolon, but returning the TokenType
+        for '='. This caused programs like `x;123` to be interpreted as
+        `x=123`.
+
+        * runtime/LiteralParser.cpp:
+        (JSC::LiteralParser<CharType>::Lexer::lex):
+        (JSC::LiteralParser<CharType>::Lexer::next):
+
+2017-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Strings need to be in some kind of gigacage
+        https://bugs.webkit.org/show_bug.cgi?id=174924
+
+        Reviewed by Oliver Hunt.
+
+        * runtime/JSString.cpp:
+        (JSC::JSRopeString::resolveRopeToAtomicString const):
+        (JSC::JSRopeString::resolveRope const):
+        * runtime/JSString.h:
+        (JSC::JSString::create):
+        (JSC::JSString::createHasOtherOwner):
+        * runtime/JSStringBuilder.h:
+        * runtime/VM.h:
+        (JSC::VM::gigacageAuxiliarySpace):
+
 2017-08-30  Oleksandr Skachkov  <gskachkov@gmail.com>
 
         [ESNext] Async iteration - Implement async iteration statement: for-await-of

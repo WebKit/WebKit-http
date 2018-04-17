@@ -161,7 +161,14 @@ private:
                 break;
             }
 
-                
+            case CheckStructureOrEmpty: {
+                const AbstractValue& value = m_state.forNode(node->child1());
+                if (value.m_type & SpecEmpty)
+                    break;
+                node->convertCheckStructureOrEmptyToCheckStructure();
+                changed = true;
+                FALLTHROUGH;
+            }
             case CheckStructure:
             case ArrayifyToStructure: {
                 AbstractValue& value = m_state.forNode(node->child1());
@@ -357,7 +364,7 @@ private:
                 // GetMyArgumentByVal in such statically-out-of-bounds accesses; we just lose CFA unless
                 // GCSE removes the access entirely.
                 if (inlineCallFrame) {
-                    if (index >= inlineCallFrame->arguments.size() - 1)
+                    if (index >= inlineCallFrame->argumentCountIncludingThis - 1)
                         break;
                 } else {
                     if (index >= m_state.variables().numberOfArguments() - 1)
@@ -378,7 +385,7 @@ private:
                         virtualRegisterForArgument(index + 1), FlushedJSValue);
                 }
                 
-                if (inlineCallFrame && !inlineCallFrame->isVarargs() && index < inlineCallFrame->arguments.size() - 1) {
+                if (inlineCallFrame && !inlineCallFrame->isVarargs() && index < inlineCallFrame->argumentCountIncludingThis - 1) {
                     node->convertToGetStack(data);
                     eliminated = true;
                     break;
@@ -642,6 +649,23 @@ private:
                     changed = true;
                 }
 
+                break;
+            }
+
+            case NumberToStringWithRadix: {
+                JSValue radixValue = m_state.forNode(node->child2()).m_value;
+                if (radixValue && radixValue.isInt32()) {
+                    int32_t radix = radixValue.asInt32();
+                    if (2 <= radix && radix <= 36) {
+                        if (radix == 10) {
+                            node->setOpAndDefaultFlags(ToString);
+                            node->child2() = Edge();
+                        } else
+                            node->convertToNumberToStringWithValidRadixConstant(radix);
+                        changed = true;
+                        break;
+                    }
+                }
                 break;
             }
 

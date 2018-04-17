@@ -91,15 +91,15 @@ public:
     virtual void runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, Function<void (const WTF::String&)>&& completionHandler) { completionHandler(WTF::String()); }
 
     virtual void setStatusText(WebKit::WebPageProxy*, const WTF::String&) { }
-    virtual void mouseDidMoveOverElement(WebKit::WebPageProxy*, const WebKit::WebHitTestResultData&, WebKit::WebEvent::Modifiers, Object*) { }
+    virtual void mouseDidMoveOverElement(WebKit::WebPageProxy&, const WebKit::WebHitTestResultData&, WebKit::WebEvent::Modifiers, Object*) { }
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    virtual void unavailablePluginButtonClicked(WebKit::WebPageProxy*, WKPluginUnavailabilityReason, Dictionary*) { }
+    virtual void unavailablePluginButtonClicked(WebKit::WebPageProxy&, WKPluginUnavailabilityReason, Dictionary&) { }
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
     virtual void didNotHandleKeyEvent(WebKit::WebPageProxy*, const WebKit::NativeWebKeyboardEvent&) { }
     virtual void didNotHandleWheelEvent(WebKit::WebPageProxy*, const WebKit::NativeWebWheelEvent&) { }
 
-    virtual bool toolbarsAreVisible(WebKit::WebPageProxy*) { return true; }
+    virtual void toolbarsAreVisible(WebKit::WebPageProxy&, Function<void(bool)>&& completionHandler) { completionHandler(true); }
     virtual void setToolbarsAreVisible(WebKit::WebPageProxy*, bool) { }
     virtual bool menuBarIsVisible(WebKit::WebPageProxy*) { return true; }
     virtual void setMenuBarIsVisible(WebKit::WebPageProxy*, bool) { }
@@ -146,7 +146,7 @@ public:
 
     virtual void pinnedStateDidChange(WebKit::WebPageProxy&) { }
 
-    virtual void isPlayingAudioDidChange(WebKit::WebPageProxy&) { }
+    virtual void isPlayingMediaDidChange(WebKit::WebPageProxy&) { }
     virtual void mediaCaptureStateDidChange(WebCore::MediaProducer::MediaStateFlags) { }
     virtual void handleAutoplayEvent(WebKit::WebPageProxy&, WebCore::AutoplayEvent, OptionSet<WebCore::AutoplayEventFlags>) { }
 
